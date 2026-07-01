@@ -2,6 +2,7 @@
 import { useHttp, usePage } from '@inertiajs/vue3';
 import { onBeforeUnmount, onMounted } from 'vue';
 
+import AiGenerationBar from '@/components/AiGenerationBar.vue';
 import AppHeader from '@/components/AppHeader.vue';
 import AppSidebar from '@/components/AppSidebar.vue';
 import Toast from '@/components/Toast.vue';
@@ -42,6 +43,7 @@ onBeforeUnmount(() => {
     <SidebarProvider :default-open="isOpen">
         <AppSidebar />
         <SidebarInset class="overflow-x-hidden">
+            <AiGenerationBar />
             <AppHeader v-if="$slots['header'] || $slots['header-actions']">
                 <template v-if="$slots['header']" #left>
                     <slot name="header" />
