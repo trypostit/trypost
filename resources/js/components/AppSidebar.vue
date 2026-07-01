@@ -238,7 +238,7 @@ const handleCreateWorkspace = () => {
 
             <NavMain v-if="currentWorkspace" :items="mainNavItems" />
             <NavMain v-if="currentWorkspace" :items="postsNavItems" :label="$t('sidebar.groups.posts')" />
-            <NavMain v-if="currentWorkspace && workspaceNavItems.length" :items="workspaceNavItems" :label="$t('sidebar.groups.workspace')" />
+            <NavMain v-if="currentWorkspace && workspaceNavItems.length" :items="workspaceNavItems" :label="$t('sidebar.groups.workspace')" collapsible :default-open="false" />
             <NavSupport v-if="currentWorkspace" :items="supportNavItems" :label="$t('sidebar.groups.others')" />
         </SidebarContent>
 
