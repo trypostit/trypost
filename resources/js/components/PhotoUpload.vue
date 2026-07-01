@@ -4,6 +4,7 @@ import { IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { ref } from 'vue';
 
+import ImageCropperDialog from '@/components/ImageCropperDialog.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,6 +35,12 @@ const props = withDefaults(defineProps<Props>(), {
 const fileInput = ref<HTMLInputElement | null>(null);
 const uploading = ref(false);
 
+// Crop: selecting a file opens the crop (round mask) before uploading.
+const cropOpen = ref(false);
+const cropSrc = ref<string | null>(null);
+const cropFileName = ref('image.png');
+const cropMime = ref('image/png');
+
 const sizeClasses = {
     sm: 'size-16',
     md: 'size-20',
@@ -63,6 +70,23 @@ const handleFileChange = (event: Event) => {
         return;
     }
 
+    // Open the cropper with the selected image; the actual upload happens on crop.
+    cropFileName.value = file.name || 'image.png';
+    cropMime.value = file.type || 'image/png';
+    const reader = new FileReader();
+    reader.onload = () => {
+        cropSrc.value = reader.result as string;
+        cropOpen.value = true;
+    };
+    reader.readAsDataURL(file);
+
+    // Reset the input so the same file can be selected again later.
+    if (fileInput.value) {
+        fileInput.value.value = '';
+    }
+};
+
+const uploadCropped = (file: File) => {
     uploading.value = true;
 
     router.post(
@@ -72,9 +96,7 @@ const handleFileChange = (event: Event) => {
             forceFormData: true,
             onFinish: () => {
                 uploading.value = false;
-                if (fileInput.value) {
-                    fileInput.value.value = '';
-                }
+                cropSrc.value = null;
             },
         },
     );
@@ -140,5 +162,13 @@ const handleDelete = () => {
                 {{ $t('common.photo_upload.hint') }}
             </p>
         </div>
+
+        <ImageCropperDialog
+            v-model:open="cropOpen"
+            :src="cropSrc"
+            :file-name="cropFileName"
+            :mime-type="cropMime"
+            @cropped="uploadCropped"
+        />
     </div>
 </template>
