@@ -12,7 +12,10 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Laravel\Socialite\Contracts\User as SocialiteUser;
 use Laravel\Socialite\Facades\Socialite;
+use Throwable;
 
 class GitHubController extends Controller
 {
@@ -42,21 +45,52 @@ class GitHubController extends Controller
             return $this->connectToCurrentUser(Auth::user(), (string) $githubUser->getId());
         }
 
-        $user = User::where('github_id', (string) $githubUser->getId())
-            ->when($githubUser->getEmail(), fn ($query, $email) => $query->orWhere('email', $email))
-            ->first();
+        $user = User::where('github_id', (string) $githubUser->getId())->first();
+
+        // Linking an existing account by email (or creating an already-verified
+        // account) requires GitHub to have confirmed that email — the profile's
+        // public email arrives without a verification flag, so we check it
+        // directly against the user's emails API.
+        if (! $user) {
+            if (! $githubUser->getEmail()) {
+                return redirect()->route('login')->withErrors([
+                    'email' => __('auth.github_email_unavailable'),
+                ]);
+            }
+
+            if (! $this->providerEmailIsVerified($githubUser)) {
+                return redirect()->route('login')
+                    ->with('flash.error', __('auth.social_email_unverified', ['provider' => 'GitHub']));
+            }
+
+            $user = User::where('email', $githubUser->getEmail())->first();
+        }
 
         if ($user) {
             return $this->loginExistingUser($user, (string) $githubUser->getId());
         }
 
-        if (! $githubUser->getEmail()) {
-            return redirect()->route('login')->withErrors([
-                'email' => __('auth.github_email_unavailable'),
-            ]);
+        return $this->registerNewUser($githubUser);
+    }
+
+    private function providerEmailIsVerified(SocialiteUser $githubUser): bool
+    {
+        $email = (string) $githubUser->getEmail();
+
+        try {
+            $emails = Http::withToken($githubUser->token)
+                ->acceptJson()
+                ->get(config('services.github.api').'/user/emails')
+                ->throw()
+                ->json();
+        } catch (Throwable) {
+            return false;
         }
 
-        return $this->registerNewUser($githubUser);
+        return collect($emails)->contains(
+            fn ($entry): bool => strcasecmp((string) data_get($entry, 'email'), $email) === 0
+                && (bool) data_get($entry, 'verified', false),
+        );
     }
 
     private function connectToCurrentUser(User $user, string $githubId): RedirectResponse
@@ -95,7 +129,7 @@ class GitHubController extends Controller
         return redirect()->route('app.home');
     }
 
-    private function registerNewUser(\Laravel\Socialite\Contracts\User $githubUser): RedirectResponse
+    private function registerNewUser(SocialiteUser $githubUser): RedirectResponse
     {
         $utmParameters = $this->retrieveUtmParameters();
 

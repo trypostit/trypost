@@ -12,6 +12,7 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Laravel\Socialite\Contracts\User as SocialiteUser;
 use Laravel\Socialite\Facades\Socialite;
 
 class GoogleController extends Controller
@@ -40,15 +41,34 @@ class GoogleController extends Controller
             return $this->connectToCurrentUser(Auth::user(), $googleUser->getId());
         }
 
-        $user = User::where('google_id', $googleUser->getId())
-            ->orWhere('email', $googleUser->getEmail())
-            ->first();
+        $user = User::where('google_id', $googleUser->getId())->first();
+
+        // Linking an existing account by email (or creating an already-verified
+        // account) requires the PROVIDER to have confirmed that email —
+        // otherwise a Google account carrying someone else's unconfirmed email
+        // would become an account takeover.
+        if (! $user) {
+            if (! $this->providerEmailIsVerified($googleUser)) {
+                return redirect()->route('login')
+                    ->with('flash.error', __('auth.social_email_unverified', ['provider' => 'Google']));
+            }
+
+            $user = User::where('email', $googleUser->getEmail())->first();
+        }
 
         if ($user) {
             return $this->loginExistingUser($user, $googleUser->getId());
         }
 
         return $this->registerNewUser($googleUser);
+    }
+
+    /**
+     * OIDC `email_verified` claim from Google's userinfo; absent = don't trust.
+     */
+    private function providerEmailIsVerified(SocialiteUser $googleUser): bool
+    {
+        return (bool) data_get($googleUser->user, 'email_verified', false);
     }
 
     private function connectToCurrentUser(User $user, string $googleId): RedirectResponse
@@ -87,7 +107,7 @@ class GoogleController extends Controller
         return redirect()->route('app.home');
     }
 
-    private function registerNewUser(\Laravel\Socialite\Contracts\User $googleUser): RedirectResponse
+    private function registerNewUser(SocialiteUser $googleUser): RedirectResponse
     {
         $utmParameters = $this->retrieveUtmParameters();
 

@@ -2,6 +2,7 @@
 import { Form, Head } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
+import PasswordStrength from '@/components/auth/PasswordStrength.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,7 @@ const props = defineProps<{
 }>();
 
 const inputEmail = ref(props.email);
+const password = ref('');
 </script>
 
 <template>
@@ -50,6 +52,7 @@ const inputEmail = ref(props.email);
                     <Label for="password">{{ $t('auth.reset_password.password') }}</Label>
                     <Input
                         id="password"
+                        v-model="password"
                         type="password"
                         name="password"
                         autocomplete="new-password"
@@ -57,6 +60,7 @@ const inputEmail = ref(props.email);
                         autofocus
                         :placeholder="$t('auth.reset_password.password')"
                     />
+                    <PasswordStrength :password="password" class="mt-1" />
                     <InputError :message="errors.password" />
                 </div>
 
