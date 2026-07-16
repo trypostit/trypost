@@ -1,0 +1,7 @@
+:80 {
+	encode zstd gzip
+	reverse_proxy app:80 {
+		header_up Host {$APP_DOMAIN}
+		header_up X-Forwarded-Proto https
+	}
+}

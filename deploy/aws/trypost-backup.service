@@ -1,0 +1,9 @@
+[Unit]
+Description=Back up TryPost database and storage
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/opt/trypost/.backup
+ExecStart=/opt/trypost/backup.sh

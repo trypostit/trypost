@@ -1,0 +1,112 @@
+name: Deploy AWS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: trypost-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ROLE_ARN: arn:aws:iam::784713213970:role/trypost-deploy
+  ECR_REGISTRY: 784713213970.dkr.ecr.us-east-1.amazonaws.com
+  ECR_REPOSITORY: trypost/app
+  BACKUP_BUCKET: trypost-backups-784713213970-us-east-1
+
+jobs:
+  validation:
+    uses: ./.github/workflows/tests.yml
+
+  deploy:
+    needs: validation
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: aws-actions/configure-aws-credentials@v6.1.0
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          role-session-name: trypost-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: production
+          platforms: linux/arm64
+          push: true
+          tags: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          build-args: |
+            VITE_REVERB_APP_KEY=trypost-reverb-key
+            VITE_REVERB_HOST=trypost.aidven.com
+            VITE_REVERB_PORT=443
+            VITE_REVERB_SCHEME=https
+          cache-from: type=gha,scope=trypost-production-arm64
+          cache-to: type=gha,mode=max,scope=trypost-production-arm64
+
+      - name: Upload deployment bundle
+        run: |
+          tar -czf /tmp/trypost-deploy.tar.gz -C deploy/aws \
+            compose.yaml Caddyfile backup.sh remote-deploy.sh \
+            trypost-backup.service trypost-backup.timer
+          aws s3 cp /tmp/trypost-deploy.tar.gz \
+            "s3://${BACKUP_BUCKET}/releases/${GITHUB_SHA}/deploy.tar.gz"
+
+      - name: Resolve production host
+        run: |
+          instance_id=$(aws ec2 describe-instances \
+            --filters \
+              Name=tag:Name,Values=trypost-production \
+              Name=instance-state-name,Values=running \
+            --query 'Reservations[0].Instances[0].InstanceId' \
+            --output text)
+          test "$instance_id" != "None"
+          echo "INSTANCE_ID=$instance_id" >> "$GITHUB_ENV"
+
+      - name: Deploy
+        run: |
+          image="${ECR_REGISTRY}/${ECR_REPOSITORY}:${GITHUB_SHA}"
+          bundle="s3://${BACKUP_BUCKET}/releases/${GITHUB_SHA}/deploy.tar.gz"
+          command="aws s3 cp '$bundle' /tmp/trypost-deploy.tar.gz && tar -xzf /tmp/trypost-deploy.tar.gz -C /opt/trypost && chmod +x /opt/trypost/remote-deploy.sh /opt/trypost/backup.sh && /opt/trypost/remote-deploy.sh '$image' 'trypost/production/env' '$BACKUP_BUCKET'"
+          parameters=$(jq -cn --arg command "$command" '{commands: [$command]}')
+          command_id=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --parameters "$parameters" \
+            --query Command.CommandId \
+            --output text)
+          aws ssm wait command-executed --command-id "$command_id" --instance-id "$INSTANCE_ID"
+          aws ssm get-command-invocation \
+            --command-id "$command_id" \
+            --instance-id "$INSTANCE_ID" \
+            --query '{Status:Status,Output:StandardOutputContent,Error:StandardErrorContent}'
+
+      - name: Verify
+        run: |
+          test "$(curl -fsS https://trypost.aidven.com/up)" = "Application up"
+          command_id=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --parameters '{"commands":["cat /opt/trypost/REVISION"]}' \
+            --query Command.CommandId \
+            --output text)
+          aws ssm wait command-executed --command-id "$command_id" --instance-id "$INSTANCE_ID"
+          revision=$(aws ssm get-command-invocation \
+            --command-id "$command_id" \
+            --instance-id "$INSTANCE_ID" \
+            --query StandardOutputContent \
+            --output text | tr -d '\n')
+          test "$revision" = "${ECR_REGISTRY}/${ECR_REPOSITORY}:${GITHUB_SHA}"
