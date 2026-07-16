@@ -13,10 +13,9 @@ Deploy `stack.yaml` in `us-east-1` with the latest Amazon Linux 2023 ARM AMI,
 the default VPC, and a public subnet. Enable CloudFormation termination
 protection after creation.
 
-Deploy `deploy/cloudflare/wrangler.jsonc` to publish `trypost.aidven.com` and
-terminate public TLS at Cloudflare. The edge Worker forwards requests to the
-fixed `PublicIp` stack output. Store the production dotenv file in the
-`trypost/production/env` secret.
+Create a DNS-only Cloudflare `A` record from `trypost.aidven.com` to the fixed
+`PublicIp` stack output. Caddy obtains and renews the public TLS certificate.
+Store the production dotenv file in the `trypost/production/env` secret.
 
 ## Release
 
