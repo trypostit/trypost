@@ -63,8 +63,7 @@ fi
 
 docker compose --env-file .image run --rm --no-deps --entrypoint php app \
     artisan migrate --force
-docker compose --env-file .image up -d --remove-orphans
-docker compose --env-file .image exec -T app curl -fsS http://127.0.0.1/up >/dev/null
+docker compose --env-file .image up -d --remove-orphans --wait --wait-timeout 120
 
 install -m 0755 backup.sh /opt/trypost/backup.sh
 install -m 0644 trypost-backup.service /etc/systemd/system/trypost-backup.service
