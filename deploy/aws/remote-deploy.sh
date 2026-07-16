@@ -35,6 +35,7 @@ db_database=$(sed -n 's/^DB_DATABASE=//p' .image)
 aws ecr get-login-password --region us-east-1 \
     | docker login --username AWS --password-stdin "${image_uri%%/*}"
 
+docker volume create trypost_storage >/dev/null
 docker compose --env-file .image pull
 docker compose --env-file .image up -d pgsql redis
 
@@ -54,7 +55,6 @@ fi
 
 if [ ! -f .storage-restored ] && [ -n "$storage_backup_key" ]; then
     aws s3 cp "s3://${backup_bucket}/${storage_backup_key}" /tmp/trypost-storage.tar.gz
-    docker volume create trypost_storage >/dev/null
     storage_volume=$(docker volume inspect trypost_storage --format '{{.Mountpoint}}')
     tar -xzf /tmp/trypost-storage.tar.gz -C "$storage_volume"
     rm /tmp/trypost-storage.tar.gz
@@ -65,7 +65,6 @@ docker compose --env-file .image run --rm --no-deps --entrypoint php app \
     artisan migrate --force
 docker compose --env-file .image up -d --remove-orphans --wait --wait-timeout 120
 
-install -m 0755 backup.sh /opt/trypost/backup.sh
 install -m 0644 trypost-backup.service /etc/systemd/system/trypost-backup.service
 install -m 0644 trypost-backup.timer /etc/systemd/system/trypost-backup.timer
 systemctl daemon-reload

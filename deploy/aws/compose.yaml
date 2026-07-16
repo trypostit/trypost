@@ -66,5 +66,7 @@ volumes:
   pgdata:
   redisdata:
   storage:
+    external: true
+    name: trypost_storage
   caddy-data:
   caddy-config:
