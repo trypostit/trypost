@@ -57,17 +57,17 @@ const inviteUrl = computed(() => `/invites/${props.invite.id}`);
                     </CardHeader>
                     <CardContent class="space-y-6">
                         <div class="rounded-lg bg-muted p-4 space-y-2">
-                            <div v-if="invite.workspace" class="flex justify-between text-sm">
-                                <span class="text-muted-foreground">{{ $t('auth.accept_invite.workspace') }}</span>
-                                <span class="font-medium">{{ invite.workspace.name }}</span>
+                            <div v-if="invite.workspace" class="flex justify-between gap-3 text-sm">
+                                <span class="shrink-0 text-muted-foreground">{{ $t('auth.accept_invite.workspace') }}</span>
+                                <span class="min-w-0 truncate font-medium">{{ invite.workspace.name }}</span>
                             </div>
-                            <div class="flex justify-between text-sm">
-                                <span class="text-muted-foreground">{{ $t('auth.accept_invite.your_role') }}</span>
-                                <span class="font-medium">{{ invite.role.label }}</span>
+                            <div class="flex justify-between gap-3 text-sm">
+                                <span class="shrink-0 text-muted-foreground">{{ $t('auth.accept_invite.your_role') }}</span>
+                                <span class="min-w-0 truncate font-medium">{{ invite.role.label }}</span>
                             </div>
-                            <div class="flex justify-between text-sm">
-                                <span class="text-muted-foreground">{{ $t('auth.accept_invite.email') }}</span>
-                                <span class="font-medium">{{ invite.email }}</span>
+                            <div class="flex justify-between gap-3 text-sm">
+                                <span class="shrink-0 text-muted-foreground">{{ $t('auth.accept_invite.email') }}</span>
+                                <span class="min-w-0 truncate font-medium">{{ invite.email }}</span>
                             </div>
                         </div>
 

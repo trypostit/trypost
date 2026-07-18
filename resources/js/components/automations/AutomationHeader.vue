@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/vue3';
 import { IconArrowLeft, IconCircleCheck, IconCircleDot, IconCircleX } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 
+import AutomationMobileBackHeader from '@/components/automations/AutomationMobileBackHeader.vue';
 import AutomationTabsNav from '@/components/automations/AutomationTabsNav.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,7 +27,9 @@ const statusConfig = (status: string) => {
 
 <template>
     <div class="flex-shrink-0">
-        <header class="flex items-center justify-between gap-4 border-b-2 border-foreground/10 bg-card px-4 py-2">
+        <AutomationMobileBackHeader />
+
+        <header class="hidden items-center justify-between gap-4 border-b-2 border-foreground/10 bg-card px-4 py-2 lg:flex">
             <div class="flex min-w-0 items-center gap-3">
                 <Link :href="automationsIndex.url()">
                     <Button variant="outline" size="icon-sm">

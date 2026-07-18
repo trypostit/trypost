@@ -231,7 +231,7 @@ Vue components must have a single root element.
 
 ## Dialogs
 
-- In `<DialogFooter>`, put the **primary action button first** in the markup, then secondary/cancel (e.g. Save → Cancel). `DialogFooter` uses `flex-col-reverse` on mobile and `sm:flex-row sm:justify-start` on desktop, so the first child is the leftmost action on larger screens.
+- In `<DialogFooter>`, put the **primary action button first** in the markup, then secondary/cancel (e.g. Save → Cancel). `DialogFooter` uses `flex-col` on mobile (primary on top, cancel at the bottom) and `sm:flex-row sm:justify-start` on desktop, so the first child is the leftmost action on larger screens.
 - Match sibling dialogs in the same feature area before inventing a new footer layout.
 
 ## AI agents (`app/Ai/Agents`)

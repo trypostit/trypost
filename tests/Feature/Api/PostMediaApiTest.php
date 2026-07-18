@@ -13,6 +13,9 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
+// A public IP literal as the host lets SafeHttpFetcher's SSRF guard pass without
+// a real DNS lookup; Http::fake() intercepts the request before any network I/O.
+
 beforeEach(function () {
     $result = createApiTestToken();
     $this->user = $result['user'];
@@ -49,7 +52,7 @@ it('attaches media from url', function () {
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.attach-media-from-url', $this->post), [
-            'urls' => ['https://example.com/photo.png'],
+            'urls' => [['url' => 'https://example.com/photo.png']],
         ])
         ->assertOk()
         ->assertJsonPath('attached_count', 1)
@@ -59,6 +62,63 @@ it('attaches media from url', function () {
     expect($this->post->fresh()->media)->toHaveCount(1);
 });
 
+it('attaches media from url with alt text', function () {
+    Http::fake([
+        'example.com/photo.png' => Http::response(
+            file_get_contents(__DIR__.'/../../fixtures/1x1.png'),
+            200,
+            ['Content-Type' => 'image/png'],
+        ),
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.attach-media-from-url', $this->post), [
+            'urls' => [['url' => 'https://example.com/photo.png', 'alt' => 'A red bicycle by a wall']],
+        ])
+        ->assertOk()
+        ->assertJsonPath('attached_count', 1);
+
+    expect(data_get($this->post->fresh()->media, '0.meta.alt_text'))->toBe('A red bicycle by a wall');
+});
+
+it('does not store alt text on a non-image url', function () {
+    Http::fake([
+        'example.com/deck.pdf' => Http::response(
+            "%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n",
+            200,
+            ['Content-Type' => 'application/pdf'],
+        ),
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.attach-media-from-url', $this->post), [
+            'urls' => [['url' => 'https://example.com/deck.pdf', 'alt' => 'alt is meaningless for a pdf']],
+        ])
+        ->assertOk()
+        ->assertJsonPath('attached_count', 1);
+
+    expect(data_get($this->post->fresh()->media, '0.type'))->toBe('document')
+        ->and(data_get($this->post->fresh()->media, '0.meta'))->toBeNull();
+});
+
+it('rejects alt text over the max length on a url', function () {
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.attach-media-from-url', $this->post), [
+            'urls' => [['url' => 'https://example.com/photo.png', 'alt' => str_repeat('a', 2001)]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['urls.0.alt']);
+});
+
+it('rejects the old bare-string urls shape', function () {
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.attach-media-from-url', $this->post), [
+            'urls' => ['https://example.com/photo.png'],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['urls.0.url']);
+});
+
 it('reports failures for unreachable urls', function () {
     Http::fake([
         'example.com/missing.png' => Http::response(null, 404),
@@ -66,7 +126,7 @@ it('reports failures for unreachable urls', function () {
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.attach-media-from-url', $this->post), [
-            'urls' => ['https://example.com/missing.png'],
+            'urls' => [['url' => 'https://example.com/missing.png']],
         ])
         ->assertOk()
         ->assertJsonPath('attached_count', 0)
@@ -79,7 +139,7 @@ it('cannot attach media to a post from another workspace', function () {
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.attach-media-from-url', $post), [
-            'urls' => ['https://example.com/photo.png'],
+            'urls' => [['url' => 'https://example.com/photo.png']],
         ])
         ->assertNotFound();
 });
@@ -225,7 +285,7 @@ it('downloads and hosts an external media url when creating a post', function ()
     $this->socialAccount->update(['is_active' => true]);
 
     Http::fake([
-        'cdn.example.com/listing.jpg' => Http::response(
+        '93.184.216.34/listing.jpg' => Http::response(
             file_get_contents(__DIR__.'/../../fixtures/1x1.png'),
             200,
             ['Content-Type' => 'image/png'],
@@ -235,7 +295,7 @@ it('downloads and hosts an external media url when creating a post', function ()
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
             'content' => 'External media post',
-            'media' => [['url' => 'https://cdn.example.com/listing.jpg']],
+            'media' => [['url' => 'https://93.184.216.34/listing.jpg']],
             'platforms' => [
                 ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
             ],
@@ -246,19 +306,49 @@ it('downloads and hosts an external media url when creating a post', function ()
 
     expect($media)->toHaveCount(1)
         ->and(data_get($media, '0.path'))->not->toBeNull()
-        ->and(data_get($media, '0.url'))->not->toContain('cdn.example.com');
+        ->and(data_get($media, '0.url'))->not->toContain('93.184.216.34');
     expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
+});
+
+it('persists alt text submitted on a bare external media url', function () {
+    $this->socialAccount->update(['is_active' => true]);
+
+    Http::fake([
+        '93.184.216.34/car.jpg' => Http::response(
+            file_get_contents(__DIR__.'/../../fixtures/1x1.png'),
+            200,
+            ['Content-Type' => 'image/png'],
+        ),
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.store'), [
+            'content' => 'External alt post',
+            'media' => [[
+                'url' => 'https://93.184.216.34/car.jpg',
+                'meta' => ['alt_text' => 'A red car parked on a hill'],
+            ]],
+            'platforms' => [
+                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
+            ],
+        ])
+        ->assertCreated();
+
+    $media = Post::where('content', 'External alt post')->firstOrFail()->media;
+
+    expect(data_get($media, '0.meta.alt_text'))->toBe('A red car parked on a hill')
+        ->and(data_get($media, '0.path'))->not->toBeNull();
 });
 
 it('rejects creating a post when an external media url cannot be fetched', function () {
     $this->socialAccount->update(['is_active' => true]);
 
-    Http::fake(['cdn.example.com/missing.jpg' => Http::response(null, 404)]);
+    Http::fake(['93.184.216.34/missing.jpg' => Http::response(null, 404)]);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
             'content' => 'Broken media post',
-            'media' => [['url' => 'https://cdn.example.com/missing.jpg']],
+            'media' => [['url' => 'https://93.184.216.34/missing.jpg']],
             'platforms' => [
                 ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
             ],
@@ -274,20 +364,20 @@ it('rolls back already-hosted media when another url in the batch fails', functi
     $this->socialAccount->update(['is_active' => true]);
 
     Http::fake([
-        'cdn.example.com/good.jpg' => Http::response(
+        '93.184.216.34/good.jpg' => Http::response(
             file_get_contents(__DIR__.'/../../fixtures/1x1.png'),
             200,
             ['Content-Type' => 'image/png'],
         ),
-        'cdn.example.com/missing.jpg' => Http::response(null, 404),
+        '93.184.216.34/missing.jpg' => Http::response(null, 404),
     ]);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
             'content' => 'Partial media post',
             'media' => [
-                ['url' => 'https://cdn.example.com/good.jpg'],
-                ['url' => 'https://cdn.example.com/missing.jpg'],
+                ['url' => 'https://93.184.216.34/good.jpg'],
+                ['url' => 'https://93.184.216.34/missing.jpg'],
             ],
             'platforms' => [
                 ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
@@ -304,20 +394,20 @@ it('rejects and rolls back when a media url connection fails (timeout/dns)', fun
     $this->socialAccount->update(['is_active' => true]);
 
     Http::fake([
-        'cdn.example.com/good.jpg' => Http::response(
+        '93.184.216.34/good.jpg' => Http::response(
             file_get_contents(__DIR__.'/../../fixtures/1x1.png'),
             200,
             ['Content-Type' => 'image/png'],
         ),
-        'cdn.example.com/timeout.jpg' => fn () => throw new ConnectionException('Connection timed out'),
+        '93.184.216.34/timeout.jpg' => fn () => throw new ConnectionException('Connection timed out'),
     ]);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
             'content' => 'Timeout media post',
             'media' => [
-                ['url' => 'https://cdn.example.com/good.jpg'],
-                ['url' => 'https://cdn.example.com/timeout.jpg'],
+                ['url' => 'https://93.184.216.34/good.jpg'],
+                ['url' => 'https://93.184.216.34/timeout.jpg'],
             ],
             'platforms' => [
                 ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
@@ -334,12 +424,12 @@ it('rejects creating a post when an external media url is not a supported type',
     $this->socialAccount->update(['is_active' => true]);
 
     // Downloads fine (200) but the bytes are not a supported media type.
-    Http::fake(['cdn.example.com/notes.txt' => Http::response('just some text', 200)]);
+    Http::fake(['93.184.216.34/notes.txt' => Http::response('just some text', 200)]);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
             'content' => 'Bad type post',
-            'media' => [['url' => 'https://cdn.example.com/notes.txt']],
+            'media' => [['url' => 'https://93.184.216.34/notes.txt']],
             'platforms' => [
                 ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
             ],
@@ -355,7 +445,7 @@ it('keeps an already-hosted item and a freshly-hosted url in order', function ()
     $this->socialAccount->update(['is_active' => true]);
 
     Http::fake([
-        'cdn.example.com/external.jpg' => Http::response(
+        '93.184.216.34/external.jpg' => Http::response(
             file_get_contents(__DIR__.'/../../fixtures/1x1.png'),
             200,
             ['Content-Type' => 'image/png'],
@@ -367,7 +457,7 @@ it('keeps an already-hosted item and a freshly-hosted url in order', function ()
             'content' => 'Mixed media post',
             'media' => [
                 ['id' => 'hosted-1', 'path' => 'assets/already.jpg', 'url' => 'https://cdn.trypost.test/assets/already.jpg', 'type' => 'image'],
-                ['url' => 'https://cdn.example.com/external.jpg'],
+                ['url' => 'https://93.184.216.34/external.jpg'],
             ],
             'platforms' => [
                 ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
@@ -379,7 +469,7 @@ it('keeps an already-hosted item and a freshly-hosted url in order', function ()
 
     expect($media)->toHaveCount(2)
         ->and(data_get($media, '0.path'))->toBe('assets/already.jpg')
-        ->and(data_get($media, '1.url'))->not->toContain('cdn.example.com')
+        ->and(data_get($media, '1.url'))->not->toContain('93.184.216.34')
         ->and(data_get($media, '1.path'))->not->toBeNull();
     // Only the external URL is hosted; the passed-through item creates no new row.
     expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
@@ -410,7 +500,7 @@ it('passes already-hosted media through on create without downloading', function
 
 it('downloads and hosts an external media url when updating a post', function () {
     Http::fake([
-        'cdn.example.com/listing.jpg' => Http::response(
+        '93.184.216.34/listing.jpg' => Http::response(
             file_get_contents(__DIR__.'/../../fixtures/1x1.png'),
             200,
             ['Content-Type' => 'image/png'],
@@ -420,7 +510,7 @@ it('downloads and hosts an external media url when updating a post', function ()
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->putJson(route('api.posts.update', $this->post), [
             'status' => 'draft',
-            'media' => [['url' => 'https://cdn.example.com/listing.jpg']],
+            'media' => [['url' => 'https://93.184.216.34/listing.jpg']],
         ])
         ->assertOk();
 
@@ -428,21 +518,114 @@ it('downloads and hosts an external media url when updating a post', function ()
 
     expect($media)->toHaveCount(1)
         ->and(data_get($media, '0.path'))->not->toBeNull()
-        ->and(data_get($media, '0.url'))->not->toContain('cdn.example.com');
+        ->and(data_get($media, '0.url'))->not->toContain('93.184.216.34');
 });
 
 it('rejects updating a post when an external media url cannot be fetched', function () {
-    Http::fake(['cdn.example.com/missing.jpg' => Http::response(null, 404)]);
+    Http::fake(['93.184.216.34/missing.jpg' => Http::response(null, 404)]);
 
     $original = $this->post->fresh()->media;
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->putJson(route('api.posts.update', $this->post), [
             'status' => 'draft',
-            'media' => [['url' => 'https://cdn.example.com/missing.jpg']],
+            'media' => [['url' => 'https://93.184.216.34/missing.jpg']],
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['media']);
 
     expect($this->post->fresh()->media)->toBe($original);
+});
+
+it('accepts and persists media alt text on create', function () {
+    $this->socialAccount->update(['is_active' => true]);
+    Http::preventStrayRequests();
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Alt text post',
+            'media' => [[
+                'id' => 'media-1',
+                'path' => 'assets/foo.jpg',
+                'url' => 'https://cdn.trypost.test/assets/foo.jpg',
+                'type' => 'image',
+                'meta' => ['alt_text' => 'A description of the photo'],
+            ]],
+            'platforms' => [
+                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
+            ],
+        ])
+        ->assertCreated();
+
+    $media = Post::where('content', 'Alt text post')->firstOrFail()->media;
+
+    expect(data_get($media, '0.meta.alt_text'))->toBe('A description of the photo');
+});
+
+it('accepts and persists media alt text on update', function () {
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->putJson(route('api.posts.update', $this->post), [
+            'status' => 'draft',
+            'media' => [[
+                'id' => 'media-1',
+                'path' => 'assets/foo.jpg',
+                'url' => 'https://cdn.trypost.test/assets/foo.jpg',
+                'type' => 'image',
+                'meta' => ['alt_text' => 'Updated alt text'],
+            ]],
+        ])
+        ->assertOk();
+
+    expect(data_get($this->post->fresh()->media, '0.meta.alt_text'))->toBe('Updated alt text');
+});
+
+it('preserves every media meta key on update, not just alt_text', function () {
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->putJson(route('api.posts.update', $this->post), [
+            'status' => 'draft',
+            'media' => [[
+                'id' => 'media-1',
+                'path' => 'assets/foo.jpg',
+                'url' => 'https://cdn.trypost.test/assets/foo.jpg',
+                'type' => 'image',
+                'meta' => [
+                    'width' => 1920,
+                    'height' => 1080,
+                    'duration' => 30,
+                    'alt_text' => 'A description of the photo',
+                ],
+            ]],
+        ])
+        ->assertOk();
+
+    expect(data_get($this->post->fresh()->media, '0.meta'))->toMatchArray([
+        'width' => 1920,
+        'height' => 1080,
+        'duration' => 30,
+        'alt_text' => 'A description of the photo',
+    ]);
+});
+
+it('rejects media alt text over 2000 characters', function () {
+    $this->socialAccount->update(['is_active' => true]);
+    Http::preventStrayRequests();
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Alt text too long post',
+            'media' => [[
+                'id' => 'media-1',
+                'path' => 'assets/foo.jpg',
+                'url' => 'https://cdn.trypost.test/assets/foo.jpg',
+                'type' => 'image',
+                'meta' => ['alt_text' => str_repeat('a', 2001)],
+            ]],
+            'platforms' => [
+                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
+            ],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['media.0.meta']);
+
+    expect(Post::where('content', 'Alt text too long post')->exists())->toBeFalse();
 });

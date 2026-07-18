@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\Http;
+use App\Services\Brand\SafeHttpFetcher;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -22,7 +22,7 @@ if (! function_exists('uploadFromUrl')) {
         }
 
         try {
-            $response = Http::timeout(10)->get($url);
+            $response = app(SafeHttpFetcher::class)->guardedRequest($url)->timeout(10)->get($url);
 
             if (! $response->successful()) {
                 Log::warning('uploadFromUrl: Failed to download', [

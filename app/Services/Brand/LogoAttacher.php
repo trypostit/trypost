@@ -6,6 +6,7 @@ namespace App\Services\Brand;
 
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class LogoAttacher
 {
@@ -77,6 +78,10 @@ class LogoAttacher
             );
 
             return true;
+        } catch (Throwable $e) {
+            Log::warning('Logo rejected — persistence error', ['url' => $logoUrl, 'error' => $e->getMessage()]);
+
+            return false;
         } finally {
             if (file_exists($tempPath)) {
                 @unlink($tempPath);

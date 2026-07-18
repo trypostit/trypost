@@ -20,6 +20,7 @@ import {
 import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
 import {
+    metrics as metricsAutomation,
     store as storeAutomation,
     workflow as workflowAutomation,
 } from '@/routes/app/automations';
@@ -56,6 +57,13 @@ const handleCreate = () => {
         onFinish: () => { isCreating.value = false; },
     });
 };
+
+// A draft opens on the builder to be set up; a live automation opens on its
+// metrics, where the user watches it run.
+const openAutomation = (automation: Automation) => {
+    const route = automation.status === 'draft' ? workflowAutomation : metricsAutomation;
+    router.visit(route.url(automation.id));
+};
 </script>
 
 <template>
@@ -63,7 +71,7 @@ const handleCreate = () => {
 
     <AppLayout>
         <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
-            <div class="flex items-center justify-between">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <PageHeader :title="$t('automations.title')" />
 
                 <Button @click="handleCreate" :disabled="isCreating">
@@ -101,7 +109,7 @@ const handleCreate = () => {
                                 v-for="automation in automations.data"
                                 :key="automation.id"
                                 class="cursor-pointer"
-                                @click="router.visit(workflowAutomation.url(automation.id))"
+                                @click="openAutomation(automation)"
                             >
                                 <TableCell class="font-medium">{{ automation.name }}</TableCell>
                                 <TableCell>

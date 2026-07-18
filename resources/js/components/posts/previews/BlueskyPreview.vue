@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import { toRef } from 'vue';
+
+import LinkCard from "@/components/posts/previews/LinkCard.vue";
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
+import { useLinkCard } from '@/composables/useLinkCard';
 import { isVideoMedia } from '@/composables/useMedia';
 import type { MediaItem } from '@/types/media';
 
@@ -17,7 +21,12 @@ interface Props {
     media: MediaItem[];
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
+
+const { card: linkCard, loading: linkCardLoading } = useLinkCard(
+    toRef(props, 'content'),
+    toRef(props, 'media'),
+);
 </script>
 
 <template>
@@ -98,6 +107,13 @@ defineProps<Props>();
                         </div>
                     </div>
                 </div>
+
+                <!-- Link preview card -->
+                <div
+                    v-if="media.length === 0 && linkCardLoading"
+                    class="mt-3 h-24 animate-pulse rounded-xl border border-neutral-200 bg-neutral-100 dark:border-[#1e3a5f] dark:bg-[#0f2138]"
+                ></div>
+                <LinkCard v-else-if="media.length === 0 && linkCard" :card="linkCard" />
 
                 <!-- Timestamp -->
                 <div class="mt-3 text-[13px] text-neutral-500 dark:text-[#7b8d9e]">

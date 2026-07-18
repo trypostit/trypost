@@ -137,4 +137,19 @@ return [
 
     'trial_days' => env('CASHIER_TRIAL_DAYS', 8),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Paid First Month Coupon
+    |--------------------------------------------------------------------------
+    |
+    | Stripe Coupon ID applied at checkout so the first invoice comes out to
+    | $1 instead of the full monthly price — a real charge validates the
+    | card up front instead of a $0 trial authorization. Must be an
+    | `amount_off` coupon with `duration: once`, so it discounts only the
+    | first invoice and the full price bills automatically afterward.
+    |
+    */
+
+    'first_month_coupon_id' => env('STRIPE_FIRST_MONTH_COUPON_ID'),
+
 ];

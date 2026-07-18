@@ -100,12 +100,30 @@ test('normalizes various language codes to supported locales', function (string 
 
     expect($result->language)->toBe($expected);
 })->with([
+    // Every supported language, detected from its primary subtag.
+    ['en', 'en'],
     ['pt', 'pt-BR'],
+    ['es', 'es'],
+    ['fr', 'fr'],
+    ['de', 'de'],
+    ['it', 'it'],
+    ['nl', 'nl'],
+    ['pl', 'pl'],
+    ['el', 'el'],
+    ['ja', 'ja'],
+    ['ko', 'ko'],
+    ['zh', 'zh'],
+    ['ru', 'ru'],
+    ['tr', 'tr'],
+    ['ar', 'ar'],
+    // Region/script subtags still resolve to the supported language.
     ['pt-PT', 'pt-BR'],
     ['en-US', 'en'],
     ['es-MX', 'es'],
-    ['fr', null],
-    ['ja-JP', null],
+    ['ja-JP', 'ja'],
+    ['zh-Hans', 'zh'],
+    // Unsupported languages stay null.
+    ['sv', null],
 ]);
 
 test('rejects non-http schemes', function () {
@@ -370,6 +388,40 @@ test('when llm is configured, polishes description/tone/language/voice_notes via
     expect($result->description)->toBe('Widget Co helps small teams ship production widgets faster.');
     expect($result->language)->toBe('en');
     expect($result->toArray()['brand_voice_traits'])->toBe(['third_person', 'direct', 'no_hype']);
+});
+
+test('LLM language detection wins and carries any supported language, not just en/es/pt-BR', function () {
+    config()->set('services.gemini.api_key', 'fake-key');
+    config()->set('ai.default', 'gemini');
+
+    // The <html lang> declares "en", so the deterministic extractor yields 'en'.
+    // The LLM reads the actual German body and returns 'de'. Since the fixture's
+    // deterministic value differs from the LLM's, this isolates the mergeLlm
+    // precedence: the LLM value must win, and it must be a language beyond the
+    // original en/es/pt-BR set.
+    Http::fake([
+        'example.com' => Http::response(<<<'HTML'
+            <html lang="en">
+            <head>
+              <title>Beispiel GmbH</title>
+              <meta name="description" content="Kurze Beschreibung.">
+            </head>
+            <body><main><p>Wir bauen Widgets für kleine Teams.</p></main></body>
+            </html>
+        HTML, 200),
+    ]);
+
+    BrandAnalyzer::fake([
+        [
+            'description' => 'Beispiel GmbH baut Widgets für kleine Teams.',
+            'language' => 'de',
+            'voice_traits' => ['third_person'],
+        ],
+    ]);
+
+    $result = ($this->autofill)('https://example.com');
+
+    expect($result->language)->toBe('de');
 });
 
 test('when llm is not configured, falls back to meta tags only', function () {

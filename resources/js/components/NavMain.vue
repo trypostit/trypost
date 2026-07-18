@@ -58,7 +58,7 @@ const { urlIsActive } = useActiveUrl();
                         <Badge
                             v-if="item.badge"
                             variant="warning"
-                            class="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 px-1.5 group-data-[collapsible=icon]:hidden"
+                            class="pointer-events-none absolute top-1/2 end-2 -translate-y-1/2 px-1.5 group-data-[collapsible=icon]:hidden"
                         >
                             {{ item.badge }}
                         </Badge>

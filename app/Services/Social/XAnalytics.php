@@ -46,7 +46,7 @@ class XAnalytics
 
     private function fetchMetricsFromApi(SocialAccount $account, CarbonInterface $since, CarbonInterface $until): array
     {
-        if ($account->is_token_expired || $account->is_token_expiring_soon) {
+        if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
@@ -161,7 +161,7 @@ class XAnalytics
             return ['unsupported' => true, 'reason' => 'missing_post_id'];
         }
 
-        if ($account->is_token_expired || $account->is_token_expiring_soon) {
+        if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 

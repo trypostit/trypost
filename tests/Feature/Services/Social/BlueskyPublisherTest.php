@@ -12,6 +12,8 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\BlueskyPublisher;
+use App\Services\Social\LinkCard\LinkCardFetcher;
+use App\Services\Social\LinkCard\LinkCardMetadata;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
@@ -39,6 +41,12 @@ beforeEach(function () {
     ]);
 
     $this->publisher = new BlueskyPublisher;
+
+    // Default: no link card. Card-specific tests override this mock.
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->andReturn(null)
+        ->byDefault();
 });
 
 test('bluesky publisher can publish text-only post', function () {
@@ -400,6 +408,97 @@ test('bluesky publisher attaches an uploaded image as an embed', function () {
             && $embed['$type'] === 'app.bsky.embed.images'
             && count($embed['images']) === 1
             && data_get($embed, 'images.0.image.ref.$link') === 'bafkreiabc123';
+    });
+});
+
+test('bluesky publisher includes image alt text in the embed', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+                'meta' => ['alt_text' => 'a red bike'],
+            ],
+        ],
+    ]);
+
+    $this->mock(MediaOptimizer::class)
+        ->shouldReceive('optimizeImage')
+        ->andReturnUsing(fn () => tap(tempnam(sys_get_temp_dir(), 'bsky_test_'), fn ($f) => file_put_contents($f, str_repeat('x', 1024))));
+
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), 'uploadBlob')) {
+            return Http::response([
+                'blob' => ['$type' => 'blob', 'ref' => ['$link' => 'bafkreiabc123'], 'mimeType' => 'image/jpeg', 'size' => 1024],
+            ], 200);
+        }
+
+        if (str_contains($request->url(), 'createRecord')) {
+            return Http::response([
+                'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+                'cid' => 'bafyreiabc123',
+            ], 200);
+        }
+
+        return Http::response(str_repeat('x', 1024), 200); // media download
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), 'createRecord')) {
+            return false;
+        }
+
+        return data_get($request->data(), 'record.embed.images.0.alt') === 'a red bike';
+    });
+});
+
+test('bluesky publisher sends empty-string alt when none is set', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+            ],
+        ],
+    ]);
+
+    $this->mock(MediaOptimizer::class)
+        ->shouldReceive('optimizeImage')
+        ->andReturnUsing(fn () => tap(tempnam(sys_get_temp_dir(), 'bsky_test_'), fn ($f) => file_put_contents($f, str_repeat('x', 1024))));
+
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), 'uploadBlob')) {
+            return Http::response([
+                'blob' => ['$type' => 'blob', 'ref' => ['$link' => 'bafkreiabc123'], 'mimeType' => 'image/jpeg', 'size' => 1024],
+            ], 200);
+        }
+
+        if (str_contains($request->url(), 'createRecord')) {
+            return Http::response([
+                'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+                'cid' => 'bafyreiabc123',
+            ], 200);
+        }
+
+        return Http::response(str_repeat('x', 1024), 200); // media download
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), 'createRecord')) {
+            return false;
+        }
+
+        return data_get($request->data(), 'record.embed.images.0.alt') === '';
     });
 });
 
@@ -1357,4 +1456,312 @@ test('bluesky publisher uploads a gif without optimizing it', function () {
     // The GIF is uploaded as-is with its original content type.
     Http::assertSent(fn ($request) => str_contains($request->url(), 'uploadBlob')
         && $request->hasHeader('Content-Type', 'image/gif'));
+});
+
+test('bluesky publisher attaches an external card with a thumb for a bare link', function () {
+    $this->post->update(['content' => 'read this https://example.com/article']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->once()
+        ->andReturn(new LinkCardMetadata(
+            uri: 'https://example.com/article',
+            title: 'The Article',
+            description: 'A great read',
+            // A public IP literal lets SafeHttpFetcher's SSRF guard pass without a real DNS lookup.
+            imageUrl: 'https://93.184.216.34/card.jpg',
+        ));
+
+    $this->mock(MediaOptimizer::class)
+        ->shouldReceive('optimizeImage')
+        ->andReturnUsing(fn () => tap(tempnam(sys_get_temp_dir(), 'bsky_thumb_'), fn ($f) => file_put_contents($f, str_repeat('x', 1024))));
+
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), 'uploadBlob')) {
+            return Http::response(['blob' => ['$type' => 'blob', 'ref' => ['$link' => 'bafthumb'], 'mimeType' => 'image/jpeg', 'size' => 1024]], 200);
+        }
+
+        if (str_contains($request->url(), 'createRecord')) {
+            return Http::response(['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz', 'cid' => 'bafyreiabc123'], 200);
+        }
+
+        return Http::response(str_repeat('x', 1024), 200); // og:image download
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), 'createRecord')) {
+            return false;
+        }
+
+        $embed = $request['record']['embed'] ?? null;
+
+        return $embed
+            && $embed['$type'] === 'app.bsky.embed.external'
+            && $embed['external']['uri'] === 'https://example.com/article'
+            && $embed['external']['title'] === 'The Article'
+            && $embed['external']['description'] === 'A great read'
+            && data_get($embed, 'external.thumb.ref.$link') === 'bafthumb';
+    });
+});
+
+test('bluesky publisher builds an external card without a thumb when there is no image', function () {
+    $this->post->update(['content' => 'read this https://example.com/article']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->once()
+        ->andReturn(new LinkCardMetadata(
+            uri: 'https://example.com/article',
+            title: 'The Article',
+            description: 'A great read',
+            imageUrl: null,
+        ));
+
+    Http::fake([
+        config('trypost.platforms.bluesky.default_service').'/xrpc/com.atproto.repo.createRecord' => Http::response([
+            'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+            'cid' => 'bafyreiabc123',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), 'createRecord')) {
+            return false;
+        }
+
+        $embed = $request['record']['embed'] ?? null;
+
+        return $embed
+            && $embed['$type'] === 'app.bsky.embed.external'
+            && ! isset($embed['external']['thumb']);
+    });
+});
+
+test('bluesky publisher keeps the card when the thumb upload fails', function () {
+    $this->post->update(['content' => 'read this https://example.com/article']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->once()
+        ->andReturn(new LinkCardMetadata(
+            uri: 'https://example.com/article',
+            title: 'The Article',
+            description: 'A great read',
+            // A public IP literal lets SafeHttpFetcher's SSRF guard pass without a real DNS lookup.
+            imageUrl: 'https://93.184.216.34/card.jpg',
+        ));
+
+    $this->mock(MediaOptimizer::class)
+        ->shouldReceive('optimizeImage')
+        ->andReturnUsing(fn () => tap(tempnam(sys_get_temp_dir(), 'bsky_thumb_'), fn ($f) => file_put_contents($f, str_repeat('x', 1024))));
+
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), 'uploadBlob')) {
+            return Http::response(['error' => 'InternalServerError'], 500);
+        }
+
+        if (str_contains($request->url(), 'createRecord')) {
+            return Http::response(['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz', 'cid' => 'bafyreiabc123'], 200);
+        }
+
+        return Http::response(str_repeat('x', 1024), 200);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), 'createRecord')) {
+            return false;
+        }
+
+        $embed = $request['record']['embed'] ?? null;
+
+        return $embed
+            && $embed['$type'] === 'app.bsky.embed.external'
+            && ! isset($embed['external']['thumb']);
+    });
+});
+
+test('bluesky publisher does not consult the link card fetcher when media is present', function () {
+    $this->post->update([
+        'content' => 'has media and a link https://example.com/article',
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+
+    $this->mock(LinkCardFetcher::class)->shouldReceive('fetch')->never();
+
+    $this->mock(MediaOptimizer::class)
+        ->shouldReceive('optimizeImage')
+        ->andReturnUsing(fn () => tap(tempnam(sys_get_temp_dir(), 'bsky_img_'), fn ($f) => file_put_contents($f, str_repeat('x', 1024))));
+
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), 'uploadBlob')) {
+            return Http::response(['blob' => ['$type' => 'blob', 'ref' => ['$link' => 'bafimg'], 'mimeType' => 'image/jpeg', 'size' => 1024]], 200);
+        }
+
+        if (str_contains($request->url(), 'createRecord')) {
+            return Http::response(['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz', 'cid' => 'bafyreiabc123'], 200);
+        }
+
+        return Http::response(str_repeat('x', 1024), 200);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'createRecord')
+        && ($request['record']['embed']['$type'] ?? null) === 'app.bsky.embed.images');
+});
+
+test('bluesky publisher blocks the thumb download when the card image points at a private address', function () {
+    $this->post->update(['content' => 'read this https://example.com/article']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->once()
+        ->andReturn(new LinkCardMetadata(
+            uri: 'https://example.com/article',
+            title: 'The Article',
+            description: 'A great read',
+            imageUrl: 'http://127.0.0.1/evil.jpg',
+        ));
+
+    Http::fake([
+        config('trypost.platforms.bluesky.default_service').'/xrpc/com.atproto.repo.createRecord' => Http::response([
+            'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+            'cid' => 'bafyreiabc123',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), 'createRecord')) {
+            return false;
+        }
+
+        $embed = $request['record']['embed'] ?? null;
+
+        return $embed
+            && $embed['$type'] === 'app.bsky.embed.external'
+            && ! isset($embed['external']['thumb']);
+    });
+
+    // The SSRF guard must block the download before any request to the private address fires.
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '127.0.0.1'));
+});
+
+test('bluesky publisher does not follow a redirect on the card thumb download', function () {
+    $this->post->update(['content' => 'read this https://example.com/article']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->once()
+        ->andReturn(new LinkCardMetadata(
+            uri: 'https://example.com/article',
+            title: 'The Article',
+            description: 'A great read',
+            // The host guard passes (public IP literal); the redirect target does not.
+            imageUrl: 'https://93.184.216.34/card.jpg',
+        ));
+
+    Http::fake([
+        'https://93.184.216.34/card.jpg' => Http::response('', 302, ['Location' => 'http://127.0.0.1/internal.jpg']),
+        config('trypost.platforms.bluesky.default_service').'/xrpc/com.atproto.repo.createRecord' => Http::response([
+            'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+            'cid' => 'bafyreiabc123',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), 'createRecord')) {
+            return false;
+        }
+
+        $embed = $request['record']['embed'] ?? null;
+
+        return $embed
+            && $embed['$type'] === 'app.bsky.embed.external'
+            && ! isset($embed['external']['thumb']);
+    });
+
+    // The redirect to the internal address must never be followed.
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '127.0.0.1'));
+});
+
+test('bluesky publisher does not attach a card when a non-embeddable media item is attached', function () {
+    $this->post->update([
+        'content' => 'read this https://example.com/article',
+        'media' => [[
+            'id' => 'doc',
+            'path' => 'media/2026-01/f.pdf',
+            'url' => 'https://example.com/f.pdf',
+            'mime_type' => 'application/pdf',
+            'original_filename' => 'f.pdf',
+        ]],
+    ]);
+
+    // A PDF is neither image nor video, so no embed is built for it; the card
+    // gate must still short-circuit because media is attached to the post.
+    $this->mock(LinkCardFetcher::class)->shouldReceive('fetch')->never();
+
+    Http::fake([
+        config('trypost.platforms.bluesky.default_service').'/xrpc/com.atproto.repo.createRecord' => Http::response([
+            'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+            'cid' => 'bafyreiabc123',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), 'createRecord')) {
+            return false;
+        }
+
+        $record = $request['record'];
+
+        return ! isset($record['embed'])
+            && collect($record['facets'] ?? [])->contains(
+                fn ($facet) => $facet['features'][0]['$type'] === 'app.bsky.richtext.facet#link'
+            );
+    });
+});
+
+test('bluesky publisher publishes with only a facet when no card is available', function () {
+    $this->post->update(['content' => 'read this https://example.com/article']);
+
+    // beforeEach default mock returns null (no card).
+    Http::fake([
+        config('trypost.platforms.bluesky.default_service').'/xrpc/com.atproto.repo.createRecord' => Http::response([
+            'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+            'cid' => 'bafyreiabc123',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), 'createRecord')) {
+            return false;
+        }
+
+        $record = $request['record'];
+
+        return ! isset($record['embed'])
+            && collect($record['facets'] ?? [])->contains(
+                fn ($facet) => $facet['features'][0]['$type'] === 'app.bsky.richtext.facet#link'
+            );
+    });
 });

@@ -69,7 +69,7 @@ class InstagramController extends SocialController
             $avatarPath = $socialUser->getAvatar() ? uploadFromUrl($socialUser->getAvatar()) : null;
 
             // Calculate token expiration (long-lived tokens last 60 days)
-            $expiresIn = $socialUser->expiresIn ?? 5184000; // 60 days in seconds
+            $expiresIn = $socialUser->expiresIn ?? $this->platform->defaultTokenTtlSeconds();
             $tokenExpiresAt = now()->addSeconds($expiresIn);
 
             $workspace->socialAccounts()->updateOrCreate(

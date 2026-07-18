@@ -33,7 +33,7 @@ class MastodonPublisher
 
         // Upload media first (max 4)
         foreach ($medias->take(4) as $media) {
-            $mediaId = $this->uploadMedia($account, $instance, $media->url, $media->original_filename);
+            $mediaId = $this->uploadMedia($account, $instance, $media->url, $media->original_filename, $media->isImage() ? $media->altTextFor(Platform::Mastodon) : null);
             if ($mediaId) {
                 $mediaIds[] = $mediaId;
             }
@@ -68,7 +68,7 @@ class MastodonPublisher
         ];
     }
 
-    private function uploadMedia(SocialAccount $account, string $instance, string $url, ?string $filename): ?string
+    private function uploadMedia(SocialAccount $account, string $instance, string $url, ?string $filename, ?string $altText): ?string
     {
         $tempFile = tempnam(sys_get_temp_dir(), 'masto_media_');
 
@@ -101,9 +101,14 @@ class MastodonPublisher
 
             $stream = fopen($tempFile, 'r');
 
-            $response = $this->socialHttp()->withToken($account->access_token)
-                ->attach('file', $stream, $name)
-                ->post("{$instance}/api/v1/media");
+            $request = $this->socialHttp()->withToken($account->access_token)
+                ->attach('file', $stream, $name);
+
+            if ($altText !== null) {
+                $request = $request->attach('description', $altText);
+            }
+
+            $response = $request->post("{$instance}/api/v1/media");
 
             if (is_resource($stream)) {
                 fclose($stream);

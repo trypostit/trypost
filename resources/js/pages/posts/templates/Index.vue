@@ -211,7 +211,7 @@ const pageTitle = computed(() => trans('posts.templates.browser_title'));
                             <IconChevronDown class="ml-2 size-4 shrink-0 text-foreground/60" />
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent class="w-[--reka-popover-trigger-width] p-0" align="start">
+                    <PopoverContent class="w-(--reka-popover-trigger-width) p-0" align="start">
                         <Command>
                             <CommandInput :placeholder="$t('posts.templates.platform_search_placeholder')" />
                             <CommandList>

@@ -1,0 +1,41 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'title' => '欢迎使用 TryPost',
+    'description' => '告诉我们最能描述你或你业务的选项，以便我们为你定制体验。',
+    'continue' => '继续',
+    'personas' => [
+        'creator' => '内容创作者',
+        'freelancer' => '自由职业者',
+        'developer' => '开发者',
+        'startup' => '初创公司',
+        'agency' => '代理机构',
+        'small_business' => '小型企业',
+        'marketer' => '营销人员',
+        'online_store' => '网店',
+        'other' => '其他',
+    ],
+    'goals_title' => '你使用 TryPost 的目标是什么？',
+    'goals_description' => '选择所有符合的选项，我们会为你配置好 TryPost。',
+    'goals' => [
+        'save_time' => '一次发布到所有平台，节省时间',
+        'ai_content' => '借助 AI 更快地创建帖子',
+        'plan_calendar' => '在日历上规划我的帖子',
+        'stay_on_brand' => '让每一条帖子都符合品牌调性',
+        'grow_audience' => '增长我的受众和互动',
+        'drive_sales' => '获得更多流量和销量',
+        'manage_clients' => '管理多个品牌或客户',
+        'team_collaboration' => '与我的团队协作',
+        'automate_api' => '通过 API、MCP 或代码自动发帖',
+        'track_performance' => '查看我的帖子表现',
+        'just_exploring' => '目前只是随便看看',
+        'other' => '其他需求',
+    ],
+    'connect' => [
+        'title' => '连接你的第一个平台',
+        'description' => '至少关联一个社交账号即可开始排期。你可以随时添加更多。',
+        'must_connect' => '请至少连接一个平台以继续。',
+    ],
+];

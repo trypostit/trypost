@@ -8,6 +8,7 @@ use App\Jobs\Ai\StreamPostCreation;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\AiPromptRules;
 use Illuminate\Support\Facades\Bus;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -30,6 +31,57 @@ test('start validates prompt is required', function () {
         ->postJson(route('app.posts.ai.create'), ['format' => 'x_post'])
         ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
         ->assertJsonValidationErrors(['prompt']);
+});
+
+test('start rejects a prompt shorter than the minimum length', function () {
+    Bus::fake();
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.create'), ['prompt' => 'hi', 'format' => 'x_post'])
+        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
+        ->assertJsonValidationErrors(['prompt']);
+
+    Bus::assertNotDispatched(StreamPostCreation::class);
+});
+
+test('start accepts a prompt at the minimum length', function () {
+    Bus::fake();
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.create'), [
+            'prompt' => str_repeat('a', AiPromptRules::PROMPT_MIN_LENGTH),
+            'format' => 'x_post',
+        ])
+        ->assertStatus(Response::HTTP_ACCEPTED);
+
+    Bus::assertDispatched(StreamPostCreation::class);
+});
+
+test('start rejects a prompt longer than the maximum length', function () {
+    Bus::fake();
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.create'), [
+            'prompt' => str_repeat('a', AiPromptRules::PROMPT_MAX_LENGTH + 1),
+            'format' => 'x_post',
+        ])
+        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
+        ->assertJsonValidationErrors(['prompt']);
+
+    Bus::assertNotDispatched(StreamPostCreation::class);
+});
+
+test('start accepts a prompt at the maximum length', function () {
+    Bus::fake();
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.create'), [
+            'prompt' => str_repeat('a', AiPromptRules::PROMPT_MAX_LENGTH),
+            'format' => 'x_post',
+        ])
+        ->assertStatus(Response::HTTP_ACCEPTED);
+
+    Bus::assertDispatched(StreamPostCreation::class);
 });
 
 test('start validates format is required', function () {

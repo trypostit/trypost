@@ -9,16 +9,17 @@ use App\Http\Requests\App\Asset\StoreAssetRequest;
 use App\Http\Requests\App\Asset\StoreChunkedAssetRequest;
 use App\Http\Resources\App\MediaResource;
 use App\Models\Media;
+use App\Services\Brand\SafeHttpFetcher;
 use App\Services\UnsplashService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class AssetController extends Controller
@@ -115,7 +116,7 @@ class AssetController extends Controller
         ]);
     }
 
-    public function storeFromUrl(StoreAssetFromUrlRequest $request, UnsplashService $unsplash): MediaResource
+    public function storeFromUrl(StoreAssetFromUrlRequest $request, UnsplashService $unsplash, SafeHttpFetcher $safeHttp): MediaResource
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -128,7 +129,13 @@ class AssetController extends Controller
             $unsplash->trackDownload($downloadLocation);
         }
 
-        $response = Http::timeout(30)->get(data_get($validated, 'url'));
+        $url = (string) data_get($validated, 'url');
+
+        try {
+            $response = $safeHttp->guardedRequest($url)->timeout(30)->get($url);
+        } catch (RuntimeException) {
+            abort(SymfonyResponse::HTTP_BAD_REQUEST, 'Failed to download image from URL');
+        }
 
         if ($response->failed()) {
             abort(SymfonyResponse::HTTP_BAD_REQUEST, 'Failed to download image from URL');

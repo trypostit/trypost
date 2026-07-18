@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Social;
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\FacebookPublishException;
 use App\Exceptions\Social\SocialPublishException;
@@ -134,6 +135,12 @@ class FacebookPublisher
             $payload['message'] = $content;
         }
 
+        $alt = $media->altTextFor(Platform::Facebook);
+
+        if ($alt !== null) {
+            $payload['alt_text_custom'] = $alt;
+        }
+
         $response = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/photos", $payload);
 
         if ($response->failed()) {
@@ -163,11 +170,19 @@ class FacebookPublisher
                 continue;
             }
 
-            $uploadResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/photos", [
+            $uploadPayload = [
                 'url' => $this->cropImageForAspectRatio($media->url, $aspectRatio),
                 'published' => 'false',
                 'access_token' => $accessToken,
-            ]);
+            ];
+
+            $alt = $media->altTextFor(Platform::Facebook);
+
+            if ($alt !== null) {
+                $uploadPayload['alt_text_custom'] = $alt;
+            }
+
+            $uploadResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/photos", $uploadPayload);
 
             if ($uploadResponse->failed()) {
                 Log::error('Facebook image upload failed', [

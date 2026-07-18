@@ -263,6 +263,22 @@ test('connect renders the network grid for an unsubscribed account that picked a
     );
 });
 
+test('connect passes the workspace plan so the client can fire begin_checkout', function () {
+    $this->user->update(['persona' => Persona::Agency->value, 'goals' => [Goal::SaveTime->value]]);
+    onboardingWorkspace($this->user);
+
+    $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
+
+    $response = $this->actingAs($this->user->fresh())->get(route('app.onboarding.connect'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('onboarding/Connect')
+        ->where('plan.name', $plan->name)
+        ->where('plan.interval', 'monthly')
+    );
+});
+
 test('connect offers a single linkedin card and no standalone linkedin page card', function () {
     $this->user->update(['persona' => Persona::Agency->value, 'goals' => [Goal::SaveTime->value]]);
     onboardingWorkspace($this->user);

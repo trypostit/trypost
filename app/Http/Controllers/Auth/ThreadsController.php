@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\Workspace;
+use App\Services\Social\TokenRedactor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -90,7 +91,7 @@ class ThreadsController extends SocialController
             if ($tokenResponse->failed()) {
                 Log::error('Threads token exchange failed', [
                     'status' => $tokenResponse->status(),
-                    'body' => $tokenResponse->body(),
+                    'body' => TokenRedactor::redact($tokenResponse->body()),
                 ]);
                 throw new \Exception('Failed to exchange token');
             }
@@ -106,14 +107,17 @@ class ThreadsController extends SocialController
                 'access_token' => $shortLivedToken,
             ]);
 
-            $longLivedToken = $shortLivedToken;
-            $expiresIn = null;
-
-            if ($longLivedResponse->successful()) {
-                $longLivedData = $longLivedResponse->json();
-                $longLivedToken = $longLivedData['access_token'] ?? $shortLivedToken;
-                $expiresIn = $longLivedData['expires_in'] ?? null;
+            if ($longLivedResponse->failed()) {
+                Log::error('Threads long-lived token exchange failed', [
+                    'status' => $longLivedResponse->status(),
+                    'body' => TokenRedactor::redact($longLivedResponse->body()),
+                ]);
+                throw new \Exception('Failed to exchange long-lived token');
             }
+
+            $longLivedData = $longLivedResponse->json();
+            $longLivedToken = $longLivedData['access_token'] ?? $shortLivedToken;
+            $expiresIn = $longLivedData['expires_in'] ?? $this->platform->defaultTokenTtlSeconds();
 
             // Fetch user profile
             $profileResponse = Http::get(config('trypost.platforms.threads.graph_api')."/{$userId}", [
@@ -142,7 +146,7 @@ class ThreadsController extends SocialController
                     'avatar_url' => $avatarPath,
                     'access_token' => $longLivedToken,
                     'refresh_token' => null,
-                    'token_expires_at' => $expiresIn ? now()->addSeconds($expiresIn) : null,
+                    'token_expires_at' => now()->addSeconds($expiresIn),
                     'scopes' => $this->scopes,
                     'status' => Status::Connected,
                     'error_message' => null,

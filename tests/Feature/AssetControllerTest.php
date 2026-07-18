@@ -164,6 +164,43 @@ test('can store asset from url', function () {
     $response->assertJsonPath('type', 'image');
 });
 
+test('rejects a raw private-network url before it reaches the controller', function () {
+    // StoreAssetFromUrlRequest already allow-lists the host to
+    // images.unsplash.com / media*.giphy.com, so a bare private-IP url like
+    // 127.0.0.1 never reaches the controller — it 422s at the FormRequest
+    // layer. The SSRF guard below is defense-in-depth against a redirect
+    // (or DNS rebind) from one of the allow-listed hosts to an internal one.
+    $response = $this->actingAs($this->user)
+        ->postJson(route('app.assets.store-from-url'), [
+            'url' => 'http://127.0.0.1/evil.jpg',
+            'filename' => 'evil.jpg',
+        ]);
+
+    $response->assertUnprocessable();
+});
+
+test('blocks store asset from url when an allow-listed host redirects to a private ip', function () {
+    Http::fake([
+        'images.unsplash.com/*' => Http::response('', 302, ['Location' => 'http://127.0.0.1/internal']),
+        'http://127.0.0.1/*' => Http::response('internal secret', 200),
+    ]);
+
+    $unsplash = $this->mock(UnsplashService::class);
+    $unsplash->shouldReceive('trackDownload')->once();
+
+    $response = $this->actingAs($this->user)
+        ->postJson(route('app.assets.store-from-url'), [
+            'url' => 'https://images.unsplash.com/photo-test',
+            'filename' => 'unsplash-test.jpg',
+            'download_location' => 'https://api.unsplash.com/photos/test/download',
+        ]);
+
+    $response->assertStatus(400);
+
+    Http::assertNotSent(fn ($r) => str_contains($r->url(), '127.0.0.1'));
+    expect(Media::count())->toBe(0);
+});
+
 test('chunked upload completes with single chunk', function () {
     // Use real PNG bytes so mime_content_type detects image/png. The MIME
     // is sniffed from content magic bytes, not the X-File-Name header.

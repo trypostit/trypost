@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Social;
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\Social\SocialPublishException;
@@ -28,7 +29,7 @@ class InstagramPublisher
         $account = $postPlatform->socialAccount;
         $this->baseUrl = $account->platform->instagramGraphBaseUrl();
 
-        if ($account->is_token_expired || $account->is_token_expiring_soon) {
+        if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
@@ -81,12 +82,20 @@ class InstagramPublisher
     {
         $imageUrl = $this->cropImageForAspectRatio($media->url, $aspectRatio);
 
-        // Step 1: Create container
-        $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", [
+        $params = [
             'image_url' => $imageUrl,
             'caption' => $content,
             'access_token' => $accessToken,
-        ]);
+        ];
+
+        $alt = $media->altTextFor(Platform::Instagram);
+
+        if ($alt !== null) {
+            $params['alt_text'] = $alt;
+        }
+
+        // Step 1: Create container
+        $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", $params);
 
         if ($containerResponse->failed()) {
             Log::error('Instagram container creation failed', [
@@ -158,7 +167,8 @@ class InstagramPublisher
         if ($isVideo) {
             $params['video_url'] = $media->url;
         } else {
-            $params['image_url'] = $media->url;
+            $dimensions = ContentType::InstagramStory->aiImageDimensions();
+            $params['image_url'] = $this->fitImageToCanvas($media->url, data_get($dimensions, 'width'), data_get($dimensions, 'height'));
         }
 
         // Step 1: Create story container
@@ -206,6 +216,12 @@ class InstagramPublisher
                 $params['media_type'] = 'VIDEO';
             } else {
                 $params['image_url'] = $this->cropImageForAspectRatio($media->url, $aspectRatio);
+
+                $alt = $media->altTextFor(Platform::Instagram);
+
+                if ($alt !== null) {
+                    $params['alt_text'] = $alt;
+                }
             }
 
             $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", $params);

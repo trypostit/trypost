@@ -346,18 +346,20 @@ test('selecting the person downloads and stores the avatar', function () {
         'refresh_token' => 'test-refresh-token',
         'expires_in' => 5184000,
         'approved_scopes' => ['openid', 'profile', 'email', 'w_member_social'],
-        'person' => ['id' => 'person-avatar', 'name' => 'John Doe', 'avatar' => 'https://media.example.com/avatar.jpg', 'vanity_name' => 'johndoe'],
+        'person' => ['id' => 'person-avatar', 'name' => 'John Doe', 'avatar' => 'https://93.184.216.34/avatar.jpg', 'vanity_name' => 'johndoe'],
         'organizations' => [],
     ]]);
 
+    // A public IP literal as the host lets SafeHttpFetcher's SSRF guard pass
+    // without a real DNS lookup; Http::fake() intercepts before any network I/O.
     Http::fake([
-        'https://media.example.com/avatar.jpg' => Http::response('fake-image-bytes', 200, ['Content-Type' => 'image/jpeg']),
+        'https://93.184.216.34/avatar.jpg' => Http::response('fake-image-bytes', 200, ['Content-Type' => 'image/jpeg']),
     ]);
 
     $this->actingAs($this->user)->post(route('app.social.linkedin.select'), ['type' => 'person']);
 
     // The avatar download (uploadFromUrl) ran and a stored path was persisted.
-    Http::assertSent(fn ($request) => $request->url() === 'https://media.example.com/avatar.jpg');
+    Http::assertSent(fn ($request) => $request->url() === 'https://93.184.216.34/avatar.jpg');
 
     $account = SocialAccount::where('platform_user_id', 'person-avatar')->first();
     expect($account->getRawOriginal('avatar_url'))->not->toBeNull();

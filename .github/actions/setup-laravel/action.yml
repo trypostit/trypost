@@ -1,0 +1,65 @@
+name: 'Setup Laravel test environment'
+description: 'Set up PHP, Composer, optional Node, the app key, database, and Passport keys for a test job.'
+
+inputs:
+  node:
+    description: 'Also set up Node.js and install npm dependencies.'
+    default: 'false'
+  db-port:
+    description: 'Host port mapped to the Postgres service.'
+    required: true
+  redis-port:
+    description: 'Host port mapped to the Redis service.'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.4'
+        extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, pdo_pgsql, bcmath, intl, gd, redis
+        coverage: none
+
+    - name: Setup Node.js
+      if: inputs.node == 'true'
+      uses: actions/setup-node@v6
+      with:
+        node-version: '22'
+        cache: 'npm'
+
+    - name: Cache Composer dependencies
+      uses: actions/cache@v6
+      with:
+        path: vendor
+        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+        restore-keys: ${{ runner.os }}-composer-
+
+    - name: Prepare environment
+      shell: bash
+      run: cp .env.ci .env
+
+    - name: Install Composer dependencies
+      shell: bash
+      run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+    - name: Install npm dependencies
+      if: inputs.node == 'true'
+      shell: bash
+      run: npm ci
+
+    - name: Generate application key
+      shell: bash
+      run: php artisan key:generate
+
+    - name: Run migrations
+      shell: bash
+      env:
+        DB_PORT: ${{ inputs.db-port }}
+        REDIS_PORT: ${{ inputs.redis-port }}
+      run: php artisan migrate --force
+
+    - name: Generate Passport keys
+      shell: bash
+      run: php artisan passport:keys --force

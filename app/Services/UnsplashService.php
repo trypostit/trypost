@@ -15,7 +15,7 @@ class UnsplashService
 
     public function __construct()
     {
-        $this->accessKey = config('services.unsplash.access_key', '');
+        $this->accessKey = (string) config('services.unsplash.access_key', '');
     }
 
     /**

@@ -143,11 +143,12 @@ test('x publisher handles token refresh failure', function () {
         ->toThrow(TokenExpiredException::class);
 });
 
-test('x publisher refreshes token when expiring soon', function () {
+test('x publisher does NOT rotate the token when it is only expiring soon but still valid', function () {
     $this->socialAccount->update([
         'token_expires_at' => now()->addMinutes(5),
         'refresh_token' => 'refresh-token-123',
     ]);
+    $originalAccessToken = $this->socialAccount->access_token;
 
     Http::fake([
         '*/2/oauth2/token' => Http::response([
@@ -164,8 +165,11 @@ test('x publisher refreshes token when expiring soon', function () {
     $result = $publisher->publish($this->postPlatform);
 
     expect($result['id'])->toBe('tweet-123');
+
+    // A still-valid token is used as-is — the single-use refresh_token is not rotated.
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/2/oauth2/token'));
     $this->socialAccount->refresh();
-    expect($this->socialAccount->access_token)->toBe('new-access-token');
+    expect($this->socialAccount->access_token)->toBe($originalAccessToken);
 });
 
 test('x publisher handles 403 error as generic error', function () {

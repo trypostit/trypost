@@ -33,7 +33,7 @@ class YouTubePublisher
 
         $account = $postPlatform->socialAccount;
 
-        if ($account->is_token_expired || $account->is_token_expiring_soon) {
+        if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 

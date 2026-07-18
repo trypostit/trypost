@@ -58,7 +58,7 @@ const platformSupportsDateRange = computed(() => {
         >
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <PageHeader :title="$t('sidebar.analytics')" />
-                <div class="flex flex-wrap items-center gap-3">
+                <div class="flex w-full flex-wrap items-center gap-3 sm:w-auto">
                     <AnalyticsAccountSelector
                         :accounts="accounts"
                         :selected-id="selectedAccountId"

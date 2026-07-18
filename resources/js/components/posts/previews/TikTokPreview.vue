@@ -2,8 +2,7 @@
 import { IconPlus } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
-import { isVideoMedia } from '@/composables/useMedia';
+import VerticalMediaCanvas from '@/components/posts/previews/VerticalMediaCanvas.vue';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -39,21 +38,16 @@ const username = computed(() => props.socialAccount.username || props.socialAcco
 <template>
     <div class="w-full h-full bg-black text-white overflow-hidden flex flex-col relative">
         <!-- Video/Media Area - Full screen -->
-        <div class="absolute inset-0">
-            <!-- Video content -->
-            <div v-if="media.length > 0 && isVideoMedia(media[0])" class="w-full h-full">
-                <VideoPreview :src="media[0].url" />
-            </div>
-            <div v-else-if="media.length > 0" class="w-full h-full">
-                <img :src="media[0].url" :alt="media[0].original_filename" class="w-full h-full object-cover" />
-            </div>
-            <div v-else class="w-full h-full flex items-center justify-center bg-[#161823]">
-                <svg class="h-12 w-12 text-white/20" viewBox="0 0 24 24" fill="currentColor">
-                    <path
-                        d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" />
-                </svg>
-            </div>
-        </div>
+        <VerticalMediaCanvas :media="media">
+            <template #placeholder>
+                <div class="flex h-full w-full items-center justify-center bg-[#161823]">
+                    <svg class="h-12 w-12 text-white/20" viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" />
+                    </svg>
+                </div>
+            </template>
+        </VerticalMediaCanvas>
 
         <!-- Top Header (only when media exists) -->
         <div v-if="media.length > 0"

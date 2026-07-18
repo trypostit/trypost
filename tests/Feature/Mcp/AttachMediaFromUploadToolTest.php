@@ -42,6 +42,50 @@ test('attaches the uploaded Media to the post', function () {
     expect($this->post->fresh()->media)->toHaveCount(1);
 });
 
+test('attaches an uploaded Media with alt text stored in meta', function () {
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUploadTool::class, [
+            'post_id' => $this->post->id,
+            'upload_token' => $this->token,
+            'alt' => 'A scenic mountain view',
+        ]);
+
+    $response->assertOk();
+    expect(data_get($this->post->fresh()->media, '0.meta.alt_text'))->toBe('A scenic mountain view');
+});
+
+test('does not store alt text on a non-image upload', function () {
+    $video = Media::factory()->video()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+        'collection' => 'assets',
+        'upload_token' => (string) Str::uuid(),
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUploadTool::class, [
+            'post_id' => $this->post->id,
+            'upload_token' => $video->upload_token,
+            'alt' => 'alt is meaningless for a video',
+        ]);
+
+    $response->assertOk();
+
+    expect(data_get($this->post->fresh()->media, '0.type'))->toBe('video')
+        ->and(data_get($this->post->fresh()->media, '0.meta'))->toBeNull();
+});
+
+test('rejects alt text over the max length', function () {
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUploadTool::class, [
+            'post_id' => $this->post->id,
+            'upload_token' => $this->token,
+            'alt' => str_repeat('a', 2001),
+        ]);
+
+    $response->assertHasErrors();
+});
+
 test('rejects a token from a different workspace', function () {
     $other = User::factory()->create();
     $otherWs = Workspace::factory()->create(['user_id' => $other->id]);

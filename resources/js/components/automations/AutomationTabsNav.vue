@@ -18,13 +18,13 @@ const tabs = computed(() => [
 </script>
 
 <template>
-    <nav class="flex items-center gap-6 border-b-2 border-foreground/10 px-4">
+    <nav class="flex items-center gap-4 overflow-x-auto border-b-2 border-foreground/10 px-4 lg:gap-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <Link
             v-for="tab in tabs"
             :key="tab.key"
             :href="tab.href"
             :dusk="`automation-tab-${tab.key}`"
-            class="-mb-0.5 border-b-2 py-2.5 text-sm font-medium transition-colors"
+            class="-mb-0.5 shrink-0 whitespace-nowrap border-b-2 py-2.5 text-sm font-medium transition-colors"
             :class="
                 tab.key === current
                     ? 'border-primary text-foreground'

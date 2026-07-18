@@ -37,6 +37,8 @@ final class BlueskyLexicon
 
     public const EMBED_VIDEO = 'app.bsky.embed.video';
 
+    public const EMBED_EXTERNAL = 'app.bsky.embed.external';
+
     public const FACET_LINK = 'app.bsky.richtext.facet#link';
 
     public const FACET_MENTION = 'app.bsky.richtext.facet#mention';

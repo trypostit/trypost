@@ -22,6 +22,7 @@ Rules:
 - Avoid AI-clichés (testament, pivotal moment, emojis on every line, "Let's dive in").
 - Keep paragraphs short. Vary sentence rhythm.
 - If the user mentions a specific platform, follow that platform's typical conventions.
+- NEVER use em dashes or en dashes (— or –). They read as AI-written. Rewrite with a comma, parentheses, a colon, or two separate sentences. Regular hyphens in compound words (e.g. "e-mail") are fine.
 @if(!empty($target_chars))
 
 CRITICAL — length for {{ $platform_label ?? 'the target platform' }}:

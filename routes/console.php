@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Schedule;
 
 Schedule::command(ProcessScheduledPosts::class)->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command(CheckSocialConnections::class)->daily()->withoutOverlapping()->onOneServer();
-Schedule::command(RefreshExpiringTokens::class)->hourly()->withoutOverlapping()->onOneServer();
+Schedule::command(RefreshExpiringTokens::class)->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(RecoverStuckPosts::class)->everyThirtyMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(FireScheduleTriggers::class)->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command(ProcessAutomationDelays::class)->everyMinute()->withoutOverlapping()->onOneServer();

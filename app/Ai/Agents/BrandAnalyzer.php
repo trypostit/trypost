@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Ai\Agents;
 
 use App\Enums\Workspace\BrandVoiceTrait;
+use App\Enums\Workspace\ContentLanguage;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasStructuredOutput;
@@ -20,6 +21,9 @@ class BrandAnalyzer implements Agent, HasStructuredOutput
         return view('prompts.brand_analyzer', [
             'voice_groups' => BrandVoiceTrait::grouped(),
             'single_select_groups' => BrandVoiceTrait::singleSelectGroups(),
+            'content_languages' => collect(ContentLanguage::values())
+                ->map(fn (string $code) => "`{$code}`")
+                ->implode(', '),
         ])->render();
     }
 
@@ -47,7 +51,7 @@ class BrandAnalyzer implements Agent, HasStructuredOutput
                 ->description('A concise 2-3 sentence brand description summarizing what the company does, who they serve, and what makes them unique. Written in the detected content language.')
                 ->required(),
             'language' => $schema->string()
-                ->enum(['en', 'pt-BR', 'es'])
+                ->enum(ContentLanguage::values())
                 ->description('The primary language of the content.')
                 ->required(),
             'brand_color' => $schema->string()

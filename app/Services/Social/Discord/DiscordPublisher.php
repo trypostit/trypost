@@ -126,7 +126,16 @@ class DiscordPublisher
 
                 $filename = $item->original_filename ?: (basename($item->path) ?: "media-{$index}");
                 $request = $request->attach("files[{$index}]", file_get_contents($tempFile), $filename);
-                $attachments[] = ['id' => $index, 'filename' => $filename];
+
+                $attachment = ['id' => $index, 'filename' => $filename];
+
+                $alt = $item->isImage() ? $item->altTextFor(Platform::Discord) : null;
+
+                if ($alt !== null) {
+                    $attachment['description'] = $alt;
+                }
+
+                $attachments[] = $attachment;
             }
 
             $payload['attachments'] = $attachments;

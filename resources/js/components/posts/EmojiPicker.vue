@@ -121,7 +121,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="flex w-[340px] flex-col overflow-hidden rounded-[10px] bg-card text-foreground">
+    <div class="flex w-[min(340px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[10px] bg-card text-foreground">
         <div class="border-b-2 border-foreground/10 p-2">
             <Input
                 v-model="search"

@@ -85,6 +85,24 @@ test('platform supports text only correctly', function () {
     expect(Platform::Pinterest->supportsTextOnly())->toBeFalse();
 });
 
+test('platform exposes the correct default token TTL fallback', function () {
+    // X access tokens live 2 hours.
+    expect(Platform::X->defaultTokenTtlSeconds())->toBe(7200);
+
+    // Instagram and Threads use Meta's 60-day long-lived token.
+    expect(Platform::Instagram->defaultTokenTtlSeconds())->toBe(5184000);
+    expect(Platform::Threads->defaultTokenTtlSeconds())->toBe(5184000);
+
+    // Networks that always return expires_in, set a fixed lifetime directly, or
+    // never expire have no fallback here.
+    expect(Platform::LinkedIn->defaultTokenTtlSeconds())->toBeNull();
+    expect(Platform::TikTok->defaultTokenTtlSeconds())->toBeNull();
+    expect(Platform::YouTube->defaultTokenTtlSeconds())->toBeNull();
+    expect(Platform::Pinterest->defaultTokenTtlSeconds())->toBeNull();
+    expect(Platform::Bluesky->defaultTokenTtlSeconds())->toBeNull();
+    expect(Platform::Facebook->defaultTokenTtlSeconds())->toBeNull();
+});
+
 test('platform is enabled by default', function () {
     expect(Platform::LinkedIn->isEnabled())->toBeTrue();
     expect(Platform::Instagram->isEnabled())->toBeTrue();

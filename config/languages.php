@@ -19,6 +19,18 @@ return [
         'en' => 'English',
         'es' => 'Español',
         'pt-BR' => 'Português',
+        'fr' => 'Français',
+        'de' => 'Deutsch',
+        'it' => 'Italiano',
+        'nl' => 'Nederlands',
+        'pl' => 'Polski',
+        'el' => 'Ελληνικά',
+        'ja' => '日本語',
+        'ko' => '한국어',
+        'zh' => '中文',
+        'ru' => 'Русский',
+        'tr' => 'Türkçe',
+        'ar' => 'العربية',
     ],
 
     /*

@@ -50,7 +50,7 @@ defineExpose({ open, close });
 
 <template>
     <Dialog v-model:open="isOpen">
-        <DialogContent class="flex h-[85vh] max-w-5xl flex-col gap-0 p-0 sm:max-w-5xl">
+        <DialogContent class="flex h-[85vh] max-w-[calc(100%-2rem)] flex-col gap-0 p-0 sm:max-w-5xl">
             <DialogHeader class="border-b px-6 py-4">
                 <DialogTitle>{{ trans('posts.edit.media_picker.title') }}</DialogTitle>
             </DialogHeader>

@@ -37,14 +37,55 @@ trait CropsImageForAspectRatio
                 throw $this->cropFailureException('Failed to download image for cropping');
             }
 
-            $cropped = app(MediaOptimizer::class)->cropToAspectRatio($tempInput, $ratio);
+            try {
+                $cropped = app(MediaOptimizer::class)->cropToAspectRatio($tempInput, $ratio);
+            } catch (\Throwable) {
+                throw $this->cropFailureException('Failed to process image for cropping');
+            }
 
-            $path = self::CROP_DIRECTORY.'/'.Str::uuid()->toString().'.jpg';
-            Storage::put($path, file_get_contents($cropped));
+            try {
+                $path = self::CROP_DIRECTORY.'/'.Str::uuid()->toString().'.jpg';
+                Storage::put($path, file_get_contents($cropped));
 
-            @unlink($cropped);
+                return Storage::url($path);
+            } finally {
+                @unlink($cropped);
+            }
+        } finally {
+            @unlink($tempInput);
+        }
+    }
 
-            return Storage::url($path);
+    /**
+     * Fit the image inside a width×height canvas with a blurred-background
+     * extension (no cropping), host it, and return a public URL. Used for
+     * stories so an off-ratio image isn't clipped by the platform.
+     */
+    protected function fitImageToCanvas(string $imageUrl, int $width, int $height): string
+    {
+        $tempInput = tempnam(sys_get_temp_dir(), 'fit_in_');
+
+        try {
+            $download = Http::sink($tempInput)->timeout(120)->get($imageUrl);
+
+            if ($download->failed()) {
+                throw $this->cropFailureException('Failed to download image for story fitting');
+            }
+
+            try {
+                $fitted = app(MediaOptimizer::class)->fitToCanvas($tempInput, $width, $height);
+            } catch (\Throwable) {
+                throw $this->cropFailureException('Failed to process image for story fitting');
+            }
+
+            try {
+                $path = self::CROP_DIRECTORY.'/'.Str::uuid()->toString().'.jpg';
+                Storage::put($path, file_get_contents($fitted));
+
+                return Storage::url($path);
+            } finally {
+                @unlink($fitted);
+            }
         } finally {
             @unlink($tempInput);
         }
@@ -56,8 +97,8 @@ trait CropsImageForAspectRatio
     }
 
     /**
-     * The platform-specific exception thrown when the source image cannot be
-     * downloaded for cropping.
+     * The platform-specific exception thrown when an image can't be prepared for
+     * publishing — a download, crop, or story-fit failure.
      */
     abstract protected function cropFailureException(string $message): SocialPublishException;
 }

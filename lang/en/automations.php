@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'mobile_notice' => 'The automation editor works best on a larger screen. Open it on a desktop to build your workflow.',
     'title' => 'Automations',
     'default_name' => 'New automation',
 

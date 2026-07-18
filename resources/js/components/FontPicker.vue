@@ -19,12 +19,16 @@ interface Props {
      *  preview text in the dropdown renders in the actual typeface. */
     fonts: string[];
     placeholder?: string;
+    searchPlaceholder?: string;
+    emptyText?: string;
     name?: string;
     disabled?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
     placeholder: 'Select a font…',
+    searchPlaceholder: 'Search font…',
+    emptyText: 'No fonts match.',
     disabled: false,
 });
 
@@ -83,15 +87,15 @@ const select = (font: string) => {
                 <span :style="{ fontFamily: `'${value}', sans-serif` }">
                     {{ value || placeholder }}
                 </span>
-                <IconChevronDown class="ml-2 size-4 shrink-0 opacity-50" />
+                <IconChevronDown class="ms-2 size-4 shrink-0 opacity-50" />
             </Button>
         </PopoverTrigger>
 
-        <PopoverContent class="w-[--reka-popover-trigger-width] p-0" align="start">
+        <PopoverContent class="w-(--reka-popover-trigger-width) p-0" align="start">
             <Command>
-                <CommandInput placeholder="Search font…" />
+                <CommandInput :placeholder="searchPlaceholder" />
                 <CommandList>
-                    <CommandEmpty>No fonts match.</CommandEmpty>
+                    <CommandEmpty>{{ emptyText }}</CommandEmpty>
                     <CommandGroup>
                         <CommandItem
                             v-for="font in fonts"
@@ -101,7 +105,7 @@ const select = (font: string) => {
                         >
                             <span :style="{ fontFamily: `'${font}', sans-serif` }">{{ font }}</span>
                             <IconCheck
-                                :class="cn('ml-auto size-4', value === font ? 'opacity-100' : 'opacity-0')"
+                                :class="cn('ms-auto size-4', value === font ? 'opacity-100' : 'opacity-0')"
                             />
                         </CommandItem>
                     </CommandGroup>

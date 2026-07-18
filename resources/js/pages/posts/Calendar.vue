@@ -253,8 +253,32 @@ const formatTime = (scheduledAt: string): string => {
 
     <AppLayout :fullWidth="true">
         <div class="flex flex-col h-full">
-            <header class="grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-3 border-b-2 border-foreground bg-card px-4 py-3 md:px-6">
-                <div class="flex items-center gap-2 pl-12 md:pl-0">
+            <!-- Mobile header: nav + date jump on top, full-width New post below -->
+            <header class="flex shrink-0 flex-col gap-2 border-b-2 border-foreground bg-card px-4 py-3 lg:hidden">
+                <div class="flex items-center justify-between gap-2 pl-12">
+                    <div class="flex items-center gap-2">
+                        <Button variant="outline" size="icon" class="shrink-0" @click="navigate(-1)">
+                            <IconChevronLeft class="size-4" />
+                        </Button>
+                        <Button variant="outline" @click="goToToday">
+                            {{ $t('calendar.today') }}
+                        </Button>
+                        <Button variant="outline" size="icon" class="shrink-0" @click="navigate(1)">
+                            <IconChevronRight class="size-4" />
+                        </Button>
+                    </div>
+                    <div class="w-36 shrink-0">
+                        <DatePicker v-model="selectedDate" :show-time="false" @update:model-value="(v: any) => goToDate(v)" />
+                    </div>
+                </div>
+                <Link v-if="canCreatePost" :href="createPost.url()" class="block">
+                    <Button class="w-full">{{ $t('calendar.new_post') }}</Button>
+                </Link>
+            </header>
+
+            <!-- Desktop header: nav · title · view switcher + new post -->
+            <header class="hidden shrink-0 grid-cols-[auto_1fr_auto] items-center gap-3 border-b-2 border-foreground bg-card px-6 py-3 lg:grid">
+                <div class="flex items-center gap-2">
                     <Button variant="outline" size="icon" @click="navigate(-1)">
                         <IconChevronLeft class="size-4" />
                     </Button>
@@ -264,15 +288,14 @@ const formatTime = (scheduledAt: string): string => {
                     <Button variant="outline" size="icon" @click="navigate(1)">
                         <IconChevronRight class="size-4" />
                     </Button>
-                    <DatePicker v-if="isMobile" v-model="selectedDate" @update:model-value="(v: any) => goToDate(v)" />
                 </div>
                 <div class="flex items-center justify-center">
                     <span class="truncate text-sm font-bold capitalize text-foreground">
                         {{ headerTitle }}
                     </span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <Tabs v-if="!isMobile" :default-value="view" @update:model-value="switchView">
+                <div class="flex items-center justify-end gap-2">
+                    <Tabs :default-value="view" @update:model-value="switchView">
                         <TabsList>
                             <TabsTrigger value="day">{{ $t('calendar.day') }}</TabsTrigger>
                             <TabsTrigger value="week">{{ $t('calendar.week') }}</TabsTrigger>

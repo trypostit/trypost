@@ -14,6 +14,7 @@ import {
 import { computed } from 'vue';
 
 import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
+import VerticalMediaCanvas from '@/components/posts/previews/VerticalMediaCanvas.vue';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 
@@ -163,17 +164,15 @@ const username = computed(() => props.socialAccount.username || props.socialAcco
 
         <!-- ==================== REELS ==================== -->
         <template v-else-if="isReel">
-            <div class="relative flex-1 bg-[#fafafa] dark:bg-black overflow-hidden">
+            <div class="relative flex-1 overflow-hidden">
                 <!-- Video/Media - Full screen -->
-                <div class="absolute inset-0">
-                    <PostMediaPreview
-                        :media="media"
-                        :placeholder-icon="IconPlayerPlayFilled"
-                        :show-arrows="false"
-                        :show-dots="false"
-                        placeholder-class="w-full h-full flex items-center justify-center"
-                    />
-                </div>
+                <VerticalMediaCanvas :media="media">
+                    <template #placeholder>
+                        <div class="flex h-full w-full items-center justify-center bg-[#fafafa] dark:bg-black">
+                            <IconPlayerPlayFilled class="h-12 w-12 text-muted-foreground/40" />
+                        </div>
+                    </template>
+                </VerticalMediaCanvas>
 
                 <!-- Top Bar - below status bar -->
                 <div class="absolute top-1 left-0 right-0 px-3 flex items-center justify-between z-10">
@@ -229,17 +228,15 @@ const username = computed(() => props.socialAccount.username || props.socialAcco
 
         <!-- ==================== STORIES ==================== -->
         <template v-else-if="isStory">
-            <div class="relative flex-1 bg-[#fafafa] dark:bg-black overflow-hidden">
+            <div class="relative flex-1 overflow-hidden">
                 <!-- Media - Full screen -->
-                <div class="absolute inset-0">
-                    <PostMediaPreview
-                        :media="media"
-                        :placeholder-icon="IconPhoto"
-                        :show-arrows="false"
-                        :show-dots="false"
-                        placeholder-class="w-full h-full flex items-center justify-center"
-                    />
-                </div>
+                <VerticalMediaCanvas :media="media">
+                    <template #placeholder>
+                        <div class="flex h-full w-full items-center justify-center bg-[#fafafa] dark:bg-black">
+                            <IconPhoto class="h-12 w-12 text-muted-foreground/40" />
+                        </div>
+                    </template>
+                </VerticalMediaCanvas>
 
                 <!-- Progress Bars - below status bar -->
                 <div class="absolute top-0.5 left-2 right-2 flex gap-0.5 z-10">

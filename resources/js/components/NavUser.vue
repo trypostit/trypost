@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
-import { IconChevronRight } from '@tabler/icons-vue';
+import { IconChevronRight, IconSelector } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import NotificationBell from '@/components/NotificationBell.vue';
@@ -38,7 +38,7 @@ const { isMobile } = useSidebar();
                         data-test="sidebar-menu-button"
                     >
                         <UserInfo :user="user" />
-                        <IconChevronRight class="ml-auto size-4" />
+                        <component :is="isMobile ? IconSelector : IconChevronRight" class="ml-auto size-4" />
                     </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent

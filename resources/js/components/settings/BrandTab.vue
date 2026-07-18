@@ -5,6 +5,7 @@ import WorkspaceController from '@/actions/App/Http/Controllers/App/WorkspaceCon
 import BrandForm from '@/components/BrandForm.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import { Button } from '@/components/ui/button';
+import type { ContentLanguageOption } from '@/types';
 
 interface Workspace {
     id: string;
@@ -25,6 +26,7 @@ const props = defineProps<{
     availableFonts: string[];
     availableImageStyles: string[];
     availableVoiceTraits: Record<string, string[]>;
+    availableContentLanguages: ContentLanguageOption[];
 }>();
 
 const form = useForm({
@@ -38,6 +40,7 @@ const form = useForm({
     brand_font: props.workspace.brand_font ?? 'Inter',
     image_style: props.workspace.image_style ?? 'cinematic',
     content_language: props.workspace.content_language ?? 'en',
+    logo_url: '' as string | null,
 });
 
 const submit = () => {
@@ -58,6 +61,7 @@ const submit = () => {
             :available-fonts="availableFonts"
             :available-image-styles="availableImageStyles"
             :available-voice-traits="availableVoiceTraits"
+            :available-content-languages="availableContentLanguages"
             :autofill="!workspace.brand_website"
         />
 

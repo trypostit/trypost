@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, toRef } from 'vue';
 
+import LinkCard from "@/components/posts/previews/LinkCard.vue";
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
+import { useLinkCard } from '@/composables/useLinkCard';
 import { isVideoMedia } from '@/composables/useMedia';
 import type { MediaItem } from '@/types/media';
 
@@ -22,6 +24,11 @@ interface Props {
 const props = defineProps<Props>();
 
 const username = computed(() => props.socialAccount.username || props.socialAccount.display_name);
+
+const { card: linkCard, loading: linkCardLoading } = useLinkCard(
+    toRef(props, 'content'),
+    toRef(props, 'media'),
+);
 </script>
 
 <template>
@@ -107,6 +114,13 @@ const username = computed(() => props.socialAccount.username || props.socialAcco
                         </div>
                     </div>
                 </div>
+
+                <!-- Link preview card -->
+                <div
+                    v-if="media.length === 0 && linkCardLoading"
+                    class="mt-3 h-24 animate-pulse rounded-2xl border border-[#e0e0e0] bg-neutral-100 dark:border-[#262626] dark:bg-[#181818]"
+                ></div>
+                <LinkCard v-else-if="media.length === 0 && linkCard" :card="linkCard" />
 
                 <!-- Location (after media) -->
                 <div v-if="media.length > 0" class="mt-2 flex items-center gap-1">

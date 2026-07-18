@@ -6,6 +6,8 @@ return [
 
     'back' => 'Voltar',
 
+    'beta' => 'Beta',
+
     'confirm_modal' => [
         'cannot_be_undone' => 'Esta ação não pode ser desfeita.',
         'type' => 'Digite',
@@ -19,6 +21,12 @@ return [
         'uploading' => 'Enviando...',
         'remove' => 'Remover foto',
         'hint' => 'Recomendado: imagem quadrada, máximo 2 MB.',
+        'crop_title' => 'Cortar imagem',
+        'crop_description' => 'Selecione a área que deseja manter.',
+        'crop_hint' => 'Arraste para mover ou um canto para redimensionar.',
+        'crop_save' => 'Salvar',
+        'crop_cancel' => 'Cancelar',
+        'crop_error' => 'Não foi possível carregar esta imagem. Tente outro arquivo.',
     ],
 
     'timezone' => [

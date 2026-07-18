@@ -93,6 +93,19 @@ class SocialAccount extends Model
         );
     }
 
+    /**
+     * Whether the token should be refreshed before use. Rotating-refresh-token
+     * platforms are only refreshed once actually expired, to avoid rotating a
+     * still-valid single-use refresh_token; extension-model platforms
+     * (Instagram/Threads) must be refreshed while still valid because their
+     * token can't be extended once expired.
+     */
+    public function needsProactiveTokenRefresh(): bool
+    {
+        return $this->is_token_expired
+            || ($this->platform->extendsAccessTokenOnRefresh() && $this->is_token_expiring_soon);
+    }
+
     protected function avatarUrl(): Attribute
     {
         return Attribute::make(

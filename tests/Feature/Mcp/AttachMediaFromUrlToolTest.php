@@ -42,13 +42,33 @@ test('attaches an image from url and creates a media row', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(AttachMediaFromUrlTool::class, [
             'post_id' => $this->post->id,
-            'urls' => ['https://example.com/photo.jpg'],
+            'urls' => [['url' => 'https://example.com/photo.jpg']],
         ]);
 
     $response->assertOk();
 
     expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
     expect($this->post->fresh()->media)->toHaveCount(1);
+});
+
+test('attaches an image from url with alt text and stores it in meta', function () {
+    Http::fake([
+        'example.com/photo.jpg' => Http::response(
+            file_get_contents(__DIR__.'/../../fixtures/1x1.png'),
+            200,
+            ['Content-Type' => 'image/png'],
+        ),
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUrlTool::class, [
+            'post_id' => $this->post->id,
+            'urls' => [['url' => 'https://example.com/photo.jpg', 'alt' => 'A red bicycle by a wall']],
+        ]);
+
+    $response->assertOk();
+
+    expect(data_get($this->post->fresh()->media, '0.meta.alt_text'))->toBe('A red bicycle by a wall');
 });
 
 test('rejects url that returns non-image content type', function () {
@@ -59,7 +79,7 @@ test('rejects url that returns non-image content type', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(AttachMediaFromUrlTool::class, [
             'post_id' => $this->post->id,
-            'urls' => ['https://example.org/payload'],
+            'urls' => [['url' => 'https://example.org/payload']],
         ]);
 
     $response->assertOk();
@@ -82,8 +102,8 @@ test('reports failures and successes separately', function () {
         ->tool(AttachMediaFromUrlTool::class, [
             'post_id' => $this->post->id,
             'urls' => [
-                'https://example.com/ok.png',
-                'https://example.com/missing.png',
+                ['url' => 'https://example.com/ok.png'],
+                ['url' => 'https://example.com/missing.png'],
             ],
         ]);
 
@@ -112,7 +132,7 @@ test('attaches a pdf document from a url to a LinkedIn post', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(AttachMediaFromUrlTool::class, [
             'post_id' => $this->post->id,
-            'urls' => ['https://example.com/deck.pdf'],
+            'urls' => [['url' => 'https://example.com/deck.pdf']],
         ]);
 
     $response->assertOk();
@@ -140,7 +160,7 @@ test('rejects a pdf url for a post with no PDF-capable platform', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(AttachMediaFromUrlTool::class, [
             'post_id' => $this->post->id,
-            'urls' => ['https://example.com/deck.pdf'],
+            'urls' => [['url' => 'https://example.com/deck.pdf']],
         ]);
 
     $response->assertOk();
@@ -155,7 +175,7 @@ test('post 404 from another workspace', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(AttachMediaFromUrlTool::class, [
             'post_id' => $post->id,
-            'urls' => ['https://example.com/photo.jpg'],
+            'urls' => [['url' => 'https://example.com/photo.jpg']],
         ]);
 
     $response->assertHasErrors(['Post not found.']);
@@ -165,7 +185,7 @@ test('rejects urls with non-http(s) schemes', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(AttachMediaFromUrlTool::class, [
             'post_id' => $this->post->id,
-            'urls' => ['ftp://example.com/photo.jpg'],
+            'urls' => [['url' => 'ftp://example.com/photo.jpg']],
         ]);
 
     $response->assertHasErrors();
@@ -177,14 +197,34 @@ test('rejects malformed url strings', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(AttachMediaFromUrlTool::class, [
             'post_id' => $this->post->id,
-            'urls' => ['not-a-url-at-all'],
+            'urls' => [['url' => 'not-a-url-at-all']],
+        ]);
+
+    $response->assertHasErrors();
+});
+
+test('rejects alt text over the max length', function () {
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUrlTool::class, [
+            'post_id' => $this->post->id,
+            'urls' => [['url' => 'https://example.com/photo.jpg', 'alt' => str_repeat('a', 2001)]],
+        ]);
+
+    $response->assertHasErrors();
+});
+
+test('rejects the old bare-string urls shape', function () {
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUrlTool::class, [
+            'post_id' => $this->post->id,
+            'urls' => ['https://example.com/photo.jpg'],
         ]);
 
     $response->assertHasErrors();
 });
 
 test('rejects more than 10 urls per call', function () {
-    $urls = collect(range(1, 11))->map(fn ($i) => "https://example.com/photo-{$i}.jpg")->all();
+    $urls = collect(range(1, 11))->map(fn ($i) => ['url' => "https://example.com/photo-{$i}.jpg"])->all();
 
     $response = TryPostServer::actingAs($this->user)
         ->tool(AttachMediaFromUrlTool::class, [

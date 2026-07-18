@@ -8,7 +8,7 @@ use App\Enums\Media\Type as MediaType;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\Workspace;
-use Illuminate\Support\Facades\Http;
+use App\Services\Brand\SafeHttpFetcher;
 use RuntimeException;
 use Throwable;
 
@@ -24,8 +24,10 @@ use Throwable;
  */
 class MediaAttacher
 {
+    public function __construct(private readonly SafeHttpFetcher $safeHttp) {}
+
     /**
-     * @param  array<int, string>  $urls
+     * @param  array<int, array{url: string, alt?: ?string}>  $urls
      * @return array{attached: array<int, array<string, mixed>>, failed: array<int, string>}
      */
     public function attachFromUrls(Post $post, array $urls): array
@@ -33,10 +35,22 @@ class MediaAttacher
         $attached = [];
         $failed = [];
 
-        foreach ($urls as $url) {
-            ($item = $this->fetchToWorkspace($post->workspace, $post->allowedMediaTypes(), $url)) === null
-                ? $failed[] = $url
-                : $attached[] = $item;
+        foreach ($urls as $entry) {
+            $url = (string) data_get($entry, 'url', '');
+            $item = $this->fetchToWorkspace($post->workspace, $post->allowedMediaTypes(), $url);
+
+            if ($item === null) {
+                $failed[] = $url;
+
+                continue;
+            }
+
+            if (($alt = data_get($entry, 'alt')) !== null
+                && MediaType::classify(data_get($item, 'mime_type'), data_get($item, 'path')) === MediaType::Image) {
+                $item['meta'] = ['alt_text' => $alt];
+            }
+
+            $attached[] = $item;
         }
 
         if ($attached !== []) {
@@ -75,6 +89,10 @@ class MediaAttacher
                 $failed[] = $url;
 
                 continue;
+            }
+
+            if (($meta = data_get($item, 'meta')) !== null) {
+                $hosted['meta'] = $meta;
             }
 
             $media[] = $hosted;
@@ -143,10 +161,10 @@ class MediaAttacher
         $temp = tempnam(sys_get_temp_dir(), 'media_');
 
         try {
-            $response = Http::timeout(20)
+            $response = $this->safeHttp->guardedRequest($url, followRedirects: false)
+                ->timeout(20)
                 ->sink($temp)
                 ->withOptions([
-                    'allow_redirects' => false,
                     'progress' => static function ($total, $downloaded) use ($cap): void {
                         if ($downloaded > $cap) {
                             throw new RuntimeException('exceeded max bytes');

@@ -122,8 +122,8 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
         </div>
 
         <div v-else class="flex flex-col flex-1 min-h-0">
-            <header class="flex shrink-0 items-center justify-between gap-3 border-b-2 border-foreground bg-card px-4 py-3 md:px-6">
-                <div class="flex items-center gap-2 pl-12 md:pl-0">
+            <header class="flex shrink-0 flex-col gap-3 border-b-2 border-foreground bg-card px-4 py-3 md:flex-row md:items-center md:justify-between md:px-6">
+                <div class="pl-12 md:pl-0">
                     <Link :href="postsIndex.url()">
                         <Button variant="outline">
                             <IconArrowLeft class="size-4" />
@@ -131,9 +131,9 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
                         </Button>
                     </Link>
                 </div>
-                <div class="flex flex-wrap items-center justify-end gap-3">
-                    <span class="flex items-center gap-1.5 text-sm font-medium text-foreground/70">
-                        <IconCalendar class="size-4 text-foreground/60" />
+                <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 md:flex-nowrap md:justify-end">
+                    <span class="flex items-start gap-1.5 text-sm font-medium text-foreground/70">
+                        <IconCalendar class="mt-0.5 size-4 shrink-0 text-foreground/60" />
                         <span v-if="post.published_at">
                             {{ $t('posts.show.published_on', { date: formatDateTime(post.published_at) }) }}
                         </span>
@@ -142,7 +142,7 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
                         </span>
                         <span v-else>{{ $t('posts.show.draft') }}</span>
                     </span>
-                    <Badge :variant="postStatus.variant">
+                    <Badge :variant="postStatus.variant" class="shrink-0">
                         <component :is="postStatus.icon" class="size-3" />
                         {{ postStatus.label }}
                     </Badge>
@@ -155,7 +155,7 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
                     <div class="mx-auto max-w-2xl px-6 py-10">
                         <!-- Media grid (top) — separate rounded tiles, 4-col -->
                         <div v-if="post.media.length > 0" class="mb-6">
-                            <div class="grid grid-cols-4 gap-2">
+                            <div class="grid grid-cols-3 gap-2 sm:grid-cols-4">
                                 <button
                                     v-for="(item, i) in post.media"
                                     :key="item.id"

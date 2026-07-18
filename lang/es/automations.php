@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'mobile_notice' => 'El editor de automatizaciones funciona mejor en una pantalla más grande. Ábrelo en un ordenador para crear tu flujo de trabajo.',
     'title' => 'Automatizaciones',
     'default_name' => 'Nueva automatización',
 

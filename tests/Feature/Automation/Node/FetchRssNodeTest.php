@@ -280,7 +280,7 @@ it('fails when the feed request returns a non-2xx status', function () {
     $result = app(RunFetchRssNode::class)($run, ['feed_url' => 'https://1.1.1.1/feed.xml']);
 
     expect($result->status)->toBe(NodeRunStatus::Failed);
-    expect($result->error['status'])->toBe(500);
+    expect($result->error['message'])->toContain('500');
 });
 
 it('fails on a malformed RSS feed', function () {
@@ -311,6 +311,40 @@ it('skips items without a publish date', function () {
     // Only the dated item passes; the dateless one is ignored.
     expect($result->output['fetch']['count'])->toBe(1);
     expect($result->output['fetched']['key'])->toBe('d');
+});
+
+it('never follows a feed redirect that targets a private or internal host', function () {
+    Http::fake([
+        'https://93.184.216.34/feed' => Http::response('', 302, ['Location' => 'http://127.0.0.1/internal']),
+        'http://127.0.0.1/*' => Http::response(feedFixture('rss_old'), 200),
+    ]);
+
+    $automation = Automation::factory()->active()->create();
+    $run = AutomationRun::factory()->for($automation)->create(['current_node_id' => 'fetch_1']);
+
+    $result = app(RunFetchRssNode::class)($run, ['feed_url' => 'https://93.184.216.34/feed']);
+
+    expect($result->status)->toBe(NodeRunStatus::Failed);
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '127.0.0.1'));
+});
+
+it('still follows a legitimate public-to-public feed redirect', function () {
+    Carbon::setTestNow('2026-01-15 10:00:00');
+    Http::fake([
+        'https://93.184.216.34/feed' => Http::response('', 301, ['Location' => 'https://1.1.1.1/feed']),
+        'https://1.1.1.1/feed' => Http::response(feedFixture('rss_old'), 200),
+    ]);
+
+    $automation = Automation::factory()->active()->create();
+    $run = AutomationRun::factory()->for($automation)->create(['current_node_id' => 'fetch_1']);
+
+    $result = app(RunFetchRssNode::class)($run, ['feed_url' => 'https://93.184.216.34/feed']);
+
+    expect($result->status)->toBe(NodeRunStatus::Completed);
+    Http::assertSentInOrder([
+        fn ($request) => str_contains($request->url(), '93.184.216.34'),
+        fn ($request) => str_contains($request->url(), '1.1.1.1'),
+    ]);
 });
 
 it('falls back to the link as the dedup key when an item has no guid', function () {

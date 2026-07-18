@@ -18,6 +18,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Security
+    |--------------------------------------------------------------------------
+    |
+    | SafeHttpFetcher blocks requests to private/reserved IP ranges (SSRF
+    | protection) by default. Self-hosted operators who need to fetch from
+    | their own internal network (e.g. an internal RSS feed or webhook) can
+    | opt in here. Leave disabled unless you understand the SSRF risk.
+    |
+    */
+
+    'security' => [
+        'allow_private_network' => (bool) env('TRYPOST_ALLOW_PRIVATE_NETWORK', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Billing
     |--------------------------------------------------------------------------
     |

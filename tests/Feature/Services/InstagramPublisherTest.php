@@ -9,8 +9,10 @@ use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\Services\Media\MediaOptimizer;
 use App\Services\Social\InstagramPublisher;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->workspace = Workspace::factory()->create();
@@ -77,13 +79,24 @@ test('instagram publisher publishes reel', function () {
 });
 
 test('instagram publisher publishes story', function () {
+    Storage::fake();
     $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('fitToCanvas')->once()->with(Mockery::type('string'), 1080, 1920)->andReturnUsing(function (string $tempFile) {
+        $out = tempnam(sys_get_temp_dir(), 'ig_fit_');
+        copy($tempFile, $out);
+
+        return $out;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
 
     Http::fake([
         '*/12345678/media' => Http::response(['id' => 'container-123'], 200),
         '*/container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
         '*/12345678/media_publish' => Http::response(['id' => 'story-123'], 200),
         '*/story-123*' => Http::response(['permalink' => 'https://instagram.com/stories/abc123'], 200),
+        '*' => Http::response(file_get_contents(__DIR__.'/../../fixtures/1x1.png'), 200, ['Content-Type' => 'image/png']),
     ]);
 
     $this->post->update([
@@ -95,6 +108,15 @@ test('instagram publisher publishes story', function () {
     $result = $publisher->publish($this->postPlatform);
 
     expect($result['id'])->toBe('story-123');
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/12345678/media') || str_contains($request->url(), 'media_publish')) {
+            return false;
+        }
+        $imageUrl = (string) data_get($request->data(), 'image_url', '');
+
+        return str_contains($imageUrl, 'social-crops/') && ! str_contains($imageUrl, 'example.com');
+    });
 });
 
 test('instagram publisher throws token expired exception on oauth error', function () {

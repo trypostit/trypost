@@ -48,8 +48,8 @@ LLMs force ideas into groups of three. If three items don't add value, use one o
 **False ranges:**
 "from X to Y" where X and Y aren't on a meaningful scale — just list them.
 
-**Em dashes (—):**
-LLMs overuse them. Most can be commas, periods, or parentheses.
+**Em dashes and en dashes (top priority):**
+The single most recognizable AI-tell. Remove EVERY one. Rewrite with a comma, parentheses, a colon, or split into two sentences. Regular hyphens in compound words (e.g. "e-mail") are fine. The final output must contain zero — and – characters.
 
 **Curly quotes:**
 Replace " " ' ' with straight " "  ' '.
@@ -95,5 +95,7 @@ For carousel input: humanize the `caption`, and each slide's `title` and `body`.
 @else
 For single-post input: humanize the `content` field.
 @endif
+
+FINAL CHECK before replying: scan every text field of your JSON output for em dash (—) and en dash (–) characters. If even one remains, rewrite that sentence using a comma, parentheses, a colon, or two separate sentences, until none are left. A response that still contains a — or – is a failed response. Return your answer only after zero remain.
 
 Reply with the JSON object only, no preamble.

@@ -7,6 +7,7 @@ namespace App\Mcp\Tools\Post;
 use App\Http\Resources\Api\PostResource;
 use App\Models\Post;
 use App\Services\Post\MediaAttacher;
+use App\Support\PostMediaRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -22,7 +23,8 @@ class AttachMediaFromUrlTool extends Tool
         $validated = $request->validate([
             'post_id' => ['required', 'uuid'],
             'urls' => ['required', 'array', 'min:1', 'max:10'],
-            'urls.*' => ['url:http,https', 'active_url'],
+            'urls.*.url' => ['required', 'url:http,https', 'active_url'],
+            'urls.*.alt' => ['nullable', 'string', 'max:'.PostMediaRules::ALT_TEXT_MAX_LENGTH],
         ]);
 
         $post = Post::where('workspace_id', $request->user()->current_workspace_id)
@@ -51,9 +53,12 @@ class AttachMediaFromUrlTool extends Tool
         return [
             'post_id' => $schema->string()->required()->description('UUID of the post to attach media to.'),
             'urls' => $schema->array()
-                ->items($schema->string())
+                ->items($schema->object(fn ($u) => [
+                    'url' => $u->string()->required()->description('Public HTTP/HTTPS URL of an image, video, or PDF.'),
+                    'alt' => $u->string()->description('Optional accessibility alt text for the image (ignored for video/PDF, which have no alt text).'),
+                ]))
                 ->required()
-                ->description('Public HTTP/HTTPS URLs of images, videos, or PDFs. Max 10 URLs per call, 50MB per file. Allowed types: image/jpeg, image/png, image/gif, image/webp, video/mp4, video/quicktime, application/pdf.'),
+                ->description('Media to attach. Max 10 per call, 50MB per file. Allowed types: image/jpeg, image/png, image/gif, image/webp, video/mp4, video/quicktime, application/pdf.'),
         ];
     }
 }

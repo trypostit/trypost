@@ -173,11 +173,11 @@ const channels = computed<Channel[]>(() =>
                             :key="pp.id"
                             class="flex items-center justify-between rounded-xl border-2 border-foreground bg-card p-3 shadow-2xs"
                         >
-                            <div class="flex items-center gap-2">
-                                <span class="inline-flex size-5 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card">
+                            <div class="flex min-w-0 items-center gap-2">
+                                <span class="inline-flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card">
                                     <img :src="getPlatformLogo(pp.platform)" :alt="pp.platform" class="size-full object-cover" />
                                 </span>
-                                <span class="text-sm font-bold text-foreground">{{ getPlatformDisplayName(pp) }}</span>
+                                <span class="truncate text-sm font-bold text-foreground">{{ getPlatformDisplayName(pp) }}</span>
                             </div>
                             <div class="flex items-center gap-2">
                                 <Badge v-if="pp.status === PostPlatformStatus.Published" variant="success">{{ $t('posts.edit.status.published') }}</Badge>

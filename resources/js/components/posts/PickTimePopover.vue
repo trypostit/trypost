@@ -91,7 +91,7 @@ const remove = () => {
         <DialogTrigger as-child :disabled="disabled">
             <slot :open="open" />
         </DialogTrigger>
-        <DialogContent class="w-auto max-w-fit gap-0 p-0 sm:max-w-fit" :show-close-button="false">
+        <DialogContent class="w-auto max-w-[calc(100%-2rem)] gap-0 p-0 sm:max-w-fit" :show-close-button="false">
             <DialogTitle class="sr-only">{{ $t('posts.edit.pick_time') }}</DialogTitle>
 
             <div class="flex justify-center px-3 pt-3">
@@ -99,7 +99,7 @@ const remove = () => {
             </div>
 
             <div class="border-t p-3">
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                     <span class="text-sm text-muted-foreground">{{ $t('posts.edit.time') }}</span>
                     <Select v-model="selectedHour">
                         <SelectTrigger class="w-[84px]"><SelectValue placeholder="HH" /></SelectTrigger>

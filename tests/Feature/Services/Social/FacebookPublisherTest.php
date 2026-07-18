@@ -765,6 +765,24 @@ test('facebook image post throws when the source image cannot be downloaded for 
         ->toThrow(FacebookPublishException::class, 'Failed to download image for cropping');
 });
 
+test('facebook image post throws a clean exception when the crop source is not decodable', function () {
+    Storage::fake();
+
+    $this->postPlatform->update(['meta' => ['aspect_ratio' => '4:5']]);
+    $this->post->update([
+        'media' => [
+            ['id' => 'm1', 'path' => 'media/a.jpg', 'url' => 'https://example.com/media/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg'],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/a.jpg' => Http::response('<html>error</html>', 200, ['Content-Type' => 'text/html']),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(FacebookPublishException::class, 'Failed to process image for cropping');
+});
+
 test('facebook single image post without aspect ratio uploads the original image (no crop)', function () {
     Storage::fake();
 
@@ -806,4 +824,108 @@ test('facebook single image post with original aspect ratio uploads the original
 
     Http::assertSent(fn ($request) => str_contains($request->url(), '/page_123/photos')
         && $request['url'] === 'https://example.com/media/a.jpg');
+});
+
+test('facebook publisher sends capped alt text on single image post', function () {
+    $longAlt = str_repeat('a', 1500);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/image.jpg',
+                'url' => 'https://example.com/media/2026-01/image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'image.jpg',
+                'meta' => ['alt_text' => $longAlt],
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        '*/page_123/photos' => Http::response(['id' => 'photo_123', 'post_id' => 'post_123'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    $expectedAlt = mb_substr($longAlt, 0, Platform::Facebook->altTextMaxLength());
+
+    Http::assertSent(function ($request) use ($expectedAlt) {
+        return str_contains($request->url(), '/page_123/photos')
+            && data_get($request->data(), 'alt_text_custom') === $expectedAlt
+            && strlen($expectedAlt) === Platform::Facebook->altTextMaxLength();
+    });
+});
+
+test('facebook publisher sends capped alt text for each image in multi image post', function () {
+    $longAlt1 = str_repeat('b', 1200);
+    $longAlt2 = str_repeat('c', 1200);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'm1',
+                'path' => 'media/2026-01/image1.jpg',
+                'url' => 'https://example.com/media/2026-01/image1.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'image1.jpg',
+                'meta' => ['alt_text' => $longAlt1],
+            ],
+            [
+                'id' => 'm2',
+                'path' => 'media/2026-01/image2.jpg',
+                'url' => 'https://example.com/media/2026-01/image2.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'image2.jpg',
+                'meta' => ['alt_text' => $longAlt2],
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        '*/page_123/photos' => Http::sequence()
+            ->push(['id' => 'photo_1'], 200)
+            ->push(['id' => 'photo_2'], 200),
+        '*/page_123/feed' => Http::response(['id' => 'multi_post_alt'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    $expectedAlt1 = mb_substr($longAlt1, 0, Platform::Facebook->altTextMaxLength());
+    $expectedAlt2 = mb_substr($longAlt2, 0, Platform::Facebook->altTextMaxLength());
+
+    Http::assertSent(function ($request) use ($expectedAlt1) {
+        return str_contains($request->url(), '/page_123/photos')
+            && data_get($request->data(), 'alt_text_custom') === $expectedAlt1;
+    });
+
+    Http::assertSent(function ($request) use ($expectedAlt2) {
+        return str_contains($request->url(), '/page_123/photos')
+            && data_get($request->data(), 'alt_text_custom') === $expectedAlt2;
+    });
+});
+
+test('facebook publisher omits alt_text_custom from photos payload when no alt text is set', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/image.jpg',
+                'url' => 'https://example.com/media/2026-01/image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'image.jpg',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        '*/page_123/photos' => Http::response(['id' => 'photo_123', 'post_id' => 'post_123'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), '/page_123/photos')
+            && ! array_key_exists('alt_text_custom', $request->data());
+    });
 });

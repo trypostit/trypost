@@ -6,6 +6,8 @@ return [
 
     'back' => 'Back',
 
+    'beta' => 'Beta',
+
     'confirm_modal' => [
         'cannot_be_undone' => 'This cannot be undone.',
         'type' => 'Type',
@@ -19,6 +21,12 @@ return [
         'uploading' => 'Uploading...',
         'remove' => 'Remove photo',
         'hint' => 'Recommended: square image, max 2 MB.',
+        'crop_title' => 'Crop image',
+        'crop_description' => 'Select the area you want to keep.',
+        'crop_hint' => 'Drag to move, or a corner to resize.',
+        'crop_save' => 'Save',
+        'crop_cancel' => 'Cancel',
+        'crop_error' => 'Couldn\'t load this image. Try another file.',
     ],
 
     'timezone' => [

@@ -1,0 +1,41 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'title' => 'TryPost\'a hoş geldiniz',
+    'description' => 'Deneyiminizi kişiselleştirebilmemiz için sizi veya işinizi en iyi tanımlayan seçeneği belirtin.',
+    'continue' => 'Devam et',
+    'personas' => [
+        'creator' => 'İçerik üreticisi',
+        'freelancer' => 'Serbest çalışan',
+        'developer' => 'Geliştirici',
+        'startup' => 'Girişim',
+        'agency' => 'Ajans',
+        'small_business' => 'Küçük işletme',
+        'marketer' => 'Pazarlamacı',
+        'online_store' => 'Çevrimiçi mağaza',
+        'other' => 'Diğer',
+    ],
+    'goals_title' => 'TryPost ile hedefiniz nedir?',
+    'goals_description' => 'Size uyan her şeyi seçin, biz de TryPost\'u sizin için ayarlayalım.',
+    'goals' => [
+        'save_time' => 'Her yere aynı anda paylaşarak zaman kazanmak',
+        'ai_content' => 'AI ile daha hızlı gönderi oluşturmak',
+        'plan_calendar' => 'Gönderilerimi bir takvimde planlamak',
+        'stay_on_brand' => 'Her gönderiyi marka çizgisinde tutmak',
+        'grow_audience' => 'Kitlemi ve etkileşimimi büyütmek',
+        'drive_sales' => 'Daha fazla trafik ve satış elde etmek',
+        'manage_clients' => 'Birden fazla marka veya müşteri yönetmek',
+        'team_collaboration' => 'Ekibimle çalışmak',
+        'automate_api' => 'API, MCP veya kodla paylaşımı otomatikleştirmek',
+        'track_performance' => 'Gönderilerimin performansını görmek',
+        'just_exploring' => 'Şimdilik sadece keşfetmek',
+        'other' => 'Başka bir şey',
+    ],
+    'connect' => [
+        'title' => 'İlk ağınızı bağlayın',
+        'description' => 'Zamanlamaya başlamak için en az bir sosyal hesap bağlayın. İstediğiniz zaman daha fazlasını ekleyebilirsiniz.',
+        'must_connect' => 'Devam etmek için en az bir ağ bağlayın.',
+    ],
+];

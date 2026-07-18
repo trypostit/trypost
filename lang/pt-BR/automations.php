@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'mobile_notice' => 'O editor de automações funciona melhor em uma tela maior. Abra no desktop para montar seu fluxo de trabalho.',
     'title' => 'Automações',
     'default_name' => 'Nova automação',
 

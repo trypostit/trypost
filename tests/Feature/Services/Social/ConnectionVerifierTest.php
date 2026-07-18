@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\Status;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\SocialAccount;
@@ -283,6 +284,42 @@ test('refreshes instagram token when expired', function () {
     Http::assertSent(fn ($request) => str_contains($request->url(), 'refresh_access_token'));
 });
 
+test('threads refresh records a 60-day expiry when the response omits expires_in', function () {
+    Http::fake([
+        config('trypost.platforms.threads.auth_api').'/refresh_access_token*' => Http::response([
+            'access_token' => 'new-threads-token',
+        ], 200),
+    ]);
+
+    $account = SocialAccount::factory()->threads()->create([
+        'token_expires_at' => now()->addHours(2),
+    ]);
+
+    (new ConnectionVerifier)->refreshToken($account);
+
+    $account->refresh();
+    expect($account->token_expires_at)->not->toBeNull();
+    expect($account->token_expires_at->isAfter(now()->addDays(59)))->toBeTrue();
+});
+
+test('instagram refresh records a 60-day expiry when the response omits expires_in', function () {
+    Http::fake([
+        config('trypost.platforms.instagram.auth_api').'/refresh_access_token*' => Http::response([
+            'access_token' => 'new-instagram-token',
+        ], 200),
+    ]);
+
+    $account = SocialAccount::factory()->instagram()->create([
+        'token_expires_at' => now()->addHours(2),
+    ]);
+
+    (new ConnectionVerifier)->refreshToken($account);
+
+    $account->refresh();
+    expect($account->token_expires_at)->not->toBeNull();
+    expect($account->token_expires_at->isAfter(now()->addDays(59)))->toBeTrue();
+});
+
 test('does NOT refresh proactively when token still works (lazy refresh)', function () {
     Http::fake([
         'api.linkedin.com/*' => Http::response(['sub' => '123'], 200),
@@ -414,6 +451,63 @@ test('connection failure during refresh raises PlatformUnavailableException', fu
     expect(fn () => $verifier->refreshToken($account))->toThrow(PlatformUnavailableException::class);
 });
 
+test('does not disconnect when a concurrent refresh already rotated the token (lost-rotation race)', function () {
+    Http::fake([
+        // Our stale refresh_token is rejected — a concurrent process already used it.
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
+        // But the access_token the winning refresh persisted still works.
+        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+    ]);
+
+    $account = SocialAccount::factory()->x()->create([
+        'status' => Status::Connected,
+        'access_token' => 'stale-token',
+        'refresh_token' => 'already-rotated',
+        'token_expires_at' => now()->subHour(),
+    ]);
+
+    // Simulate the concurrent refresh: a separate instance persists a fresh,
+    // valid token (through the encrypted cast) while our in-memory copy stays
+    // the stale, expired one.
+    SocialAccount::find($account->id)->update([
+        'access_token' => 'fresh-token',
+        'token_expires_at' => now()->addHours(2),
+    ]);
+
+    expect((new ConnectionVerifier)->verify($account))->toBeTrue();
+    expect($account->fresh()->status)->toBe(Status::Connected);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/users/me')
+        && $request->header('Authorization')[0] === 'Bearer fresh-token');
+});
+
+test('does not disconnect when the verify after a refresh 401s once but a fresh token is available', function () {
+    Http::fake([
+        // Refresh succeeds and rotates the token...
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+            'access_token' => 'refreshed-token',
+            'refresh_token' => 'new-refresh',
+            'expires_in' => 7200,
+        ], 200),
+        // ...but the verify that follows 401s once (the sub-commit window where a
+        // lock-skipped refresh reloads a not-yet-persisted token) before
+        // succeeding on the reload + retry.
+        config('trypost.platforms.x.api').'/users/me' => Http::sequence()
+            ->push(['error' => 'unauthorized'], 401)
+            ->push(['data' => ['id' => '123']], 200),
+    ]);
+
+    $account = SocialAccount::factory()->x()->create([
+        'status' => Status::Connected,
+        'access_token' => 'stale-token',
+        'refresh_token' => 'old-refresh',
+        'token_expires_at' => now()->subHour(),
+    ]);
+
+    expect((new ConnectionVerifier)->verify($account))->toBeTrue();
+    expect($account->fresh()->status)->toBe(Status::Connected);
+});
+
 test('4xx during refresh keeps raising TokenExpiredException', function () {
     Http::fake([
         config('trypost.platforms.x.api').'/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
@@ -492,5 +586,67 @@ test('reports discord disconnected when the bot was removed from the guild', fun
         'platform_user_id' => '999000111',
     ]);
 
+    expect((new ConnectionVerifier)->verify($account))->toBeFalse();
+});
+
+test('instagram refresh treats a Meta rate-limit (400 OAuthException code 4) as transient, not a dead token', function () {
+    Http::fake([
+        config('trypost.platforms.instagram.auth_api').'/refresh_access_token*' => Http::response([
+            'error' => ['message' => 'Application request limit reached', 'type' => 'OAuthException', 'code' => 4],
+        ], 400),
+    ]);
+
+    $account = SocialAccount::factory()->instagram()->create([
+        'token_expires_at' => now()->subHour(),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->refreshToken($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('threads refresh treats a Meta rate-limit (400 OAuthException code 17) as transient, not a dead token', function () {
+    Http::fake([
+        config('trypost.platforms.threads.auth_api').'/refresh_access_token*' => Http::response([
+            'error' => ['message' => 'User request limit reached', 'type' => 'OAuthException', 'code' => 17],
+        ], 400),
+    ]);
+
+    $account = SocialAccount::factory()->threads()->create([
+        'token_expires_at' => now()->subHour(),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->refreshToken($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('instagram refresh treats code 190 as a genuinely expired token', function () {
+    Http::fake([
+        config('trypost.platforms.instagram.auth_api').'/refresh_access_token*' => Http::response([
+            'error' => ['message' => 'Access token has expired', 'type' => 'OAuthException', 'code' => 190],
+        ], 400),
+    ]);
+
+    $account = SocialAccount::factory()->instagram()->create([
+        'token_expires_at' => now()->subHour(),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->refreshToken($account))
+        ->toThrow(TokenExpiredException::class);
+});
+
+test('instagram verify treats a Meta rate-limit (OAuthException code 4) as still-valid, not a disconnect', function () {
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/me*' => Http::response([
+            'error' => ['message' => 'Application request limit reached', 'type' => 'OAuthException', 'code' => 4],
+        ], 400),
+    ]);
+
+    // Not expired, so verify hits the endpoint directly (no refresh).
+    $account = SocialAccount::factory()->instagram()->create([
+        'token_expires_at' => now()->addDays(30),
+    ]);
+
+    // A rate-limit must NOT raise TokenExpiredException (which would disconnect);
+    // verify returns false and the caller leaves the account connected.
     expect((new ConnectionVerifier)->verify($account))->toBeFalse();
 });

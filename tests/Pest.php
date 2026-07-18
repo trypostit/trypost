@@ -9,6 +9,7 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\BrowserTestCase;
 use Tests\TestCase;
 
 /*
@@ -25,6 +26,10 @@ use Tests\TestCase;
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature', 'Unit');
+
+pest()->extend(BrowserTestCase::class)
+    ->use(RefreshDatabase::class)
+    ->in('Browser');
 
 /*
 |--------------------------------------------------------------------------

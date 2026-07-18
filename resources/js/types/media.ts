@@ -16,5 +16,6 @@ export interface MediaItem {
         width?: number;
         height?: number;
         duration?: number;
+        alt_text?: string;
     };
 }

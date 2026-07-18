@@ -91,13 +91,13 @@ const hasActiveSearch = computed(() => Boolean(searchQuery.value?.trim()));
         <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
             <PageHeader :title="$t('signatures.title')" />
 
-            <div class="flex items-center justify-between gap-3">
-                <div class="relative">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="relative w-full sm:w-auto">
                     <IconSearch class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                         v-model="searchQuery"
                         :placeholder="trans('signatures.search')"
-                        class="w-64 pl-9"
+                        class="w-full pl-9 sm:w-64"
                     />
                 </div>
 
@@ -130,7 +130,7 @@ const hasActiveSearch = computed(() => Boolean(searchQuery.value?.trim()));
                                 @click="openEditDialog(signature)"
                             >
                                 <TableCell>{{ signature.name }}</TableCell>
-                                <TableCell class="max-w-md">
+                                <TableCell class="max-w-[160px] sm:max-w-md">
                                     <p class="truncate">{{ signature.content }}</p>
                                 </TableCell>
                                 <TableCell>{{ formatDate(signature.created_at) }}</TableCell>

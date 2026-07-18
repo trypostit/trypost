@@ -15,7 +15,7 @@ class GiphyService
 
     public function __construct()
     {
-        $this->apiKey = config('services.giphy.api_key', '');
+        $this->apiKey = (string) config('services.giphy.api_key', '');
     }
 
     /**

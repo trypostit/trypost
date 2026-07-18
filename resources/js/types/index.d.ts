@@ -97,3 +97,9 @@ export interface PinterestBoard {
     name: string;
 }
 
+export interface ContentLanguageOption {
+    value: string;
+    label: string;
+    englishName?: string;
+}
+

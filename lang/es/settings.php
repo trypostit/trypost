@@ -216,6 +216,13 @@ return [
         'image_style_mockup' => 'Mockup',
         'content_language' => 'Idioma del contenido',
         'content_language_description' => 'Idioma usado en los subtítulos, hashtags y cualquier texto dentro de imágenes o videos generados por IA.',
+        'font_placeholder' => 'Seleccionar una fuente…',
+        'font_search' => 'Buscar fuente…',
+        'font_empty' => 'No hay fuentes que coincidan.',
+        'language_placeholder' => 'Seleccionar un idioma…',
+        'language_search' => 'Buscar idioma…',
+        'language_empty' => 'No se encontró ningún idioma.',
+
     ],
 
     'members' => [

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\ThreadsPublishException;
 use App\Models\PostPlatform;
@@ -30,7 +31,7 @@ class ThreadsPublisher
 
         $account = $postPlatform->socialAccount;
 
-        if ($account->is_token_expired || $account->is_token_expiring_soon) {
+        if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
@@ -100,12 +101,20 @@ class ThreadsPublisher
     private function publishImagePost(string $userId, string $accessToken, ?string $content, $media): array
     {
         // Step 1: Create container
-        $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$userId}/threads", [
+        $params = [
             'media_type' => 'IMAGE',
             'image_url' => $media->url,
             'text' => $content,
             'access_token' => $accessToken,
-        ]);
+        ];
+
+        $alt = $media->altTextFor(Platform::Threads);
+
+        if ($alt !== null) {
+            $params['alt_text'] = $alt;
+        }
+
+        $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$userId}/threads", $params);
 
         if ($containerResponse->failed()) {
             Log::error('Threads image container creation failed', [
@@ -184,6 +193,12 @@ class ThreadsPublisher
             } else {
                 $params['media_type'] = 'IMAGE';
                 $params['image_url'] = $media->url;
+
+                $alt = $media->altTextFor(Platform::Threads);
+
+                if ($alt !== null) {
+                    $params['alt_text'] = $alt;
+                }
             }
 
             $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$userId}/threads", $params);

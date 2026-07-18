@@ -17,10 +17,24 @@ beforeEach(function () {
     $this->automation = Automation::factory()->for($this->workspace)->create();
 });
 
-it('redirects the bare automation URL to the workflow tab', function () {
+it('redirects a draft automation URL to the workflow tab', function () {
     $this->actingAs($this->user)
         ->get(route('app.automations.show', $this->automation->id))
         ->assertRedirect(route('app.automations.workflow', $this->automation->id));
+});
+
+it('redirects a live automation URL to the metrics tab', function () {
+    $active = Automation::factory()->for($this->workspace)->active()->create();
+
+    $this->actingAs($this->user)
+        ->get(route('app.automations.show', $active->id))
+        ->assertRedirect(route('app.automations.metrics', $active->id));
+
+    $paused = Automation::factory()->for($this->workspace)->paused()->create();
+
+    $this->actingAs($this->user)
+        ->get(route('app.automations.show', $paused->id))
+        ->assertRedirect(route('app.automations.metrics', $paused->id));
 });
 
 it('renders the workflow editor on the workflow tab', function () {

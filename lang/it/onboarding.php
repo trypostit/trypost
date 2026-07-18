@@ -1,0 +1,41 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'title' => 'Benvenuto su TryPost',
+    'description' => 'Dicci cosa descrive meglio te o la tua attività così possiamo personalizzare la tua esperienza.',
+    'continue' => 'Continua',
+    'personas' => [
+        'creator' => 'Creatore di contenuti',
+        'freelancer' => 'Freelance',
+        'developer' => 'Sviluppatore',
+        'startup' => 'Startup',
+        'agency' => 'Agenzia',
+        'small_business' => 'Piccola impresa',
+        'marketer' => 'Marketer',
+        'online_store' => 'Negozio online',
+        'other' => 'Altro',
+    ],
+    'goals_title' => 'Qual è il tuo obiettivo con TryPost?',
+    'goals_description' => 'Scegli tutto ciò che fa per te e configureremo TryPost per te.',
+    'goals' => [
+        'save_time' => 'Risparmiare tempo pubblicando ovunque in una volta',
+        'ai_content' => 'Creare post più velocemente con l\'IA',
+        'plan_calendar' => 'Pianificare i miei post su un calendario',
+        'stay_on_brand' => 'Mantenere ogni post in linea con il brand',
+        'grow_audience' => 'Far crescere il mio pubblico e il coinvolgimento',
+        'drive_sales' => 'Ottenere più traffico e vendite',
+        'manage_clients' => 'Gestire più brand o clienti',
+        'team_collaboration' => 'Lavorare con il mio team',
+        'automate_api' => 'Automatizzare la pubblicazione con API, MCP o codice',
+        'track_performance' => 'Vedere come vanno i miei post',
+        'just_exploring' => 'Sto solo dando un\'occhiata',
+        'other' => 'Qualcos\'altro',
+    ],
+    'connect' => [
+        'title' => 'Collega la tua prima rete',
+        'description' => 'Collega almeno un account social per iniziare a programmare. Puoi aggiungerne altri in qualsiasi momento.',
+        'must_connect' => 'Collega almeno una rete per continuare.',
+    ],
+];

@@ -9,13 +9,18 @@ use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\BlueskyPublishException;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
+use App\Services\Brand\SafeHttpFetcher;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Services\Social\LinkCard\LinkCardFetcher;
+use App\Services\Social\LinkCard\LinkCardMetadata;
+use App\Support\UrlDetector;
 use Carbon\CarbonInterface;
 use Exception;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 class BlueskyPublisher
@@ -24,6 +29,9 @@ class BlueskyPublisher
 
     /** Seconds allowed for a remote media download (large videos need time). */
     private const DOWNLOAD_TIMEOUT = 600;
+
+    /** Short timeout for the card thumbnail download (attacker-influenceable og:image, not a large media upload). */
+    private const THUMB_DOWNLOAD_TIMEOUT = 15;
 
     /** Re-upload a transiently-failing transcode this many times before giving up. */
     private const VIDEO_UPLOAD_ATTEMPTS = 3;
@@ -48,7 +56,7 @@ class BlueskyPublisher
         $service = $account->meta['service'] ?? config('trypost.platforms.bluesky.default_service');
 
         // Refresh token if needed
-        if ($account->is_token_expired || $account->is_token_expiring_soon) {
+        if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
@@ -63,7 +71,7 @@ class BlueskyPublisher
                     $blob = $this->uploadBlob($account, $service, $media->url, $media->mime_type);
                     if ($blob) {
                         $images[] = [
-                            'alt' => '',
+                            'alt' => $media->altTextFor(Platform::Bluesky) ?? '',
                             'image' => $blob,
                         ];
                     }
@@ -93,6 +101,13 @@ class BlueskyPublisher
                     ];
                 }
             }
+        }
+
+        // No image or video embed, so a bare link can carry a preview card.
+        // Bluesky does not hydrate cards server-side: the client must attach an
+        // app.bsky.embed.external built from the page's OpenGraph metadata.
+        if ($embed === null && $medias->isEmpty() && $content !== null) {
+            $embed = $this->buildExternalEmbed($postPlatform->socialAccount, $service, $content);
         }
 
         // Parse facets (links, mentions, hashtags) from text
@@ -142,9 +157,63 @@ class BlueskyPublisher
         ];
     }
 
-    private function uploadBlob(SocialAccount $account, string $service, string $url, string $mimeType): ?array
+    /**
+     * Build an app.bsky.embed.external card for the first link in the text, or
+     * null when there is no link, the scrape fails, or the page has no metadata.
+     * The og:image is re-uploaded as the card thumb because Bluesky's `thumb`
+     * only accepts a blob, never an external URL. Any failure degrades to null
+     * so the post still publishes with just the link facet.
+     */
+    private function buildExternalEmbed(SocialAccount $account, string $service, string $content): ?array
     {
-        $tempFile = $this->downloadToTempFile($url, 'bsky_blob_');
+        $card = app(LinkCardFetcher::class)->fetch($content);
+
+        if ($card === null) {
+            return null;
+        }
+
+        $external = [
+            'uri' => $card->uri,
+            'title' => $card->title,
+            'description' => $card->description,
+        ];
+
+        $thumb = $this->uploadCardThumb($account, $service, $card);
+
+        if ($thumb !== null) {
+            $external['thumb'] = $thumb;
+        }
+
+        return [
+            '$type' => BlueskyLexicon::EMBED_EXTERNAL,
+            'external' => $external,
+        ];
+    }
+
+    /**
+     * Download the card's og:image and upload it as a blob for the thumb.
+     * Returns null (card renders without a thumbnail) when there is no image or
+     * the upload fails. A JPEG hint routes it through the image optimizer, which
+     * re-encodes any static image and enforces Bluesky's 1MB blob limit.
+     */
+    private function uploadCardThumb(SocialAccount $account, string $service, LinkCardMetadata $card): ?array
+    {
+        if ($card->imageUrl === null) {
+            return null;
+        }
+
+        try {
+            app(SafeHttpFetcher::class)->guardAgainstSsrf($card->imageUrl);
+        } catch (RuntimeException) {
+            return null;
+        }
+
+        return $this->uploadBlob($account, $service, $card->imageUrl, 'image/jpeg', self::THUMB_DOWNLOAD_TIMEOUT, followRedirects: false);
+    }
+
+    private function uploadBlob(SocialAccount $account, string $service, string $url, string $mimeType, int $downloadTimeout = self::DOWNLOAD_TIMEOUT, bool $followRedirects = true): ?array
+    {
+        $tempFile = $this->downloadToTempFile($url, 'bsky_blob_', $downloadTimeout, $followRedirects);
 
         if ($tempFile === null) {
             return null;
@@ -202,8 +271,15 @@ class BlueskyPublisher
      * Download a remote media file to a temp file. Returns the temp path, or
      * null (after cleaning up) if the temp file can't be created, the download
      * fails, or the downloaded file is empty.
+     *
+     * $followRedirects defaults to true for the media/video paths, which
+     * download from our own storage/CDN URLs. The card thumb path passes
+     * false because the source is an attacker-influenceable og:image that
+     * was only guarded against SSRF on its original URL — a redirect on that
+     * hop must not be followed without re-guarding, so it is simply not
+     * followed at all (the thumb degrades to null instead).
      */
-    private function downloadToTempFile(string $url, string $prefix): ?string
+    private function downloadToTempFile(string $url, string $prefix, int $timeoutSeconds = self::DOWNLOAD_TIMEOUT, bool $followRedirects = true): ?string
     {
         $tempFile = tempnam(sys_get_temp_dir(), $prefix);
 
@@ -214,7 +290,13 @@ class BlueskyPublisher
         }
 
         try {
-            $response = Http::withOptions(['sink' => $tempFile])->timeout(self::DOWNLOAD_TIMEOUT)->get($url);
+            $options = ['sink' => $tempFile];
+
+            if (! $followRedirects) {
+                $options['allow_redirects'] = false;
+            }
+
+            $response = Http::withOptions($options)->timeout($timeoutSeconds)->get($url);
 
             if ($response->failed()) {
                 throw new Exception('HTTP '.$response->status());
@@ -555,14 +637,14 @@ class BlueskyPublisher
 
         // Parse URLs
         preg_match_all(
-            '/(https?:\/\/[^\s]+)/u',
+            UrlDetector::URL_PATTERN,
             $text,
             $urlMatches,
             PREG_OFFSET_CAPTURE
         );
 
         foreach ($urlMatches[0] as $match) {
-            $url = $this->trimTrailingUrlPunctuation($match[0]);
+            $url = UrlDetector::trimTrailingPunctuation($match[0]);
             $start = (int) $match[1];
             $end = $start + strlen($url);
 
@@ -674,24 +756,6 @@ class BlueskyPublisher
         } catch (Throwable) {
             return null;
         }
-    }
-
-    /**
-     * Trailing sentence punctuation and an unmatched closing paren are almost
-     * never part of a URL (e.g. "see https://x.com)."). Mirrors the official
-     * atproto link tokenizer so the link facet doesn't over-extend past the URL.
-     */
-    private function trimTrailingUrlPunctuation(string $url): string
-    {
-        if (preg_match('/[.,;:!?]$/', $url)) {
-            $url = substr($url, 0, -1);
-        }
-
-        if (str_ends_with($url, ')') && ! str_contains($url, '(')) {
-            $url = substr($url, 0, -1);
-        }
-
-        return $url;
     }
 
     private function buildPostUrl(string $handle, string $postId): string

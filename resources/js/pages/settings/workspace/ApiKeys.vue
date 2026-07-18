@@ -73,7 +73,7 @@ const tabs = computed(() => [
 
             <SettingsTabsNav :tabs="tabs" active="api-keys" />
 
-            <div class="flex items-center justify-between gap-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <HeadingSmall
                     :title="$t('settings.api_keys.heading')"
                     :description="$t('settings.api_keys.description')"
@@ -128,7 +128,7 @@ const tabs = computed(() => [
                             <TableCell>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger as-child>
-                                        <Button variant="outline" size="icon" class="size-8">
+                                        <Button variant="outline" size="icon" class="size-9">
                                             <IconDots class="size-4" />
                                         </Button>
                                     </DropdownMenuTrigger>

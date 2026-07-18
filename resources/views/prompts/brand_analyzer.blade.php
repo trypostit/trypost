@@ -10,7 +10,7 @@ From the provided markdown content of the homepage, produce:
 
 2. **description** — a concise 2-3 sentence brand description explaining what the company does, who they serve, and what makes them unique. Write it in the detected content language. Avoid marketing fluff; be specific.
 
-3. **language** — detect the primary content language of the site. Pick exactly one of: `en`, `pt-BR`, `es`. If the site is in a different language entirely, pick the closest match (prefer `en`).
+3. **language** — detect the primary content language of the site and return its code. Pick exactly one of: {{ $content_languages }}. If the site is in a language not in that list, pick the closest supported match (prefer `en`).
 
 4. **voice_traits** — infer the brand's voice as a set of traits, returned as an array of values chosen ONLY from the allowed list below. For each single-select dimension pick AT MOST ONE value (or none if unclear); for the `style` group pick any number that fit. Aim for a coherent set of roughly 5-9 traits.
 @foreach($voice_groups as $group => $values)

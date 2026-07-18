@@ -91,7 +91,7 @@ defineExpose({
 
 <template>
     <Tabs v-model="activeTab" class="h-full flex flex-col">
-        <TabsList class="mx-4 mt-4 w-fit shrink-0 self-start">
+        <TabsList class="mx-4 mt-4 hidden w-fit shrink-0 self-start lg:inline-flex">
             <TabsTrigger value="preview">{{ $t('posts.edit.tabs.preview') }}</TabsTrigger>
             <TabsTrigger value="schedule">{{ $t('posts.edit.tabs.channels') }}</TabsTrigger>
             <TabsTrigger value="comments">{{ $t('posts.edit.tabs.comments') }}</TabsTrigger>
@@ -107,7 +107,7 @@ defineExpose({
             />
         </TabsContent>
 
-        <TabsContent value="schedule" force-mount :class="['flex-1 overflow-y-auto p-4', { hidden: activeTab !== 'schedule' }]">
+        <TabsContent value="schedule" force-mount data-testid="channels-panel" :class="['flex-1 overflow-y-auto p-4', { hidden: activeTab !== 'schedule' }]">
             <ScheduleTab
                 :post-platforms="post.post_platforms"
                 :selected-platform-ids="selectedPlatformIds"

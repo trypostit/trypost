@@ -15,6 +15,18 @@ import weekday from 'dayjs/plugin/weekday';
 import 'dayjs/locale/en';
 import 'dayjs/locale/es';
 import 'dayjs/locale/pt-br';
+import 'dayjs/locale/fr';
+import 'dayjs/locale/de';
+import 'dayjs/locale/it';
+import 'dayjs/locale/nl';
+import 'dayjs/locale/pl';
+import 'dayjs/locale/el';
+import 'dayjs/locale/ja';
+import 'dayjs/locale/ko';
+import 'dayjs/locale/zh';
+import 'dayjs/locale/ru';
+import 'dayjs/locale/tr';
+import 'dayjs/locale/ar';
 
 // Extend dayjs with plugins
 dayjs.extend(utc);
@@ -30,8 +42,7 @@ dayjs.extend(weekday);
 dayjs.extend(isBetween);
 
 // Set Monday as first day of week (to match Carbon/Laravel)
-dayjs.updateLocale('en', { weekStart: 1 });
-dayjs.updateLocale('es', { weekStart: 1 });
-dayjs.updateLocale('pt-br', { weekStart: 1 });
+const weekStartMonday = ['en', 'es', 'pt-br', 'fr', 'de', 'it', 'nl', 'pl', 'el', 'ja', 'ko', 'zh', 'ru', 'tr', 'ar'];
+weekStartMonday.forEach((locale) => dayjs.updateLocale(locale, { weekStart: 1 }));
 
 export default dayjs;

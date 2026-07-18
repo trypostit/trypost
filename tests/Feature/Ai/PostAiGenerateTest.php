@@ -7,6 +7,7 @@ use App\Jobs\Ai\StreamPostContent;
 use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\AiPromptRules;
 use Illuminate\Support\Facades\Bus;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -32,6 +33,19 @@ test('endpoint validates prompt is required', function () {
         ->postJson(route('app.posts.ai.generate', $this->post), [])
         ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
         ->assertJsonValidationErrors(['prompt']);
+});
+
+test('endpoint rejects a prompt longer than the maximum length', function () {
+    Bus::fake();
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.generate', $this->post), [
+            'prompt' => str_repeat('a', AiPromptRules::PROMPT_MAX_LENGTH + 1),
+        ])
+        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
+        ->assertJsonValidationErrors(['prompt']);
+
+    Bus::assertNotDispatched(StreamPostContent::class);
 });
 
 test('endpoint blocks access to other workspace posts', function () {

@@ -6,6 +6,7 @@ namespace App\Http\Requests\App\Workspace;
 
 use App\Enums\Workspace\BrandFont;
 use App\Enums\Workspace\BrandVoiceTrait;
+use App\Enums\Workspace\ContentLanguage;
 use App\Enums\Workspace\ImageStyle;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -32,7 +33,7 @@ class StoreWorkspaceRequest extends FormRequest
             'text_color' => $hex,
             'brand_font' => ['sometimes', 'string', Rule::in(BrandFont::values())],
             'image_style' => ['sometimes', 'string', Rule::in(ImageStyle::values())],
-            'content_language' => ['nullable', 'string', 'in:en,pt-BR,es'],
+            'content_language' => ['nullable', 'string', Rule::in(ContentLanguage::values())],
             'logo_url' => ['nullable', 'url', 'max:1024'],
         ];
     }

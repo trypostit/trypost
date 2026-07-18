@@ -8,6 +8,7 @@ use App\Http\Resources\Api\PostResource;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\Workspace;
+use App\Support\PostMediaRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -23,6 +24,7 @@ class AttachMediaFromUploadTool extends Tool
         $validated = $request->validate([
             'post_id' => ['required', 'uuid'],
             'upload_token' => ['required', 'uuid'],
+            'alt' => ['nullable', 'string', 'max:'.PostMediaRules::ALT_TEXT_MAX_LENGTH],
         ]);
 
         $workspaceId = $request->user()->current_workspace_id;
@@ -48,14 +50,20 @@ class AttachMediaFromUploadTool extends Tool
             return Response::error('No enabled platform on this post accepts this media type.');
         }
 
-        $post->appendMedia([[
+        $item = [
             'id' => $media->id,
             'path' => $media->path,
             'url' => $media->url,
             'type' => $media->type,
             'mime_type' => $media->mime_type,
             'original_filename' => $media->original_filename,
-        ]]);
+        ];
+
+        if (($alt = data_get($validated, 'alt')) !== null && $media->isImage()) {
+            $item['meta'] = ['alt_text' => $alt];
+        }
+
+        $post->appendMedia([$item]);
 
         $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
 
@@ -69,6 +77,7 @@ class AttachMediaFromUploadTool extends Tool
         return [
             'post_id' => $schema->string()->required()->description('UUID of the post to attach the uploaded media to.'),
             'upload_token' => $schema->string()->required()->description('upload_token returned by RequestMediaUploadTool, after the user has POSTed the file to the upload_url.'),
+            'alt' => $schema->string()->description('Optional accessibility alt text for the media (applies to images).'),
         ];
     }
 }

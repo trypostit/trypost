@@ -24,7 +24,14 @@ class RefreshSocialToken implements ShouldQueue
     public function handle(ConnectionVerifier $verifier): void
     {
         try {
-            $verifier->refreshToken($this->account);
+            if ($this->account->platform->extendsAccessTokenOnRefresh()) {
+                // Instagram/Threads extend the long-lived token itself and
+                // can't be refreshed once expired, so extend it while it's
+                // still valid instead of waiting for it to fail.
+                $verifier->refreshToken($this->account);
+            } else {
+                $verifier->verify($this->account);
+            }
         } catch (PlatformUnavailableException $e) {
             Log::warning('Token refresh skipped: platform unavailable', [
                 'account_id' => $this->account->id,

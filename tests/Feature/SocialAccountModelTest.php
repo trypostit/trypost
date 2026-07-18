@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Notification\Type;
+use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Events\NotificationCreated;
 use App\Jobs\SendNotification;
@@ -18,6 +19,33 @@ use Illuminate\Support\Facades\Queue;
 beforeEach(function () {
     $this->owner = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->owner->id]);
+});
+
+// ---- needsProactiveTokenRefresh ----
+
+test('needsProactiveTokenRefresh: rotating platforms refresh only when expired, extension platforms while still valid', function () {
+    // Rotating (X): a still-valid token that is merely expiring soon is NOT refreshed.
+    $xValid = SocialAccount::factory()->x()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addMinutes(10),
+    ]);
+    expect($xValid->needsProactiveTokenRefresh())->toBeFalse();
+
+    // Rotating (X): once actually expired, it is refreshed.
+    $xExpired = SocialAccount::factory()->x()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->subMinute(),
+    ]);
+    expect($xExpired->needsProactiveTokenRefresh())->toBeTrue();
+
+    // Extension-model (Instagram): a still-valid token that is expiring soon MUST
+    // be refreshed while valid — its token can't be extended once expired.
+    $igValid = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Instagram,
+        'token_expires_at' => now()->addMinutes(10),
+    ]);
+    expect($igValid->needsProactiveTokenRefresh())->toBeTrue();
 });
 
 // ---- markAsTokenExpired ----

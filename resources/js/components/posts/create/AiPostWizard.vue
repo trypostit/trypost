@@ -63,6 +63,8 @@ const selectedAccountId = ref<string | null>(null);
 const includeImages = ref(true);
 const imageCount = ref(2);
 const promptText = ref('');
+const PROMPT_MIN = 3;
+const PROMPT_MAX = 2000;
 
 const submitting = ref(false);
 
@@ -157,10 +159,13 @@ const submittedImageCount = computed(() => {
     return 0;
 });
 
+const promptLength = computed(() => [...promptText.value.trim()].length);
+
 const canSubmit = computed(() =>
     selectedFormat.value !== null &&
     selectedAccountId.value !== null &&
-    promptText.value.trim().length >= 3,
+    promptLength.value >= PROMPT_MIN &&
+    promptLength.value <= PROMPT_MAX,
 );
 
 // Auto-pick the only account when format has exactly one match.
@@ -358,6 +363,14 @@ const startGeneration = async () => {
                 :placeholder="$t('posts.create.steps.prompt_placeholder')"
                 class="min-h-[140px] resize-none"
             />
+            <p
+                data-testid="ai-prompt-counter"
+                aria-live="polite"
+                class="text-right text-xs tabular-nums"
+                :class="promptLength > PROMPT_MAX ? 'font-semibold text-destructive' : 'text-muted-foreground'"
+            >
+                {{ promptLength }}/{{ PROMPT_MAX }}
+            </p>
         </div>
 
         <!-- Generate -->

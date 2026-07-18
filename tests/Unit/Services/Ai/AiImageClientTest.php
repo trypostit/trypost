@@ -81,11 +81,20 @@ test('generate appends Spanish instruction when language is es', function () {
     Image::assertGenerated(fn (ImagePrompt $prompt) => $prompt->contains('Spanish'));
 });
 
-test('generate defaults to English instruction when language is unknown', function () {
+test('generate appends French instruction when language is fr', function () {
     Image::fake();
 
     $client = new AiImageClient;
     $client->generate(['x'], ImageStyle::Cinematic, language: 'fr');
+
+    Image::assertGenerated(fn (ImagePrompt $prompt) => $prompt->contains('French'));
+});
+
+test('generate defaults to English instruction when language is unsupported', function () {
+    Image::fake();
+
+    $client = new AiImageClient;
+    $client->generate(['x'], ImageStyle::Cinematic, language: 'sv');
 
     Image::assertGenerated(fn (ImagePrompt $prompt) => $prompt->contains('English'));
 });

@@ -93,3 +93,26 @@ test('uploadFromUrl handles exceptions gracefully', function () {
 
     expect($result)->toBeNull();
 });
+
+test('uploadFromUrl returns null for a private-network url and never requests it', function () {
+    Http::fake();
+
+    $result = uploadFromUrl('http://127.0.0.1/evil.jpg');
+
+    expect($result)->toBeNull();
+    Http::assertNothingSent();
+});
+
+test('uploadFromUrl attempts the internal fetch when allow_private_network is enabled', function () {
+    config(['trypost.security.allow_private_network' => true]);
+    Storage::fake();
+
+    Http::fake([
+        'http://127.0.0.1/internal.jpg' => Http::response('fake-image-content', 200, ['Content-Type' => 'image/jpeg']),
+    ]);
+
+    $result = uploadFromUrl('http://127.0.0.1/internal.jpg');
+
+    expect($result)->not->toBeNull();
+    Http::assertSent(fn ($request) => str_contains($request->url(), '127.0.0.1'));
+});

@@ -6,18 +6,19 @@ on:
   pull_request:
     branches: [main, develop]
 
+env:
+  DB_CONNECTION: pgsql
+  DB_DATABASE: trypost_test
+  DB_USERNAME: postgres
+  DB_PASSWORD: password
+  BROADCAST_CONNECTION: "null"
+  CACHE_STORE: array
+  QUEUE_CONNECTION: sync
+  SESSION_DRIVER: array
+
 jobs:
-  tests:
+  backend:
     runs-on: ubuntu-latest
-    env:
-      DB_CONNECTION: pgsql
-      DB_DATABASE: trypost_test
-      DB_USERNAME: postgres
-      DB_PASSWORD: password
-      BROADCAST_CONNECTION: "null"
-      CACHE_STORE: array
-      QUEUE_CONNECTION: sync
-      SESSION_DRIVER: array
 
     services:
       postgres:
@@ -46,54 +47,89 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - name: Setup test environment
+        uses: ./.github/actions/setup-laravel
         with:
-          php-version: '8.4'
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, pdo_pgsql, bcmath, intl, gd, redis
-          coverage: none
+          db-port: ${{ job.services.postgres.ports['5432'] }}
+          redis-port: ${{ job.services.redis.ports['6379'] }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Run backend tests
+        env:
+          DB_PORT: ${{ job.services.postgres.ports['5432'] }}
+          REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
+        run: php artisan test --compact --parallel
+
+  e2e:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: trypost_test
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd="pg_isready"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379/tcp
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup test environment
+        uses: ./.github/actions/setup-laravel
         with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: vendor
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-
-
-      - name: Prepare environment
-        run: cp .env.ci .env
-
-      - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
-
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Generate application key
-        run: php artisan key:generate
+          node: 'true'
+          db-port: ${{ job.services.postgres.ports['5432'] }}
+          redis-port: ${{ job.services.redis.ports['6379'] }}
 
       - name: Build assets
         run: npm run build
 
-      - name: Run migrations
-        run: php artisan migrate --force
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser tests
         env:
           DB_PORT: ${{ job.services.postgres.ports['5432'] }}
           REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
+        run: php artisan test tests/Browser --compact --shard=${{ matrix.shard }}/2
 
-      - name: Generate Passport keys
-        run: php artisan passport:keys --force
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-artifacts-${{ matrix.shard }}
+          path: tests/Browser/Screenshots
+          if-no-files-found: ignore
+          retention-days: 7
 
-      - name: Run tests
-        run: php artisan test --compact --parallel
-        env:
-          DB_PORT: ${{ job.services.postgres.ports['5432'] }}
-          REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
+  e2e-gate:
+    if: always()
+    needs: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all e2e shards to pass
+        run: '[ "${{ needs.e2e.result }}" = "success" ] || exit 1'

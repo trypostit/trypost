@@ -6,6 +6,7 @@ namespace App\DataTransferObjects;
 
 use App\Enums\Media\Source;
 use App\Enums\Media\Type;
+use App\Enums\SocialAccount\Platform;
 
 class MediaItem
 {
@@ -57,6 +58,39 @@ class MediaItem
         $height = data_get($this->meta, 'height');
 
         return is_numeric($height) ? (int) $height : null;
+    }
+
+    /**
+     * User-provided accessibility description for this image, when set.
+     */
+    public function altText(): ?string
+    {
+        $alt = data_get($this->meta, 'alt_text');
+
+        if (! is_string($alt)) {
+            return null;
+        }
+
+        $alt = trim($alt);
+
+        return $alt === '' ? null : $alt;
+    }
+
+    /**
+     * The alt text truncated to the given platform's cap, or null when no alt
+     * text is set or the platform doesn't support it. Single place that applies
+     * the per-platform cap so publishers don't each repeat the truncation.
+     */
+    public function altTextFor(Platform $platform): ?string
+    {
+        $alt = $this->altText();
+        $max = $platform->altTextMaxLength();
+
+        if ($alt === null || $max === null) {
+            return null;
+        }
+
+        return mb_substr($alt, 0, $max);
     }
 
     /**

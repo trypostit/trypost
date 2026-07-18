@@ -109,7 +109,7 @@ onUnmounted(() => {
                     <span class="size-3 rounded-full border border-foreground bg-amber-300" />
                     <span class="size-3 rounded-full border border-foreground bg-emerald-300" />
                 </div>
-                <div class="ml-2 truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                <div class="ml-2 min-w-0 truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                     trypost.it · checkout
                 </div>
                 <span class="ml-auto inline-flex items-center gap-1.5 rounded-md border-2 border-foreground bg-foreground px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-background shadow-2xs">

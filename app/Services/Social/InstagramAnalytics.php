@@ -44,7 +44,7 @@ class InstagramAnalytics
 
         $this->baseUrl = $account->platform->instagramGraphBaseUrl();
 
-        if ($account->is_token_expired || $account->is_token_expiring_soon) {
+        if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
@@ -87,7 +87,7 @@ class InstagramAnalytics
     {
         $this->baseUrl = $account->platform->instagramGraphBaseUrl();
 
-        if ($account->is_token_expired || $account->is_token_expiring_soon) {
+        if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 

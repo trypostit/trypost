@@ -380,6 +380,144 @@ test('threads publisher throws exception when all carousel items fail', function
         ->toThrow(Exception::class, 'Failed to create any carousel items');
 });
 
+test('threads publisher sends capped alt text on single image container', function () {
+    $longAlt = str_repeat('a', 1500);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+                'meta' => ['alt_text' => $longAlt],
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        'https://graph.threads.net/v1.0/123456789/threads' => Http::response([
+            'id' => 'container-123',
+        ], 200),
+        'https://graph.threads.net/v1.0/container-123*' => Http::response([
+            'status' => 'FINISHED',
+        ], 200),
+        'https://graph.threads.net/v1.0/123456789/threads_publish' => Http::response([
+            'id' => 'post-alt-123',
+        ], 200),
+        'https://graph.threads.net/v1.0/post-alt-123*' => Http::response([
+            'permalink' => 'https://www.threads.net/@testuser/post/ALT123',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    $expectedAlt = mb_substr($longAlt, 0, Platform::Threads->altTextMaxLength());
+
+    Http::assertSent(function ($request) use ($expectedAlt) {
+        return str_ends_with($request->url(), '/123456789/threads')
+            && data_get($request->data(), 'alt_text') === $expectedAlt
+            && strlen($expectedAlt) === Platform::Threads->altTextMaxLength();
+    });
+});
+
+test('threads publisher omits alt_text from single image container when no alt text is set', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        'https://graph.threads.net/v1.0/123456789/threads' => Http::response([
+            'id' => 'container-123',
+        ], 200),
+        'https://graph.threads.net/v1.0/container-123*' => Http::response([
+            'status' => 'FINISHED',
+        ], 200),
+        'https://graph.threads.net/v1.0/123456789/threads_publish' => Http::response([
+            'id' => 'post-no-alt-123',
+        ], 200),
+        'https://graph.threads.net/v1.0/post-no-alt-123*' => Http::response([
+            'permalink' => 'https://www.threads.net/@testuser/post/NOALT123',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        return str_ends_with($request->url(), '/123456789/threads')
+            && ! array_key_exists('alt_text', $request->data());
+    });
+});
+
+test('threads publisher sends alt text on image carousel children but never on video children', function () {
+    $imageAlt = str_repeat('x', 1500);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-image',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+                'meta' => ['alt_text' => $imageAlt],
+            ],
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/test-video.mp4',
+                'url' => 'https://example.com/media/2026-01/test-video.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'test.mp4',
+                'meta' => ['alt_text' => 'video alt text must never be sent'],
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        'https://graph.threads.net/v1.0/123456789/threads' => Http::response([
+            'id' => 'container-123',
+        ], 200),
+        'https://graph.threads.net/v1.0/container-123*' => Http::response([
+            'status' => 'FINISHED',
+        ], 200),
+        'https://graph.threads.net/v1.0/123456789/threads_publish' => Http::response([
+            'id' => 'post-carousel-alt-123',
+        ], 200),
+        'https://graph.threads.net/v1.0/post-carousel-alt-123*' => Http::response([
+            'permalink' => 'https://www.threads.net/@testuser/post/CAROUSELALT123',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    $expectedAlt = mb_substr($imageAlt, 0, Platform::Threads->altTextMaxLength());
+
+    Http::assertSent(function ($request) use ($expectedAlt) {
+        $data = $request->data();
+
+        return str_ends_with($request->url(), '/123456789/threads')
+            && data_get($data, 'image_url') !== null
+            && data_get($data, 'alt_text') === $expectedAlt;
+    });
+
+    Http::assertSent(function ($request) {
+        $data = $request->data();
+
+        return str_ends_with($request->url(), '/123456789/threads')
+            && data_get($data, 'video_url') !== null
+            && ! array_key_exists('alt_text', $data);
+    });
+});
+
 test('threads publisher can publish video with null content', function () {
     $this->post->update([
         'content' => null,

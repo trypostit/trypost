@@ -16,4 +16,5 @@ Rules:
 - Each `reason` is a 1-line explanation in the output language.
 - If the text is fine, return an empty `suggestions` array.
 - Do NOT propose stylistic changes. ONLY grammar, spelling, and clarity.
+- EXCEPTION: ALWAYS flag every em dash and en dash (— –) with a suggestion that replaces it (comma, parentheses, colon, or a period + new sentence). Removing em/en dashes is a hard rule, not optional style.
 - Maximum 8 suggestions per request. Prioritize the most important ones.

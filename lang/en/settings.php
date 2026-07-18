@@ -216,6 +216,13 @@ return [
         'image_style_mockup' => 'Mockup',
         'content_language' => 'Content language',
         'content_language_description' => 'Language used for AI-generated captions, hashtags, and any text inside generated images or videos.',
+        'font_placeholder' => 'Select a font…',
+        'font_search' => 'Search font…',
+        'font_empty' => 'No fonts match.',
+        'language_placeholder' => 'Select a language…',
+        'language_search' => 'Search language…',
+        'language_empty' => 'No language found.',
+
     ],
 
     'members' => [

@@ -15,6 +15,7 @@ use App\Actions\Automation\Automation\PauseAutomation;
 use App\Actions\Automation\Automation\UpdateAutomation;
 use App\Actions\Automation\Run\RetryRunFromNode;
 use App\Actions\Automation\Run\TestAutomation;
+use App\Enums\Automation\Status;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Automations\ActivateAutomationRequest;
 use App\Http\Requests\App\Automations\InspectFeedRequest;
@@ -77,7 +78,11 @@ class AutomationController extends Controller
     {
         $this->authorize('view', $automation);
 
-        return redirect()->route('app.automations.workflow', $automation->id);
+        // A draft opens on the builder to be set up; a live automation (active
+        // or paused) opens on its metrics, where the user watches it run.
+        $tab = $automation->status === Status::Draft ? 'workflow' : 'metrics';
+
+        return redirect()->route("app.automations.{$tab}", $automation->id);
     }
 
     public function workflow(Automation $automation, GetAutomationEditorData $editorData): Response

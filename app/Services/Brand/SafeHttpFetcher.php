@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Brand;
 
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
+use Symfony\Component\DomCrawler\UriResolver;
 
 /**
  * HTTP fetcher with SSRF protection, timeout, redirect cap and a branded user-agent.
@@ -36,13 +38,38 @@ final class SafeHttpFetcher
     {
         $this->guardAgainstSsrf($url);
 
-        try {
-            $response = Http::timeout(self::TIMEOUT_SECONDS)
-                ->withUserAgent(self::USER_AGENT)
-                ->withOptions(['allow_redirects' => ['max' => self::MAX_REDIRECTS]])
-                ->get($url);
-        } catch (ConnectionException $e) {
-            throw new RuntimeException(__('workspaces.create.autofill_errors.unreachable', ['reason' => $e->getMessage()]));
+        $currentUrl = $url;
+
+        // Redirects are followed manually (allow_redirects disabled) so that every
+        // hop's Location target is re-validated against the SSRF guard before it is
+        // ever requested. A public page could otherwise 302 to an internal host and
+        // Guzzle's built-in redirect following would fetch it without re-checking.
+        for ($hop = 0; $hop <= self::MAX_REDIRECTS; $hop++) {
+            try {
+                $response = Http::timeout(self::TIMEOUT_SECONDS)
+                    ->withUserAgent(self::USER_AGENT)
+                    ->withOptions(['allow_redirects' => false])
+                    ->get($currentUrl);
+            } catch (ConnectionException $e) {
+                throw new RuntimeException(__('workspaces.create.autofill_errors.unreachable', ['reason' => $e->getMessage()]));
+            }
+
+            if (! $response->redirect() || $hop >= self::MAX_REDIRECTS) {
+                break;
+            }
+
+            $location = $response->header('Location');
+
+            if ($location === '') {
+                break;
+            }
+
+            $currentUrl = (string) UriResolver::resolve($location, $currentUrl);
+            $this->guardAgainstSsrf($currentUrl);
+        }
+
+        if ($response->redirect()) {
+            throw new RuntimeException(__('workspaces.create.autofill_errors.unreachable', ['reason' => 'too many redirects']));
         }
 
         if ($response->failed()) {
@@ -65,6 +92,43 @@ final class SafeHttpFetcher
         }
     }
 
+    /**
+     * Guzzle allow_redirects options that re-run the SSRF guard on every hop.
+     * For callers that follow redirects on user-supplied URLs with methods/bodies
+     * that SafeHttpFetcher::get() cannot express.
+     *
+     * @return array<string, mixed>
+     */
+    public function redirectGuardOptions(int $max = self::MAX_REDIRECTS): array
+    {
+        return [
+            'allow_redirects' => [
+                'max' => $max,
+                'strict' => true,
+                'protocols' => ['http', 'https'],
+                'on_redirect' => function ($request, $response, $uri): void {
+                    $this->guardAgainstSsrf((string) $uri);
+                },
+            ],
+        ];
+    }
+
+    /**
+     * A PendingRequest with the SSRF guard applied to $url and redirect handling
+     * pre-configured (per-hop re-guard when following, or no redirects). Callers
+     * add their own timeout / sink / headers and dispatch to the SAME $url, so a
+     * user-supplied URL can never be fetched without the guard and redirect
+     * protection.
+     */
+    public function guardedRequest(string $url, bool $followRedirects = true): PendingRequest
+    {
+        $this->guardAgainstSsrf($url);
+
+        return Http::withUserAgent(self::USER_AGENT)->withOptions(
+            $followRedirects ? $this->redirectGuardOptions() : ['allow_redirects' => false],
+        );
+    }
+
     public function guardAgainstSsrf(string $url): void
     {
         $parts = parse_url($url);
@@ -78,6 +142,13 @@ final class SafeHttpFetcher
 
         if ($host === '') {
             throw new RuntimeException(__('workspaces.create.autofill_errors.missing_host'));
+        }
+
+        // Self-hosted operators can opt into fetching their own internal
+        // network. Only the private/reserved-IP rejection below is skipped;
+        // the scheme and host checks above still always apply.
+        if ((bool) config('trypost.security.allow_private_network')) {
+            return;
         }
 
         $ip = gethostbyname($host);

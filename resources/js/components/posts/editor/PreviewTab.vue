@@ -74,7 +74,7 @@ const activeContentType = computed((): string | undefined => {
                                     class="size-9 shrink-0 rounded-full border-2"
                                     :class="activeId === pp.id ? 'border-foreground shadow-2xs' : 'border-foreground/20'"
                                 />
-                                <span class="absolute -bottom-1 -right-1 inline-flex size-4 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs">
+                                <span class="absolute -bottom-1 -right-1 inline-flex size-5 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs lg:size-4">
                                     <img
                                         :src="getPlatformLogo(pp.platform)"
                                         :alt="pp.platform"
@@ -94,7 +94,7 @@ const activeContentType = computed((): string | undefined => {
             </div>
         </div>
 
-        <div class="flex flex-1 items-start justify-center px-4 pb-8 pt-6">
+        <div class="flex flex-1 items-start justify-center overflow-x-hidden px-4 pb-8 pt-6">
             <PhoneMockup v-if="activePlatform">
                 <PlatformPreview
                     :platform="activePlatform.platform"

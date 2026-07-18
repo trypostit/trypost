@@ -363,6 +363,7 @@ return [
         'unschedule_cta' => 'Desagendar para editar',
 
         'tabs' => [
+            'compose' => 'Escrever',
             'preview' => 'Pré-visualização',
             'channels' => 'Canais',
             'comments' => 'Comentários',
@@ -376,6 +377,14 @@ return [
             'cancel' => 'Cancelar',
             'add' => 'Adicionar',
             'add_count' => 'Adicionar :count',
+        ],
+
+        'alt_text' => [
+            'label' => 'Texto alternativo',
+            'edit' => 'Editar texto alternativo',
+            'placeholder' => 'Descreva esta imagem para pessoas que usam leitores de tela',
+            'hint' => 'Publicado nas plataformas que oferecem suporte a descrições de imagem.',
+            'save' => 'Salvar',
         ],
 
         'emoji_picker' => [

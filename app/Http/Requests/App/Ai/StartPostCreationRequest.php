@@ -6,6 +6,7 @@ namespace App\Http\Requests\App\Ai;
 
 use App\Enums\Ai\ContentStyle;
 use App\Enums\PostPlatform\ContentType;
+use App\Support\AiPromptRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -33,7 +34,7 @@ class StartPostCreationRequest extends FormRequest
             ],
             'social_account_id' => ['nullable', 'uuid'],
             'image_count' => ['nullable', 'integer', 'min:0', 'max:10'],
-            'prompt' => ['required', 'string', 'max:2000'],
+            'prompt' => AiPromptRules::wizardPromptRule(),
             'date' => ['nullable', 'date_format:Y-m-d'],
             'template' => ['sometimes', 'string', Rule::enum(ContentStyle::class)],
         ];

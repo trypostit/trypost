@@ -9,23 +9,23 @@ use App\Actions\Workspace\CreateWorkspace;
 use App\Actions\Workspace\DeleteWorkspace;
 use App\Enums\Workspace\BrandFont;
 use App\Enums\Workspace\BrandVoiceTrait;
+use App\Enums\Workspace\ContentLanguage;
 use App\Enums\Workspace\ImageStyle;
 use App\Http\Requests\App\Workspace\AutofillBrandRequest;
 use App\Http\Requests\App\Workspace\StoreWorkspaceRequest;
 use App\Http\Requests\App\Workspace\UpdateWorkspaceRequest;
 use App\Http\Resources\App\WorkspaceMemberResource;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Brand\LogoAttacher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
-use Throwable;
 
 class WorkspaceController extends Controller
 {
@@ -67,8 +67,26 @@ class WorkspaceController extends Controller
 
     public function create(Request $request): Response|RedirectResponse
     {
-        $user = $request->user();
+        if ($redirect = $this->denyAdditionalWorkspaceWithoutSubscription($request->user())) {
+            return $redirect;
+        }
 
+        return Inertia::render('workspaces/Create', [
+            'availableFonts' => BrandFont::values(),
+            'availableImageStyles' => ImageStyle::values(),
+            'availableVoiceTraits' => BrandVoiceTrait::grouped(),
+            'availableContentLanguages' => ContentLanguage::options(),
+        ]);
+    }
+
+    /**
+     * Block creating a paid additional workspace without an active subscription.
+     * Guards both the form (`create`) and the write (`store`) so a direct POST
+     * can't bootstrap a second billable workspace — which would also inflate the
+     * checkout quantity past the fixed first-month coupon.
+     */
+    private function denyAdditionalWorkspaceWithoutSubscription(User $user): ?RedirectResponse
+    {
         if (! config('trypost.self_hosted')
             && $user->ownedWorkspacesCount() > 0
             && ! $user->account?->hasActiveSubscription()) {
@@ -76,11 +94,7 @@ class WorkspaceController extends Controller
                 ->with('message', 'Subscribe to create more workspaces.');
         }
 
-        return Inertia::render('workspaces/Create', [
-            'availableFonts' => BrandFont::values(),
-            'availableImageStyles' => ImageStyle::values(),
-            'availableVoiceTraits' => BrandVoiceTrait::grouped(),
-        ]);
+        return null;
     }
 
     public function autofillBrand(AutofillBrandRequest $request, AutofillBrand $autofill): JsonResponse
@@ -98,20 +112,16 @@ class WorkspaceController extends Controller
     {
         $user = $request->user();
 
+        if ($redirect = $this->denyAdditionalWorkspaceWithoutSubscription($user)) {
+            return $redirect;
+        }
+
         $validated = $request->validated();
 
         $workspace = CreateWorkspace::execute($user, $validated);
 
         if ($logoUrl = data_get($validated, 'logo_url')) {
-            try {
-                $logoAttacher->attach($workspace, $logoUrl);
-            } catch (Throwable $e) {
-                Log::warning('Logo attach failed during workspace creation', [
-                    'workspace_id' => $workspace->id,
-                    'logo_url' => $logoUrl,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            $logoAttacher->attach($workspace, $logoUrl);
         }
 
         return redirect()->route('app.accounts')
@@ -163,6 +173,7 @@ class WorkspaceController extends Controller
             'availableFonts' => BrandFont::values(),
             'availableImageStyles' => ImageStyle::values(),
             'availableVoiceTraits' => BrandVoiceTrait::grouped(),
+            'availableContentLanguages' => ContentLanguage::options(),
         ]);
     }
 
@@ -195,7 +206,7 @@ class WorkspaceController extends Controller
         return back()->with('flash.success', __('settings.flash.logo_deleted'));
     }
 
-    public function updateSettings(UpdateWorkspaceRequest $request): RedirectResponse
+    public function updateSettings(UpdateWorkspaceRequest $request, LogoAttacher $logoAttacher): RedirectResponse
     {
         $user = $request->user();
         $workspace = $user->currentWorkspace;
@@ -206,7 +217,16 @@ class WorkspaceController extends Controller
 
         $this->authorize('update', $workspace);
 
-        $workspace->update($request->validated());
+        $validated = $request->validated();
+
+        $logoUrl = data_get($validated, 'logo_url');
+        unset($validated['logo_url']);
+
+        $workspace->update($validated);
+
+        if ($logoUrl) {
+            $logoAttacher->attach($workspace, $logoUrl);
+        }
 
         return back()->with('flash.success', __('settings.flash.workspace_updated'));
     }

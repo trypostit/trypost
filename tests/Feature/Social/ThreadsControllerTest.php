@@ -217,3 +217,75 @@ test('threads callback shows network_taken when the network is already connected
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::Threads)->count())->toBe(1);
 });
+
+test('threads callback fails the connect when the long-lived token exchange fails', function () {
+    $state = bin2hex(random_bytes(16));
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'threads_oauth_state' => $state,
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.threads.auth_api').'/oauth/access_token' => Http::response([
+            'access_token' => 'short-lived-token',
+            'user_id' => '123456789',
+        ], 200),
+        config('trypost.platforms.threads.auth_api').'/access_token*' => Http::response('upstream error', 503),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.threads.callback', [
+        'code' => 'test-auth-code',
+        'state' => $state,
+    ]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', __('accounts.popup_callback.error_connecting')));
+
+    // A short-lived-only account would silently die within the hour and never be
+    // picked up by the refresh cron, so the connect must not persist one.
+    $this->assertDatabaseMissing('social_accounts', [
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Threads->value,
+    ]);
+});
+
+test('threads callback records a 60-day expiry when the long-lived exchange omits expires_in', function () {
+    $state = bin2hex(random_bytes(16));
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'threads_oauth_state' => $state,
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.threads.auth_api').'/oauth/access_token' => Http::response([
+            'access_token' => 'short-lived-token',
+            'user_id' => '123456789',
+        ], 200),
+        config('trypost.platforms.threads.auth_api').'/access_token*' => Http::response([
+            'access_token' => 'long-lived-token',
+        ], 200),
+        config('trypost.platforms.threads.graph_api').'/123456789*' => Http::response([
+            'id' => '123456789',
+            'username' => 'testuser',
+            'name' => 'Test User',
+        ], 200),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.threads.callback', [
+        'code' => 'test-auth-code',
+        'state' => $state,
+    ]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
+
+    $account = $this->workspace->socialAccounts()
+        ->where('platform', Platform::Threads)
+        ->first();
+
+    expect($account->token_expires_at)->not->toBeNull();
+    expect($account->token_expires_at->isAfter(now()->addDays(59)))->toBeTrue();
+});

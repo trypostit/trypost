@@ -8,6 +8,7 @@ import { MediaType } from '@/lib/mediaType';
 interface PreviewItem {
     url: string;
     type: MediaType;
+    altText?: string;
 }
 
 const items = ref<PreviewItem[]>([]);
@@ -99,6 +100,7 @@ defineExpose({ open, openCollection, close });
                     v-else-if="currentItem && currentItem.type === 'video'"
                     :key="currentItem.url"
                     :src="currentItem.url"
+                    data-testid="lightbox-video"
                     class="max-h-[85vh] max-w-full rounded-2xl bg-black"
                     controls
                     autoplay
@@ -135,6 +137,15 @@ defineExpose({ open, openCollection, close });
                 >
                     <IconChevronRight class="size-6" />
                 </button>
+
+                <div
+                    v-if="currentItem?.altText"
+                    data-testid="lightbox-alt-text"
+                    class="pointer-events-none absolute left-1/2 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-lg bg-black/70 px-4 py-2 text-center text-sm text-white backdrop-blur-sm sm:max-w-2xl"
+                    :class="showNav ? 'bottom-14' : 'bottom-4'"
+                >
+                    {{ currentItem.altText }}
+                </div>
 
                 <div
                     v-if="showNav"

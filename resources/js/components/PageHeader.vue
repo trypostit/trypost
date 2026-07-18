@@ -9,7 +9,7 @@ defineProps<{
 <template>
     <header class="space-y-1">
         <h1
-            class="text-4xl font-semibold leading-tight text-foreground"
+            class="text-2xl font-semibold leading-tight text-foreground sm:text-4xl"
             style="font-family: var(--font-display)"
         >
             {{ title }}

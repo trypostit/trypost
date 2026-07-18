@@ -10,6 +10,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { members as membersRoute } from '@/routes/app';
 import { index as apiKeysRoute } from '@/routes/app/api-keys';
 import { brand as brandRoute, settings as workspaceSettings } from '@/routes/app/workspace';
+import type { ContentLanguageOption } from '@/types';
 
 interface Workspace {
     id: string;
@@ -30,6 +31,7 @@ defineProps<{
     availableFonts: string[];
     availableImageStyles: string[];
     availableVoiceTraits: Record<string, string[]>;
+    availableContentLanguages: ContentLanguageOption[];
 }>();
 
 const tabs = computed(() => [
@@ -57,6 +59,7 @@ const tabs = computed(() => [
                 :available-fonts="availableFonts"
                 :available-image-styles="availableImageStyles"
                 :available-voice-traits="availableVoiceTraits"
+                :available-content-languages="availableContentLanguages"
             />
         </div>
     </AppLayout>

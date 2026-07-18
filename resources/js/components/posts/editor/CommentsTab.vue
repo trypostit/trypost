@@ -78,7 +78,6 @@ const newBody = ref('');
 const replyingTo = ref<Comment | null>(null);
 const editingComment = ref<Comment | null>(null);
 const editBody = ref('');
-const hoveredCommentId = ref<string | null>(null);
 const emojiPickerCommentId = ref<string | null>(null);
 
 const scrollContainer = ref<HTMLDivElement | null>(null);
@@ -494,8 +493,7 @@ watch(() => props.postId, () => {
                         :data-comment-id="comment.id"
                         class="group relative rounded-lg py-1.5 px-2 transition-colors"
                         :class="highlightedId === comment.id ? 'bg-violet-100 ring-2 ring-foreground' : 'hover:bg-foreground/5'"
-                        @mouseenter="hoveredCommentId = comment.id"
-                        @mouseleave="hoveredCommentId = null; emojiPickerCommentId = null"
+                        @mouseleave="emojiPickerCommentId = null"
                     >
                         <!-- Editing mode -->
                         <div v-if="editingComment?.id === comment.id" class="space-y-2">
@@ -556,19 +554,19 @@ watch(() => props.postId, () => {
 
                                 <!-- Floating toolbar -->
                                 <div
-                                    v-if="hoveredCommentId === comment.id && editingComment?.id !== comment.id"
-                                    class="absolute -top-3 right-2 z-50 flex items-center gap-0.5 rounded-md border-2 border-foreground bg-card px-1 py-0.5 shadow-2xs"
+                                    v-if="editingComment?.id !== comment.id"
+                                    class="absolute -top-3 right-2 z-50 flex items-center gap-0.5 rounded-md border-2 border-foreground bg-card px-1 py-0.5 opacity-100 shadow-2xs transition-opacity lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
                                 >
                                     <TooltipProvider :delay-duration="200">
                                         <Tooltip>
                                             <TooltipTrigger as-child>
-                                                <button class="rounded p-1 text-muted-foreground hover:bg-foreground/5 hover:text-foreground" @mouseenter="showEmojiPicker(comment.id)"><IconMoodSmile class="h-3.5 w-3.5" /></button>
+                                                <button class="rounded p-1 text-muted-foreground hover:bg-foreground/5 hover:text-foreground" @click="showEmojiPicker(comment.id)"><IconMoodSmile class="h-3.5 w-3.5" /></button>
                                             </TooltipTrigger>
                                             <TooltipContent side="top" class="text-xs">React</TooltipContent>
                                         </Tooltip>
                                         <Tooltip>
                                             <TooltipTrigger as-child>
-                                                <button class="rounded p-1 text-muted-foreground hover:bg-foreground/5 hover:text-foreground" @click="startReply(comment)"><IconArrowBackUp class="h-3.5 w-3.5" /></button>
+                                                <button data-testid="comment-reply" class="rounded p-1 text-muted-foreground hover:bg-foreground/5 hover:text-foreground" @click="startReply(comment)"><IconArrowBackUp class="h-3.5 w-3.5" /></button>
                                             </TooltipTrigger>
                                             <TooltipContent side="top" class="text-xs">{{ $t('comments.reply') }}</TooltipContent>
                                         </Tooltip>
@@ -607,8 +605,7 @@ watch(() => props.postId, () => {
                             :data-comment-id="reply.id"
                             class="group relative ml-8 rounded-lg py-1.5 px-2 transition-colors"
                             :class="highlightedId === reply.id ? 'bg-violet-100 ring-2 ring-foreground' : 'hover:bg-foreground/5'"
-                            @mouseenter="hoveredCommentId = reply.id"
-                            @mouseleave="hoveredCommentId = null; emojiPickerCommentId = null"
+                            @mouseleave="emojiPickerCommentId = null"
                         >
                             <!-- Editing reply -->
                             <div v-if="editingComment?.id === reply.id" class="space-y-2">
@@ -669,13 +666,13 @@ watch(() => props.postId, () => {
 
                                     <!-- Reply floating toolbar -->
                                     <div
-                                        v-if="hoveredCommentId === reply.id && editingComment?.id !== reply.id"
-                                        class="absolute -top-3 right-2 z-50 flex items-center gap-0.5 rounded-md border-2 border-foreground bg-card px-1 py-0.5 shadow-2xs"
+                                        v-if="editingComment?.id !== reply.id"
+                                        class="absolute -top-3 right-2 z-50 flex items-center gap-0.5 rounded-md border-2 border-foreground bg-card px-1 py-0.5 opacity-100 shadow-2xs transition-opacity lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
                                     >
                                         <TooltipProvider :delay-duration="200">
                                             <Tooltip>
                                                 <TooltipTrigger as-child>
-                                                    <button class="rounded p-1 text-muted-foreground hover:bg-foreground/5 hover:text-foreground" @mouseenter="showEmojiPicker(reply.id)"><IconMoodSmile class="h-3.5 w-3.5" /></button>
+                                                    <button class="rounded p-1 text-muted-foreground hover:bg-foreground/5 hover:text-foreground" @click="showEmojiPicker(reply.id)"><IconMoodSmile class="h-3.5 w-3.5" /></button>
                                                 </TooltipTrigger>
                                                 <TooltipContent side="top" class="text-xs">React</TooltipContent>
                                             </Tooltip>

@@ -9,13 +9,17 @@ import NetworkConnectGrid, {
     type ConnectedAccount,
 } from '@/components/accounts/NetworkConnectGrid.vue';
 import { Button } from '@/components/ui/button';
+import { useTracking } from '@/composables/useTracking';
 
 const props = defineProps<{
     platforms: AvailablePlatform[];
     accounts: ConnectedAccount[];
+    plan: { name: string; interval: string };
 }>();
 
 const form = useForm({});
+
+const { trackBeginCheckout } = useTracking();
 
 const hasConnected = computed((): boolean => props.accounts.length > 0);
 
@@ -23,6 +27,8 @@ const submit = (): void => {
     if (!hasConnected.value || form.processing) {
         return;
     }
+
+    trackBeginCheckout({ name: props.plan.name, interval: props.plan.interval });
 
     form.post(checkout.url());
 };

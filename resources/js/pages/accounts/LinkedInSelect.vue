@@ -93,7 +93,7 @@ const organizationUrl = (vanity: string | null): string | null =>
                     class="flex items-center gap-4 rounded-lg border bg-card p-4"
                     dusk="linkedin-identity-person"
                 >
-                    <Avatar class="h-12 w-12 rounded-lg">
+                    <Avatar class="h-12 w-12 shrink-0 rounded-lg">
                         <AvatarImage v-if="person.avatar" :src="person.avatar" class="object-cover" />
                         <AvatarFallback class="rounded-lg bg-blue-100 dark:bg-blue-900">
                             <IconUser class="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -121,7 +121,7 @@ const organizationUrl = (vanity: string | null): string | null =>
                             @click="openExternal(personUrl(person.vanity_name))"
                         >
                             <IconExternalLink class="h-4 w-4" />
-                            {{ $t('accounts.linkedin.view') }}
+                            <span class="hidden sm:inline">{{ $t('accounts.linkedin.view') }}</span>
                         </Button>
                         <Button size="sm" dusk="choose-person" :disabled="form.processing" @click="choosePerson">
                             {{ $t('accounts.linkedin.choose') }}
@@ -135,7 +135,7 @@ const organizationUrl = (vanity: string | null): string | null =>
                     class="flex items-center gap-4 rounded-lg border bg-card p-4"
                     dusk="linkedin-identity-organization"
                 >
-                    <Avatar class="h-12 w-12 rounded-lg">
+                    <Avatar class="h-12 w-12 shrink-0 rounded-lg">
                         <AvatarImage v-if="org.logo" :src="org.logo" class="object-cover" />
                         <AvatarFallback class="rounded-lg bg-blue-100 dark:bg-blue-900">
                             <IconBuilding class="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -163,7 +163,7 @@ const organizationUrl = (vanity: string | null): string | null =>
                             @click="openExternal(organizationUrl(org.vanity_name))"
                         >
                             <IconExternalLink class="h-4 w-4" />
-                            {{ $t('accounts.linkedin.view') }}
+                            <span class="hidden sm:inline">{{ $t('accounts.linkedin.view') }}</span>
                         </Button>
                         <Button size="sm" dusk="choose-organization" :disabled="form.processing" @click="chooseOrganization(org)">
                             {{ $t('accounts.linkedin.choose') }}

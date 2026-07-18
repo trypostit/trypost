@@ -73,7 +73,7 @@ const igUrl = (username: string): string => `https://www.instagram.com/${usernam
                     class="flex items-center gap-4 rounded-lg border bg-card p-4"
                     dusk="instagram-page"
                 >
-                    <Avatar class="h-12 w-12 rounded-lg">
+                    <Avatar class="h-12 w-12 shrink-0 rounded-lg">
                         <AvatarImage v-if="page.ig_picture" :src="page.ig_picture" class="object-cover" />
                         <AvatarFallback class="rounded-lg bg-pink-100 dark:bg-pink-900">
                             <IconBrandInstagram class="h-6 w-6 text-pink-600 dark:text-pink-400" />
@@ -90,7 +90,7 @@ const igUrl = (username: string): string => `https://www.instagram.com/${usernam
                             @click="openExternal(igUrl(page.ig_username))"
                         >
                             <IconExternalLink class="h-4 w-4" />
-                            {{ $t('accounts.instagram_facebook.view') }}
+                            <span class="hidden sm:inline">{{ $t('accounts.instagram_facebook.view') }}</span>
                         </Button>
                         <Button size="sm" dusk="choose-instagram-page" :disabled="form.processing" @click="handleSelectPage(page)">
                             {{ $t('accounts.instagram_facebook.choose') }}

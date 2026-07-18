@@ -113,11 +113,11 @@ watch(open, (isOpen) => {
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0 flex-1 space-y-1.5">
                             <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-relaxed">
-                                <span class="rounded-md border-2 border-foreground bg-rose-100 px-1.5 py-0.5 font-bold text-rose-700 line-through decoration-rose-700/60 shadow-2xs">
+                                <span class="rounded-md border-2 border-foreground bg-rose-100 px-1.5 py-0.5 font-bold text-rose-700 line-through decoration-rose-700/60 shadow-2xs break-words">
                                     {{ s.original }}
                                 </span>
                                 <span class="font-bold text-foreground/40">→</span>
-                                <span class="rounded-md border-2 border-foreground bg-emerald-100 px-1.5 py-0.5 font-bold text-emerald-700 shadow-2xs">
+                                <span class="rounded-md border-2 border-foreground bg-emerald-100 px-1.5 py-0.5 font-bold text-emerald-700 shadow-2xs break-words">
                                     {{ s.suggestion }}
                                 </span>
                             </p>

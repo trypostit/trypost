@@ -405,6 +405,103 @@ test('pinterest publisher includes title and link when provided', function () {
     });
 });
 
+test('pinterest publisher sends alt text from image meta capped to platform max', function () {
+    $longAlt = str_repeat('x', 600);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/image.jpg',
+                'url' => 'https://example.com/media/2026-01/image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'image.jpg',
+                'meta' => ['alt_text' => $longAlt],
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        '*/v5/pins' => Http::response([
+            'id' => 'pin_123456',
+        ], 200),
+        '*' => Http::response('fake-image-content', 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    $expectedAlt = mb_substr($longAlt, 0, Platform::Pinterest->altTextMaxLength());
+
+    Http::assertSent(function ($request) use ($expectedAlt) {
+        return str_contains($request->url(), '/v5/pins')
+            && data_get($request->data(), 'alt_text') === $expectedAlt
+            && strlen($expectedAlt) === Platform::Pinterest->altTextMaxLength();
+    });
+});
+
+test('pinterest publisher omits alt_text when image has no alt text set', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/image.jpg',
+                'url' => 'https://example.com/media/2026-01/image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'image.jpg',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        '*/v5/pins' => Http::response([
+            'id' => 'pin_123456',
+        ], 200),
+        '*' => Http::response('fake-image-content', 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), '/v5/pins')
+            && ! array_key_exists('alt_text', $request->data());
+    });
+});
+
+test('pinterest publisher ignores postPlatform meta alt_text and only reads image alt', function () {
+    $this->postPlatform->update([
+        'meta' => [
+            'board_id' => 'board_123',
+            'alt_text' => 'legacy per-platform alt text that should be ignored',
+        ],
+    ]);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/image.jpg',
+                'url' => 'https://example.com/media/2026-01/image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'image.jpg',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        '*/v5/pins' => Http::response([
+            'id' => 'pin_123456',
+        ], 200),
+        '*' => Http::response('fake-image-content', 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), '/v5/pins')
+            && ! array_key_exists('alt_text', $request->data());
+    });
+});
+
 test('pinterest publisher can get boards', function () {
     Http::fake([
         '*/v5/boards*' => Http::response([

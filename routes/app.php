@@ -9,6 +9,7 @@ use App\Http\Controllers\App\AutomationController;
 use App\Http\Controllers\App\BillingController;
 use App\Http\Controllers\App\DiscordController as AppDiscordController;
 use App\Http\Controllers\App\GiphyController;
+use App\Http\Controllers\App\LinkPreviewController;
 use App\Http\Controllers\App\NotificationController;
 use App\Http\Controllers\App\OnboardingController;
 use App\Http\Controllers\App\PostAiCreateController;
@@ -187,6 +188,9 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::put('posts/{post}', [PostController::class, 'update'])->name('app.posts.update');
     Route::delete('posts/{post}', [PostController::class, 'destroy'])->name('app.posts.destroy');
     Route::post('posts/{post}/duplicate', [PostController::class, 'duplicate'])->name('app.posts.duplicate');
+    Route::post('posts/link-preview', LinkPreviewController::class)
+        ->middleware('throttle:30,1')
+        ->name('app.posts.link-preview');
 
     // Post Templates
     Route::get('post-templates', [PostTemplateController::class, 'index'])->name('app.post-templates.index');

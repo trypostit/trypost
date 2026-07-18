@@ -11,6 +11,7 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Media\MediaOptimizer;
 use App\Services\Social\InstagramPublisher;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -140,11 +141,11 @@ test('instagram publisher can publish reel', function () {
     });
 });
 
-test('instagram publisher can publish image story', function () {
+test('instagram publisher fits an image story to 9:16 and posts the hosted copy', function () {
+    Storage::fake();
     $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
 
     $this->post->update([
-
         'media' => [
             [
                 'id' => 'test-media-story',
@@ -154,8 +155,18 @@ test('instagram publisher can publish image story', function () {
                 'original_filename' => 'story.jpg',
             ],
         ],
-
     ]);
+
+    // The fit itself is covered by MediaOptimizerTest; here we only assert the
+    // story is built from the hosted, fitted copy (9:16 canvas).
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('fitToCanvas')->once()->with(Mockery::type('string'), 1080, 1920)->andReturnUsing(function (string $tempFile) {
+        $out = tempnam(sys_get_temp_dir(), 'ig_fit_');
+        copy($tempFile, $out);
+
+        return $out;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
 
     Http::fake([
         'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response([
@@ -170,6 +181,7 @@ test('instagram publisher can publish image story', function () {
         'https://graph.instagram.com/v25.0/story-123456789*' => Http::response([
             'permalink' => 'https://www.instagram.com/stories/testuser/123/',
         ], 200),
+        '*' => Http::response(file_get_contents(__DIR__.'/../../../fixtures/1x1.png'), 200, ['Content-Type' => 'image/png']),
     ]);
 
     $result = $this->publisher->publish($this->postPlatform);
@@ -177,8 +189,138 @@ test('instagram publisher can publish image story', function () {
     expect($result['id'])->toBe('story-123456789');
 
     Http::assertSent(function ($request) {
-        return str_contains($request->url(), '/ig_123456789/media');
+        if (! str_contains($request->url(), '/ig_123456789/media') || str_contains($request->url(), 'media_publish')) {
+            return false;
+        }
+        $imageUrl = (string) data_get($request->data(), 'image_url', '');
+
+        return str_contains($imageUrl, 'social-crops/') && ! str_contains($imageUrl, 'example.com');
     });
+});
+
+test('instagram publisher fits a real off-ratio story image to a 1080x1920 jpeg', function () {
+    Storage::fake();
+    $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-story',
+                'path' => 'media/2026-01/story.jpg',
+                'url' => 'https://example.com/media/2026-01/story.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'story.jpg',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/2026-01/story.jpg' => Http::response(fakeJpegBytes(1200, 800), 200),
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'story-container-123'], 200),
+        'https://graph.instagram.com/v25.0/story-container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response(['id' => 'story-123456789'], 200),
+        'https://graph.instagram.com/v25.0/story-123456789*' => Http::response(['permalink' => 'https://www.instagram.com/stories/testuser/123/'], 200),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('story-123456789');
+
+    $hosted = collect(Storage::allFiles())->first(fn (string $path) => str_starts_with($path, 'social-crops/'));
+    expect($hosted)->not->toBeNull();
+
+    $tempFile = tempnam(sys_get_temp_dir(), 'verify_story_');
+    file_put_contents($tempFile, Storage::get($hosted));
+    $fitted = (new ImageManager(Driver::class))->decodePath($tempFile);
+    expect($fitted->width())->toBe(1080)
+        ->and($fitted->height())->toBe(1920);
+    @unlink($tempFile);
+});
+
+test('instagram publisher throws a clean exception when the story image is not decodable', function () {
+    Storage::fake();
+    $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-story',
+                'path' => 'media/story.jpg',
+                'url' => 'https://example.com/media/story.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'story.jpg',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/story.jpg' => Http::response('<html>error</html>', 200, ['Content-Type' => 'text/html']),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(InstagramPublishException::class, 'Failed to process image for story fitting');
+});
+
+test('instagram publisher surfaces a publish exception when the story container fails to create', function () {
+    Storage::fake();
+    $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-story',
+                'path' => 'media/story.jpg',
+                'url' => 'https://example.com/media/story.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'story.jpg',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/story.jpg' => Http::response(fakeJpegBytes(1200, 800), 200),
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['error' => ['message' => 'Invalid media', 'code' => 100]], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(InstagramPublishException::class);
+});
+
+test('instagram publisher does not leak the fitted temp file when hosting the story image fails', function () {
+    $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-story',
+                'path' => 'media/story.jpg',
+                'url' => 'https://example.com/media/story.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'story.jpg',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/story.jpg' => Http::response(fakeJpegBytes(1200, 800), 200),
+    ]);
+
+    $fittedPath = null;
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('fitToCanvas')->once()->andReturnUsing(function (string $tempFile) use (&$fittedPath) {
+        $fittedPath = tempnam(sys_get_temp_dir(), 'media_fit_');
+        copy($tempFile, $fittedPath);
+
+        return $fittedPath;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Storage::shouldReceive('put')->once()->andThrow(new RuntimeException('disk full'));
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))->toThrow(RuntimeException::class);
+
+    expect($fittedPath)->not->toBeNull()
+        ->and(file_exists($fittedPath))->toBeFalse();
 });
 
 test('instagram publisher can publish video story', function () {
@@ -797,6 +939,73 @@ test('feed image throws when the source image cannot be downloaded for cropping'
         ->toThrow(InstagramPublishException::class, 'Failed to download image for cropping');
 });
 
+test('story image throws when the source image cannot be downloaded for fitting', function () {
+    Storage::fake();
+
+    $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
+    $this->post->update([
+        'media' => [
+            ['id' => 'm1', 'path' => 'media/a.jpg', 'url' => 'https://example.com/media/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg'],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/a.jpg' => Http::response('', 404),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(InstagramPublishException::class, 'Failed to download image for story fitting');
+});
+
+test('feed image throws a clean exception when the crop source is not decodable', function () {
+    Storage::fake();
+
+    $this->postPlatform->update(['meta' => ['aspect_ratio' => '4:5']]);
+    $this->post->update([
+        'media' => [
+            ['id' => 'm1', 'path' => 'media/a.jpg', 'url' => 'https://example.com/media/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg'],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/a.jpg' => Http::response('<html>error</html>', 200, ['Content-Type' => 'text/html']),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(InstagramPublishException::class, 'Failed to process image for cropping');
+});
+
+test('instagram publisher does not leak the cropped temp file when hosting the feed image fails', function () {
+    $this->postPlatform->update(['meta' => ['aspect_ratio' => '4:5']]);
+
+    $this->post->update([
+        'media' => [
+            ['id' => 'm1', 'path' => 'media/a.jpg', 'url' => 'https://example.com/media/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg'],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/a.jpg' => Http::response(fakeJpegBytes(1200, 800), 200),
+    ]);
+
+    $croppedPath = null;
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('cropToAspectRatio')->once()->andReturnUsing(function (string $tempFile) use (&$croppedPath) {
+        $croppedPath = tempnam(sys_get_temp_dir(), 'media_crop_');
+        copy($tempFile, $croppedPath);
+
+        return $croppedPath;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Storage::shouldReceive('put')->once()->andThrow(new RuntimeException('disk full'));
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))->toThrow(RuntimeException::class);
+
+    expect($croppedPath)->not->toBeNull()
+        ->and(file_exists($croppedPath))->toBeFalse();
+});
+
 test('feed image with original aspect ratio bypasses crop', function () {
     Storage::fake();
 
@@ -912,3 +1121,121 @@ test('carousel applies the chosen aspect ratio crop to every image', function (s
     '1:1' => ['1:1', 1.0],
     '4:5' => ['4:5', 4 / 5],
 ]);
+
+test('instagram publisher sends capped alt text on single image container', function () {
+    $longAlt = str_repeat('a', 1500);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+                'meta' => ['alt_text' => $longAlt],
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        '*/ig_123456789/media' => Http::response(['id' => 'container-123'], 200),
+        '*/container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        '*/ig_123456789/media_publish' => Http::response(['id' => 'media-alt-123'], 200),
+        '*/media-alt-123*' => Http::response(['permalink' => 'https://www.instagram.com/p/ALT123/'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    $expectedAlt = mb_substr($longAlt, 0, Platform::Instagram->altTextMaxLength());
+
+    Http::assertSent(function ($request) use ($expectedAlt) {
+        return str_ends_with($request->url(), '/ig_123456789/media')
+            && data_get($request->data(), 'alt_text') === $expectedAlt
+            && strlen($expectedAlt) === Platform::Instagram->altTextMaxLength();
+    });
+});
+
+test('instagram publisher omits alt_text from single image container when no alt text is set', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        '*/ig_123456789/media' => Http::response(['id' => 'container-123'], 200),
+        '*/container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        '*/ig_123456789/media_publish' => Http::response(['id' => 'media-no-alt-123'], 200),
+        '*/media-no-alt-123*' => Http::response(['permalink' => 'https://www.instagram.com/p/NOALT123/'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        return str_ends_with($request->url(), '/ig_123456789/media')
+            && ! array_key_exists('alt_text', $request->data());
+    });
+});
+
+test('instagram publisher sends alt text on image carousel children but never on video children', function () {
+    $imageAlt = str_repeat('x', 1500);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-image',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+                'meta' => ['alt_text' => $imageAlt],
+            ],
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/test-video.mp4',
+                'url' => 'https://example.com/media/2026-01/test-video.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'test.mp4',
+                'meta' => ['alt_text' => 'video alt text must never be sent'],
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        '*/ig_123456789/media' => Http::sequence()
+            ->push(['id' => 'child-1'], 200)
+            ->push(['id' => 'child-2'], 200)
+            ->push(['id' => 'carousel-container-123'], 200),
+        '*/child-2*' => Http::response(['status_code' => 'FINISHED'], 200),
+        '*/carousel-container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        '*/ig_123456789/media_publish' => Http::response(['id' => 'carousel-alt-123'], 200),
+        '*/carousel-alt-123*' => Http::response(['permalink' => 'https://www.instagram.com/p/CAROUSELALT/'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    $expectedAlt = mb_substr($imageAlt, 0, Platform::Instagram->altTextMaxLength());
+
+    Http::assertSent(function ($request) use ($expectedAlt) {
+        $data = $request->data();
+
+        return str_ends_with($request->url(), '/ig_123456789/media')
+            && data_get($data, 'image_url') !== null
+            && data_get($data, 'alt_text') === $expectedAlt;
+    });
+
+    Http::assertSent(function ($request) {
+        $data = $request->data();
+
+        return str_ends_with($request->url(), '/ig_123456789/media')
+            && data_get($data, 'video_url') !== null
+            && ! array_key_exists('alt_text', $data);
+    });
+});

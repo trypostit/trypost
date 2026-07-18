@@ -66,7 +66,7 @@ abstract class AbstractLinkedInPublisher
         $this->account = $postPlatform->socialAccount;
         $this->hasRetried = false;
 
-        if ($this->account->is_token_expired || $this->account->is_token_expiring_soon) {
+        if ($this->account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($this->account);
         }
 
@@ -121,10 +121,14 @@ abstract class AbstractLinkedInPublisher
         $payload = $this->basePayload($content);
 
         if ($media->isNotEmpty()) {
-            $mediaUrn = $this->uploadMedia($media->first());
+            $item = $media->first();
+            $mediaUrn = $this->uploadMedia($item);
 
             if ($mediaUrn) {
-                $payload['content'] = ['media' => ['id' => $mediaUrn]];
+                $payload['content'] = ['media' => array_filter([
+                    'id' => $mediaUrn,
+                    'altText' => $item->isImage() ? $item->altTextFor($this->platform()) : null,
+                ], fn ($v) => $v !== null)];
             }
         }
 
@@ -143,10 +147,10 @@ abstract class AbstractLinkedInPublisher
             $imageUrn = $this->uploadImage($item);
 
             if ($imageUrn) {
-                $images[] = [
+                $images[] = array_filter([
                     'id' => $imageUrn,
-                    'altText' => $item->original_filename ?? 'Carousel image',
-                ];
+                    'altText' => $item->altTextFor($this->platform()),
+                ], fn ($v) => $v !== null);
             }
         }
 

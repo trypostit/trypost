@@ -168,6 +168,117 @@ test('uploads media as a multipart attachment', function () {
     });
 });
 
+test('sets the attachment description from image alt text, capped at the platform max', function () {
+    $longAlt = str_repeat('a', 2000);
+
+    $this->post->update([
+        'media' => [[
+            'id' => 'm1',
+            'path' => 'media/2026-01/pic.jpg',
+            'url' => 'https://example.com/media/2026-01/pic.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'pic.jpg',
+            'meta' => ['alt_text' => $longAlt],
+        ]],
+    ]);
+
+    $this->mock(MediaOptimizer::class)
+        ->shouldReceive('optimizeImage')
+        ->andReturnUsing(fn () => tap(tempnam(sys_get_temp_dir(), 'discord_test_'), fn ($f) => file_put_contents($f, str_repeat('x', 1024))));
+
+    Http::fake([
+        config('trypost.platforms.discord.api').'/guilds/*/channels' => Http::response([['id' => '444555666', 'name' => 'general', 'type' => 0]], 200),
+        config('trypost.platforms.discord.api').'/guilds/*/roles' => Http::response([['id' => '111222333', 'name' => '@everyone', 'permissions' => '3072']], 200),
+        config('trypost.platforms.discord.api').'/guilds/*/members/*' => Http::response(['roles' => []], 200),
+        'example.com/*' => Http::response(str_repeat('x', 1024), 200),
+        config('trypost.platforms.discord.api').'/channels/*/messages' => Http::response(['id' => '902'], 200),
+    ]);
+
+    $this->publisher->publish(($this->makePostPlatform)());
+
+    $expectedAlt = mb_substr($longAlt, 0, Platform::Discord->altTextMaxLength());
+
+    Http::assertSent(function ($request) use ($expectedAlt) {
+        if (! str_contains($request->url(), '/messages')) {
+            return false;
+        }
+        $payloadPart = collect($request->data())->firstWhere('name', 'payload_json');
+        $payload = json_decode(data_get($payloadPart, 'contents'), true);
+
+        return data_get($payload, 'attachments.0.description') === $expectedAlt
+            && mb_strlen($expectedAlt) === Platform::Discord->altTextMaxLength();
+    });
+});
+
+test('omits the attachment description when the image has no alt text', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'm1',
+            'path' => 'media/2026-01/pic.jpg',
+            'url' => 'https://example.com/media/2026-01/pic.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'pic.jpg',
+        ]],
+    ]);
+
+    $this->mock(MediaOptimizer::class)
+        ->shouldReceive('optimizeImage')
+        ->andReturnUsing(fn () => tap(tempnam(sys_get_temp_dir(), 'discord_test_'), fn ($f) => file_put_contents($f, str_repeat('x', 1024))));
+
+    Http::fake([
+        config('trypost.platforms.discord.api').'/guilds/*/channels' => Http::response([['id' => '444555666', 'name' => 'general', 'type' => 0]], 200),
+        config('trypost.platforms.discord.api').'/guilds/*/roles' => Http::response([['id' => '111222333', 'name' => '@everyone', 'permissions' => '3072']], 200),
+        config('trypost.platforms.discord.api').'/guilds/*/members/*' => Http::response(['roles' => []], 200),
+        'example.com/*' => Http::response(str_repeat('x', 1024), 200),
+        config('trypost.platforms.discord.api').'/channels/*/messages' => Http::response(['id' => '903'], 200),
+    ]);
+
+    $this->publisher->publish(($this->makePostPlatform)());
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/messages')) {
+            return false;
+        }
+        $payloadPart = collect($request->data())->firstWhere('name', 'payload_json');
+        $payload = json_decode(data_get($payloadPart, 'contents'), true);
+
+        return ! array_key_exists('description', data_get($payload, 'attachments.0'));
+    });
+});
+
+test('does not set a description on a non-image attachment even if it carries alt text', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'm1',
+            'path' => 'media/2026-01/clip.mp4',
+            'url' => 'https://example.com/media/2026-01/clip.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'clip.mp4',
+            'meta' => ['alt_text' => 'alt text must not be sent for a video'],
+        ]],
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.discord.api').'/guilds/*/channels' => Http::response([['id' => '444555666', 'name' => 'general', 'type' => 0]], 200),
+        config('trypost.platforms.discord.api').'/guilds/*/roles' => Http::response([['id' => '111222333', 'name' => '@everyone', 'permissions' => '3072']], 200),
+        config('trypost.platforms.discord.api').'/guilds/*/members/*' => Http::response(['roles' => []], 200),
+        'example.com/*' => Http::response(str_repeat('x', 1024), 200),
+        config('trypost.platforms.discord.api').'/channels/*/messages' => Http::response(['id' => '904'], 200),
+    ]);
+
+    $this->publisher->publish(($this->makePostPlatform)());
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/messages')) {
+            return false;
+        }
+        $payloadPart = collect($request->data())->firstWhere('name', 'payload_json');
+        $payload = json_decode(data_get($payloadPart, 'contents'), true);
+
+        return ! array_key_exists('description', data_get($payload, 'attachments.0'));
+    });
+});
+
 test('throws when no channel is selected', function () {
     expect(fn () => $this->publisher->publish(($this->makePostPlatform)(meta: [])))
         ->toThrow(DiscordPublishException::class);

@@ -41,14 +41,14 @@ const switchToWorkspace = (workspace: Workspace) => {
             <div
                 v-for="workspace in workspaces"
                 :key="workspace.id"
-                class="flex cursor-pointer items-center gap-3 rounded-lg border p-4 transition-colors hover:bg-accent/50"
-                :class="workspace.id === currentWorkspaceId ? 'border-primary/50 bg-accent/30' : ''"
+                class="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-foreground bg-card p-4 shadow-2xs transition-all hover:-translate-y-0.5 hover:shadow-md"
+                :class="workspace.id === currentWorkspaceId ? 'bg-violet-100' : ''"
                 @click="switchToWorkspace(workspace)"
             >
                 <Avatar
                     :src="workspace.logo_url"
                     :name="workspace.name"
-                    class="size-10 shrink-0 rounded-lg"
+                    class="size-10 shrink-0 rounded-lg border-2 border-foreground"
                     fallback-class="bg-muted text-muted-foreground"
                 />
                 <div class="min-w-0 flex-1">

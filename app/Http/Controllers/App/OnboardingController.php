@@ -150,9 +150,15 @@ class OnboardingController extends Controller
                 'network' => $platform->network(),
             ])->values();
 
+        $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
+
         return Inertia::render('onboarding/Connect', [
             'platforms' => $platforms,
             'accounts' => SocialAccountResource::collection($accounts)->resolve(),
+            'plan' => [
+                'name' => $plan->name,
+                'interval' => 'monthly',
+            ],
         ]);
     }
 

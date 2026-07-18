@@ -42,7 +42,7 @@ const segments = computed<Segment[]>(() => {
 </script>
 
 <template>
-    <p class="mt-0.5 whitespace-pre-wrap text-sm">
+    <p class="mt-0.5 whitespace-pre-wrap break-words text-sm">
         <template v-for="(seg, i) in segments" :key="i">
             <span
                 v-if="seg.type === 'mention'"

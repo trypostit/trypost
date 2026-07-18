@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Brand;
 
+use App\Enums\Workspace\ContentLanguage;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\DomCrawler\UriResolver;
 
@@ -291,14 +292,7 @@ final class HomepageMetaExtractor
             return null;
         }
 
-        $lower = strtolower($lang);
-
-        return match (true) {
-            str_starts_with($lower, 'pt') => 'pt-BR',
-            str_starts_with($lower, 'es') => 'es',
-            str_starts_with($lower, 'en') => 'en',
-            default => null,
-        };
+        return ContentLanguage::fromHtmlLang($lang)?->value;
     }
 
     private function extractLogoUrl(Crawler $crawler, string $baseUrl): ?string

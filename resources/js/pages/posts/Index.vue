@@ -183,22 +183,22 @@ useWorkspaceEcho(
             <PageHeader :title="pageTitle" />
 
             <!-- Toolbar -->
-            <div class="flex items-center justify-between gap-3">
-                <div class="flex items-center gap-3">
-                    <div class="relative">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <div class="relative w-full sm:w-64">
                         <IconSearch class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground/60" />
                         <Input
                             v-model="searchQuery"
                             :placeholder="trans('posts.search')"
-                            class="w-64 pl-9"
+                            class="w-full pl-9"
                         />
                     </div>
 
                     <LabelFilter v-if="labels.length" v-model="selectedLabelIds" :labels="labels" />
                 </div>
 
-                <Link v-if="canCreatePost" :href="createPost.url()">
-                    <Button>{{ $t('posts.new_post') }}</Button>
+                <Link v-if="canCreatePost" :href="createPost.url()" class="w-full sm:w-auto">
+                    <Button class="w-full sm:w-auto">{{ $t('posts.new_post') }}</Button>
                 </Link>
             </div>
 

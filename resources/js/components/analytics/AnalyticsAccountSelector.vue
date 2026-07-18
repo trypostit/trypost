@@ -48,7 +48,7 @@ const select = (account: AnalyticsAccount) => {
                 role="combobox"
                 :aria-expanded="open"
                 :disabled="accounts.length === 0"
-                class="h-auto min-w-[240px] justify-start gap-3 px-3 py-2 text-left font-medium"
+                class="h-auto w-full justify-start gap-3 px-3 py-2 text-left font-medium sm:w-auto sm:min-w-[240px]"
             >
                 <template v-if="selected">
                     <div class="relative shrink-0">

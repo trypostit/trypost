@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Ai;
 
+use App\Enums\Workspace\ContentLanguage;
 use App\Enums\Workspace\ImageStyle;
 use App\Support\HexColorName;
 use Illuminate\Support\Facades\Log;
@@ -89,11 +90,7 @@ class AiImageClient
 
     private function languageName(string $code): string
     {
-        return match ($code) {
-            'pt-BR' => 'Brazilian Portuguese',
-            'es' => 'Spanish',
-            default => 'English',
-        };
+        return (ContentLanguage::tryFrom($code) ?? ContentLanguage::DEFAULT)->englishName();
     }
 
     /**

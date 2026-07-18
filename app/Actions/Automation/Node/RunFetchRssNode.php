@@ -13,7 +13,6 @@ use App\Services\Automation\ExpressionResolver;
 use App\Services\Automation\FeedParser;
 use App\Services\Brand\SafeHttpFetcher;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use Throwable;
 
@@ -51,19 +50,17 @@ class RunFetchRssNode
             return NodeRunResult::failed(__('automations.errors.fetch_rss_missing_url'));
         }
 
+        // SafeHttpFetcher::get() re-validates every redirect hop against the SSRF
+        // guard (not just the initial URL), so a public feed that 302s to an
+        // internal host is never followed. It throws on a blocked hop, connection
+        // failure, non-2xx status, or an excessive redirect chain — all of which
+        // are legitimate "this feed couldn't be fetched" failures for this node.
         try {
-            $this->safeHttp->guardAgainstSsrf($feedUrl);
-        } catch (RuntimeException) {
-            return NodeRunResult::failed(__('automations.errors.url_not_allowed'), [
-                'reason' => 'url_not_allowed',
-                'url' => $feedUrl,
+            $response = $this->safeHttp->get($feedUrl);
+        } catch (RuntimeException $e) {
+            return NodeRunResult::failed(__('automations.errors.fetch_rss_request_failed'), [
+                'message' => $e->getMessage(),
             ]);
-        }
-
-        $response = Http::timeout(10)->get($feedUrl);
-
-        if (! $response->successful()) {
-            return NodeRunResult::failed(__('automations.errors.fetch_rss_request_failed'), ['status' => $response->status()]);
         }
 
         $items = $this->parser->parse($response->body());

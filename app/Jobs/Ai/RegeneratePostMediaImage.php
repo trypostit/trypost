@@ -282,6 +282,10 @@ class RegeneratePostMediaImage implements ShouldQueue
                     throw new RuntimeException('Media item changed before regeneration completed.');
                 }
 
+                if (($meta = data_get($items->get($currentIndex), 'meta')) !== null) {
+                    $newMediaItem['meta'] = $meta;
+                }
+
                 $items->put($currentIndex, $newMediaItem);
                 $fresh->update(['media' => $items->values()->all()]);
 

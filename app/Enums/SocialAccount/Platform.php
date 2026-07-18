@@ -128,6 +128,39 @@ enum Platform: string
     }
 
     /**
+     * Character cap the platform's API accepts for image alt text (accessibility
+     * description), or null when the platform has no alt-text field. X, LinkedIn,
+     * Instagram, Pinterest, and Discord use documented API maxes. Facebook,
+     * Threads, Mastodon, and Bluesky document no limit, so a defensive cap is
+     * used instead. Single source of truth — publishers truncate to this value,
+     * never a literal.
+     */
+    public function altTextMaxLength(): ?int
+    {
+        return match ($this) {
+            self::Bluesky => 2000,
+            self::X => 1000,
+            self::Mastodon => 1500,
+            self::LinkedIn, self::LinkedInPage => 4086,
+            self::Facebook => 1000,
+            self::Instagram, self::InstagramFacebook => 1000,
+            self::Threads => 1000,
+            self::Pinterest => 500,
+            self::Discord => 1024,
+            self::TikTok, self::YouTube, self::Telegram => null,
+        };
+    }
+
+    /**
+     * Whether the platform's API accepts image alt text (accessibility
+     * description) on published media.
+     */
+    public function supportsAltText(): bool
+    {
+        return $this->altTextMaxLength() !== null;
+    }
+
+    /**
      * Hard cap (in characters) the platform's API will accept. Going over this
      * means the post can't be published. Values are the documented API maxes:
      *
@@ -258,6 +291,60 @@ enum Platform: string
         return match ($this) {
             self::YouTube => true,
             default => false,
+        };
+    }
+
+    /**
+     * Whether this platform refreshes by extending the access_token itself
+     * (Instagram/Threads long-lived tokens) instead of exchanging a separate
+     * refresh_token. Extension-model tokens cannot be refreshed once expired,
+     * so they must be refreshed proactively while still valid — the opposite
+     * of rotating refresh_token platforms, which we avoid refreshing until
+     * they actually expire so we don't rotate a still-valid single-use token.
+     */
+    public function extendsAccessTokenOnRefresh(): bool
+    {
+        return match ($this) {
+            self::Instagram, self::Threads => true,
+            default => false,
+        };
+    }
+
+    /**
+     * The `platform` column values of the platforms that refresh by extending
+     * their access token in place (Instagram and Threads — see
+     * extendsAccessTokenOnRefresh), for use in database whereIn/whereNotIn
+     * filters. Derived from extendsAccessTokenOnRefresh() so the two never drift.
+     *
+     * @return array<int, string>
+     */
+    public static function accessTokenExtendingPlatformValues(): array
+    {
+        return array_values(array_map(
+            fn (self $platform): string => $platform->value,
+            array_filter(self::cases(), fn (self $platform): bool => $platform->extendsAccessTokenOnRefresh()),
+        ));
+    }
+
+    /**
+     * The token lifetime, in seconds, to assume when the provider's OAuth
+     * response omits expires_in. Each value is that network's own documented
+     * default:
+     *
+     *  - X: a 2-hour access token.
+     *  - Instagram / Threads: Meta's 60-day long-lived token.
+     *
+     * Networks that always return expires_in (LinkedIn, TikTok, YouTube,
+     * Pinterest), whose refresh sets a fixed lifetime directly (Bluesky), or
+     * whose tokens never expire (Facebook, Mastodon, Telegram, Discord) have no
+     * fallback here and return null.
+     */
+    public function defaultTokenTtlSeconds(): ?int
+    {
+        return match ($this) {
+            self::X => 7200,
+            self::Instagram, self::Threads => 5184000,
+            default => null,
         };
     }
 

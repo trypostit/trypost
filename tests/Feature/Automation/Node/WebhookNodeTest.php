@@ -200,6 +200,27 @@ it('resolves expressions in custom header values', function () {
     Http::assertSent(fn ($request) => $request->hasHeader('X-Token', 'tok-123'));
 });
 
+it('never follows a redirect to a private or internal host', function () {
+    Http::fake([
+        'https://93.184.216.34/*' => Http::response('', 302, ['Location' => 'http://127.0.0.1/internal']),
+        'http://127.0.0.1/*' => Http::response('internal secret', 200),
+    ]);
+
+    $run = AutomationRun::factory()->create();
+
+    $result = app(RunWebhookNode::class)($run, [
+        'url' => 'https://93.184.216.34/hook',
+        'method' => 'POST',
+        'payload_template' => '{}',
+    ]);
+
+    // The 3xx is returned as-is (not followed), so the node completes with the
+    // redirect status rather than the internal host's response.
+    expect($result->status)->toBe(Status::Completed);
+    expect($result->output['webhook']['status'])->toBe(302);
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '127.0.0.1'));
+});
+
 it('fails cleanly when the request throws a connection exception', function () {
     Http::fake(fn () => throw new ConnectionException('connection timed out'));
 

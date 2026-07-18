@@ -17,6 +17,7 @@ export interface MediaRules {
     maxVideoDurationSec?: number;
     aspectRatioMin?: number;
     aspectRatioMax?: number;
+    autoFitsImage?: boolean;
 }
 
 const MB = 1024 * 1024;
@@ -40,7 +41,7 @@ const CONTENT_TYPE_RULES: Record<string, MediaRules> = {
         maxFiles: 1, acceptImages: true, acceptVideos: true, requiresMedia: true,
         acceptsGif: false,
         maxImageBytes: 8 * MB, maxVideoBytes: 100 * MB, maxVideoDurationSec: 60,
-        aspectRatioMin: 0.5, aspectRatioMax: 0.6,
+        aspectRatioMin: 0.5, aspectRatioMax: 0.6, autoFitsImage: true,
     },
 
     // Facebook

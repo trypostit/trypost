@@ -363,6 +363,7 @@ return [
         'unschedule_cta' => 'Unschedule to edit',
 
         'tabs' => [
+            'compose' => 'Compose',
             'preview' => 'Preview',
             'channels' => 'Channels',
             'comments' => 'Comments',
@@ -376,6 +377,14 @@ return [
             'cancel' => 'Cancel',
             'add' => 'Add',
             'add_count' => 'Add :count',
+        ],
+
+        'alt_text' => [
+            'label' => 'Alt text',
+            'edit' => 'Edit alt text',
+            'placeholder' => 'Describe this image for people using screen readers',
+            'hint' => 'Published to platforms that support image descriptions.',
+            'save' => 'Save',
         ],
 
         'emoji_picker' => [

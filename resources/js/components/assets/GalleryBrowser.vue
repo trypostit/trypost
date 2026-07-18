@@ -700,7 +700,7 @@ onUnmounted(() => {
 
                         <div
                             v-if="!isPicker"
-                            class="absolute inset-0 flex flex-col justify-between bg-foreground/60 p-2 opacity-0 transition-opacity group-hover:opacity-100"
+                            class="absolute inset-0 flex flex-col justify-between bg-transparent p-2 opacity-100 transition-opacity lg:bg-foreground/60 lg:opacity-0 lg:group-hover:opacity-100"
                         >
                             <div class="flex justify-end gap-1.5">
                                 <TooltipProvider>
@@ -717,6 +717,7 @@ onUnmounted(() => {
                                     variant="outline"
                                     size="icon"
                                     class="size-8 bg-rose-100 hover:bg-rose-200"
+                                    data-testid="gallery-asset-delete"
                                     @click.stop="handleDelete(asset.id)"
                                 >
                                     <IconTrash class="size-4 text-rose-700" />
@@ -771,7 +772,7 @@ onUnmounted(() => {
                                 />
                             </div>
 
-                            <div class="absolute inset-0 flex flex-col justify-between bg-foreground/60 p-2 opacity-0 transition-opacity group-hover:opacity-100">
+                            <div class="absolute inset-0 flex flex-col justify-between bg-transparent p-2 opacity-100 transition-opacity lg:bg-foreground/60 lg:opacity-0 lg:group-hover:opacity-100">
                                 <div class="flex justify-end gap-1.5">
                                     <TooltipProvider v-if="!isPicker">
                                         <Tooltip>
@@ -868,7 +869,7 @@ onUnmounted(() => {
                                 <img :src="gif.url_preview" :alt="gif.title || 'GIF'" class="size-full object-cover" loading="lazy" />
                             </div>
 
-                            <div class="absolute inset-0 flex flex-col justify-between bg-foreground/60 p-2 opacity-0 transition-opacity group-hover:opacity-100">
+                            <div class="absolute inset-0 flex flex-col justify-between bg-transparent p-2 opacity-100 transition-opacity lg:bg-foreground/60 lg:opacity-0 lg:group-hover:opacity-100">
                                 <div class="flex justify-end gap-1.5">
                                     <TooltipProvider v-if="!isPicker">
                                         <Tooltip>

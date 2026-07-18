@@ -58,26 +58,28 @@ const clear = () => {
                 variant="outline"
                 role="combobox"
                 :aria-expanded="open"
-                class="justify-between gap-2 font-normal"
+                class="w-full justify-between gap-2 font-normal sm:w-auto"
             >
-                <IconTag class="size-4 shrink-0 opacity-60" />
+                <div class="flex min-w-0 items-center gap-2">
+                    <IconTag class="size-4 shrink-0 opacity-60" />
 
-                <template v-if="selectedLabels.length === 0">
-                    <span class="text-foreground/70">{{ trans('posts.filter_by_label') }}</span>
-                </template>
-                <template v-else>
-                    <div class="flex flex-wrap items-center gap-1">
-                        <LabelBadge
-                            v-for="label in selectedLabels.slice(0, 3)"
-                            :key="label.id"
-                            :label="label"
-                        />
-                        <span
-                            v-if="selectedLabels.length > 3"
-                            class="text-xs font-bold text-foreground/60"
-                        >+{{ selectedLabels.length - 3 }}</span>
-                    </div>
-                </template>
+                    <template v-if="selectedLabels.length === 0">
+                        <span class="text-foreground/70">{{ trans('posts.filter_by_label') }}</span>
+                    </template>
+                    <template v-else>
+                        <div class="flex flex-wrap items-center gap-1">
+                            <LabelBadge
+                                v-for="label in selectedLabels.slice(0, 3)"
+                                :key="label.id"
+                                :label="label"
+                            />
+                            <span
+                                v-if="selectedLabels.length > 3"
+                                class="text-xs font-bold text-foreground/60"
+                            >+{{ selectedLabels.length - 3 }}</span>
+                        </div>
+                    </template>
+                </div>
 
                 <TooltipProvider v-if="selectedIds.length" :delay-duration="200">
                     <Tooltip>
@@ -102,7 +104,7 @@ const clear = () => {
             </Button>
         </PopoverTrigger>
 
-        <PopoverContent class="w-[--reka-popover-trigger-width] min-w-[220px] p-0" align="start">
+        <PopoverContent class="w-(--reka-popover-trigger-width) min-w-[220px] p-0" align="start">
             <Command>
                 <CommandInput :placeholder="trans('posts.label_search_placeholder')" />
                 <CommandList>

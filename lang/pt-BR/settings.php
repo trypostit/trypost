@@ -216,6 +216,13 @@ return [
         'image_style_mockup' => 'Mockup',
         'content_language' => 'Idioma do conteúdo',
         'content_language_description' => 'Idioma usado nas legendas, hashtags e em qualquer texto dentro de imagens ou vídeos gerados por AI.',
+        'font_placeholder' => 'Selecionar uma fonte…',
+        'font_search' => 'Buscar fonte…',
+        'font_empty' => 'Nenhuma fonte encontrada.',
+        'language_placeholder' => 'Selecionar um idioma…',
+        'language_search' => 'Buscar idioma…',
+        'language_empty' => 'Nenhum idioma encontrado.',
+
     ],
 
     'members' => [

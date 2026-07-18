@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Ai\Agents\BrandAnalyzer;
 use App\Enums\UserWorkspace\Role;
+use App\Enums\Workspace\ContentLanguage;
 use App\Models\Account;
 use App\Models\AiUsageLog;
 use App\Models\User;
@@ -59,6 +60,8 @@ test('create workspace shows form for user with no workspaces', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('workspaces/Create', false)
+        ->has('availableContentLanguages', count(ContentLanguage::cases()))
+        ->where('availableContentLanguages.0', ['value' => 'en', 'label' => 'English', 'englishName' => 'English'])
     );
 });
 
@@ -187,6 +190,7 @@ test('brand settings shows the brand settings page', function () {
     $response->assertInertia(fn ($page) => $page
         ->component('settings/workspace/Brand', false)
         ->has('workspace')
+        ->has('availableContentLanguages', count(ContentLanguage::cases()))
     );
 });
 
@@ -286,6 +290,26 @@ test('update workspace settings rejects unknown image_style values', function ()
             'brand_font' => 'Inter',
             'image_style' => 'pixel-art',
         ])->assertSessionHasErrors(['image_style']);
+});
+
+test('update workspace settings persists a newly supported content language', function () {
+    $this->actingAs($this->user)
+        ->from(route('app.workspace.brand'))
+        ->put(route('app.workspace.settings.update'), [
+            'name' => $this->workspace->name,
+            'content_language' => 'fr',
+        ])->assertRedirect(route('app.workspace.brand'))
+        ->assertSessionHasNoErrors();
+
+    expect($this->workspace->refresh()->content_language)->toBe('fr');
+});
+
+test('update workspace settings rejects an unsupported content language', function () {
+    $this->actingAs($this->user)
+        ->put(route('app.workspace.settings.update'), [
+            'name' => $this->workspace->name,
+            'content_language' => 'sv',
+        ])->assertSessionHasErrors(['content_language']);
 });
 
 test('update workspace settings validates required fields', function () {
@@ -604,6 +628,31 @@ test('store persists brand fields and redirects to /accounts', function () {
     expect($workspace->brand_description)->toBe('We sell rockets.');
 });
 
+test('store persists a newly supported non-default content language', function () {
+    $account = Account::factory()->create();
+    $user = User::factory()->create(['account_id' => $account->id]);
+    $account->update(['owner_id' => $user->id]);
+
+    $this->actingAs($user)->post(route('app.workspaces.store'), [
+        'name' => 'Beispiel GmbH',
+        'content_language' => 'de',
+    ])->assertSessionHasNoErrors();
+
+    // 'de' is not the DB default ('en'), so this proves the field is written.
+    expect(Workspace::where('name', 'Beispiel GmbH')->sole()->content_language)->toBe('de');
+});
+
+test('store rejects an unsupported content language', function () {
+    $account = Account::factory()->create();
+    $user = User::factory()->create(['account_id' => $account->id]);
+    $account->update(['owner_id' => $user->id]);
+
+    $this->actingAs($user)->post(route('app.workspaces.store'), [
+        'name' => 'Bad Lang',
+        'content_language' => 'sv',
+    ])->assertSessionHasErrors(['content_language']);
+});
+
 test('store redirects additional workspace to /accounts', function () {
     $account = Account::factory()->create();
     $user = User::factory()->create(['account_id' => $account->id]);
@@ -628,6 +677,26 @@ test('store redirects additional workspace to /accounts', function () {
     expect(Workspace::where('account_id', $account->id)->count())->toBe(2);
 });
 
+test('store blocks a second workspace without an active subscription', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $account = Account::factory()->create();
+    $user = User::factory()->create(['account_id' => $account->id]);
+    $account->update(['owner_id' => $user->id]);
+
+    // The account already owns one workspace and has no subscription, so a
+    // direct POST must not bootstrap a second (billable) workspace.
+    $existing = Workspace::factory()->create(['account_id' => $account->id, 'user_id' => $user->id]);
+    $existing->members()->attach($user->id, ['role' => Role::Member->value]);
+
+    $response = $this->actingAs($user)->post(route('app.workspaces.store'), [
+        'name' => 'Second Workspace',
+    ]);
+
+    $response->assertRedirect(route('app.billing.index'));
+    expect(Workspace::where('account_id', $account->id)->count())->toBe(1);
+});
+
 test('store attaches logo when logo_url is provided', function () {
     $account = Account::factory()->create();
     $user = User::factory()->create(['account_id' => $account->id]);
@@ -647,4 +716,27 @@ test('store attaches logo when logo_url is provided', function () {
         'name' => 'Acme',
         'logo_url' => 'https://example.com/logo.png',
     ])->assertRedirect();
+});
+
+test('update settings attaches the autofilled logo when logo_url is provided', function () {
+    $logoAttacher = $this->mock(LogoAttacher::class);
+    $logoAttacher->shouldReceive('attach')->once();
+
+    $this->actingAs($this->user)
+        ->from(route('app.workspace.brand'))
+        ->put(route('app.workspace.settings.update'), [
+            'name' => $this->workspace->name,
+            'logo_url' => 'https://example.com/logo.png',
+        ])->assertRedirect(route('app.workspace.brand'))
+        ->assertSessionHasNoErrors();
+});
+
+test('update settings does not touch the logo when no logo_url is provided', function () {
+    $logoAttacher = $this->mock(LogoAttacher::class);
+    $logoAttacher->shouldReceive('attach')->never();
+
+    $this->actingAs($this->user)
+        ->put(route('app.workspace.settings.update'), [
+            'name' => $this->workspace->name,
+        ])->assertRedirect();
 });

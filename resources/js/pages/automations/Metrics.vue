@@ -72,7 +72,7 @@ const platformLabel = (platform: string): string => platform.charAt(0).toUpperCa
 <template>
     <AutomationDetailLayout :automation="automation" current="metrics">
         <div class="space-y-6 p-4">
-            <div class="flex items-center justify-between gap-2">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 class="text-sm font-semibold text-foreground/70">{{ $t('automations.metrics.overview') }}</h2>
                 <DateRangePicker v-model="dateRange" dusk="metrics-range" />
             </div>
@@ -85,9 +85,9 @@ const platformLabel = (platform: string): string => platform.charAt(0).toUpperCa
             </div>
 
             <div class="rounded-xl border-2 border-foreground/10 bg-card p-4">
-                <div class="mb-3 flex items-center justify-between">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <h3 class="text-sm font-semibold">{{ $t('automations.metrics.runs_over_time') }}</h3>
-                    <div class="flex items-center gap-4">
+                    <div class="flex flex-wrap items-center gap-4">
                         <div v-for="item in legend" :key="item.key" class="flex items-center gap-1.5">
                             <span class="size-2.5 rounded-full" :style="{ backgroundColor: item.color }"></span>
                             <span class="text-xs text-foreground/60">{{ $t(item.label) }}</span>

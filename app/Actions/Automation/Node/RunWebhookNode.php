@@ -75,6 +75,7 @@ class RunWebhookNode
         try {
             $response = Http::withHeaders($headers)
                 ->withUserAgent(config('trypost.user_agent'))
+                ->withOptions(['allow_redirects' => false])
                 ->send($method, $url, ['json' => $payload]);
         } catch (Throwable $e) {
             return NodeRunResult::failed(__('automations.errors.webhook_request_failed'), [

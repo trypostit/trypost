@@ -8,8 +8,10 @@ import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import AiGenerateDialog from '@/components/posts/ai/AiGenerateDialog.vue';
 import AiRegenerateImageDialog from '@/components/posts/ai/AiRegenerateImageDialog.vue';
 import AiReviewDialog from '@/components/posts/ai/AiReviewDialog.vue';
+import PostEditorActionBar from '@/components/posts/editor/PostEditorActionBar.vue';
 import PostEditorComposer from '@/components/posts/editor/PostEditorComposer.vue';
 import PostEditorHeader from '@/components/posts/editor/PostEditorHeader.vue';
+import PostEditorMobileNav from '@/components/posts/editor/PostEditorMobileNav.vue';
 import PostEditorTabs from '@/components/posts/editor/PostEditorTabs.vue';
 import { usePostEcho } from '@/composables/echo/usePostEcho';
 import {
@@ -209,6 +211,24 @@ const initialTabFromQuery = (() => {
 })();
 const initialHighlightCommentId = queryParams?.get('comment') ?? null;
 const activeTab = ref(initialTabFromQuery);
+
+// On mobile a single switcher (PostEditorMobileNav) drives which panel shows;
+// 'compose' reveals the composer, the rest reveal the tabs panel. It writes into
+// the shared `activeTab` (mapping 'channels' to the existing 'schedule' tab value)
+// so the tabs panel stays the single source of truth.
+type MobileView = 'compose' | 'channels' | 'preview' | 'comments';
+const mobileView = ref<MobileView>('compose');
+const mobileViewToTab: Record<Exclude<MobileView, 'compose'>, string> = {
+    channels: 'schedule',
+    preview: 'preview',
+    comments: 'comments',
+};
+watch(mobileView, (view) => {
+    if (view !== 'compose') {
+        activeTab.value = mobileViewToTab[view];
+    }
+});
+
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 const editorTabsRef = ref<InstanceType<typeof PostEditorTabs> | null>(null);
 
@@ -268,10 +288,12 @@ const save = () => {
         ...data,
     }, {
         preserveScroll: true,
-        onFinish: () => {
-            isSaving.value = false;
+        onSuccess: () => {
             showSaved.value = true;
             setTimeout(() => { showSaved.value = false; }, 2000);
+        },
+        onFinish: () => {
+            isSaving.value = false;
         },
     });
 };
@@ -354,20 +376,30 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
 
     <AppLayout :full-width="true">
         <div class="flex flex-col flex-1 min-h-0">
-            <PostEditorHeader
-                :post="post"
-                :can-edit="canCreatePost"
-                :is-saving="isSaving"
-                :show-saved="showSaved"
-                :is-submitting="isSubmitting"
-                :is-post-action-disabled="isPostActionDisabled"
-                :post-action-tooltip="postActionTooltip"
-                :pick-time-label="pickTimeLabel"
-                v-model:has-picked-time="hasPickedTime"
-                v-model:scheduled-date-time="scheduledDateTime"
-                @delete="deletePost"
-                @unschedule="unschedulePost"
-                @submit="submit"
+            <!-- On mobile the status moves into the switcher and the actions into the
+                 bottom bar, so the header is desktop-only — except the scheduled banner,
+                 which stays as the locked-state explanation. -->
+            <div :class="isScheduled ? 'shrink-0' : 'hidden shrink-0 lg:block'">
+                <PostEditorHeader
+                    :post="post"
+                    :can-edit="canCreatePost"
+                    :is-saving="isSaving"
+                    :show-saved="showSaved"
+                    :is-submitting="isSubmitting"
+                    :is-post-action-disabled="isPostActionDisabled"
+                    :post-action-tooltip="postActionTooltip"
+                    :pick-time-label="pickTimeLabel"
+                    v-model:has-picked-time="hasPickedTime"
+                    v-model:scheduled-date-time="scheduledDateTime"
+                    @delete="deletePost"
+                    @unschedule="unschedulePost"
+                    @submit="submit"
+                />
+            </div>
+
+            <PostEditorMobileNav
+                v-model:active-view="mobileView"
+                :status="post.status"
             />
 
             <div class="relative flex-1 overflow-hidden">
@@ -392,7 +424,10 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                     class="flex h-full"
                     :class="{ 'pointer-events-none select-none opacity-60': isScheduled }"
                 >
-                    <div class="w-full overflow-y-auto lg:w-2/3 lg:border-r-2 lg:border-foreground">
+                    <div
+                        class="w-full overflow-y-auto lg:w-2/3 lg:border-r-2 lg:border-foreground"
+                        :class="{ 'hidden lg:block': mobileView !== 'compose' }"
+                    >
                         <PostEditorComposer
                             v-model:content="content"
                             v-model:media="media"
@@ -407,7 +442,10 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                         />
                     </div>
 
-                    <div class="hidden lg:block lg:w-1/3 overflow-hidden">
+                    <div
+                        class="w-full overflow-hidden lg:block lg:w-1/3"
+                        :class="{ 'hidden lg:block': mobileView === 'compose' }"
+                    >
                         <PostEditorTabs
                             ref="editorTabsRef"
                             v-model:active-tab="activeTab"
@@ -435,6 +473,22 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                     </div>
                 </div>
             </div>
+
+            <PostEditorActionBar
+                :is-read-only="isReadOnly"
+                :is-scheduled="isScheduled"
+                :can-edit="canCreatePost"
+                :is-saving="isSaving"
+                :is-submitting="isSubmitting"
+                :is-post-action-disabled="isPostActionDisabled"
+                :post-action-tooltip="postActionTooltip"
+                :pick-time-label="pickTimeLabel"
+                v-model:has-picked-time="hasPickedTime"
+                v-model:scheduled-date-time="scheduledDateTime"
+                @delete="deletePost"
+                @unschedule="unschedulePost"
+                @submit="submit"
+            />
         </div>
     </AppLayout>
 

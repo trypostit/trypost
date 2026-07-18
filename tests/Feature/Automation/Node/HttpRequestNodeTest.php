@@ -53,6 +53,47 @@ it('blocks a request to a private or reserved address', function () {
     Http::assertNothingSent();
 });
 
+it('never follows a redirect that targets a private or internal host', function () {
+    Http::fake([
+        'https://93.184.216.34/*' => Http::response('', 302, ['Location' => 'http://127.0.0.1/internal']),
+        'http://127.0.0.1/*' => Http::response('internal secret', 200),
+    ]);
+
+    $automation = Automation::factory()->active()->create();
+    $run = AutomationRun::factory()->for($automation)->create(['current_node_id' => 'http_1']);
+
+    $result = app(RunHttpRequestNode::class)($run, [
+        'url' => 'https://93.184.216.34/start',
+        'method' => 'GET',
+        'auth_type' => 'none',
+    ]);
+
+    expect($result->status)->toBe(NodeRunStatus::Failed);
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '127.0.0.1'));
+});
+
+it('still follows a legitimate public-to-public redirect', function () {
+    Http::fake([
+        'https://93.184.216.34/*' => Http::response('', 301, ['Location' => 'https://1.1.1.1/final']),
+        'https://1.1.1.1/final' => Http::response(['ok' => true], 200),
+    ]);
+
+    $automation = Automation::factory()->active()->create();
+    $run = AutomationRun::factory()->for($automation)->create(['current_node_id' => 'http_1']);
+
+    $result = app(RunHttpRequestNode::class)($run, [
+        'url' => 'https://93.184.216.34/start',
+        'method' => 'GET',
+        'auth_type' => 'none',
+    ]);
+
+    expect($result->status)->toBe(NodeRunStatus::Completed);
+    Http::assertSentInOrder([
+        fn ($request) => str_contains($request->url(), '93.184.216.34'),
+        fn ($request) => str_contains($request->url(), '1.1.1.1'),
+    ]);
+});
+
 it('processes first new item and spawns siblings when items_path is set', function () {
     Carbon::setTestNow('2026-01-15 10:00:00');
     Http::fake([

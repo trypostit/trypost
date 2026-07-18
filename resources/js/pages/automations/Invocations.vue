@@ -169,64 +169,67 @@ const toggleExpand = async (invocation: Invocation) => {
 <template>
     <AutomationDetailLayout :automation="automation" current="invocations">
         <div class="space-y-4 p-4">
-            <div class="flex flex-wrap items-center gap-2">
-                <Select v-model="statusFilter">
-                    <SelectTrigger
-                        dusk="invocations-status-filter"
-                        class="w-44"
-                    >
-                        <SelectValue>{{ statusLabel }}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">{{
-                            $t('automations.invocations.filter.all')
-                        }}</SelectItem>
-                        <SelectItem value="completed">{{
-                            $t('automations.status_run.completed')
-                        }}</SelectItem>
-                        <SelectItem value="failed">{{
-                            $t('automations.status_run.failed')
-                        }}</SelectItem>
-                        <SelectItem value="running">{{
-                            $t('automations.status_run.running')
-                        }}</SelectItem>
-                        <SelectItem value="waiting">{{
-                            $t('automations.status_run.waiting')
-                        }}</SelectItem>
-                    </SelectContent>
-                </Select>
+            <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                <div class="flex items-center gap-2 sm:contents">
+                    <Select v-model="statusFilter">
+                        <SelectTrigger
+                            dusk="invocations-status-filter"
+                            class="w-full sm:w-44"
+                        >
+                            <SelectValue>{{ statusLabel }}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">{{
+                                $t('automations.invocations.filter.all')
+                            }}</SelectItem>
+                            <SelectItem value="completed">{{
+                                $t('automations.status_run.completed')
+                            }}</SelectItem>
+                            <SelectItem value="failed">{{
+                                $t('automations.status_run.failed')
+                            }}</SelectItem>
+                            <SelectItem value="running">{{
+                                $t('automations.status_run.running')
+                            }}</SelectItem>
+                            <SelectItem value="waiting">{{
+                                $t('automations.status_run.waiting')
+                            }}</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger as-child>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    class="shrink-0 sm:order-last"
+                                    :aria-label="
+                                        $t('automations.invocations.refresh')
+                                    "
+                                    :disabled="isRefreshing"
+                                    dusk="invocations-refresh"
+                                    @click="reload"
+                                >
+                                    <IconRefresh
+                                        class="size-4"
+                                        :class="{ 'animate-spin': isRefreshing }"
+                                    />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{{
+                                $t('automations.invocations.refresh')
+                            }}</TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
                 <Input
                     v-model="search"
                     :placeholder="
                         $t('automations.invocations.search_placeholder')
                     "
-                    class="max-w-xs"
+                    class="sm:max-w-xs"
                     dusk="invocations-search"
                 />
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger as-child>
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                :aria-label="
-                                    $t('automations.invocations.refresh')
-                                "
-                                :disabled="isRefreshing"
-                                dusk="invocations-refresh"
-                                @click="reload"
-                            >
-                                <IconRefresh
-                                    class="size-4"
-                                    :class="{ 'animate-spin': isRefreshing }"
-                                />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{{
-                            $t('automations.invocations.refresh')
-                        }}</TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
             </div>
 
             <div class="relative">
