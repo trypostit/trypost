@@ -25,6 +25,8 @@ export interface AiGeneration {
     status: 'loading' | 'done' | 'error';
     postId?: string;
     error?: string;
+    /** epoch ms at which the bar surfaced the terminal state — starts the TTL. */
+    seenAt?: number;
 }
 
 const STORAGE_KEY = 'ai-generations';
@@ -86,7 +88,28 @@ const complete = (id: string, postId?: string, error?: string): void => {
         gen.postId = postId;
     }
     persist();
-    // The terminal state is transient: it disappears on its own after the TTL.
+    // The terminal state is transient, but its TTL only starts once the bar has
+    // actually SURFACED this generation (markSeen). Otherwise a generation that
+    // finishes while another is still running could be dropped without ever
+    // having been shown. Until surfaced, the generation's own lifetime cap
+    // applies, so a terminal state can never get stuck if the bar never mounts.
+    const unseenCeiling = Math.max(DONE_TTL_MS, MAX_LIFETIME_MS - (Date.now() - gen.startedAt));
+    timers.set(id, setTimeout(() => remove(id), gen.seenAt ? DONE_TTL_MS : unseenCeiling));
+};
+
+/**
+ * The bar reports that it is surfacing this generation; only then does the
+ * terminal state's TTL start running. This is what guarantees every completion
+ * is seen, even when several generations finish at different times.
+ */
+const markSeen = (id: string): void => {
+    const gen = generations.value.find((g) => g.id === id);
+    if (!gen || gen.seenAt || gen.status === 'loading') {
+        return;
+    }
+    gen.seenAt = Date.now();
+    persist();
+    clearTimer(id);
     timers.set(id, setTimeout(() => remove(id), DONE_TTL_MS));
 };
 
@@ -152,8 +175,26 @@ const openPost = (gen: AiGeneration): void => {
 
 const loadingCount = computed(() => generations.value.filter((g) => g.status === 'loading').length);
 const isGenerating = computed(() => loadingCount.value > 0);
-const doneGeneration = computed(() => generations.value.find((g) => g.status === 'done') ?? null);
-const errorGeneration = computed(() => generations.value.find((g) => g.status === 'error') ?? null);
+
+// Terminal states are COLLECTIONS, not a single slot: several generations can
+// finish at different times while others are still running, and each completion
+// needs its own turn. Oldest first — the order the CTA opens them in.
+const byOldest = (a: AiGeneration, b: AiGeneration): number => a.startedAt - b.startedAt;
+const doneGenerations = computed(() => generations.value.filter((g) => g.status === 'done').sort(byOldest));
+const errorGenerations = computed(() => generations.value.filter((g) => g.status === 'error').sort(byOldest));
+
+/** Opens the oldest completion; the rest stay on the bar, one per click. */
+const openNextDone = (): void => {
+    const next = doneGenerations.value[0];
+    if (next) {
+        openPost(next);
+    }
+};
+
+/** Dismisses every failure at once — an error has no per-post action. */
+const dismissErrors = (): void => {
+    errorGenerations.value.forEach((g) => remove(g.id));
+};
 
 const find = (id: string) => computed(() => generations.value.find((g) => g.id === id) ?? null);
 
@@ -161,12 +202,15 @@ export const useAiGeneration = () => ({
     generations,
     isGenerating,
     loadingCount,
-    doneGeneration,
-    errorGeneration,
+    doneGenerations,
+    errorGenerations,
     track,
     remove,
     dismiss: remove,
+    dismissErrors,
+    markSeen,
     openPost,
+    openNextDone,
     hydrate,
     find,
 });
