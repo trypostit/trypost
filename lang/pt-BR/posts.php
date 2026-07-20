@@ -2,6 +2,16 @@
 
 return [
 
+    'viral' => [
+        'title' => 'Potencial de viralização',
+        'analyzing' => 'Analisando…',
+        'analyzing_hint' => 'Lendo o gancho, a chamada para ação e o ritmo do seu rascunho.',
+        'subtitle' => 'Com base no gancho, chamada para ação, tamanho, hashtags e imagens.',
+        'band_good' => 'Bom',
+        'band_great' => 'Ótimo',
+        'band_exceptional' => 'Excepcional',
+    ],
+
     'ai_review' => [
         'page_title' => 'Revise seu post',
         'title' => 'Revise antes de gerar',

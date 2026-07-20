@@ -29,7 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/AppLayout.vue';
-
+import { viralScore } from '@/lib/viralScore';
 import { create as createPostRoute } from '@/routes/app/posts';
 import { loading as loadingRoute } from '@/routes/app/posts/ai';
 import {
@@ -94,6 +94,31 @@ const singleKeywordsText = computed<string>({
             .map((k) => k.trim())
             .filter(Boolean);
     },
+});
+
+// Viral potential of the draft: instant and credit-free, recalculated live from
+// the text the user is editing.
+const viral = computed(() => {
+    const parts: string[] = [];
+    for (const value of [form.caption, form.content, form.tweet_text]) {
+        if (value) {
+            parts.push(value);
+        }
+    }
+    for (const slide of form.slides) {
+        const s = slide as ReviewSlide & { tweet_text?: string };
+        for (const value of [s.title, s.body, s.tweet_text]) {
+            if (value) {
+                parts.push(value);
+            }
+        }
+    }
+
+    return viralScore({
+        text: parts.join('\n\n'),
+        slideCount: isCarousel.value ? Math.max(1, form.slides.length) : 1,
+        mediaCount: isCarousel.value ? form.slides.length : 1,
+    });
 });
 
 // While true the autosave watcher ignores changes: this is hydration, not a user edit.
@@ -348,6 +373,21 @@ onBeforeUnmount(() => {
                     {{ $t('posts.ai_review.preparing') }}
                 </div>
 
+                <div
+                    class="animate-pulse rounded-2xl border-2 border-foreground/30 bg-card p-5"
+                >
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="size-[132px] shrink-0 rounded-full border-[10px] border-muted"
+                        ></div>
+                        <div class="w-full max-w-56 space-y-2">
+                            <div class="h-3 w-32 rounded bg-muted"></div>
+                            <div class="h-5 w-40 rounded bg-muted"></div>
+                            <div class="h-3 w-48 rounded bg-muted"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div
                         v-for="n in skeletonCount"
@@ -401,6 +441,12 @@ onBeforeUnmount(() => {
 
             <!-- Review: editable blocks. -->
             <template v-else-if="isReady">
+                <div
+                    class="rounded-2xl border-2 border-foreground bg-card p-5 shadow-2xs"
+                >
+                    <ViralScoreGauge :score="viral.score" />
+                </div>
+
                 <!-- Carousel: grid of cards, draggable to reorder. -->
                 <template v-if="isCarousel">
                     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

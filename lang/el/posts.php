@@ -2,6 +2,16 @@
 
 return [
 
+    'viral' => [
+        'title' => 'Viral potential',
+        'analyzing' => 'Analyzing…',
+        'analyzing_hint' => 'Reading the hook, the call to action and the rhythm of your draft.',
+        'subtitle' => 'Based on the hook, call to action, length, hashtags and visuals.',
+        'band_good' => 'Good',
+        'band_great' => 'Great',
+        'band_exceptional' => 'Exceptional',
+    ],
+
     'ai_review' => [
         'page_title' => 'Review your post',
         'title' => 'Review before generating',
