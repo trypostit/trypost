@@ -7,6 +7,7 @@ namespace App\Providers;
 use App\Listeners\StripeEventListener;
 use App\Models\AccessToken;
 use App\Models\Account;
+use App\Models\AiPostDraft;
 use App\Models\AiUsageLog;
 use App\Models\Automation;
 use App\Models\AutomationNodeRun;
@@ -114,6 +115,7 @@ class AppServiceProvider extends ServiceProvider
         Relation::enforceMorphMap([
             'accessToken' => AccessToken::class,
             'account' => Account::class,
+            'aiPostDraft' => AiPostDraft::class,
             'aiUsageLog' => AiUsageLog::class,
             'automation' => Automation::class,
             'automationNodeRun' => AutomationNodeRun::class,
