@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 
 test('an unverified user is gated to the verification prompt before the app', function () {
-    config(['trypost.self_hosted' => false]);
+    config(['trypost.self_hosted' => false, 'trypost.security.require_email_verification' => true]);
 
     $user = User::factory()->create(['email_verified_at' => null]);
 

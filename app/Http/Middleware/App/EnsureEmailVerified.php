@@ -19,11 +19,15 @@ class EnsureEmailVerified
      * Applies only to page navigation (non-JSON GET); self-hosted skips it,
      * since an instance may not even have mail configured.
      *
+     * Off by default: gating the app behind a verified address changes the
+     * signup funnel, so each instance opts in via
+     * `trypost.security.require_email_verification`.
+     *
      * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (config('trypost.self_hosted')) {
+        if (! config('trypost.security.require_email_verification') || config('trypost.self_hosted')) {
             return $next($request);
         }
 

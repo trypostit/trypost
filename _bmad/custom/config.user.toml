@@ -1,0 +1,3 @@
+# Personal overrides for _bmad/config.toml.
+# NOT committed (gitignored) — applies only to your local install.
+# Wins over both base config and team overrides.

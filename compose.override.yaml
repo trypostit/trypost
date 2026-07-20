@@ -1,0 +1,7 @@
+# Override local (por dev): monta a conf ATUAL do supervisor por cima da que
+# foi assada na imagem antiga — garante o Reverb com autostart=true em todo
+# boot sem precisar de rebuild. Pode ser removido após `docker compose build`.
+services:
+    app:
+        volumes:
+            - ./docker/supervisord.dev.conf:/etc/supervisor/conf.d/supervisord.conf:ro
