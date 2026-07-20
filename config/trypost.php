@@ -26,10 +26,18 @@ return [
     | their own internal network (e.g. an internal RSS feed or webhook) can
     | opt in here. Leave disabled unless you understand the SSRF risk.
     |
+    | The remaining keys are anti-abuse controls for the public registration
+    | flow. Email verification is opt-in: turning it on gates the app behind a
+    | verified address, which changes the signup funnel, so instances decide.
+    |
     */
 
     'security' => [
         'allow_private_network' => (bool) env('TRYPOST_ALLOW_PRIVATE_NETWORK', false),
+        'require_email_verification' => (bool) env('REQUIRE_EMAIL_VERIFICATION', false),
+        'max_registrations_per_ip_per_day' => (int) env('MAX_REGISTRATIONS_PER_IP_PER_DAY', 3),
+        'block_disposable_emails' => env('BLOCK_DISPOSABLE_EMAILS', true),
+        'extra_disposable_domains' => array_values(array_filter(array_map('trim', explode(',', (string) env('EXTRA_DISPOSABLE_DOMAINS', ''))))),
     ],
 
     /*

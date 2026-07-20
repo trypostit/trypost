@@ -48,6 +48,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Email;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Events\WebhookReceived;
@@ -216,6 +217,13 @@ class AppServiceProvider extends ServiceProvider
                 ->uncompromised()
             : null
         );
+
+        // Strict email by default: Laravel's plain RFCValidation accepts
+        // whitespace, no TLD (a@b) and @localhost — all undeliverable, which
+        // turn into bounces and hurt the sending domain's reputation. strict +
+        // native (filter_var) blocks those and still accepts real emails.
+        // Applies to every rule using Email::default() (register, reset, invite).
+        Email::defaults(fn (): Email => (new Email)->strict()->withNativeValidation());
 
         Nightwatch::rejectCacheEvents(function (CacheEvent $cacheEvent) {
             return in_array($cacheEvent->key, [

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\User;
+use Illuminate\Support\Facades\Http;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
@@ -33,6 +34,10 @@ test('google callback logs in existing user by email', function () {
         'email' => 'existing@example.com',
     ]);
 
+    // Google's OIDC userinfo confirms the address; the callback only trusts
+    // an email the provider itself has verified.
+    $socialiteUser->user = ['email_verified' => true];
+
     Socialite::shouldReceive('driver')
         ->with('google-auth')
         ->andReturn($driver = Mockery::mock());
@@ -51,6 +56,10 @@ test('google callback creates new user when email does not exist', function () {
         'name' => 'New User',
         'email' => 'new@example.com',
     ]);
+
+    // Google's OIDC userinfo confirms the address; the callback only trusts
+    // an email the provider itself has verified.
+    $socialiteUser->user = ['email_verified' => true];
 
     Socialite::shouldReceive('driver')
         ->with('google-auth')
@@ -78,6 +87,15 @@ test('github callback creates new user with a default workspace', function () {
         'id' => '987',
         'name' => 'New Dev',
         'email' => 'newdev@example.com',
+    ]);
+
+    // GitHub exposes verification through the emails API, which the callback
+    // checks before trusting the address.
+    $socialiteUser->token = 'gh-token';
+    Http::fake([
+        config('services.github.api').'/user/emails' => Http::response([
+            ['email' => 'newdev@example.com', 'verified' => true, 'primary' => true],
+        ]),
     ]);
 
     Socialite::shouldReceive('driver')
@@ -111,6 +129,10 @@ test('google callback marks unverified existing user as verified', function () {
         'name' => 'Unverified User',
         'email' => 'unverified@example.com',
     ]);
+
+    // Google's OIDC userinfo confirms the address; the callback only trusts
+    // an email the provider itself has verified.
+    $socialiteUser->user = ['email_verified' => true];
 
     Socialite::shouldReceive('driver')
         ->with('google-auth')

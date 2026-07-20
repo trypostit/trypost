@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\Api\LoadWorkspaceFromToken;
+use App\Http\Middleware\App\EnsureEmailVerified;
 use App\Http\Middleware\App\EnsureRegistrationEnabled;
 use App\Http\Middleware\App\HandleInertiaRequests;
+use App\Http\Middleware\App\SecurityHeaders;
 use App\Http\Middleware\App\SetLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -29,8 +31,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             SetLocale::class,
+            EnsureEmailVerified::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+            SecurityHeaders::class,
         ]);
 
         $middleware->alias([

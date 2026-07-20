@@ -37,6 +37,16 @@ class AuthenticationController extends Controller
             'password' => $request->password,
         ]);
 
+        // Changing the password drops the other sessions (keeps the current
+        // one): if it was changed over a suspected compromise, nobody else
+        // stays logged in.
+        if (config('session.driver') === 'database') {
+            DB::table(config('session.table', 'sessions'))
+                ->where('user_id', $request->user()->id)
+                ->where('id', '!=', $request->session()->getId())
+                ->delete();
+        }
+
         return back()->with('flash.success', __('settings.flash.password_updated'));
     }
 

@@ -2,6 +2,17 @@
 
 return [
 
+    'password_strength' => [
+        'length' => 'Co najmniej 12 znaków',
+        'case' => 'Wielkie i małe litery',
+        'number' => 'Co najmniej jedna cyfra',
+        'symbol' => 'Co najmniej jeden symbol',
+        'weak' => 'Słabe',
+        'fair' => 'Przeciętne',
+        'good' => 'Dobre',
+        'strong' => 'Silne',
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Authentication Language Lines
@@ -58,6 +69,7 @@ return [
     'github_login' => 'Zaloguj się przez GitHub',
     'github_signup' => 'Zarejestruj się przez GitHub',
     'github_email_unavailable' => 'Nie udało się pobrać Twojego adresu e-mail z GitHuba. Ustaw swój adres e-mail w GitHubie jako publiczny lub przyznaj uprawnienie do e-maila, a następnie spróbuj ponownie.',
+    'social_email_unverified' => 'Nie udało się potwierdzić Twojego adresu e-mail w :provider. Potwierdź go tam lub zaloguj się e-mailem i hasłem.',
 
     'signup_success' => [
         'page_title' => 'Witamy',
@@ -92,6 +104,8 @@ return [
         'submit' => 'Utwórz konto',
         'has_account' => 'Masz już konto?',
         'log_in' => 'Zaloguj się',
+        'disposable_email' => 'Użyj stałego adresu e-mail. Adresy tymczasowe nie są akceptowane.',
+        'quota_reached' => 'Nie udało się teraz utworzyć konta. Spróbuj ponownie później.',
     ],
 
     'forgot_password' => [
@@ -122,6 +136,12 @@ return [
         'link_sent' => 'Nowy link weryfikacyjny został wysłany na adres e-mail podany podczas rejestracji.',
         'resend' => 'Wyślij ponownie e-mail weryfikacyjny',
         'log_out' => 'Wyloguj się',
+        'sent_to' => 'E-mail wysłany na',
+        'instructions' => 'Sprawdź skrzynkę odbiorczą (i na wszelki wypadek spam). Aby kontynuować, musisz potwierdzić adres e-mail.',
+        'wrong_email' => 'Zły adres e-mail? Popraw go',
+        'new_email_label' => 'Nowy e-mail',
+        'update_email' => 'Zapisz i wyślij ponownie',
+        'cancel' => 'Anuluj',
     ],
 
     'accept_invite' => [

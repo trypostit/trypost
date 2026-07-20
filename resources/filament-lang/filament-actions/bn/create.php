@@ -1,0 +1,37 @@
+<?php
+
+return [
+
+    'single' => [
+
+        'label' => 'নতুন :label',
+
+        'modal' => [
+
+            'heading' => ':label তৈরি করুন',
+
+            'actions' => [
+
+                'create' => [
+                    'label' => 'তৈরি করুন',
+                ],
+
+                'create_another' => [
+                    'label' => 'তৈরি এবং নতুন তৈরি করুন',
+                ],
+
+            ],
+
+        ],
+
+        'notifications' => [
+
+            'created' => [
+                'title' => 'তৈরি হয়েছে',
+            ],
+
+        ],
+
+    ],
+
+];

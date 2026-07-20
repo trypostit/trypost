@@ -2,6 +2,17 @@
 
 return [
 
+    'password_strength' => [
+        'length' => 'Au moins 12 caractères',
+        'case' => 'Majuscules et minuscules',
+        'number' => 'Au moins un chiffre',
+        'symbol' => 'Au moins un symbole',
+        'weak' => 'Faible',
+        'fair' => 'Moyen',
+        'good' => 'Bon',
+        'strong' => 'Fort',
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Authentication Language Lines
@@ -58,6 +69,7 @@ return [
     'github_login' => 'Se connecter avec GitHub',
     'github_signup' => 'S\'inscrire avec GitHub',
     'github_email_unavailable' => 'Impossible de récupérer votre e-mail depuis GitHub. Rendez votre e-mail GitHub public ou accordez l\'autorisation d\'accès à l\'e-mail, puis réessayez.',
+    'social_email_unverified' => 'Nous n’avons pas pu confirmer votre adresse e-mail auprès de :provider. Vérifiez-la là-bas ou connectez-vous avec votre e-mail et votre mot de passe.',
 
     'signup_success' => [
         'page_title' => 'Bienvenue',
@@ -92,6 +104,8 @@ return [
         'submit' => 'Créer un compte',
         'has_account' => 'Vous avez déjà un compte ?',
         'log_in' => 'Se connecter',
+        'disposable_email' => 'Veuillez utiliser une adresse e-mail permanente. Les adresses temporaires ne sont pas acceptées.',
+        'quota_reached' => 'Nous n’avons pas pu créer le compte pour le moment. Réessayez plus tard.',
     ],
 
     'forgot_password' => [
@@ -122,6 +136,12 @@ return [
         'link_sent' => 'Un nouveau lien de vérification a été envoyé à l\'adresse e-mail que vous avez fournie lors de l\'inscription.',
         'resend' => 'Renvoyer l\'e-mail de vérification',
         'log_out' => 'Se déconnecter',
+        'sent_to' => 'E-mail envoyé à',
+        'instructions' => 'Consultez votre boîte de réception (et les spams, au cas où). Vous devez confirmer votre e-mail pour continuer.',
+        'wrong_email' => 'Mauvaise adresse ? Corrigez-la',
+        'new_email_label' => 'Nouvel e-mail',
+        'update_email' => 'Enregistrer et renvoyer',
+        'cancel' => 'Annuler',
     ],
 
     'accept_invite' => [

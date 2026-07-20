@@ -21,6 +21,7 @@ class EmailVerificationPromptController extends Controller
             ? redirect()->intended(route('app.calendar'))
             : Inertia::render('auth/VerifyEmail', [
                 'status' => session('status'),
+                'email' => $request->user()->email,
             ]);
     }
 }

@@ -2,6 +2,17 @@
 
 return [
 
+    'password_strength' => [
+        'length' => 'At least 12 characters',
+        'case' => 'Uppercase and lowercase letters',
+        'number' => 'At least one number',
+        'symbol' => 'At least one symbol',
+        'weak' => 'Weak',
+        'fair' => 'Fair',
+        'good' => 'Good',
+        'strong' => 'Strong',
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Authentication Language Lines
@@ -58,6 +69,7 @@ return [
     'github_login' => 'Log in with GitHub',
     'github_signup' => 'Sign up with GitHub',
     'github_email_unavailable' => 'Unable to retrieve your email from GitHub. Make your GitHub email public or grant the email scope, then try again.',
+    'social_email_unverified' => 'We could not confirm your email with :provider. Verify it there or sign in with email and password.',
 
     'signup_success' => [
         'page_title' => 'Welcome',
@@ -92,6 +104,8 @@ return [
         'submit' => 'Create account',
         'has_account' => 'Already have an account?',
         'log_in' => 'Log in',
+        'disposable_email' => 'Please use a permanent email address. Temporary addresses are not accepted.',
+        'quota_reached' => 'We could not create the account right now. Please try again later.',
     ],
 
     'forgot_password' => [
@@ -122,6 +136,12 @@ return [
         'link_sent' => 'A new verification link has been sent to the email address you provided during registration.',
         'resend' => 'Resend verification email',
         'log_out' => 'Log out',
+        'sent_to' => 'Email sent to',
+        'instructions' => 'Check your inbox (and spam, just in case). You need to confirm your email to continue.',
+        'wrong_email' => 'Wrong email? Fix it',
+        'new_email_label' => 'New email',
+        'update_email' => 'Save and resend',
+        'cancel' => 'Cancel',
     ],
 
     'accept_invite' => [

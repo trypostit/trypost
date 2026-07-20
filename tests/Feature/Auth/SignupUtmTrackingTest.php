@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\User;
+use Illuminate\Support\Facades\Http;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
@@ -79,6 +80,10 @@ test('google registration saves utm parameters captured before the oauth round-t
     $socialiteUser->name = 'Google UTM';
     $socialiteUser->email = 'google-utm@example.com';
 
+    // Google's OIDC userinfo confirms the address; the callback only trusts
+    // an email the provider itself has verified.
+    $socialiteUser->user = ['email_verified' => true];
+
     Socialite::shouldReceive('driver')
         ->with('google-auth')
         ->andReturn($driver = Mockery::mock());
@@ -106,6 +111,10 @@ test('utm parameters captured on the register page survive a google oauth round-
     $socialiteUser->id = 'g-cross';
     $socialiteUser->name = 'Cross Flow';
     $socialiteUser->email = 'cross-flow@example.com';
+
+    // Google's OIDC userinfo confirms the address; the callback only trusts
+    // an email the provider itself has verified.
+    $socialiteUser->user = ['email_verified' => true];
 
     Socialite::shouldReceive('driver')
         ->with('google-auth')
@@ -135,6 +144,10 @@ test('existing google user login consumes the utm session so utms do not leak to
     $socialiteUser->id = 'g-existing';
     $socialiteUser->name = 'Existing User';
     $socialiteUser->email = 'existing@example.com';
+
+    // Google's OIDC userinfo confirms the address; the callback only trusts
+    // an email the provider itself has verified.
+    $socialiteUser->user = ['email_verified' => true];
 
     Socialite::shouldReceive('driver')
         ->with('google-auth')
@@ -195,6 +208,10 @@ test('google registration captures the requesting ip address', function () {
     $socialiteUser->name = 'Google IP';
     $socialiteUser->email = 'google-ip@example.com';
 
+    // Google's OIDC userinfo confirms the address; the callback only trusts
+    // an email the provider itself has verified.
+    $socialiteUser->user = ['email_verified' => true];
+
     Socialite::shouldReceive('driver')
         ->with('google-auth')
         ->andReturn($driver = Mockery::mock());
@@ -223,6 +240,15 @@ test('github registration saves utm parameters captured before the oauth round-t
     $socialiteUser->name = 'GitHub UTM';
     $socialiteUser->email = 'github-utm@example.com';
 
+    // GitHub exposes verification through the emails API, which the callback
+    // checks before trusting the address.
+    $socialiteUser->token = 'gh-token';
+    Http::fake([
+        config('services.github.api').'/user/emails' => Http::response([
+            ['email' => 'github-utm@example.com', 'verified' => true, 'primary' => true],
+        ]),
+    ]);
+
     Socialite::shouldReceive('driver')
         ->with('github')
         ->andReturn($driver = Mockery::mock());
@@ -249,6 +275,15 @@ test('github registration captures the requesting ip address', function () {
     $socialiteUser->id = 'gh-ip';
     $socialiteUser->name = 'GitHub IP';
     $socialiteUser->email = 'github-ip@example.com';
+
+    // GitHub exposes verification through the emails API, which the callback
+    // checks before trusting the address.
+    $socialiteUser->token = 'gh-token';
+    Http::fake([
+        config('services.github.api').'/user/emails' => Http::response([
+            ['email' => 'github-ip@example.com', 'verified' => true, 'primary' => true],
+        ]),
+    ]);
 
     Socialite::shouldReceive('driver')
         ->with('github')
@@ -303,6 +338,15 @@ test('existing github user login consumes the utm session and skips signup succe
     $socialiteUser->id = 'gh-existing';
     $socialiteUser->name = 'Existing GitHub';
     $socialiteUser->email = 'existing-gh@example.com';
+
+    // GitHub exposes verification through the emails API, which the callback
+    // checks before trusting the address.
+    $socialiteUser->token = 'gh-token';
+    Http::fake([
+        config('services.github.api').'/user/emails' => Http::response([
+            ['email' => 'existing-gh@example.com', 'verified' => true, 'primary' => true],
+        ]),
+    ]);
 
     Socialite::shouldReceive('driver')
         ->with('github')

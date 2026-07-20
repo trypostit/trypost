@@ -15,6 +15,7 @@ return [
 
     'reset' => 'Twoje hasło zostało zresetowane.',
     'sent' => 'Wysłaliśmy e-mailem link do zresetowania hasła.',
+    'sent_uniform' => 'Jeśli konto z tym adresem e-mail istnieje, link do resetowania został wysłany.',
     'throttled' => 'Poczekaj chwilę przed ponowną próbą.',
     'token' => 'Ten token resetowania hasła jest nieprawidłowy.',
     'user' => 'Nie możemy znaleźć użytkownika o tym adresie e-mail.',

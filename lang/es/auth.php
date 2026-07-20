@@ -1,6 +1,17 @@
 <?php
 
 return [
+
+    'password_strength' => [
+        'length' => 'Al menos 12 caracteres',
+        'case' => 'Mayúsculas y minúsculas',
+        'number' => 'Al menos un número',
+        'symbol' => 'Al menos un símbolo',
+        'weak' => 'Débil',
+        'fair' => 'Aceptable',
+        'good' => 'Buena',
+        'strong' => 'Fuerte',
+    ],
     'failed' => 'Estas credenciales no coinciden con nuestros registros.',
     'password' => 'La contraseña proporcionada es incorrecta.',
     'throttle' => 'Demasiados intentos de inicio de sesión. Inténtalo de nuevo en :seconds segundos.',
@@ -46,6 +57,7 @@ return [
     'github_login' => 'Iniciar sesión con GitHub',
     'github_signup' => 'Registrarse con GitHub',
     'github_email_unavailable' => 'No fue posible obtener tu correo de GitHub. Haz tu correo público en GitHub o concede el permiso de correo y vuelve a intentar.',
+    'social_email_unverified' => 'No pudimos confirmar tu correo con :provider. Verifícalo allí o entra con correo y contraseña.',
 
     'signup_success' => [
         'page_title' => 'Bienvenido',
@@ -80,6 +92,8 @@ return [
         'submit' => 'Crear cuenta',
         'has_account' => '¿Ya tienes una cuenta?',
         'log_in' => 'Iniciar sesión',
+        'disposable_email' => 'Usa un correo permanente. No se aceptan direcciones temporales.',
+        'quota_reached' => 'No pudimos crear la cuenta ahora. Inténtalo de nuevo más tarde.',
     ],
 
     'forgot_password' => [
@@ -110,6 +124,12 @@ return [
         'link_sent' => 'Se ha enviado un nuevo enlace de verificación al correo electrónico proporcionado durante el registro.',
         'resend' => 'Reenviar correo de verificación',
         'log_out' => 'Cerrar sesión',
+        'sent_to' => 'Correo enviado a',
+        'instructions' => 'Revisa tu bandeja de entrada (y el spam, por si acaso). Necesitas confirmar tu correo para continuar.',
+        'wrong_email' => '¿Correo equivocado? Corregir',
+        'new_email_label' => 'Nuevo correo',
+        'update_email' => 'Guardar y reenviar',
+        'cancel' => 'Cancelar',
     ],
 
     'accept_invite' => [

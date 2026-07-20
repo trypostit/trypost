@@ -8,6 +8,7 @@ use App\Enums\UserWorkspace\Role as WorkspaceRole;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Email;
 
 class StoreWorkspaceInviteRequest extends FormRequest
 {
@@ -27,7 +28,7 @@ class StoreWorkspaceInviteRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'email', 'max:255'],
+            'email' => ['required', Email::default(), 'max:255'],
             'role' => ['required', Rule::in(array_column(WorkspaceRole::cases(), 'value'))],
         ];
     }

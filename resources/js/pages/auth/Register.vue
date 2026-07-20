@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Form, Head, usePage } from '@inertiajs/vue3';
 import { IconEye, IconEyeOff, IconMail } from '@tabler/icons-vue';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
+import PasswordStrength from '@/components/auth/PasswordStrength.vue';
 import SocialLogin from '@/components/auth/SocialLogin.vue';
 import InputError from '@/components/InputError.vue';
 import TextLink from '@/components/TextLink.vue';
@@ -27,6 +28,24 @@ defineProps<{
 
 const showPassword = ref(false);
 const showEmailForm = ref(false);
+const password = ref('');
+
+// Honeypot: password managers autofill hidden fields (that's what blocked real
+// signups when this field was named "website"). We keep the field to catch
+// bots but make sure it stays empty for humans: clear it on mount, on any
+// autofill (input event), and its name isn't an autocomplete target. A JS-less
+// bot that POSTs directly is still caught server-side.
+const honeypotEl = ref<HTMLInputElement | null>(null);
+const clearHoneypot = (): void => {
+    if (honeypotEl.value) honeypotEl.value.value = '';
+};
+
+onMounted(() => {
+    clearHoneypot();
+    requestAnimationFrame(clearHoneypot);
+    setTimeout(clearHoneypot, 400);
+    setTimeout(clearHoneypot, 1200);
+});
 
 const page = usePage();
 const isSelfHosted = computed(() => Boolean(page.props.selfHosted));
@@ -72,6 +91,19 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
                 class="flex flex-col gap-6"
             >
                 <input v-if="redirect" type="hidden" name="redirect" :value="redirect" />
+
+                <!-- Anti-bot honeypot: invisible to humans, bots fill it in.
+                     Cleared on mount/autofill so it never blocks a real signup. -->
+                <div class="absolute -left-[9999px] top-auto h-px w-px overflow-hidden" aria-hidden="true">
+                    <input
+                        ref="honeypotEl"
+                        type="text"
+                        name="contact_time"
+                        tabindex="-1"
+                        autocomplete="off"
+                        @input="clearHoneypot"
+                    />
+                </div>
 
                 <div
                     v-if="hasSocial && showEmailForm"
@@ -119,6 +151,7 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
                             <div class="relative">
                                 <Input
                                     id="password"
+                                    v-model="password"
                                     :type="showPassword ? 'text' : 'password'"
                                     :tabindex="3"
                                     autocomplete="new-password"
@@ -146,6 +179,7 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
                                     </TooltipProvider>
                                 </div>
                             </div>
+                            <PasswordStrength :password="password" />
                             <InputError :message="errors.password" />
                         </div>
 
