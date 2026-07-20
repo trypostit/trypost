@@ -4,6 +4,17 @@ declare(strict_types=1);
 
 return [
 
+    'password_strength' => [
+        'length' => 'En az 12 karakter',
+        'case' => 'Büyük ve küçük harfler',
+        'number' => 'En az bir rakam',
+        'symbol' => 'En az bir sembol',
+        'weak' => 'Zayıf',
+        'fair' => 'Orta',
+        'good' => 'İyi',
+        'strong' => 'Güçlü',
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Authentication Language Lines
@@ -60,6 +71,7 @@ return [
     'github_login' => 'GitHub ile giriş yap',
     'github_signup' => 'GitHub ile kayıt ol',
     'github_email_unavailable' => 'GitHub\'dan e-postanız alınamadı. GitHub e-postanızı herkese açık yapın veya e-posta iznini verin, ardından tekrar deneyin.',
+    'social_email_unverified' => 'E-posta adresinizi :provider ile doğrulayamadık. Orada doğrulayın ya da e-posta ve parolayla giriş yapın.',
 
     'signup_success' => [
         'page_title' => 'Hoş geldiniz',
@@ -94,6 +106,8 @@ return [
         'submit' => 'Hesap oluştur',
         'has_account' => 'Zaten bir hesabınız var mı?',
         'log_in' => 'Giriş yap',
+        'disposable_email' => 'Lütfen kalıcı bir e-posta adresi kullanın. Geçici adresler kabul edilmez.',
+        'quota_reached' => 'Hesabı şu anda oluşturamadık. Lütfen daha sonra tekrar deneyin.',
     ],
 
     'forgot_password' => [
@@ -124,6 +138,12 @@ return [
         'link_sent' => 'Kayıt sırasında verdiğiniz e-posta adresine yeni bir doğrulama bağlantısı gönderildi.',
         'resend' => 'Doğrulama e-postasını yeniden gönder',
         'log_out' => 'Çıkış yap',
+        'sent_to' => 'E-posta şu adrese gönderildi',
+        'instructions' => 'Gelen kutunuzu (ve olur da diye spam klasörünü) kontrol edin. Devam etmek için e-postanızı doğrulamanız gerekir.',
+        'wrong_email' => 'Yanlış e-posta mı? Düzeltin',
+        'new_email_label' => 'Yeni e-posta',
+        'update_email' => 'Kaydet ve yeniden gönder',
+        'cancel' => 'İptal',
     ],
 
     'accept_invite' => [

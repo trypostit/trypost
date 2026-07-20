@@ -4,6 +4,17 @@ declare(strict_types=1);
 
 return [
 
+    'password_strength' => [
+        'length' => 'Mindestens 12 Zeichen',
+        'case' => 'Groß- und Kleinbuchstaben',
+        'number' => 'Mindestens eine Zahl',
+        'symbol' => 'Mindestens ein Sonderzeichen',
+        'weak' => 'Schwach',
+        'fair' => 'Ausreichend',
+        'good' => 'Gut',
+        'strong' => 'Stark',
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Authentication Language Lines
@@ -60,6 +71,7 @@ return [
     'github_login' => 'Mit GitHub anmelden',
     'github_signup' => 'Mit GitHub registrieren',
     'github_email_unavailable' => 'Deine E-Mail-Adresse konnte nicht von GitHub abgerufen werden. Mache deine GitHub-E-Mail-Adresse öffentlich oder erteile die Berechtigung für den E-Mail-Zugriff und versuche es dann erneut.',
+    'social_email_unverified' => 'Wir konnten deine E-Mail-Adresse bei :provider nicht bestätigen. Bestätige sie dort oder melde dich mit E-Mail und Passwort an.',
 
     'signup_success' => [
         'page_title' => 'Willkommen',
@@ -94,6 +106,8 @@ return [
         'submit' => 'Konto erstellen',
         'has_account' => 'Hast du bereits ein Konto?',
         'log_in' => 'Anmelden',
+        'disposable_email' => 'Bitte verwende eine dauerhafte E-Mail-Adresse. Temporäre Adressen werden nicht akzeptiert.',
+        'quota_reached' => 'Das Konto konnte gerade nicht erstellt werden. Bitte versuche es später erneut.',
     ],
 
     'forgot_password' => [
@@ -124,6 +138,12 @@ return [
         'link_sent' => 'Ein neuer Bestätigungslink wurde an die E-Mail-Adresse gesendet, die du bei der Registrierung angegeben hast.',
         'resend' => 'Bestätigungs-E-Mail erneut senden',
         'log_out' => 'Abmelden',
+        'sent_to' => 'E-Mail gesendet an',
+        'instructions' => 'Sieh in deinem Posteingang nach (und sicherheitshalber im Spam). Du musst deine E-Mail bestätigen, um fortzufahren.',
+        'wrong_email' => 'Falsche E-Mail? Korrigieren',
+        'new_email_label' => 'Neue E-Mail',
+        'update_email' => 'Speichern und erneut senden',
+        'cancel' => 'Abbrechen',
     ],
 
     'accept_invite' => [

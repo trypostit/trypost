@@ -2,6 +2,17 @@
 
 return [
 
+    'password_strength' => [
+        'length' => '12자 이상',
+        'case' => '대문자와 소문자',
+        'number' => '숫자 1개 이상',
+        'symbol' => '기호 1개 이상',
+        'weak' => '약함',
+        'fair' => '보통',
+        'good' => '좋음',
+        'strong' => '강함',
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Authentication Language Lines
@@ -58,6 +69,7 @@ return [
     'github_login' => 'GitHub으로 로그인',
     'github_signup' => 'GitHub으로 가입하기',
     'github_email_unavailable' => 'GitHub에서 이메일을 가져올 수 없습니다. GitHub 이메일을 공개로 설정하거나 이메일 권한을 부여한 후 다시 시도하세요.',
+    'social_email_unverified' => ':provider에서 이메일을 확인할 수 없습니다. 해당 서비스에서 확인하거나 이메일과 비밀번호로 로그인하세요.',
 
     'signup_success' => [
         'page_title' => '환영합니다',
@@ -92,6 +104,8 @@ return [
         'submit' => '계정 만들기',
         'has_account' => '이미 계정이 있으신가요?',
         'log_in' => '로그인',
+        'disposable_email' => '영구적인 이메일 주소를 사용하세요. 임시 주소는 사용할 수 없습니다.',
+        'quota_reached' => '지금은 계정을 만들 수 없습니다. 잠시 후 다시 시도해 주세요.',
     ],
 
     'forgot_password' => [
@@ -122,6 +136,12 @@ return [
         'link_sent' => '가입 시 입력하신 이메일 주소로 새 인증 링크를 보냈습니다.',
         'resend' => '인증 이메일 재전송',
         'log_out' => '로그아웃',
+        'sent_to' => '이메일 전송 대상',
+        'instructions' => '받은편지함을 확인하세요(혹시 모르니 스팸함도). 계속하려면 이메일을 확인해야 합니다.',
+        'wrong_email' => '이메일이 잘못되었나요? 수정하기',
+        'new_email_label' => '새 이메일',
+        'update_email' => '저장하고 다시 보내기',
+        'cancel' => '취소',
     ],
 
     'accept_invite' => [

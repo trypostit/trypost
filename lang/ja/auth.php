@@ -2,6 +2,17 @@
 
 return [
 
+    'password_strength' => [
+        'length' => '12文字以上',
+        'case' => '大文字と小文字',
+        'number' => '数字を1文字以上',
+        'symbol' => '記号を1文字以上',
+        'weak' => '弱い',
+        'fair' => '普通',
+        'good' => '良い',
+        'strong' => '強い',
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Authentication Language Lines
@@ -58,6 +69,7 @@ return [
     'github_login' => 'GitHub でログイン',
     'github_signup' => 'GitHub で登録',
     'github_email_unavailable' => 'GitHub からメールアドレスを取得できませんでした。GitHub のメールアドレスを公開するか、email スコープを許可してから、もう一度お試しください。',
+    'social_email_unverified' => ':provider でメールアドレスを確認できませんでした。:provider 側で確認するか、メールアドレスとパスワードでログインしてください。',
 
     'signup_success' => [
         'page_title' => 'ようこそ',
@@ -92,6 +104,8 @@ return [
         'submit' => 'アカウントを作成',
         'has_account' => 'すでにアカウントをお持ちですか？',
         'log_in' => 'ログイン',
+        'disposable_email' => '永続的なメールアドレスを使用してください。一時的なアドレスは利用できません。',
+        'quota_reached' => '現在アカウントを作成できませんでした。しばらくしてからお試しください。',
     ],
 
     'forgot_password' => [
@@ -122,6 +136,12 @@ return [
         'link_sent' => '登録時に入力されたメールアドレスに、新しい確認リンクを送信しました。',
         'resend' => '確認メールを再送信',
         'log_out' => 'ログアウト',
+        'sent_to' => 'メールの送信先',
+        'instructions' => '受信トレイ（念のため迷惑メールも）を確認してください。続けるにはメールアドレスの確認が必要です。',
+        'wrong_email' => 'メールアドレスが違いますか？修正する',
+        'new_email_label' => '新しいメールアドレス',
+        'update_email' => '保存して再送信',
+        'cancel' => 'キャンセル',
     ],
 
     'accept_invite' => [

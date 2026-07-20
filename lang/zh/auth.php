@@ -2,6 +2,17 @@
 
 return [
 
+    'password_strength' => [
+        'length' => '至少 12 个字符',
+        'case' => '大写和小写字母',
+        'number' => '至少一个数字',
+        'symbol' => '至少一个符号',
+        'weak' => '弱',
+        'fair' => '一般',
+        'good' => '良好',
+        'strong' => '强',
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Authentication Language Lines
@@ -58,6 +69,7 @@ return [
     'github_login' => '使用 GitHub 登录',
     'github_signup' => '使用 GitHub 注册',
     'github_email_unavailable' => '无法从 GitHub 获取你的邮箱。请将你的 GitHub 邮箱设为公开，或授予邮箱权限后重试。',
+    'social_email_unverified' => '我们无法通过 :provider 确认你的邮箱。请在那里验证，或使用邮箱和密码登录。',
 
     'signup_success' => [
         'page_title' => '欢迎',
@@ -92,6 +104,8 @@ return [
         'submit' => '创建账户',
         'has_account' => '已经有账户了？',
         'log_in' => '登录',
+        'disposable_email' => '请使用长期有效的邮箱地址，暂不接受临时邮箱。',
+        'quota_reached' => '目前无法创建账号，请稍后再试。',
     ],
 
     'forgot_password' => [
@@ -122,6 +136,12 @@ return [
         'link_sent' => '新的验证链接已发送至你注册时填写的邮箱地址。',
         'resend' => '重新发送验证邮件',
         'log_out' => '退出登录',
+        'sent_to' => '邮件已发送至',
+        'instructions' => '请查看收件箱（以防万一也看看垃圾邮件）。你需要确认邮箱才能继续。',
+        'wrong_email' => '邮箱有误？去修改',
+        'new_email_label' => '新邮箱',
+        'update_email' => '保存并重新发送',
+        'cancel' => '取消',
     ],
 
     'accept_invite' => [

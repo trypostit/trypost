@@ -15,6 +15,7 @@ return [
 
     'reset' => 'Votre mot de passe a été réinitialisé.',
     'sent' => 'Nous vous avons envoyé par e-mail le lien de réinitialisation de votre mot de passe.',
+    'sent_uniform' => 'Si un compte existe pour cette adresse e-mail, un lien de réinitialisation a été envoyé.',
     'throttled' => 'Veuillez patienter avant de réessayer.',
     'token' => 'Ce jeton de réinitialisation de mot de passe est invalide.',
     'user' => 'Aucun utilisateur ne correspond à cette adresse e-mail.',

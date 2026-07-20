@@ -2,6 +2,17 @@
 
 return [
 
+    'password_strength' => [
+        'length' => 'Almeno 12 caratteri',
+        'case' => 'Lettere maiuscole e minuscole',
+        'number' => 'Almeno un numero',
+        'symbol' => 'Almeno un simbolo',
+        'weak' => 'Debole',
+        'fair' => 'Discreta',
+        'good' => 'Buona',
+        'strong' => 'Forte',
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Authentication Language Lines
@@ -58,6 +69,7 @@ return [
     'github_login' => 'Accedi con GitHub',
     'github_signup' => 'Registrati con GitHub',
     'github_email_unavailable' => 'Impossibile recuperare la tua email da GitHub. Rendi pubblica la tua email GitHub o concedi l\'ambito email, poi riprova.',
+    'social_email_unverified' => 'Non siamo riusciti a confermare la tua email con :provider. Verificala lì oppure accedi con email e password.',
 
     'signup_success' => [
         'page_title' => 'Benvenuto',
@@ -92,6 +104,8 @@ return [
         'submit' => 'Crea account',
         'has_account' => 'Hai già un account?',
         'log_in' => 'Accedi',
+        'disposable_email' => 'Usa un indirizzo email permanente. Gli indirizzi temporanei non sono accettati.',
+        'quota_reached' => 'Non siamo riusciti a creare l’account in questo momento. Riprova più tardi.',
     ],
 
     'forgot_password' => [
@@ -122,6 +136,12 @@ return [
         'link_sent' => 'Un nuovo link di verifica è stato inviato all\'indirizzo email fornito durante la registrazione.',
         'resend' => 'Invia di nuovo l\'email di verifica',
         'log_out' => 'Esci',
+        'sent_to' => 'Email inviata a',
+        'instructions' => 'Controlla la posta in arrivo (e lo spam, per sicurezza). Devi confermare la tua email per continuare.',
+        'wrong_email' => 'Email sbagliata? Correggila',
+        'new_email_label' => 'Nuova email',
+        'update_email' => 'Salva e invia di nuovo',
+        'cancel' => 'Annulla',
     ],
 
     'accept_invite' => [
