@@ -20,6 +20,7 @@ import {
 } from 'vue';
 import { toast } from 'vue-sonner';
 
+import ContentRating from '@/components/ContentRating.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import ReviewBlockCard, {
     type ReviewSlide,
@@ -29,7 +30,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/AppLayout.vue';
-
 import { create as createPostRoute } from '@/routes/app/posts';
 import { loading as loadingRoute } from '@/routes/app/posts/ai';
 import {
@@ -519,6 +519,14 @@ onBeforeUnmount(() => {
                             "
                         />
                     </div>
+                </div>
+
+                <!-- Quality signal on the generated draft. Never blocks. -->
+                <div class="flex justify-center py-2">
+                    <ContentRating
+                        rateable-type="aiPostDraft"
+                        :rateable-id="draft.id"
+                    />
                 </div>
 
                 <!-- Action bar: sticky inside the column, so it respects the sidebar. -->

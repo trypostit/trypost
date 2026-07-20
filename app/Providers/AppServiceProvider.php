@@ -14,6 +14,7 @@ use App\Models\AutomationNodeRun;
 use App\Models\AutomationNodeState;
 use App\Models\AutomationRun;
 use App\Models\AutomationTriggerItem;
+use App\Models\ContentRating;
 use App\Models\Invite;
 use App\Models\Media;
 use App\Models\Notification;
@@ -116,6 +117,7 @@ class AppServiceProvider extends ServiceProvider
             'accessToken' => AccessToken::class,
             'account' => Account::class,
             'aiPostDraft' => AiPostDraft::class,
+            'contentRating' => ContentRating::class,
             'aiUsageLog' => AiUsageLog::class,
             'automation' => Automation::class,
             'automationNodeRun' => AutomationNodeRun::class,

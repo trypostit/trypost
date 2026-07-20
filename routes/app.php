@@ -7,6 +7,7 @@ use App\Http\Controllers\App\ApiKeyController;
 use App\Http\Controllers\App\AssetController;
 use App\Http\Controllers\App\AutomationController;
 use App\Http\Controllers\App\BillingController;
+use App\Http\Controllers\App\ContentRatingController;
 use App\Http\Controllers\App\DiscordController as AppDiscordController;
 use App\Http\Controllers\App\GiphyController;
 use App\Http\Controllers\App\LinkPreviewController;
@@ -203,6 +204,7 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::post('posts/{post}/media/{mediaId}/ai/regenerate', [PostAiRegenerateMediaController::class, 'regenerate'])->name('app.posts.ai.regenerate-media');
     Route::post('posts/{post}/ai/review', [PostAiReviewController::class, 'review'])->name('app.posts.ai.review');
     Route::post('posts/ai/create', [PostAiCreateController::class, 'start'])->name('app.posts.ai.create');
+    Route::post('content-ratings', [ContentRatingController::class, 'store'])->name('app.content-ratings.store');
     Route::get('posts/ai/{creationId}/loading', [PostAiCreateController::class, 'loading'])->name('app.posts.ai.loading')->whereUuid('creationId');
     Route::get('posts/ai/{creationId}/status', [PostAiCreateController::class, 'creationStatus'])->name('app.posts.ai.creation-status')->whereUuid('creationId');
     Route::post('posts/ai/drafts/prepare', [PostAiCreateController::class, 'prepare'])->name('app.posts.ai.drafts.prepare');

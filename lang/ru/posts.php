@@ -2,6 +2,12 @@
 
 return [
 
+    'rating' => [
+        'prompt' => 'How good is this draft?',
+        'thanks' => 'Thanks for the feedback!',
+        'aria' => 'Rate this draft from 1 to 5',
+    ],
+
     'ai_review' => [
         'page_title' => 'Review your post',
         'title' => 'Review before generating',

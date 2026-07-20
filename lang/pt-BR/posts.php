@@ -2,6 +2,12 @@
 
 return [
 
+    'rating' => [
+        'prompt' => 'Como ficou este rascunho?',
+        'thanks' => 'Obrigado pelo retorno!',
+        'aria' => 'Avalie este rascunho de 1 a 5',
+    ],
+
     'ai_review' => [
         'page_title' => 'Revise seu post',
         'title' => 'Revise antes de gerar',
