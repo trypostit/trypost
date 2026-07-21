@@ -226,6 +226,29 @@ test('chunked upload completes with single chunk', function () {
     expect($this->workspace->getMedia('assets')->count())->toBe(1);
 });
 
+test('chunked upload accepts a percent-encoded unicode filename', function () {
+    $content = file_get_contents(__DIR__.'/../fixtures/1x1.png');
+    $size = strlen($content);
+
+    $response = $this->actingAs($this->user)->call(
+        'POST',
+        route('app.assets.store-chunked'),
+        [], [], [],
+        [
+            'HTTP_CONTENT_RANGE' => 'bytes 0-'.($size - 1).'/'.$size,
+            'HTTP_X_FILE_NAME' => rawurlencode('Screenshot 2026-07-15 at 3.18.01 AM.png'),
+            'HTTP_ACCEPT' => 'application/json',
+            'CONTENT_TYPE' => 'application/octet-stream',
+        ],
+        $content,
+    );
+
+    $response->assertSuccessful();
+    $response->assertJson(['done' => true]);
+    expect($this->workspace->getMedia('assets')->first()->original_filename)
+        ->toBe('screenshot 2026-07-15 at 3.18.01 am.png');
+});
+
 test('chunked upload completes for a pdf document', function () {
     // Real %PDF magic bytes so mime_content_type detects application/pdf.
     $content = "%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n";

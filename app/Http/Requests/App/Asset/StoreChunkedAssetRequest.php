@@ -30,7 +30,7 @@ class StoreChunkedAssetRequest extends FormRequest
             'total_size' => $parsed[2] ?? null,
             // Lowercase the name so `ends_with` validation is effectively
             // case-insensitive (IMG_1234.JPG vs img_1234.jpg).
-            'file_name' => strtolower((string) $this->header('X-File-Name', 'upload')),
+            'file_name' => strtolower(rawurldecode((string) $this->header('X-File-Name', 'upload'))),
         ]);
     }
 
