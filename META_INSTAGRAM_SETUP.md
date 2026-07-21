@@ -17,14 +17,14 @@ the app and go to:
 Add the TryPost production callback:
 
 ```text
-https://trypost.aidven.com/accounts/instagram/callback
+https://trypost.superclerk.com/accounts/instagram/callback
 ```
 
 The Instagram app is shared with AGENTFATHER. Do not remove its registered
 callbacks. The complete callback list used by both products is:
 
 ```text
-https://trypost.aidven.com/accounts/instagram/callback
+https://trypost.superclerk.com/accounts/instagram/callback
 https://api.aidven.com/connect/oauth/callback
 https://local4000.inteclab.org/accounts/instagram/callback
 https://local4096.inteclab.org/connect/oauth/callback
@@ -40,9 +40,9 @@ registered callback.
 Production must use:
 
 ```dotenv
-APP_URL=https://trypost.aidven.com
+APP_URL=https://trypost.superclerk.com
 INSTAGRAM_CLIENT_ID=1307273551605418
-INSTAGRAM_CLIENT_REDIRECT=https://trypost.aidven.com/accounts/instagram/callback
+INSTAGRAM_CLIENT_REDIRECT=https://trypost.superclerk.com/accounts/instagram/callback
 ```
 
 Keep the Instagram app secret and webhook verify token in the deployment secret
@@ -53,7 +53,7 @@ store. Never commit them.
 The webhook is configured separately from OAuth:
 
 ```text
-Callback URL: https://trypost.aidven.com/instagram/webhook
+Callback URL: https://trypost.superclerk.com/instagram/webhook
 Verify token:  INSTAGRAM_WEBHOOK_VERIFY_TOKEN from the production secret store
 Fields:        comments, messages
 ```

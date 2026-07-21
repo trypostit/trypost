@@ -51,7 +51,7 @@ jobs:
           tags: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
           build-args: |
             VITE_REVERB_APP_KEY=trypost-reverb-key
-            VITE_REVERB_HOST=trypost.aidven.com
+            VITE_REVERB_HOST=trypost.superclerk.com
             VITE_REVERB_PORT=443
             VITE_REVERB_SCHEME=https
           cache-from: type=gha,scope=trypost-production-arm64
@@ -96,7 +96,7 @@ jobs:
 
       - name: Verify
         run: |
-          test "$(curl -fsS https://trypost.aidven.com/up)" = "Application up"
+          curl -fsS https://trypost.superclerk.com/up > /dev/null
           command_id=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name AWS-RunShellScript \

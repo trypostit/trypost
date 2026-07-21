@@ -5,7 +5,7 @@ app, Postgres, Redis, queues, scheduler, Reverb, and Caddy. AWS Systems Manager
 replaces SSH, Secrets Manager stores the production environment, and S3 keeps
 30 days of nightly database and uploaded-file backups.
 
-Production URL: `https://trypost.aidven.com`
+Production URL: `https://trypost.superclerk.com`
 
 ## Provision
 
@@ -13,7 +13,7 @@ Deploy `stack.yaml` in `us-east-1` with the latest Amazon Linux 2023 ARM AMI,
 the default VPC, and a public subnet. Enable CloudFormation termination
 protection after creation.
 
-Create a DNS-only Cloudflare `A` record from `trypost.aidven.com` to the fixed
+Create a DNS-only Cloudflare `A` record from `trypost.superclerk.com` to the fixed
 `PublicIp` stack output. Caddy obtains and renews the public TLS certificate.
 Store the production dotenv file in the `trypost/production/env` secret.
 
