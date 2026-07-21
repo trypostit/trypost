@@ -90,8 +90,9 @@ test('assets search only returns the current workspace assets', function () {
     $response->assertJsonCount(1, 'data');
 });
 
-test('can upload an image asset', function () {
-    $file = UploadedFile::fake()->image('photo.jpg', 800, 600);
+test('can upload an image asset without changing its format', function () {
+    $file = UploadedFile::fake()->image('photo.png', 800, 600);
+    $content = file_get_contents($file->getPathname());
 
     $response = $this->actingAs($this->user)
         ->postJson(route('app.assets.store'), ['media' => $file]);
@@ -102,8 +103,11 @@ test('can upload an image asset', function () {
     expect($this->workspace->getMedia('assets')->count())->toBe(1);
 
     $media = $this->workspace->getMedia('assets')->first();
-    expect($media->original_filename)->toBe('photo.jpg');
-    expect($media->collection)->toBe('assets');
+    expect($media->original_filename)->toBe('photo.png')
+        ->and($media->collection)->toBe('assets')
+        ->and($media->mime_type)->toBe('image/png')
+        ->and($media->path)->toEndWith('.png')
+        ->and(Storage::get($media->path))->toBe($content);
 });
 
 test('can delete an asset', function () {
@@ -224,6 +228,10 @@ test('chunked upload completes with single chunk', function () {
     $response->assertJson(['done' => true]);
     $response->assertJsonStructure(['done', 'id', 'path', 'url', 'type', 'mime_type', 'original_filename', 'size']);
     expect($this->workspace->getMedia('assets')->count())->toBe(1);
+    $media = $this->workspace->getMedia('assets')->first();
+    expect($media->mime_type)->toBe('image/png')
+        ->and($media->path)->toEndWith('.png')
+        ->and(Storage::get($media->path))->toBe($content);
 });
 
 test('chunked upload accepts a percent-encoded unicode filename', function () {

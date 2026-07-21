@@ -263,18 +263,16 @@ test('mp4 with quicktime mime still detected as video by path', function () {
     expect($media->isVideo())->toBeTrue();
 });
 
-test('PNG upload is converted to JPEG at upload time', function () {
+test('PNG upload preserves its original format', function () {
     $workspace = Workspace::factory()->create();
     $file = UploadedFile::fake()->image('photo.png', 200, 150);
+    $content = file_get_contents($file->getPathname());
 
     $media = $workspace->addMedia($file, 'assets');
 
-    expect($media->mime_type)->toBe('image/jpeg')
-        ->and($media->path)->toEndWith('.jpg')
-        ->and(pathinfo($media->path, PATHINFO_EXTENSION))->toBe('jpg');
-
-    $bytes = Storage::get($media->path);
-    expect(substr($bytes, 0, 3))->toBe("\xFF\xD8\xFF"); // JPEG SOI marker
+    expect($media->mime_type)->toBe('image/png')
+        ->and($media->path)->toEndWith('.png')
+        ->and(Storage::get($media->path))->toBe($content);
 });
 
 test('JPEG upload stays as JPEG (no-op)', function () {
@@ -297,14 +295,16 @@ test('GIF upload preserves GIF format for animation', function () {
         ->and(pathinfo($media->path, PATHINFO_EXTENSION))->toBe('gif');
 });
 
-test('WebP upload is converted to JPEG', function () {
+test('WebP upload preserves its original format', function () {
     $workspace = Workspace::factory()->create();
     $file = UploadedFile::fake()->image('photo.webp', 200, 150);
+    $content = file_get_contents($file->getPathname());
 
     $media = $workspace->addMedia($file, 'assets');
 
-    expect($media->mime_type)->toBe('image/jpeg')
-        ->and(pathinfo($media->path, PATHINFO_EXTENSION))->toBe('jpg');
+    expect($media->mime_type)->toBe('image/webp')
+        ->and($media->path)->toEndWith('.webp')
+        ->and(Storage::get($media->path))->toBe($content);
 });
 
 test('client meta is merged into media meta', function () {
