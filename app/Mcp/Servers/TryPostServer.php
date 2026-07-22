@@ -7,6 +7,7 @@ namespace App\Mcp\Servers;
 use App\Mcp\Tools\ApiKey\CreateApiKeyTool;
 use App\Mcp\Tools\ApiKey\DeleteApiKeyTool;
 use App\Mcp\Tools\ApiKey\ListApiKeysTool;
+use App\Mcp\Tools\Asset\GetAssetPreviewTool;
 use App\Mcp\Tools\Asset\ListAssetsTool;
 use App\Mcp\Tools\Label\CreateLabelTool;
 use App\Mcp\Tools\Label\DeleteLabelTool;
@@ -59,6 +60,7 @@ class TryPostServer extends Server
 
         // Assets
         ListAssetsTool::class,
+        GetAssetPreviewTool::class,
 
         // Platforms (read-only metadata)
         ListContentTypesTool::class,
