@@ -11,6 +11,7 @@ use App\Models\PostPlatform;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class AssetUsageQuery
 {
@@ -31,9 +32,7 @@ class AssetUsageQuery
             return $usage;
         }
 
-        $posts = Post::query()
-            ->where('workspace_id', $workspace->id)
-            ->whereNotNull('media')
+        $posts = $this->postsReferencingAssets($workspace, $assetIds)
             ->with('postPlatforms')
             ->get();
 
@@ -58,6 +57,43 @@ class AssetUsageQuery
         }
 
         return $usage;
+    }
+
+    /**
+     * @param  array<int, string>  $assetIds
+     */
+    private function postsReferencingAssets(Workspace $workspace, array $assetIds): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = Post::query()
+            ->where('workspace_id', $workspace->id)
+            ->whereNotNull('media');
+
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'pgsql') {
+            return $query->where(function ($query) use ($assetIds): void {
+                foreach ($assetIds as $assetId) {
+                    $query->orWhereRaw('media @> ?::jsonb', [json_encode([['id' => $assetId]])]);
+                }
+            });
+        }
+
+        if ($driver === 'sqlite') {
+            return $query->where(function ($query) use ($assetIds): void {
+                foreach ($assetIds as $assetId) {
+                    $query->orWhereRaw(
+                        "exists (select 1 from json_each(posts.media) where json_extract(json_each.value, '$.id') = ?)",
+                        [$assetId],
+                    );
+                }
+            });
+        }
+
+        return $query->where(function ($query) use ($assetIds): void {
+            foreach ($assetIds as $assetId) {
+                $query->orWhereJsonContains('media', ['id' => $assetId]);
+            }
+        });
     }
 
     /**

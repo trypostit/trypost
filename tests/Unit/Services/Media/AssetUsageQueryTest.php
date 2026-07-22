@@ -13,6 +13,7 @@ use App\Models\Workspace;
 use App\Services\Media\AssetUsageQuery;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -192,4 +193,45 @@ test('days since last use uses utc calendar dates instead of complete hours', fu
     expect($usage[$sameDate->id]['days_since_last_use'])->toBe(0)
         ->and($usage[$adjacentDate->id]['days_since_last_use'])->toBe(1)
         ->and($usage[$future->id]['days_since_last_use'])->toBe(0);
+});
+
+test('usage aggregation is scoped to the requested workspace', function () {
+    $workspace = Workspace::factory()->create();
+    $otherWorkspace = Workspace::factory()->create();
+    $asset = assetIn($workspace);
+    $otherPost = postUsing($otherWorkspace, $asset, ['status' => PostStatus::Published]);
+
+    platformFor($otherPost, [
+        'status' => PostPlatformStatus::Published,
+        'published_at' => '2026-07-21 10:00:00',
+    ]);
+
+    $usage = (new AssetUsageQuery)->forAssets($workspace, [$asset->id], CarbonImmutable::parse('2026-07-22', 'UTC'));
+
+    expect($usage[$asset->id]['is_used'])->toBeFalse()
+        ->and($usage[$asset->id]['publication_usage_count'])->toBe(0)
+        ->and($usage[$asset->id]['last_use_contexts'])->toBe([]);
+});
+
+test('usage aggregation uses a bounded query set for requested assets', function () {
+    $workspace = Workspace::factory()->create();
+    $assets = collect(range(1, 5))->map(fn () => assetIn($workspace));
+
+    $assets->each(function (Media $asset) use ($workspace): void {
+        $post = postUsing($workspace, $asset, ['status' => PostStatus::Published]);
+        platformFor($post, [
+            'status' => PostPlatformStatus::Published,
+            'published_at' => '2026-07-21 10:00:00',
+        ]);
+    });
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+
+    (new AssetUsageQuery)->forAssets($workspace, $assets->pluck('id')->all(), CarbonImmutable::parse('2026-07-22', 'UTC'));
+
+    $queries = collect(DB::getQueryLog())->pluck('query')->join("\n");
+
+    expect($queries)->toContain('media')
+        ->and($queries)->toContain('post_platforms');
 });
