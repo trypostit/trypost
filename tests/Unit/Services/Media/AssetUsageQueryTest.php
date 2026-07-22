@@ -235,3 +235,11 @@ test('usage aggregation uses a bounded query set for requested assets', function
     expect($queries)->toContain('media')
         ->and($queries)->toContain('post_platforms');
 });
+
+test('postgres asset reference expression casts media json to jsonb containment', function () {
+    $query = new AssetUsageQuery;
+    $method = new ReflectionMethod($query, 'postgresAssetContainsExpression');
+    $method->setAccessible(true);
+
+    expect($method->invoke($query))->toBe('media::jsonb @> ?::jsonb');
+});

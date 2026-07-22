@@ -73,7 +73,7 @@ class AssetUsageQuery
         if ($driver === 'pgsql') {
             return $query->where(function ($query) use ($assetIds): void {
                 foreach ($assetIds as $assetId) {
-                    $query->orWhereRaw('media @> ?::jsonb', [json_encode([['id' => $assetId]])]);
+                    $query->orWhereRaw($this->postgresAssetContainsExpression(), [json_encode([['id' => $assetId]])]);
                 }
             });
         }
@@ -262,5 +262,10 @@ class AssetUsageQuery
         $nowDate = $nowUtc->utc()->startOfDay();
 
         return max(0, (int) $lastDate->diffInDays($nowDate, false));
+    }
+
+    private function postgresAssetContainsExpression(): string
+    {
+        return 'media::jsonb @> ?::jsonb';
     }
 }
