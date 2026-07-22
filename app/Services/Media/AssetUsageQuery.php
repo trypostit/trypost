@@ -10,6 +10,7 @@ use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -62,7 +63,7 @@ class AssetUsageQuery
     /**
      * @param  array<int, string>  $assetIds
      */
-    private function postsReferencingAssets(Workspace $workspace, array $assetIds): \Illuminate\Database\Eloquent\Builder
+    private function postsReferencingAssets(Workspace $workspace, array $assetIds): Builder
     {
         $query = Post::query()
             ->where('workspace_id', $workspace->id)
