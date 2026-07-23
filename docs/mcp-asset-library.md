@@ -61,9 +61,16 @@ Output:
 
 The preview route is signed, expires after five minutes, re-checks workspace
 ownership, and returns `404` when the storage object is missing or the media does
-not belong to the requested workspace. Local preview responses stream from the
-configured disk instead of loading the whole asset into PHP memory, including
-large video assets.
+not belong to the requested workspace. For Laravel local filesystem disks,
+including NFS mounts exposed through the local driver, the route returns a
+`BinaryFileResponse`; Symfony handles `Range` and `If-Range`, enabling `206`
+partial responses, `416` invalid-range responses, `Content-Length`,
+`Accept-Ranges`, seek, and resumable downloads without loading the whole asset
+into PHP memory. If a reliable local filesystem path cannot be resolved inside
+the disk root, the route falls back to `readStream()` and `fpassthru()`: memory
+usage remains constant, but byte-range seeking is not guaranteed. S3-compatible
+object storage continues to use the disk temporary URL mode instead of this local
+signed route.
 
 ### `attach_existing_asset`
 
