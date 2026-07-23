@@ -30,7 +30,7 @@ class SetLocale
         $response = $next($request);
 
         if (! $isValid) {
-            $response->withCookie(
+            $response->headers->setCookie(
                 cookie()->forever('locale', config('languages.default'), '/', config('session.domain')),
             );
         }

@@ -61,7 +61,9 @@ Output:
 
 The preview route is signed, expires after five minutes, re-checks workspace
 ownership, and returns `404` when the storage object is missing or the media does
-not belong to the requested workspace.
+not belong to the requested workspace. Local preview responses stream from the
+configured disk instead of loading the whole asset into PHP memory, including
+large video assets.
 
 ### `attach_existing_asset`
 

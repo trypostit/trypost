@@ -6,6 +6,7 @@ use App\Http\Middleware\App\SetLocale;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Run the middleware with the given `locale` cookie (null = no cookie) and
@@ -63,4 +64,17 @@ test('does not reset the cookie when a valid locale is present', function () {
         ->first(fn ($cookie) => $cookie->getName() === 'locale');
 
     expect($cookie)->toBeNull();
+});
+
+test('persists the default locale cookie on streamed responses', function () {
+    $request = Request::create('/', 'GET');
+
+    $response = (new SetLocale)->handle($request, fn () => new StreamedResponse(fn () => print 'ok'));
+
+    $cookie = collect($response->headers->getCookies())
+        ->first(fn ($cookie) => $cookie->getName() === 'locale');
+
+    expect($response)->toBeInstanceOf(StreamedResponse::class);
+    expect($cookie)->not->toBeNull();
+    expect($cookie->getValue())->toBe(config('languages.default'));
 });
