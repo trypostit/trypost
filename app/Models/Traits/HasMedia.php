@@ -16,6 +16,7 @@ use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Encoders\JpegEncoder;
 use Intervention\Image\ImageManager;
+use RuntimeException;
 
 trait HasMedia
 {
@@ -87,7 +88,7 @@ trait HasMedia
         );
 
         $filename = Str::uuid().'.'.$normalizedExt;
-        $path = 'medias/'.$filename;
+        $path = "medias/{$filename}";
 
         Storage::put($path, $normalizedBytes);
 
@@ -106,6 +107,7 @@ trait HasMedia
 
     /**
      * Add media from a file path (used for chunked uploads).
+     * Images are normalized in memory; videos/PDFs are streamed to storage.
      */
     public function addMediaFromPath(string $filePath, string $originalFilename, string $collection = 'default', array $meta = [], ?string $groupId = null): Media
     {
@@ -117,17 +119,41 @@ trait HasMedia
         $type = $this->getMediaType($mimeType);
         $extension = pathinfo($originalFilename, PATHINFO_EXTENSION);
 
-        [$normalizedBytes, $normalizedMime, $normalizedExt] = $this->normalizeImageFormat(
-            $filePath,
-            $mimeType,
-            $type,
-            $extension,
-        );
+        $stored = $type === Type::Image->value
+            ? $this->storeImageFromPath($filePath, $mimeType, $type, $extension, $meta)
+            : $this->streamFileToStorage($filePath, $mimeType, $extension, $meta);
 
-        $filename = Str::uuid().'.'.$normalizedExt;
-        $storagePath = 'medias/'.$filename;
+        return $this->media()->create([
+            'group_id' => $groupId ?? Str::uuid()->toString(),
+            'collection' => $collection,
+            'type' => $type,
+            'path' => $stored['path'],
+            'original_filename' => $originalFilename,
+            'mime_type' => $stored['mime_type'],
+            'size' => $stored['size'],
+            'order' => 0,
+            'meta' => $stored['meta'],
+        ]);
+    }
 
-        Storage::put($storagePath, $normalizedBytes);
+    /**
+     * Register media that is already stored on the default disk (e.g. after a
+     * multipart cloud upload).
+     */
+    public function addMediaFromStoredPath(
+        string $storagePath,
+        string $originalFilename,
+        string $mimeType,
+        int $size,
+        string $collection = 'default',
+        array $meta = [],
+        ?string $groupId = null,
+    ): Media {
+        if ($this->isSingleMediaCollection($collection)) {
+            $this->clearMediaCollection($collection);
+        }
+
+        $type = $this->getMediaType($mimeType);
 
         return $this->media()->create([
             'group_id' => $groupId ?? Str::uuid()->toString(),
@@ -135,10 +161,10 @@ trait HasMedia
             'type' => $type,
             'path' => $storagePath,
             'original_filename' => $originalFilename,
-            'mime_type' => $normalizedMime,
-            'size' => strlen($normalizedBytes),
+            'mime_type' => $mimeType,
+            'size' => $size,
             'order' => 0,
-            'meta' => array_merge($this->getMediaMetaFromBytes($normalizedBytes, $type, $meta), $meta),
+            'meta' => $meta,
         ]);
     }
 
@@ -153,6 +179,61 @@ trait HasMedia
         $config = self::$mediaCollections[$modelClass][$collection] ?? 'multiple';
 
         return $config === 'single';
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     * @return array{path: string, mime_type: string, size: int, meta: array<string, mixed>}
+     */
+    private function storeImageFromPath(string $filePath, string $mimeType, string $type, string $extension, array $meta): array
+    {
+        [$bytes, $storedMime, $storedExt] = $this->normalizeImageFormat(
+            $filePath,
+            $mimeType,
+            $type,
+            $extension,
+        );
+
+        $filename = Str::uuid().".{$storedExt}";
+        $path = "medias/{$filename}";
+        Storage::put($path, $bytes);
+
+        return [
+            'path' => $path,
+            'mime_type' => $storedMime,
+            'size' => strlen($bytes),
+            'meta' => array_merge($this->getMediaMetaFromBytes($bytes, $type, $meta), $meta),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     * @return array{path: string, mime_type: string, size: int, meta: array<string, mixed>}
+     */
+    private function streamFileToStorage(string $filePath, string $mimeType, string $extension, array $meta): array
+    {
+        $filename = Str::uuid().".{$extension}";
+        $path = "medias/{$filename}";
+        $stream = fopen($filePath, 'rb');
+
+        if ($stream === false) {
+            throw new RuntimeException("Unable to open media file for reading: {$filePath}");
+        }
+
+        try {
+            Storage::writeStream($path, $stream);
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
+
+        return [
+            'path' => $path,
+            'mime_type' => $mimeType,
+            'size' => (int) filesize($filePath),
+            'meta' => $meta,
+        ];
     }
 
     private function getMediaType(string $mimeType): string

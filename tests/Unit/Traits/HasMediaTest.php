@@ -118,6 +118,23 @@ test('model can add media from file path', function () {
     unlink($tempFile);
 });
 
+test('model can add video media from file path via stream', function () {
+    $workspace = Workspace::factory()->create();
+
+    $tempFile = tempnam(sys_get_temp_dir(), 'vid');
+    $bytes = "\0\0\0\x18ftypmp42\0\0\0\0mp42isom".str_repeat("\0", 64);
+    file_put_contents($tempFile, $bytes);
+
+    $media = $workspace->addMediaFromPath($tempFile, 'clip.mp4', 'assets');
+
+    expect($media->type->value)->toBe('video');
+    expect($media->size)->toBe(strlen($bytes));
+    expect($media->mime_type)->toBe('video/mp4');
+    Storage::assertExists($media->path);
+
+    unlink($tempFile);
+});
+
 test('model can clear media collection', function () {
     $workspace = Workspace::factory()->create();
     $file1 = UploadedFile::fake()->image('logo1.jpg', 100, 100);

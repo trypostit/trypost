@@ -530,7 +530,7 @@ return [
         ],
         'youtube_short' => [
             'label' => 'ショート',
-            'description' => '最大 60 秒の縦型動画',
+            'description' => '最大 3 分の縦型動画',
         ],
         'x_post' => [
             'label' => '投稿',

@@ -530,7 +530,7 @@ return [
         ],
         'youtube_short' => [
             'label' => 'Short',
-            'description' => '最长 60 秒的竖版视频',
+            'description' => '最长 3 分钟的竖版视频',
         ],
         'x_post' => [
             'label' => '帖子',

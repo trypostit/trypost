@@ -532,7 +532,7 @@ return [
         ],
         'youtube_short' => [
             'label' => 'Short',
-            'description' => '60 saniyeye kadar dikey video',
+            'description' => '3 dakikaya kadar dikey video',
         ],
         'x_post' => [
             'label' => 'Gönderi',

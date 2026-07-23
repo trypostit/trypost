@@ -530,7 +530,7 @@ return [
         ],
         'youtube_short' => [
             'label' => 'Short',
-            'description' => 'Vidéo verticale jusqu\'à 60 secondes',
+            'description' => 'Vidéo verticale jusqu\'à 3 minutes',
         ],
         'x_post' => [
             'label' => 'Publication',
