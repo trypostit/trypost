@@ -142,14 +142,17 @@ from `publication_usage_count`.
 
 `AssetUsageQuery` first scopes posts by workspace and then applies JSON
 containment against the requested asset IDs. The implementation eager-loads
-`postPlatforms.socialAccount` for the bounded post set and does not issue per
-asset or per post-platform follow-up queries.
+`postPlatforms` for the bounded post set and does not issue per asset or per
+post-platform follow-up queries.
 
-Usage-derived filtering and sorting happen after loading the matching workspace
-asset set because the usage projection is calculated from post media snapshots.
-Deployments with very large asset libraries should evaluate a dedicated index or
-denormalized usage model separately; that would require an explicit database
-schema change.
+For metadata-only listing (`usage=all` and `sort=created_at`), pagination is
+performed in SQL and usage is projected only for the current page. Usage-derived
+filtering and sorting (`used`, `unused`, `last_used_at`, `usage_count`,
+`publication_usage_count`, and `timestamped_publication_usage_count`) require the
+matching workspace asset set to be loaded before pagination because the usage
+projection is calculated from post media snapshots. Deployments with very large
+asset libraries should evaluate a dedicated index or denormalized usage model
+separately; that would require an explicit database schema change.
 
 For PostgreSQL, the asset-reference predicate casts `posts.media` to `jsonb`
 before applying containment:

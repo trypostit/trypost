@@ -115,7 +115,8 @@ test('configured and published aggregates stay separate', function () {
     expect($usage[$asset->id]['configured_platforms'])->toBe(['facebook', 'instagram'])
         ->and($usage[$asset->id]['configured_content_types'])->toBe(['facebook_post', 'instagram_feed'])
         ->and($usage[$asset->id]['published_platforms'])->toBe(['facebook'])
-        ->and($usage[$asset->id]['published_content_types'])->toBe(['facebook_post']);
+        ->and($usage[$asset->id]['published_content_types'])->toBe(['facebook_post'])
+        ->and($usage[$asset->id]['latest_content_basis'])->toBe('platform_published_at');
 });
 
 test('last use contexts include every context tied exactly to last used timestamp', function () {

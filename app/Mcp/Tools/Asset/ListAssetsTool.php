@@ -68,6 +68,33 @@ class ListAssetsTool extends Tool
             $query->where('type', $category);
         }
 
+        if (! $this->requiresUsageWideProjection((string) data_get($validated, 'usage', 'all'), $sort)) {
+            $total = (clone $query)->count();
+            $assets = $query
+                ->orderBy('created_at', $direction)
+                ->orderBy('id')
+                ->forPage($page, $perPage)
+                ->get();
+            $usage = $usageQuery->forAssets(
+                $request->user()->currentWorkspace,
+                $assets->pluck('id')->all(),
+                CarbonImmutable::now('UTC'),
+            );
+
+            return Response::structured([
+                'assets' => $assets
+                    ->map(fn (Media $media) => $this->assetPayload($media, $usage[$media->id] ?? []))
+                    ->values()
+                    ->all(),
+                'pagination' => [
+                    'page' => $page,
+                    'per_page' => $perPage,
+                    'total' => $total,
+                    'has_more' => $page * $perPage < $total,
+                ],
+            ]);
+        }
+
         $assets = $query->get();
         $usage = $usageQuery->forAssets(
             $request->user()->currentWorkspace,
@@ -113,6 +140,16 @@ class ListAssetsTool extends Tool
             ])->description('Sort field.'),
             'direction' => $schema->string()->enum(['asc', 'desc'])->description('Sort direction.'),
         ];
+    }
+
+    private function requiresUsageWideProjection(string $usage, string $sort): bool
+    {
+        return $usage !== 'all' || in_array($sort, [
+            'last_used_at',
+            'usage_count',
+            'publication_usage_count',
+            'timestamped_publication_usage_count',
+        ], true);
     }
 
     /**

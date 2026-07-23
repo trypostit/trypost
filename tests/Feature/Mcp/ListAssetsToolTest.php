@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
 use Illuminate\JsonSchema\JsonSchemaTypeFactory;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\Fluent\AssertableJson;
 
 beforeEach(function () {
@@ -141,6 +142,55 @@ test('filters and sorts assets by metadata and usage without conflating configur
         ->tool(ListAssetsTool::class, ['usage' => 'unused'])
         ->assertOk()
         ->assertStructuredContent(fn (AssertableJson $json) => $json->where('assets.0.asset_id', $unused->id)->etc());
+});
+
+test('metadata sorted listing computes usage only for the current page', function () {
+    $firstPage = assetForList($this->workspace, [
+        'original_filename' => 'first-page.jpg',
+        'created_at' => CarbonImmutable::parse('2026-07-22 12:03:00', 'UTC'),
+    ]);
+    $offPage = assetForList($this->workspace, [
+        'original_filename' => 'off-page.jpg',
+        'created_at' => CarbonImmutable::parse('2026-07-22 12:02:00', 'UTC'),
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'media' => [['id' => $offPage->id, 'path' => $offPage->path]],
+        'status' => PostStatus::Published,
+    ]);
+    PostPlatform::factory()->published()->create([
+        'post_id' => $post->id,
+        'published_at' => '2026-07-21 10:00:00',
+    ]);
+
+    $postQueryBindings = [];
+    DB::listen(function ($query) use (&$postQueryBindings) {
+        if (str_contains($query->sql, 'from "posts"')) {
+            $postQueryBindings[] = $query->bindings;
+        }
+    });
+
+    TryPostServer::actingAs($this->user)
+        ->tool(ListAssetsTool::class, [
+            'per_page' => 1,
+            'sort' => 'created_at',
+            'direction' => 'desc',
+        ])
+        ->assertOk()
+        ->assertStructuredContent(function (AssertableJson $json) use ($firstPage) {
+            $json->where('assets.0.asset_id', $firstPage->id)
+                ->where('assets.0.is_used', false)
+                ->where('pagination.total', 2)
+                ->where('pagination.has_more', true)
+                ->etc();
+        });
+
+    $encodedBindings = json_encode($postQueryBindings, JSON_THROW_ON_ERROR);
+
+    expect($encodedBindings)->toContain($firstPage->id)
+        ->and($encodedBindings)->not->toContain($offPage->id);
 });
 
 test('schema does not accept workspace_id', function () {

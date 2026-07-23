@@ -159,6 +159,7 @@ class AssetUsageQuery
 
         $latestContentId = $latestContentIds[0] ?? $posts->sortByDesc('created_at')->first()?->id;
         $useBases = $lastContexts->pluck('use_basis')->unique()->values();
+        $lastUseBasis = $useBases->count() > 1 ? 'mixed' : $useBases->first();
 
         return [
             'is_used' => $posts->isNotEmpty(),
@@ -174,9 +175,11 @@ class AssetUsageQuery
             'publication_statuses' => $this->sortedEnumValues($enabledPlatforms->pluck('status')),
             'latest_content_id' => $latestContentId,
             'latest_content_ids' => $latestContentIds,
-            'latest_content_basis' => $lastUsedAt === null && $latestContentId !== null ? 'content_created_at_fallback' : null,
+            'latest_content_basis' => $latestContentId === null
+                ? null
+                : ($lastUsedAt === null ? 'content_created_at_fallback' : $lastUseBasis),
             'last_used_at' => $lastUsedAt,
-            'last_use_basis' => $useBases->count() > 1 ? 'mixed' : $useBases->first(),
+            'last_use_basis' => $lastUseBasis,
             'last_use_contexts' => $lastContexts->all(),
             'days_since_last_use' => $lastUsedAt === null ? null : $this->daysSince($lastUsedAt, $nowUtc),
         ];
