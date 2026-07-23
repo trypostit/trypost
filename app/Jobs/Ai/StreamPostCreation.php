@@ -43,6 +43,7 @@ class StreamPostCreation implements ShouldQueue
         public string $prompt,
         public ?string $date = null,
         public string $template = 'image_card',
+        public bool $applyBrandVisuals = true,
     ) {
         $this->onQueue('ai');
     }
@@ -64,6 +65,7 @@ class StreamPostCreation implements ShouldQueue
             format: $this->format,
             imageCount: $this->imageCount,
             isCarousel: $isCarousel,
+            applyBrandVisuals: $this->applyBrandVisuals,
         );
 
         $agent = new PostContentGenerator(

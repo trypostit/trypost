@@ -153,6 +153,7 @@ class PostController extends Controller
             'preview' => $t->previewAsset(),
             'needs_account' => $t->needsAccount(),
             'supported_formats' => $t->supportedFormats(),
+            'applies_brand_visuals' => $t->appliesBrandVisuals(),
         ], $registry->all());
 
         return Inertia::render('posts/Create', [

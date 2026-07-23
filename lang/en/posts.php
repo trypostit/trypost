@@ -500,7 +500,7 @@ return [
         ],
         'youtube_short' => [
             'label' => 'Short',
-            'description' => 'Vertical video up to 60 seconds',
+            'description' => 'Vertical video up to 3 minutes',
         ],
         'x_post' => [
             'label' => 'Post',
@@ -606,6 +606,8 @@ return [
             'media_optional_label' => 'How many images?',
             'media_none' => 'None',
             'media_count_label' => 'Number of images',
+            'brand_colors_label' => 'Brand colors',
+            'brand_colors_description' => 'Apply your workspace brand palette to the generated images. Turn it off to let the AI pick colors that fit the content.',
             'prompt_title' => 'Describe your post',
             'prompt_label' => 'What is this post about?',
             'prompt_placeholder' => 'e.g. Announce our new carousel feature for Instagram',

@@ -44,6 +44,11 @@ class ImageCardTemplate implements AiContentTemplate
         return $this->style()->needsAccount();
     }
 
+    public function appliesBrandVisuals(): bool
+    {
+        return true;
+    }
+
     public function supportedFormats(): array
     {
         return [];

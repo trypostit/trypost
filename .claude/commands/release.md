@@ -3,13 +3,14 @@ description: Friday release ritual — create git tag, GitHub release (auto-gene
 allowed-tools: Bash, Write, Read, Skill
 ---
 
-You are running the Friday release ritual for TryPost. Three artifacts are produced:
+You are running the Friday release ritual for TryPost. Four artifacts are produced:
 
 1. A git tag (semver)
 2. A GitHub release with the **auto-generated** changelog (PR list + authors via GitHub's native generator — flat, technical, for developers)
 3. A **customer-facing email draft** in Cal.com style (themed prose, end-user voice, no commit/PR references)
+4. A **changelog thumbnail** (1200×630 PNG) rendered from the email's headline and themes, using the TryPost brand template
 
-Plus local mirrors in `releases/<version>/`.
+Plus local mirrors in `releases/<version>/` (changelog, email, and thumbnail), versioned via the artifacts PR.
 
 **Always confirm with the user before any push/tag/release.**
 
@@ -31,7 +32,7 @@ Stop and tell the user if any of these fail:
 - Current branch must be `main`. Else: ask user to `git checkout main`.
 - Working tree must be clean. Else: ask user to commit/stash.
 - Local in sync with `origin/main` (rev-list count `0	0`). Else: ask user to pull/push.
-- Commits-since-tag list must be non-empty. Else: "Nada novo desde a última tag."
+- Commits-since-tag list must be non-empty. Else: "Nothing new since the last tag."
 
 ### Step 2 — Determine next version
 
@@ -189,42 +190,85 @@ Run the email body through the `humanizer` skill before previewing:
 
 The humanizer skill itself covers all patterns. Trust it.
 
+### Step 5b — Render the changelog thumbnail
+
+Derive these inputs from the release. The **headline and the chips play different roles — never make one restate the other**:
+
+- **version** — always pass the release version (e.g. `v1.0.6`). It is stamped in the badge as a mono segment (`★ CHANGELOG | v1.0.6`) so every release image is consistent. Not optional.
+- **headline** — a crafted marketing hero line (2-6 words, at most two lines), in the voice of the marketing site's hero (`Run your social media on autopilot`). It sells the *benefit* of the release's biggest wins; it is the loudest thing on the image. Do **NOT** paste the subject line, and do **NOT** just list the theme/chip words — the chips already name the areas, so the headline sits one level above them. Read the email's themes **and** the "New features" bullets, find the strongest story, and write a fresh benefit line. A little rhythm helps (a parallel pair reads well, e.g. `Speak every language, reach every reader`). Sentence case, no version number in the headline itself (it lives in the badge), no period.
+  - ❌ `Your language, mobile, and per-image alt text` (this is just the chip labels)
+  - ✅ `Speak every language, reach every reader` (benefit-driven, distinct from the chips)
+- **underline** — a short emphasis phrase *inside* the headline (1-3 words) to carry the hand-drawn violet squiggle, usually the last / most important phrase (e.g. `every reader`). Must appear in the headline verbatim. Optional; omit for no squiggle.
+- **themes** — 2-4 short chip labels naming the concrete areas that shipped, condensed to 1-2 words each (e.g. `Languages`, `Mobile`, `Alt text & previews`). These are secondary supporting labels, rendered smaller than the headline; the template auto-colors them (violet / green / sky / orange / rose, in order). Keep them concrete and distinct from the headline's wording.
+
+Create the directory and render the thumbnail so the user can preview it before confirming:
+
+```bash
+mkdir -p releases/<version>
+node .claude/release-assets/render-thumbnail.mjs \
+  --version "<version>" \
+  --headline "<headline>" \
+  --underline "<emphasis phrase>" \
+  --themes "<label 1>,<label 2>,<label 3>" \
+  --out releases/<version>/thumbnail.png
+```
+
+This uses the shared brand template (`.claude/release-assets/thumbnail.template.html`) + TryPost logo. It mirrors the marketing-site hero / OG image: a warm cream→lavender wash, an ink dot-grid, an Instrument Serif headline with a hand-drawn violet squiggle under the emphasis phrase, an amber "Changelog" sticker badge with the version stamped in mono, and colored ink-bordered theme chips with solid offset shadows. 1200×630. It needs Playwright + chromium (already installed for browser tests). If the render fails, report and stop before tagging.
+
 ### Step 6 — Confirm with the user
 
 Show:
 1. **Proposed version** (e.g., `v1.0.9 → v1.1.0` — sequential rollover at 9).
 2. **Changelog preview** (Step 3 output).
 3. **Email preview**: subject line + full body (post-humanizer).
-4. **Files that will be created/pushed**:
+4. **Thumbnail**: `releases/<version>/thumbnail.png` (already rendered in Step 5b — tell the user they can open it to preview).
+5. **Files that will be created/pushed**:
    - Tag `<version>` (pushed to origin)
    - GitHub release `<version>`
    - `releases/<version>/changelog.md`
    - `releases/<version>/email.md`
+   - `releases/<version>/thumbnail.png`
+   - Branch `chore/release-<version>-artifacts` + a PR versioning the three files above
 
-Then ask in Portuguese: **"Crio a tag, publico o release e salvo os arquivos?"**
+Then ask: **"Create the tag, publish the release, and open the PR with the artifacts?"**
 
 Do **not** proceed without explicit yes.
 
 ### Step 7 — Execute
 
-After confirmation, in this exact order:
+After confirmation, in this exact order. Steps 4–6 (tag + release) run from `main` so the tag stays on the released `main` commit; steps 7–8 version the artifacts on a separate branch and open a PR.
 
-1. Create local directory: `mkdir -p releases/<version>`
+1. Create local directory: `mkdir -p releases/<version>` (already created in Step 5b).
 2. Write `releases/<version>/changelog.md` with the Step 3 content (raw GitHub markdown).
 3. Write `releases/<version>/email.md` with frontmatter + humanized body.
-4. Create annotated tag: `git tag -a <version> -m "Release <version>"`
+   (`releases/<version>/thumbnail.png` was already rendered in Step 5b.)
+4. From `main`, create the annotated tag: `git tag -a <version> -m "Release <version>"`
 5. Push tag: `git push origin <version>`
 6. Create the GitHub release using the changelog file as body:
    ```bash
    gh release create <version> --title "<version>" --notes-file releases/<version>/changelog.md
    ```
-7. Report to the user:
-   - GitHub release URL (from `gh` output)
-   - Local paths: `releases/<version>/changelog.md`, `releases/<version>/email.md`
-   - Reminder: *"Os arquivos em `releases/<version>/` não foram commitados. Commit depois se quiser preservar o histórico no repo."*
+7. Version the artifacts on a branch (the three files carry over from the working tree) and push:
+   ```bash
+   git checkout -b chore/release-<version>-artifacts
+   git add releases/<version>/changelog.md releases/<version>/email.md releases/<version>/thumbnail.png
+   git commit -m "chore(release): add <version> changelog, customer email, and thumbnail artifacts"
+   git push -u origin chore/release-<version>-artifacts
+   ```
+8. Open the PR against `main` (body: what the three files are + a link to the GitHub release):
+   ```bash
+   gh pr create --base main --head chore/release-<version>-artifacts \
+     --title "chore(release): <version> changelog, customer email + thumbnail artifacts" \
+     --body "<short body — the three artifact files + link to the release>"
+   ```
+9. Report to the user:
+   - GitHub release URL (from `gh release` output)
+   - PR URL (from `gh pr create` output)
+   - Local paths: `releases/<version>/changelog.md`, `releases/<version>/email.md`, `releases/<version>/thumbnail.png`
 
 ### On failure
 
 - `git push origin <version>` fails: report the exact error, leave the local tag in place, do not retry destructively.
 - `gh release create` fails: the tag is already pushed; tell the user they can recreate manually with `gh release create <version> --title "<version>" --notes-file releases/<version>/changelog.md`.
-- `Skill` or `Write` failure during artifact prep: report and stop. Do not push the tag without the artifacts being prepared.
+- `git push` / `gh pr create` for the artifacts branch fails: the tag and GitHub release are already live; report the error and tell the user they can open the PR manually from `chore/release-<version>-artifacts`.
+- `Skill`, `Write`, or thumbnail render failure during artifact prep: report and stop. Do not push the tag without the artifacts being prepared.

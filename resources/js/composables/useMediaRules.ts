@@ -92,7 +92,7 @@ const CONTENT_TYPE_RULES: Record<string, MediaRules> = {
     youtube_short: {
         maxFiles: 1, acceptImages: false, acceptVideos: true, requiresMedia: true,
         acceptsGif: false,
-        maxVideoBytes: 256 * GB, maxVideoDurationSec: 60,
+        maxVideoBytes: 256 * GB, maxVideoDurationSec: 3 * 60,
         aspectRatioMin: 0.5, aspectRatioMax: 0.6,
     },
 

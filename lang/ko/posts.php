@@ -500,7 +500,7 @@ return [
         ],
         'youtube_short' => [
             'label' => 'Short',
-            'description' => '최대 60초 세로 동영상',
+            'description' => '최대 3분 세로 동영상',
         ],
         'x_post' => [
             'label' => '게시물',
@@ -606,6 +606,8 @@ return [
             'media_optional_label' => '이미지는 몇 장인가요?',
             'media_none' => '없음',
             'media_count_label' => '이미지 수',
+            'brand_colors_label' => '브랜드 색상',
+            'brand_colors_description' => '생성되는 이미지에 워크스페이스 브랜드 색상을 적용합니다. 끄면 AI가 콘텐츠에 어울리는 색상을 선택합니다.',
             'prompt_title' => '게시물을 설명하세요',
             'prompt_label' => '이 게시물은 무엇에 관한 것인가요?',
             'prompt_placeholder' => '예: Instagram용 새 캐러셀 기능 발표',

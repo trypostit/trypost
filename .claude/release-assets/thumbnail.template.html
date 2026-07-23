@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  /* TryPost brand thumbnail — mirrors the marketing-site hero / OG image:
+     warm cream + ink + signature violet, soft peach→lavender wash, ink
+     dot-grid, Instrument Serif headline with a hand-drawn violet squiggle,
+     and ink-bordered sticker cards with Gumroad-style solid offset shadows.
+     Tokens from trypost-site assets/css/tailwind.css. */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; }
+  body {
+    font-family: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+    position: relative;
+    overflow: hidden;
+    background: #faf8f5;
+    color: #0a0a0a;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Broad peach (bottom-left) → lavender (top-right) wash. */
+  .wash {
+    position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(118deg,
+      rgba(254,215,170,0.34) 0%,
+      rgba(250,248,245,0) 40%,
+      rgba(250,248,245,0) 58%,
+      rgba(196,181,253,0.46) 100%);
+  }
+  /* Soft glow blobs — violet top-right, warm amber bottom-left. */
+  .blob { position: absolute; border-radius: 999px; pointer-events: none; filter: blur(36px); }
+  .blob-violet { top: -160px; right: -120px; width: 560px; height: 560px;
+    background: radial-gradient(circle, rgba(196,181,253,0.60) 0%, rgba(196,181,253,0) 70%); }
+  .blob-warm { bottom: -190px; left: -150px; width: 540px; height: 540px;
+    background: radial-gradient(circle, rgba(253,215,170,0.55) 0%, rgba(253,215,170,0) 70%); }
+  .blob-fuchsia { bottom: 60px; left: 120px; width: 320px; height: 320px;
+    background: radial-gradient(circle, rgba(245,208,254,0.35) 0%, rgba(245,208,254,0) 70%); }
+  /* Ink dot-grid (over cream, softened by the blobs). */
+  .grid {
+    position: absolute; inset: 0; pointer-events: none; opacity: 0.07;
+    background-image: radial-gradient(circle, #0a0a0a 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .frame {
+    position: relative; z-index: 1;
+    height: 100%; padding: 74px 84px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .top { display: flex; align-items: center; justify-content: space-between; }
+  .logo { height: 36px; width: auto; }
+  /* "Changelog" sticker — segmented ticket: amber label + mono version, one
+     ink-bordered pill with an offset shadow (mirrors the site's gold
+     "OPEN SOURCE" sticker). The version is always stamped for consistency. */
+  .badge {
+    display: inline-flex; align-items: stretch;
+    border: 2.5px solid #0a0a0a; border-radius: 10px;
+    box-shadow: 4px 4px 0 0 #0a0a0a; overflow: hidden;
+  }
+  .badge .label {
+    display: inline-flex; align-items: center; gap: 9px;
+    background: #fde68a; color: #0a0a0a;
+    padding: 10px 17px;
+    font-size: 15px; font-weight: 900;
+    text-transform: uppercase; letter-spacing: 0.16em;
+  }
+  .badge .star { width: 16px; height: 16px; display: block; }
+  .badge .ver {
+    display: inline-flex; align-items: center;
+    background: #ffffff; color: #0a0a0a;
+    padding: 10px 15px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 15px; font-weight: 700; letter-spacing: 0.01em;
+    border-left: 2.5px solid #0a0a0a;
+  }
+  .body { max-width: 1000px; }
+  h1 {
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-weight: 400; font-size: 88px; line-height: 1.04;
+    letter-spacing: -0.02em; color: #0a0a0a; text-wrap: balance;
+  }
+  /* Emphasis phrase carrying the hand-drawn squiggle. */
+  .ul { position: relative; display: inline-block; white-space: nowrap; }
+  .ul > .squiggle {
+    position: absolute; left: 0; right: 0; bottom: -0.16em;
+    width: 100%; height: 0.34em; color: #8b5cf6;
+  }
+  .themes { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+  /* Theme chips — colored sticker cards (brand pastels), ink border, offset
+     shadow, ink text, hand-placed tilt (echoes the floating platform / composer
+     stickers in the hero — bg-violet-300 ... text-foreground). Secondary to the
+     headline: smaller and lighter in weight. */
+  .chip {
+    padding: 10px 18px; border-radius: 10px;
+    color: #0a0a0a;
+    border: 2.5px solid #0a0a0a;
+    box-shadow: 3px 3px 0 0 #0a0a0a;
+    font-size: 18px; font-weight: 600;
+  }
+  .chip:nth-child(1) { background: #ddd6fe; transform: rotate(-2deg); }  /* violet-200 */
+  .chip:nth-child(2) { background: #bbf7d0; transform: rotate(1.5deg); } /* green-200 */
+  .chip:nth-child(3) { background: #bae6fd; transform: rotate(-1deg); }  /* sky-200 */
+  .chip:nth-child(4) { background: #fed7aa; transform: rotate(2deg); }   /* orange-200 */
+  .chip:nth-child(5) { background: #fecdd3; transform: rotate(-1.5deg); }/* rose-200 */
+</style>
+</head>
+<body>
+  <div class="wash"></div>
+  <div class="blob blob-violet"></div>
+  <div class="blob blob-warm"></div>
+  <div class="blob blob-fuchsia"></div>
+  <div class="grid"></div>
+  <div class="frame">
+    <div class="top">
+      <img class="logo" src="{{LOGO}}" alt="TryPost" />
+      <span class="badge">{{BADGE_INNER}}</span>
+    </div>
+
+    <div class="body">
+      <h1>{{HEADLINE}}</h1>
+    </div>
+
+    <div class="themes">{{CHIPS}}</div>
+  </div>
+</body>
+</html>

@@ -500,7 +500,7 @@ return [
         ],
         'youtube_short' => [
             'label' => 'Short',
-            'description' => 'Verticale video tot 60 seconden',
+            'description' => 'Verticale video tot 3 minuten',
         ],
         'x_post' => [
             'label' => 'Post',
@@ -606,6 +606,8 @@ return [
             'media_optional_label' => 'Hoeveel afbeeldingen?',
             'media_none' => 'Geen',
             'media_count_label' => 'Aantal afbeeldingen',
+            'brand_colors_label' => 'Merkkleuren',
+            'brand_colors_description' => 'Pas het merkkleurenpalet van je workspace toe op de gegenereerde afbeeldingen. Zet het uit om de AI kleuren te laten kiezen die bij de inhoud passen.',
             'prompt_title' => 'Beschrijf je post',
             'prompt_label' => 'Waar gaat deze post over?',
             'prompt_placeholder' => 'bijv. Kondig onze nieuwe carrouselfunctie voor Instagram aan',

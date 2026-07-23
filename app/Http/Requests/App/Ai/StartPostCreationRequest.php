@@ -37,6 +37,7 @@ class StartPostCreationRequest extends FormRequest
             'prompt' => AiPromptRules::wizardPromptRule(),
             'date' => ['nullable', 'date_format:Y-m-d'],
             'template' => ['sometimes', 'string', Rule::enum(ContentStyle::class)],
+            'apply_brand_visuals' => ['sometimes', 'boolean'],
         ];
     }
 

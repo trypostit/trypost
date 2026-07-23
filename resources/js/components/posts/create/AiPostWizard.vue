@@ -13,6 +13,7 @@ import { start as startRoute } from '@/actions/App/Http/Controllers/App/PostAiCr
 import ContentStylePicker from '@/components/ai/ContentStylePicker.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { loading as loadingRoute } from '@/routes/app/posts/ai';
@@ -33,6 +34,7 @@ interface AiTemplate {
     preview: string;
     needs_account: boolean;
     supported_formats: string[];
+    applies_brand_visuals: boolean;
 }
 
 interface Props {
@@ -63,6 +65,8 @@ const selectedAccountId = ref<string | null>(null);
 const includeImages = ref(true);
 const imageCount = ref(2);
 const promptText = ref('');
+// true = images use the workspace brand palette; false = the AI picks colors freely.
+const useBrandColors = ref(true);
 const PROMPT_MIN = 3;
 const PROMPT_MAX = 2000;
 
@@ -75,7 +79,8 @@ const httpStart = useHttp<{
     prompt: string;
     date: string | null;
     template: string;
-}>({ format: null, social_account_id: null, image_count: 0, prompt: '', date: null, template: 'image_card' });
+    apply_brand_visuals: boolean;
+}>({ format: null, social_account_id: null, image_count: 0, prompt: '', date: null, template: 'image_card', apply_brand_visuals: true });
 
 const AI_FORMATS: Array<{ value: AiFormat; platforms: string[] }> = [
     { value: ContentType.InstagramFeed, platforms: ['instagram', 'instagram-facebook'] },
@@ -212,6 +217,7 @@ const startGeneration = async () => {
     httpStart.prompt = promptText.value.trim();
     httpStart.date = props.date;
     httpStart.template = resolvedTemplate.value;
+    httpStart.apply_brand_visuals = useBrandColors.value;
 
     try {
         const data = await httpStart.post(startRoute.url()) as { creation_id: string; channel: string };
@@ -352,6 +358,19 @@ const startGeneration = async () => {
                     {{ n }}
                 </Button>
             </div>
+        </div>
+
+        <!-- Brand colors: apply the workspace palette or let the AI decide. Only
+             for image templates that honor it (tweet cards are always branded). -->
+        <div
+            v-if="selectedFormat && submittedImageCount > 0 && resolvedTemplateRecord?.applies_brand_visuals"
+            class="flex items-center justify-between gap-4 rounded-xl border-2 border-foreground bg-card p-4 shadow-2xs"
+        >
+            <div class="space-y-0.5">
+                <Label for="apply-brand-visuals" class="text-sm font-bold">{{ $t('posts.create.steps.brand_colors_label') }}</Label>
+                <p class="text-sm text-foreground/70">{{ $t('posts.create.steps.brand_colors_description') }}</p>
+            </div>
+            <Switch id="apply-brand-visuals" v-model="useBrandColors" />
         </div>
 
         <!-- Prompt -->

@@ -500,7 +500,7 @@ return [
         ],
         'youtube_short' => [
             'label' => 'Short',
-            'description' => 'Pionowy film do 60 sekund',
+            'description' => 'Pionowy film do 3 minut',
         ],
         'x_post' => [
             'label' => 'Post',
@@ -606,6 +606,8 @@ return [
             'media_optional_label' => 'Ile obrazów?',
             'media_none' => 'Brak',
             'media_count_label' => 'Liczba obrazów',
+            'brand_colors_label' => 'Kolory marki',
+            'brand_colors_description' => 'Zastosuj paletę marki Twojego obszaru roboczego do generowanych obrazów. Wyłącz, aby AI dobrała kolory pasujące do treści.',
             'prompt_title' => 'Opisz swój post',
             'prompt_label' => 'O czym jest ten post?',
             'prompt_placeholder' => 'np. Ogłoś naszą nową funkcję karuzeli na Instagramie',

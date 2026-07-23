@@ -200,6 +200,33 @@ test('start dispatches the job carrying the date param when provided', function 
     Bus::assertDispatched(StreamPostCreation::class, fn ($job) => $job->date === '2026-06-15');
 });
 
+test('start carries apply_brand_visuals=false when the user lets the AI decide colors', function () {
+    Bus::fake();
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.create'), [
+            'prompt' => 'hello',
+            'format' => 'x_post',
+            'apply_brand_visuals' => false,
+        ])
+        ->assertAccepted();
+
+    Bus::assertDispatched(StreamPostCreation::class, fn ($job) => $job->applyBrandVisuals === false);
+});
+
+test('start defaults apply_brand_visuals to true when omitted', function () {
+    Bus::fake();
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.create'), [
+            'prompt' => 'hello',
+            'format' => 'x_post',
+        ])
+        ->assertAccepted();
+
+    Bus::assertDispatched(StreamPostCreation::class, fn ($job) => $job->applyBrandVisuals === true);
+});
+
 test('start rejects invalid date format', function () {
     Bus::fake();
 

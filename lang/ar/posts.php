@@ -500,7 +500,7 @@ return [
         ],
         'youtube_short' => [
             'label' => 'مقطع قصير',
-            'description' => 'فيديو عمودي حتى 60 ثانية',
+            'description' => 'فيديو عمودي حتى 3 دقائق',
         ],
         'x_post' => [
             'label' => 'منشور',
@@ -606,6 +606,8 @@ return [
             'media_optional_label' => 'كم عدد الصور؟',
             'media_none' => 'بلا',
             'media_count_label' => 'عدد الصور',
+            'brand_colors_label' => 'ألوان العلامة التجارية',
+            'brand_colors_description' => 'طبّق لوحة ألوان علامتك التجارية على الصور المُنشأة. عطّله لترك الذكاء الاصطناعي يختار الألوان التي تناسب المحتوى.',
             'prompt_title' => 'صِف منشورك',
             'prompt_label' => 'ما موضوع هذا المنشور؟',
             'prompt_placeholder' => 'مثال: الإعلان عن ميزة العرض الدائري الجديدة لدينا على Instagram',

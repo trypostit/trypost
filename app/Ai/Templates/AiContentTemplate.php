@@ -28,6 +28,13 @@ interface AiContentTemplate
     public function needsAccount(): bool;
 
     /**
+     * Whether this template's generated image honors the workspace brand
+     * palette (so the "Brand colors" choice is meaningful). Tweet-card styles
+     * are brand-colored by design and ignore the flag.
+     */
+    public function appliesBrandVisuals(): bool;
+
+    /**
      * Content types (by value) this template can produce. Empty = all AI formats.
      *
      * @return array<int, string>

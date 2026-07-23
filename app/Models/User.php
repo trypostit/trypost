@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\Notification\Type as NotificationType;
 use App\Enums\User\Persona;
+use App\Enums\User\ReferralSource;
 use App\Models\Traits\HasMedia;
 use App\Models\Traits\HasWorkspace;
 use Database\Factories\UserFactory;
@@ -45,6 +46,7 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
         'registration_ip',
         'persona',
         'goals',
+        'referral_source',
     ];
 
     /**
@@ -80,6 +82,7 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
             'two_factor_confirmed_at' => 'datetime',
             'persona' => Persona::class,
             'goals' => 'array',
+            'referral_source' => ReferralSource::class,
         ];
     }
 

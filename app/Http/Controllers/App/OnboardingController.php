@@ -9,7 +9,9 @@ use App\Enums\Plan\Slug;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
+use App\Enums\User\ReferralSource;
 use App\Http\Requests\App\Onboarding\StoreOnboardingGoalsRequest;
+use App\Http\Requests\App\Onboarding\StoreOnboardingReferralSourceRequest;
 use App\Http\Requests\App\Onboarding\StoreOnboardingRequest;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Account;
@@ -110,6 +112,63 @@ class OnboardingController extends Controller
             'goals' => $goals,
         ]);
 
+        return redirect()->route('app.onboarding.referral-source');
+    }
+
+    public function referralSource(Request $request): Response|RedirectResponse
+    {
+        if (config('trypost.self_hosted')) {
+            return redirect()->route('app.calendar');
+        }
+
+        $user = $request->user();
+
+        if ($user->account?->subscribed(Account::SUBSCRIPTION_NAME)) {
+            return redirect()->route('app.calendar');
+        }
+
+        if (! $user->persona) {
+            return redirect()->route('app.onboarding');
+        }
+
+        if (! $user->goals) {
+            return redirect()->route('app.onboarding.goals');
+        }
+
+        return Inertia::render('onboarding/ReferralSource', [
+            'sources' => array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases()),
+            'selected' => $user->referral_source?->value,
+        ]);
+    }
+
+    public function storeReferralSource(StoreOnboardingReferralSourceRequest $request, PostHogService $postHog): RedirectResponse
+    {
+        if (config('trypost.self_hosted')) {
+            return redirect()->route('app.calendar');
+        }
+
+        $user = $request->user();
+
+        if ($user->account?->subscribed(Account::SUBSCRIPTION_NAME)) {
+            return redirect()->route('app.calendar');
+        }
+
+        if (! $user->persona) {
+            return redirect()->route('app.onboarding');
+        }
+
+        if (! $user->goals) {
+            return redirect()->route('app.onboarding.goals');
+        }
+
+        $referralSource = (string) $request->validated('referral_source');
+
+        $user->update(['referral_source' => $referralSource]);
+
+        $postHog->identify($user->id, [
+            'referral_source' => $referralSource,
+        ]);
+
         return redirect()->route('app.onboarding.connect');
     }
 
@@ -131,6 +190,10 @@ class OnboardingController extends Controller
 
         if (! $user->goals) {
             return redirect()->route('app.onboarding.goals');
+        }
+
+        if (! $user->referral_source) {
+            return redirect()->route('app.onboarding.referral-source');
         }
 
         $workspace = $user->currentWorkspace;

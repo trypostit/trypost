@@ -500,7 +500,7 @@ return [
         ],
         'youtube_short' => [
             'label' => 'Short',
-            'description' => '最长 60 秒的竖版视频',
+            'description' => '最长 3 分钟的竖版视频',
         ],
         'x_post' => [
             'label' => '帖子',
@@ -606,6 +606,8 @@ return [
             'media_optional_label' => '要多少张图片？',
             'media_none' => '无',
             'media_count_label' => '图片数量',
+            'brand_colors_label' => '品牌颜色',
+            'brand_colors_description' => '将工作区的品牌配色应用到生成的图片。关闭后由 AI 选择适合内容的颜色。',
             'prompt_title' => '描述你的帖子',
             'prompt_label' => '这条帖子讲的是什么？',
             'prompt_placeholder' => '例如 为 Instagram 宣布我们全新的轮播功能',

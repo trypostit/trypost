@@ -41,6 +41,11 @@ class TweetCardImageTemplate implements AiContentTemplate
         return $this->style()->needsAccount();
     }
 
+    public function appliesBrandVisuals(): bool
+    {
+        return false;
+    }
+
     /** @return array<int, string> */
     public function supportedFormats(): array
     {

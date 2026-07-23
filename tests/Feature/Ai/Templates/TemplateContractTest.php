@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Ai\Templates\ImageCardTemplate;
 use App\Ai\Templates\TemplateContext;
+use App\Ai\Templates\TweetCardImageTemplate;
+use App\Ai\Templates\TweetCardTemplate;
 use App\Enums\Ai\ContentStyle;
 use App\Models\Workspace;
 use Illuminate\JsonSchema\JsonSchemaTypeFactory;
@@ -16,8 +18,14 @@ test('image card template exposes its identity', function () {
     expect($t->style())->toBe(ContentStyle::ImageCard)
         ->and($t->key())->toBe('image_card')
         ->and($t->needsAccount())->toBeFalse()
+        ->and($t->appliesBrandVisuals())->toBeTrue()
         ->and($t->promptView($context))->toBe('prompts.post_content.generator')
         ->and($t->supportedFormats())->toBe([]);
+});
+
+test('tweet-card templates do not apply brand visuals', function () {
+    expect((new TweetCardTemplate)->appliesBrandVisuals())->toBeFalse()
+        ->and((new TweetCardImageTemplate)->appliesBrandVisuals())->toBeFalse();
 });
 
 test('image card carousel context returns carousel schema shape', function () {

@@ -500,7 +500,7 @@ return [
         ],
         'youtube_short' => [
             'label' => 'Short',
-            'description' => 'Video verticale fino a 60 secondi',
+            'description' => 'Video verticale fino a 3 minuti',
         ],
         'x_post' => [
             'label' => 'Post',
@@ -606,6 +606,8 @@ return [
             'media_optional_label' => 'Quante immagini?',
             'media_none' => 'Nessuna',
             'media_count_label' => 'Numero di immagini',
+            'brand_colors_label' => 'Colori del brand',
+            'brand_colors_description' => 'Applica la palette del tuo brand alle immagini generate. Disattivalo per lasciare che l’IA scelga i colori più adatti al contenuto.',
             'prompt_title' => 'Descrivi il tuo post',
             'prompt_label' => 'Di cosa parla questo post?',
             'prompt_placeholder' => 'es. Annuncia la nostra nuova funzione carosello per Instagram',

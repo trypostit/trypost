@@ -52,6 +52,7 @@ class PostAiCreateController extends Controller
             prompt: $request->string('prompt')->toString(),
             date: $request->input('date'),
             template: $request->input('template', 'image_card'),
+            applyBrandVisuals: $request->boolean('apply_brand_visuals', true),
         );
 
         return response()->json([

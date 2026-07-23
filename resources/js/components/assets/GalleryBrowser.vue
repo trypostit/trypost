@@ -264,6 +264,10 @@ const handleDelete = (assetId: string) => {
     });
 };
 
+const onAssetDeleted = async () => {
+    await loadUploadsFirstPage();
+};
+
 const createPostFromAsset = (asset: AssetMedia) => {
     router.post(storePost.url(), {
         media: [{ id: asset.id, path: asset.path, url: asset.url, type: asset.type, mime_type: asset.mime_type }],
@@ -940,6 +944,7 @@ onUnmounted(() => {
             :description="trans('assets.delete.description')"
             :action="trans('assets.delete.confirm')"
             :cancel="trans('assets.delete.cancel')"
+            @deleted="onAssetDeleted"
         />
 
         <ImagePreviewDialog ref="lightbox" />

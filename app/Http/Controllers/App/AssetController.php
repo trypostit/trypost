@@ -10,6 +10,7 @@ use App\Http\Requests\App\Asset\StoreChunkedAssetRequest;
 use App\Http\Resources\App\MediaResource;
 use App\Models\Media;
 use App\Services\Brand\SafeHttpFetcher;
+use App\Services\Media\ChunkedAssetReceiver;
 use App\Services\UnsplashService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -68,52 +69,21 @@ class AssetController extends Controller
         return new MediaResource($media);
     }
 
-    public function storeChunked(StoreChunkedAssetRequest $request): JsonResponse
+    public function storeChunked(StoreChunkedAssetRequest $request, ChunkedAssetReceiver $receiver): JsonResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
         $this->authorize('createPost', $workspace);
 
-        $rangeStart = (int) $request->validated('range_start');
-        $rangeEnd = (int) $request->validated('range_end');
-        $totalSize = (int) $request->validated('total_size');
-        $fileName = (string) $request->validated('file_name');
-
-        $identifier = md5($request->user()->id.$fileName.$totalSize);
-        $tempFile = storage_path("app/private/chunks/{$identifier}");
-
-        $directory = dirname($tempFile);
-        if (! is_dir($directory)) {
-            mkdir($directory, 0755, true);
-        }
-
-        file_put_contents($tempFile, $request->getContent(), $rangeStart === 0 ? 0 : FILE_APPEND);
-
-        $isLastChunk = ($rangeEnd + 1) >= $totalSize;
-
-        if (! $isLastChunk) {
-            return response()->json([
-                'done' => false,
-                'progress' => (int) round(($rangeEnd + 1) / $totalSize * 100),
-            ]);
-        }
-
-        $media = $workspace->addMediaFromPath($tempFile, $fileName, 'assets');
-
-        @unlink($tempFile);
-
-        return response()->json([
-            'done' => true,
-            'id' => $media->id,
-            'path' => $media->path,
-            'url' => $media->url,
-            'type' => $media->type->value,
-            'mime_type' => $media->mime_type,
-            'original_filename' => $media->original_filename,
-            'size' => $media->size,
-            'meta' => $media->meta,
-            'created_at' => $media->created_at->toISOString(),
-        ]);
+        return $receiver->receive(
+            $workspace,
+            $request->user(),
+            (string) $request->validated('file_name'),
+            $request->getContent(),
+            (int) $request->validated('range_start'),
+            (int) $request->validated('range_end'),
+            (int) $request->validated('total_size'),
+        )->toResponse();
     }
 
     public function storeFromUrl(StoreAssetFromUrlRequest $request, UnsplashService $unsplash, SafeHttpFetcher $safeHttp): MediaResource
@@ -150,7 +120,7 @@ class AssetController extends Controller
         };
 
         $filename = Str::uuid().'.'.$extension;
-        $path = 'medias/'.$filename;
+        $path = "medias/{$filename}";
 
         Storage::put($path, $response->body());
 

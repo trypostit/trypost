@@ -61,6 +61,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('onboarding', [OnboardingController::class, 'store'])->name('app.onboarding.store');
     Route::get('onboarding/goals', [OnboardingController::class, 'goals'])->name('app.onboarding.goals');
     Route::post('onboarding/goals', [OnboardingController::class, 'storeGoals'])->name('app.onboarding.goals.store');
+    Route::get('onboarding/referral-source', [OnboardingController::class, 'referralSource'])->name('app.onboarding.referral-source');
+    Route::post('onboarding/referral-source', [OnboardingController::class, 'storeReferralSource'])->name('app.onboarding.referral-source.store');
     Route::get('onboarding/connect', [OnboardingController::class, 'connect'])->name('app.onboarding.connect');
     Route::post('onboarding/connect', [OnboardingController::class, 'checkout'])->name('app.onboarding.checkout');
     Route::get('billing/processing', [BillingController::class, 'processing'])->name('app.billing.processing');

@@ -7,6 +7,7 @@ use App\Enums\Plan\Slug;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
+use App\Enums\User\ReferralSource;
 use App\Jobs\PostHog\SendEvent;
 use App\Models\Account;
 use App\Models\Plan;
@@ -182,11 +183,11 @@ test('goals store accepts any combination of valid goals', function () {
         'goals' => [Goal::JustExploring->value, Goal::SaveTime->value],
     ]);
 
-    $response->assertRedirect(route('app.onboarding.connect'));
+    $response->assertRedirect(route('app.onboarding.referral-source'));
     expect($this->user->fresh()->goals)->toBe([Goal::JustExploring->value, Goal::SaveTime->value]);
 });
 
-test('goals store saves the goals, mirrors to PostHog and advances to the connect step', function () {
+test('goals store saves the goals, mirrors to PostHog and advances to the referral-source step', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
 
@@ -196,7 +197,7 @@ test('goals store saves the goals, mirrors to PostHog and advances to the connec
         'goals' => [Goal::SaveTime->value, Goal::AiContent->value],
     ]);
 
-    $response->assertRedirect(route('app.onboarding.connect'));
+    $response->assertRedirect(route('app.onboarding.referral-source'));
     expect($this->user->fresh()->goals)->toBe([Goal::SaveTime->value, Goal::AiContent->value]);
 
     Bus::assertDispatched(SendEvent::class);
@@ -212,7 +213,7 @@ test('goals store saves just exploring on its own as a real signal', function ()
         'goals' => [Goal::JustExploring->value],
     ]);
 
-    $response->assertRedirect(route('app.onboarding.connect'));
+    $response->assertRedirect(route('app.onboarding.referral-source'));
     expect($this->user->fresh()->goals)->toBe([Goal::JustExploring->value]);
 
     Bus::assertDispatched(SendEvent::class);
@@ -239,6 +240,136 @@ test('goals store does nothing in self-hosted mode', function () {
     expect($this->user->fresh()->goals)->toBeNull();
 });
 
+test('referral source renders the source selection for an account that picked persona and goals', function () {
+    $this->user->update(['persona' => Persona::Agency->value, 'goals' => [Goal::SaveTime->value]]);
+
+    $response = $this->actingAs($this->user->fresh())->get(route('app.onboarding.referral-source'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('onboarding/ReferralSource')
+        ->has('sources', count(ReferralSource::cases()))
+    );
+});
+
+test('referral source redirects to the persona step when no persona was chosen', function () {
+    $response = $this->actingAs($this->user)->get(route('app.onboarding.referral-source'));
+
+    $response->assertRedirect(route('app.onboarding'));
+});
+
+test('referral source redirects to the goals step when a persona was chosen but no goals', function () {
+    $this->user->update(['persona' => Persona::Agency->value]);
+
+    $response = $this->actingAs($this->user->fresh())->get(route('app.onboarding.referral-source'));
+
+    $response->assertRedirect(route('app.onboarding.goals'));
+});
+
+test('referral source redirects to calendar in self-hosted mode', function () {
+    config(['trypost.self_hosted' => true]);
+
+    $response = $this->actingAs($this->user)->get(route('app.onboarding.referral-source'));
+
+    $response->assertRedirect(route('app.calendar'));
+});
+
+test('referral source redirects to calendar when already subscribed', function () {
+    subscribeOnboardingAccount($this->user->account);
+
+    $response = $this->actingAs($this->user->fresh())->get(route('app.onboarding.referral-source'));
+
+    $response->assertRedirect(route('app.calendar'));
+});
+
+test('referral source store requires a source', function () {
+    $this->user->update(['persona' => Persona::Agency->value, 'goals' => [Goal::SaveTime->value]]);
+
+    $response = $this->actingAs($this->user->fresh())->post(route('app.onboarding.referral-source.store'), []);
+
+    $response->assertSessionHasErrors('referral_source');
+    expect($this->user->fresh()->referral_source)->toBeNull();
+});
+
+test('referral source store rejects an invalid source', function () {
+    $this->user->update(['persona' => Persona::Agency->value, 'goals' => [Goal::SaveTime->value]]);
+
+    $response = $this->actingAs($this->user->fresh())->post(route('app.onboarding.referral-source.store'), [
+        'referral_source' => 'not-a-source',
+    ]);
+
+    $response->assertSessionHasErrors('referral_source');
+    expect($this->user->fresh()->referral_source)->toBeNull();
+});
+
+test('referral source store saves the source, mirrors to PostHog and advances to the connect step', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Bus::fake();
+
+    $this->user->update(['persona' => Persona::Agency->value, 'goals' => [Goal::SaveTime->value]]);
+
+    $response = $this->actingAs($this->user->fresh())->post(route('app.onboarding.referral-source.store'), [
+        'referral_source' => ReferralSource::ProductHunt->value,
+    ]);
+
+    $response->assertRedirect(route('app.onboarding.connect'));
+    expect($this->user->fresh()->referral_source)->toBe(ReferralSource::ProductHunt);
+
+    Bus::assertDispatched(SendEvent::class);
+});
+
+test('referral source store redirects to the persona step when no persona was chosen', function () {
+    $response = $this->actingAs($this->user)->post(route('app.onboarding.referral-source.store'), [
+        'referral_source' => ReferralSource::Google->value,
+    ]);
+
+    $response->assertRedirect(route('app.onboarding'));
+    expect($this->user->fresh()->referral_source)->toBeNull();
+});
+
+test('referral source store redirects to the goals step when no goals were chosen', function () {
+    $this->user->update(['persona' => Persona::Agency->value]);
+
+    $response = $this->actingAs($this->user->fresh())->post(route('app.onboarding.referral-source.store'), [
+        'referral_source' => ReferralSource::Google->value,
+    ]);
+
+    $response->assertRedirect(route('app.onboarding.goals'));
+    expect($this->user->fresh()->referral_source)->toBeNull();
+});
+
+test('referral source store does nothing in self-hosted mode', function () {
+    config(['trypost.self_hosted' => true]);
+    $this->user->update(['persona' => Persona::Agency->value, 'goals' => [Goal::SaveTime->value]]);
+
+    $response = $this->actingAs($this->user->fresh())->post(route('app.onboarding.referral-source.store'), [
+        'referral_source' => ReferralSource::Google->value,
+    ]);
+
+    $response->assertRedirect(route('app.calendar'));
+    expect($this->user->fresh()->referral_source)->toBeNull();
+});
+
+test('referral source store redirects an already-subscribed account to the calendar', function () {
+    subscribeOnboardingAccount($this->user->account);
+
+    $response = $this->actingAs($this->user->fresh())->post(route('app.onboarding.referral-source.store'), [
+        'referral_source' => ReferralSource::Google->value,
+    ]);
+
+    $response->assertRedirect(route('app.calendar'));
+    expect($this->user->fresh()->referral_source)->toBeNull();
+});
+
+test('connect redirects to the referral-source step when persona and goals chosen but no source', function () {
+    $this->user->update(['persona' => Persona::Agency->value, 'goals' => [Goal::SaveTime->value]]);
+    onboardingWorkspace($this->user);
+
+    $response = $this->actingAs($this->user->fresh())->get(route('app.onboarding.connect'));
+
+    $response->assertRedirect(route('app.onboarding.referral-source'));
+});
+
 test('connect redirects to the goals step when a persona was chosen but no goals', function () {
     $this->user->update(['persona' => Persona::Agency->value]);
     onboardingWorkspace($this->user);
@@ -249,7 +380,7 @@ test('connect redirects to the goals step when a persona was chosen but no goals
 });
 
 test('connect renders the network grid for an unsubscribed account that picked a persona', function () {
-    $this->user->update(['persona' => Persona::Agency->value, 'goals' => [Goal::SaveTime->value]]);
+    $this->user->update(['persona' => Persona::Agency->value, 'goals' => [Goal::SaveTime->value], 'referral_source' => ReferralSource::Google->value]);
     onboardingWorkspace($this->user);
 
     $response = $this->actingAs($this->user->fresh())->get(route('app.onboarding.connect'));
@@ -264,7 +395,7 @@ test('connect renders the network grid for an unsubscribed account that picked a
 });
 
 test('connect passes the workspace plan so the client can fire begin_checkout', function () {
-    $this->user->update(['persona' => Persona::Agency->value, 'goals' => [Goal::SaveTime->value]]);
+    $this->user->update(['persona' => Persona::Agency->value, 'goals' => [Goal::SaveTime->value], 'referral_source' => ReferralSource::Google->value]);
     onboardingWorkspace($this->user);
 
     $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
@@ -280,7 +411,7 @@ test('connect passes the workspace plan so the client can fire begin_checkout', 
 });
 
 test('connect offers a single linkedin card and no standalone linkedin page card', function () {
-    $this->user->update(['persona' => Persona::Agency->value, 'goals' => [Goal::SaveTime->value]]);
+    $this->user->update(['persona' => Persona::Agency->value, 'goals' => [Goal::SaveTime->value], 'referral_source' => ReferralSource::Google->value]);
     onboardingWorkspace($this->user);
 
     $response = $this->actingAs($this->user->fresh())->get(route('app.onboarding.connect'));
@@ -295,7 +426,7 @@ test('connect offers a single linkedin card and no standalone linkedin page card
 });
 
 test('connect lists the workspace social accounts already connected', function () {
-    $this->user->update(['persona' => Persona::Agency->value, 'goals' => [Goal::SaveTime->value]]);
+    $this->user->update(['persona' => Persona::Agency->value, 'goals' => [Goal::SaveTime->value], 'referral_source' => ReferralSource::Google->value]);
     $workspace = onboardingWorkspace($this->user);
     SocialAccount::factory()->create(['workspace_id' => $workspace->id]);
 
@@ -391,7 +522,7 @@ test('checkout does nothing in self-hosted mode', function () {
 });
 
 test('connect redirects to workspace creation when no workspace exists', function () {
-    $this->user->update(['persona' => Persona::Agency->value, 'goals' => [Goal::SaveTime->value]]);
+    $this->user->update(['persona' => Persona::Agency->value, 'goals' => [Goal::SaveTime->value], 'referral_source' => ReferralSource::Google->value]);
 
     $response = $this->actingAs($this->user->fresh())->get(route('app.onboarding.connect'));
 
@@ -410,12 +541,17 @@ test('a user walks the full onboarding flow from the account gate to stripe chec
     $this->actingAs($this->user->fresh())->post(route('app.onboarding.store'), ['persona' => Persona::Creator->value])
         ->assertRedirect(route('app.onboarding.goals'));
 
-    // Goals advances to connect.
+    // Goals advances to the referral-source step.
     $this->actingAs($this->user->fresh())->post(route('app.onboarding.goals.store'), [
         'goals' => [Goal::AiContent->value, Goal::SaveTime->value],
+    ])->assertRedirect(route('app.onboarding.referral-source'));
+
+    // Referral source advances to connect.
+    $this->actingAs($this->user->fresh())->post(route('app.onboarding.referral-source.store'), [
+        'referral_source' => ReferralSource::Friend->value,
     ])->assertRedirect(route('app.onboarding.connect'));
 
-    // Connect renders now that persona, goals and a workspace are present.
+    // Connect renders now that persona, goals, a source and a workspace are present.
     $this->actingAs($this->user->fresh())->get(route('app.onboarding.connect'))->assertOk();
 
     // Checkout blocks until a network is connected.
@@ -435,6 +571,7 @@ test('a user walks the full onboarding flow from the account gate to stripe chec
 
     expect($this->user->fresh()->persona)->toBe(Persona::Creator);
     expect($this->user->fresh()->goals)->toBe([Goal::AiContent->value, Goal::SaveTime->value]);
+    expect($this->user->fresh()->referral_source)->toBe(ReferralSource::Friend);
 });
 
 test('a self-hosted user never enters the onboarding flow', function () {
@@ -445,7 +582,7 @@ test('a self-hosted user never enters the onboarding flow', function () {
     $this->actingAs($this->user->fresh())->get(route('app.calendar'))->assertOk();
 
     // Every onboarding step just bounces to the calendar.
-    foreach (['app.onboarding', 'app.onboarding.goals', 'app.onboarding.connect'] as $routeName) {
+    foreach (['app.onboarding', 'app.onboarding.goals', 'app.onboarding.referral-source', 'app.onboarding.connect'] as $routeName) {
         $this->actingAs($this->user->fresh())->get(route($routeName))->assertRedirect(route('app.calendar'));
     }
 });

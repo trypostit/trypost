@@ -502,7 +502,7 @@ return [
         ],
         'youtube_short' => [
             'label' => 'Short',
-            'description' => 'Vertikales Video bis zu 60 Sekunden',
+            'description' => 'Vertikales Video bis zu 3 Minuten',
         ],
         'x_post' => [
             'label' => 'Beitrag',
@@ -608,6 +608,8 @@ return [
             'media_optional_label' => 'Wie viele Bilder?',
             'media_none' => 'Keine',
             'media_count_label' => 'Anzahl der Bilder',
+            'brand_colors_label' => 'Markenfarben',
+            'brand_colors_description' => 'Wende die Markenpalette deines Workspace auf die generierten Bilder an. Deaktiviere die Option, damit die KI passende Farben zum Inhalt wählt.',
             'prompt_title' => 'Beschreibe deinen Beitrag',
             'prompt_label' => 'Worum geht es in diesem Beitrag?',
             'prompt_placeholder' => 'z. B. Unser neues Karussell-Feature für Instagram ankündigen',

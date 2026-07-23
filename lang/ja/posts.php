@@ -500,7 +500,7 @@ return [
         ],
         'youtube_short' => [
             'label' => 'ショート',
-            'description' => '最大 60 秒の縦型動画',
+            'description' => '最大 3 分の縦型動画',
         ],
         'x_post' => [
             'label' => '投稿',
@@ -606,6 +606,8 @@ return [
             'media_optional_label' => '画像は何枚にしますか？',
             'media_none' => 'なし',
             'media_count_label' => '画像の枚数',
+            'brand_colors_label' => 'ブランドカラー',
+            'brand_colors_description' => '生成される画像にワークスペースのブランドカラーを適用します。オフにすると、AI がコンテンツに合った色を選びます。',
             'prompt_title' => '投稿を説明',
             'prompt_label' => 'この投稿は何についてですか？',
             'prompt_placeholder' => '例: Instagram 向けの新しいカルーセル機能を発表',
