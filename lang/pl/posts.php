@@ -534,7 +534,7 @@ return [
         ],
         'youtube_short' => [
             'label' => 'Short',
-            'description' => 'Pionowy film do 60 sekund',
+            'description' => 'Pionowy film do 3 minut',
         ],
         'x_post' => [
             'label' => 'Post',

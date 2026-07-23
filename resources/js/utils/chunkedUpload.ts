@@ -49,7 +49,7 @@ export const uploadChunked = async (options: ChunkedUploadOptions): Promise<Chun
             const headers: Record<string, string> = {
                 'Content-Type': 'application/octet-stream',
                 'Content-Range': `bytes ${start}-${end - 1}/${totalSize}`,
-                'X-File-Name': file.name,
+                'X-File-Name': encodeURIComponent(file.name),
                 'X-CSRF-TOKEN': csrfToken,
                 'X-Requested-With': 'XMLHttpRequest',
                 Accept: 'application/json',

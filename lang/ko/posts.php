@@ -534,7 +534,7 @@ return [
         ],
         'youtube_short' => [
             'label' => 'Short',
-            'description' => '최대 60초 세로 동영상',
+            'description' => '최대 3분 세로 동영상',
         ],
         'x_post' => [
             'label' => '게시물',

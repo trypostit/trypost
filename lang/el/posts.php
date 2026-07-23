@@ -534,7 +534,7 @@ return [
         ],
         'youtube_short' => [
             'label' => 'Short',
-            'description' => 'Κατακόρυφο βίντεο έως 60 δευτερόλεπτα',
+            'description' => 'Κατακόρυφο βίντεο έως 3 λεπτά',
         ],
         'x_post' => [
             'label' => 'Δημοσίευση',

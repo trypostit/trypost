@@ -23,7 +23,7 @@ test('content type has correct descriptions', function () {
     expect(ContentType::InstagramFeed->description())->toContain('feed');
     expect(ContentType::InstagramReel->description())->toContain('90 seconds');
     expect(ContentType::InstagramStory->description())->toContain('24 hours');
-    expect(ContentType::YouTubeShort->description())->toContain('60 seconds');
+    expect(ContentType::YouTubeShort->description())->toContain('3 minutes');
 });
 
 test('content type maps to correct platform', function () {

@@ -534,7 +534,7 @@ return [
         ],
         'youtube_short' => [
             'label' => 'مقطع قصير',
-            'description' => 'فيديو عمودي حتى 60 ثانية',
+            'description' => 'فيديو عمودي حتى 3 دقائق',
         ],
         'x_post' => [
             'label' => 'منشور',
