@@ -18,14 +18,15 @@ Input:
 - `search`: optional filename substring.
 - `mime_type`: optional exact MIME type or family filter such as `image/*`.
 - `category`: optional media category: `image`, `video`, or `document`.
-- `usage`: optional usage filter: `unused`, `draft_only`, or `used`.
+- `usage`: optional usage filter: `all`, `unused`, or `used`.
 - `sort`: optional sort key: `created_at`, `last_used_at`, or
-  `publication_usage_count`.
+  `publication_usage_count`, `timestamped_publication_usage_count`, or
+  `usage_count`.
 - `direction`: optional `asc` or `desc`.
 
 Output:
 
-- `data[]` contains safe media metadata:
+- `assets[]` contains safe media metadata:
   - `asset_id`
   - `filename`
   - `mime_type`
@@ -35,7 +36,7 @@ Output:
   - `created_at`
   - `preview_available`
   - usage projection fields described below
-- `meta` contains pagination metadata.
+- `pagination` contains pagination metadata.
 
 The response never includes storage paths, storage bucket names, workspace IDs,
 or permanent public media URLs.
@@ -118,9 +119,8 @@ Each `last_use_contexts[]` item contains:
 - `content_id`
 - `platform`
 - `content_type`
-- `post_status`
-- `post_platform_status`
-- `enabled`
+- `content_status`
+- `publication_status`
 - `used_at`
 - `use_basis`
 
@@ -135,6 +135,12 @@ from `publication_usage_count`.
 containment against the requested asset IDs. The implementation eager-loads
 `postPlatforms.socialAccount` for the bounded post set and does not issue per
 asset or per post-platform follow-up queries.
+
+Usage-derived filtering and sorting happen after loading the matching workspace
+asset set because the usage projection is calculated from post media snapshots.
+Deployments with very large asset libraries should evaluate a dedicated index or
+denormalized usage model separately; that would require an explicit database
+schema change.
 
 For PostgreSQL, the asset-reference predicate casts `posts.media` to `jsonb`
 before applying containment:
