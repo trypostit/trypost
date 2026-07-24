@@ -202,6 +202,7 @@ RUN rm -rf /var/www/html/vendor /var/www/html/bootstrap/cache/*.php
 COPY --from=composer-deps-prod /var/www/html/vendor /var/www/html/vendor
 
 RUN composer dump-autoload --optimize --classmap-authoritative --no-scripts \
+    && chmod -R a+rX /var/www/html \
     && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 ENV TRYPOST_TARGET=production
