@@ -40,9 +40,10 @@ services:
       BROADCAST_CONNECTION: reverb
 
       # ===== WebSockets (Reverb) =====
-      # The published image bakes the client at localhost:8080. For a custom
+      # Vite bakes these client values at image build time. For a custom
       # domain, rebuild the image with --build-arg VITE_REVERB_HOST=<domain>
-      # VITE_REVERB_PORT=443 VITE_REVERB_SCHEME=https.
+      # VITE_REVERB_PORT=443 VITE_REVERB_SCHEME=https and pass the public
+      # app key as a BuildKit secret: id=vite_reverb_app_key.
       REVERB_APP_ID: "1001"
       REVERB_APP_KEY: trypost-reverb-key           # must match the key baked into the published image
       REVERB_APP_SECRET: change-me-reverb-secret   # <- change me

@@ -63,8 +63,8 @@ jobs:
           target: production
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            VITE_REVERB_APP_KEY=trypost-reverb-key
+          secrets: |
+            vite_reverb_app_key=trypost-reverb-key
           cache-from: type=gha,scope=${{ env.PLATFORM_PAIR }}
           cache-to: type=gha,mode=max,scope=${{ env.PLATFORM_PAIR }}
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true

@@ -89,10 +89,12 @@ RUN composer install \
 # invokes `php artisan wayfinder:generate` during vite build — splitting
 # the stages would mean the vite phase has no PHP available.
 #
-# Vite inlines VITE_* values into the JS bundle at build time. Pass them
-# as build args (--build-arg VITE_REVERB_APP_KEY=...) so the bundle reaches
-# the browser with the correct Reverb/PostHog config. Runtime env vars on
-# the container have no effect on the already-compiled bundle.
+# Vite inlines VITE_* values into the JS bundle at build time. Runtime env vars
+# on the container have no effect on the already-compiled bundle.
+#
+# Pass the public Reverb app key with a BuildKit secret:
+#   --secret id=vite_reverb_app_key,env=VITE_REVERB_APP_KEY
+# Non-sensitive Vite values can be passed as build args.
 # ----------------------------------------------------------------------------
 FROM composer-deps AS asset-build
 
@@ -100,7 +102,6 @@ FROM composer-deps AS asset-build
 RUN apk add --no-cache nodejs npm
 
 ARG VITE_APP_NAME=TryPost
-ARG VITE_REVERB_APP_KEY=
 ARG VITE_REVERB_HOST=localhost
 ARG VITE_REVERB_PORT=8080
 ARG VITE_REVERB_SCHEME=http
@@ -114,7 +115,6 @@ ENV APP_KEY=base64:c3R1Yi13YXlmaW5kZXItZ2VuLWtleS1mb3ItYnVpbGRpbmctYXNzZXRzMA== 
     APP_DEBUG=false \
     APP_URL=http://localhost \
     VITE_APP_NAME=${VITE_APP_NAME} \
-    VITE_REVERB_APP_KEY=${VITE_REVERB_APP_KEY} \
     VITE_REVERB_HOST=${VITE_REVERB_HOST} \
     VITE_REVERB_PORT=${VITE_REVERB_PORT} \
     VITE_REVERB_SCHEME=${VITE_REVERB_SCHEME} \
@@ -133,7 +133,9 @@ RUN mkdir -p storage/framework/cache/data \
              storage/logs \
              bootstrap/cache
 
-RUN composer dump-autoload --no-scripts --optimize \
+RUN --mount=type=secret,id=vite_reverb_app_key,required=true \
+    export VITE_REVERB_APP_KEY="$(cat /run/secrets/vite_reverb_app_key)" \
+    && composer dump-autoload --no-scripts --optimize \
     && php artisan wayfinder:generate --with-form \
     && npm ci --no-audit --no-fund \
     && npm run build \
