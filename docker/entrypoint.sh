@@ -79,11 +79,17 @@ if [ ! -f storage/oauth-private.key ]; then
     php artisan passport:keys --force || true
 fi
 
-# 10) Wayfinder TS regen — Vite needs the files before it boots.
+# 10) Passport personal access client for API key creation.
+if [ "${TARGET}" = "production" ]; then
+    echo "[entrypoint] bootstrapping Passport personal access client"
+    php artisan trypost:bootstrap-passport
+fi
+
+# 11) Wayfinder TS regen — Vite needs the files before it boots.
 echo "[entrypoint] regenerating wayfinder helpers"
 php artisan wayfinder:generate --with-form || true
 
-# 11) Cache strategy: prod = pre-cache; dev = clear.
+# 12) Cache strategy: prod = pre-cache; dev = clear.
 if [ "${TARGET}" = "production" ]; then
     php artisan config:cache
     php artisan route:cache
@@ -96,7 +102,7 @@ else
     php artisan event:clear
 fi
 
-# 12) Permissions. Production php-fpm pool runs as www-data (Alpine default),
+# 13) Permissions. Production php-fpm pool runs as www-data (Alpine default),
 # so storage and bootstrap/cache must be writable by that user — Laravel
 # needs to write session files, view cache, log files, etc.
 if [ "${TARGET}" = "production" ]; then
