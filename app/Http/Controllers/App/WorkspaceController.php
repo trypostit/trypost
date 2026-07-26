@@ -154,7 +154,6 @@ class WorkspaceController extends Controller
 
         return Inertia::render('settings/workspace/Workspace', [
             'workspace' => $workspace,
-            'canDelete' => $user->can('delete', $workspace),
             'isOnlyWorkspace' => ! config('trypost.self_hosted')
                 && $workspace->account->workspaces()->count() <= 1,
         ]);

@@ -33,7 +33,6 @@ export const useWorkspaceRole = () => {
         canManageAccounts: isAdminOrAbove,
         canManageTeam: isAdminOrAbove,
         canManageWorkspace: isAdminOrAbove,
-        canDeleteWorkspace: isAdminOrAbove,
         canManageBilling: isOwner,
         canCreateWorkspace: isOwner,
     };

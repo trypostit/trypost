@@ -26,7 +26,6 @@ interface Workspace {
 
 const props = defineProps<{
     workspace: Workspace;
-    canDelete: boolean;
     isOnlyWorkspace: boolean;
 }>();
 
@@ -89,9 +88,9 @@ const openDeleteModal = () => {
             </Form>
         </div>
 
-        <Separator v-if="canDelete" />
+        <Separator />
 
-        <section v-if="canDelete" class="space-y-4" dusk="workspace-danger-zone">
+        <section class="space-y-4" dusk="workspace-danger-zone">
             <HeadingSmall
                 :title="$t('settings.workspace.danger_title')"
                 :description="$t('settings.workspace.danger_description')"

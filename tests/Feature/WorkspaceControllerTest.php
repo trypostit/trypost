@@ -180,7 +180,6 @@ test('workspace settings shows the workspace settings page', function () {
     $response->assertInertia(fn ($page) => $page
         ->component('settings/workspace/Workspace', false)
         ->has('workspace')
-        ->where('canDelete', true)
         ->where('isOnlyWorkspace', false)
     );
 });
@@ -198,7 +197,6 @@ test('workspace settings marks only workspace in saas mode', function () {
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
-        ->where('canDelete', true)
         ->where('isOnlyWorkspace', true)
     );
 });
