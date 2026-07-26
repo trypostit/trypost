@@ -67,6 +67,8 @@ class WorkspaceController extends Controller
 
     public function create(Request $request): Response|RedirectResponse
     {
+        $this->authorize('create', Workspace::class);
+
         if ($redirect = $this->denyAdditionalWorkspaceWithoutSubscription($request->user())) {
             return $redirect;
         }
@@ -156,6 +158,9 @@ class WorkspaceController extends Controller
             'workspace' => $workspace,
             'isOnlyWorkspace' => ! config('trypost.self_hosted')
                 && $workspace->account->workspaces()->count() <= 1,
+            'otherMemberCount' => $workspace->members()
+                ->where('users.id', '!=', $user->id)
+                ->count(),
         ]);
     }
 

@@ -181,6 +181,7 @@ test('workspace settings shows the workspace settings page', function () {
         ->component('settings/workspace/Workspace', false)
         ->has('workspace')
         ->where('isOnlyWorkspace', false)
+        ->where('otherMemberCount', 0)
     );
 });
 

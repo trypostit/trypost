@@ -25,6 +25,7 @@ interface Workspace {
 defineProps<{
     workspace: Workspace;
     isOnlyWorkspace: boolean;
+    otherMemberCount: number;
 }>();
 
 const tabs = computed(() => [
@@ -50,6 +51,7 @@ const tabs = computed(() => [
             <WorkspaceTab
                 :workspace="workspace"
                 :is-only-workspace="isOnlyWorkspace"
+                :other-member-count="otherMemberCount"
             />
         </div>
     </AppLayout>

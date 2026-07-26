@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App\Settings;
 
+use App\Actions\User\EnsurePersonalAccount;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Settings\ProfileDeleteRequest;
 use App\Http\Requests\App\Settings\ProfileUpdateRequest;
 use App\Models\Account;
+use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
@@ -116,6 +118,12 @@ class ProfileController extends Controller
             $user->workspaces()->detach();
 
             if ($account && $isOwner) {
+                User::query()
+                    ->where('account_id', $account->id)
+                    ->where('id', '!=', $user->id)
+                    ->get()
+                    ->each(fn (User $member) => EnsurePersonalAccount::execute($member));
+
                 if ($account->subscribed(Account::SUBSCRIPTION_NAME)) {
                     $account->subscription(Account::SUBSCRIPTION_NAME)->cancelNow();
                 }

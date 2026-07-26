@@ -8,6 +8,7 @@ use App\Enums\Workspace\BrandFont;
 use App\Enums\Workspace\BrandVoiceTrait;
 use App\Enums\Workspace\ContentLanguage;
 use App\Enums\Workspace\ImageStyle;
+use App\Models\Workspace;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -15,7 +16,7 @@ class StoreWorkspaceRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return $this->user()->can('create', Workspace::class);
     }
 
     public function rules(): array

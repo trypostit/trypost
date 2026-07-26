@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Workspace;
 
+use App\Actions\User\EnsurePersonalAccount;
 use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\User;
 use App\Models\Workspace;
@@ -27,6 +28,15 @@ class DeleteWorkspace
         $accountId = (string) $workspace->account_id;
 
         $workspace->delete();
+
+        if ($account) {
+            User::query()
+                ->where('account_id', $account->id)
+                ->where('id', '!=', $account->owner_id)
+                ->whereDoesntHave('workspaces')
+                ->get()
+                ->each(fn (User $stranded) => EnsurePersonalAccount::execute($stranded));
+        }
 
         $account?->syncWorkspaceQuantity();
 

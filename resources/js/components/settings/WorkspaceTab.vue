@@ -22,6 +22,7 @@ interface Workspace {
 defineProps<{
     workspace: Workspace;
     isOnlyWorkspace: boolean;
+    otherMemberCount: number;
 }>();
 </script>
 
@@ -75,6 +76,7 @@ defineProps<{
         <DeleteWorkspace
             :workspace="workspace"
             :is-only-workspace="isOnlyWorkspace"
+            :other-member-count="otherMemberCount"
         />
     </div>
 </template>

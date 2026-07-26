@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
+import { trans, transChoice } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
+import { edit as editAuthentication } from '@/routes/app/authentication';
 import { index as billingIndex } from '@/routes/app/billing';
 import { destroy as destroyWorkspace } from '@/routes/app/workspaces';
 
@@ -15,6 +17,7 @@ const props = defineProps<{
         name: string;
     };
     isOnlyWorkspace: boolean;
+    otherMemberCount: number;
 }>();
 
 const page = usePage();
@@ -23,23 +26,37 @@ const { canManageBilling } = useWorkspaceRole();
 
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
-const warningMessage = computed(() => {
-    if (props.isOnlyWorkspace) {
-        return 'settings.workspace.delete_only_description';
+const membersWarning = computed(() => {
+    if (props.otherMemberCount <= 0) {
+        return null;
     }
 
-    if (isSelfHosted.value) {
-        return 'settings.workspace.delete_description_self_hosted';
-    }
-
-    return 'settings.workspace.delete_description';
+    return transChoice(
+        'settings.workspace.delete_members_warning',
+        props.otherMemberCount,
+        { count: String(props.otherMemberCount) },
+    );
 });
 
-const confirmDescription = computed(() =>
-    isSelfHosted.value
-        ? 'settings.workspace.delete_confirm_description_self_hosted'
-        : 'settings.workspace.delete_confirm_description',
-);
+const warningMessage = computed(() => {
+    if (props.isOnlyWorkspace) {
+        return trans('settings.workspace.delete_only_description');
+    }
+
+    const base = isSelfHosted.value
+        ? trans('settings.workspace.delete_description_self_hosted')
+        : trans('settings.workspace.delete_description');
+
+    return membersWarning.value ? `${base} ${membersWarning.value}` : base;
+});
+
+const confirmDescription = computed(() => {
+    const base = isSelfHosted.value
+        ? trans('settings.workspace.delete_confirm_description_self_hosted')
+        : trans('settings.workspace.delete_confirm_description');
+
+    return membersWarning.value ? `${base} ${membersWarning.value}` : base;
+});
 
 const openDeleteModal = () => {
     deleteModal.value?.open({
@@ -60,34 +77,46 @@ const openDeleteModal = () => {
             <div class="relative space-y-0.5 text-rose-700">
                 <p class="font-bold">{{ $t('settings.delete_account.warning') }}</p>
                 <p class="text-sm font-medium">
-                    {{ $t(warningMessage) }}
+                    {{ warningMessage }}
                 </p>
             </div>
 
-            <Button
-                v-if="!isOnlyWorkspace"
-                variant="destructive"
-                dusk="workspace-delete"
-                @click="openDeleteModal"
-            >
-                {{ $t('settings.workspace.delete_action') }}
-            </Button>
-            <Button
-                v-else-if="canManageBilling"
-                variant="outline"
-                as-child
-                dusk="workspace-delete-billing-link"
-            >
-                <Link :href="billingIndex()">
-                    {{ $t('settings.workspace.delete_go_to_billing') }}
-                </Link>
-            </Button>
+            <div class="flex flex-wrap gap-2">
+                <Button
+                    v-if="!isOnlyWorkspace"
+                    variant="destructive"
+                    dusk="workspace-delete"
+                    @click="openDeleteModal"
+                >
+                    {{ $t('settings.workspace.delete_action') }}
+                </Button>
+                <template v-else-if="canManageBilling">
+                    <Button
+                        variant="outline"
+                        as-child
+                        dusk="workspace-delete-billing-link"
+                    >
+                        <Link :href="billingIndex()">
+                            {{ $t('settings.workspace.delete_go_to_billing') }}
+                        </Link>
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        as-child
+                        dusk="workspace-delete-account-link"
+                    >
+                        <Link :href="editAuthentication()">
+                            {{ $t('settings.workspace.delete_go_to_delete_account') }}
+                        </Link>
+                    </Button>
+                </template>
+            </div>
         </div>
 
         <ConfirmDeleteModal
             ref="deleteModal"
             :title="$t('settings.workspace.delete_confirm_title')"
-            :description="$t(confirmDescription)"
+            :description="confirmDescription"
             :action="$t('settings.workspace.delete_action')"
             :cancel="$t('settings.workspace.delete_cancel')"
         />

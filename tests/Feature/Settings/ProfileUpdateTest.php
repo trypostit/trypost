@@ -294,6 +294,33 @@ test('member deleting profile detaches them from workspaces', function (bool $se
     expect($workspace->fresh()->members()->where('users.id', $member->id)->exists())->toBeFalse();
 })->with([true, false]);
 
+test('owner deleting profile rehomes remaining members to a personal account', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $personalAccountId = $member->account_id;
+    $member->update(['account_id' => $owner->account_id]);
+    $accountId = $owner->account_id;
+
+    $workspace = Workspace::factory()->create([
+        'account_id' => $accountId,
+        'user_id' => $owner->id,
+    ]);
+    $workspace->members()->attach($owner->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $member->update(['current_workspace_id' => $workspace->id]);
+
+    $this->actingAs($owner)->delete(route('app.profile.destroy'), [
+        'password' => 'password',
+    ]);
+
+    $member->refresh();
+
+    expect(Account::find($accountId))->toBeNull();
+    expect($member->account_id)->toBe($personalAccountId);
+    expect($member->isAccountOwner())->toBeTrue();
+    expect($member->current_workspace_id)->toBeNull();
+});
+
 test('owner deleting profile destroys the account and cascades', function (bool $selfHosted) {
     config()->set('trypost.self_hosted', $selfHosted);
 
