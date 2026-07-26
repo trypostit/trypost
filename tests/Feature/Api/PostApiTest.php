@@ -540,6 +540,12 @@ it('rejects scheduled status without a future scheduled_at', function () {
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->putJson(route('api.posts.update', $post), [
             'status' => 'scheduled',
+        ])
+        ->assertJsonValidationErrors(['scheduled_at']);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->putJson(route('api.posts.update', $post), [
+            'status' => 'scheduled',
             'scheduled_at' => now()->subHour()->toIso8601String(),
         ])
         ->assertJsonValidationErrors(['scheduled_at']);

@@ -115,6 +115,50 @@ test('create post with content and date', function () {
     expect($post->created_via)->toBe(CreatedVia::Mcp);
 });
 
+test('create post without scheduled_at creates unscheduled draft', function () {
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Draft without schedule',
+            'platforms' => [
+                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
+            ],
+        ]);
+
+    $response->assertOk()
+        ->assertStructuredContent(function (AssertableJson $json) {
+            $json->where('content', 'Draft without schedule')
+                ->where('status', 'draft')
+                ->where('scheduled_at', null)
+                ->etc();
+        });
+
+    $post = Post::where('workspace_id', $this->workspace->id)
+        ->where('content', 'Draft without schedule')
+        ->firstOrFail();
+
+    expect($post->status->value)->toBe('draft')
+        ->and($post->scheduled_at)->toBeNull();
+});
+
+test('create post with explicit null scheduled_at creates unscheduled draft', function () {
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Draft with null schedule',
+            'scheduled_at' => null,
+        ]);
+
+    $response->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json
+            ->where('status', 'draft')
+            ->where('scheduled_at', null)
+            ->etc());
+
+    expect(Post::where('workspace_id', $this->workspace->id)
+        ->where('content', 'Draft with null schedule')
+        ->firstOrFail()
+        ->scheduled_at)->toBeNull();
+});
+
 test('create post with platforms enables only those', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
@@ -133,7 +177,7 @@ test('create post with platforms enables only those', function () {
     expect($enabled->first()->content_type->value)->toBe('linkedin_post');
 });
 
-test('create post without args creates empty draft for today', function () {
+test('create post without args creates unscheduled empty draft', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, []);
 
@@ -141,10 +185,12 @@ test('create post without args creates empty draft for today', function () {
         ->assertStructuredContent(function (AssertableJson $json) {
             $json->where('content', '')
                 ->where('status', 'draft')
+                ->where('scheduled_at', null)
                 ->etc();
         });
 
-    expect(Post::where('workspace_id', $this->workspace->id)->count())->toBe(1);
+    $post = Post::where('workspace_id', $this->workspace->id)->firstOrFail();
+    expect($post->scheduled_at)->toBeNull();
 });
 
 test('create post rejects scheduled_at in the past', function () {
@@ -336,6 +382,24 @@ test('create post returns the platform meta in the response (read-back)', functi
         ])
         ->assertOk()
         ->assertStructuredContent(fn (AssertableJson $json) => $json->where('platforms.0.meta.aspect_ratio', '4:5')->etc());
+});
+
+test('update post rejects scheduled status without scheduled_at', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'status' => 'scheduled',
+        ]);
+
+    $response->assertHasErrors();
+
+    expect($post->fresh()->status->value)->toBe('draft')
+        ->and($post->fresh()->scheduled_at)->toBeNull();
 });
 
 test('update post accepts a valid aspect_ratio and persists it', function () {

@@ -56,6 +56,7 @@ class UpdatePostRequest extends FormRequest
             ],
             ...PostPlatformMetaRules::rules(),
             'scheduled_at' => [
+                Rule::requiredIf($this->input('status') === Status::Scheduled->value),
                 'nullable',
                 'date',
                 Rule::when(

@@ -40,7 +40,12 @@ class UpdatePostTool extends Tool
         $validated = $request->validate([
             'post_id' => ['required', 'uuid'],
             'content' => ['nullable', 'string', 'max:10000'],
-            'scheduled_at' => ['nullable', 'date', 'after:now'],
+            'scheduled_at' => [
+                Rule::requiredIf(data_get($request->all(), 'status') === Status::Scheduled->value),
+                'nullable',
+                'date',
+                'after:now',
+            ],
             'status' => ['sometimes', 'string', Rule::in([Status::Draft->value, Status::Scheduled->value])],
             'label_ids' => ['sometimes', 'array'],
             'label_ids.*' => ['uuid', Rule::exists('workspace_labels', 'id')->where('workspace_id', $workspace->id)],

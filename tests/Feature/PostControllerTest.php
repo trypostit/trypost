@@ -262,11 +262,11 @@ test('store post creates draft and redirects to edit', function () {
     expect($post->postPlatforms)->toHaveCount(1);
 });
 
-test('store post defaults scheduled_at to today when no date is provided', function () {
+test('store post leaves scheduled_at null when no date is provided', function () {
     $this->actingAs($this->user)->post(route('app.posts.store'))->assertRedirect();
 
     $post = Post::where('workspace_id', $this->workspace->id)->first();
-    expect($post->scheduled_at->format('Y-m-d'))->toBe(now('UTC')->format('Y-m-d'));
+    expect($post->scheduled_at)->toBeNull();
 });
 
 test('store post schedules draft on the date param when provided', function () {

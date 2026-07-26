@@ -96,14 +96,16 @@ class CreatePost
     /**
      * @param  array<string, mixed>  $data
      */
-    private static function resolveScheduledAt(array $data): Carbon
+    private static function resolveScheduledAt(array $data): ?Carbon
     {
         if ($scheduledAt = data_get($data, 'scheduled_at')) {
             return Carbon::parse($scheduledAt)->utc();
         }
 
-        $date = data_get($data, 'date') ?: Carbon::now('UTC')->format('Y-m-d');
+        if (! array_key_exists('date', $data) || blank(data_get($data, 'date'))) {
+            return null;
+        }
 
-        return Carbon::parse($date, 'UTC')->setTime(9, 0)->utc();
+        return Carbon::parse(data_get($data, 'date'), 'UTC')->setTime(9, 0)->utc();
     }
 }

@@ -127,7 +127,7 @@ test('apply returns 404 for unknown slug', function () {
         ->assertNotFound();
 });
 
-test('apply defaults scheduled_at to today when no date is provided', function () {
+test('apply leaves scheduled_at null when no date is provided', function () {
     Http::fake(['api.unsplash.com/*' => Http::response(['results' => []])]);
 
     $this->actingAs($this->user)
@@ -135,7 +135,7 @@ test('apply defaults scheduled_at to today when no date is provided', function (
         ->assertOk();
 
     $post = $this->workspace->posts()->latest()->first();
-    expect($post->scheduled_at->format('Y-m-d'))->toBe(now('UTC')->format('Y-m-d'));
+    expect($post->scheduled_at)->toBeNull();
 });
 
 test('apply schedules the post on the date param when provided', function () {
