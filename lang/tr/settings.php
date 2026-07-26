@@ -142,6 +142,18 @@ return [
         'name' => 'Ad',
         'name_placeholder' => 'Çalışma Alanım',
         'save' => 'Kaydet',
+        'danger_title' => 'Tehlikeli bölge',
+        'danger_description' => 'Geri alınamaz işlemler.',
+        'delete_title' => 'Bu workspace’i sil',
+        'delete_description' => 'Bu workspace’i, gönderilerini, bağlı hesaplarını ve medyasını kalıcı olarak siler. Abonelik miktarınız bir azalır.',
+        'delete_description_self_hosted' => 'Bu workspace’i, gönderilerini, bağlı hesaplarını ve medyasını kalıcı olarak siler.',
+        'delete_only_description' => 'Tek workspace’inizi silemezsiniz. Hesabınızı kapatmak için faturalandırma ayarlarından aboneliğinizi iptal edin.',
+        'delete_go_to_billing' => 'Faturalandırmaya git',
+        'delete_action' => 'Workspace’i sil',
+        'delete_cancel' => 'İptal',
+        'delete_confirm_title' => 'Workspace silinsin mi?',
+        'delete_confirm_description' => 'Bu, workspace’i ve tüm verilerini kalıcı olarak siler. Faturalandırma bir workspace eksilecek şekilde güncellenir.',
+        'delete_confirm_description_self_hosted' => 'Bu, workspace’i ve tüm verilerini kalıcı olarak siler.',
     ],
 
     'brand' => [

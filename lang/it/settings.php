@@ -140,6 +140,18 @@ return [
         'name' => 'Nome',
         'name_placeholder' => 'Il mio workspace',
         'save' => 'Salva',
+        'danger_title' => 'Zona pericolosa',
+        'danger_description' => 'Azioni irreversibili.',
+        'delete_title' => 'Elimina questo workspace',
+        'delete_description' => 'Elimina definitivamente questo workspace, i suoi post, gli account collegati e i media. La quantità del tuo abbonamento diminuirà di uno.',
+        'delete_description_self_hosted' => 'Elimina definitivamente questo workspace, i suoi post, gli account collegati e i media.',
+        'delete_only_description' => 'Non puoi eliminare il tuo unico workspace. Annulla il tuo abbonamento nelle impostazioni di fatturazione per chiudere il tuo account.',
+        'delete_go_to_billing' => 'Vai alla fatturazione',
+        'delete_action' => 'Elimina workspace',
+        'delete_cancel' => 'Annulla',
+        'delete_confirm_title' => 'Eliminare il workspace?',
+        'delete_confirm_description' => 'Questo elimina definitivamente il workspace e tutti i suoi dati. La fatturazione verrà aggiornata per riflettere un workspace in meno.',
+        'delete_confirm_description_self_hosted' => 'Questo elimina definitivamente il workspace e tutti i suoi dati.',
     ],
 
     'brand' => [

@@ -140,6 +140,18 @@ return [
         'name' => '이름',
         'name_placeholder' => '내 워크스페이스',
         'save' => '저장',
+        'danger_title' => '위험 구역',
+        'danger_description' => '되돌릴 수 없는 작업입니다.',
+        'delete_title' => '이 워크스페이스 삭제',
+        'delete_description' => '이 워크스페이스와 게시물, 연결된 계정, 미디어를 영구 삭제합니다. 구독 수량이 하나 줄어듭니다.',
+        'delete_description_self_hosted' => '이 워크스페이스와 게시물, 연결된 계정, 미디어를 영구 삭제합니다.',
+        'delete_only_description' => '유일한 워크스페이스는 삭제할 수 없습니다. 계정을 닫으려면 결제 설정에서 구독을 취소하세요.',
+        'delete_go_to_billing' => '결제로 이동',
+        'delete_action' => '워크스페이스 삭제',
+        'delete_cancel' => '취소',
+        'delete_confirm_title' => '워크스페이스를 삭제할까요?',
+        'delete_confirm_description' => '워크스페이스와 모든 데이터가 영구 삭제됩니다. 결제는 워크스페이스가 하나 줄어든 상태로 업데이트됩니다.',
+        'delete_confirm_description_self_hosted' => '워크스페이스와 모든 데이터가 영구 삭제됩니다.',
     ],
 
     'brand' => [

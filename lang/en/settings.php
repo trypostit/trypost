@@ -140,6 +140,18 @@ return [
         'name' => 'Name',
         'name_placeholder' => 'My Workspace',
         'save' => 'Save',
+        'danger_title' => 'Danger zone',
+        'danger_description' => 'Irreversible actions.',
+        'delete_title' => 'Delete this workspace',
+        'delete_description' => 'Permanently deletes this workspace, its posts, connected accounts, and media. Your subscription quantity will decrease by one.',
+        'delete_description_self_hosted' => 'Permanently deletes this workspace, its posts, connected accounts, and media.',
+        'delete_only_description' => 'You cannot delete your only workspace. Cancel your subscription in billing settings to close your account.',
+        'delete_go_to_billing' => 'Go to billing',
+        'delete_action' => 'Delete workspace',
+        'delete_cancel' => 'Cancel',
+        'delete_confirm_title' => 'Delete workspace?',
+        'delete_confirm_description' => 'This permanently deletes the workspace and all of its data. Your billing will update to reflect one fewer workspace.',
+        'delete_confirm_description_self_hosted' => 'This permanently deletes the workspace and all of its data.',
     ],
 
     'brand' => [

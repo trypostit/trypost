@@ -32,17 +32,17 @@ class WorkspacePolicy
 
     public function delete(User $user, Workspace $workspace): bool
     {
-        return $this->isOwner($user, $workspace);
+        return $this->isOwnerOrWorkspaceAdmin($user, $workspace);
     }
 
     public function restore(User $user, Workspace $workspace): bool
     {
-        return $this->isOwner($user, $workspace);
+        return $this->isOwnerOrWorkspaceAdmin($user, $workspace);
     }
 
     public function forceDelete(User $user, Workspace $workspace): bool
     {
-        return $this->isOwner($user, $workspace);
+        return $this->isOwnerOrWorkspaceAdmin($user, $workspace);
     }
 
     public function manageTeam(User $user, Workspace $workspace): bool

@@ -140,6 +140,18 @@ return [
         'name' => 'Nazwa',
         'name_placeholder' => 'Moja przestrzeń robocza',
         'save' => 'Zapisz',
+        'danger_title' => 'Strefa zagrożenia',
+        'danger_description' => 'Nieodwracalne działania.',
+        'delete_title' => 'Usuń ten workspace',
+        'delete_description' => 'Trwale usuwa ten workspace, jego posty, połączone konta i media. Ilość w subskrypcji zmniejszy się o jeden.',
+        'delete_description_self_hosted' => 'Trwale usuwa ten workspace, jego posty, połączone konta i media.',
+        'delete_only_description' => 'Nie możesz usunąć swojego jedynego workspace. Anuluj subskrypcję w ustawieniach rozliczeń, aby zamknąć konto.',
+        'delete_go_to_billing' => 'Przejdź do rozliczeń',
+        'delete_action' => 'Usuń workspace',
+        'delete_cancel' => 'Anuluj',
+        'delete_confirm_title' => 'Usunąć workspace?',
+        'delete_confirm_description' => 'To trwale usuwa workspace i wszystkie jego dane. Rozliczenia zostaną zaktualizowane, aby odzwierciedlić o jeden workspace mniej.',
+        'delete_confirm_description_self_hosted' => 'To trwale usuwa workspace i wszystkie jego dane.',
     ],
 
     'brand' => [

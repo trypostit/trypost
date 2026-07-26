@@ -140,6 +140,18 @@ return [
         'name' => 'Όνομα',
         'name_placeholder' => 'Το workspace μου',
         'save' => 'Αποθήκευση',
+        'danger_title' => 'Ζώνη κινδύνου',
+        'danger_description' => 'Μη αναστρέψιμες ενέργειες.',
+        'delete_title' => 'Διαγραφή αυτού του workspace',
+        'delete_description' => 'Διαγράφει οριστικά αυτό το workspace, τις αναρτήσεις, τους συνδεδεμένους λογαριασμούς και τα μέσα. Η ποσότητα της συνδρομής σας θα μειωθεί κατά ένα.',
+        'delete_description_self_hosted' => 'Διαγράφει οριστικά αυτό το workspace, τις αναρτήσεις, τους συνδεδεμένους λογαριασμούς και τα μέσα.',
+        'delete_only_description' => 'Δεν μπορείτε να διαγράψετε το μοναδικό σας workspace. Ακυρώστε τη συνδρομή σας στις ρυθμίσεις χρέωσης για να κλείσετε τον λογαριασμό σας.',
+        'delete_go_to_billing' => 'Μετάβαση στη χρέωση',
+        'delete_action' => 'Διαγραφή workspace',
+        'delete_cancel' => 'Ακύρωση',
+        'delete_confirm_title' => 'Διαγραφή workspace;',
+        'delete_confirm_description' => 'Αυτό διαγράφει οριστικά το workspace και όλα τα δεδομένα του. Η χρέωσή σας θα ενημερωθεί ώστε να αντικατοπτρίζει ένα λιγότερο workspace.',
+        'delete_confirm_description_self_hosted' => 'Αυτό διαγράφει οριστικά το workspace και όλα τα δεδομένα του.',
     ],
 
     'brand' => [

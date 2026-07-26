@@ -140,6 +140,18 @@ return [
         'name' => 'Nome',
         'name_placeholder' => 'Meu Workspace',
         'save' => 'Salvar',
+        'danger_title' => 'Zona de perigo',
+        'danger_description' => 'Ações irreversíveis.',
+        'delete_title' => 'Excluir este workspace',
+        'delete_description' => 'Exclui permanentemente este workspace, seus posts, contas conectadas e mídia. A quantidade da sua assinatura será reduzida em um.',
+        'delete_description_self_hosted' => 'Exclui permanentemente este workspace, seus posts, contas conectadas e mídia.',
+        'delete_only_description' => 'Você não pode excluir seu único workspace. Cancele sua assinatura nas configurações de cobrança para encerrar sua conta.',
+        'delete_go_to_billing' => 'Ir para cobrança',
+        'delete_action' => 'Excluir workspace',
+        'delete_cancel' => 'Cancelar',
+        'delete_confirm_title' => 'Excluir workspace?',
+        'delete_confirm_description' => 'Isso exclui permanentemente o workspace e todos os seus dados. Sua cobrança será atualizada para refletir um workspace a menos.',
+        'delete_confirm_description_self_hosted' => 'Isso exclui permanentemente o workspace e todos os seus dados.',
     ],
 
     'brand' => [

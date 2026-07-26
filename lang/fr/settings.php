@@ -140,6 +140,18 @@ return [
         'name' => 'Nom',
         'name_placeholder' => 'Mon espace de travail',
         'save' => 'Enregistrer',
+        'danger_title' => 'Zone de danger',
+        'danger_description' => 'Actions irréversibles.',
+        'delete_title' => 'Supprimer cet espace de travail',
+        'delete_description' => 'Supprime définitivement cet espace de travail, ses publications, comptes connectés et médias. La quantité de votre abonnement diminuera d’un.',
+        'delete_description_self_hosted' => 'Supprime définitivement cet espace de travail, ses publications, comptes connectés et médias.',
+        'delete_only_description' => 'Vous ne pouvez pas supprimer votre seul espace de travail. Annulez votre abonnement dans les paramètres de facturation pour fermer votre compte.',
+        'delete_go_to_billing' => 'Aller à la facturation',
+        'delete_action' => 'Supprimer l’espace de travail',
+        'delete_cancel' => 'Annuler',
+        'delete_confirm_title' => 'Supprimer l’espace de travail ?',
+        'delete_confirm_description' => 'Cela supprime définitivement l’espace de travail et toutes ses données. Votre facturation sera mise à jour pour refléter un espace de travail en moins.',
+        'delete_confirm_description_self_hosted' => 'Cela supprime définitivement l’espace de travail et toutes ses données.',
     ],
 
     'brand' => [

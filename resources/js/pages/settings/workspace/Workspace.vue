@@ -24,6 +24,8 @@ interface Workspace {
 
 defineProps<{
     workspace: Workspace;
+    canDelete: boolean;
+    isOnlyWorkspace: boolean;
 }>();
 
 const tabs = computed(() => [
@@ -46,7 +48,11 @@ const tabs = computed(() => [
 
             <SettingsTabsNav :tabs="tabs" active="workspace" />
 
-            <WorkspaceTab :workspace="workspace" />
+            <WorkspaceTab
+                :workspace="workspace"
+                :can-delete="canDelete"
+                :is-only-workspace="isOnlyWorkspace"
+            />
         </div>
     </AppLayout>
 </template>

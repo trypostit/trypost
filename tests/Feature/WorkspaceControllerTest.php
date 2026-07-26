@@ -180,6 +180,48 @@ test('workspace settings shows the workspace settings page', function () {
     $response->assertInertia(fn ($page) => $page
         ->component('settings/workspace/Workspace', false)
         ->has('workspace')
+        ->where('canDelete', true)
+        ->where('isOnlyWorkspace', false)
+    );
+});
+
+test('workspace settings marks only workspace in saas mode', function () {
+    config(['trypost.self_hosted' => false]);
+    $this->user->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test_'.fake()->uuid(),
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_123',
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.workspace.settings'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->where('canDelete', true)
+        ->where('isOnlyWorkspace', true)
+    );
+});
+
+test('workspace settings does not mark only workspace when account has more than one', function () {
+    config(['trypost.self_hosted' => false]);
+    $this->user->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test_'.fake()->uuid(),
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_123',
+    ]);
+
+    Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.workspace.settings'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->where('isOnlyWorkspace', false)
     );
 });
 
@@ -506,6 +548,44 @@ test('destroy workspace returns 403 for non-owner', function () {
     $response = $this->actingAs($otherUser)->delete(route('app.workspaces.destroy', $this->workspace));
 
     $response->assertForbidden();
+});
+
+test('destroy workspace allows workspace admin', function () {
+    Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $admin = User::factory()->create([
+        'account_id' => $this->user->account_id,
+        'current_workspace_id' => $this->workspace->id,
+    ]);
+    $this->workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
+
+    $workspaceId = $this->workspace->id;
+
+    $response = $this->actingAs($admin)->delete(route('app.workspaces.destroy', $this->workspace));
+
+    $response->assertRedirect(route('app.workspaces.index'));
+    expect(Workspace::find($workspaceId))->toBeNull();
+});
+
+test('destroy workspace returns 403 for workspace member', function () {
+    Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $member = User::factory()->create([
+        'account_id' => $this->user->account_id,
+        'current_workspace_id' => $this->workspace->id,
+    ]);
+    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+
+    $response = $this->actingAs($member)->delete(route('app.workspaces.destroy', $this->workspace));
+
+    $response->assertForbidden();
+    expect(Workspace::find($this->workspace->id))->not->toBeNull();
 });
 
 // Autofill brand tests

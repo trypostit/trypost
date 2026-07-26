@@ -142,6 +142,18 @@ return [
         'name' => 'Name',
         'name_placeholder' => 'Mein Workspace',
         'save' => 'Speichern',
+        'danger_title' => 'Gefahrenzone',
+        'danger_description' => 'Unwiderrufliche Aktionen.',
+        'delete_title' => 'Diesen Workspace löschen',
+        'delete_description' => 'Löscht diesen Workspace dauerhaft inklusive Beiträge, verbundener Konten und Medien. Die Menge deines Abonnements wird um eins verringert.',
+        'delete_description_self_hosted' => 'Löscht diesen Workspace dauerhaft inklusive Beiträge, verbundener Konten und Medien.',
+        'delete_only_description' => 'Du kannst deinen einzigen Workspace nicht löschen. Kündige dein Abonnement in den Abrechnungseinstellungen, um dein Konto zu schließen.',
+        'delete_go_to_billing' => 'Zur Abrechnung',
+        'delete_action' => 'Workspace löschen',
+        'delete_cancel' => 'Abbrechen',
+        'delete_confirm_title' => 'Workspace löschen?',
+        'delete_confirm_description' => 'Dadurch wird der Workspace und alle seine Daten dauerhaft gelöscht. Deine Abrechnung wird um einen Workspace reduziert.',
+        'delete_confirm_description_self_hosted' => 'Dadurch wird der Workspace und alle seine Daten dauerhaft gelöscht.',
     ],
 
     'brand' => [
