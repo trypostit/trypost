@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import { uploadLogo, deleteLogo } from '@/routes/app/workspace';
 
 interface Workspace {
@@ -24,6 +25,8 @@ defineProps<{
     isOnlyWorkspace: boolean;
     otherMemberCount: number;
 }>();
+
+const { canManageBilling } = useWorkspaceRole();
 </script>
 
 <template>
@@ -71,12 +74,14 @@ defineProps<{
             </Form>
         </div>
 
-        <Separator />
+        <template v-if="canManageBilling">
+            <Separator />
 
-        <DeleteWorkspace
-            :workspace="workspace"
-            :is-only-workspace="isOnlyWorkspace"
-            :other-member-count="otherMemberCount"
-        />
+            <DeleteWorkspace
+                :workspace="workspace"
+                :is-only-workspace="isOnlyWorkspace"
+                :other-member-count="otherMemberCount"
+            />
+        </template>
     </div>
 </template>

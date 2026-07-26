@@ -6,7 +6,6 @@ import { computed, ref } from 'vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import { Button } from '@/components/ui/button';
-import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import { edit as editAuthentication } from '@/routes/app/authentication';
 import { index as billingIndex } from '@/routes/app/billing';
 import { destroy as destroyWorkspace } from '@/routes/app/workspaces';
@@ -22,7 +21,6 @@ const props = defineProps<{
 
 const page = usePage();
 const isSelfHosted = computed(() => Boolean(page.props.selfHosted));
-const { canManageBilling } = useWorkspaceRole();
 
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
@@ -90,7 +88,7 @@ const openDeleteModal = () => {
                 >
                     {{ $t('settings.workspace.delete_action') }}
                 </Button>
-                <template v-else-if="canManageBilling">
+                <template v-else>
                     <Button
                         variant="outline"
                         as-child

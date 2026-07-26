@@ -40,6 +40,52 @@ class EnsurePersonalAccount
 
         $user->update(['account_id' => $personalAccount->id]);
 
+        $currentBelongsToPersonal = $user->current_workspace_id
+            && $user->workspaces()
+                ->where('workspaces.account_id', $personalAccount->id)
+                ->where('workspaces.id', $user->current_workspace_id)
+                ->exists();
+
+        if (! $currentBelongsToPersonal) {
+            $fallback = $user->workspaces()
+                ->where('workspaces.account_id', $personalAccount->id)
+                ->first();
+
+            $user->update(['current_workspace_id' => $fallback?->id]);
+        }
+
         return $personalAccount;
+    }
+
+    /**
+     * Move members off a shared account onto a personal account they own.
+     *
+     * @param  bool  $onlyWithoutAccountWorkspaces  When true, only members with no
+     *                                              remaining memberships on this
+     *                                              account's workspaces are rehomed
+     *                                              (workspace delete). When false,
+     *                                              every other member is rehomed
+     *                                              (account delete).
+     */
+    public static function rehomeAccountMembers(
+        Account $account,
+        ?string $exceptUserId = null,
+        bool $onlyWithoutAccountWorkspaces = false,
+    ): void {
+        User::query()
+            ->where('account_id', $account->id)
+            ->when(
+                $exceptUserId,
+                fn ($query) => $query->where('id', '!=', $exceptUserId),
+            )
+            ->when(
+                $onlyWithoutAccountWorkspaces,
+                fn ($query) => $query->whereDoesntHave(
+                    'workspaces',
+                    fn ($workspaces) => $workspaces->where('workspaces.account_id', $account->id),
+                ),
+            )
+            ->get()
+            ->each(fn (User $member) => self::execute($member));
     }
 }

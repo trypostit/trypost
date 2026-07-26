@@ -160,6 +160,12 @@ class WorkspaceController extends Controller
                 && $workspace->account->workspaces()->count() <= 1,
             'otherMemberCount' => $workspace->members()
                 ->where('users.id', '!=', $user->id)
+                ->whereDoesntHave(
+                    'workspaces',
+                    fn ($query) => $query
+                        ->where('workspaces.account_id', $workspace->account_id)
+                        ->where('workspaces.id', '!=', $workspace->id),
+                )
                 ->count(),
         ]);
     }
@@ -238,17 +244,15 @@ class WorkspaceController extends Controller
         return back()->with('flash.success', __('settings.flash.workspace_updated'));
     }
 
-    public function destroy(Request $request, Workspace $workspace): RedirectResponse
+    public function destroy(Workspace $workspace): RedirectResponse
     {
         $this->authorize('delete', $workspace);
-
-        $user = $request->user();
 
         if (! config('trypost.self_hosted') && $workspace->account->workspaces()->count() <= 1) {
             return back()->with('flash.error', __('workspaces.cannot_delete_last'));
         }
 
-        DeleteWorkspace::execute($user, $workspace);
+        DeleteWorkspace::execute($workspace);
 
         return redirect()->route('app.workspaces.index')
             ->with('flash.success', __('workspaces.flash.deleted'));

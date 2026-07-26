@@ -71,5 +71,5 @@ test('deleting a workspace syncs the stripe quantity', function () {
     $account->shouldReceive('syncWorkspaceQuantity')->once();
     $workspace->setRelation('account', $account);
 
-    DeleteWorkspace::execute($user, $workspace);
+    DeleteWorkspace::execute($workspace);
 });

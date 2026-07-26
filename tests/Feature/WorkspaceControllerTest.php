@@ -224,6 +224,31 @@ test('workspace settings does not mark only workspace when account has more than
     );
 });
 
+test('workspace settings otherMemberCount only includes members without another account workspace', function () {
+    $stranded = User::factory()->create([
+        'account_id' => $this->user->account_id,
+    ]);
+    $alsoOnOther = User::factory()->create([
+        'account_id' => $this->user->account_id,
+    ]);
+
+    $otherWorkspace = Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $this->workspace->members()->attach($stranded->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($alsoOnOther->id, ['role' => Role::Member->value]);
+    $otherWorkspace->members()->attach($alsoOnOther->id, ['role' => Role::Member->value]);
+
+    $response = $this->actingAs($this->user)->get(route('app.workspace.settings'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->where('otherMemberCount', 1)
+    );
+});
+
 test('brand settings shows the brand settings page', function () {
     $response = $this->actingAs($this->user)->get(route('app.workspace.brand'));
 
@@ -549,7 +574,7 @@ test('destroy workspace returns 403 for non-owner', function () {
     $response->assertForbidden();
 });
 
-test('destroy workspace allows workspace admin', function () {
+test('destroy workspace returns 403 for workspace admin', function () {
     Workspace::factory()->create([
         'account_id' => $this->user->account_id,
         'user_id' => $this->user->id,
@@ -561,12 +586,10 @@ test('destroy workspace allows workspace admin', function () {
     ]);
     $this->workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
 
-    $workspaceId = $this->workspace->id;
-
     $response = $this->actingAs($admin)->delete(route('app.workspaces.destroy', $this->workspace));
 
-    $response->assertRedirect(route('app.workspaces.index'));
-    expect(Workspace::find($workspaceId))->toBeNull();
+    $response->assertForbidden();
+    expect(Workspace::find($this->workspace->id))->not->toBeNull();
 });
 
 test('destroy workspace returns 403 for workspace member', function () {

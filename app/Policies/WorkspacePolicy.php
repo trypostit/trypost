@@ -32,17 +32,18 @@ class WorkspacePolicy
 
     public function delete(User $user, Workspace $workspace): bool
     {
-        return $this->isOwnerOrWorkspaceAdmin($user, $workspace);
+        // Owner-only: deleting a workspace changes Stripe subscription quantity.
+        return $this->isOwner($user, $workspace);
     }
 
     public function restore(User $user, Workspace $workspace): bool
     {
-        return $this->isOwnerOrWorkspaceAdmin($user, $workspace);
+        return $this->isOwner($user, $workspace);
     }
 
     public function forceDelete(User $user, Workspace $workspace): bool
     {
-        return $this->isOwnerOrWorkspaceAdmin($user, $workspace);
+        return $this->isOwner($user, $workspace);
     }
 
     public function manageTeam(User $user, Workspace $workspace): bool

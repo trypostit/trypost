@@ -9,7 +9,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Settings\ProfileDeleteRequest;
 use App\Http\Requests\App\Settings\ProfileUpdateRequest;
 use App\Models\Account;
-use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
@@ -89,11 +88,15 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
-        DB::transaction(function () use ($user) {
-            $user->update(['current_workspace_id' => null]);
+        $account = $user->account;
+        $isOwner = $user->isAccountOwner();
 
-            $account = $user->account;
-            $isOwner = $user->isAccountOwner();
+        if ($account && $isOwner && $account->subscribed(Account::SUBSCRIPTION_NAME)) {
+            $account->subscription(Account::SUBSCRIPTION_NAME)->cancelNow();
+        }
+
+        DB::transaction(function () use ($user, $account, $isOwner) {
+            $user->update(['current_workspace_id' => null]);
 
             $ownedWorkspaces = Workspace::where('user_id', $user->id)->get();
 
@@ -102,7 +105,12 @@ class ProfileController extends Controller
                     if ($member->id !== $user->id && $member->current_workspace_id === $workspace->id) {
                         $otherWorkspace = $member->workspaces()
                             ->where('workspaces.id', '!=', $workspace->id)
-                            ->first();
+                            ->where('workspaces.account_id', $workspace->account_id)
+                            ->first()
+                            ?? $member->workspaces()
+                                ->where('workspaces.id', '!=', $workspace->id)
+                                ->first();
+
                         $member->update(['current_workspace_id' => $otherWorkspace?->id]);
                     }
                 }
@@ -118,15 +126,7 @@ class ProfileController extends Controller
             $user->workspaces()->detach();
 
             if ($account && $isOwner) {
-                User::query()
-                    ->where('account_id', $account->id)
-                    ->where('id', '!=', $user->id)
-                    ->get()
-                    ->each(fn (User $member) => EnsurePersonalAccount::execute($member));
-
-                if ($account->subscribed(Account::SUBSCRIPTION_NAME)) {
-                    $account->subscription(Account::SUBSCRIPTION_NAME)->cancelNow();
-                }
+                EnsurePersonalAccount::rehomeAccountMembers($account, $user->id);
 
                 $account->subscriptions()->delete();
                 $account->delete();

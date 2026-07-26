@@ -9,34 +9,37 @@ use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\PostHogService;
+use Illuminate\Support\Facades\DB;
 
 class DeleteWorkspace
 {
-    public static function execute(User $user, Workspace $workspace): void
+    public static function execute(Workspace $workspace): void
     {
-        User::where('current_workspace_id', $workspace->id)
-            ->get()
-            ->each(function (User $affected) use ($workspace): void {
-                $fallback = $affected->workspaces()
-                    ->where('workspaces.id', '!=', $workspace->id)
-                    ->first();
-
-                $affected->update(['current_workspace_id' => $fallback?->id]);
-            });
-
         $account = $workspace->account;
         $accountId = (string) $workspace->account_id;
 
-        $workspace->delete();
-
-        if ($account) {
-            User::query()
-                ->where('account_id', $account->id)
-                ->where('id', '!=', $account->owner_id)
-                ->whereDoesntHave('workspaces')
+        DB::transaction(function () use ($workspace, $account): void {
+            User::where('current_workspace_id', $workspace->id)
                 ->get()
-                ->each(fn (User $stranded) => EnsurePersonalAccount::execute($stranded));
-        }
+                ->each(function (User $affected) use ($workspace): void {
+                    $fallback = $affected->workspaces()
+                        ->where('workspaces.id', '!=', $workspace->id)
+                        ->where('workspaces.account_id', $workspace->account_id)
+                        ->first();
+
+                    $affected->update(['current_workspace_id' => $fallback?->id]);
+                });
+
+            $workspace->delete();
+
+            if ($account) {
+                EnsurePersonalAccount::rehomeAccountMembers(
+                    $account,
+                    $account->owner_id,
+                    onlyWithoutAccountWorkspaces: true,
+                );
+            }
+        });
 
         $account?->syncWorkspaceQuantity();
 
