@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { IconTrash } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
@@ -24,7 +23,7 @@ const { canManageBilling } = useWorkspaceRole();
 
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
-const description = computed(() => {
+const warningMessage = computed(() => {
     if (props.isOnlyWorkspace) {
         return 'settings.workspace.delete_only_description';
     }
@@ -51,30 +50,26 @@ const openDeleteModal = () => {
 </script>
 
 <template>
-    <section class="space-y-4" dusk="workspace-danger-zone">
+    <div class="space-y-6" dusk="workspace-danger-zone">
         <HeadingSmall
-            :title="$t('settings.workspace.danger_title')"
+            :title="$t('settings.workspace.delete_title')"
             :description="$t('settings.workspace.danger_description')"
         />
 
-        <div
-            class="flex items-center justify-between gap-4 rounded-xl border-2 border-destructive/30 bg-destructive/5 p-4"
-        >
-            <div class="text-sm">
-                <p class="font-medium">
-                    {{ $t('settings.workspace.delete_title') }}
-                </p>
-                <p class="text-foreground/60">
-                    {{ $t(description) }}
+        <div class="space-y-4 rounded-xl border-2 border-foreground bg-rose-50 p-4 shadow-2xs">
+            <div class="relative space-y-0.5 text-rose-700">
+                <p class="font-bold">{{ $t('settings.delete_account.warning') }}</p>
+                <p class="text-sm font-medium">
+                    {{ $t(warningMessage) }}
                 </p>
             </div>
+
             <Button
                 v-if="!isOnlyWorkspace"
                 variant="destructive"
                 dusk="workspace-delete"
                 @click="openDeleteModal"
             >
-                <IconTrash class="size-4" />
                 {{ $t('settings.workspace.delete_action') }}
             </Button>
             <Button
@@ -96,5 +91,5 @@ const openDeleteModal = () => {
             :action="$t('settings.workspace.delete_action')"
             :cancel="$t('settings.workspace.delete_cancel')"
         />
-    </section>
+    </div>
 </template>
