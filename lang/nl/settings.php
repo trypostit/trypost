@@ -143,7 +143,7 @@ return [
         'danger_title' => 'Gevarenzone',
         'danger_description' => 'Onomkeerbare acties.',
         'delete_title' => 'Deze workspace verwijderen',
-        'delete_description' => 'Verwijdert deze workspace permanent, inclusief posts, gekoppelde accounts en media. De hoeveelheid van je abonnement daalt met één.',
+        'delete_description' => 'Verwijdert deze workspace permanent, inclusief posts, gekoppelde accounts en media. Je wordt voor één workspace minder gefactureerd.',
         'delete_description_self_hosted' => 'Verwijdert deze workspace permanent, inclusief posts, gekoppelde accounts en media.',
         'delete_only_description' => 'Je kunt je enige workspace niet verwijderen. Zeg je abonnement op in de facturatie-instellingen om je account te sluiten.',
         'delete_go_to_billing' => 'Naar facturatie',

@@ -143,7 +143,7 @@ return [
         'danger_title' => '危険な操作',
         'danger_description' => '元に戻せない操作です。',
         'delete_title' => 'このワークスペースを削除',
-        'delete_description' => 'このワークスペースと投稿、連携アカウント、メディアを完全に削除します。サブスクリプションの数量は1つ減ります。',
+        'delete_description' => 'このワークスペースと、投稿・連携アカウント・メディアを含むすべての内容を完全に削除します。請求はワークスペースが1つ減った分になります。',
         'delete_description_self_hosted' => 'このワークスペースと投稿、連携アカウント、メディアを完全に削除します。',
         'delete_only_description' => '唯一のワークスペースは削除できません。アカウントを閉じるには、請求設定でサブスクリプションを解約してください。',
         'delete_go_to_billing' => '請求へ移動',

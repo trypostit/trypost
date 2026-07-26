@@ -143,7 +143,7 @@ return [
         'danger_title' => 'Zona de peligro',
         'danger_description' => 'Acciones irreversibles.',
         'delete_title' => 'Eliminar este workspace',
-        'delete_description' => 'Elimina permanentemente este workspace, sus publicaciones, cuentas conectadas y medios. La cantidad de tu suscripción disminuirá en uno.',
+        'delete_description' => 'Elimina este workspace de forma permanente, incluyendo publicaciones, cuentas conectadas y medios. Pasarás a pagar por un workspace menos.',
         'delete_description_self_hosted' => 'Elimina permanentemente este workspace, sus publicaciones, cuentas conectadas y medios.',
         'delete_only_description' => 'No puedes eliminar tu único workspace. Cancela tu suscripción en la configuración de facturación para cerrar tu cuenta.',
         'delete_go_to_billing' => 'Ir a facturación',

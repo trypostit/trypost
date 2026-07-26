@@ -143,7 +143,7 @@ return [
         'danger_title' => 'Danger zone',
         'danger_description' => 'Irreversible actions.',
         'delete_title' => 'Delete this workspace',
-        'delete_description' => 'Permanently deletes this workspace, its posts, connected accounts, and media. Your subscription quantity will decrease by one.',
+        'delete_description' => 'Permanently deletes this workspace and everything in it — posts, connected accounts, and media. You will be charged for one fewer workspace.',
         'delete_description_self_hosted' => 'Permanently deletes this workspace, its posts, connected accounts, and media.',
         'delete_only_description' => 'You cannot delete your only workspace. Cancel your subscription in billing settings to close your account.',
         'delete_go_to_billing' => 'Go to billing',

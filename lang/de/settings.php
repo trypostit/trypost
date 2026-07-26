@@ -145,7 +145,7 @@ return [
         'danger_title' => 'Gefahrenzone',
         'danger_description' => 'Unwiderrufliche Aktionen.',
         'delete_title' => 'Diesen Workspace löschen',
-        'delete_description' => 'Löscht diesen Workspace dauerhaft inklusive Beiträge, verbundener Konten und Medien. Die Menge deines Abonnements wird um eins verringert.',
+        'delete_description' => 'Löscht diesen Workspace dauerhaft — inklusive Beiträge, verbundener Konten und Medien. Du wirst für einen Workspace weniger berechnet.',
         'delete_description_self_hosted' => 'Löscht diesen Workspace dauerhaft inklusive Beiträge, verbundener Konten und Medien.',
         'delete_only_description' => 'Du kannst deinen einzigen Workspace nicht löschen. Kündige dein Abonnement in den Abrechnungseinstellungen, um dein Konto zu schließen.',
         'delete_go_to_billing' => 'Zur Abrechnung',

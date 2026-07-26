@@ -145,7 +145,7 @@ return [
         'danger_title' => 'Tehlikeli bölge',
         'danger_description' => 'Geri alınamaz işlemler.',
         'delete_title' => 'Bu workspace’i sil',
-        'delete_description' => 'Bu workspace’i, gönderilerini, bağlı hesaplarını ve medyasını kalıcı olarak siler. Abonelik miktarınız bir azalır.',
+        'delete_description' => 'Bu workspace’i kalıcı olarak siler — gönderiler, bağlı hesaplar ve medya dahil. Bir workspace daha az ücretlendirilirsiniz.',
         'delete_description_self_hosted' => 'Bu workspace’i, gönderilerini, bağlı hesaplarını ve medyasını kalıcı olarak siler.',
         'delete_only_description' => 'Tek workspace’inizi silemezsiniz. Hesabınızı kapatmak için faturalandırma ayarlarından aboneliğinizi iptal edin.',
         'delete_go_to_billing' => 'Faturalandırmaya git',

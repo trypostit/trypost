@@ -143,7 +143,7 @@ return [
         'danger_title' => 'Zona de perigo',
         'danger_description' => 'Ações irreversíveis.',
         'delete_title' => 'Excluir este workspace',
-        'delete_description' => 'Exclui permanentemente este workspace, seus posts, contas conectadas e mídia. A quantidade da sua assinatura será reduzida em um.',
+        'delete_description' => 'Exclui este workspace de forma permanente, incluindo posts, contas conectadas e mídia. Você passa a ser cobrado por um workspace a menos.',
         'delete_description_self_hosted' => 'Exclui permanentemente este workspace, seus posts, contas conectadas e mídia.',
         'delete_only_description' => 'Você não pode excluir seu único workspace. Cancele sua assinatura nas configurações de cobrança para encerrar sua conta.',
         'delete_go_to_billing' => 'Ir para cobrança',

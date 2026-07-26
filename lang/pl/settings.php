@@ -143,7 +143,7 @@ return [
         'danger_title' => 'Strefa zagrożenia',
         'danger_description' => 'Nieodwracalne działania.',
         'delete_title' => 'Usuń ten workspace',
-        'delete_description' => 'Trwale usuwa ten workspace, jego posty, połączone konta i media. Ilość w subskrypcji zmniejszy się o jeden.',
+        'delete_description' => 'Trwale usuwa ten workspace wraz z postami, połączonymi kontami i mediami. Będziesz rozliczany za o jeden workspace mniej.',
         'delete_description_self_hosted' => 'Trwale usuwa ten workspace, jego posty, połączone konta i media.',
         'delete_only_description' => 'Nie możesz usunąć swojego jedynego workspace. Anuluj subskrypcję w ustawieniach rozliczeń, aby zamknąć konto.',
         'delete_go_to_billing' => 'Przejdź do rozliczeń',

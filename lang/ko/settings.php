@@ -143,7 +143,7 @@ return [
         'danger_title' => '위험 구역',
         'danger_description' => '되돌릴 수 없는 작업입니다.',
         'delete_title' => '이 워크스페이스 삭제',
-        'delete_description' => '이 워크스페이스와 게시물, 연결된 계정, 미디어를 영구 삭제합니다. 구독 수량이 하나 줄어듭니다.',
+        'delete_description' => '이 워크스페이스와 그 안의 모든 것(게시물, 연결된 계정, 미디어)을 영구 삭제합니다. 워크스페이스 하나만큼 요금이 줄어듭니다.',
         'delete_description_self_hosted' => '이 워크스페이스와 게시물, 연결된 계정, 미디어를 영구 삭제합니다.',
         'delete_only_description' => '유일한 워크스페이스는 삭제할 수 없습니다. 계정을 닫으려면 결제 설정에서 구독을 취소하세요.',
         'delete_go_to_billing' => '결제로 이동',

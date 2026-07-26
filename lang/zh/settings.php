@@ -143,7 +143,7 @@ return [
         'danger_title' => '危险区域',
         'danger_description' => '不可撤销的操作。',
         'delete_title' => '删除此工作区',
-        'delete_description' => '永久删除此工作区及其帖子、已连接账户和媒体。订阅数量将减少一个。',
+        'delete_description' => '永久删除此工作区及其全部内容（帖子、已连接账户和媒体）。之后将按少一个工作区计费。',
         'delete_description_self_hosted' => '永久删除此工作区及其帖子、已连接账户和媒体。',
         'delete_only_description' => '无法删除唯一的工作区。请在账单设置中取消订阅以关闭账户。',
         'delete_go_to_billing' => '前往账单',
