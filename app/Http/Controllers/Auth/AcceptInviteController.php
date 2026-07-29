@@ -179,16 +179,22 @@ class AcceptInviteController extends Controller
     /**
      * Avoid bouncing through calendar (EnsureAccountReady / EnsureHasWorkspace)
      * when the user has no current workspace — that drops flashed messages.
+     *
+     * Only treat current as valid when it belongs to the user's current account
+     * (accept may have just switched account_id while leaving an old current).
      */
     private function redirectAfterInvite(User $user): RedirectResponse
     {
         $user->refresh();
 
-        if ($user->current_workspace_id) {
+        if ($this->currentWorkspaceBelongsToAccount($user)) {
             return redirect()->route('app.calendar');
         }
 
-        $fallback = $user->workspaces()->first();
+        $fallback = $user->workspaces()
+            ->where('workspaces.account_id', $user->account_id)
+            ->first()
+            ?? $user->workspaces()->first();
 
         if ($fallback) {
             $user->update(['current_workspace_id' => $fallback->id]);
@@ -202,6 +208,18 @@ class AcceptInviteController extends Controller
         }
 
         return redirect()->route('app.workspaces.create');
+    }
+
+    private function currentWorkspaceBelongsToAccount(User $user): bool
+    {
+        if (! $user->current_workspace_id || ! $user->account_id) {
+            return false;
+        }
+
+        return $user->workspaces()
+            ->where('workspaces.id', $user->current_workspace_id)
+            ->where('workspaces.account_id', $user->account_id)
+            ->exists();
     }
 
     /**
@@ -233,7 +251,9 @@ class AcceptInviteController extends Controller
                 ]);
             }
 
-            if (! $user->current_workspace_id) {
+            // Accept often switches account_id while an old personal workspace is
+            // still current — always land on a workspace of the invite account.
+            if (! $this->currentWorkspaceBelongsToAccount($user)) {
                 $user->update(['current_workspace_id' => $workspace->id]);
                 $user->refresh();
             }

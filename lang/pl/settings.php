@@ -324,6 +324,7 @@ return [
         'workspace_updated' => 'Ustawienia zostały pomyślnie zaktualizowane!',
         'photo_updated' => 'Zdjęcie zostało pomyślnie zaktualizowane!',
         'photo_deleted' => 'Zdjęcie zostało pomyślnie usunięte!',
+        'delete_failed_billing' => 'Nie udało się anulować subskrypcji u dostawcy płatności. Spróbuj ponownie lub skontaktuj się z pomocą. Twoje konto nie zostało usunięte.',
         'logo_updated' => 'Logo zostało pomyślnie przesłane!',
         'logo_deleted' => 'Logo zostało pomyślnie usunięte!',
         'notifications_updated' => 'Preferencje powiadomień zostały zaktualizowane!',

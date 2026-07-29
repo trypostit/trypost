@@ -324,6 +324,7 @@ return [
         'workspace_updated' => '設定を正常に更新しました！',
         'photo_updated' => '写真を正常に更新しました！',
         'photo_deleted' => '写真を正常に削除しました！',
+        'delete_failed_billing' => '請求プロバイダーでのサブスクリプションの解約に失敗しました。もう一度お試しいただくか、サポートまでご連絡ください。アカウントは削除されていません。',
         'logo_updated' => 'ロゴを正常にアップロードしました！',
         'logo_deleted' => 'ロゴを正常に削除しました！',
         'notifications_updated' => '通知設定を更新しました！',

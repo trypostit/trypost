@@ -324,6 +324,7 @@ return [
         'workspace_updated' => '设置更新成功！',
         'photo_updated' => '头像更新成功！',
         'photo_deleted' => '头像移除成功！',
+        'delete_failed_billing' => '无法在账单提供商处取消订阅。请重试或联系支持。你的账户尚未删除。',
         'logo_updated' => '徽标上传成功！',
         'logo_deleted' => '徽标移除成功！',
         'notifications_updated' => '通知偏好已更新！',

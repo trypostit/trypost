@@ -11,6 +11,7 @@ use App\Http\Requests\App\Settings\ProfileDeleteRequest;
 use App\Http\Requests\App\Settings\ProfileUpdateRequest;
 use App\Models\Account;
 use App\Models\Media;
+use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -144,24 +145,39 @@ class ProfileController extends Controller
             }
         });
 
-        DeleteOrphanedMediaFiles::execute($mediaPaths);
-
         if ($account && $isOwner) {
             try {
                 if ($account->subscribed(Account::SUBSCRIPTION_NAME)) {
                     $account->subscription(Account::SUBSCRIPTION_NAME)->cancelNow();
                 }
+
+                $account->subscriptions()->delete();
+                $account->delete();
             } catch (Throwable $e) {
                 Log::warning('Failed to cancel Stripe subscription during account delete', [
                     'account_id' => $account->id,
                     'user_id' => $user->id,
                     'error' => $e->getMessage(),
                 ]);
-            }
 
-            $account->subscriptions()->delete();
-            $account->delete();
+                // Keep local Stripe customer/subscription linkage so billing can
+                // still be cancelled or retried. Workspaces/members are already
+                // settled; the owner can retry account deletion.
+                session()->flash('flash.banner', __('settings.flash.delete_failed_billing'));
+                session()->flash('flash.bannerStyle', 'danger');
+
+                return to_route('app.profile.edit');
+            }
         }
+
+        $userMediaQuery = Media::query()
+            ->where('mediable_type', Relation::getMorphAlias(User::class))
+            ->where('mediable_id', $user->id);
+
+        $mediaPaths = array_merge($mediaPaths, $userMediaQuery->pluck('path')->all());
+        $userMediaQuery->delete();
+
+        DeleteOrphanedMediaFiles::execute($mediaPaths);
 
         Auth::logout();
         $user->delete();

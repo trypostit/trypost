@@ -326,6 +326,7 @@ return [
         'workspace_updated' => 'Einstellungen erfolgreich aktualisiert!',
         'photo_updated' => 'Foto erfolgreich aktualisiert!',
         'photo_deleted' => 'Foto erfolgreich entfernt!',
+        'delete_failed_billing' => 'Wir konnten dein Abonnement beim Zahlungsanbieter nicht kündigen. Bitte versuche es erneut oder kontaktiere den Support. Dein Konto wurde nicht gelöscht.',
         'logo_updated' => 'Logo erfolgreich hochgeladen!',
         'logo_deleted' => 'Logo erfolgreich entfernt!',
         'notifications_updated' => 'Benachrichtigungseinstellungen aktualisiert!',

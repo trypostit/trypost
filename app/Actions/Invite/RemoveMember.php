@@ -23,9 +23,15 @@ class RemoveMember
         $user->refresh();
 
         if ($user->current_workspace_id === $workspace->id) {
+            // Prefer another membership on the same account so current workspace
+            // cannot point across accounts (WorkspacePolicy requires account match).
             $fallback = $user->workspaces()
                 ->where('workspaces.id', '!=', $workspace->id)
-                ->first();
+                ->where('workspaces.account_id', $workspace->account_id)
+                ->first()
+                ?? $user->workspaces()
+                    ->where('workspaces.id', '!=', $workspace->id)
+                    ->first();
 
             $user->update(['current_workspace_id' => $fallback?->id]);
             $user->refresh();

@@ -324,6 +324,7 @@ return [
         'workspace_updated' => 'Impostazioni aggiornate con successo!',
         'photo_updated' => 'Foto aggiornata con successo!',
         'photo_deleted' => 'Foto rimossa con successo!',
+        'delete_failed_billing' => 'Non siamo riusciti a cancellare l\'abbonamento presso il fornitore di fatturazione. Riprova o contatta l\'assistenza. Il tuo account non è stato eliminato.',
         'logo_updated' => 'Logo caricato con successo!',
         'logo_deleted' => 'Logo rimosso con successo!',
         'notifications_updated' => 'Preferenze di notifica aggiornate!',

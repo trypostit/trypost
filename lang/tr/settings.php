@@ -326,6 +326,7 @@ return [
         'workspace_updated' => 'Ayarlar başarıyla güncellendi!',
         'photo_updated' => 'Fotoğraf başarıyla güncellendi!',
         'photo_deleted' => 'Fotoğraf başarıyla kaldırıldı!',
+        'delete_failed_billing' => 'Aboneliğinizi faturalama sağlayıcısında iptal edemedik. Lütfen tekrar deneyin veya destek ile iletişime geçin. Hesabınız silinmedi.',
         'logo_updated' => 'Logo başarıyla yüklendi!',
         'logo_deleted' => 'Logo başarıyla kaldırıldı!',
         'notifications_updated' => 'Bildirim tercihleri güncellendi!',

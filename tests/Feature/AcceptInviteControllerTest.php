@@ -157,6 +157,34 @@ test('accept invite adds user to account and workspaces', function () {
     expect($invite->accepted_at)->not->toBeNull();
 });
 
+test('accept invite switches current workspace off a personal workspace when joining another account', function () {
+    $user = User::factory()->create([
+        'email' => 'invitee@example.com',
+    ]);
+    $personalWorkspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $personalWorkspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $personalWorkspace->id]);
+
+    $invite = Invite::factory()->create([
+        'account_id' => $this->account->id,
+        'invited_by' => $this->owner->id,
+        'email' => 'invitee@example.com',
+        'workspaces' => [$this->workspace->id],
+    ]);
+
+    $response = $this->actingAs($user)->post(route('app.invites.accept', $invite));
+
+    $response->assertRedirect(route('app.calendar'));
+
+    $user->refresh();
+    expect($user->account_id)->toBe($this->account->id);
+    expect($user->current_workspace_id)->toBe($this->workspace->id);
+    expect($this->workspace->members()->where('user_id', $user->id)->exists())->toBeTrue();
+});
+
 test('accept invite assigns the exact role from the invite', function (Role $role) {
     $user = User::factory()->create([
         'email' => 'invitee@example.com',

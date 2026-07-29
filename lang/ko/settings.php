@@ -324,6 +324,7 @@ return [
         'workspace_updated' => '설정이 성공적으로 업데이트되었습니다!',
         'photo_updated' => '사진이 성공적으로 업데이트되었습니다!',
         'photo_deleted' => '사진이 성공적으로 제거되었습니다!',
+        'delete_failed_billing' => '결제 제공업체에서 구독을 취소하지 못했습니다. 다시 시도하거나 지원팀에 문의하세요. 계정은 삭제되지 않았습니다.',
         'logo_updated' => '로고가 성공적으로 업로드되었습니다!',
         'logo_deleted' => '로고가 성공적으로 제거되었습니다!',
         'notifications_updated' => '알림 설정이 업데이트되었습니다!',

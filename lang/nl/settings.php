@@ -324,6 +324,7 @@ return [
         'workspace_updated' => 'Instellingen succesvol bijgewerkt!',
         'photo_updated' => 'Foto succesvol bijgewerkt!',
         'photo_deleted' => 'Foto succesvol verwijderd!',
+        'delete_failed_billing' => 'We konden je abonnement bij de betalingsprovider niet annuleren. Probeer het opnieuw of neem contact op met support. Je account is niet verwijderd.',
         'logo_updated' => 'Logo succesvol geüpload!',
         'logo_deleted' => 'Logo succesvol verwijderd!',
         'notifications_updated' => 'Meldingsvoorkeuren bijgewerkt!',

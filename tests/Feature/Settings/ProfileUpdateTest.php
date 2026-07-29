@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Cashier\Subscription;
 
 test('profile page is displayed', function () {
     $user = User::factory()->create();
@@ -364,4 +365,62 @@ test('owner deleting profile clears media for account workspaces not owned by us
     expect(Account::find($accountId))->toBeNull();
     expect(Workspace::find($memberCreated->id))->toBeNull();
     expect(Media::find($media->id))->toBeNull();
+});
+
+test('owner deleting profile clears avatar media', function () {
+    Storage::fake('public');
+
+    $owner = User::factory()->create();
+    $avatar = $owner->addMedia(
+        UploadedFile::fake()->image('avatar.jpg', 200, 200),
+        'avatar',
+    );
+
+    $this->actingAs($owner)->delete(route('app.profile.destroy'), [
+        'password' => 'password',
+    ]);
+
+    expect($owner->fresh())->toBeNull();
+    expect(Media::find($avatar->id))->toBeNull();
+});
+
+test('owner account delete aborts when stripe cancel fails', function () {
+    $owner = User::factory()->create();
+    $account = $owner->account;
+    $accountId = $account->id;
+
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test_'.fake()->uuid(),
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_123',
+    ]);
+
+    $mockSubscription = Mockery::mock(Subscription::class);
+    $mockSubscription->shouldReceive('cancelNow')
+        ->once()
+        ->andThrow(new RuntimeException('stripe unavailable'));
+
+    $mockAccount = Mockery::mock($account)->makePartial();
+    $mockAccount->shouldReceive('subscribed')
+        ->with(Account::SUBSCRIPTION_NAME)
+        ->andReturnTrue();
+    $mockAccount->shouldReceive('subscription')
+        ->with(Account::SUBSCRIPTION_NAME)
+        ->andReturn($mockSubscription);
+    $mockAccount->shouldReceive('delete')->never();
+
+    $owner->setRelation('account', $mockAccount);
+
+    $response = $this->actingAs($owner)->delete(route('app.profile.destroy'), [
+        'password' => 'password',
+    ]);
+
+    $response->assertRedirect(route('app.profile.edit'));
+    $response->assertSessionHas('flash.banner', __('settings.flash.delete_failed_billing'));
+    $response->assertSessionHas('flash.bannerStyle', 'danger');
+
+    expect($owner->fresh())->not->toBeNull();
+    expect(Account::find($accountId))->not->toBeNull();
+    expect(Account::find($accountId)->subscriptions()->count())->toBe(1);
 });

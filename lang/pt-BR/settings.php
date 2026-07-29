@@ -324,6 +324,7 @@ return [
         'workspace_updated' => 'Configurações atualizadas com sucesso!',
         'photo_updated' => 'Foto atualizada com sucesso!',
         'photo_deleted' => 'Foto removida com sucesso!',
+        'delete_failed_billing' => 'Não foi possível cancelar sua assinatura no provedor de cobrança. Tente novamente ou entre em contato com o suporte. Sua conta não foi excluída.',
         'logo_updated' => 'Logo enviado com sucesso!',
         'logo_deleted' => 'Logo removido com sucesso!',
         'notifications_updated' => 'Preferências de notificações atualizadas!',
