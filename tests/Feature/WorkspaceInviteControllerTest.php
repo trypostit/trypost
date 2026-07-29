@@ -193,6 +193,24 @@ test('remove member removes user from workspace', function () {
     expect($this->workspace->hasMember($member))->toBeFalse();
 });
 
+test('remove member rehomes stranded members to a personal account', function () {
+    $member = User::factory()->create();
+    $personalAccountId = $member->account_id;
+    $member->update([
+        'account_id' => $this->account->id,
+        'current_workspace_id' => $this->workspace->id,
+    ]);
+    $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Member->value]);
+
+    $this->actingAs($this->user)->delete(route('app.members.remove', $member));
+
+    $member->refresh();
+
+    expect($this->workspace->hasMember($member))->toBeFalse();
+    expect($member->account_id)->toBe($personalAccountId);
+    expect($member->isAccountOwner())->toBeTrue();
+});
+
 test('remove member fails for owner', function () {
     $response = $this->actingAs($this->user)->delete(route('app.members.remove', $this->user));
 

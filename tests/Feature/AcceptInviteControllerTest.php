@@ -86,7 +86,7 @@ test('show invite displays invite details for authenticated user', function () {
     );
 });
 
-test('show invite marks expired and deletes invite when workspace is gone', function () {
+test('show invite marks expired when workspace is gone without mutating on GET', function () {
     $invite = Invite::factory()->create([
         'account_id' => $this->account->id,
         'invited_by' => $this->owner->id,
@@ -105,7 +105,8 @@ test('show invite marks expired and deletes invite when workspace is gone', func
         ->where('invite', null)
     );
 
-    expect(Invite::find($invite->id))->toBeNull();
+    // Prefetch-safe: cleanup is deferred to accept/decline / workspace delete.
+    expect(Invite::find($invite->id))->not->toBeNull();
 });
 
 test('show invite returns 404 for non-existent invite', function () {
@@ -281,6 +282,55 @@ test('accept invite does not demote an existing workspace admin', function () {
 
     expect($member->pivot->role)->toBe(Role::Admin->value);
     expect($invite->fresh()->accepted_at)->not->toBeNull();
+});
+
+test('accepting an already accepted invite does not claim the workspace was deleted', function () {
+    $user = User::factory()->create([
+        'email' => 'invitee@example.com',
+        'account_id' => $this->account->id,
+        'current_workspace_id' => $this->workspace->id,
+    ]);
+    $this->workspace->members()->attach($user->id, ['role' => Role::Member->value]);
+
+    $invite = Invite::factory()->create([
+        'account_id' => $this->account->id,
+        'invited_by' => $this->owner->id,
+        'email' => 'invitee@example.com',
+        'workspaces' => [$this->workspace->id],
+        'accepted_at' => now(),
+    ]);
+
+    $response = $this->actingAs($user)->post(route('app.invites.accept', $invite));
+
+    $response->assertRedirect(route('app.calendar'));
+    $response->assertSessionHas('flash.banner', __('settings.members.flash.already_member'));
+    $response->assertSessionHas('flash.bannerStyle', 'info');
+});
+
+test('invite redirect rehomes a stranded non-owner before sending them to create', function () {
+    $member = User::factory()->create([
+        'email' => 'invitee@example.com',
+        'account_id' => $this->account->id,
+        'current_workspace_id' => null,
+    ]);
+
+    $invite = Invite::factory()->create([
+        'account_id' => $this->account->id,
+        'invited_by' => $this->owner->id,
+        'email' => 'invitee@example.com',
+        'workspaces' => [$this->workspace->id],
+    ]);
+
+    $this->workspace->delete();
+
+    $response = $this->actingAs($member)->post(route('app.invites.accept', $invite));
+
+    $response->assertRedirect(route('app.workspaces.create'));
+    $response->assertSessionHas('flash.banner', __('settings.members.flash.invite_workspace_gone'));
+
+    $member->refresh();
+    expect($member->isAccountOwner())->toBeTrue();
+    expect($member->account_id)->not->toBe($this->account->id);
 });
 
 test('decline invite requires authentication', function () {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\User\EnsurePersonalAccount;
 use App\Http\Controllers\Controller;
 use App\Models\Invite;
 use App\Models\User;
@@ -28,10 +29,8 @@ class AcceptInviteController extends Controller
         $expired = $workspaces->isEmpty();
 
         if ($expired) {
-            if ($invite->exists) {
-                $invite->delete();
-            }
-
+            // Non-mutating for crawler/email prefetch: cleanup happens on
+            // workspace delete and on accept/decline of a dead invite.
             return Inertia::render('auth/AcceptInvite', [
                 'expired' => true,
                 'invite' => null,
@@ -83,8 +82,12 @@ class AcceptInviteController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (! $lockedInvite || $lockedInvite->accepted_at !== null) {
+            if (! $lockedInvite) {
                 return 'gone';
+            }
+
+            if ($lockedInvite->accepted_at !== null) {
+                return 'already_accepted';
             }
 
             $workspaces = $this->resolvableInviteWorkspaces($lockedInvite);
@@ -114,24 +117,23 @@ class AcceptInviteController extends Controller
             return 'accepted';
         });
 
-        if ($outcome === 'gone') {
-            session()->flash('flash.banner', __('settings.members.flash.invite_workspace_gone'));
-            session()->flash('flash.bannerStyle', 'danger');
-
-            return $this->redirectAfterInvite($user->fresh());
-        }
-
-        if ($outcome === 'already') {
-            session()->flash('flash.banner', __('settings.members.flash.already_member'));
-            session()->flash('flash.bannerStyle', 'info');
-
-            return $this->redirectAfterInvite($user->fresh());
-        }
-
-        session()->flash('flash.banner', __('settings.members.flash.invite_accepted'));
-        session()->flash('flash.bannerStyle', 'success');
-
-        return $this->redirectAfterInvite($user->fresh());
+        return match ($outcome) {
+            'gone' => $this->flashAndRedirect(
+                $user,
+                __('settings.members.flash.invite_workspace_gone'),
+                'danger',
+            ),
+            'already_accepted', 'already' => $this->flashAndRedirect(
+                $user,
+                __('settings.members.flash.already_member'),
+                'info',
+            ),
+            default => $this->flashAndRedirect(
+                $user,
+                __('settings.members.flash.invite_accepted'),
+                'success',
+            ),
+        };
     }
 
     /**
@@ -149,7 +151,16 @@ class AcceptInviteController extends Controller
             return $this->redirectAfterInvite($user);
         }
 
+        $workspaces = $this->resolvableInviteWorkspaces($invite);
+
         $invite->delete();
+
+        if ($workspaces->isEmpty()) {
+            session()->flash('flash.banner', __('settings.members.flash.invite_workspace_gone'));
+            session()->flash('flash.bannerStyle', 'danger');
+
+            return $this->redirectAfterInvite($user);
+        }
 
         session()->flash('flash.banner', __('settings.members.flash.invite_declined'));
         session()->flash('flash.bannerStyle', 'info');
@@ -157,14 +168,37 @@ class AcceptInviteController extends Controller
         return $this->redirectAfterInvite($user);
     }
 
+    private function flashAndRedirect(User $user, string $banner, string $style): RedirectResponse
+    {
+        session()->flash('flash.banner', $banner);
+        session()->flash('flash.bannerStyle', $style);
+
+        return $this->redirectAfterInvite($user->fresh() ?? $user);
+    }
+
     /**
      * Avoid bouncing through calendar (EnsureAccountReady / EnsureHasWorkspace)
-     * when the user has no current workspace — that drop flashed messages.
+     * when the user has no current workspace — that drops flashed messages.
      */
     private function redirectAfterInvite(User $user): RedirectResponse
     {
+        $user->refresh();
+
         if ($user->current_workspace_id) {
             return redirect()->route('app.calendar');
+        }
+
+        $fallback = $user->workspaces()->first();
+
+        if ($fallback) {
+            $user->update(['current_workspace_id' => $fallback->id]);
+
+            return redirect()->route('app.calendar');
+        }
+
+        if (! $user->isAccountOwner()) {
+            EnsurePersonalAccount::execute($user);
+            $user->refresh();
         }
 
         return redirect()->route('app.workspaces.create');

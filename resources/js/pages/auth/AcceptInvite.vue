@@ -5,6 +5,7 @@ import { computed } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { login, register } from '@/routes';
+import { home } from '@/routes/app';
 import { accept, decline } from '@/routes/app/invites';
 import { type SharedData } from '@/types';
 
@@ -145,7 +146,7 @@ const inviteUrl = computed(() => (props.invite ? `/invites/${props.invite.id}` :
 
                         <div v-else class="flex flex-col gap-3">
                             <Button as-child size="lg" class="w-full">
-                                <Link href="/">
+                                <Link :href="home()">
                                     {{ $t('auth.accept_invite.expired_action') }}
                                 </Link>
                             </Button>

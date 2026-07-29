@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Workspace;
 
+use App\Actions\Media\DeleteOrphanedMediaFiles;
 use App\Actions\User\EnsurePersonalAccount;
 use App\Enums\UserWorkspace\Role;
 use App\Jobs\PostHog\SyncAccountUsage;
@@ -15,7 +16,6 @@ use App\Models\Workspace;
 use App\Services\PostHogService;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class DeleteWorkspace
 {
@@ -30,11 +30,9 @@ class DeleteWorkspace
         $account = $workspace->account;
         $accountId = (string) $workspace->account_id;
         $deleted = false;
+        $mediaPaths = [];
 
-        // Load media before the locked transaction so filesystem I/O happens after commit.
-        $media = $workspace->media()->get();
-
-        DB::transaction(function () use ($workspace, $account, &$deleted): void {
+        DB::transaction(function () use ($workspace, $account, &$deleted, &$mediaPaths): void {
             // Serialize deletes per account so the last-workspace SaaS guard
             // cannot race with a concurrent delete of the sibling workspace.
             if ($account?->id) {
@@ -60,11 +58,14 @@ class DeleteWorkspace
 
             self::pruneInvitesForWorkspace($workspace);
 
-            // Drop media rows inside the transaction without touching storage yet.
-            Media::query()
+            // Capture paths inside the lock so uploads that raced into the
+            // transaction are included in post-commit filesystem cleanup.
+            $mediaQuery = Media::query()
                 ->where('mediable_type', Relation::getMorphAlias(Workspace::class))
-                ->where('mediable_id', $workspace->id)
-                ->delete();
+                ->where('mediable_id', $workspace->id);
+
+            $mediaPaths = $mediaQuery->pluck('path')->all();
+            $mediaQuery->delete();
 
             $workspace->delete();
 
@@ -83,7 +84,7 @@ class DeleteWorkspace
             return false;
         }
 
-        self::deleteOrphanedMediaFiles($media);
+        DeleteOrphanedMediaFiles::execute($mediaPaths);
 
         $account?->syncWorkspaceQuantity();
 
@@ -92,26 +93,6 @@ class DeleteWorkspace
         }
 
         return true;
-    }
-
-    /**
-     * @param  iterable<int, Media>  $media
-     */
-    public static function deleteOrphanedMediaFiles(iterable $media): void
-    {
-        collect($media)->each(function (Media $item): void {
-            if (! $item->path) {
-                return;
-            }
-
-            $otherMediaWithSamePath = Media::query()
-                ->where('path', $item->path)
-                ->exists();
-
-            if (! $otherMediaWithSamePath) {
-                Storage::delete($item->path);
-            }
-        });
     }
 
     private static function fallbackWorkspaceFor(User $user, Workspace $deleting): ?Workspace

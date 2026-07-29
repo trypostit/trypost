@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App\Settings;
 
+use App\Actions\Media\DeleteOrphanedMediaFiles;
 use App\Actions\User\EnsurePersonalAccount;
-use App\Actions\Workspace\DeleteWorkspace;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Settings\ProfileDeleteRequest;
 use App\Http\Requests\App\Settings\ProfileUpdateRequest;
@@ -95,12 +95,12 @@ class ProfileController extends Controller
 
         $account = $user->account;
         $isOwner = $user->isAccountOwner();
-        $workspaceMedia = collect();
+        $mediaPaths = [];
 
         // Local cleanup first so a Stripe failure cannot leave members stranded
         // on an account that partially failed to delete. Cancel billing only
         // after workspaces/members are settled, then remove the account row.
-        DB::transaction(function () use ($user, $account, $isOwner, &$workspaceMedia) {
+        DB::transaction(function () use ($user, $account, $isOwner, &$mediaPaths) {
             $user->update(['current_workspace_id' => null]);
 
             $workspaces = $isOwner && $account
@@ -122,12 +122,12 @@ class ProfileController extends Controller
                     }
                 }
 
-                $workspaceMedia = $workspaceMedia->merge($workspace->media()->get());
-
-                Media::query()
+                $mediaQuery = Media::query()
                     ->where('mediable_type', Relation::getMorphAlias(Workspace::class))
-                    ->where('mediable_id', $workspace->id)
-                    ->delete();
+                    ->where('mediable_id', $workspace->id);
+
+                $mediaPaths = array_merge($mediaPaths, $mediaQuery->pluck('path')->all());
+                $mediaQuery->delete();
 
                 $workspace->posts()->delete();
                 $workspace->socialAccounts()->delete();
@@ -144,7 +144,7 @@ class ProfileController extends Controller
             }
         });
 
-        DeleteWorkspace::deleteOrphanedMediaFiles($workspaceMedia->values());
+        DeleteOrphanedMediaFiles::execute($mediaPaths);
 
         if ($account && $isOwner) {
             try {
