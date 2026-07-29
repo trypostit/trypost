@@ -149,37 +149,37 @@ test('deleting account updates members current_workspace_id when their workspace
     expect($member->fresh()->current_workspace_id)->toBeNull();
 });
 
-test('deleting account updates members current_workspace_id to another workspace when available', function () {
+test('deleting account rehomes member current workspace to their personal workspace', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
-    $otherOwner = User::factory()->create();
+    $personalAccountId = $member->account_id;
 
-    // Create workspace owned by the owner being deleted
-    $workspaceToDelete = Workspace::factory()->create(['user_id' => $owner->id]);
+    $personalWorkspace = Workspace::factory()->create([
+        'account_id' => $personalAccountId,
+        'user_id' => $member->id,
+    ]);
+    $personalWorkspace->members()->attach($member->id, ['role' => Role::Admin->value]);
+
+    $member->update(['account_id' => $owner->account_id]);
+
+    $workspaceToDelete = Workspace::factory()->create([
+        'account_id' => $owner->account_id,
+        'user_id' => $owner->id,
+    ]);
     $owner->workspaces()->attach($workspaceToDelete->id, ['role' => Role::Member->value]);
-    $owner->update(['current_workspace_id' => $workspaceToDelete->id]);
-
-    // Create another workspace owned by a different user
-    $otherWorkspace = Workspace::factory()->create(['user_id' => $otherOwner->id]);
-    $otherOwner->workspaces()->attach($otherWorkspace->id, ['role' => Role::Member->value]);
-
-    // Add member to both workspaces
     $member->workspaces()->attach($workspaceToDelete->id, ['role' => Role::Member->value]);
-    $member->workspaces()->attach($otherWorkspace->id, ['role' => Role::Member->value]);
     $member->update(['current_workspace_id' => $workspaceToDelete->id]);
 
-    // Verify setup
-    expect($member->current_workspace_id)->toBe($workspaceToDelete->id);
-
-    // Owner deletes their account
     $this
         ->actingAs($owner)
         ->delete(route('app.profile.destroy'), [
             'password' => 'password',
         ]);
 
-    // Verify member's current_workspace_id is updated to the other workspace
-    expect($member->fresh()->current_workspace_id)->toBe($otherWorkspace->id);
+    $member->refresh();
+
+    expect($member->account_id)->toBe($personalAccountId);
+    expect($member->current_workspace_id)->toBe($personalWorkspace->id);
 });
 
 test('user can upload profile photo', function () {
@@ -344,7 +344,7 @@ test('owner deleting profile destroys the account and cascades', function (bool 
 })->with([true, false]);
 
 test('owner deleting profile clears media for account workspaces not owned by user_id', function () {
-    Storage::fake('public');
+    Storage::fake();
 
     $owner = User::factory()->create();
     $accountId = $owner->account_id;
@@ -357,6 +357,8 @@ test('owner deleting profile clears media for account workspaces not owned by us
         UploadedFile::fake()->image('logo.jpg'),
         'logo',
     );
+    $mediaPath = $media->path;
+    Storage::assertExists($mediaPath);
 
     $this->actingAs($owner)->delete(route('app.profile.destroy'), [
         'password' => 'password',
@@ -365,6 +367,7 @@ test('owner deleting profile clears media for account workspaces not owned by us
     expect(Account::find($accountId))->toBeNull();
     expect(Workspace::find($memberCreated->id))->toBeNull();
     expect(Media::find($media->id))->toBeNull();
+    Storage::assertMissing($mediaPath);
 });
 
 test('owner deleting profile clears avatar media', function () {

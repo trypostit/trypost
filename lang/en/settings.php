@@ -324,7 +324,7 @@ return [
         'workspace_updated' => 'Settings updated successfully!',
         'photo_updated' => 'Photo updated successfully!',
         'photo_deleted' => 'Photo removed successfully!',
-        'delete_failed_billing' => 'We could not cancel your subscription with the billing provider. Please try again or contact support. Your account was not deleted.',
+        'delete_failed_billing' => 'We could not cancel your subscription with the billing provider. Your workspaces were already removed, but your account was not deleted. Please try again or contact support.',
         'logo_updated' => 'Logo uploaded successfully!',
         'logo_deleted' => 'Logo removed successfully!',
         'notifications_updated' => 'Notification preferences updated!',

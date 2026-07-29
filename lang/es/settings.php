@@ -324,7 +324,7 @@ return [
         'workspace_updated' => '¡Configuración actualizada correctamente!',
         'photo_updated' => '¡Foto actualizada correctamente!',
         'photo_deleted' => '¡Foto eliminada correctamente!',
-        'delete_failed_billing' => 'No pudimos cancelar tu suscripción con el proveedor de facturación. Inténtalo de nuevo o contacta con soporte. Tu cuenta no se eliminó.',
+        'delete_failed_billing' => 'No pudimos cancelar tu suscripción con el proveedor de facturación. Tus workspaces ya se eliminaron, pero tu cuenta no. Inténtalo de nuevo o contacta con soporte.',
         'logo_updated' => '¡Logo subido correctamente!',
         'logo_deleted' => '¡Logo eliminado correctamente!',
         'notifications_updated' => '¡Preferencias de notificaciones actualizadas!',

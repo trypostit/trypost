@@ -23,15 +23,13 @@ class RemoveMember
         $user->refresh();
 
         if ($user->current_workspace_id === $workspace->id) {
-            // Prefer another membership on the same account so current workspace
-            // cannot point across accounts (WorkspacePolicy requires account match).
+            // Same-account only — never leave current pointing across accounts
+            // (WorkspacePolicy requires account_id match). Rehome below will
+            // restore a personal workspace when this was the last membership.
             $fallback = $user->workspaces()
                 ->where('workspaces.id', '!=', $workspace->id)
                 ->where('workspaces.account_id', $workspace->account_id)
-                ->first()
-                ?? $user->workspaces()
-                    ->where('workspaces.id', '!=', $workspace->id)
-                    ->first();
+                ->first();
 
             $user->update(['current_workspace_id' => $fallback?->id]);
             $user->refresh();

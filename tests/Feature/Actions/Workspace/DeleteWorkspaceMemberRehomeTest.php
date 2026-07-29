@@ -177,7 +177,7 @@ test('delete workspace prunes the deleted workspace id from multi-workspace invi
 });
 
 test('delete workspace deletes workspace media files and rows', function () {
-    Storage::fake('public');
+    Storage::fake();
 
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create([
@@ -194,11 +194,14 @@ test('delete workspace deletes workspace media files and rows', function () {
         UploadedFile::fake()->image('logo.jpg'),
         'logo',
     );
+    $mediaPath = $media->path;
+    Storage::assertExists($mediaPath);
 
     expect(DeleteWorkspace::execute($workspace))->toBeTrue();
 
     expect(Media::find($media->id))->toBeNull();
     expect(Workspace::find($workspace->id))->toBeNull();
+    Storage::assertMissing($mediaPath);
 });
 
 test('delete workspace returns false when saas blocks the last workspace', function () {

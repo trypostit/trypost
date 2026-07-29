@@ -324,7 +324,7 @@ return [
         'workspace_updated' => 'Paramètres mis à jour avec succès !',
         'photo_updated' => 'Photo mise à jour avec succès !',
         'photo_deleted' => 'Photo supprimée avec succès !',
-        'delete_failed_billing' => 'Nous n\'avons pas pu annuler votre abonnement auprès du prestataire de facturation. Réessayez ou contactez le support. Votre compte n\'a pas été supprimé.',
+        'delete_failed_billing' => 'Nous n\'avons pas pu annuler votre abonnement auprès du prestataire de facturation. Vos espaces de travail ont déjà été supprimés, mais votre compte ne l\'a pas été. Réessayez ou contactez le support.',
         'logo_updated' => 'Logo importé avec succès !',
         'logo_deleted' => 'Logo supprimé avec succès !',
         'notifications_updated' => 'Préférences de notification mises à jour !',

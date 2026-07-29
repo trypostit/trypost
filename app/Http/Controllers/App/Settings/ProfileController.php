@@ -111,13 +111,12 @@ class ProfileController extends Controller
             foreach ($workspaces as $workspace) {
                 foreach ($workspace->members as $member) {
                     if ($member->id !== $user->id && $member->current_workspace_id === $workspace->id) {
+                        // Same-account only; rehomeAccountMembers restores a
+                        // personal current after the shared account is cleared.
                         $otherWorkspace = $member->workspaces()
                             ->where('workspaces.id', '!=', $workspace->id)
                             ->where('workspaces.account_id', $workspace->account_id)
-                            ->first()
-                            ?? $member->workspaces()
-                                ->where('workspaces.id', '!=', $workspace->id)
-                                ->first();
+                            ->first();
 
                         $member->update(['current_workspace_id' => $otherWorkspace?->id]);
                     }
