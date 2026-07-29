@@ -164,9 +164,12 @@ class ProfileController extends Controller
                     'error' => $e->getMessage(),
                 ]);
 
+                // Workspaces are already gone locally — drop Stripe quantity so
+                // a stuck cancel cannot keep billing the old seat count.
+                $account->syncWorkspaceQuantity();
+
                 // Keep local Stripe customer/subscription linkage so billing can
-                // still be cancelled or retried. Workspaces/members are already
-                // settled; the owner can retry account deletion.
+                // still be cancelled or retried. The owner can retry deletion.
                 session()->flash('flash.banner', __('settings.flash.delete_failed_billing'));
                 session()->flash('flash.bannerStyle', 'danger');
 

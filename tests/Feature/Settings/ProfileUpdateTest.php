@@ -427,6 +427,7 @@ test('owner account delete aborts when stripe cancel fails', function () {
     $mockAccount->shouldReceive('subscription')
         ->with(Account::SUBSCRIPTION_NAME)
         ->andReturn($mockSubscription);
+    $mockAccount->shouldReceive('syncWorkspaceQuantity')->once();
     $mockAccount->shouldReceive('delete')->never();
 
     $owner->setRelation('account', $mockAccount);
