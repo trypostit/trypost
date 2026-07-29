@@ -136,6 +136,9 @@ return [
         'login_prompt' => 'Connectez-vous ou créez un compte pour accepter cette invitation.',
         'log_in' => 'Se connecter',
         'create_account' => 'Créer un compte',
+        'expired_title' => 'Cette invitation n’est plus valide',
+        'expired_description' => 'L’espace de travail de cette invitation a été supprimé. Demandez une nouvelle invitation au propriétaire du compte si vous avez encore besoin d’accès.',
+        'expired_action' => 'Retour à l’accueil',
     ],
 
 ];

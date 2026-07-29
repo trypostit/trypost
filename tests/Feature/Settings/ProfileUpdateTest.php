@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
+use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
@@ -340,3 +341,27 @@ test('owner deleting profile destroys the account and cascades', function (bool 
     expect(Account::find($accountId))->toBeNull();
     expect(Workspace::find($workspace->id))->toBeNull();
 })->with([true, false]);
+
+test('owner deleting profile clears media for account workspaces not owned by user_id', function () {
+    Storage::fake('public');
+
+    $owner = User::factory()->create();
+    $accountId = $owner->account_id;
+
+    $memberCreated = Workspace::factory()->create([
+        'account_id' => $accountId,
+        'user_id' => User::factory()->create(['account_id' => $accountId])->id,
+    ]);
+    $media = $memberCreated->addMedia(
+        UploadedFile::fake()->image('logo.jpg'),
+        'logo',
+    );
+
+    $this->actingAs($owner)->delete(route('app.profile.destroy'), [
+        'password' => 'password',
+    ]);
+
+    expect(Account::find($accountId))->toBeNull();
+    expect(Workspace::find($memberCreated->id))->toBeNull();
+    expect(Media::find($media->id))->toBeNull();
+});

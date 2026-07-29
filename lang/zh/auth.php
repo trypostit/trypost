@@ -136,6 +136,9 @@ return [
         'login_prompt' => '登录或创建账户以接受此邀请。',
         'log_in' => '登录',
         'create_account' => '创建账户',
+        'expired_title' => '此邀请已失效',
+        'expired_description' => '该邀请对应的工作区已被删除。如仍需访问，请向账户所有者索取新邀请。',
+        'expired_action' => '返回首页',
     ],
 
 ];

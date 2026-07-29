@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\App\Settings;
 
 use App\Actions\User\EnsurePersonalAccount;
+use App\Actions\Workspace\DeleteWorkspace;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Settings\ProfileDeleteRequest;
 use App\Http\Requests\App\Settings\ProfileUpdateRequest;
@@ -12,12 +13,15 @@ use App\Models\Account;
 use App\Models\Media;
 use App\Models\Workspace;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class ProfileController extends Controller
 {
@@ -91,16 +95,19 @@ class ProfileController extends Controller
 
         $account = $user->account;
         $isOwner = $user->isAccountOwner();
+        $workspaceMedia = collect();
 
         // Local cleanup first so a Stripe failure cannot leave members stranded
         // on an account that partially failed to delete. Cancel billing only
         // after workspaces/members are settled, then remove the account row.
-        DB::transaction(function () use ($user, $account, $isOwner) {
+        DB::transaction(function () use ($user, $account, $isOwner, &$workspaceMedia) {
             $user->update(['current_workspace_id' => null]);
 
-            $ownedWorkspaces = Workspace::where('user_id', $user->id)->get();
+            $workspaces = $isOwner && $account
+                ? Workspace::query()->where('account_id', $account->id)->get()
+                : Workspace::query()->where('user_id', $user->id)->get();
 
-            foreach ($ownedWorkspaces as $workspace) {
+            foreach ($workspaces as $workspace) {
                 foreach ($workspace->members as $member) {
                     if ($member->id !== $user->id && $member->current_workspace_id === $workspace->id) {
                         $otherWorkspace = $member->workspaces()
@@ -115,7 +122,13 @@ class ProfileController extends Controller
                     }
                 }
 
-                $workspace->media()->get()->each(fn (Media $media) => $media->delete());
+                $workspaceMedia = $workspaceMedia->merge($workspace->media()->get());
+
+                Media::query()
+                    ->where('mediable_type', Relation::getMorphAlias(Workspace::class))
+                    ->where('mediable_id', $workspace->id)
+                    ->delete();
+
                 $workspace->posts()->delete();
                 $workspace->socialAccounts()->delete();
                 $workspace->signatures()->delete();
@@ -131,9 +144,19 @@ class ProfileController extends Controller
             }
         });
 
+        DeleteWorkspace::deleteOrphanedMediaFiles($workspaceMedia->values());
+
         if ($account && $isOwner) {
-            if ($account->subscribed(Account::SUBSCRIPTION_NAME)) {
-                $account->subscription(Account::SUBSCRIPTION_NAME)->cancelNow();
+            try {
+                if ($account->subscribed(Account::SUBSCRIPTION_NAME)) {
+                    $account->subscription(Account::SUBSCRIPTION_NAME)->cancelNow();
+                }
+            } catch (Throwable $e) {
+                Log::warning('Failed to cancel Stripe subscription during account delete', [
+                    'account_id' => $account->id,
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
 
             $account->subscriptions()->delete();

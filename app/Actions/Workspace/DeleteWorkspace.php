@@ -13,7 +13,9 @@ use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\PostHogService;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class DeleteWorkspace
 {
@@ -28,6 +30,9 @@ class DeleteWorkspace
         $account = $workspace->account;
         $accountId = (string) $workspace->account_id;
         $deleted = false;
+
+        // Load media before the locked transaction so filesystem I/O happens after commit.
+        $media = $workspace->media()->get();
 
         DB::transaction(function () use ($workspace, $account, &$deleted): void {
             // Serialize deletes per account so the last-workspace SaaS guard
@@ -55,7 +60,11 @@ class DeleteWorkspace
 
             self::pruneInvitesForWorkspace($workspace);
 
-            $workspace->media()->get()->each(fn (Media $media) => $media->delete());
+            // Drop media rows inside the transaction without touching storage yet.
+            Media::query()
+                ->where('mediable_type', Relation::getMorphAlias(Workspace::class))
+                ->where('mediable_id', $workspace->id)
+                ->delete();
 
             $workspace->delete();
 
@@ -74,6 +83,8 @@ class DeleteWorkspace
             return false;
         }
 
+        self::deleteOrphanedMediaFiles($media);
+
         $account?->syncWorkspaceQuantity();
 
         if (PostHogService::isEnabled()) {
@@ -81,6 +92,26 @@ class DeleteWorkspace
         }
 
         return true;
+    }
+
+    /**
+     * @param  iterable<int, Media>  $media
+     */
+    public static function deleteOrphanedMediaFiles(iterable $media): void
+    {
+        collect($media)->each(function (Media $item): void {
+            if (! $item->path) {
+                return;
+            }
+
+            $otherMediaWithSamePath = Media::query()
+                ->where('path', $item->path)
+                ->exists();
+
+            if (! $otherMediaWithSamePath) {
+                Storage::delete($item->path);
+            }
+        });
     }
 
     private static function fallbackWorkspaceFor(User $user, Workspace $deleting): ?Workspace
