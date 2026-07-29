@@ -191,6 +191,7 @@ test('accept invite handles already member of account', function () {
         'invited_by' => $this->owner->id,
         'email' => 'invitee@example.com',
         'workspaces' => [$this->workspace->id],
+        'role' => Role::Member,
     ]);
 
     $response = $this->actingAs($user)->post(route('app.invites.accept', $invite));
@@ -201,6 +202,36 @@ test('accept invite handles already member of account', function () {
     // Invite should be marked as accepted
     $invite->refresh();
     expect($invite->accepted_at)->not->toBeNull();
+
+    // Still attach missing workspace memberships for users already on the account.
+    expect($this->workspace->members()->where('user_id', $user->id)->exists())->toBeTrue();
+    expect($user->fresh()->current_workspace_id)->toBe($this->workspace->id);
+});
+
+test('accept invite rejects invites whose workspaces were deleted', function () {
+    $user = User::factory()->create([
+        'email' => 'invitee@example.com',
+    ]);
+    $personalAccountId = $user->account_id;
+
+    $invite = Invite::factory()->create([
+        'account_id' => $this->account->id,
+        'invited_by' => $this->owner->id,
+        'email' => 'invitee@example.com',
+        'workspaces' => [$this->workspace->id],
+    ]);
+
+    $this->workspace->delete();
+
+    $response = $this->actingAs($user)->post(route('app.invites.accept', $invite));
+
+    $response->assertRedirect(route('app.calendar'));
+    $response->assertSessionHas('flash.banner', __('settings.members.flash.invite_workspace_gone'));
+    $response->assertSessionHas('flash.bannerStyle', 'danger');
+
+    expect(Invite::find($invite->id))->toBeNull();
+    expect($user->fresh()->account_id)->toBe($personalAccountId);
+    expect($user->fresh()->isAccountOwner())->toBeTrue();
 });
 
 test('decline invite requires authentication', function () {

@@ -6,9 +6,11 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Invite;
+use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -61,8 +63,21 @@ class AcceptInviteController extends Controller
             return redirect()->route('app.calendar');
         }
 
-        // Check if already a member of the account
+        $workspaces = $this->resolvableInviteWorkspaces($invite);
+
+        if ($workspaces->isEmpty()) {
+            $invite->delete();
+
+            session()->flash('flash.banner', __('settings.members.flash.invite_workspace_gone'));
+            session()->flash('flash.bannerStyle', 'danger');
+
+            return redirect()->route('app.calendar');
+        }
+
+        // Already on the account: still attach any missing workspace memberships.
         if ($user->account_id === $invite->account_id) {
+            $this->attachInviteWorkspaces($user, $invite, $workspaces);
+
             $invite->update(['accepted_at' => now()]);
 
             session()->flash('flash.banner', __('settings.members.flash.already_member'));
@@ -71,26 +86,9 @@ class AcceptInviteController extends Controller
             return redirect()->route('app.calendar');
         }
 
-        // Add user to the account
         $user->update(['account_id' => $invite->account_id]);
 
-        // Attach user to the invited workspaces
-        if ($invite->workspaces) {
-            foreach ($invite->workspaces as $workspaceId) {
-                $workspace = Workspace::find($workspaceId);
-
-                if ($workspace && $workspace->account_id === $invite->account_id) {
-                    $workspace->members()->syncWithoutDetaching([
-                        $user->id => ['role' => $invite->role->value],
-                    ]);
-
-                    // Set first workspace as current
-                    if (! $user->current_workspace_id) {
-                        $user->update(['current_workspace_id' => $workspace->id]);
-                    }
-                }
-            }
-        }
+        $this->attachInviteWorkspaces($user, $invite, $workspaces);
 
         $invite->update(['accepted_at' => now()]);
 
@@ -121,5 +119,34 @@ class AcceptInviteController extends Controller
         session()->flash('flash.bannerStyle', 'info');
 
         return redirect()->route('app.calendar');
+    }
+
+    /**
+     * @return Collection<int, Workspace>
+     */
+    private function resolvableInviteWorkspaces(Invite $invite): Collection
+    {
+        return collect($invite->workspaces ?? [])
+            ->map(fn (mixed $workspaceId): ?Workspace => Workspace::query()->find($workspaceId))
+            ->filter(fn (?Workspace $workspace): bool => $workspace !== null
+                && $workspace->account_id === $invite->account_id)
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, Workspace>  $workspaces
+     */
+    private function attachInviteWorkspaces(User $user, Invite $invite, Collection $workspaces): void
+    {
+        foreach ($workspaces as $workspace) {
+            $workspace->members()->syncWithoutDetaching([
+                $user->id => ['role' => $invite->role->value],
+            ]);
+
+            if (! $user->current_workspace_id) {
+                $user->update(['current_workspace_id' => $workspace->id]);
+                $user->refresh();
+            }
+        }
     }
 }

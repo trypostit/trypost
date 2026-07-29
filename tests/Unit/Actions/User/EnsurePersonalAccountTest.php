@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Actions\User\EnsurePersonalAccount;
+use App\Enums\Plan\Slug;
 use App\Models\Account;
+use App\Models\Plan;
 use App\Models\User;
 
 test('returns the current account when the user already owns it', function () {
@@ -41,4 +43,26 @@ test('creates a personal account when the user has none of their own', function 
     expect($member->fresh()->account_id)->toBe($account->id);
     expect($account->owner_id)->toBe($member->id);
     expect($account->billing_email)->toBe($member->email);
+});
+
+test('creates a personal account with trial when card is not required for trial', function () {
+    config([
+        'trypost.self_hosted' => false,
+        'trypost.billing.require_card_for_trial' => false,
+        'cashier.trial_days' => 14,
+    ]);
+
+    $plan = Plan::query()->firstWhere('slug', Slug::Workspace)
+        ?? Plan::factory()->create(['slug' => Slug::Workspace]);
+
+    $owner = User::factory()->create();
+    $member = User::factory()->create(['account_id' => $owner->account_id]);
+    Account::where('owner_id', $member->id)->delete();
+    $member->update(['account_id' => $owner->account_id]);
+
+    $account = EnsurePersonalAccount::execute($member->fresh());
+
+    expect($account->plan_id)->toBe($plan->id);
+    expect($account->trial_ends_at)->not->toBeNull();
+    expect($account->trial_ends_at->isFuture())->toBeTrue();
 });

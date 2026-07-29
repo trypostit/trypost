@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\User;
 
+use App\Enums\Plan\Slug;
 use App\Models\Account;
+use App\Models\Plan;
 use App\Models\User;
 
 class EnsurePersonalAccount
@@ -31,11 +33,7 @@ class EnsurePersonalAccount
             ->first();
 
         if (! $personalAccount) {
-            $personalAccount = Account::create([
-                'name' => "{$user->name}'s Account",
-                'billing_email' => $user->email,
-                'owner_id' => $user->id,
-            ]);
+            $personalAccount = Account::create(self::newPersonalAccountAttributes($user));
         }
 
         $user->update(['account_id' => $personalAccount->id]);
@@ -87,5 +85,27 @@ class EnsurePersonalAccount
             )
             ->get()
             ->each(fn (User $member) => self::execute($member));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function newPersonalAccountAttributes(User $user): array
+    {
+        $attributes = [
+            'name' => "{$user->name}'s Account",
+            'billing_email' => $user->email,
+            'owner_id' => $user->id,
+        ];
+
+        // Match CreateUser: when trials don't require a card, seed plan + trial
+        // so rehomed members aren't forced through a dead-end onboarding state.
+        if (! config('trypost.self_hosted')
+            && ! (bool) config('trypost.billing.require_card_for_trial', true)) {
+            $attributes['plan_id'] = Plan::where('slug', Slug::Workspace)->value('id');
+            $attributes['trial_ends_at'] = now()->addDays((int) config('cashier.trial_days'));
+        }
+
+        return $attributes;
     }
 }

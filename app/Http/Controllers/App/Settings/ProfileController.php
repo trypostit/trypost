@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Settings\ProfileDeleteRequest;
 use App\Http\Requests\App\Settings\ProfileUpdateRequest;
 use App\Models\Account;
+use App\Models\Media;
 use App\Models\Workspace;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
@@ -91,10 +92,9 @@ class ProfileController extends Controller
         $account = $user->account;
         $isOwner = $user->isAccountOwner();
 
-        if ($account && $isOwner && $account->subscribed(Account::SUBSCRIPTION_NAME)) {
-            $account->subscription(Account::SUBSCRIPTION_NAME)->cancelNow();
-        }
-
+        // Local cleanup first so a Stripe failure cannot leave members stranded
+        // on an account that partially failed to delete. Cancel billing only
+        // after workspaces/members are settled, then remove the account row.
         DB::transaction(function () use ($user, $account, $isOwner) {
             $user->update(['current_workspace_id' => null]);
 
@@ -115,6 +115,7 @@ class ProfileController extends Controller
                     }
                 }
 
+                $workspace->media()->get()->each(fn (Media $media) => $media->delete());
                 $workspace->posts()->delete();
                 $workspace->socialAccounts()->delete();
                 $workspace->signatures()->delete();
@@ -127,11 +128,17 @@ class ProfileController extends Controller
 
             if ($account && $isOwner) {
                 EnsurePersonalAccount::rehomeAccountMembers($account, $user->id);
-
-                $account->subscriptions()->delete();
-                $account->delete();
             }
         });
+
+        if ($account && $isOwner) {
+            if ($account->subscribed(Account::SUBSCRIPTION_NAME)) {
+                $account->subscription(Account::SUBSCRIPTION_NAME)->cancelNow();
+            }
+
+            $account->subscriptions()->delete();
+            $account->delete();
+        }
 
         Auth::logout();
         $user->delete();

@@ -5,6 +5,7 @@ import { trans } from 'laravel-vue-i18n';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import { create as createWorkspace, switchMethod } from '@/routes/app/workspaces';
 
@@ -22,6 +23,8 @@ interface Props {
 }
 
 defineProps<Props>();
+
+const { canCreateWorkspace } = useWorkspaceRole();
 
 const switchToWorkspace = (workspace: Workspace) => {
     router.post(switchMethod.url(workspace.id), {}, {
@@ -63,7 +66,7 @@ const switchToWorkspace = (workspace: Workspace) => {
             </div>
         </div>
 
-        <Link :href="createWorkspace.url()">
+        <Link v-if="canCreateWorkspace" :href="createWorkspace.url()">
             <Button variant="outline" class="w-full">
                 {{ $t('workspaces.create.submit') }}
             </Button>

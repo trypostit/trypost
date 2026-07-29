@@ -244,15 +244,22 @@ class WorkspaceController extends Controller
         return back()->with('flash.success', __('settings.flash.workspace_updated'));
     }
 
-    public function destroy(Workspace $workspace): RedirectResponse
+    public function destroy(Request $request, Workspace $workspace): RedirectResponse
     {
         $this->authorize('delete', $workspace);
 
-        if (! config('trypost.self_hosted') && $workspace->account->workspaces()->count() <= 1) {
+        if (! DeleteWorkspace::execute($workspace)) {
             return back()->with('flash.error', __('workspaces.cannot_delete_last'));
         }
 
-        DeleteWorkspace::execute($workspace);
+        $request->user()->refresh();
+
+        // Last workspace (self-hosted) or no pivot fallback left — avoid bouncing
+        // through workspaces.index (EnsureHasWorkspace) and dropping the flash.
+        if (! $request->user()->current_workspace_id) {
+            return redirect()->route('app.workspaces.create')
+                ->with('flash.success', __('workspaces.flash.deleted'));
+        }
 
         return redirect()->route('app.workspaces.index')
             ->with('flash.success', __('workspaces.flash.deleted'));

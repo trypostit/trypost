@@ -509,8 +509,8 @@ test('destroy workspace deletes the workspace', function () {
     expect(Workspace::find($workspaceId))->toBeNull();
 });
 
-test('destroy workspace clears current workspace if deleting current', function () {
-    Workspace::factory()->create([
+test('destroy workspace falls back to another account workspace when deleting current', function () {
+    $other = Workspace::factory()->create([
         'account_id' => $this->user->account_id,
         'user_id' => $this->user->id,
     ]);
@@ -518,7 +518,8 @@ test('destroy workspace clears current workspace if deleting current', function 
     $this->actingAs($this->user)->delete(route('app.workspaces.destroy', $this->workspace));
 
     $this->user->refresh();
-    expect($this->user->current_workspace_id)->toBeNull();
+    expect($this->user->current_workspace_id)->toBe($other->id);
+    expect($this->user->belongsToWorkspace($other))->toBeTrue();
 });
 
 test('destroy workspace reassigns current to another joined workspace', function () {
@@ -553,8 +554,10 @@ test('destroy workspace allows deleting the only workspace in self-hosted mode',
 
     $response = $this->actingAs($this->user)->delete(route('app.workspaces.destroy', $this->workspace));
 
-    $response->assertRedirect(route('app.workspaces.index'));
+    $response->assertRedirect(route('app.workspaces.create'));
+    $response->assertSessionHas('flash.success', __('workspaces.flash.deleted'));
     expect(Workspace::find($workspaceId))->toBeNull();
+    expect($this->user->fresh()->current_workspace_id)->toBeNull();
 });
 
 test('destroy workspace returns 403 for non-owner', function () {
