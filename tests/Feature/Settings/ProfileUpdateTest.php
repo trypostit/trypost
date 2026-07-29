@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
+use App\Models\Invite;
 use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
@@ -408,6 +409,12 @@ test('owner account delete aborts when stripe cancel fails', function () {
     $mediaPath = $media->path;
     Storage::assertExists($mediaPath);
 
+    $invite = Invite::factory()->create([
+        'account_id' => $accountId,
+        'invited_by' => $owner->id,
+        'workspaces' => [$workspace->id],
+    ]);
+
     $account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
         'stripe_id' => 'sub_test_'.fake()->uuid(),
@@ -445,5 +452,6 @@ test('owner account delete aborts when stripe cancel fails', function () {
     expect(Account::find($accountId)->subscriptions()->count())->toBe(1);
     expect(Workspace::find($workspace->id))->toBeNull();
     expect(Media::find($media->id))->toBeNull();
+    expect(Invite::find($invite->id))->toBeNull();
     Storage::assertMissing($mediaPath);
 });

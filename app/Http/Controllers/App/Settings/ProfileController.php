@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Settings\ProfileDeleteRequest;
 use App\Http\Requests\App\Settings\ProfileUpdateRequest;
 use App\Models\Account;
+use App\Models\Invite;
 use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
@@ -140,6 +141,10 @@ class ProfileController extends Controller
             $user->workspaces()->detach();
 
             if ($account && $isOwner) {
+                // Drop invites with the workspaces so a Stripe cancel failure
+                // cannot leave unique(email, account_id) rows blocking re-invites.
+                Invite::query()->where('account_id', $account->id)->delete();
+
                 EnsurePersonalAccount::rehomeAccountMembers($account, $user->id);
             }
         });
