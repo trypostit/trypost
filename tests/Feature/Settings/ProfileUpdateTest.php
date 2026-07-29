@@ -368,13 +368,15 @@ test('owner deleting profile clears media for account workspaces not owned by us
 });
 
 test('owner deleting profile clears avatar media', function () {
-    Storage::fake('public');
+    Storage::fake();
 
     $owner = User::factory()->create();
     $avatar = $owner->addMedia(
         UploadedFile::fake()->image('avatar.jpg', 200, 200),
         'avatar',
     );
+    $avatarPath = $avatar->path;
+    Storage::assertExists($avatarPath);
 
     $this->actingAs($owner)->delete(route('app.profile.destroy'), [
         'password' => 'password',
@@ -382,12 +384,26 @@ test('owner deleting profile clears avatar media', function () {
 
     expect($owner->fresh())->toBeNull();
     expect(Media::find($avatar->id))->toBeNull();
+    Storage::assertMissing($avatarPath);
 });
 
 test('owner account delete aborts when stripe cancel fails', function () {
+    Storage::fake();
+
     $owner = User::factory()->create();
     $account = $owner->account;
     $accountId = $account->id;
+
+    $workspace = Workspace::factory()->create([
+        'account_id' => $accountId,
+        'user_id' => $owner->id,
+    ]);
+    $media = $workspace->addMedia(
+        UploadedFile::fake()->image('logo.jpg'),
+        'logo',
+    );
+    $mediaPath = $media->path;
+    Storage::assertExists($mediaPath);
 
     $account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
@@ -423,4 +439,7 @@ test('owner account delete aborts when stripe cancel fails', function () {
     expect($owner->fresh())->not->toBeNull();
     expect(Account::find($accountId))->not->toBeNull();
     expect(Account::find($accountId)->subscriptions()->count())->toBe(1);
+    expect(Workspace::find($workspace->id))->toBeNull();
+    expect(Media::find($media->id))->toBeNull();
+    Storage::assertMissing($mediaPath);
 });

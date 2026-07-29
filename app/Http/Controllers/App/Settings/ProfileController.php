@@ -145,6 +145,11 @@ class ProfileController extends Controller
             }
         });
 
+        // Workspace media rows are already gone — flush files before billing
+        // so a Stripe cancel failure cannot leave permanent storage orphans.
+        DeleteOrphanedMediaFiles::execute($mediaPaths);
+        $mediaPaths = [];
+
         if ($account && $isOwner) {
             try {
                 if ($account->subscribed(Account::SUBSCRIPTION_NAME)) {
@@ -174,7 +179,7 @@ class ProfileController extends Controller
             ->where('mediable_type', Relation::getMorphAlias(User::class))
             ->where('mediable_id', $user->id);
 
-        $mediaPaths = array_merge($mediaPaths, $userMediaQuery->pluck('path')->all());
+        $mediaPaths = $userMediaQuery->pluck('path')->all();
         $userMediaQuery->delete();
 
         DeleteOrphanedMediaFiles::execute($mediaPaths);

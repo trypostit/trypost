@@ -180,8 +180,9 @@ class AcceptInviteController extends Controller
      * Avoid bouncing through calendar (EnsureAccountReady / EnsureHasWorkspace)
      * when the user has no current workspace — that drops flashed messages.
      *
-     * Only treat current as valid when it belongs to the user's current account
-     * (accept may have just switched account_id while leaving an old current).
+     * Never point current_workspace at a membership on another account
+     * (WorkspacePolicy requires account_id match). Rehome stranded non-owners
+     * before picking a fallback.
      */
     private function redirectAfterInvite(User $user): RedirectResponse
     {
@@ -191,20 +192,23 @@ class AcceptInviteController extends Controller
             return redirect()->route('app.calendar');
         }
 
+        $hasSameAccountWorkspace = $user->workspaces()
+            ->where('workspaces.account_id', $user->account_id)
+            ->exists();
+
+        if (! $hasSameAccountWorkspace && ! $user->isAccountOwner()) {
+            EnsurePersonalAccount::execute($user);
+            $user->refresh();
+        }
+
         $fallback = $user->workspaces()
             ->where('workspaces.account_id', $user->account_id)
-            ->first()
-            ?? $user->workspaces()->first();
+            ->first();
 
         if ($fallback) {
             $user->update(['current_workspace_id' => $fallback->id]);
 
             return redirect()->route('app.calendar');
-        }
-
-        if (! $user->isAccountOwner()) {
-            EnsurePersonalAccount::execute($user);
-            $user->refresh();
         }
 
         return redirect()->route('app.workspaces.create');

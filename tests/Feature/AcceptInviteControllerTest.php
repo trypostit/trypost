@@ -361,6 +361,42 @@ test('invite redirect rehomes a stranded non-owner before sending them to create
     expect($member->account_id)->not->toBe($this->account->id);
 });
 
+test('invite redirect rehomes stranded non-owner with a personal workspace instead of cross-account current', function () {
+    $member = User::factory()->create([
+        'email' => 'invitee@example.com',
+    ]);
+    $personalAccountId = $member->account_id;
+    $personalWorkspace = Workspace::factory()->create([
+        'account_id' => $personalAccountId,
+        'user_id' => $member->id,
+    ]);
+    $personalWorkspace->members()->attach($member->id, ['role' => Role::Admin->value]);
+
+    $member->update([
+        'account_id' => $this->account->id,
+        'current_workspace_id' => null,
+    ]);
+
+    $invite = Invite::factory()->create([
+        'account_id' => $this->account->id,
+        'invited_by' => $this->owner->id,
+        'email' => 'invitee@example.com',
+        'workspaces' => [$this->workspace->id],
+    ]);
+
+    $this->workspace->delete();
+
+    $response = $this->actingAs($member)->post(route('app.invites.accept', $invite));
+
+    $response->assertRedirect(route('app.calendar'));
+    $response->assertSessionHas('flash.banner', __('settings.members.flash.invite_workspace_gone'));
+
+    $member->refresh();
+    expect($member->account_id)->toBe($personalAccountId);
+    expect($member->isAccountOwner())->toBeTrue();
+    expect($member->current_workspace_id)->toBe($personalWorkspace->id);
+});
+
 test('decline invite requires authentication', function () {
     $invite = Invite::factory()->create([
         'account_id' => $this->account->id,
