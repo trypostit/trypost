@@ -47,6 +47,7 @@ class DeleteWorkspace
             }
 
             User::query()
+                ->with('account')
                 ->where('current_workspace_id', $workspace->id)
                 ->get()
                 ->each(function (User $affected) use ($workspace): void {

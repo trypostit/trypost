@@ -71,6 +71,7 @@ class EnsurePersonalAccount
         bool $onlyWithoutAccountWorkspaces = false,
     ): void {
         User::query()
+            ->with('account')
             ->where('account_id', $account->id)
             ->when(
                 $exceptUserId,
