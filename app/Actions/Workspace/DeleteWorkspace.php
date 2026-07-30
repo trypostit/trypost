@@ -47,11 +47,10 @@ class DeleteWorkspace
             }
 
             User::query()
-                ->with('account')
                 ->where('current_workspace_id', $workspace->id)
                 ->get()
-                ->each(function (User $affected) use ($workspace): void {
-                    $fallback = self::fallbackWorkspaceFor($affected, $workspace);
+                ->each(function (User $affected) use ($workspace, $account): void {
+                    $fallback = self::fallbackWorkspaceFor($affected, $workspace, $account);
 
                     $affected->update(['current_workspace_id' => $fallback?->id]);
                 });
@@ -90,8 +89,11 @@ class DeleteWorkspace
         return true;
     }
 
-    private static function fallbackWorkspaceFor(User $user, Workspace $deleting): ?Workspace
-    {
+    private static function fallbackWorkspaceFor(
+        User $user,
+        Workspace $deleting,
+        ?Account $account,
+    ): ?Workspace {
         $fallback = $user->workspaces()
             ->where('workspaces.id', '!=', $deleting->id)
             ->where('workspaces.account_id', $deleting->account_id)
@@ -101,7 +103,13 @@ class DeleteWorkspace
             return $fallback;
         }
 
-        if (! $user->isAccountOwner() || $user->account_id !== $deleting->account_id) {
+        // Use the already-loaded account owner_id — never isAccountOwner(),
+        // which can touch the account relation under shouldBeStrict().
+        $isOwnerOfDeletingAccount = $account !== null
+            && $user->id === $account->owner_id
+            && $user->account_id === $deleting->account_id;
+
+        if (! $isOwnerOfDeletingAccount) {
             return null;
         }
 
