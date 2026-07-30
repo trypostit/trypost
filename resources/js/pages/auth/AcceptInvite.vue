@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { login, register } from '@/routes';
 import { home } from '@/routes/app';
-import { accept, decline } from '@/routes/app/invites';
+import { accept, decline, show } from '@/routes/app/invites';
 import { type SharedData } from '@/types';
 
 const props = defineProps<{
@@ -33,7 +33,9 @@ const page = usePage<SharedData>();
 const user = computed(() => page.props.auth?.user);
 const isLoggedIn = computed(() => !!user.value);
 
-const inviteUrl = computed(() => (props.invite ? `/invites/${props.invite.id}` : '/'));
+const inviteUrl = computed(() =>
+    props.invite ? show.url(props.invite.id) : home.url(),
+);
 </script>
 
 <template>
