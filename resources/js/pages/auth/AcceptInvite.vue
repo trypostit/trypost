@@ -46,7 +46,7 @@ const inviteUrl = computed(() =>
         <div class="w-full max-w-md">
             <div class="flex flex-col gap-8">
                 <div class="flex flex-col items-center gap-4">
-                    <Link href="/" class="flex flex-col items-center gap-2 font-medium">
+                    <Link :href="home()" class="flex flex-col items-center gap-2 font-medium">
                         <img src="/images/trypost/logo-light.png" alt="TryPost" class="dark:hidden h-8 w-auto" />
                         <img src="/images/trypost/logo-dark.png" alt="TryPost" class="hidden dark:block h-8 w-auto" />
                     </Link>
