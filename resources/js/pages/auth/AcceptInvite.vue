@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, usePage } from '@inertiajs/vue3';
+import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,20 @@ const isLoggedIn = computed(() => !!user.value);
 const inviteUrl = computed(() =>
     props.invite ? show.url(props.invite.id) : home.url(),
 );
+
+const title = computed(() =>
+    props.expired
+        ? trans('auth.accept_invite.expired_title')
+        : trans('auth.accept_invite.title'),
+);
+
+const description = computed(() =>
+    props.expired
+        ? trans('auth.accept_invite.expired_description')
+        : trans('auth.accept_invite.description', {
+              workspace: props.invite?.workspace.name ?? '',
+          }),
+);
 </script>
 
 <template>
@@ -55,20 +70,10 @@ const inviteUrl = computed(() =>
                 <Card>
                     <CardHeader class="text-center">
                         <CardTitle class="text-xl">
-                            {{
-                                expired
-                                    ? $t('auth.accept_invite.expired_title')
-                                    : $t('auth.accept_invite.title')
-                            }}
+                            {{ title }}
                         </CardTitle>
                         <CardDescription>
-                            {{
-                                expired
-                                    ? $t('auth.accept_invite.expired_description')
-                                    : $t('auth.accept_invite.description', {
-                                          workspace: invite?.workspace.name ?? '',
-                                      })
-                            }}
+                            {{ description }}
                         </CardDescription>
                     </CardHeader>
                     <CardContent class="space-y-6">
