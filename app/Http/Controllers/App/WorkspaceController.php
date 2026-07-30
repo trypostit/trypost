@@ -254,14 +254,15 @@ class WorkspaceController extends Controller
 
         $request->user()->refresh();
 
-        // Last workspace (self-hosted) or no pivot fallback left — avoid bouncing
-        // through workspaces.index (EnsureHasWorkspace) and dropping the flash.
+        // No current left (self-hosted last delete / no fallback) — go to create
+        // so EnsureHasWorkspace cannot bounce and drop the flash.
         if (! $request->user()->current_workspace_id) {
             return redirect()->route('app.workspaces.create')
                 ->with('flash.success', __('workspaces.flash.deleted'));
         }
 
-        return redirect()->route('app.workspaces.index')
+        // Fallback workspace already set — back into the app, not the picker.
+        return redirect()->route('app.calendar')
             ->with('flash.success', __('workspaces.flash.deleted'));
     }
 }

@@ -505,7 +505,8 @@ test('destroy workspace deletes the workspace', function () {
 
     $response = $this->actingAs($this->user)->delete(route('app.workspaces.destroy', $this->workspace));
 
-    $response->assertRedirect(route('app.workspaces.index'));
+    $response->assertRedirect(route('app.calendar'));
+    $response->assertSessionHas('flash.success', __('workspaces.flash.deleted'));
     expect(Workspace::find($workspaceId))->toBeNull();
 });
 
