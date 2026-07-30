@@ -5,16 +5,15 @@ declare(strict_types=1);
 namespace App\Actions\Workspace;
 
 use App\Actions\Media\DeleteOrphanedMediaFiles;
+use App\Actions\Media\DeleteWorkspaceMedia;
 use App\Actions\User\EnsurePersonalAccount;
 use App\Enums\UserWorkspace\Role;
 use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\Account;
 use App\Models\Invite;
-use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\PostHogService;
-use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
 
 class DeleteWorkspace
@@ -60,12 +59,7 @@ class DeleteWorkspace
 
             // Capture paths inside the lock so uploads that raced into the
             // transaction are included in post-commit filesystem cleanup.
-            $mediaQuery = Media::query()
-                ->where('mediable_type', Relation::getMorphAlias(Workspace::class))
-                ->where('mediable_id', $workspace->id);
-
-            $mediaPaths = $mediaQuery->pluck('path')->all();
-            $mediaQuery->delete();
+            $mediaPaths = DeleteWorkspaceMedia::purgeRecords($workspace);
 
             $workspace->delete();
 

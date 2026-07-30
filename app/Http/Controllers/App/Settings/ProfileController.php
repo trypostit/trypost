@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\App\Settings;
 
 use App\Actions\Media\DeleteOrphanedMediaFiles;
+use App\Actions\Media\DeleteWorkspaceMedia;
 use App\Actions\User\EnsurePersonalAccount;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Settings\ProfileDeleteRequest;
@@ -123,12 +124,10 @@ class ProfileController extends Controller
                     }
                 }
 
-                $mediaQuery = Media::query()
-                    ->where('mediable_type', Relation::getMorphAlias(Workspace::class))
-                    ->where('mediable_id', $workspace->id);
-
-                $mediaPaths = array_merge($mediaPaths, $mediaQuery->pluck('path')->all());
-                $mediaQuery->delete();
+                $mediaPaths = [
+                    ...$mediaPaths,
+                    ...DeleteWorkspaceMedia::purgeRecords($workspace),
+                ];
 
                 $workspace->posts()->delete();
                 $workspace->socialAccounts()->delete();
