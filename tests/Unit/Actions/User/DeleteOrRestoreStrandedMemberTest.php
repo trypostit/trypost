@@ -114,6 +114,29 @@ test('deletes stranded invitee avatar media files from storage', function () {
     Storage::assertMissing($avatarPath);
 });
 
+test('forceDelete removes a member who still owns a personal workspace', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $personalAccountId = $member->account_id;
+
+    $personalWorkspace = Workspace::factory()->create([
+        'account_id' => $personalAccountId,
+        'user_id' => $member->id,
+    ]);
+    $personalWorkspace->members()->attach($member->id, ['role' => Role::Admin->value]);
+
+    $member->update([
+        'account_id' => $owner->account_id,
+        'current_workspace_id' => null,
+    ]);
+
+    DeleteOrRestoreStrandedMember::execute($member->fresh(), $owner->account, forceDelete: true);
+
+    expect(User::find($member->id))->toBeNull();
+    expect(Account::find($personalAccountId))->toBeNull();
+    expect(Workspace::find($personalWorkspace->id))->toBeNull();
+});
+
 test('forAccountMembers only processes users without remaining account workspaces when flagged', function () {
     $owner = User::factory()->create();
     $stranded = User::factory()->create();

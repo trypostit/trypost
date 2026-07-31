@@ -147,7 +147,7 @@ return [
         'delete_only_description' => 'You cannot delete your only workspace. Cancel your subscription in billing to stop paying, or delete your account in Authentication settings to cancel billing and permanently remove everything.',
         'delete_go_to_billing' => 'Go to billing',
         'delete_go_to_delete_account' => 'Delete account',
-        'delete_members_warning' => '{1}:count other member will lose access and their TryPost account will be permanently deleted.|[2,*]:count other members will lose access and their TryPost accounts will be permanently deleted.',
+        'delete_members_warning' => '{1}:count other member will lose access. Members without another TryPost workspace are permanently deleted.|[2,*]:count other members will lose access. Members without another TryPost workspace are permanently deleted.',
         'delete_action' => 'Delete workspace',
         'delete_cancel' => 'Cancel',
         'delete_confirm_title' => 'Delete workspace?',

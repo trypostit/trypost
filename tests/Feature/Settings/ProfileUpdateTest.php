@@ -162,7 +162,7 @@ test('deleting account deletes members who belong to the shared account', functi
     expect(AccessToken::find($memberToken->id)->revoked)->toBeTrue();
 });
 
-test('deleting account restores member who still owns a personal workspace', function () {
+test('deleting account deletes member who still owns a personal workspace', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
     $personalAccountId = $member->account_id;
@@ -189,10 +189,9 @@ test('deleting account restores member who still owns a personal workspace', fun
             'password' => 'password',
         ]);
 
-    $member->refresh();
-
-    expect($member->account_id)->toBe($personalAccountId);
-    expect($member->current_workspace_id)->toBe($personalWorkspace->id);
+    expect(User::find($member->id))->toBeNull();
+    expect(Account::find($personalAccountId))->toBeNull();
+    expect(Workspace::find($personalWorkspace->id))->toBeNull();
 });
 
 test('user can upload profile photo', function () {
@@ -459,14 +458,12 @@ test('owner account delete aborts when stripe cancel fails', function () {
     ]);
 
     $mockSubscription = Mockery::mock(Subscription::class);
+    $mockSubscription->shouldReceive('ended')->andReturnFalse();
     $mockSubscription->shouldReceive('cancelNow')
         ->once()
         ->andThrow(new RuntimeException('stripe unavailable'));
 
     $mockAccount = Mockery::mock($account)->makePartial();
-    $mockAccount->shouldReceive('subscribed')
-        ->with(Account::SUBSCRIPTION_NAME)
-        ->andReturnTrue();
     $mockAccount->shouldReceive('subscription')
         ->with(Account::SUBSCRIPTION_NAME)
         ->andReturn($mockSubscription);
@@ -491,4 +488,46 @@ test('owner account delete aborts when stripe cancel fails', function () {
     expect(Media::find($media->id))->not->toBeNull();
     expect(Invite::find($invite->id))->not->toBeNull();
     Storage::assertExists($mediaPath);
+});
+
+test('account delete cancels incomplete stripe subscriptions that are not subscribed', function () {
+    $owner = User::factory()->create();
+    $account = $owner->account;
+    $accountId = $account->id;
+    $member = User::factory()->create();
+    $member->update(['account_id' => $accountId]);
+
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_incomplete_'.fake()->uuid(),
+        'stripe_status' => 'incomplete',
+        'stripe_price' => 'price_123',
+    ]);
+
+    expect($account->fresh()->subscribed(Account::SUBSCRIPTION_NAME))->toBeFalse();
+
+    $mockSubscription = Mockery::mock(Subscription::class);
+    $mockSubscription->shouldReceive('ended')->andReturnFalse();
+    $mockSubscription->shouldReceive('cancelNow')
+        ->once()
+        ->andThrow(new RuntimeException('stripe unavailable'));
+
+    $mockAccount = Mockery::mock($account)->makePartial();
+    $mockAccount->shouldReceive('subscription')
+        ->with(Account::SUBSCRIPTION_NAME)
+        ->andReturn($mockSubscription);
+    $mockAccount->shouldReceive('delete')->never();
+
+    $owner->setRelation('account', $mockAccount);
+
+    $response = $this->actingAs($owner)->delete(route('app.profile.destroy'), [
+        'password' => 'password',
+    ]);
+
+    $response->assertRedirect(route('app.profile.edit'));
+    $response->assertSessionHas('flash.banner', __('settings.flash.delete_failed_billing'));
+
+    expect($owner->fresh())->not->toBeNull();
+    expect(User::find($member->id))->not->toBeNull();
+    expect(Account::find($accountId))->not->toBeNull();
 });

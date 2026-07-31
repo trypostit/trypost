@@ -45,3 +45,7 @@ test('locale ships every base translation file with identical keys', function (s
     expect($missingFiles)->toBe([], "{$locale} is missing translation files: ".implode(', ', $missingFiles));
     expect($keyDrift)->toBe([], "{$locale} has key drift: ".json_encode($keyDrift, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 })->with(ContentLanguage::values());
+
+// Key presence alone cannot catch stale wording (same key, incomplete sentence).
+// Destructive account/workspace delete copy is additionally asserted in
+// tests/Unit/Settings/DeleteAccountCopyTest.php with per-locale content markers.

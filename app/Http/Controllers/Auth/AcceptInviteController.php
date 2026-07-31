@@ -166,11 +166,23 @@ class AcceptInviteController extends Controller
             return $this->redirectAfterInvite($user);
         }
 
-        $workspaces = $this->resolvableInviteWorkspaces($invite);
+        $workspacesGone = DB::transaction(function () use ($invite): bool {
+            $lockedInvite = Invite::query()
+                ->whereKey($invite->id)
+                ->lockForUpdate()
+                ->first();
 
-        $invite->delete();
+            if (! $lockedInvite) {
+                return true;
+            }
 
-        if ($workspaces->isEmpty()) {
+            $workspaces = $this->resolvableInviteWorkspaces($lockedInvite);
+            $lockedInvite->delete();
+
+            return $workspaces->isEmpty();
+        });
+
+        if ($workspacesGone) {
             session()->flash('flash.banner', __('settings.members.flash.invite_workspace_gone'));
             session()->flash('flash.bannerStyle', 'danger');
 
@@ -275,7 +287,7 @@ class AcceptInviteController extends Controller
      */
     private function resolvableInviteWorkspaces(Invite $invite): Collection
     {
-        return collect($invite->workspaces ?? [])
+        return collect(data_get($invite, 'workspaces', []))
             ->map(fn (mixed $workspaceId): ?Workspace => Workspace::query()->find($workspaceId))
             ->filter(fn (?Workspace $workspace): bool => $workspace !== null
                 && $workspace->account_id === $invite->account_id)

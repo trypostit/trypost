@@ -103,10 +103,14 @@ class ProfileController extends Controller
 
         // Cancel billing before any local teardown so a Stripe failure cannot
         // leave members/workspaces already deleted while the owner still exists.
+        // Cancel any non-ended named subscription — not only Cashier subscribed()
+        // — so incomplete/unpaid remote subs are not orphaned.
         if ($account && $isOwner) {
             try {
-                if ($account->subscribed(Account::SUBSCRIPTION_NAME)) {
-                    $account->subscription(Account::SUBSCRIPTION_NAME)->cancelNow();
+                $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
+
+                if ($subscription && ! $subscription->ended()) {
+                    $subscription->cancelNow();
                 }
             } catch (Throwable $e) {
                 Log::warning('Failed to cancel Stripe subscription during account delete', [
@@ -161,7 +165,11 @@ class ProfileController extends Controller
 
                 $mediaPaths = [
                     ...$mediaPaths,
-                    ...DeleteOrRestoreStrandedMember::forAccountMembers($account, $user->id),
+                    ...DeleteOrRestoreStrandedMember::forAccountMembers(
+                        $account,
+                        $user->id,
+                        forceDelete: true,
+                    ),
                 ];
             } else {
                 // Members must never delete shared-account workspaces (even ones

@@ -138,7 +138,7 @@ class DeleteWorkspace
             ->whereJsonContains('workspaces', $workspace->id)
             ->get()
             ->each(function (Invite $invite) use ($workspace): void {
-                $remaining = collect($invite->workspaces ?? [])
+                $remaining = collect(data_get($invite, 'workspaces', []))
                     ->reject(fn (mixed $id): bool => (string) $id === (string) $workspace->id)
                     ->values()
                     ->all();
