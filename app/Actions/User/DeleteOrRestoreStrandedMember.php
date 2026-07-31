@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Actions\User;
 
+use App\Actions\Account\DeleteEmptyOwnedAccounts;
 use App\Actions\Account\PurgeOwnedAccounts;
 use App\Models\Account;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 
 class DeleteOrRestoreStrandedMember
 {
@@ -15,91 +15,131 @@ class DeleteOrRestoreStrandedMember
      * After losing memberships on a shared account: restore a personal account
      * that still has workspaces, otherwise delete the user (and empty orphans).
      *
-     * When $forceDelete is true (owner account teardown), always delete the
-     * member — including any leftover personal accounts/workspaces.
-     *
-     * Returns media storage paths that should be flushed with
-     * DeleteOrphanedMediaFiles after the surrounding DB transaction commits.
-     *
-     * @return list<string>
+     * @return list<string> media paths for DeleteOrphanedMediaFiles after commit
      */
-    public static function execute(User $user, Account $leavingAccount, bool $forceDelete = false): array
+    public static function execute(User $user, Account $leavingAccount): array
     {
-        return DB::transaction(function () use ($user, $leavingAccount, $forceDelete): array {
-            if ($user->id === $leavingAccount->owner_id) {
-                return [];
-            }
-
-            if ($user->workspaces()
-                ->where('workspaces.account_id', $leavingAccount->id)
-                ->exists()
-            ) {
-                return [];
-            }
-
-            if (! $forceDelete) {
-                $personalAccount = Account::query()
-                    ->where('owner_id', $user->id)
-                    ->where('id', '!=', $leavingAccount->id)
-                    ->whereHas('workspaces')
-                    ->first();
-
-                if ($personalAccount) {
-                    $fallback = $user->workspaces()
-                        ->where('workspaces.account_id', $personalAccount->id)
-                        ->first();
-
-                    $user->update([
-                        'account_id' => $personalAccount->id,
-                        'current_workspace_id' => $fallback?->id,
-                    ]);
-
-                    return [];
-                }
-            }
-
-            $mediaPaths = $forceDelete
-                ? PurgeOwnedAccounts::execute($user, $leavingAccount)
-                : [];
-
-            if (! $forceDelete) {
-                self::deleteEmptyPersonalAccounts($user, $leavingAccount);
-            }
-
-            $mediaPaths = [
-                ...$mediaPaths,
-                ...PurgeUserAccess::execute($user),
-            ];
-
-            $user->workspaces()->detach();
-            $user->update([
-                'account_id' => null,
-                'current_workspace_id' => null,
-            ]);
-            $user->delete();
-
-            return $mediaPaths;
-        });
+        return self::process($user, $leavingAccount, forceDelete: false);
     }
 
     /**
-     * Process members still pointing at a shared account after workspace/account teardown.
+     * Owner account teardown: always delete the member, including leftover
+     * personal accounts/workspaces.
      *
-     * @param  bool  $onlyWithoutAccountWorkspaces  When true, only members with no
-     *                                              remaining memberships on this
-     *                                              account's workspaces are processed
-     *                                              (workspace delete). When false,
-     *                                              every other member is processed
-     *                                              (account delete).
-     * @param  bool  $forceDelete  When true, never restore to a personal account
-     *                             (owner account delete).
      * @return list<string>
      */
-    public static function forAccountMembers(
+    public static function forceDelete(User $user, Account $leavingAccount): array
+    {
+        return self::process($user, $leavingAccount, forceDelete: true);
+    }
+
+    /**
+     * Members on $account with no remaining memberships on that account.
+     * Used after deleting a workspace.
+     *
+     * @return list<string>
+     */
+    public static function strandedWithoutMemberships(
         Account $account,
         ?string $exceptUserId = null,
-        bool $onlyWithoutAccountWorkspaces = false,
-        bool $forceDelete = false,
+    ): array {
+        return self::forAccountMembers(
+            $account,
+            $exceptUserId,
+            onlyWithoutAccountWorkspaces: true,
+            forceDelete: false,
+        );
+    }
+
+    /**
+     * Every non-owner member still pointing at $account. Used during owner
+     * account teardown (never restore to a personal account).
+     *
+     * @return list<string>
+     */
+    public static function forceDeleteMembers(
+        Account $account,
+        ?string $exceptUserId = null,
+    ): array {
+        return self::forAccountMembers(
+            $account,
+            $exceptUserId,
+            onlyWithoutAccountWorkspaces: false,
+            forceDelete: true,
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function process(User $user, Account $leavingAccount, bool $forceDelete): array
+    {
+        if ($user->id === $leavingAccount->owner_id) {
+            return [];
+        }
+
+        if ($user->workspaces()
+            ->where('workspaces.account_id', $leavingAccount->id)
+            ->exists()
+        ) {
+            return [];
+        }
+
+        if (! $forceDelete) {
+            $personalAccount = Account::query()
+                ->where('owner_id', $user->id)
+                ->where('id', '!=', $leavingAccount->id)
+                ->whereHas('workspaces')
+                ->first();
+
+            if ($personalAccount) {
+                $fallback = $user->workspaces()
+                    ->where('workspaces.account_id', $personalAccount->id)
+                    ->first();
+
+                $user->update([
+                    'account_id' => $personalAccount->id,
+                    'current_workspace_id' => $fallback?->id,
+                ]);
+
+                return [];
+            }
+        }
+
+        $mediaPaths = $forceDelete
+            ? PurgeOwnedAccounts::execute($user, $leavingAccount)
+            : [];
+
+        if (! $forceDelete) {
+            DeleteEmptyOwnedAccounts::execute(
+                $user,
+                exceptAccountId: $leavingAccount->id,
+            );
+        }
+
+        $mediaPaths = [
+            ...$mediaPaths,
+            ...PurgeUserAccess::execute($user),
+        ];
+
+        $user->workspaces()->detach();
+        $user->update([
+            'account_id' => null,
+            'current_workspace_id' => null,
+        ]);
+        $user->delete();
+
+        return $mediaPaths;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function forAccountMembers(
+        Account $account,
+        ?string $exceptUserId,
+        bool $onlyWithoutAccountWorkspaces,
+        bool $forceDelete,
     ): array {
         $mediaPaths = [];
 
@@ -120,26 +160,12 @@ class DeleteOrRestoreStrandedMember
             ->each(function (User $member) use ($account, $forceDelete, &$mediaPaths): void {
                 $mediaPaths = [
                     ...$mediaPaths,
-                    ...self::execute($member, $account, $forceDelete),
+                    ...($forceDelete
+                        ? self::forceDelete($member, $account)
+                        : self::execute($member, $account)),
                 ];
             });
 
         return $mediaPaths;
-    }
-
-    private static function deleteEmptyPersonalAccounts(User $user, Account $leavingAccount): void
-    {
-        Account::query()
-            ->where('owner_id', $user->id)
-            ->where('id', '!=', $leavingAccount->id)
-            ->whereDoesntHave('workspaces')
-            ->get()
-            ->each(function (Account $orphan) use ($user): void {
-                if ($user->account_id === $orphan->id) {
-                    $user->update(['account_id' => null]);
-                }
-
-                $orphan->delete();
-            });
     }
 }

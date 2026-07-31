@@ -30,7 +30,10 @@ class DeleteAccount
             ->where('account_id', $account->id)
             ->get()
             ->each(function (Workspace $workspace) use ($owner, &$mediaPaths): void {
-                ReassignCurrentWorkspace::awayFromWorkspace($workspace, $owner->id);
+                ReassignCurrentWorkspace::awayFromWorkspace(
+                    $workspace,
+                    exceptUserId: $owner->id,
+                );
 
                 $mediaPaths = [
                     ...$mediaPaths,
@@ -44,10 +47,9 @@ class DeleteAccount
 
         $mediaPaths = [
             ...$mediaPaths,
-            ...DeleteOrRestoreStrandedMember::forAccountMembers(
+            ...DeleteOrRestoreStrandedMember::forceDeleteMembers(
                 $account,
-                $owner->id,
-                forceDelete: true,
+                exceptUserId: $owner->id,
             ),
         ];
 

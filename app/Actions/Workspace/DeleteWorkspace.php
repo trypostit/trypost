@@ -45,7 +45,7 @@ class DeleteWorkspace
             }
 
             ReassignCurrentWorkspace::awayFromWorkspace(
-                $workspace,
+                workspace: $workspace,
                 attachOwnerFallback: true,
                 account: $account,
             );
@@ -59,10 +59,9 @@ class DeleteWorkspace
             if ($account) {
                 $mediaPaths = [
                     ...$mediaPaths,
-                    ...DeleteOrRestoreStrandedMember::forAccountMembers(
+                    ...DeleteOrRestoreStrandedMember::strandedWithoutMemberships(
                         $account,
-                        $account->owner_id,
-                        onlyWithoutAccountWorkspaces: true,
+                        exceptUserId: $account->owner_id,
                     ),
                 ];
             }

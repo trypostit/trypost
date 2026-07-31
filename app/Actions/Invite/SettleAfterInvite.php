@@ -11,15 +11,15 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 
-class RedirectAfterInvite
+class SettleAfterInvite
 {
     /**
-     * Avoid bouncing through calendar (EnsureAccountReady / EnsureHasWorkspace)
-     * when the user has no current workspace — that drops flashed messages.
+     * After accept/decline: clear stranded non-owners, pick a safe same-account
+     * current workspace, and redirect without bouncing through calendar
+     * middleware that would drop flash messages.
      *
      * Never point current_workspace at a membership on another account
-     * (WorkspacePolicy requires account_id match). Stranded non-owners are
-     * deleted (or restored to a personal account that still has workspaces).
+     * (WorkspacePolicy requires account_id match).
      */
     public static function execute(User $user): RedirectResponse
     {

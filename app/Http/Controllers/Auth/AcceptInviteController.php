@@ -6,8 +6,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Actions\Invite\AcceptInvite;
 use App\Actions\Invite\DeclineInvite;
-use App\Actions\Invite\RedirectAfterInvite;
 use App\Actions\Invite\ResolveInviteWorkspaces;
+use App\Actions\Invite\SettleAfterInvite;
 use App\Http\Controllers\Controller;
 use App\Models\Invite;
 use Illuminate\Http\RedirectResponse;
@@ -67,7 +67,7 @@ class AcceptInviteController extends Controller
     {
         $result = AcceptInvite::execute($request->user(), $invite);
 
-        return RedirectAfterInvite::flashAndRedirect(
+        return SettleAfterInvite::flashAndRedirect(
             $request->user(),
             $result->flashBanner(),
             $result->flashStyle(),
@@ -81,7 +81,7 @@ class AcceptInviteController extends Controller
     {
         $result = DeclineInvite::execute($request->user(), $invite);
 
-        return RedirectAfterInvite::flashAndRedirect(
+        return SettleAfterInvite::flashAndRedirect(
             $request->user(),
             $result->flashBanner(),
             $result->flashStyle(),

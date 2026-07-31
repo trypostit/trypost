@@ -130,14 +130,14 @@ test('forceDelete removes a member who still owns a personal workspace', functio
         'current_workspace_id' => null,
     ]);
 
-    DeleteOrRestoreStrandedMember::execute($member->fresh(), $owner->account, forceDelete: true);
+    DeleteOrRestoreStrandedMember::forceDelete($member->fresh(), $owner->account);
 
     expect(User::find($member->id))->toBeNull();
     expect(Account::find($personalAccountId))->toBeNull();
     expect(Workspace::find($personalWorkspace->id))->toBeNull();
 });
 
-test('forAccountMembers only processes users without remaining account workspaces when flagged', function () {
+test('strandedWithoutMemberships only processes users without remaining account workspaces', function () {
     $owner = User::factory()->create();
     $stranded = User::factory()->create();
     $stillMember = User::factory()->create();
@@ -152,10 +152,9 @@ test('forAccountMembers only processes users without remaining account workspace
     ]);
     $workspace->members()->attach($stillMember->id, ['role' => Role::Member->value]);
 
-    DeleteOrRestoreStrandedMember::forAccountMembers(
+    DeleteOrRestoreStrandedMember::strandedWithoutMemberships(
         $owner->account,
-        $owner->id,
-        onlyWithoutAccountWorkspaces: true,
+        exceptUserId: $owner->id,
     );
 
     expect(User::find($stranded->id))->toBeNull();

@@ -17,10 +17,18 @@ class ResolveInviteWorkspaces
      */
     public static function execute(Invite $invite): Collection
     {
-        return collect(data_get($invite, 'workspaces', []))
-            ->map(fn (mixed $workspaceId): ?Workspace => Workspace::query()->find($workspaceId))
-            ->filter(fn (?Workspace $workspace): bool => $workspace !== null
-                && $workspace->account_id === $invite->account_id)
-            ->values();
+        $ids = collect(data_get($invite, 'workspaces', []))
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($ids === []) {
+            return collect();
+        }
+
+        return Workspace::query()
+            ->whereIn('id', $ids)
+            ->where('account_id', $invite->account_id)
+            ->get();
     }
 }

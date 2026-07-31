@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Invite;
 
+use App\Actions\Account\DeleteEmptyOwnedAccounts;
 use App\Enums\Invite\Result;
-use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +18,9 @@ class AcceptInvite
             return Result::WrongEmail;
         }
 
-        return DB::transaction(function () use ($user, $invite): Result {
+        $previousAccountId = null;
+
+        $result = DB::transaction(function () use ($user, $invite, &$previousAccountId): Result {
             $lockedInvite = Invite::query()
                 ->whereKey($invite->id)
                 ->lockForUpdate()
@@ -58,17 +60,15 @@ class AcceptInvite
 
             $lockedInvite->update(['accepted_at' => now()]);
 
-            // Invite signup leaves an empty personal account; drop it once the
-            // user has moved onto the shared invite account.
-            if ($previousAccountId) {
-                Account::query()
-                    ->whereKey($previousAccountId)
-                    ->where('owner_id', $user->id)
-                    ->whereDoesntHave('workspaces')
-                    ->delete();
-            }
-
             return Result::Accepted;
         });
+
+        // Invite signup leaves an empty personal account; drop it after commit
+        // so Stripe cancel is not held inside the invite lock.
+        if ($result === Result::Accepted && $previousAccountId) {
+            DeleteEmptyOwnedAccounts::execute($user, onlyAccountId: $previousAccountId);
+        }
+
+        return $result;
     }
 }
