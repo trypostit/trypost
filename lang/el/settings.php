@@ -141,6 +141,7 @@ return [
         'name_placeholder' => 'Το workspace μου',
         'save' => 'Αποθήκευση',
         'danger_description' => 'Μη αναστρέψιμες ενέργειες.',
+        'delete_warning' => 'Προειδοποίηση',
         'delete_title' => 'Διαγραφή αυτού του workspace',
         'delete_description' => 'Διαγράφει οριστικά αυτό το workspace και ό,τι περιέχει — αναρτήσεις, συνδεδεμένους λογαριασμούς και μέσα. Θα χρεώνεστε για ένα λιγότερο workspace.',
         'delete_description_self_hosted' => 'Διαγράφει οριστικά αυτό το workspace, τις αναρτήσεις, τους συνδεδεμένους λογαριασμούς και τα μέσα.',

@@ -65,30 +65,13 @@ class AcceptInviteController extends Controller
      */
     public function accept(Request $request, Invite $invite): RedirectResponse
     {
-        $user = $request->user();
+        $result = AcceptInvite::execute($request->user(), $invite);
 
-        return match (AcceptInvite::execute($user, $invite)) {
-            'wrong_email' => RedirectAfterInvite::flashAndRedirect(
-                $user,
-                __('settings.members.flash.wrong_email'),
-                'danger',
-            ),
-            'gone' => RedirectAfterInvite::flashAndRedirect(
-                $user,
-                __('settings.members.flash.invite_workspace_gone'),
-                'danger',
-            ),
-            'already_accepted', 'already' => RedirectAfterInvite::flashAndRedirect(
-                $user,
-                __('settings.members.flash.already_member'),
-                'info',
-            ),
-            default => RedirectAfterInvite::flashAndRedirect(
-                $user,
-                __('settings.members.flash.invite_accepted'),
-                'success',
-            ),
-        };
+        return RedirectAfterInvite::flashAndRedirect(
+            $request->user(),
+            $result->flashBanner(),
+            $result->flashStyle(),
+        );
     }
 
     /**
@@ -96,24 +79,12 @@ class AcceptInviteController extends Controller
      */
     public function decline(Request $request, Invite $invite): RedirectResponse
     {
-        $user = $request->user();
+        $result = DeclineInvite::execute($request->user(), $invite);
 
-        return match (DeclineInvite::execute($user, $invite)) {
-            'wrong_email' => RedirectAfterInvite::flashAndRedirect(
-                $user,
-                __('settings.members.flash.wrong_email'),
-                'danger',
-            ),
-            'gone' => RedirectAfterInvite::flashAndRedirect(
-                $user,
-                __('settings.members.flash.invite_workspace_gone'),
-                'danger',
-            ),
-            default => RedirectAfterInvite::flashAndRedirect(
-                $user,
-                __('settings.members.flash.invite_declined'),
-                'info',
-            ),
-        };
+        return RedirectAfterInvite::flashAndRedirect(
+            $request->user(),
+            $result->flashBanner(),
+            $result->flashStyle(),
+        );
     }
 }

@@ -141,6 +141,7 @@ return [
         'name_placeholder' => 'My Workspace',
         'save' => 'Save',
         'danger_description' => 'Irreversible actions.',
+        'delete_warning' => 'Warning',
         'delete_title' => 'Delete this workspace',
         'delete_description' => 'Permanently deletes this workspace and everything in it — posts, connected accounts, and media. You will be charged for one fewer workspace.',
         'delete_description_self_hosted' => 'Permanently deletes this workspace, its posts, connected accounts, and media.',

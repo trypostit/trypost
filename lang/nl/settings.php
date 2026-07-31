@@ -141,6 +141,7 @@ return [
         'name_placeholder' => 'Mijn workspace',
         'save' => 'Opslaan',
         'danger_description' => 'Onomkeerbare acties.',
+        'delete_warning' => 'Waarschuwing',
         'delete_title' => 'Deze workspace verwijderen',
         'delete_description' => 'Verwijdert deze workspace permanent, inclusief posts, gekoppelde accounts en media. Je wordt voor één workspace minder gefactureerd.',
         'delete_description_self_hosted' => 'Verwijdert deze workspace permanent, inclusief posts, gekoppelde accounts en media.',

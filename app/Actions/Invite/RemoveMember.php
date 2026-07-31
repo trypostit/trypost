@@ -7,6 +7,7 @@ namespace App\Actions\Invite;
 use App\Actions\Media\DeleteOrphanedMediaFiles;
 use App\Actions\User\DeleteOrRestoreStrandedMember;
 use App\Actions\User\ReassignCurrentWorkspace;
+use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,14 @@ class RemoveMember
         $mediaPaths = [];
 
         DB::transaction(function () use ($workspace, $userId, &$mediaPaths): void {
+            $account = $workspace->account;
+
+            // Serialize with DeleteWorkspace / other RemoveMember calls on this
+            // account so concurrent removals cannot skip stranded cleanup.
+            if ($account?->id) {
+                Account::query()->whereKey($account->id)->lockForUpdate()->first();
+            }
+
             $user = User::query()->find($userId);
 
             $workspace->members()->detach($userId);
@@ -35,8 +44,6 @@ class RemoveMember
 
             // Last membership on this shared account — delete the invitee, or
             // restore a personal account that still has workspaces.
-            $account = $workspace->account;
-
             if (
                 $account
                 && $user->account_id === $account->id

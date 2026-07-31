@@ -141,6 +141,7 @@ return [
         'name_placeholder' => 'Mi Workspace',
         'save' => 'Guardar',
         'danger_description' => 'Acciones irreversibles.',
+        'delete_warning' => 'Advertencia',
         'delete_title' => 'Eliminar este workspace',
         'delete_description' => 'Elimina este workspace de forma permanente, incluyendo publicaciones, cuentas conectadas y medios. Pasarás a pagar por un workspace menos.',
         'delete_description_self_hosted' => 'Elimina permanentemente este workspace, sus publicaciones, cuentas conectadas y medios.',

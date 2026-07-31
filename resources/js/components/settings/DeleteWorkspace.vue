@@ -73,7 +73,7 @@ const openDeleteModal = () => {
 
         <div class="space-y-4 rounded-xl border-2 border-foreground bg-rose-50 p-4 shadow-2xs">
             <div class="relative space-y-0.5 text-rose-700">
-                <p class="font-bold">{{ $t('settings.delete_account.warning') }}</p>
+                <p class="font-bold">{{ $t('settings.workspace.delete_warning') }}</p>
                 <p class="text-sm font-medium">
                     {{ warningMessage }}
                 </p>

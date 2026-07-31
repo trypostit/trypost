@@ -166,6 +166,62 @@ test('switch workspace returns 403 for workspace user does not belong to', funct
     $response->assertForbidden();
 });
 
+test('switch workspace returns 403 for personal workspace after joining another account', function () {
+    $sharedOwner = User::factory()->create();
+    $invitee = User::factory()->create();
+    $personalAccountId = $invitee->account_id;
+
+    $personalWorkspace = Workspace::factory()->create([
+        'account_id' => $personalAccountId,
+        'user_id' => $invitee->id,
+    ]);
+    $personalWorkspace->members()->attach($invitee->id, ['role' => Role::Admin->value]);
+
+    $sharedWorkspace = Workspace::factory()->create([
+        'account_id' => $sharedOwner->account_id,
+        'user_id' => $sharedOwner->id,
+    ]);
+    $sharedWorkspace->members()->attach($invitee->id, ['role' => Role::Member->value]);
+    $invitee->update([
+        'account_id' => $sharedOwner->account_id,
+        'current_workspace_id' => $sharedWorkspace->id,
+    ]);
+
+    $response = $this->actingAs($invitee)->post(route('app.workspaces.switch', $personalWorkspace));
+
+    $response->assertForbidden();
+    expect($invitee->fresh()->current_workspace_id)->toBe($sharedWorkspace->id);
+});
+
+test('workspace index only lists workspaces on the current account', function () {
+    $sharedOwner = User::factory()->create();
+    $invitee = User::factory()->create();
+    $personalAccountId = $invitee->account_id;
+
+    $personalWorkspace = Workspace::factory()->create([
+        'account_id' => $personalAccountId,
+        'user_id' => $invitee->id,
+    ]);
+    $personalWorkspace->members()->attach($invitee->id, ['role' => Role::Admin->value]);
+
+    $sharedWorkspace = Workspace::factory()->create([
+        'account_id' => $sharedOwner->account_id,
+        'user_id' => $sharedOwner->id,
+    ]);
+    $sharedWorkspace->members()->attach($invitee->id, ['role' => Role::Member->value]);
+    $invitee->update([
+        'account_id' => $sharedOwner->account_id,
+        'current_workspace_id' => $sharedWorkspace->id,
+    ]);
+
+    $response = $this->actingAs($invitee)->get(route('app.workspaces.index'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->has('workspaces', 1)
+        ->where('workspaces.0.id', $sharedWorkspace->id));
+});
+
 // Settings tests
 test('workspace settings requires authentication', function () {
     $response = $this->get(route('app.workspace.settings'));

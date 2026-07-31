@@ -141,6 +141,7 @@ return [
         'name_placeholder' => 'Moja przestrzeń robocza',
         'save' => 'Zapisz',
         'danger_description' => 'Nieodwracalne działania.',
+        'delete_warning' => 'Ostrzeżenie',
         'delete_title' => 'Usuń ten workspace',
         'delete_description' => 'Trwale usuwa ten workspace wraz z postami, połączonymi kontami i mediami. Będziesz rozliczany za o jeden workspace mniej.',
         'delete_description_self_hosted' => 'Trwale usuwa ten workspace, jego posty, połączone konta i media.',

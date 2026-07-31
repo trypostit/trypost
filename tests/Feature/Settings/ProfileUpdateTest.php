@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Actions\Account\CancelAccountSubscription;
+use App\Actions\User\DeleteUser;
 use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\Account;
@@ -192,6 +194,38 @@ test('deleting account deletes member who still owns a personal workspace', func
     expect(User::find($member->id))->toBeNull();
     expect(Account::find($personalAccountId))->toBeNull();
     expect(Workspace::find($personalWorkspace->id))->toBeNull();
+});
+
+test('account delete preflight includes member-owned personal accounts for stripe cancel', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $personalAccountId = $member->account_id;
+
+    Workspace::factory()->create([
+        'account_id' => $personalAccountId,
+        'user_id' => $member->id,
+    ])->members()->attach($member->id, ['role' => Role::Admin->value]);
+
+    $member->update(['account_id' => $owner->account_id]);
+
+    $accounts = DeleteUser::accountsRequiringCancel($owner, $owner->account, true);
+
+    expect($accounts->pluck('id')->all())
+        ->toContain($owner->account_id)
+        ->toContain($personalAccountId);
+
+    $mockSubscription = Mockery::mock(Subscription::class);
+    $mockSubscription->shouldReceive('ended')->andReturnFalse();
+    $mockSubscription->shouldReceive('cancelNow')
+        ->once()
+        ->andThrow(new RuntimeException('stripe unavailable'));
+
+    $mockPersonalAccount = Mockery::mock(Account::findOrFail($personalAccountId))->makePartial();
+    $mockPersonalAccount->shouldReceive('subscription')
+        ->with(Account::SUBSCRIPTION_NAME)
+        ->andReturn($mockSubscription);
+
+    expect(CancelAccountSubscription::execute($mockPersonalAccount))->toBeFalse();
 });
 
 test('user can upload profile photo', function () {

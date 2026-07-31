@@ -143,6 +143,7 @@ return [
         'name_placeholder' => 'Mein Workspace',
         'save' => 'Speichern',
         'danger_description' => 'Unwiderrufliche Aktionen.',
+        'delete_warning' => 'Warnung',
         'delete_title' => 'Diesen Workspace löschen',
         'delete_description' => 'Löscht diesen Workspace dauerhaft — inklusive Beiträge, verbundener Konten und Medien. Du wirst für einen Workspace weniger berechnet.',
         'delete_description_self_hosted' => 'Löscht diesen Workspace dauerhaft inklusive Beiträge, verbundener Konten und Medien.',

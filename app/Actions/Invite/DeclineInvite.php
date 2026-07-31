@@ -4,19 +4,17 @@ declare(strict_types=1);
 
 namespace App\Actions\Invite;
 
+use App\Enums\Invite\Result;
 use App\Models\Invite;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class DeclineInvite
 {
-    /**
-     * @return 'wrong_email'|'gone'|'declined'
-     */
-    public static function execute(User $user, Invite $invite): string
+    public static function execute(User $user, Invite $invite): Result
     {
         if ($invite->email !== $user->email) {
-            return 'wrong_email';
+            return Result::WrongEmail;
         }
 
         $workspacesGone = DB::transaction(function () use ($invite): bool {
@@ -35,6 +33,6 @@ class DeclineInvite
             return $workspaces->isEmpty();
         });
 
-        return $workspacesGone ? 'gone' : 'declined';
+        return $workspacesGone ? Result::Gone : Result::Declined;
     }
 }

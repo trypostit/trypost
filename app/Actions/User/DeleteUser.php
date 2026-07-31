@@ -9,8 +9,10 @@ use App\Actions\Account\DeleteAccount;
 use App\Actions\Account\PurgeOwnedAccounts;
 use App\Actions\Auth\LogoutAndInvalidateSession;
 use App\Actions\Media\DeleteOrphanedMediaFiles;
+use App\Models\Account;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class DeleteUser
@@ -26,8 +28,10 @@ class DeleteUser
         $account = $user->account;
         $isOwner = $user->isAccountOwner();
 
-        if ($account && $isOwner && ! CancelAccountSubscription::execute($account)) {
-            return false;
+        foreach (self::accountsRequiringCancel($user, $account, $isOwner) as $billable) {
+            if (! CancelAccountSubscription::execute($billable)) {
+                return false;
+            }
         }
 
         $mediaPaths = DB::transaction(function () use ($user, $account, $isOwner): array {
@@ -59,5 +63,31 @@ class DeleteUser
         $user->delete();
 
         return true;
+    }
+
+    /**
+     * Accounts whose Stripe subscription must be canceled before local teardown.
+     *
+     * @return Collection<int, Account>
+     */
+    public static function accountsRequiringCancel(User $user, ?Account $account, bool $isOwner): Collection
+    {
+        if ($isOwner && $account) {
+            $memberIds = User::query()
+                ->where('account_id', $account->id)
+                ->where('id', '!=', $user->id)
+                ->pluck('id');
+
+            $memberOwnedAccounts = Account::query()
+                ->whereIn('owner_id', $memberIds)
+                ->where('id', '!=', $account->id)
+                ->get();
+
+            return collect([$account])->merge($memberOwnedAccounts)->unique('id')->values();
+        }
+
+        return Account::query()
+            ->where('owner_id', $user->id)
+            ->get();
     }
 }

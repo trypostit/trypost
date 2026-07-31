@@ -141,6 +141,7 @@ return [
         'name_placeholder' => 'マイワークスペース',
         'save' => '保存',
         'danger_description' => '元に戻せない操作です。',
+        'delete_warning' => '警告',
         'delete_title' => 'このワークスペースを削除',
         'delete_description' => 'このワークスペースと、投稿・連携アカウント・メディアを含むすべての内容を完全に削除します。請求はワークスペースが1つ減った分になります。',
         'delete_description_self_hosted' => 'このワークスペースと投稿、連携アカウント、メディアを完全に削除します。',

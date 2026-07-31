@@ -143,6 +143,7 @@ return [
         'name_placeholder' => 'Çalışma Alanım',
         'save' => 'Kaydet',
         'danger_description' => 'Geri alınamaz işlemler.',
+        'delete_warning' => 'Uyarı',
         'delete_title' => 'Bu workspace’i sil',
         'delete_description' => 'Bu workspace’i kalıcı olarak siler — gönderiler, bağlı hesaplar ve medya dahil. Bir workspace daha az ücretlendirilirsiniz.',
         'delete_description_self_hosted' => 'Bu workspace’i, gönderilerini, bağlı hesaplarını ve medyasını kalıcı olarak siler.',

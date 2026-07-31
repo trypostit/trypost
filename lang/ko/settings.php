@@ -141,6 +141,7 @@ return [
         'name_placeholder' => '내 워크스페이스',
         'save' => '저장',
         'danger_description' => '되돌릴 수 없는 작업입니다.',
+        'delete_warning' => '경고',
         'delete_title' => '이 워크스페이스 삭제',
         'delete_description' => '이 워크스페이스와 그 안의 모든 것(게시물, 연결된 계정, 미디어)을 영구 삭제합니다. 워크스페이스 하나만큼 요금이 줄어듭니다.',
         'delete_description_self_hosted' => '이 워크스페이스와 게시물, 연결된 계정, 미디어를 영구 삭제합니다.',

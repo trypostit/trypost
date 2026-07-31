@@ -53,7 +53,7 @@ class WorkspaceController extends Controller
     {
         $user = $request->user();
 
-        $workspaces = $user->workspaces()
+        $workspaces = $user->accountWorkspaces()
             ->with('media')
             ->withCount(['socialAccounts', 'posts'])
             ->latest()
@@ -133,6 +133,8 @@ class WorkspaceController extends Controller
     public function switch(Request $request, Workspace $workspace): RedirectResponse
     {
         $user = $request->user();
+
+        $this->authorize('view', $workspace);
 
         if (! $user->belongsToWorkspace($workspace)) {
             abort(403);

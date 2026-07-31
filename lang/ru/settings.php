@@ -141,6 +141,7 @@ return [
         'name_placeholder' => 'Моё рабочее пространство',
         'save' => 'Сохранить',
         'danger_description' => 'Необратимые действия.',
+        'delete_warning' => 'Внимание',
         'delete_title' => 'Удалить этот workspace',
         'delete_description' => 'Безвозвратно удаляет этот workspace и всё в нём — посты, подключённые аккаунты и медиа. Вам будут выставлять счёт на один workspace меньше.',
         'delete_description_self_hosted' => 'Безвозвратно удаляет этот workspace, его посты, подключённые аккаунты и медиа.',

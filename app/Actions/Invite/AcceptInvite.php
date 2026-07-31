@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Invite;
 
+use App\Enums\Invite\Result;
 use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
@@ -11,27 +12,24 @@ use Illuminate\Support\Facades\DB;
 
 class AcceptInvite
 {
-    /**
-     * @return 'gone'|'already_accepted'|'already'|'accepted'|'wrong_email'
-     */
-    public static function execute(User $user, Invite $invite): string
+    public static function execute(User $user, Invite $invite): Result
     {
         if ($invite->email !== $user->email) {
-            return 'wrong_email';
+            return Result::WrongEmail;
         }
 
-        return DB::transaction(function () use ($user, $invite): string {
+        return DB::transaction(function () use ($user, $invite): Result {
             $lockedInvite = Invite::query()
                 ->whereKey($invite->id)
                 ->lockForUpdate()
                 ->first();
 
             if (! $lockedInvite) {
-                return 'gone';
+                return Result::Gone;
             }
 
             if ($lockedInvite->accepted_at !== null) {
-                return 'already_accepted';
+                return Result::AlreadyAccepted;
             }
 
             $workspaces = ResolveInviteWorkspaces::execute($lockedInvite);
@@ -39,7 +37,7 @@ class AcceptInvite
             if ($workspaces->isEmpty()) {
                 $lockedInvite->delete();
 
-                return 'gone';
+                return Result::Gone;
             }
 
             // Already on the account: still attach any missing workspace memberships.
@@ -48,7 +46,7 @@ class AcceptInvite
 
                 $lockedInvite->update(['accepted_at' => now()]);
 
-                return 'already';
+                return Result::AlreadyMember;
             }
 
             $previousAccountId = $user->account_id;
@@ -70,7 +68,7 @@ class AcceptInvite
                     ->delete();
             }
 
-            return 'accepted';
+            return Result::Accepted;
         });
     }
 }

@@ -141,6 +141,7 @@ return [
         'name_placeholder' => '我的工作区',
         'save' => '保存',
         'danger_description' => '不可撤销的操作。',
+        'delete_warning' => '警告',
         'delete_title' => '删除此工作区',
         'delete_description' => '永久删除此工作区及其全部内容（帖子、已连接账户和媒体）。之后将按少一个工作区计费。',
         'delete_description_self_hosted' => '永久删除此工作区及其帖子、已连接账户和媒体。',

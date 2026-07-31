@@ -141,6 +141,7 @@ return [
         'name_placeholder' => 'Mon espace de travail',
         'save' => 'Enregistrer',
         'danger_description' => 'Actions irréversibles.',
+        'delete_warning' => 'Avertissement',
         'delete_title' => 'Supprimer cet espace de travail',
         'delete_description' => 'Supprime définitivement cet espace de travail et tout son contenu — publications, comptes connectés et médias. Vous serez facturé pour un espace de travail de moins.',
         'delete_description_self_hosted' => 'Supprime définitivement cet espace de travail, ses publications, comptes connectés et médias.',
