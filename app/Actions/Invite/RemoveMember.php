@@ -6,6 +6,7 @@ namespace App\Actions\Invite;
 
 use App\Actions\Media\DeleteOrphanedMediaFiles;
 use App\Actions\User\DeleteOrRestoreStrandedMember;
+use App\Actions\User\ReassignCurrentWorkspace;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
@@ -28,14 +29,7 @@ class RemoveMember
             $user->refresh();
 
             if ($user->current_workspace_id === $workspace->id) {
-                // Same-account only — never leave current pointing across accounts
-                // (WorkspacePolicy requires account_id match).
-                $fallback = $user->workspaces()
-                    ->where('workspaces.id', '!=', $workspace->id)
-                    ->where('workspaces.account_id', $workspace->account_id)
-                    ->first();
-
-                $user->update(['current_workspace_id' => $fallback?->id]);
+                ReassignCurrentWorkspace::forUserAwayFrom($user, $workspace);
                 $user->refresh();
             }
 

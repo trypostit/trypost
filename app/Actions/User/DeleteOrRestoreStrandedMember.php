@@ -4,14 +4,10 @@ declare(strict_types=1);
 
 namespace App\Actions\User;
 
-use App\Actions\Media\DeleteWorkspaceMedia;
+use App\Actions\Account\PurgeOwnedAccounts;
 use App\Models\Account;
-use App\Models\Media;
 use App\Models\User;
-use App\Models\Workspace;
-use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
-use Laravel\Passport\Token;
 
 class DeleteOrRestoreStrandedMember
 {
@@ -63,7 +59,7 @@ class DeleteOrRestoreStrandedMember
             }
 
             $mediaPaths = $forceDelete
-                ? self::purgeOwnedAccounts($user, $leavingAccount)
+                ? PurgeOwnedAccounts::execute($user, $leavingAccount)
                 : [];
 
             if (! $forceDelete) {
@@ -72,9 +68,8 @@ class DeleteOrRestoreStrandedMember
 
             $mediaPaths = [
                 ...$mediaPaths,
-                ...self::purgeUserMediaRecords($user),
+                ...PurgeUserAccess::execute($user),
             ];
-            self::revokePassportTokens($user);
 
             $user->workspaces()->detach();
             $user->update([
@@ -132,48 +127,6 @@ class DeleteOrRestoreStrandedMember
         return $mediaPaths;
     }
 
-    /**
-     * Tear down every account the user owns outside the leaving account
-     * (personal leftovers during forced account-delete cleanup).
-     *
-     * @return list<string>
-     */
-    private static function purgeOwnedAccounts(User $user, Account $leavingAccount): array
-    {
-        $mediaPaths = [];
-
-        Account::query()
-            ->where('owner_id', $user->id)
-            ->where('id', '!=', $leavingAccount->id)
-            ->get()
-            ->each(function (Account $owned) use ($user, &$mediaPaths): void {
-                Workspace::query()
-                    ->where('account_id', $owned->id)
-                    ->get()
-                    ->each(function (Workspace $workspace) use (&$mediaPaths): void {
-                        $mediaPaths = [
-                            ...$mediaPaths,
-                            ...DeleteWorkspaceMedia::purgeRecords($workspace),
-                        ];
-
-                        $workspace->posts()->delete();
-                        $workspace->socialAccounts()->delete();
-                        $workspace->signatures()->delete();
-                        $workspace->labels()->delete();
-                        $workspace->members()->detach();
-                        $workspace->delete();
-                    });
-
-                if ($user->account_id === $owned->id) {
-                    $user->update(['account_id' => null]);
-                }
-
-                $owned->delete();
-            });
-
-        return $mediaPaths;
-    }
-
     private static function deleteEmptyPersonalAccounts(User $user, Account $leavingAccount): void
     {
         Account::query()
@@ -188,29 +141,5 @@ class DeleteOrRestoreStrandedMember
 
                 $orphan->delete();
             });
-    }
-
-    /**
-     * @return list<string>
-     */
-    private static function purgeUserMediaRecords(User $user): array
-    {
-        $userMediaQuery = Media::query()
-            ->where('mediable_type', Relation::getMorphAlias(User::class))
-            ->where('mediable_id', $user->id);
-
-        /** @var list<string> $mediaPaths */
-        $mediaPaths = $userMediaQuery->pluck('path')->all();
-        $userMediaQuery->delete();
-
-        return $mediaPaths;
-    }
-
-    private static function revokePassportTokens(User $user): void
-    {
-        $user->tokens()->each(function (Token $token): void {
-            $token->revoke();
-            $token->refreshToken?->revoke();
-        });
     }
 }

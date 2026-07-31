@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Actions\Workspace;
 
 use App\Actions\Media\DeleteOrphanedMediaFiles;
-use App\Actions\Media\DeleteWorkspaceMedia;
 use App\Actions\User\DeleteOrRestoreStrandedMember;
 use App\Enums\UserWorkspace\Role;
 use App\Jobs\PostHog\SyncAccountUsage;
@@ -59,9 +58,7 @@ class DeleteWorkspace
 
             // Capture paths inside the lock so uploads that raced into the
             // transaction are included in post-commit filesystem cleanup.
-            $mediaPaths = DeleteWorkspaceMedia::purgeRecords($workspace);
-
-            $workspace->delete();
+            $mediaPaths = PurgeWorkspace::execute($workspace);
 
             if ($account) {
                 $mediaPaths = [
