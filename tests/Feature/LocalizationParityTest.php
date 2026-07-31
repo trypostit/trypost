@@ -5,9 +5,9 @@ declare(strict_types=1);
 use App\Enums\Workspace\ContentLanguage;
 use Illuminate\Support\Arr;
 
-test('every UI language in config matches the ContentLanguage enum', function () {
+test('every UI language is also a supported content language', function () {
     expect(array_keys(config('languages.available')))
-        ->toEqualCanonicalizing(ContentLanguage::values());
+        ->each->toBeIn(ContentLanguage::values());
 });
 
 test('the default UI language is a supported content language', function () {

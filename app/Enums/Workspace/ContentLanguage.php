@@ -8,15 +8,17 @@ namespace App\Enums\Workspace;
  * The set of languages the app supports, and the single source of truth for it:
  * request validation, the brand analyzer's structured-output enum, homepage
  * language detection, the AI image prompt's language name, the content-language
- * picker options, and the right-to-left direction of the UI all derive from it.
+ * picker options, and the text direction used by supported UI locales all derive
+ * from it.
  *
  * The string value is the language code stored on the workspace and passed
- * straight to the content prompts (`content_language`); the same codes also back
- * the application's UI locales, so `direction()` drives the document `dir` attribute.
+ * straight to the content prompts (`content_language`). UI locales are a subset
+ * configured separately in `config/languages.php`.
  */
 enum ContentLanguage: string
 {
     case English = 'en';
+    case Ukrainian = 'uk';
     case PortugueseBrazil = 'pt-BR';
     case Spanish = 'es';
     case French = 'fr';
@@ -32,7 +34,7 @@ enum ContentLanguage: string
     case Turkish = 'tr';
     case Arabic = 'ar';
 
-    public const DEFAULT = self::English;
+    public const DEFAULT = self::Ukrainian;
 
     /**
      * The language's own name, shown in the content-language picker.
@@ -41,6 +43,7 @@ enum ContentLanguage: string
     {
         return match ($this) {
             self::English => 'English',
+            self::Ukrainian => 'Українська',
             self::PortugueseBrazil => 'Português (Brasil)',
             self::Spanish => 'Español',
             self::French => 'Français',
@@ -66,6 +69,7 @@ enum ContentLanguage: string
     {
         return match ($this) {
             self::English => 'English',
+            self::Ukrainian => 'Ukrainian',
             self::PortugueseBrazil => 'Brazilian Portuguese',
             self::Spanish => 'Spanish',
             self::French => 'French',

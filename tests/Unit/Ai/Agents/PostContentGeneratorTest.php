@@ -4,8 +4,18 @@ declare(strict_types=1);
 
 use App\Ai\Agents\PostContentGenerator;
 use App\Enums\Ai\GeneratorFormat;
+use App\Enums\Workspace\ContentLanguage;
 use App\Models\Workspace;
 use Illuminate\JsonSchema\JsonSchemaTypeFactory;
+
+test('instructions use Ukrainian for the default content language', function () {
+    $workspace = Workspace::factory()->make([
+        'content_language' => ContentLanguage::DEFAULT->value,
+    ]);
+
+    expect((new PostContentGenerator(workspace: $workspace))->instructions())
+        ->toContain('Write the output in the language with code: uk.');
+});
 
 test('instructions render brand context', function () {
     $workspace = Workspace::factory()->make([
