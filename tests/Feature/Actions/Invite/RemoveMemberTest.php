@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Invite\RemoveMember;
 use App\Enums\UserWorkspace\Role;
+use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -33,7 +34,7 @@ test('remove member clears current workspace when it was the removed membership'
     expect($member->account_id)->toBe($owner->account_id);
 });
 
-test('remove member rehomes a user who loses their last account workspace', function () {
+test('remove member deletes a user who loses their last account workspace', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
     $personalAccountId = $member->account_id;
@@ -48,12 +49,9 @@ test('remove member rehomes a user who loses their last account workspace', func
 
     RemoveMember::execute($workspace, $member->id);
 
-    $member->refresh();
-
     expect($workspace->members()->where('user_id', $member->id)->exists())->toBeFalse();
-    expect($member->account_id)->toBe($personalAccountId);
-    expect($member->isAccountOwner())->toBeTrue();
-    expect($member->current_workspace_id)->toBeNull();
+    expect(User::find($member->id))->toBeNull();
+    expect(Account::find($personalAccountId))->toBeNull();
 });
 
 test('remove member prefers a same-account workspace over a personal membership', function () {
@@ -89,7 +87,7 @@ test('remove member prefers a same-account workspace over a personal membership'
     expect($member->current_workspace_id)->toBe($sharedB->id);
 });
 
-test('remove member rehomes to personal workspace instead of keeping a cross-account current', function () {
+test('remove member restores personal workspace instead of keeping a cross-account current', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
     $personalAccountId = $member->account_id;

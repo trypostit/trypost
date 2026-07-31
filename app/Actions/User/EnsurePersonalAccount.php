@@ -14,9 +14,9 @@ class EnsurePersonalAccount
     /**
      * Ensure the user owns a personal account and points at it.
      *
-     * Used when a member loses access to a shared account (workspace deleted
-     * or the account owner closes the account) so they can keep logging in
-     * and create their own workspace instead of ending up with account_id null.
+     * Used for invite-redirect / onboarding paths where a non-owner still needs
+     * a personal account. Stranded invitees are deleted via
+     * DeleteOrRestoreStrandedMember instead.
      */
     public static function execute(User $user): Account
     {
@@ -53,39 +53,6 @@ class EnsurePersonalAccount
         }
 
         return $personalAccount;
-    }
-
-    /**
-     * Move members off a shared account onto a personal account they own.
-     *
-     * @param  bool  $onlyWithoutAccountWorkspaces  When true, only members with no
-     *                                              remaining memberships on this
-     *                                              account's workspaces are rehomed
-     *                                              (workspace delete). When false,
-     *                                              every other member is rehomed
-     *                                              (account delete).
-     */
-    public static function rehomeAccountMembers(
-        Account $account,
-        ?string $exceptUserId = null,
-        bool $onlyWithoutAccountWorkspaces = false,
-    ): void {
-        User::query()
-            ->with('account')
-            ->where('account_id', $account->id)
-            ->when(
-                $exceptUserId,
-                fn ($query) => $query->where('id', '!=', $exceptUserId),
-            )
-            ->when(
-                $onlyWithoutAccountWorkspaces,
-                fn ($query) => $query->whereDoesntHave(
-                    'workspaces',
-                    fn ($workspaces) => $workspaces->where('workspaces.account_id', $account->id),
-                ),
-            )
-            ->get()
-            ->each(fn (User $member) => self::execute($member));
     }
 
     /**

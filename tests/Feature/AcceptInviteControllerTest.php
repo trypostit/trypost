@@ -335,9 +335,12 @@ test('accepting an already accepted invite does not claim the workspace was dele
     $response->assertSessionHas('flash.bannerStyle', 'info');
 });
 
-test('invite redirect rehomes a stranded non-owner before sending them to create', function () {
+test('invite redirect deletes a stranded non-owner with no personal workspace', function () {
     $member = User::factory()->create([
         'email' => 'invitee@example.com',
+    ]);
+    $personalAccountId = $member->account_id;
+    $member->update([
         'account_id' => $this->account->id,
         'current_workspace_id' => null,
     ]);
@@ -353,15 +356,14 @@ test('invite redirect rehomes a stranded non-owner before sending them to create
 
     $response = $this->actingAs($member)->post(route('app.invites.accept', $invite));
 
-    $response->assertRedirect(route('app.workspaces.create'));
+    $response->assertRedirect(route('login'));
     $response->assertSessionHas('flash.banner', __('settings.members.flash.invite_workspace_gone'));
 
-    $member->refresh();
-    expect($member->isAccountOwner())->toBeTrue();
-    expect($member->account_id)->not->toBe($this->account->id);
+    expect(User::find($member->id))->toBeNull();
+    expect(Account::find($personalAccountId))->toBeNull();
 });
 
-test('invite redirect rehomes stranded non-owner with a personal workspace instead of cross-account current', function () {
+test('invite redirect restores stranded non-owner with a personal workspace instead of cross-account current', function () {
     $member = User::factory()->create([
         'email' => 'invitee@example.com',
     ]);

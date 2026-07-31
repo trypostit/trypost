@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Workspace\DeleteWorkspace;
 use App\Enums\UserWorkspace\Role;
+use App\Models\Account;
 use App\Models\Invite;
 use App\Models\Media;
 use App\Models\User;
@@ -11,7 +12,7 @@ use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
-test('delete workspace rehomes stranded members to a personal account', function () {
+test('delete workspace deletes stranded members and empty personal accounts', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
     $personalAccountId = $member->account_id;
@@ -32,14 +33,11 @@ test('delete workspace rehomes stranded members to a personal account', function
 
     DeleteWorkspace::execute($workspace);
 
-    $member->refresh();
-
-    expect($member->account_id)->toBe($personalAccountId);
-    expect($member->current_workspace_id)->toBeNull();
-    expect($member->isAccountOwner())->toBeTrue();
+    expect(User::find($member->id))->toBeNull();
+    expect(Account::find($personalAccountId))->toBeNull();
 });
 
-test('delete workspace does not rehome members who still have another workspace on the account', function () {
+test('delete workspace does not delete members who still have another workspace on the account', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
     $member->update(['account_id' => $owner->account_id]);
@@ -69,7 +67,7 @@ test('delete workspace does not rehome members who still have another workspace 
     expect($member->current_workspace_id)->toBe($second->id);
 });
 
-test('delete workspace rehomes members even when they still have a personal workspace membership', function () {
+test('delete workspace restores members who still own a personal workspace', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
     $personalAccountId = $member->account_id;

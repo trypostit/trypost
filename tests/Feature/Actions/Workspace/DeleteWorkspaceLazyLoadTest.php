@@ -32,8 +32,7 @@ test('delete workspace does not lazy load account while reassigning current work
     expect(DeleteWorkspace::execute($current))->toBeTrue();
 
     $owner->refresh();
-    $member->refresh();
 
     expect($owner->current_workspace_id)->toBe($other->id);
-    expect($member->current_workspace_id)->toBeNull();
+    expect(User::find($member->id))->toBeNull();
 });

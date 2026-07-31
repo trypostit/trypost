@@ -193,7 +193,7 @@ test('remove member removes user from workspace', function () {
     expect($this->workspace->hasMember($member))->toBeFalse();
 });
 
-test('remove member rehomes stranded members to a personal account', function () {
+test('remove member deletes stranded members and empty personal accounts', function () {
     $member = User::factory()->create();
     $personalAccountId = $member->account_id;
     $member->update([
@@ -204,11 +204,9 @@ test('remove member rehomes stranded members to a personal account', function ()
 
     $this->actingAs($this->user)->delete(route('app.members.remove', $member));
 
-    $member->refresh();
-
     expect($this->workspace->hasMember($member))->toBeFalse();
-    expect($member->account_id)->toBe($personalAccountId);
-    expect($member->isAccountOwner())->toBeTrue();
+    expect(User::find($member->id))->toBeNull();
+    expect(Account::find($personalAccountId))->toBeNull();
 });
 
 test('remove member fails for owner', function () {

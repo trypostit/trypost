@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
-use App\Actions\User\EnsurePersonalAccount;
+use App\Actions\User\DeleteOrRestoreStrandedMember;
 use App\Http\Controllers\Controller;
 use App\Models\Invite;
 use App\Models\User;
@@ -12,6 +12,7 @@ use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -181,8 +182,8 @@ class AcceptInviteController extends Controller
      * when the user has no current workspace — that drops flashed messages.
      *
      * Never point current_workspace at a membership on another account
-     * (WorkspacePolicy requires account_id match). Rehome stranded non-owners
-     * before picking a fallback.
+     * (WorkspacePolicy requires account_id match). Stranded non-owners are
+     * deleted (or restored to a personal account that still has workspaces).
      */
     private function redirectAfterInvite(User $user): RedirectResponse
     {
@@ -196,9 +197,27 @@ class AcceptInviteController extends Controller
             ->where('workspaces.account_id', $user->account_id)
             ->exists();
 
-        if (! $hasSameAccountWorkspace && ! $user->isAccountOwner()) {
-            EnsurePersonalAccount::execute($user);
-            $user->refresh();
+        if (! $hasSameAccountWorkspace && ! $user->isAccountOwner() && $user->account) {
+            $userId = $user->id;
+            DeleteOrRestoreStrandedMember::execute($user, $user->account);
+
+            $user = User::query()->find($userId);
+
+            if (! $user) {
+                $banner = session('flash.banner');
+                $bannerStyle = session('flash.bannerStyle');
+
+                Auth::logout();
+                request()->session()->invalidate();
+                request()->session()->regenerateToken();
+
+                if ($banner !== null) {
+                    session()->flash('flash.banner', $banner);
+                    session()->flash('flash.bannerStyle', $bannerStyle ?? 'info');
+                }
+
+                return redirect()->route('login');
+            }
         }
 
         $fallback = $user->workspaces()

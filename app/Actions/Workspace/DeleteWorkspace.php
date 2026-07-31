@@ -6,7 +6,7 @@ namespace App\Actions\Workspace;
 
 use App\Actions\Media\DeleteOrphanedMediaFiles;
 use App\Actions\Media\DeleteWorkspaceMedia;
-use App\Actions\User\EnsurePersonalAccount;
+use App\Actions\User\DeleteOrRestoreStrandedMember;
 use App\Enums\UserWorkspace\Role;
 use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\Account;
@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 class DeleteWorkspace
 {
     /**
-     * Delete a workspace and rehome stranded members.
+     * Delete a workspace and delete (or restore) stranded members.
      *
      * Returns false when SaaS mode blocks deleting the account's last workspace.
      * The account row is locked so concurrent deletes cannot race past that guard.
@@ -64,7 +64,7 @@ class DeleteWorkspace
             $workspace->delete();
 
             if ($account) {
-                EnsurePersonalAccount::rehomeAccountMembers(
+                DeleteOrRestoreStrandedMember::forAccountMembers(
                     $account,
                     $account->owner_id,
                     onlyWithoutAccountWorkspaces: true,

@@ -123,34 +123,31 @@ test('correct password must be provided to delete account', function () {
     expect($user->fresh())->not->toBeNull();
 });
 
-test('deleting account updates members current_workspace_id when their workspace is deleted', function () {
+test('deleting account deletes members who belong to the shared account', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
+    $personalAccountId = $member->account_id;
+    $member->update(['account_id' => $owner->account_id]);
 
-    // Create a workspace owned by the owner
-    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $owner->account_id,
+        'user_id' => $owner->id,
+    ]);
     $owner->workspaces()->attach($workspace->id, ['role' => Role::Member->value]);
-    $owner->update(['current_workspace_id' => $workspace->id]);
-
-    // Add member to the workspace and set it as their current
     $member->workspaces()->attach($workspace->id, ['role' => Role::Member->value]);
     $member->update(['current_workspace_id' => $workspace->id]);
 
-    // Verify setup
-    expect($member->current_workspace_id)->toBe($workspace->id);
-
-    // Owner deletes their account
     $this
         ->actingAs($owner)
         ->delete(route('app.profile.destroy'), [
             'password' => 'password',
         ]);
 
-    // Verify member's current_workspace_id is updated to null (since they have no other workspace)
-    expect($member->fresh()->current_workspace_id)->toBeNull();
+    expect(User::find($member->id))->toBeNull();
+    expect(Account::find($personalAccountId))->toBeNull();
 });
 
-test('deleting account rehomes member current workspace to their personal workspace', function () {
+test('deleting account restores member who still owns a personal workspace', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
     $personalAccountId = $member->account_id;
@@ -278,6 +275,26 @@ test('member deleting profile does NOT destroy the shared account', function (bo
     expect($owner->fresh())->not->toBeNull();
 })->with([true, false]);
 
+test('member deleting profile does not delete shared workspaces they created', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create(['account_id' => $owner->account_id]);
+
+    $sharedWorkspace = Workspace::factory()->create([
+        'account_id' => $owner->account_id,
+        'user_id' => $member->id,
+    ]);
+    $sharedWorkspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
+    $sharedWorkspace->members()->attach($member->id, ['role' => Role::Member->value]);
+
+    $this->actingAs($member)->delete(route('app.profile.destroy'), [
+        'password' => 'password',
+    ]);
+
+    expect(User::find($member->id))->toBeNull();
+    expect(Workspace::find($sharedWorkspace->id))->not->toBeNull();
+    expect(Account::find($owner->account_id))->not->toBeNull();
+});
+
 test('member deleting profile detaches them from workspaces', function (bool $selfHosted) {
     config()->set('trypost.self_hosted', $selfHosted);
 
@@ -297,7 +314,7 @@ test('member deleting profile detaches them from workspaces', function (bool $se
     expect($workspace->fresh()->members()->where('users.id', $member->id)->exists())->toBeFalse();
 })->with([true, false]);
 
-test('owner deleting profile rehomes remaining members to a personal account', function () {
+test('owner deleting profile deletes remaining members of the account', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
     $personalAccountId = $member->account_id;
@@ -316,12 +333,9 @@ test('owner deleting profile rehomes remaining members to a personal account', f
         'password' => 'password',
     ]);
 
-    $member->refresh();
-
     expect(Account::find($accountId))->toBeNull();
-    expect($member->account_id)->toBe($personalAccountId);
-    expect($member->isAccountOwner())->toBeTrue();
-    expect($member->current_workspace_id)->toBeNull();
+    expect(User::find($member->id))->toBeNull();
+    expect(Account::find($personalAccountId))->toBeNull();
 });
 
 test('owner deleting profile destroys the account and cascades', function (bool $selfHosted) {
@@ -398,10 +412,17 @@ test('owner account delete aborts when stripe cancel fails', function () {
     $account = $owner->account;
     $accountId = $account->id;
 
+    $member = User::factory()->create();
+    $memberPersonalAccountId = $member->account_id;
+    $member->update(['account_id' => $accountId]);
+
     $workspace = Workspace::factory()->create([
         'account_id' => $accountId,
         'user_id' => $owner->id,
     ]);
+    $workspace->members()->attach($owner->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+
     $media = $workspace->addMedia(
         UploadedFile::fake()->image('logo.jpg'),
         'logo',
@@ -434,7 +455,6 @@ test('owner account delete aborts when stripe cancel fails', function () {
     $mockAccount->shouldReceive('subscription')
         ->with(Account::SUBSCRIPTION_NAME)
         ->andReturn($mockSubscription);
-    $mockAccount->shouldReceive('syncWorkspaceQuantity')->once();
     $mockAccount->shouldReceive('delete')->never();
 
     $owner->setRelation('account', $mockAccount);
@@ -448,10 +468,12 @@ test('owner account delete aborts when stripe cancel fails', function () {
     $response->assertSessionHas('flash.bannerStyle', 'danger');
 
     expect($owner->fresh())->not->toBeNull();
+    expect(User::find($member->id))->not->toBeNull();
+    expect(Account::find($memberPersonalAccountId))->not->toBeNull();
     expect(Account::find($accountId))->not->toBeNull();
     expect(Account::find($accountId)->subscriptions()->count())->toBe(1);
-    expect(Workspace::find($workspace->id))->toBeNull();
-    expect(Media::find($media->id))->toBeNull();
-    expect(Invite::find($invite->id))->toBeNull();
-    Storage::assertMissing($mediaPath);
+    expect(Workspace::find($workspace->id))->not->toBeNull();
+    expect(Media::find($media->id))->not->toBeNull();
+    expect(Invite::find($invite->id))->not->toBeNull();
+    Storage::assertExists($mediaPath);
 });

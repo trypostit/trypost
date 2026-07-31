@@ -6,7 +6,7 @@ namespace App\Http\Controllers\App\Settings;
 
 use App\Actions\Media\DeleteOrphanedMediaFiles;
 use App\Actions\Media\DeleteWorkspaceMedia;
-use App\Actions\User\EnsurePersonalAccount;
+use App\Actions\User\DeleteOrRestoreStrandedMember;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Settings\ProfileDeleteRequest;
 use App\Http\Requests\App\Settings\ProfileUpdateRequest;
@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
+use Laravel\Passport\Token;
 use Throwable;
 
 class ProfileController extends Controller
@@ -100,67 +101,13 @@ class ProfileController extends Controller
         $isOwner = $user->isAccountOwner();
         $mediaPaths = [];
 
-        // Local cleanup first so a Stripe failure cannot leave members stranded
-        // on an account that partially failed to delete. Cancel billing only
-        // after workspaces/members are settled, then remove the account row.
-        DB::transaction(function () use ($user, $account, $isOwner, &$mediaPaths) {
-            $user->update(['current_workspace_id' => null]);
-
-            $workspaces = $isOwner && $account
-                ? Workspace::query()->where('account_id', $account->id)->get()
-                : Workspace::query()->where('user_id', $user->id)->get();
-
-            foreach ($workspaces as $workspace) {
-                foreach ($workspace->members as $member) {
-                    if ($member->id !== $user->id && $member->current_workspace_id === $workspace->id) {
-                        // Same-account only; rehomeAccountMembers restores a
-                        // personal current after the shared account is cleared.
-                        $otherWorkspace = $member->workspaces()
-                            ->where('workspaces.id', '!=', $workspace->id)
-                            ->where('workspaces.account_id', $workspace->account_id)
-                            ->first();
-
-                        $member->update(['current_workspace_id' => $otherWorkspace?->id]);
-                    }
-                }
-
-                $mediaPaths = [
-                    ...$mediaPaths,
-                    ...DeleteWorkspaceMedia::purgeRecords($workspace),
-                ];
-
-                $workspace->posts()->delete();
-                $workspace->socialAccounts()->delete();
-                $workspace->signatures()->delete();
-                $workspace->labels()->delete();
-                $workspace->members()->detach();
-                $workspace->delete();
-            }
-
-            $user->workspaces()->detach();
-
-            if ($account && $isOwner) {
-                // Drop invites with the workspaces so a Stripe cancel failure
-                // cannot leave unique(email, account_id) rows blocking re-invites.
-                Invite::query()->where('account_id', $account->id)->delete();
-
-                EnsurePersonalAccount::rehomeAccountMembers($account, $user->id);
-            }
-        });
-
-        // Workspace media rows are already gone — flush files before billing
-        // so a Stripe cancel failure cannot leave permanent storage orphans.
-        DeleteOrphanedMediaFiles::execute($mediaPaths);
-        $mediaPaths = [];
-
+        // Cancel billing before any local teardown so a Stripe failure cannot
+        // leave members/workspaces already deleted while the owner still exists.
         if ($account && $isOwner) {
             try {
                 if ($account->subscribed(Account::SUBSCRIPTION_NAME)) {
                     $account->subscription(Account::SUBSCRIPTION_NAME)->cancelNow();
                 }
-
-                $account->subscriptions()->delete();
-                $account->delete();
             } catch (Throwable $e) {
                 Log::warning('Failed to cancel Stripe subscription during account delete', [
                     'account_id' => $account->id,
@@ -168,17 +115,89 @@ class ProfileController extends Controller
                     'error' => $e->getMessage(),
                 ]);
 
-                // Workspaces are already gone locally — drop Stripe quantity so
-                // a stuck cancel cannot keep billing the old seat count.
-                $account->syncWorkspaceQuantity();
-
-                // Keep local Stripe customer/subscription linkage so billing can
-                // still be cancelled or retried. The owner can retry deletion.
                 session()->flash('flash.banner', __('settings.flash.delete_failed_billing'));
                 session()->flash('flash.bannerStyle', 'danger');
 
                 return to_route('app.profile.edit');
             }
+        }
+
+        DB::transaction(function () use ($user, $account, $isOwner, &$mediaPaths): void {
+            $user->update(['current_workspace_id' => null]);
+
+            if ($isOwner && $account) {
+                $workspaces = Workspace::query()
+                    ->where('account_id', $account->id)
+                    ->get();
+
+                foreach ($workspaces as $workspace) {
+                    foreach ($workspace->members as $member) {
+                        if ($member->id !== $user->id && $member->current_workspace_id === $workspace->id) {
+                            $otherWorkspace = $member->workspaces()
+                                ->where('workspaces.id', '!=', $workspace->id)
+                                ->where('workspaces.account_id', $workspace->account_id)
+                                ->first();
+
+                            $member->update(['current_workspace_id' => $otherWorkspace?->id]);
+                        }
+                    }
+
+                    $mediaPaths = [
+                        ...$mediaPaths,
+                        ...DeleteWorkspaceMedia::purgeRecords($workspace),
+                    ];
+
+                    $workspace->posts()->delete();
+                    $workspace->socialAccounts()->delete();
+                    $workspace->signatures()->delete();
+                    $workspace->labels()->delete();
+                    $workspace->members()->detach();
+                    $workspace->delete();
+                }
+
+                $user->workspaces()->detach();
+
+                Invite::query()->where('account_id', $account->id)->delete();
+
+                DeleteOrRestoreStrandedMember::forAccountMembers($account, $user->id);
+            } else {
+                // Members must never delete shared-account workspaces (even ones
+                // they created). Only tear down accounts/workspaces they own.
+                $user->workspaces()->detach();
+
+                $ownedAccounts = Account::query()
+                    ->where('owner_id', $user->id)
+                    ->get();
+
+                foreach ($ownedAccounts as $ownedAccount) {
+                    $personalWorkspaces = Workspace::query()
+                        ->where('account_id', $ownedAccount->id)
+                        ->get();
+
+                    foreach ($personalWorkspaces as $workspace) {
+                        $mediaPaths = [
+                            ...$mediaPaths,
+                            ...DeleteWorkspaceMedia::purgeRecords($workspace),
+                        ];
+
+                        $workspace->posts()->delete();
+                        $workspace->socialAccounts()->delete();
+                        $workspace->signatures()->delete();
+                        $workspace->labels()->delete();
+                        $workspace->members()->detach();
+                        $workspace->delete();
+                    }
+
+                    $ownedAccount->delete();
+                }
+            }
+        });
+
+        DeleteOrphanedMediaFiles::execute($mediaPaths);
+
+        if ($account && $isOwner) {
+            $account->subscriptions()->delete();
+            $account->delete();
         }
 
         $userMediaQuery = Media::query()
@@ -189,6 +208,11 @@ class ProfileController extends Controller
         $userMediaQuery->delete();
 
         DeleteOrphanedMediaFiles::execute($mediaPaths);
+
+        $user->tokens()->each(function (Token $token): void {
+            $token->revoke();
+            $token->refreshToken?->revoke();
+        });
 
         Auth::logout();
         $user->delete();
