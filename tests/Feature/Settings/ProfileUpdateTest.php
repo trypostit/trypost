@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\UserWorkspace\Role;
+use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\Invite;
 use App\Models\Media;
@@ -106,6 +107,18 @@ test('user can delete their account', function () {
     expect($user->fresh())->toBeNull();
 });
 
+test('owner deleting profile revokes their passport tokens', function () {
+    $owner = User::factory()->create();
+    $token = $owner->createToken('API Key')->token;
+
+    $this->actingAs($owner)->delete(route('app.profile.destroy'), [
+        'password' => 'password',
+    ]);
+
+    expect(User::find($owner->id))->toBeNull();
+    expect(AccessToken::find($token->id)->revoked)->toBeTrue();
+});
+
 test('correct password must be provided to delete account', function () {
     $user = User::factory()->create();
 
@@ -128,6 +141,7 @@ test('deleting account deletes members who belong to the shared account', functi
     $member = User::factory()->create();
     $personalAccountId = $member->account_id;
     $member->update(['account_id' => $owner->account_id]);
+    $memberToken = $member->createToken('Member API')->token;
 
     $workspace = Workspace::factory()->create([
         'account_id' => $owner->account_id,
@@ -145,6 +159,7 @@ test('deleting account deletes members who belong to the shared account', functi
 
     expect(User::find($member->id))->toBeNull();
     expect(Account::find($personalAccountId))->toBeNull();
+    expect(AccessToken::find($memberToken->id)->revoked)->toBeTrue();
 });
 
 test('deleting account restores member who still owns a personal workspace', function () {

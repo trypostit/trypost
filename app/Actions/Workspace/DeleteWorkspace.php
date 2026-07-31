@@ -64,11 +64,14 @@ class DeleteWorkspace
             $workspace->delete();
 
             if ($account) {
-                DeleteOrRestoreStrandedMember::forAccountMembers(
-                    $account,
-                    $account->owner_id,
-                    onlyWithoutAccountWorkspaces: true,
-                );
+                $mediaPaths = [
+                    ...$mediaPaths,
+                    ...DeleteOrRestoreStrandedMember::forAccountMembers(
+                        $account,
+                        $account->owner_id,
+                        onlyWithoutAccountWorkspaces: true,
+                    ),
+                ];
             }
 
             $deleted = true;

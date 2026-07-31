@@ -159,7 +159,10 @@ class ProfileController extends Controller
 
                 Invite::query()->where('account_id', $account->id)->delete();
 
-                DeleteOrRestoreStrandedMember::forAccountMembers($account, $user->id);
+                $mediaPaths = [
+                    ...$mediaPaths,
+                    ...DeleteOrRestoreStrandedMember::forAccountMembers($account, $user->id),
+                ];
             } else {
                 // Members must never delete shared-account workspaces (even ones
                 // they created). Only tear down accounts/workspaces they own.
@@ -191,29 +194,36 @@ class ProfileController extends Controller
                     $ownedAccount->delete();
                 }
             }
+
+            $userMediaQuery = Media::query()
+                ->where('mediable_type', Relation::getMorphAlias(User::class))
+                ->where('mediable_id', $user->id);
+
+            $mediaPaths = [
+                ...$mediaPaths,
+                ...$userMediaQuery->pluck('path')->all(),
+            ];
+            $userMediaQuery->delete();
+
+            $user->tokens()->each(function (Token $token): void {
+                $token->revoke();
+                $token->refreshToken?->revoke();
+            });
+
+            // Clear account_id before account delete so a later logout remember-token
+            // refresh cannot re-insert the user against a missing account.
+            $user->update(['account_id' => null]);
+
+            if ($account && $isOwner && Account::query()->whereKey($account->id)->exists()) {
+                $account->subscriptions()->delete();
+                $account->delete();
+            }
         });
 
         DeleteOrphanedMediaFiles::execute($mediaPaths);
 
-        if ($account && $isOwner) {
-            $account->subscriptions()->delete();
-            $account->delete();
-        }
-
-        $userMediaQuery = Media::query()
-            ->where('mediable_type', Relation::getMorphAlias(User::class))
-            ->where('mediable_id', $user->id);
-
-        $mediaPaths = $userMediaQuery->pluck('path')->all();
-        $userMediaQuery->delete();
-
-        DeleteOrphanedMediaFiles::execute($mediaPaths);
-
-        $user->tokens()->each(function (Token $token): void {
-            $token->revoke();
-            $token->refreshToken?->revoke();
-        });
-
+        // Logout while the user row still exists — SessionGuard cycles the
+        // remember token via save(), which fails if the user was already deleted.
         Auth::logout();
         $user->delete();
         $request->session()->invalidate();

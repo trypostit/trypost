@@ -2,12 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Actions\Media\DeleteOrphanedMediaFiles;
 use App\Actions\User\DeleteOrRestoreStrandedMember;
 use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\Account;
+use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 test('no-ops when the user still has a membership on the leaving account', function () {
     $owner = User::factory()->create();
@@ -86,6 +90,28 @@ test('deletes stranded invitee and revokes their passport tokens', function () {
 
     expect(User::find($member->id))->toBeNull();
     expect(AccessToken::find($token->id)->revoked)->toBeTrue();
+});
+
+test('deletes stranded invitee avatar media files from storage', function () {
+    Storage::fake();
+
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $member->update(['account_id' => $owner->account_id]);
+
+    $avatar = $member->addMedia(
+        UploadedFile::fake()->image('avatar.jpg', 200, 200),
+        'avatar',
+    );
+    $avatarPath = $avatar->path;
+    Storage::assertExists($avatarPath);
+
+    $mediaPaths = DeleteOrRestoreStrandedMember::execute($member->fresh(), $owner->account);
+    DeleteOrphanedMediaFiles::execute($mediaPaths);
+
+    expect(User::find($member->id))->toBeNull();
+    expect(Media::find($avatar->id))->toBeNull();
+    Storage::assertMissing($avatarPath);
 });
 
 test('forAccountMembers only processes users without remaining account workspaces when flagged', function () {

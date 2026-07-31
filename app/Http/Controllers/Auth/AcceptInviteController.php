@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\Media\DeleteOrphanedMediaFiles;
 use App\Actions\User\DeleteOrRestoreStrandedMember;
 use App\Http\Controllers\Controller;
+use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
@@ -108,12 +110,24 @@ class AcceptInviteController extends Controller
                 return 'already';
             }
 
+            $previousAccountId = $user->account_id;
+
             $user->update(['account_id' => $lockedInvite->account_id]);
             $user->refresh();
 
             $this->attachInviteWorkspaces($user, $lockedInvite, $workspaces);
 
             $lockedInvite->update(['accepted_at' => now()]);
+
+            // Invite signup leaves an empty personal account; drop it once the
+            // user has moved onto the shared invite account.
+            if ($previousAccountId) {
+                Account::query()
+                    ->whereKey($previousAccountId)
+                    ->where('owner_id', $user->id)
+                    ->whereDoesntHave('workspaces')
+                    ->delete();
+            }
 
             return 'accepted';
         });
@@ -199,14 +213,14 @@ class AcceptInviteController extends Controller
 
         if (! $hasSameAccountWorkspace && ! $user->isAccountOwner() && $user->account) {
             $userId = $user->id;
-            DeleteOrRestoreStrandedMember::execute($user, $user->account);
+            $leavingAccount = $user->account;
+            $banner = session('flash.banner');
+            $bannerStyle = session('flash.bannerStyle');
 
-            $user = User::query()->find($userId);
-
-            if (! $user) {
-                $banner = session('flash.banner');
-                $bannerStyle = session('flash.bannerStyle');
-
+            // Logout first while the row still exists. SessionGuard cycles the
+            // remember token via save() — if we delete first on the Auth user
+            // instance, logout re-inserts them.
+            if (Auth::id() === $userId) {
                 Auth::logout();
                 request()->session()->invalidate();
                 request()->session()->regenerateToken();
@@ -215,7 +229,18 @@ class AcceptInviteController extends Controller
                     session()->flash('flash.banner', $banner);
                     session()->flash('flash.bannerStyle', $bannerStyle ?? 'info');
                 }
+            }
 
+            $stranded = User::query()->find($userId);
+
+            if ($stranded) {
+                $mediaPaths = DeleteOrRestoreStrandedMember::execute($stranded, $leavingAccount);
+                DeleteOrphanedMediaFiles::execute($mediaPaths);
+            }
+
+            $user = User::query()->find($userId);
+
+            if (! $user) {
                 return redirect()->route('login');
             }
         }

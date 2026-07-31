@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Invite;
 
+use App\Actions\Media\DeleteOrphanedMediaFiles;
 use App\Actions\User\DeleteOrRestoreStrandedMember;
 use App\Models\User;
 use App\Models\Workspace;
@@ -13,7 +14,9 @@ class RemoveMember
 {
     public static function execute(Workspace $workspace, string $userId): void
     {
-        DB::transaction(function () use ($workspace, $userId): void {
+        $mediaPaths = [];
+
+        DB::transaction(function () use ($workspace, $userId, &$mediaPaths): void {
             $user = User::query()->find($userId);
 
             $workspace->members()->detach($userId);
@@ -45,8 +48,10 @@ class RemoveMember
                 && $user->account_id === $account->id
                 && $user->id !== $account->owner_id
             ) {
-                DeleteOrRestoreStrandedMember::execute($user, $account);
+                $mediaPaths = DeleteOrRestoreStrandedMember::execute($user, $account);
             }
         });
+
+        DeleteOrphanedMediaFiles::execute($mediaPaths);
     }
 }

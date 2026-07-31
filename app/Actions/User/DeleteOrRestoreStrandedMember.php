@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Actions\User;
 
-use App\Actions\Media\DeleteOrphanedMediaFiles;
 use App\Models\Account;
 use App\Models\Media;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\DB;
 use Laravel\Passport\Token;
 
 class DeleteOrRestoreStrandedMember
@@ -16,49 +16,58 @@ class DeleteOrRestoreStrandedMember
     /**
      * After losing memberships on a shared account: restore a personal account
      * that still has workspaces, otherwise delete the user (and empty orphans).
+     *
+     * Returns media storage paths that should be flushed with
+     * DeleteOrphanedMediaFiles after the surrounding DB transaction commits.
+     *
+     * @return list<string>
      */
-    public static function execute(User $user, Account $leavingAccount): void
+    public static function execute(User $user, Account $leavingAccount): array
     {
-        if ($user->id === $leavingAccount->owner_id) {
-            return;
-        }
+        return DB::transaction(function () use ($user, $leavingAccount): array {
+            if ($user->id === $leavingAccount->owner_id) {
+                return [];
+            }
 
-        if ($user->workspaces()
-            ->where('workspaces.account_id', $leavingAccount->id)
-            ->exists()
-        ) {
-            return;
-        }
+            if ($user->workspaces()
+                ->where('workspaces.account_id', $leavingAccount->id)
+                ->exists()
+            ) {
+                return [];
+            }
 
-        $personalAccount = Account::query()
-            ->where('owner_id', $user->id)
-            ->where('id', '!=', $leavingAccount->id)
-            ->whereHas('workspaces')
-            ->first();
-
-        if ($personalAccount) {
-            $fallback = $user->workspaces()
-                ->where('workspaces.account_id', $personalAccount->id)
+            $personalAccount = Account::query()
+                ->where('owner_id', $user->id)
+                ->where('id', '!=', $leavingAccount->id)
+                ->whereHas('workspaces')
                 ->first();
 
+            if ($personalAccount) {
+                $fallback = $user->workspaces()
+                    ->where('workspaces.account_id', $personalAccount->id)
+                    ->first();
+
+                $user->update([
+                    'account_id' => $personalAccount->id,
+                    'current_workspace_id' => $fallback?->id,
+                ]);
+
+                return [];
+            }
+
+            self::deleteEmptyPersonalAccounts($user, $leavingAccount);
+            $mediaPaths = self::purgeUserMediaRecords($user);
+            self::revokePassportTokens($user);
+
+            $user->workspaces()->detach();
             $user->update([
-                'account_id' => $personalAccount->id,
-                'current_workspace_id' => $fallback?->id,
+                'account_id' => null,
+                'current_workspace_id' => null,
             ]);
+            $user->delete();
 
-            return;
-        }
-
-        self::deleteEmptyPersonalAccounts($user, $leavingAccount);
-        self::purgeUserMedia($user);
-        self::revokePassportTokens($user);
-
-        $user->workspaces()->detach();
-        $user->update([
-            'account_id' => null,
-            'current_workspace_id' => null,
-        ]);
-        $user->delete();
+            return $mediaPaths;
+        });
     }
 
     /**
@@ -70,12 +79,15 @@ class DeleteOrRestoreStrandedMember
      *                                              (workspace delete). When false,
      *                                              every other member is processed
      *                                              (account delete).
+     * @return list<string>
      */
     public static function forAccountMembers(
         Account $account,
         ?string $exceptUserId = null,
         bool $onlyWithoutAccountWorkspaces = false,
-    ): void {
+    ): array {
+        $mediaPaths = [];
+
         User::query()
             ->where('account_id', $account->id)
             ->when(
@@ -90,7 +102,14 @@ class DeleteOrRestoreStrandedMember
                 ),
             )
             ->get()
-            ->each(fn (User $member) => self::execute($member, $account));
+            ->each(function (User $member) use ($account, &$mediaPaths): void {
+                $mediaPaths = [
+                    ...$mediaPaths,
+                    ...self::execute($member, $account),
+                ];
+            });
+
+        return $mediaPaths;
     }
 
     private static function deleteEmptyPersonalAccounts(User $user, Account $leavingAccount): void
@@ -109,16 +128,20 @@ class DeleteOrRestoreStrandedMember
             });
     }
 
-    private static function purgeUserMedia(User $user): void
+    /**
+     * @return list<string>
+     */
+    private static function purgeUserMediaRecords(User $user): array
     {
         $userMediaQuery = Media::query()
             ->where('mediable_type', Relation::getMorphAlias(User::class))
             ->where('mediable_id', $user->id);
 
+        /** @var list<string> $mediaPaths */
         $mediaPaths = $userMediaQuery->pluck('path')->all();
         $userMediaQuery->delete();
 
-        DeleteOrphanedMediaFiles::execute($mediaPaths);
+        return $mediaPaths;
     }
 
     private static function revokePassportTokens(User $user): void
