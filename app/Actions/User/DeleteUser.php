@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\User;
 
 use App\Actions\Account\AccountsRequiringCancel;
-use App\Actions\Account\CancelAccountSubscription;
+use App\Actions\Account\CancelAccounts;
 use App\Actions\Account\DeleteAccount;
 use App\Actions\Account\PurgeOwnedAccounts;
 use App\Actions\Auth\LogoutAndInvalidateSession;
@@ -27,10 +27,10 @@ class DeleteUser
         $account = $user->account;
         $isOwner = $user->isAccountOwner();
 
-        foreach (AccountsRequiringCancel::forDeletingUser($user, $account, $isOwner) as $billable) {
-            if (! CancelAccountSubscription::execute($billable)) {
-                return false;
-            }
+        if (! CancelAccounts::execute(
+            AccountsRequiringCancel::forDeletingUser($user, $account, $isOwner),
+        )) {
+            return false;
         }
 
         $mediaPaths = DB::transaction(function () use ($user, $account, $isOwner): array {

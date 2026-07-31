@@ -7,7 +7,7 @@ use App\Enums\UserWorkspace\Role;
 use App\Models\User;
 use App\Models\Workspace;
 
-test('owner delete preflight includes the shared account and member-owned personals', function () {
+test('owner delete preflight includes member personals before the shared account', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
     $personalAccountId = $member->account_id;
@@ -19,11 +19,15 @@ test('owner delete preflight includes the shared account and member-owned person
 
     $member->update(['account_id' => $owner->account_id]);
 
-    $accounts = AccountsRequiringCancel::forDeletingUser($owner, $owner->account, true);
+    $ids = AccountsRequiringCancel::forDeletingUser($owner, $owner->account, true)
+        ->pluck('id')
+        ->all();
 
-    expect($accounts->pluck('id')->all())
-        ->toContain($owner->account_id)
-        ->toContain($personalAccountId);
+    expect($ids)->toContain($personalAccountId)
+        ->and($ids)->toContain($owner->account_id)
+        ->and(end($ids))->toBe($owner->account_id)
+        ->and(array_search($personalAccountId, $ids, true))
+        ->toBeLessThan(array_search($owner->account_id, $ids, true));
 });
 
 test('member delete preflight only includes accounts they own', function () {

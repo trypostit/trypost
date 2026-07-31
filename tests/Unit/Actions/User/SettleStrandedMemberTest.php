@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Actions\Account\DeleteEmptyOwnedAccounts;
-use App\Actions\Media\DeleteOrphanedMediaFiles;
 use App\Actions\User\SettleStrandedMember;
 use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
@@ -39,16 +37,16 @@ test('no-ops for the account owner', function () {
     expect(Account::find($owner->account_id))->not->toBeNull();
 });
 
-test('deletes a stranded invitee and queues empty personal account for flush', function () {
+test('deletes a stranded invitee and flushes empty personal account after settle', function () {
     ['owner' => $owner, 'member' => $member, 'personal_account_id' => $personalAccountId] = strandedMemberOnSharedAccount();
 
     $settled = SettleStrandedMember::execute($member->fresh(), $owner->account);
 
     expect(User::find($member->id))->toBeNull();
-    expect($settled['empty_account_ids'])->toContain($personalAccountId);
+    expect($settled->emptyAccountIds)->toContain($personalAccountId);
     expect(Account::find($personalAccountId))->not->toBeNull();
 
-    DeleteEmptyOwnedAccounts::executeByIds($settled['empty_account_ids']);
+    $settled->flush();
 
     expect(Account::find($personalAccountId))->toBeNull();
 });
@@ -63,7 +61,7 @@ test('restores a personal account that still has a workspace', function () {
     expect($member->account_id)->toBe($personalAccountId);
     expect($member->current_workspace_id)->toBe($personalWorkspace->id);
     expect($member->isAccountOwner())->toBeTrue();
-    expect($settled['empty_account_ids'])->toBeEmpty();
+    expect($settled->emptyAccountIds)->toBeEmpty();
 });
 
 test('deletes stranded invitee and revokes their passport tokens', function () {
@@ -90,9 +88,7 @@ test('deletes stranded invitee avatar media files from storage', function () {
     $avatarPath = $avatar->path;
     Storage::assertExists($avatarPath);
 
-    $settled = SettleStrandedMember::execute($member->fresh(), $owner->account);
-    DeleteEmptyOwnedAccounts::executeByIds($settled['empty_account_ids']);
-    DeleteOrphanedMediaFiles::execute($settled['media_paths']);
+    SettleStrandedMember::execute($member->fresh(), $owner->account)->flush();
 
     expect(User::find($member->id))->toBeNull();
     expect(Media::find($avatar->id))->toBeNull();
@@ -124,11 +120,10 @@ test('strandedWithoutMemberships only processes users without remaining account 
     ]);
     $workspace->members()->attach($stillMember->id, ['role' => Role::Member->value]);
 
-    $settled = SettleStrandedMember::strandedWithoutMemberships(
+    SettleStrandedMember::strandedWithoutMemberships(
         $owner->account,
         exceptUserId: $owner->id,
-    );
-    DeleteEmptyOwnedAccounts::executeByIds($settled['empty_account_ids']);
+    )->flush();
 
     expect(User::find($stranded->id))->toBeNull();
     expect(Account::find($strandedPersonalId))->toBeNull();

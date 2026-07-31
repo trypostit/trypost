@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Workspace;
 
-use App\Actions\Account\DeleteEmptyOwnedAccounts;
-use App\Actions\Media\DeleteOrphanedMediaFiles;
 use App\Actions\User\ReassignCurrentWorkspace;
 use App\Actions\User\SettleStrandedMember;
+use App\Actions\User\StrandedSettlement;
 use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\Account;
 use App\Models\Invite;
@@ -28,10 +27,9 @@ class DeleteWorkspace
         $account = $workspace->account;
         $accountId = (string) $workspace->account_id;
         $deleted = false;
-        $mediaPaths = [];
-        $emptyAccountIds = [];
+        $settlement = StrandedSettlement::none();
 
-        DB::transaction(function () use ($workspace, $account, &$deleted, &$mediaPaths, &$emptyAccountIds): void {
+        DB::transaction(function () use ($workspace, $account, &$deleted, &$settlement): void {
             // Serialize deletes per account so the last-workspace SaaS guard
             // cannot race with a concurrent delete of the sibling workspace.
             if ($account?->id) {
@@ -58,13 +56,15 @@ class DeleteWorkspace
             // transaction are included in post-commit filesystem cleanup.
             $mediaPaths = PurgeWorkspace::execute($workspace);
 
+            $settlement = new StrandedSettlement(mediaPaths: $mediaPaths);
+
             if ($account) {
-                $settled = SettleStrandedMember::strandedWithoutMemberships(
-                    $account,
-                    exceptUserId: $account->owner_id,
+                $settlement = $settlement->merge(
+                    SettleStrandedMember::strandedWithoutMemberships(
+                        $account,
+                        exceptUserId: $account->owner_id,
+                    ),
                 );
-                $mediaPaths = [...$mediaPaths, ...$settled['media_paths']];
-                $emptyAccountIds = $settled['empty_account_ids'];
             }
 
             $deleted = true;
@@ -74,8 +74,7 @@ class DeleteWorkspace
             return false;
         }
 
-        DeleteEmptyOwnedAccounts::executeByIds($emptyAccountIds);
-        DeleteOrphanedMediaFiles::execute($mediaPaths);
+        $settlement->flush();
 
         $account?->syncWorkspaceQuantity();
 

@@ -52,7 +52,7 @@ class DeleteAccount
 
         $mediaPaths = [
             ...$mediaPaths,
-            ...$settled['media_paths'],
+            ...$settled->mediaPaths,
         ];
 
         $owner->update(['account_id' => null]);
