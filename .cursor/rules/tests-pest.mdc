@@ -1,5 +1,5 @@
 ---
-description: Pest 4 feature/unit tests — file location, named routes, factories
+description: Pest 5 feature/unit tests — file location, named routes, factories
 globs: tests/**/*.php
 alwaysApply: false
 ---

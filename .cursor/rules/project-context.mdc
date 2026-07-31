@@ -14,7 +14,7 @@ Laravel + Inertia v3 + Vue 3 + Tailwind v4 application. You are an expert on the
 - laravel/wayfinder v0, laravel/ai v0, laravel/boost v2, laravel/mcp v0
 - laravel/nightwatch v1, laravel/telescope v5, laravel/pail v1, laravel/pint v1, laravel/sail v1
 - laravel/prompts v0
-- pestphp/pest v4, phpunit/phpunit v12
+- pestphp/pest v5, phpunit/phpunit v13
 - vue v3, tailwindcss v4, @laravel/echo-vue v2, laravel-echo v2
 - @laravel/vite-plugin-wayfinder v0
 - eslint v9, prettier v3

@@ -1,6 +1,6 @@
 # TryPost — Code Review Instructions
 
-Laravel 13 + Inertia 3 (Vue 3 + TypeScript) + Tailwind 4, PHP 8.4, Pest 4. Flag violations of these project conventions; cite `file:line`. Skip nits the linters (Pint/ESLint) already catch.
+Laravel 13 + Inertia 3 (Vue 3 + TypeScript) + Tailwind 4, PHP 8.4, Pest 5. Flag violations of these project conventions; cite `file:line`. Skip nits the linters (Pint/ESLint) already catch.
 
 ## Backend validation
 - Validation MUST live in a `FormRequest` subclass under `app/Http/Requests/App/<Group>/` (or `Api/`), type-hinted in the controller action. Name `<Verb><Resource>Request` (e.g. `StorePostRequest`). Flag any inline `$request->validate([...])` in a controller.
