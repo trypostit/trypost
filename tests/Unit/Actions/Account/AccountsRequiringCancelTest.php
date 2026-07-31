@@ -3,21 +3,12 @@
 declare(strict_types=1);
 
 use App\Actions\Account\AccountsRequiringCancel;
-use App\Enums\UserWorkspace\Role;
-use App\Models\User;
-use App\Models\Workspace;
 
 test('owner delete preflight includes member personals before the shared account', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $personalAccountId = $member->account_id;
-
-    Workspace::factory()->create([
-        'account_id' => $personalAccountId,
-        'user_id' => $member->id,
-    ])->members()->attach($member->id, ['role' => Role::Admin->value]);
-
-    $member->update(['account_id' => $owner->account_id]);
+    [
+        'owner' => $owner,
+        'personal_account_id' => $personalAccountId,
+    ] = strandedMemberOnSharedAccount(withPersonalWorkspace: true);
 
     $ids = AccountsRequiringCancel::forDeletingUser($owner, $owner->account, true)
         ->pluck('id')
@@ -31,10 +22,11 @@ test('owner delete preflight includes member personals before the shared account
 });
 
 test('member delete preflight only includes accounts they own', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $personalAccountId = $member->account_id;
-    $member->update(['account_id' => $owner->account_id]);
+    [
+        'owner' => $owner,
+        'member' => $member,
+        'personal_account_id' => $personalAccountId,
+    ] = strandedMemberOnSharedAccount();
 
     $accounts = AccountsRequiringCancel::forDeletingUser($member, $owner->account, false);
 

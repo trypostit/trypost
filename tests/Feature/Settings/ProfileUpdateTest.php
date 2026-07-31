@@ -137,19 +137,16 @@ test('correct password must be provided to delete account', function () {
 });
 
 test('deleting account deletes members who belong to the shared account', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $personalAccountId = $member->account_id;
-    $member->update(['account_id' => $owner->account_id]);
+    [
+        'owner' => $owner,
+        'member' => $member,
+        'personal_account_id' => $personalAccountId,
+        'shared_workspaces' => [$workspace],
+    ] = strandedMemberOnSharedAccount(
+        sharedWorkspaces: 1,
+        setMemberCurrent: true,
+    );
     $memberToken = $member->createToken('Member API')->token;
-
-    $workspace = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-    $owner->workspaces()->attach($workspace->id, ['role' => Role::Member->value]);
-    $member->workspaces()->attach($workspace->id, ['role' => Role::Member->value]);
-    $member->update(['current_workspace_id' => $workspace->id]);
 
     $this
         ->actingAs($owner)
@@ -163,25 +160,17 @@ test('deleting account deletes members who belong to the shared account', functi
 });
 
 test('deleting account deletes member who still owns a personal workspace', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $personalAccountId = $member->account_id;
-
-    $personalWorkspace = Workspace::factory()->create([
-        'account_id' => $personalAccountId,
-        'user_id' => $member->id,
-    ]);
-    $personalWorkspace->members()->attach($member->id, ['role' => Role::Admin->value]);
-
-    $member->update(['account_id' => $owner->account_id]);
-
-    $workspaceToDelete = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-    $owner->workspaces()->attach($workspaceToDelete->id, ['role' => Role::Member->value]);
-    $member->workspaces()->attach($workspaceToDelete->id, ['role' => Role::Member->value]);
-    $member->update(['current_workspace_id' => $workspaceToDelete->id]);
+    [
+        'owner' => $owner,
+        'member' => $member,
+        'personal_account_id' => $personalAccountId,
+        'personal_workspace' => $personalWorkspace,
+        'shared_workspaces' => [$workspaceToDelete],
+    ] = strandedMemberOnSharedAccount(
+        withPersonalWorkspace: true,
+        sharedWorkspaces: 1,
+        setMemberCurrent: true,
+    );
 
     $this
         ->actingAs($owner)
@@ -329,19 +318,16 @@ test('member deleting profile detaches them from workspaces', function (bool $se
 })->with([true, false]);
 
 test('owner deleting profile deletes remaining members of the account', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $personalAccountId = $member->account_id;
-    $member->update(['account_id' => $owner->account_id]);
+    [
+        'owner' => $owner,
+        'member' => $member,
+        'personal_account_id' => $personalAccountId,
+        'shared_workspaces' => [$workspace],
+    ] = strandedMemberOnSharedAccount(
+        sharedWorkspaces: 1,
+        setMemberCurrent: true,
+    );
     $accountId = $owner->account_id;
-
-    $workspace = Workspace::factory()->create([
-        'account_id' => $accountId,
-        'user_id' => $owner->id,
-    ]);
-    $workspace->members()->attach($owner->id, ['role' => Role::Member->value]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
-    $member->update(['current_workspace_id' => $workspace->id]);
 
     $this->actingAs($owner)->delete(route('app.profile.destroy'), [
         'password' => 'password',

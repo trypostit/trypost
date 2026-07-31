@@ -106,18 +106,22 @@ test('forceDelete removes a member who still owns a personal workspace', functio
 });
 
 test('strandedWithoutMemberships only processes users without remaining account workspaces', function () {
-    $owner = User::factory()->create();
-    $stranded = User::factory()->create();
-    $stillMember = User::factory()->create();
-    $strandedPersonalId = $stranded->account_id;
+    [
+        'owner' => $owner,
+        'member' => $stranded,
+        'personal_account_id' => $strandedPersonalId,
+        'shared_workspaces' => [$workspace],
+    ] = strandedMemberOnSharedAccount(
+        sharedWorkspaces: 1,
+        attachMember: false,
+    );
 
-    $stranded->update(['account_id' => $owner->account_id]);
-    $stillMember->update(['account_id' => $owner->account_id]);
-
-    $workspace = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
+    [
+        'member' => $stillMember,
+    ] = strandedMemberOnSharedAccount(
+        owner: $owner,
+        sharedWorkspaces: 0,
+    );
     $workspace->members()->attach($stillMember->id, ['role' => Role::Member->value]);
 
     SettleStrandedMember::strandedWithoutMemberships(

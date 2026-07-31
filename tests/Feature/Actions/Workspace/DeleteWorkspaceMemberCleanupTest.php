@@ -13,23 +13,15 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 test('delete workspace deletes stranded members and empty personal accounts', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $personalAccountId = $member->account_id;
-    $member->update(['account_id' => $owner->account_id]);
-
-    $workspace = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-    Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-
-    $workspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
-    $member->update(['current_workspace_id' => $workspace->id]);
+    [
+        'member' => $member,
+        'personal_account_id' => $personalAccountId,
+        'shared_workspaces' => [$workspace],
+    ] = strandedMemberOnSharedAccount(
+        sharedWorkspaces: 2,
+        attachMemberToAll: false,
+        setMemberCurrent: true,
+    );
 
     DeleteWorkspace::execute($workspace);
 
@@ -38,62 +30,35 @@ test('delete workspace deletes stranded members and empty personal accounts', fu
 });
 
 test('delete workspace does not delete members who still have another workspace on the account', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $member->update(['account_id' => $owner->account_id]);
-
-    $first = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-    $second = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-
-    foreach ([$first, $second] as $workspace) {
-        $workspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
-        $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
-    }
-
-    $member->update(['current_workspace_id' => $first->id]);
-    $sharedAccountId = $owner->account_id;
+    [
+        'owner' => $owner,
+        'member' => $member,
+        'shared_workspaces' => [$first, $second],
+    ] = strandedMemberOnSharedAccount(
+        sharedWorkspaces: 2,
+        setMemberCurrent: true,
+    );
 
     DeleteWorkspace::execute($first);
 
     $member->refresh();
 
-    expect($member->account_id)->toBe($sharedAccountId);
+    expect($member->account_id)->toBe($owner->account_id);
     expect($member->current_workspace_id)->toBe($second->id);
 });
 
 test('delete workspace restores members who still own a personal workspace', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $personalAccountId = $member->account_id;
-
-    $personalWorkspace = Workspace::factory()->create([
-        'account_id' => $personalAccountId,
-        'user_id' => $member->id,
-    ]);
-    $personalWorkspace->members()->attach($member->id, ['role' => Role::Admin->value]);
-
-    $sharedWorkspace = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-    Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-
-    $sharedWorkspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
-    $sharedWorkspace->members()->attach($member->id, ['role' => Role::Member->value]);
-
-    $member->update([
-        'account_id' => $owner->account_id,
-        'current_workspace_id' => $sharedWorkspace->id,
-    ]);
+    [
+        'member' => $member,
+        'personal_account_id' => $personalAccountId,
+        'personal_workspace' => $personalWorkspace,
+        'shared_workspaces' => [$sharedWorkspace],
+    ] = strandedMemberOnSharedAccount(
+        withPersonalWorkspace: true,
+        sharedWorkspaces: 2,
+        attachMemberToAll: false,
+        setMemberCurrent: true,
+    );
 
     DeleteWorkspace::execute($sharedWorkspace);
 

@@ -3,27 +3,18 @@
 declare(strict_types=1);
 
 use App\Actions\Invite\RemoveMember;
-use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
 use App\Models\User;
-use App\Models\Workspace;
 
 test('remove member clears current workspace when it was the removed membership', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create(['account_id' => $owner->account_id]);
-
-    $workspace = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-    $other = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
-    $other->members()->attach($member->id, ['role' => Role::Member->value]);
-    $member->update(['current_workspace_id' => $workspace->id]);
+    [
+        'owner' => $owner,
+        'member' => $member,
+        'shared_workspaces' => [$workspace, $other],
+    ] = strandedMemberOnSharedAccount(
+        sharedWorkspaces: 2,
+        setMemberCurrent: true,
+    );
 
     RemoveMember::execute($workspace, $member->id);
 
@@ -35,17 +26,14 @@ test('remove member clears current workspace when it was the removed membership'
 });
 
 test('remove member deletes a user who loses their last account workspace', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $personalAccountId = $member->account_id;
-    $member->update(['account_id' => $owner->account_id]);
-
-    $workspace = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
-    $member->update(['current_workspace_id' => $workspace->id]);
+    [
+        'member' => $member,
+        'personal_account_id' => $personalAccountId,
+        'shared_workspaces' => [$workspace],
+    ] = strandedMemberOnSharedAccount(
+        sharedWorkspaces: 1,
+        setMemberCurrent: true,
+    );
 
     RemoveMember::execute($workspace, $member->id);
 
@@ -55,29 +43,15 @@ test('remove member deletes a user who loses their last account workspace', func
 });
 
 test('remove member prefers a same-account workspace over a personal membership', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $personalAccountId = $member->account_id;
-
-    $personalWorkspace = Workspace::factory()->create([
-        'account_id' => $personalAccountId,
-        'user_id' => $member->id,
-    ]);
-    $personalWorkspace->members()->attach($member->id, ['role' => Role::Admin->value]);
-
-    $member->update(['account_id' => $owner->account_id]);
-
-    $sharedA = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-    $sharedB = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-    $sharedA->members()->attach($member->id, ['role' => Role::Member->value]);
-    $sharedB->members()->attach($member->id, ['role' => Role::Member->value]);
-    $member->update(['current_workspace_id' => $sharedA->id]);
+    [
+        'owner' => $owner,
+        'member' => $member,
+        'shared_workspaces' => [$sharedA, $sharedB],
+    ] = strandedMemberOnSharedAccount(
+        withPersonalWorkspace: true,
+        sharedWorkspaces: 2,
+        setMemberCurrent: true,
+    );
 
     RemoveMember::execute($sharedA, $member->id);
 
@@ -88,24 +62,16 @@ test('remove member prefers a same-account workspace over a personal membership'
 });
 
 test('remove member restores personal workspace instead of keeping a cross-account current', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $personalAccountId = $member->account_id;
-
-    $personalWorkspace = Workspace::factory()->create([
-        'account_id' => $personalAccountId,
-        'user_id' => $member->id,
-    ]);
-    $personalWorkspace->members()->attach($member->id, ['role' => Role::Admin->value]);
-
-    $member->update(['account_id' => $owner->account_id]);
-
-    $shared = Workspace::factory()->create([
-        'account_id' => $owner->account_id,
-        'user_id' => $owner->id,
-    ]);
-    $shared->members()->attach($member->id, ['role' => Role::Member->value]);
-    $member->update(['current_workspace_id' => $shared->id]);
+    [
+        'member' => $member,
+        'personal_account_id' => $personalAccountId,
+        'personal_workspace' => $personalWorkspace,
+        'shared_workspaces' => [$shared],
+    ] = strandedMemberOnSharedAccount(
+        withPersonalWorkspace: true,
+        sharedWorkspaces: 1,
+        setMemberCurrent: true,
+    );
 
     RemoveMember::execute($shared, $member->id);
 

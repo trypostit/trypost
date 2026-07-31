@@ -364,14 +364,13 @@ test('accepting an already accepted invite does not claim the workspace was dele
 });
 
 test('invite redirect deletes a stranded non-owner with no personal workspace', function () {
-    $member = User::factory()->create([
-        'email' => 'invitee@example.com',
-    ]);
-    $personalAccountId = $member->account_id;
-    $member->update([
-        'account_id' => $this->account->id,
-        'current_workspace_id' => null,
-    ]);
+    [
+        'member' => $member,
+        'personal_account_id' => $personalAccountId,
+    ] = strandedMemberOnSharedAccount(
+        owner: $this->owner,
+        memberEmail: 'invitee@example.com',
+    );
 
     $invite = Invite::factory()->create([
         'account_id' => $this->account->id,
@@ -392,14 +391,13 @@ test('invite redirect deletes a stranded non-owner with no personal workspace', 
 });
 
 test('decline of a dead invite deletes a stranded non-owner', function () {
-    $member = User::factory()->create([
-        'email' => 'invitee@example.com',
-    ]);
-    $personalAccountId = $member->account_id;
-    $member->update([
-        'account_id' => $this->account->id,
-        'current_workspace_id' => null,
-    ]);
+    [
+        'member' => $member,
+        'personal_account_id' => $personalAccountId,
+    ] = strandedMemberOnSharedAccount(
+        owner: $this->owner,
+        memberEmail: 'invitee@example.com',
+    );
 
     $invite = Invite::factory()->create([
         'account_id' => $this->account->id,
@@ -421,20 +419,15 @@ test('decline of a dead invite deletes a stranded non-owner', function () {
 });
 
 test('invite redirect restores stranded non-owner with a personal workspace instead of cross-account current', function () {
-    $member = User::factory()->create([
-        'email' => 'invitee@example.com',
-    ]);
-    $personalAccountId = $member->account_id;
-    $personalWorkspace = Workspace::factory()->create([
-        'account_id' => $personalAccountId,
-        'user_id' => $member->id,
-    ]);
-    $personalWorkspace->members()->attach($member->id, ['role' => Role::Admin->value]);
-
-    $member->update([
-        'account_id' => $this->account->id,
-        'current_workspace_id' => null,
-    ]);
+    [
+        'member' => $member,
+        'personal_account_id' => $personalAccountId,
+        'personal_workspace' => $personalWorkspace,
+    ] = strandedMemberOnSharedAccount(
+        withPersonalWorkspace: true,
+        owner: $this->owner,
+        memberEmail: 'invitee@example.com',
+    );
 
     $invite = Invite::factory()->create([
         'account_id' => $this->account->id,

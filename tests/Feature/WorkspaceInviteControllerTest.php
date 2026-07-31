@@ -194,12 +194,14 @@ test('remove member removes user from workspace', function () {
 });
 
 test('remove member deletes stranded members and empty personal accounts', function () {
-    $member = User::factory()->create();
-    $personalAccountId = $member->account_id;
-    $member->update([
-        'account_id' => $this->account->id,
-        'current_workspace_id' => $this->workspace->id,
-    ]);
+    [
+        'member' => $member,
+        'personal_account_id' => $personalAccountId,
+    ] = strandedMemberOnSharedAccount(
+        owner: $this->user,
+        setMemberCurrent: false,
+    );
+    $member->update(['current_workspace_id' => $this->workspace->id]);
     $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Member->value]);
 
     $this->actingAs($this->user)->delete(route('app.members.remove', $member));
