@@ -19,6 +19,7 @@ final class BrandAnalyzerRunner
         return match (config('ai.default')) {
             'openai' => ! empty(config('services.openai.api_key')),
             'gemini' => ! empty(config('services.gemini.api_key')),
+            'openrouter' => ! empty(config('services.openrouter.api_key')),
             default => false,
         };
     }

@@ -32,6 +32,7 @@ class BrandAnalyzer implements Agent, HasStructuredOutput
         return match (config('ai.default')) {
             'openai' => Lab::OpenAI,
             'anthropic' => Lab::Anthropic,
+            'openrouter' => Lab::OpenRouter,
             default => Lab::Gemini,
         };
     }
