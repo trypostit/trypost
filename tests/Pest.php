@@ -160,3 +160,44 @@ function subscribeAccount(Account $account): void
         'stripe_price' => 'price_123',
     ]);
 }
+
+/**
+ * Move $member onto $owner's shared account (stranded-member test fixture).
+ * Optionally keep a personal workspace on the member's original account.
+ *
+ * @return array{
+ *     owner: User,
+ *     member: User,
+ *     personal_account_id: string,
+ *     personal_workspace: ?Workspace
+ * }
+ */
+function strandedMemberOnSharedAccount(bool $withPersonalWorkspace = false): array
+{
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $personalAccountId = $member->account_id;
+    $personalWorkspace = null;
+
+    if ($withPersonalWorkspace) {
+        $personalWorkspace = Workspace::factory()->create([
+            'account_id' => $personalAccountId,
+            'user_id' => $member->id,
+        ]);
+        $personalWorkspace->members()->attach($member->id, [
+            'role' => Role::Admin->value,
+        ]);
+    }
+
+    $member->update([
+        'account_id' => $owner->account_id,
+        'current_workspace_id' => null,
+    ]);
+
+    return [
+        'owner' => $owner,
+        'member' => $member->fresh(),
+        'personal_account_id' => $personalAccountId,
+        'personal_workspace' => $personalWorkspace,
+    ];
+}

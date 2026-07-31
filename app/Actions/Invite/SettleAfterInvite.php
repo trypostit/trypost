@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Actions\Invite;
 
+use App\Actions\Account\DeleteEmptyOwnedAccounts;
 use App\Actions\Auth\LogoutAndInvalidateSession;
 use App\Actions\Media\DeleteOrphanedMediaFiles;
-use App\Actions\User\DeleteOrRestoreStrandedMember;
+use App\Actions\User\SettleStrandedMember;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -52,8 +53,9 @@ class SettleAfterInvite
             $stranded = User::query()->find($userId);
 
             if ($stranded) {
-                $mediaPaths = DeleteOrRestoreStrandedMember::execute($stranded, $leavingAccount);
-                DeleteOrphanedMediaFiles::execute($mediaPaths);
+                $settled = SettleStrandedMember::execute($stranded, $leavingAccount);
+                DeleteEmptyOwnedAccounts::executeByIds($settled['empty_account_ids']);
+                DeleteOrphanedMediaFiles::execute($settled['media_paths']);
             }
 
             $user = User::query()->find($userId);

@@ -4,18 +4,21 @@ declare(strict_types=1);
 
 namespace App\Actions\User;
 
-use App\Actions\Account\DeleteEmptyOwnedAccounts;
 use App\Actions\Account\PurgeOwnedAccounts;
 use App\Models\Account;
 use App\Models\User;
 
-class DeleteOrRestoreStrandedMember
+class SettleStrandedMember
 {
     /**
      * After losing memberships on a shared account: restore a personal account
-     * that still has workspaces, otherwise delete the user (and empty orphans).
+     * that still has workspaces, otherwise delete the user.
      *
-     * @return list<string> media paths for DeleteOrphanedMediaFiles after commit
+     * Empty personal accounts are NOT deleted here — callers must flush
+     * `empty_account_ids` with DeleteEmptyOwnedAccounts::executeByIds after
+     * releasing any account lock (so Stripe cancel is not held under lock).
+     *
+     * @return array{media_paths: list<string>, empty_account_ids: list<string>}
      */
     public static function execute(User $user, Account $leavingAccount): array
     {
@@ -24,9 +27,9 @@ class DeleteOrRestoreStrandedMember
 
     /**
      * Owner account teardown: always delete the member, including leftover
-     * personal accounts/workspaces.
+     * personal accounts/workspaces (Stripe for those was canceled upstream).
      *
-     * @return list<string>
+     * @return array{media_paths: list<string>, empty_account_ids: list<string>}
      */
     public static function forceDelete(User $user, Account $leavingAccount): array
     {
@@ -35,9 +38,8 @@ class DeleteOrRestoreStrandedMember
 
     /**
      * Members on $account with no remaining memberships on that account.
-     * Used after deleting a workspace.
      *
-     * @return list<string>
+     * @return array{media_paths: list<string>, empty_account_ids: list<string>}
      */
     public static function strandedWithoutMemberships(
         Account $account,
@@ -52,10 +54,9 @@ class DeleteOrRestoreStrandedMember
     }
 
     /**
-     * Every non-owner member still pointing at $account. Used during owner
-     * account teardown (never restore to a personal account).
+     * Every non-owner member still pointing at $account (owner account teardown).
      *
-     * @return list<string>
+     * @return array{media_paths: list<string>, empty_account_ids: list<string>}
      */
     public static function forceDeleteMembers(
         Account $account,
@@ -70,19 +71,24 @@ class DeleteOrRestoreStrandedMember
     }
 
     /**
-     * @return list<string>
+     * @return array{media_paths: list<string>, empty_account_ids: list<string>}
      */
     private static function process(User $user, Account $leavingAccount, bool $forceDelete): array
     {
+        $empty = [
+            'media_paths' => [],
+            'empty_account_ids' => [],
+        ];
+
         if ($user->id === $leavingAccount->owner_id) {
-            return [];
+            return $empty;
         }
 
         if ($user->workspaces()
             ->where('workspaces.account_id', $leavingAccount->id)
             ->exists()
         ) {
-            return [];
+            return $empty;
         }
 
         if (! $forceDelete) {
@@ -102,7 +108,7 @@ class DeleteOrRestoreStrandedMember
                     'current_workspace_id' => $fallback?->id,
                 ]);
 
-                return [];
+                return $empty;
             }
         }
 
@@ -110,11 +116,15 @@ class DeleteOrRestoreStrandedMember
             ? PurgeOwnedAccounts::execute($user, $leavingAccount)
             : [];
 
+        $emptyAccountIds = [];
+
         if (! $forceDelete) {
-            DeleteEmptyOwnedAccounts::execute(
-                $user,
-                exceptAccountId: $leavingAccount->id,
-            );
+            $emptyAccountIds = Account::query()
+                ->where('owner_id', $user->id)
+                ->where('id', '!=', $leavingAccount->id)
+                ->whereDoesntHave('workspaces')
+                ->pluck('id')
+                ->all();
         }
 
         $mediaPaths = [
@@ -129,11 +139,14 @@ class DeleteOrRestoreStrandedMember
         ]);
         $user->delete();
 
-        return $mediaPaths;
+        return [
+            'media_paths' => $mediaPaths,
+            'empty_account_ids' => $emptyAccountIds,
+        ];
     }
 
     /**
-     * @return list<string>
+     * @return array{media_paths: list<string>, empty_account_ids: list<string>}
      */
     private static function forAccountMembers(
         Account $account,
@@ -142,6 +155,7 @@ class DeleteOrRestoreStrandedMember
         bool $forceDelete,
     ): array {
         $mediaPaths = [];
+        $emptyAccountIds = [];
 
         User::query()
             ->where('account_id', $account->id)
@@ -157,15 +171,18 @@ class DeleteOrRestoreStrandedMember
                 ),
             )
             ->get()
-            ->each(function (User $member) use ($account, $forceDelete, &$mediaPaths): void {
-                $mediaPaths = [
-                    ...$mediaPaths,
-                    ...($forceDelete
-                        ? self::forceDelete($member, $account)
-                        : self::execute($member, $account)),
-                ];
+            ->each(function (User $member) use ($account, $forceDelete, &$mediaPaths, &$emptyAccountIds): void {
+                $settled = $forceDelete
+                    ? self::forceDelete($member, $account)
+                    : self::execute($member, $account);
+
+                $mediaPaths = [...$mediaPaths, ...$settled['media_paths']];
+                $emptyAccountIds = [...$emptyAccountIds, ...$settled['empty_account_ids']];
             });
 
-        return $mediaPaths;
+        return [
+            'media_paths' => $mediaPaths,
+            'empty_account_ids' => array_values(array_unique($emptyAccountIds)),
+        ];
     }
 }

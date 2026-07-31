@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Account;
 
-use App\Actions\User\DeleteOrRestoreStrandedMember;
 use App\Actions\User\ReassignCurrentWorkspace;
+use App\Actions\User\SettleStrandedMember;
 use App\Actions\Workspace\PurgeWorkspace;
 use App\Models\Account;
 use App\Models\Invite;
@@ -45,12 +45,14 @@ class DeleteAccount
 
         Invite::query()->where('account_id', $account->id)->delete();
 
+        $settled = SettleStrandedMember::forceDeleteMembers(
+            $account,
+            exceptUserId: $owner->id,
+        );
+
         $mediaPaths = [
             ...$mediaPaths,
-            ...DeleteOrRestoreStrandedMember::forceDeleteMembers(
-                $account,
-                exceptUserId: $owner->id,
-            ),
+            ...$settled['media_paths'],
         ];
 
         $owner->update(['account_id' => null]);

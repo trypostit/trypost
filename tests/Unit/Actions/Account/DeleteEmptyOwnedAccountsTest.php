@@ -65,3 +65,17 @@ test('only deletes the targeted account id', function () {
     expect(Account::find($second->id))->toBeNull();
     expect(Account::find($firstId))->not->toBeNull();
 });
+
+test('executeByIds deletes accounts after the owner user is gone', function () {
+    $user = User::factory()->create();
+    $emptyAccountId = $user->account_id;
+
+    $user->delete();
+
+    expect(Account::find($emptyAccountId))->not->toBeNull();
+
+    $deleted = DeleteEmptyOwnedAccounts::executeByIds([$emptyAccountId]);
+
+    expect($deleted)->toBe([$emptyAccountId]);
+    expect(Account::find($emptyAccountId))->toBeNull();
+});

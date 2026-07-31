@@ -11,7 +11,7 @@ class DeleteEmptyOwnedAccounts
 {
     /**
      * Cancel any Stripe subscription, then delete accounts the user owns that
-     * have no workspaces. Prefer calling outside a held DB lock when possible.
+     * have no workspaces. Prefer calling outside a held DB lock.
      *
      * Skips an account when Stripe cancel fails so we never drop the local row
      * while billing continues remotely.
@@ -23,9 +23,7 @@ class DeleteEmptyOwnedAccounts
         ?string $onlyAccountId = null,
         ?string $exceptAccountId = null,
     ): array {
-        $deleted = [];
-
-        Account::query()
+        $ids = Account::query()
             ->where('owner_id', $user->id)
             ->when(
                 $onlyAccountId,
@@ -36,19 +34,42 @@ class DeleteEmptyOwnedAccounts
                 fn ($query) => $query->where('id', '!=', $exceptAccountId),
             )
             ->whereDoesntHave('workspaces')
-            ->get()
-            ->each(function (Account $orphan) use ($user, &$deleted): void {
-                if (! CancelAccountSubscription::execute($orphan)) {
-                    return;
-                }
+            ->pluck('id')
+            ->all();
 
-                if ($user->account_id === $orphan->id) {
-                    $user->update(['account_id' => null]);
-                }
+        return self::executeByIds($ids, $user);
+    }
 
-                $orphan->delete();
-                $deleted[] = $orphan->id;
-            });
+    /**
+     * Cancel Stripe then delete the given empty accounts (by id).
+     * Safe to call after a lock is released — including after the owner user
+     * row was deleted (owner_id may already be null via FK).
+     *
+     * @param  list<string>  $accountIds
+     * @return list<string> IDs of accounts that were deleted
+     */
+    public static function executeByIds(array $accountIds, ?User $user = null): array
+    {
+        $deleted = [];
+
+        foreach ($accountIds as $accountId) {
+            $orphan = Account::query()->find($accountId);
+
+            if (! $orphan || $orphan->workspaces()->exists()) {
+                continue;
+            }
+
+            if (! CancelAccountSubscription::execute($orphan)) {
+                continue;
+            }
+
+            if ($user && $user->account_id === $orphan->id) {
+                $user->update(['account_id' => null]);
+            }
+
+            $orphan->delete();
+            $deleted[] = $orphan->id;
+        }
 
         return $deleted;
     }

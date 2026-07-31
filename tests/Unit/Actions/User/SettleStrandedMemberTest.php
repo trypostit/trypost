@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Actions\Account\DeleteEmptyOwnedAccounts;
 use App\Actions\Media\DeleteOrphanedMediaFiles;
-use App\Actions\User\DeleteOrRestoreStrandedMember;
+use App\Actions\User\SettleStrandedMember;
 use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\Account;
@@ -14,10 +15,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 test('no-ops when the user still has a membership on the leaving account', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $personalAccountId = $member->account_id;
-    $member->update(['account_id' => $owner->account_id]);
+    ['owner' => $owner, 'member' => $member, 'personal_account_id' => $personalAccountId] = strandedMemberOnSharedAccount();
 
     $workspace = Workspace::factory()->create([
         'account_id' => $owner->account_id,
@@ -25,7 +23,7 @@ test('no-ops when the user still has a membership on the leaving account', funct
     ]);
     $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
 
-    DeleteOrRestoreStrandedMember::execute($member->fresh(), $owner->account);
+    SettleStrandedMember::execute($member->fresh(), $owner->account);
 
     expect(User::find($member->id))->not->toBeNull();
     expect($member->fresh()->account_id)->toBe($owner->account_id);
@@ -35,58 +33,46 @@ test('no-ops when the user still has a membership on the leaving account', funct
 test('no-ops for the account owner', function () {
     $owner = User::factory()->create();
 
-    DeleteOrRestoreStrandedMember::execute($owner->fresh(), $owner->account);
+    SettleStrandedMember::execute($owner->fresh(), $owner->account);
 
     expect(User::find($owner->id))->not->toBeNull();
     expect(Account::find($owner->account_id))->not->toBeNull();
 });
 
-test('deletes a stranded invitee and their empty personal account', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $personalAccountId = $member->account_id;
-    $member->update(['account_id' => $owner->account_id]);
+test('deletes a stranded invitee and queues empty personal account for flush', function () {
+    ['owner' => $owner, 'member' => $member, 'personal_account_id' => $personalAccountId] = strandedMemberOnSharedAccount();
 
-    DeleteOrRestoreStrandedMember::execute($member->fresh(), $owner->account);
+    $settled = SettleStrandedMember::execute($member->fresh(), $owner->account);
 
     expect(User::find($member->id))->toBeNull();
+    expect($settled['empty_account_ids'])->toContain($personalAccountId);
+    expect(Account::find($personalAccountId))->not->toBeNull();
+
+    DeleteEmptyOwnedAccounts::executeByIds($settled['empty_account_ids']);
+
     expect(Account::find($personalAccountId))->toBeNull();
 });
 
 test('restores a personal account that still has a workspace', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $personalAccountId = $member->account_id;
+    ['owner' => $owner, 'member' => $member, 'personal_account_id' => $personalAccountId, 'personal_workspace' => $personalWorkspace] = strandedMemberOnSharedAccount(withPersonalWorkspace: true);
 
-    $personalWorkspace = Workspace::factory()->create([
-        'account_id' => $personalAccountId,
-        'user_id' => $member->id,
-    ]);
-    $personalWorkspace->members()->attach($member->id, ['role' => Role::Admin->value]);
-
-    $member->update([
-        'account_id' => $owner->account_id,
-        'current_workspace_id' => null,
-    ]);
-
-    DeleteOrRestoreStrandedMember::execute($member->fresh(), $owner->account);
+    $settled = SettleStrandedMember::execute($member->fresh(), $owner->account);
 
     $member->refresh();
 
     expect($member->account_id)->toBe($personalAccountId);
     expect($member->current_workspace_id)->toBe($personalWorkspace->id);
     expect($member->isAccountOwner())->toBeTrue();
+    expect($settled['empty_account_ids'])->toBeEmpty();
 });
 
 test('deletes stranded invitee and revokes their passport tokens', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $member->update(['account_id' => $owner->account_id]);
+    ['owner' => $owner, 'member' => $member] = strandedMemberOnSharedAccount();
 
     $token = $member->createToken('API Key')->token;
     expect($token->revoked)->toBeFalse();
 
-    DeleteOrRestoreStrandedMember::execute($member->fresh(), $owner->account);
+    SettleStrandedMember::execute($member->fresh(), $owner->account);
 
     expect(User::find($member->id))->toBeNull();
     expect(AccessToken::find($token->id)->revoked)->toBeTrue();
@@ -95,9 +81,7 @@ test('deletes stranded invitee and revokes their passport tokens', function () {
 test('deletes stranded invitee avatar media files from storage', function () {
     Storage::fake();
 
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $member->update(['account_id' => $owner->account_id]);
+    ['owner' => $owner, 'member' => $member] = strandedMemberOnSharedAccount();
 
     $avatar = $member->addMedia(
         UploadedFile::fake()->image('avatar.jpg', 200, 200),
@@ -106,8 +90,9 @@ test('deletes stranded invitee avatar media files from storage', function () {
     $avatarPath = $avatar->path;
     Storage::assertExists($avatarPath);
 
-    $mediaPaths = DeleteOrRestoreStrandedMember::execute($member->fresh(), $owner->account);
-    DeleteOrphanedMediaFiles::execute($mediaPaths);
+    $settled = SettleStrandedMember::execute($member->fresh(), $owner->account);
+    DeleteEmptyOwnedAccounts::executeByIds($settled['empty_account_ids']);
+    DeleteOrphanedMediaFiles::execute($settled['media_paths']);
 
     expect(User::find($member->id))->toBeNull();
     expect(Media::find($avatar->id))->toBeNull();
@@ -115,22 +100,9 @@ test('deletes stranded invitee avatar media files from storage', function () {
 });
 
 test('forceDelete removes a member who still owns a personal workspace', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $personalAccountId = $member->account_id;
+    ['owner' => $owner, 'member' => $member, 'personal_account_id' => $personalAccountId, 'personal_workspace' => $personalWorkspace] = strandedMemberOnSharedAccount(withPersonalWorkspace: true);
 
-    $personalWorkspace = Workspace::factory()->create([
-        'account_id' => $personalAccountId,
-        'user_id' => $member->id,
-    ]);
-    $personalWorkspace->members()->attach($member->id, ['role' => Role::Admin->value]);
-
-    $member->update([
-        'account_id' => $owner->account_id,
-        'current_workspace_id' => null,
-    ]);
-
-    DeleteOrRestoreStrandedMember::forceDelete($member->fresh(), $owner->account);
+    SettleStrandedMember::forceDelete($member->fresh(), $owner->account);
 
     expect(User::find($member->id))->toBeNull();
     expect(Account::find($personalAccountId))->toBeNull();
@@ -152,10 +124,11 @@ test('strandedWithoutMemberships only processes users without remaining account 
     ]);
     $workspace->members()->attach($stillMember->id, ['role' => Role::Member->value]);
 
-    DeleteOrRestoreStrandedMember::strandedWithoutMemberships(
+    $settled = SettleStrandedMember::strandedWithoutMemberships(
         $owner->account,
         exceptUserId: $owner->id,
     );
+    DeleteEmptyOwnedAccounts::executeByIds($settled['empty_account_ids']);
 
     expect(User::find($stranded->id))->toBeNull();
     expect(Account::find($strandedPersonalId))->toBeNull();
