@@ -38,7 +38,6 @@ class UpdatePostTool extends Tool
         }
 
         $status = data_get($request->all(), 'status');
-        $status = is_string($status) ? $status : null;
 
         $validated = $request->validate([
             'post_id' => ['required', 'uuid'],

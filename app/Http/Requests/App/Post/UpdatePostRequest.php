@@ -27,7 +27,6 @@ class UpdatePostRequest extends FormRequest
     public function rules(): array
     {
         $status = $this->input('status');
-        $status = is_string($status) ? $status : null;
 
         $enforcesMediaCompatibility = in_array(
             $status,

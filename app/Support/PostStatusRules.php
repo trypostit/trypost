@@ -57,7 +57,7 @@ class PostStatusRules
     /**
      * True when status is scheduled and the post has no future schedule to reuse.
      */
-    public static function requiresExplicitSchedule(?Post $post, ?string $status): bool
+    public static function requiresExplicitSchedule(?Post $post, mixed $status): bool
     {
         if ($status !== PostStatus::Scheduled->value) {
             return false;
@@ -73,7 +73,7 @@ class PostStatusRules
      *
      * @return list<mixed>
      */
-    public static function scheduledAtRules(?Post $post, ?string $status): array
+    public static function scheduledAtRules(?Post $post, mixed $status): array
     {
         return [
             Rule::requiredIf(fn (): bool => self::requiresExplicitSchedule($post, $status)),
