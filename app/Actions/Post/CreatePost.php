@@ -102,10 +102,12 @@ class CreatePost
             return Carbon::parse($scheduledAt)->utc();
         }
 
-        if (blank(data_get($data, 'date'))) {
+        $date = data_get($data, 'date');
+
+        if (blank($date)) {
             return null;
         }
 
-        return Carbon::parse(data_get($data, 'date'), 'UTC')->setTime(9, 0)->utc();
+        return Carbon::parse($date, 'UTC')->setTime(9, 0)->utc();
     }
 }

@@ -360,16 +360,25 @@ test('create post returns the platform meta in the response (read-back)', functi
         ->assertStructuredContent(fn (AssertableJson $json) => $json->where('platforms.0.meta.aspect_ratio', '4:5')->etc());
 });
 
-test('update post rejects scheduled status without scheduled_at', function () {
+test('update post rejects scheduled status without a future scheduled_at', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
+        'scheduled_at' => now()->subDay(),
     ]);
 
     TryPostServer::actingAs($this->user)
         ->tool(UpdatePostTool::class, [
             'post_id' => $post->id,
             'status' => 'scheduled',
+        ])
+        ->assertHasErrors();
+
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'status' => 'scheduled',
+            'scheduled_at' => now()->subHour()->toIso8601String(),
         ])
         ->assertHasErrors();
 

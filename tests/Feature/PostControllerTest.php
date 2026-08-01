@@ -606,12 +606,12 @@ test('publish now updates scheduled_at to current time', function () {
     expect($post->scheduled_at->toDateTimeString())->toBe(now()->toDateTimeString());
 });
 
-test('update rejects scheduled status without scheduled_at when post has none', function () {
+test('update rejects scheduled status without a future scheduled_at', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-        'scheduled_at' => null,
+        'scheduled_at' => now()->subDay(),
         'content' => 'Test content',
     ]);
 
@@ -620,7 +620,7 @@ test('update rejects scheduled status without scheduled_at when post has none', 
         'social_account_id' => $this->socialAccount->id,
     ]);
 
-    $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+    $payload = [
         'status' => 'scheduled',
         'content' => 'Test content',
         'platforms' => [
@@ -629,7 +629,18 @@ test('update rejects scheduled status without scheduled_at when post has none', 
                 'content_type' => ContentType::LinkedInPost->value,
             ],
         ],
-    ])->assertSessionHasErrors('scheduled_at');
+    ];
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $post), $payload)
+        ->assertSessionHasErrors('scheduled_at');
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $post), [
+            ...$payload,
+            'scheduled_at' => now()->subHour()->toIso8601String(),
+        ])
+        ->assertSessionHasErrors('scheduled_at');
 
     expect($post->fresh()->status)->toBe(PostStatus::Draft);
 });

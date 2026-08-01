@@ -26,7 +26,7 @@ class UpdatePostRequest extends FormRequest
 
     public function rules(): array
     {
-        $status = $this->status();
+        $status = PostStatusRules::normalizeStatus($this->input('status'));
 
         $enforcesMediaCompatibility = in_array(
             $status,
@@ -46,18 +46,7 @@ class UpdatePostRequest extends FormRequest
                 ),
             ],
             ...PostMediaRules::rules(hosted: true),
-            'scheduled_at' => [
-                Rule::requiredIf(fn (): bool => PostStatusRules::requiresExplicitSchedule(
-                    $this->route('post'),
-                    $status,
-                )),
-                'nullable',
-                'date',
-                Rule::when(
-                    $status === Status::Scheduled->value,
-                    ['after:now']
-                ),
-            ],
+            'scheduled_at' => PostStatusRules::scheduledAtRules($this->route('post'), $status),
             'platforms' => ['sometimes', 'array'],
             'platforms.*.id' => ['required', 'uuid', Rule::exists('post_platforms', 'id')->where('post_id', $this->route('post')->id)],
             'platforms.*.content_type' => [
@@ -74,7 +63,7 @@ class UpdatePostRequest extends FormRequest
 
     public function withValidator(Validator $validator): void
     {
-        $validator->after(function ($validator): void {
+        $validator->after(function (Validator $validator): void {
             if (! $this->isPublishingOrScheduling()) {
                 return;
             }
@@ -98,17 +87,10 @@ class UpdatePostRequest extends FormRequest
     private function isPublishingOrScheduling(): bool
     {
         return in_array(
-            $this->status(),
+            PostStatusRules::normalizeStatus($this->input('status')),
             [Status::Scheduled->value, Status::Publishing->value],
             true,
         );
-    }
-
-    private function status(): ?string
-    {
-        $status = $this->input('status');
-
-        return is_string($status) ? $status : null;
     }
 
     /**

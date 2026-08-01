@@ -37,21 +37,12 @@ class UpdatePostTool extends Tool
             return Response::error('Post not found.');
         }
 
-        $status = data_get($request->all(), 'status');
-        $status = is_string($status) ? $status : null;
+        $status = PostStatusRules::normalizeStatus(data_get($request->all(), 'status'));
 
         $validated = $request->validate([
             'post_id' => ['required', 'uuid'],
             'content' => ['nullable', 'string', 'max:10000'],
-            'scheduled_at' => [
-                Rule::requiredIf(fn (): bool => PostStatusRules::requiresExplicitSchedule($post, $status)),
-                'nullable',
-                'date',
-                Rule::when(
-                    $status === Status::Scheduled->value,
-                    ['after:now'],
-                ),
-            ],
+            'scheduled_at' => PostStatusRules::scheduledAtRules($post, $status),
             'status' => ['sometimes', 'string', Rule::in([Status::Draft->value, Status::Scheduled->value])],
             'label_ids' => ['sometimes', 'array'],
             'label_ids.*' => ['uuid', Rule::exists('workspace_labels', 'id')->where('workspace_id', $workspace->id)],
