@@ -61,9 +61,10 @@ class DeleteWorkspace
 
             if ($account) {
                 $settlement = $settlement->merge(
-                    SettleStrandedMember::strandedWithoutMemberships(
+                    SettleStrandedMember::forAccountMembers(
                         $account,
                         exceptUserId: $account->owner_id,
+                        onlyWithoutMemberships: true,
                     ),
                 );
             }

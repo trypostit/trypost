@@ -291,6 +291,12 @@ return [
             'viewer' => 'Betrachter',
         ],
 
+        'errors' => [
+            'invite_exists' => 'Für diese E-Mail existiert bereits eine Einladung.',
+            'already_member' => 'Dieser Benutzer ist bereits Mitglied des Arbeitsbereichs.',
+            'email_belongs_to_account' => 'Diese E-Mail gehört bereits zu einem anderen TryPost-Konto. Bitte eine dedizierte Arbeits-E-Mail verwenden.',
+        ],
+
         'flash' => [
             'invite_sent' => 'Einladung erfolgreich gesendet!',
             'invite_deleted' => 'Einladung gelöscht.',

@@ -167,13 +167,10 @@ function subscribeAccount(Account $account): void
  * @return array{
  *     owner: User,
  *     member: User,
- *     personal_account_id: string,
- *     personal_workspace: ?Workspace,
  *     shared_workspaces: list<Workspace>
  * }
  */
 function strandedMemberOnSharedAccount(
-    bool $withPersonalWorkspace = false,
     int $sharedWorkspaces = 0,
     bool $attachMember = true,
     bool $attachMemberToAll = true,
@@ -186,18 +183,6 @@ function strandedMemberOnSharedAccount(
     $member = User::factory()->create(array_filter([
         'email' => $memberEmail,
     ]));
-    $personalAccountId = $member->account_id;
-    $personalWorkspace = null;
-
-    if ($withPersonalWorkspace) {
-        $personalWorkspace = Workspace::factory()->create([
-            'account_id' => $personalAccountId,
-            'user_id' => $member->id,
-        ]);
-        $personalWorkspace->members()->attach($member->id, [
-            'role' => Role::Admin->value,
-        ]);
-    }
 
     $shared = [];
 
@@ -232,8 +217,6 @@ function strandedMemberOnSharedAccount(
     return [
         'owner' => $owner->fresh(),
         'member' => $member->fresh(),
-        'personal_account_id' => $personalAccountId,
-        'personal_workspace' => $personalWorkspace,
         'shared_workspaces' => $shared,
     ];
 }

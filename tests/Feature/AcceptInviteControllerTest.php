@@ -159,60 +159,6 @@ test('accept invite adds user to account and workspaces', function () {
     expect($invite->accepted_at)->not->toBeNull();
 });
 
-test('accept invite abandons a personal account that still has a workspace', function () {
-    $user = User::factory()->create([
-        'email' => 'invitee@example.com',
-    ]);
-    $personalAccountId = $user->account_id;
-    $personalWorkspace = Workspace::factory()->create([
-        'account_id' => $personalAccountId,
-        'user_id' => $user->id,
-    ]);
-    $personalWorkspace->members()->attach($user->id, ['role' => Role::Admin->value]);
-
-    $invite = Invite::factory()->create([
-        'account_id' => $this->account->id,
-        'invited_by' => $this->owner->id,
-        'email' => 'invitee@example.com',
-        'workspaces' => [$this->workspace->id],
-    ]);
-
-    $this->actingAs($user)->post(route('app.invites.accept', $invite));
-
-    $user->refresh();
-    expect($user->account_id)->toBe($this->account->id);
-    expect(Account::find($personalAccountId))->toBeNull();
-    expect(Workspace::find($personalWorkspace->id))->toBeNull();
-});
-
-test('accept invite switches current workspace off a personal workspace when joining another account', function () {
-    $user = User::factory()->create([
-        'email' => 'invitee@example.com',
-    ]);
-    $personalWorkspace = Workspace::factory()->create([
-        'account_id' => $user->account_id,
-        'user_id' => $user->id,
-    ]);
-    $personalWorkspace->members()->attach($user->id, ['role' => Role::Admin->value]);
-    $user->update(['current_workspace_id' => $personalWorkspace->id]);
-
-    $invite = Invite::factory()->create([
-        'account_id' => $this->account->id,
-        'invited_by' => $this->owner->id,
-        'email' => 'invitee@example.com',
-        'workspaces' => [$this->workspace->id],
-    ]);
-
-    $response = $this->actingAs($user)->post(route('app.invites.accept', $invite));
-
-    $response->assertRedirect(route('app.calendar'));
-
-    $user->refresh();
-    expect($user->account_id)->toBe($this->account->id);
-    expect($user->current_workspace_id)->toBe($this->workspace->id);
-    expect($this->workspace->members()->where('user_id', $user->id)->exists())->toBeTrue();
-});
-
 test('accept invite assigns the exact role from the invite', function (Role $role) {
     $user = User::factory()->create([
         'email' => 'invitee@example.com',
@@ -363,10 +309,9 @@ test('accepting an already accepted invite does not claim the workspace was dele
     $response->assertSessionHas('flash.bannerStyle', 'info');
 });
 
-test('invite redirect deletes a stranded non-owner with no personal workspace', function () {
+test('invite redirect deletes a stranded non-owner', function () {
     [
         'member' => $member,
-        'personal_account_id' => $personalAccountId,
     ] = strandedMemberOnSharedAccount(
         owner: $this->owner,
         memberEmail: 'invitee@example.com',
@@ -387,13 +332,11 @@ test('invite redirect deletes a stranded non-owner with no personal workspace', 
     $response->assertSessionHas('flash.banner', __('settings.members.flash.invite_workspace_gone'));
 
     expect(User::find($member->id))->toBeNull();
-    expect(Account::find($personalAccountId))->toBeNull();
 });
 
 test('decline of a dead invite deletes a stranded non-owner', function () {
     [
         'member' => $member,
-        'personal_account_id' => $personalAccountId,
     ] = strandedMemberOnSharedAccount(
         owner: $this->owner,
         memberEmail: 'invitee@example.com',
@@ -415,37 +358,6 @@ test('decline of a dead invite deletes a stranded non-owner', function () {
 
     expect(Invite::find($invite->id))->toBeNull();
     expect(User::find($member->id))->toBeNull();
-    expect(Account::find($personalAccountId))->toBeNull();
-});
-
-test('invite redirect deletes stranded non-owner even when a personal workspace remains', function () {
-    [
-        'member' => $member,
-        'personal_account_id' => $personalAccountId,
-        'personal_workspace' => $personalWorkspace,
-    ] = strandedMemberOnSharedAccount(
-        withPersonalWorkspace: true,
-        owner: $this->owner,
-        memberEmail: 'invitee@example.com',
-    );
-
-    $invite = Invite::factory()->create([
-        'account_id' => $this->account->id,
-        'invited_by' => $this->owner->id,
-        'email' => 'invitee@example.com',
-        'workspaces' => [$this->workspace->id],
-    ]);
-
-    $this->workspace->delete();
-
-    $response = $this->actingAs($member)->post(route('app.invites.accept', $invite));
-
-    $response->assertRedirect(route('login'));
-    $response->assertSessionHas('flash.banner', __('settings.members.flash.invite_workspace_gone'));
-
-    expect(User::find($member->id))->toBeNull();
-    expect(Account::find($personalAccountId))->toBeNull();
-    expect(Workspace::find($personalWorkspace->id))->toBeNull();
 });
 
 test('decline invite requires authentication', function () {

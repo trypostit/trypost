@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Invite;
 
-use App\Actions\Account\DeleteOwnedAccount;
-use App\Actions\Media\DeleteOrphanedMediaFiles;
+use App\Actions\Account\CancelAccountSubscription;
 use App\Enums\Invite\Result;
+use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -64,13 +64,18 @@ class AcceptInvite
             return Result::Accepted;
         });
 
-        // Leaving a personal account (empty invite shell, or any leftover):
-        // abandon it after commit so Stripe cancel is not held inside the lock.
+        // Invite signup leaves an empty personal account shell. Drop it after
+        // commit so Stripe cancel is not held inside the invite lock. Members
+        // never own a non-empty account, so there is nothing else to tear down.
         if ($result === Result::Accepted && $previousAccountId) {
-            $mediaPaths = DeleteOwnedAccount::execute($user, $previousAccountId);
+            $shell = Account::query()
+                ->whereKey($previousAccountId)
+                ->where('owner_id', $user->id)
+                ->whereDoesntHave('workspaces')
+                ->first();
 
-            if ($mediaPaths !== null) {
-                DeleteOrphanedMediaFiles::execute($mediaPaths);
+            if ($shell && CancelAccountSubscription::execute($shell)) {
+                $shell->delete();
             }
         }
 

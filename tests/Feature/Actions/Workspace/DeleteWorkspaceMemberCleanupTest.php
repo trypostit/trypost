@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Actions\Workspace\DeleteWorkspace;
 use App\Enums\UserWorkspace\Role;
-use App\Models\Account;
 use App\Models\Invite;
 use App\Models\Media;
 use App\Models\User;
@@ -12,10 +11,9 @@ use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
-test('delete workspace deletes stranded members and empty personal accounts', function () {
+test('delete workspace deletes stranded members', function () {
     [
         'member' => $member,
-        'personal_account_id' => $personalAccountId,
         'shared_workspaces' => [$workspace],
     ] = strandedMemberOnSharedAccount(
         sharedWorkspaces: 2,
@@ -26,7 +24,6 @@ test('delete workspace deletes stranded members and empty personal accounts', fu
     DeleteWorkspace::execute($workspace);
 
     expect(User::find($member->id))->toBeNull();
-    expect(Account::find($personalAccountId))->toBeNull();
 });
 
 test('delete workspace does not delete members who still have another workspace on the account', function () {
@@ -45,26 +42,6 @@ test('delete workspace does not delete members who still have another workspace 
 
     expect($member->account_id)->toBe($owner->account_id);
     expect($member->current_workspace_id)->toBe($second->id);
-});
-
-test('delete workspace deletes stranded members who still own a personal workspace', function () {
-    [
-        'member' => $member,
-        'personal_account_id' => $personalAccountId,
-        'personal_workspace' => $personalWorkspace,
-        'shared_workspaces' => [$sharedWorkspace],
-    ] = strandedMemberOnSharedAccount(
-        withPersonalWorkspace: true,
-        sharedWorkspaces: 2,
-        attachMemberToAll: false,
-        setMemberCurrent: true,
-    );
-
-    DeleteWorkspace::execute($sharedWorkspace);
-
-    expect(User::find($member->id))->toBeNull();
-    expect(Account::find($personalAccountId))->toBeNull();
-    expect($personalWorkspace->fresh())->toBeNull();
 });
 
 test('delete workspace falls back to an account workspace the owner is not pivoted into', function () {

@@ -10,6 +10,7 @@ use App\Actions\Invite\RemoveMember;
 use App\Enums\UserWorkspace\Role as WorkspaceRole;
 use App\Http\Requests\App\Invite\StoreWorkspaceInviteRequest;
 use App\Models\Invite;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -70,13 +71,16 @@ class WorkspaceInviteController extends Controller
 
         if ($existingInvite) {
             return back()->withErrors([
-                'email' => 'An invite already exists for this email.',
+                'email' => __('settings.members.errors.invite_exists'),
             ]);
         }
 
-        if ($workspace->members()->where('email', $request->email)->exists()) {
+        // Accounts are closed: a user always belongs to exactly one account.
+        // Block invites to an email already registered, or two accounts would
+        // hold the same person. Employees use a dedicated work email instead.
+        if (User::query()->where('email', $request->email)->exists()) {
             return back()->withErrors([
-                'email' => 'This user is already a member of the workspace.',
+                'email' => __('settings.members.errors.email_belongs_to_account'),
             ]);
         }
 

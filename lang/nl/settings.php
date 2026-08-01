@@ -289,6 +289,12 @@ return [
             'viewer' => 'Kijker',
         ],
 
+        'errors' => [
+            'invite_exists' => 'Er bestaat al een uitnodiging voor dit e-mailadres.',
+            'already_member' => 'Deze gebruiker is al lid van de werkruimte.',
+            'email_belongs_to_account' => 'Dit e-mailadres behoort al tot een ander TryPost-account. Vraag om een speciaal werk-e-mailadres.',
+        ],
+
         'flash' => [
             'invite_sent' => 'Uitnodiging succesvol verstuurd!',
             'invite_deleted' => 'Uitnodiging verwijderd.',

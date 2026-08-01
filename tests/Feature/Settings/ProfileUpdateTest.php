@@ -140,7 +140,6 @@ test('deleting account deletes members who belong to the shared account', functi
     [
         'owner' => $owner,
         'member' => $member,
-        'personal_account_id' => $personalAccountId,
         'shared_workspaces' => [$workspace],
     ] = strandedMemberOnSharedAccount(
         sharedWorkspaces: 1,
@@ -155,32 +154,7 @@ test('deleting account deletes members who belong to the shared account', functi
         ]);
 
     expect(User::find($member->id))->toBeNull();
-    expect(Account::find($personalAccountId))->toBeNull();
     expect(AccessToken::find($memberToken->id)->revoked)->toBeTrue();
-});
-
-test('deleting account deletes member who still owns a personal workspace', function () {
-    [
-        'owner' => $owner,
-        'member' => $member,
-        'personal_account_id' => $personalAccountId,
-        'personal_workspace' => $personalWorkspace,
-        'shared_workspaces' => [$workspaceToDelete],
-    ] = strandedMemberOnSharedAccount(
-        withPersonalWorkspace: true,
-        sharedWorkspaces: 1,
-        setMemberCurrent: true,
-    );
-
-    $this
-        ->actingAs($owner)
-        ->delete(route('app.profile.destroy'), [
-            'password' => 'password',
-        ]);
-
-    expect(User::find($member->id))->toBeNull();
-    expect(Account::find($personalAccountId))->toBeNull();
-    expect(Workspace::find($personalWorkspace->id))->toBeNull();
 });
 
 test('user can upload profile photo', function () {
@@ -321,7 +295,6 @@ test('owner deleting profile deletes remaining members of the account', function
     [
         'owner' => $owner,
         'member' => $member,
-        'personal_account_id' => $personalAccountId,
         'shared_workspaces' => [$workspace],
     ] = strandedMemberOnSharedAccount(
         sharedWorkspaces: 1,
@@ -335,7 +308,6 @@ test('owner deleting profile deletes remaining members of the account', function
 
     expect(Account::find($accountId))->toBeNull();
     expect(User::find($member->id))->toBeNull();
-    expect(Account::find($personalAccountId))->toBeNull();
 });
 
 test('owner deleting profile destroys the account and cascades', function (bool $selfHosted) {

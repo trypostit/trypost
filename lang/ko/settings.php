@@ -289,6 +289,12 @@ return [
             'viewer' => '뷰어',
         ],
 
+        'errors' => [
+            'invite_exists' => '이 이메일에 대한 초대가 이미 존재합니다.',
+            'already_member' => '이 사용자는 이미 워크스페이스의 멤버입니다.',
+            'email_belongs_to_account' => '이 이메일은 이미 다른 TryPost 계정에 속해 있습니다. 전용 업무용 이메일을 사용해 주세요.',
+        ],
+
         'flash' => [
             'invite_sent' => '초대가 성공적으로 전송되었습니다!',
             'invite_deleted' => '초대가 삭제되었습니다.',

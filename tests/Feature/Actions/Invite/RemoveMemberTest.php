@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Actions\Invite\RemoveMember;
-use App\Models\Account;
 use App\Models\User;
 
 test('remove member clears current workspace when it was the removed membership', function () {
@@ -28,7 +27,6 @@ test('remove member clears current workspace when it was the removed membership'
 test('remove member deletes a user who loses their last account workspace', function () {
     [
         'member' => $member,
-        'personal_account_id' => $personalAccountId,
         'shared_workspaces' => [$workspace],
     ] = strandedMemberOnSharedAccount(
         sharedWorkspaces: 1,
@@ -39,16 +37,14 @@ test('remove member deletes a user who loses their last account workspace', func
 
     expect($workspace->members()->where('user_id', $member->id)->exists())->toBeFalse();
     expect(User::find($member->id))->toBeNull();
-    expect(Account::find($personalAccountId))->toBeNull();
 });
 
-test('remove member prefers a same-account workspace over a personal membership', function () {
+test('remove member prefers another workspace on the same account', function () {
     [
         'owner' => $owner,
         'member' => $member,
         'shared_workspaces' => [$sharedA, $sharedB],
     ] = strandedMemberOnSharedAccount(
-        withPersonalWorkspace: true,
         sharedWorkspaces: 2,
         setMemberCurrent: true,
     );
@@ -59,23 +55,4 @@ test('remove member prefers a same-account workspace over a personal membership'
 
     expect($member->account_id)->toBe($owner->account_id);
     expect($member->current_workspace_id)->toBe($sharedB->id);
-});
-
-test('remove member deletes a stranded invitee who still owns a personal workspace', function () {
-    [
-        'member' => $member,
-        'personal_account_id' => $personalAccountId,
-        'personal_workspace' => $personalWorkspace,
-        'shared_workspaces' => [$shared],
-    ] = strandedMemberOnSharedAccount(
-        withPersonalWorkspace: true,
-        sharedWorkspaces: 1,
-        setMemberCurrent: true,
-    );
-
-    RemoveMember::execute($shared, $member->id);
-
-    expect(User::find($member->id))->toBeNull();
-    expect(Account::find($personalAccountId))->toBeNull();
-    expect($personalWorkspace->fresh())->toBeNull();
 });

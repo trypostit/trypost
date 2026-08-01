@@ -11,7 +11,8 @@ use Throwable;
 class CancelAccountSubscription
 {
     /**
-     * Cancel any non-ended named Stripe subscription before local teardown.
+     * Cancel the non-ended named Stripe subscription for an account before
+     * local teardown.
      *
      * @return bool false when Stripe cancel fails (nothing local should be deleted)
      */

@@ -289,6 +289,12 @@ return [
             'viewer' => 'Visualizzatore',
         ],
 
+        'errors' => [
+            'invite_exists' => 'Esiste già un invito per questa email.',
+            'already_member' => 'Questo utente è già membro dello spazio di lavoro.',
+            'email_belongs_to_account' => 'Questa email appartiene già a un altro account TryPost. Chiedi un’email di lavoro dedicata.',
+        ],
+
         'flash' => [
             'invite_sent' => 'Invito inviato con successo!',
             'invite_deleted' => 'Invito eliminato.',

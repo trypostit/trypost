@@ -6,9 +6,12 @@ namespace App\Actions\Invite;
 
 use App\Actions\Auth\LogoutAndInvalidateSession;
 use App\Actions\User\SettleStrandedMember;
+use App\Actions\User\StrandedSettlement;
+use App\Models\Account;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class SettleAfterInvite
 {
@@ -48,17 +51,26 @@ class SettleAfterInvite
                 ]);
             }
 
-            $stranded = User::query()->find($userId);
+            $settlement = StrandedSettlement::none();
 
-            if ($stranded) {
-                SettleStrandedMember::execute($stranded, $leavingAccount)->flush();
-            }
+            DB::transaction(function () use ($leavingAccount, $userId, &$settlement): void {
+                // Serialize with workspace/member deletes on this account.
+                Account::query()->whereKey($leavingAccount->id)->lockForUpdate()->first();
 
-            $user = User::query()->find($userId);
+                $stranded = User::query()->find($userId);
 
-            if (! $user) {
+                if ($stranded) {
+                    $settlement = SettleStrandedMember::execute($stranded, $leavingAccount);
+                }
+            });
+
+            $settlement->flush();
+
+            if (! User::query()->whereKey($userId)->exists()) {
                 return redirect()->route('login');
             }
+
+            $user->refresh();
         }
 
         $fallback = $user->workspaces()
