@@ -360,11 +360,11 @@ test('create post returns the platform meta in the response (read-back)', functi
         ->assertStructuredContent(fn (AssertableJson $json) => $json->where('platforms.0.meta.aspect_ratio', '4:5')->etc());
 });
 
-test('update post rejects scheduled status without a future scheduled_at', function () {
+test('update post rejects scheduled status without a future scheduled_at', function (?string $existingScheduledAt) {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'scheduled_at' => now()->subDay(),
+        'scheduled_at' => $existingScheduledAt,
     ]);
 
     TryPostServer::actingAs($this->user)
@@ -383,7 +383,10 @@ test('update post rejects scheduled status without a future scheduled_at', funct
         ->assertHasErrors();
 
     expect($post->fresh()->status->value)->toBe('draft');
-});
+})->with([
+    'missing schedule' => [null],
+    'past schedule' => [now()->subDay()->toDateTimeString()],
+]);
 
 test('update post accepts scheduled status reusing an existing future scheduled_at', function () {
     $scheduledAt = now()->addDay()->startOfSecond();
@@ -404,6 +407,52 @@ test('update post accepts scheduled status reusing an existing future scheduled_
             ->etc());
 
     expect($post->fresh()->scheduled_at->toDateTimeString())->toBe($scheduledAt->toDateTimeString());
+});
+
+test('update post schedules an unscheduled draft with an explicit future scheduled_at', function () {
+    $scheduledAt = now()->addDay()->startOfSecond();
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'scheduled_at' => null,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'status' => 'scheduled',
+            'scheduled_at' => $scheduledAt->toIso8601String(),
+        ])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json
+            ->where('status', 'scheduled')
+            ->etc());
+
+    expect($post->fresh()->scheduled_at->toDateTimeString())->toBe($scheduledAt->toDateTimeString());
+});
+
+test('update post keeps an unscheduled draft when saving as draft without scheduled_at', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'scheduled_at' => null,
+        'content' => 'Original',
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'status' => 'draft',
+            'content' => 'Still a draft',
+        ])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json
+            ->where('status', 'draft')
+            ->where('scheduled_at', null)
+            ->etc());
+
+    expect($post->fresh()->scheduled_at)->toBeNull()
+        ->and($post->fresh()->content)->toBe('Still a draft');
 });
 
 test('update post accepts a valid aspect_ratio and persists it', function () {

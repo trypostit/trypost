@@ -148,7 +148,7 @@ test('apply schedules the post on the date param when provided', function () {
         ->assertOk();
 
     $post = $this->workspace->posts()->latest()->first();
-    expect($post->scheduled_at->format('Y-m-d'))->toBe('2026-06-15');
+    expect($post->scheduled_at->utc()->format('Y-m-d H:i:s'))->toBe('2026-06-15 09:00:00');
 });
 
 test('apply rejects invalid date format', function () {
