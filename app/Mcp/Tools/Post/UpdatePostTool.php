@@ -41,10 +41,16 @@ class UpdatePostTool extends Tool
             'post_id' => ['required', 'uuid'],
             'content' => ['nullable', 'string', 'max:10000'],
             'scheduled_at' => [
-                Rule::requiredIf(data_get($request->all(), 'status') === Status::Scheduled->value),
+                Rule::requiredIf(fn (): bool => PostStatusRules::requiresExplicitSchedule(
+                    $post,
+                    data_get($request->all(), 'status'),
+                )),
                 'nullable',
                 'date',
-                'after:now',
+                Rule::when(
+                    data_get($request->all(), 'status') === Status::Scheduled->value,
+                    ['after:now'],
+                ),
             ],
             'status' => ['sometimes', 'string', Rule::in([Status::Draft->value, Status::Scheduled->value])],
             'label_ids' => ['sometimes', 'array'],
@@ -99,7 +105,7 @@ class UpdatePostTool extends Tool
         return [
             'post_id' => $schema->string()->required()->description('UUID of the post to update.'),
             'content' => $schema->string()->description('New caption/text body.'),
-            'scheduled_at' => $schema->string()->description('ISO 8601 datetime in the future. Required if status is "scheduled".'),
+            'scheduled_at' => $schema->string()->description('Future ISO 8601 datetime. Required for status "scheduled" unless the post already has a future schedule.'),
             'status' => $schema->string()
                 ->enum([Status::Draft->value, Status::Scheduled->value])
                 ->description('Post status. Use "draft" to keep editing, "scheduled" to schedule the post. Use publish-post-tool for immediate publish.'),

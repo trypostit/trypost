@@ -71,7 +71,8 @@ it('creates a post', function () {
             ],
         ])
         ->assertCreated()
-        ->assertJsonPath('status', PostStatus::Draft->value);
+        ->assertJsonPath('status', PostStatus::Draft->value)
+        ->assertJsonPath('scheduled_at', null);
 
     $post = Post::where('workspace_id', $this->workspace->id)->first();
     expect($post)->not->toBeNull();
@@ -549,6 +550,25 @@ it('rejects scheduled status without a future scheduled_at', function () {
             'scheduled_at' => now()->subHour()->toIso8601String(),
         ])
         ->assertJsonValidationErrors(['scheduled_at']);
+});
+
+it('accepts scheduled status reusing an existing future scheduled_at', function () {
+    $scheduledAt = now()->addDay()->startOfSecond();
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'scheduled_at' => $scheduledAt,
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->putJson(route('api.posts.update', $post), [
+            'status' => 'scheduled',
+        ])
+        ->assertOk()
+        ->assertJsonPath('status', PostStatus::Scheduled->value);
+
+    expect($post->fresh()->scheduled_at->toDateTimeString())->toBe($scheduledAt->toDateTimeString());
 });
 
 it('accepts draft status with no scheduled_at', function () {

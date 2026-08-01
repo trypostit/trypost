@@ -102,7 +102,7 @@ class CreatePost
             return Carbon::parse($scheduledAt)->utc();
         }
 
-        if (! array_key_exists('date', $data) || blank(data_get($data, 'date'))) {
+        if (blank(data_get($data, 'date'))) {
             return null;
         }
 

@@ -11,6 +11,7 @@ use App\Rules\ContentFitsPlatformLimits;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Support\PostMediaRules;
 use App\Support\PostPlatformMetaRules;
+use App\Support\PostStatusRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -44,7 +45,10 @@ class UpdatePostRequest extends FormRequest
             ],
             ...PostMediaRules::rules(hosted: true),
             'scheduled_at' => [
-                'sometimes',
+                Rule::requiredIf(fn (): bool => PostStatusRules::requiresExplicitSchedule(
+                    $this->route('post'),
+                    $this->input('status'),
+                )),
                 'nullable',
                 'date',
                 Rule::when(

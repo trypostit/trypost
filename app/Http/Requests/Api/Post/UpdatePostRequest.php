@@ -14,6 +14,7 @@ use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Rules\ContentTypeMatchesPostPlatform;
 use App\Support\PostMediaRules;
 use App\Support\PostPlatformMetaRules;
+use App\Support\PostStatusRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -47,7 +48,7 @@ class UpdatePostRequest extends FormRequest
             ],
             ...PostMediaRules::rules(hosted: false),
             'platforms' => ['sometimes', 'array'],
-            'platforms.*.id' => ['required', 'uuid', Rule::exists('post_platforms', 'id')->where('post_id', $this->route('post') instanceof Post ? $this->route('post')->id : $this->route('post'))],
+            'platforms.*.id' => ['required', 'uuid', Rule::exists('post_platforms', 'id')->where('post_id', $this->route('post')->id)],
             'platforms.*.content_type' => [
                 'sometimes',
                 'string',
@@ -56,7 +57,10 @@ class UpdatePostRequest extends FormRequest
             ],
             ...PostPlatformMetaRules::rules(),
             'scheduled_at' => [
-                Rule::requiredIf($this->input('status') === Status::Scheduled->value),
+                Rule::requiredIf(fn (): bool => PostStatusRules::requiresExplicitSchedule(
+                    $this->route('post'),
+                    $this->input('status'),
+                )),
                 'nullable',
                 'date',
                 Rule::when(
@@ -98,12 +102,8 @@ class UpdatePostRequest extends FormRequest
      */
     private function addMediaCompatibilityErrors(Validator $validator): void
     {
-        $routePost = $this->route('post');
-        $post = $routePost instanceof Post ? $routePost : Post::find($routePost);
-
-        if (! $post) {
-            return;
-        }
+        /** @var Post $post */
+        $post = $this->route('post');
 
         $media = $this->has('media') ? (array) $this->input('media', []) : (array) ($post->media ?? []);
 
@@ -127,11 +127,11 @@ class UpdatePostRequest extends FormRequest
             return collect();
         }
 
+        /** @var Post $post */
         $post = $this->route('post');
-        $postId = $post instanceof Post ? $post->id : $post;
 
         return PostPlatform::query()
-            ->where('post_id', $postId)
+            ->where('post_id', $post->id)
             ->whereIn('id', $ids)
             ->pluck('platform', 'id');
     }

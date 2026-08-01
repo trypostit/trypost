@@ -48,4 +48,18 @@ class PostStatusRules
     {
         return __(self::EDIT_BLOCKED_MESSAGE_KEY);
     }
+
+    /**
+     * True when status is scheduled and the post has no future schedule to reuse.
+     */
+    public static function requiresExplicitSchedule(?Post $post, mixed $status): bool
+    {
+        if ($status !== PostStatus::Scheduled->value) {
+            return false;
+        }
+
+        $existing = $post?->scheduled_at;
+
+        return $existing === null || $existing->isPast();
+    }
 }

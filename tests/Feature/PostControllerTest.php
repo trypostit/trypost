@@ -606,6 +606,63 @@ test('publish now updates scheduled_at to current time', function () {
     expect($post->scheduled_at->toDateTimeString())->toBe(now()->toDateTimeString());
 });
 
+test('update rejects scheduled status without scheduled_at when post has none', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'scheduled_at' => null,
+        'content' => 'Test content',
+    ]);
+
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'scheduled',
+        'content' => 'Test content',
+        'platforms' => [
+            [
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::LinkedInPost->value,
+            ],
+        ],
+    ])->assertSessionHasErrors('scheduled_at');
+});
+
+test('update accepts scheduled status reusing an existing future scheduled_at', function () {
+    $scheduledAt = now()->addDay()->startOfSecond();
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'scheduled_at' => $scheduledAt,
+        'content' => 'Test content',
+    ]);
+
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'scheduled',
+        'content' => 'Test content',
+        'platforms' => [
+            [
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::LinkedInPost->value,
+            ],
+        ],
+    ])->assertRedirect();
+
+    expect($post->fresh()->status)->toBe(PostStatus::Scheduled)
+        ->and($post->fresh()->scheduled_at->toDateTimeString())->toBe($scheduledAt->toDateTimeString());
+});
+
 // Destroy tests
 test('destroy post requires authentication', function () {
     $post = Post::factory()->create([

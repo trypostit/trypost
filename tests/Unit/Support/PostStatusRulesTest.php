@@ -45,3 +45,22 @@ test('allows deletion for draft, scheduled and failed statuses', function (PostS
     PostStatus::Scheduled,
     PostStatus::Failed,
 ]);
+
+test('requires explicit schedule when status is scheduled and post has no usable schedule', function (?string $scheduledAt, bool $expected) {
+    $post = Post::factory()->make([
+        'scheduled_at' => $scheduledAt,
+    ]);
+
+    expect(PostStatusRules::requiresExplicitSchedule($post, PostStatus::Scheduled->value))->toBe($expected);
+})->with([
+    'missing schedule' => [null, true],
+    'past schedule' => [now()->subHour()->toDateTimeString(), true],
+    'future schedule' => [now()->addDay()->toDateTimeString(), false],
+]);
+
+test('does not require explicit schedule for non scheduled statuses', function () {
+    $post = Post::factory()->make(['scheduled_at' => null]);
+
+    expect(PostStatusRules::requiresExplicitSchedule($post, PostStatus::Draft->value))->toBeFalse()
+        ->and(PostStatusRules::requiresExplicitSchedule(null, PostStatus::Scheduled->value))->toBeTrue();
+});
