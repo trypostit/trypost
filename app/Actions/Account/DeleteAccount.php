@@ -18,10 +18,20 @@ class DeleteAccount
      * Tear down a shared account owned by $owner: workspaces, invites, and
      * force-delete remaining members. Does not delete the owner user row.
      *
+     * Must run inside a DB transaction. Locks the account row so concurrent
+     * DeleteWorkspace / RemoveMember cannot restore a member off this account
+     * before forceDeleteMembers runs.
+     *
      * @return list<string> media paths for DeleteOrphanedMediaFiles after commit
      */
     public static function execute(Account $account, User $owner): array
     {
+        $locked = Account::query()->whereKey($account->id)->lockForUpdate()->first();
+
+        if (! $locked) {
+            return [];
+        }
+
         $mediaPaths = [];
 
         $owner->update(['current_workspace_id' => null]);
