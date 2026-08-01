@@ -291,7 +291,6 @@ return [
 
         'errors' => [
             'invite_exists' => '该邮箱已有邀请。',
-            'already_member' => '该用户已是此工作区的成员。',
             'email_belongs_to_account' => '该邮箱已属于另一个 TryPost 账户。请改用专用工作邮箱。',
         ],
 

@@ -291,7 +291,6 @@ return [
 
         'errors' => [
             'invite_exists' => 'Zaproszenie dla tego adresu e-mail już istnieje.',
-            'already_member' => 'Ten użytkownik jest już członkiem przestrzeni roboczej.',
             'email_belongs_to_account' => 'Ten adres e-mail należy już do innego konta TryPost. Poproś o dedykowany służbowy adres e-mail.',
         ],
 

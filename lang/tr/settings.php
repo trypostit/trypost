@@ -293,7 +293,6 @@ return [
 
         'errors' => [
             'invite_exists' => 'Bu e-posta için zaten bir davet var.',
-            'already_member' => 'Bu kullanıcı zaten çalışma alanının bir üyesi.',
             'email_belongs_to_account' => 'Bu e-posta zaten başka bir TryPost hesabına ait. Bunun yerine özel bir iş e-postası isteyin.',
         ],
 

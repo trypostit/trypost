@@ -291,7 +291,6 @@ return [
 
         'errors' => [
             'invite_exists' => 'An invite already exists for this email.',
-            'already_member' => 'This user is already a member of the workspace.',
             'email_belongs_to_account' => 'This email already belongs to another TryPost account. Ask for a dedicated work email instead.',
         ],
 

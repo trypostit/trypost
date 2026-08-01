@@ -291,7 +291,6 @@ return [
 
         'errors' => [
             'invite_exists' => 'Υπάρχει ήδη πρόσκληση για αυτό το email.',
-            'already_member' => 'Αυτός ο χρήστης είναι ήδη μέλος του χώρου εργασίας.',
             'email_belongs_to_account' => 'Αυτό το email ανήκει ήδη σε άλλο λογαριασμό TryPost. Ζητήστε ένα ειδικό email εργασίας.',
         ],
 

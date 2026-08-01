@@ -291,7 +291,6 @@ return [
 
         'errors' => [
             'invite_exists' => 'このメールアドレスには既に招待が存在します。',
-            'already_member' => 'このユーザーは既にワークスペースのメンバーです。',
             'email_belongs_to_account' => 'このメールアドレスは既に別の TryPost アカウントに属しています。専用の仕事用メールアドレスをご利用ください。',
         ],
 

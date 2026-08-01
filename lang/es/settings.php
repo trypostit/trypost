@@ -291,7 +291,6 @@ return [
 
         'errors' => [
             'invite_exists' => 'Ya existe una invitación para este correo.',
-            'already_member' => 'Este usuario ya es miembro del espacio de trabajo.',
             'email_belongs_to_account' => 'Este correo ya pertenece a otra cuenta de TryPost. Pide un correo de trabajo dedicado.',
         ],
 
