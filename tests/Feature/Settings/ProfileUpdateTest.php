@@ -385,7 +385,7 @@ test('owner account delete aborts when stripe cancel fails', function () {
     $accountId = $account->id;
 
     $member = User::factory()->create();
-    $memberPersonalAccountId = $member->account_id;
+    $member->account?->delete();
     $member->update(['account_id' => $accountId]);
 
     $workspace = Workspace::factory()->create([
@@ -439,7 +439,6 @@ test('owner account delete aborts when stripe cancel fails', function () {
 
     expect($owner->fresh())->not->toBeNull();
     expect(User::find($member->id))->not->toBeNull();
-    expect(Account::find($memberPersonalAccountId))->not->toBeNull();
     expect(Account::find($accountId))->not->toBeNull();
     expect(Account::find($accountId)->subscriptions()->count())->toBe(1);
     expect(Workspace::find($workspace->id))->not->toBeNull();

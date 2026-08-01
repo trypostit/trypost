@@ -174,7 +174,6 @@ function strandedMemberOnSharedAccount(
     int $sharedWorkspaces = 0,
     bool $attachMember = true,
     bool $attachMemberToAll = true,
-    bool $attachOwner = true,
     bool $setMemberCurrent = false,
     ?User $owner = null,
     ?string $memberEmail = null,
@@ -184,6 +183,10 @@ function strandedMemberOnSharedAccount(
         'email' => $memberEmail,
     ]));
 
+    // Closed-account model: the member's empty signup shell is gone after
+    // accepting the invite, so drop it here to match the real state.
+    $member->account?->delete();
+
     $shared = [];
 
     for ($i = 0; $i < $sharedWorkspaces; $i++) {
@@ -192,11 +195,9 @@ function strandedMemberOnSharedAccount(
             'user_id' => $owner->id,
         ]);
 
-        if ($attachOwner) {
-            $workspace->members()->syncWithoutDetaching([
-                $owner->id => ['role' => Role::Admin->value],
-            ]);
-        }
+        $workspace->members()->syncWithoutDetaching([
+            $owner->id => ['role' => Role::Admin->value],
+        ]);
 
         if ($attachMember && ($attachMemberToAll || $i === 0)) {
             $workspace->members()->attach($member->id, [
