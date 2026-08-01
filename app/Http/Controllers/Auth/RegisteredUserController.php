@@ -7,11 +7,13 @@ namespace App\Http\Controllers\Auth;
 use App\Actions\User\CreateUser;
 use App\Http\Controllers\Auth\Concerns\PreservesUtmParameters;
 use App\Http\Controllers\Controller;
+use App\Models\Invite;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,6 +29,7 @@ class RegisteredUserController extends Controller
         return Inertia::render('auth/Register', [
             'email' => $request->query('email'),
             'redirect' => $request->query('redirect'),
+            'invite' => $request->query('invite'),
         ]);
     }
 
@@ -38,7 +41,20 @@ class RegisteredUserController extends Controller
             'password' => ['required', Rules\Password::defaults()],
         ]);
 
-        $isInviteRegistration = str_contains($request->input('redirect', ''), '/invites/');
+        // An invite binds registration to the invited email — never a different
+        // one. Only a valid invite id enforces this; the param can also be a
+        // self-hosted gate placeholder, which must not trigger a UUID lookup.
+        $inviteId = (string) $request->input('invite', '');
+        $invite = null;
+
+        if ($inviteId !== '' && Str::isUuid($inviteId)) {
+            $invite = Invite::query()->find($inviteId);
+
+            abort_if(! $invite || $invite->email !== $request->email, 403);
+        }
+
+        $isInviteRegistration = $invite !== null
+            || str_contains($request->input('redirect', ''), '/invites/');
 
         $utmParameters = $this->retrieveUtmParameters();
 
