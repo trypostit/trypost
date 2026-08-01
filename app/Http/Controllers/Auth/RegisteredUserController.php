@@ -7,14 +7,11 @@ namespace App\Http\Controllers\Auth;
 use App\Actions\User\CreateUser;
 use App\Http\Controllers\Auth\Concerns\PreservesUtmParameters;
 use App\Http\Controllers\Controller;
-use App\Models\Invite;
-use App\Models\User;
+use App\Http\Requests\App\Auth\RegisterRequest;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
-use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -33,36 +30,15 @@ class RegisteredUserController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(RegisterRequest $request): RedirectResponse
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'password' => ['required', Rules\Password::defaults()],
-        ]);
-
-        // An invite binds registration to the invited email — never a different
-        // one. Only a valid invite id enforces this; the param can also be a
-        // self-hosted gate placeholder, which must not trigger a UUID lookup.
-        $inviteId = (string) $request->input('invite', '');
-        $invite = null;
-
-        if ($inviteId !== '' && Str::isUuid($inviteId)) {
-            $invite = Invite::query()->find($inviteId);
-
-            abort_if(! $invite || $invite->email !== $request->email, 403);
-        }
-
-        $isInviteRegistration = $invite !== null
-            || str_contains($request->input('redirect', ''), '/invites/');
-
         $utmParameters = $this->retrieveUtmParameters();
 
         $user = CreateUser::execute([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => $request->password,
-            'is_invite' => $isInviteRegistration,
+            'name' => $request->validated('name'),
+            'email' => $request->validated('email'),
+            'password' => $request->validated('password'),
+            'is_invite' => $request->isInviteRegistration(),
             'registration_ip' => $request->ip(),
         ], $utmParameters);
 

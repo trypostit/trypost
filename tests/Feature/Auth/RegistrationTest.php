@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Models\Account;
+use App\Models\Invite;
 use App\Models\User;
+use App\Models\Workspace;
 
 beforeEach(fn () => config()->set('trypost.self_hosted', false));
 
@@ -53,11 +56,26 @@ test('new users do not have verified email by default', function () {
 });
 
 test('new users registering via invite have verified email automatically', function () {
+    $account = Account::factory()->create();
+    $owner = User::factory()->create(['account_id' => $account->id]);
+    $account->update(['owner_id' => $owner->id]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $account->id,
+        'user_id' => $owner->id,
+    ]);
+    $invite = Invite::factory()->create([
+        'account_id' => $account->id,
+        'invited_by' => $owner->id,
+        'email' => 'test@example.com',
+        'workspaces' => [$workspace->id],
+    ]);
+
     $this->post(route('register.store'), [
         'name' => 'Test User',
         'email' => 'test@example.com',
         'password' => 'Password123!',
-        'redirect' => '/invites/some-invite-id',
+        'invite' => $invite->id,
+        'redirect' => route('app.invites.show', $invite),
     ]);
 
     $user = User::where('email', 'test@example.com')->first();
