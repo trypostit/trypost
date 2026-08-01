@@ -630,6 +630,8 @@ test('update rejects scheduled status without scheduled_at when post has none', 
             ],
         ],
     ])->assertSessionHasErrors('scheduled_at');
+
+    expect($post->fresh()->status)->toBe(PostStatus::Draft);
 });
 
 test('update accepts scheduled status reusing an existing future scheduled_at', function () {
@@ -659,8 +661,9 @@ test('update accepts scheduled status reusing an existing future scheduled_at', 
         ],
     ])->assertRedirect();
 
-    expect($post->fresh()->status)->toBe(PostStatus::Scheduled)
-        ->and($post->fresh()->scheduled_at->toDateTimeString())->toBe($scheduledAt->toDateTimeString());
+    $post->refresh();
+    expect($post->status)->toBe(PostStatus::Scheduled)
+        ->and($post->scheduled_at->toDateTimeString())->toBe($scheduledAt->toDateTimeString());
 });
 
 // Destroy tests

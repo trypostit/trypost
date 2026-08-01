@@ -26,8 +26,11 @@ class UpdatePostRequest extends FormRequest
 
     public function rules(): array
     {
+        $status = $this->input('status');
+        $status = is_string($status) ? $status : null;
+
         $enforcesMediaCompatibility = in_array(
-            $this->input('status'),
+            $status,
             [Status::Scheduled->value, Status::Publishing->value],
             true,
         );
@@ -47,12 +50,12 @@ class UpdatePostRequest extends FormRequest
             'scheduled_at' => [
                 Rule::requiredIf(fn (): bool => PostStatusRules::requiresExplicitSchedule(
                     $this->route('post'),
-                    $this->input('status'),
+                    $status,
                 )),
                 'nullable',
                 'date',
                 Rule::when(
-                    $this->input('status') === Status::Scheduled->value,
+                    $status === Status::Scheduled->value,
                     ['after:now']
                 ),
             ],
