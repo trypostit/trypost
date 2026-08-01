@@ -15,6 +15,7 @@ use App\Http\Requests\App\Workspace\AutofillBrandRequest;
 use App\Http\Requests\App\Workspace\StoreWorkspaceRequest;
 use App\Http\Requests\App\Workspace\UpdateWorkspaceRequest;
 use App\Http\Resources\App\WorkspaceMemberResource;
+use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Brand\LogoAttacher;
@@ -89,6 +90,13 @@ class WorkspaceController extends Controller
      */
     private function denyAdditionalWorkspaceWithoutSubscription(User $user): ?RedirectResponse
     {
+        // An invited member joins exactly one account via the invite. Creating a
+        // workspace on their empty invite-signup shell would leave it non-empty
+        // and billable after accept abandons it — send them back to the invite.
+        if (Invite::query()->where('email', $user->email)->whereNull('accepted_at')->exists()) {
+            abort(403);
+        }
+
         if (! config('trypost.self_hosted')
             && $user->ownedWorkspacesCount() > 0
             && ! $user->account?->hasActiveSubscription()) {
