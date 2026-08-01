@@ -64,9 +64,3 @@ test('does not require explicit schedule for non scheduled statuses', function (
     expect(PostStatusRules::requiresExplicitSchedule($post, PostStatus::Draft->value))->toBeFalse()
         ->and(PostStatusRules::requiresExplicitSchedule(null, PostStatus::Scheduled->value))->toBeTrue();
 });
-
-test('normalizeStatus keeps strings and rejects non strings', function () {
-    expect(PostStatusRules::normalizeStatus(PostStatus::Scheduled->value))->toBe(PostStatus::Scheduled->value)
-        ->and(PostStatusRules::normalizeStatus(null))->toBeNull()
-        ->and(PostStatusRules::normalizeStatus(['scheduled']))->toBeNull();
-});

@@ -37,7 +37,8 @@ class UpdatePostTool extends Tool
             return Response::error('Post not found.');
         }
 
-        $status = PostStatusRules::normalizeStatus(data_get($request->all(), 'status'));
+        $status = data_get($request->all(), 'status');
+        $status = is_string($status) ? $status : null;
 
         $validated = $request->validate([
             'post_id' => ['required', 'uuid'],

@@ -54,11 +54,6 @@ class PostStatusRules
         return __(self::EDIT_BLOCKED_MESSAGE_KEY);
     }
 
-    public static function normalizeStatus(mixed $status): ?string
-    {
-        return is_string($status) ? $status : null;
-    }
-
     /**
      * True when status is scheduled and the post has no future schedule to reuse.
      */

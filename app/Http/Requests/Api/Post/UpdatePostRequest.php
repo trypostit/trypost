@@ -29,7 +29,8 @@ class UpdatePostRequest extends FormRequest
 
     public function rules(): array
     {
-        $status = PostStatusRules::normalizeStatus($this->input('status'));
+        $status = $this->input('status');
+        $status = is_string($status) ? $status : null;
 
         $enforcesPlatformLimits = in_array(
             $status,
@@ -67,11 +68,7 @@ class UpdatePostRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            if (! in_array(
-                PostStatusRules::normalizeStatus($this->input('status')),
-                [Status::Scheduled->value, Status::Publishing->value],
-                true,
-            )) {
+            if (! in_array($this->input('status'), [Status::Scheduled->value, Status::Publishing->value], true)) {
                 return;
             }
 
