@@ -11,24 +11,24 @@ use App\Models\User;
 class SettleStrandedMember
 {
     /**
-     * After losing memberships on a shared account: restore a personal account
-     * that still has workspaces, otherwise delete the user.
+     * After losing memberships on a shared account: delete the invitee and
+     * queue empty personal account shells for Stripe cancel + delete.
      *
      * Callers must {@see StrandedSettlement::flush()} after releasing any
      * account lock so Stripe cancel is not held under it.
      */
     public static function execute(User $user, Account $leavingAccount): StrandedSettlement
     {
-        return self::process($user, $leavingAccount, forceDelete: false);
+        return self::process($user, $leavingAccount);
     }
 
     /**
-     * Owner account teardown: always delete the member, including leftover
-     * personal accounts/workspaces (Stripe for those was canceled upstream).
+     * Owner account teardown: same as {@see execute()} — invitees never keep a
+     * personal account with workspaces after joining a shared account.
      */
     public static function forceDelete(User $user, Account $leavingAccount): StrandedSettlement
     {
-        return self::process($user, $leavingAccount, forceDelete: true);
+        return self::process($user, $leavingAccount);
     }
 
     /**
@@ -42,7 +42,6 @@ class SettleStrandedMember
             $account,
             $exceptUserId,
             onlyWithoutAccountWorkspaces: true,
-            forceDelete: false,
         );
     }
 
@@ -57,11 +56,10 @@ class SettleStrandedMember
             $account,
             $exceptUserId,
             onlyWithoutAccountWorkspaces: false,
-            forceDelete: true,
         );
     }
 
-    private static function process(User $user, Account $leavingAccount, bool $forceDelete): StrandedSettlement
+    private static function process(User $user, Account $leavingAccount): StrandedSettlement
     {
         if ($user->id === $leavingAccount->owner_id) {
             return StrandedSettlement::none();
@@ -74,41 +72,21 @@ class SettleStrandedMember
             return StrandedSettlement::none();
         }
 
-        if (! $forceDelete) {
-            $personalAccount = Account::query()
-                ->where('owner_id', $user->id)
-                ->where('id', '!=', $leavingAccount->id)
-                ->whereHas('workspaces')
-                ->first();
+        // Defensive: any owned account that still has workspaces is torn down
+        // locally. AcceptInvite abandons the previous personal account, so this
+        // should be empty in normal product flows.
+        $mediaPaths = PurgeOwnedAccounts::execute(
+            $user,
+            $leavingAccount,
+            onlyWithWorkspaces: true,
+        );
 
-            if ($personalAccount) {
-                $fallback = $user->workspaces()
-                    ->where('workspaces.account_id', $personalAccount->id)
-                    ->first();
-
-                $user->update([
-                    'account_id' => $personalAccount->id,
-                    'current_workspace_id' => $fallback?->id,
-                ]);
-
-                return StrandedSettlement::none();
-            }
-        }
-
-        $mediaPaths = $forceDelete
-            ? PurgeOwnedAccounts::execute($user, $leavingAccount)
-            : [];
-
-        $emptyAccountIds = [];
-
-        if (! $forceDelete) {
-            $emptyAccountIds = Account::query()
-                ->where('owner_id', $user->id)
-                ->where('id', '!=', $leavingAccount->id)
-                ->whereDoesntHave('workspaces')
-                ->pluck('id')
-                ->all();
-        }
+        $emptyAccountIds = Account::query()
+            ->where('owner_id', $user->id)
+            ->where('id', '!=', $leavingAccount->id)
+            ->whereDoesntHave('workspaces')
+            ->pluck('id')
+            ->all();
 
         $mediaPaths = [
             ...$mediaPaths,
@@ -132,7 +110,6 @@ class SettleStrandedMember
         Account $account,
         ?string $exceptUserId,
         bool $onlyWithoutAccountWorkspaces,
-        bool $forceDelete,
     ): StrandedSettlement {
         $settlement = StrandedSettlement::none();
 
@@ -150,12 +127,10 @@ class SettleStrandedMember
                 ),
             )
             ->get()
-            ->each(function (User $member) use ($account, $forceDelete, &$settlement): void {
-                $settled = $forceDelete
-                    ? self::forceDelete($member, $account)
-                    : self::execute($member, $account);
-
-                $settlement = $settlement->merge($settled);
+            ->each(function (User $member) use ($account, &$settlement): void {
+                $settlement = $settlement->merge(
+                    self::execute($member, $account),
+                );
             });
 
         return $settlement;

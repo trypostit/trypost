@@ -159,7 +159,7 @@ test('accept invite adds user to account and workspaces', function () {
     expect($invite->accepted_at)->not->toBeNull();
 });
 
-test('accept invite keeps a personal account that still has a workspace', function () {
+test('accept invite abandons a personal account that still has a workspace', function () {
     $user = User::factory()->create([
         'email' => 'invitee@example.com',
     ]);
@@ -181,8 +181,8 @@ test('accept invite keeps a personal account that still has a workspace', functi
 
     $user->refresh();
     expect($user->account_id)->toBe($this->account->id);
-    expect(Account::find($personalAccountId))->not->toBeNull();
-    expect(Workspace::find($personalWorkspace->id))->not->toBeNull();
+    expect(Account::find($personalAccountId))->toBeNull();
+    expect(Workspace::find($personalWorkspace->id))->toBeNull();
 });
 
 test('accept invite switches current workspace off a personal workspace when joining another account', function () {
@@ -418,7 +418,7 @@ test('decline of a dead invite deletes a stranded non-owner', function () {
     expect(Account::find($personalAccountId))->toBeNull();
 });
 
-test('invite redirect restores stranded non-owner with a personal workspace instead of cross-account current', function () {
+test('invite redirect deletes stranded non-owner even when a personal workspace remains', function () {
     [
         'member' => $member,
         'personal_account_id' => $personalAccountId,
@@ -440,13 +440,12 @@ test('invite redirect restores stranded non-owner with a personal workspace inst
 
     $response = $this->actingAs($member)->post(route('app.invites.accept', $invite));
 
-    $response->assertRedirect(route('app.calendar'));
+    $response->assertRedirect(route('login'));
     $response->assertSessionHas('flash.banner', __('settings.members.flash.invite_workspace_gone'));
 
-    $member->refresh();
-    expect($member->account_id)->toBe($personalAccountId);
-    expect($member->isAccountOwner())->toBeTrue();
-    expect($member->current_workspace_id)->toBe($personalWorkspace->id);
+    expect(User::find($member->id))->toBeNull();
+    expect(Account::find($personalAccountId))->toBeNull();
+    expect(Workspace::find($personalWorkspace->id))->toBeNull();
 });
 
 test('decline invite requires authentication', function () {

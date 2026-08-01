@@ -42,8 +42,7 @@ class RemoveMember
                 $user->refresh();
             }
 
-            // Last membership on this shared account — delete the invitee, or
-            // restore a personal account that still has workspaces.
+            // Last membership on this shared account — delete the invitee.
             if (
                 $account
                 && $user->account_id === $account->id

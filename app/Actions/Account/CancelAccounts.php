@@ -13,7 +13,7 @@ class CancelAccounts
      * Cancel Stripe for each account in order. Stops on the first failure.
      *
      * Callers should order accounts so a mid-loop failure leaves the most
-     * important subscription intact (e.g. member personals before the shared account).
+     * important subscription intact.
      *
      * @param  Collection<int, Account>|iterable<int, Account>  $accounts
      * @return bool false when any cancel failed — local teardown must not proceed

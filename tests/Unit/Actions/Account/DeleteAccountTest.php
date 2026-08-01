@@ -24,14 +24,15 @@ test('delete account force-deletes members including those with a personal works
 
     $accountId = $owner->account_id;
 
-    $mediaPaths = DB::transaction(fn () => DeleteAccount::execute($owner->account, $owner));
+    $settlement = DB::transaction(fn () => DeleteAccount::execute($owner->account, $owner));
+    $settlement->flush();
 
     expect(Account::find($accountId))->toBeNull();
     expect(Workspace::find($workspace->id))->toBeNull();
     expect(User::find($member->id))->toBeNull();
     expect(Account::find($personalAccountId))->toBeNull();
     expect(Workspace::find($personalWorkspace->id))->toBeNull();
-    expect($mediaPaths)->toBeArray();
+    expect($settlement->mediaPaths)->toBeArray();
 });
 
 test('delete account removes pending invites', function () {
@@ -46,7 +47,7 @@ test('delete account removes pending invites', function () {
         'workspaces' => [$workspace->id],
     ]);
 
-    DB::transaction(fn () => DeleteAccount::execute($owner->account, $owner));
+    DB::transaction(fn () => DeleteAccount::execute($owner->account, $owner))->flush();
 
     expect(Invite::find($invite->id))->toBeNull();
 });
@@ -57,8 +58,9 @@ test('delete account no-ops when the account row is already gone', function () {
     $accountId = $account->id;
     $account->delete();
 
-    $mediaPaths = DB::transaction(fn () => DeleteAccount::execute($account, $owner));
+    $settlement = DB::transaction(fn () => DeleteAccount::execute($account, $owner));
 
-    expect($mediaPaths)->toBe([]);
+    expect($settlement->mediaPaths)->toBe([]);
+    expect($settlement->emptyAccountIds)->toBe([]);
     expect(Account::find($accountId))->toBeNull();
 });

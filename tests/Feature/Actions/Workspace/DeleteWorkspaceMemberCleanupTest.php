@@ -47,7 +47,7 @@ test('delete workspace does not delete members who still have another workspace 
     expect($member->current_workspace_id)->toBe($second->id);
 });
 
-test('delete workspace restores members who still own a personal workspace', function () {
+test('delete workspace deletes stranded members who still own a personal workspace', function () {
     [
         'member' => $member,
         'personal_account_id' => $personalAccountId,
@@ -62,11 +62,9 @@ test('delete workspace restores members who still own a personal workspace', fun
 
     DeleteWorkspace::execute($sharedWorkspace);
 
-    $member->refresh();
-
-    expect($member->account_id)->toBe($personalAccountId);
-    expect($member->current_workspace_id)->toBe($personalWorkspace->id);
-    expect($member->isAccountOwner())->toBeTrue();
+    expect(User::find($member->id))->toBeNull();
+    expect(Account::find($personalAccountId))->toBeNull();
+    expect($personalWorkspace->fresh())->toBeNull();
 });
 
 test('delete workspace falls back to an account workspace the owner is not pivoted into', function () {

@@ -39,7 +39,7 @@ final readonly class StrandedSettlement
     }
 
     /**
-     * Cancel/delete empty personal leftovers, then remove orphaned media files.
+     * Cancel/delete empty personal account shells, then remove orphaned media files.
      */
     public function flush(): void
     {

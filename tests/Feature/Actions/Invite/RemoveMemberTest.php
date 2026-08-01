@@ -61,7 +61,7 @@ test('remove member prefers a same-account workspace over a personal membership'
     expect($member->current_workspace_id)->toBe($sharedB->id);
 });
 
-test('remove member restores personal workspace instead of keeping a cross-account current', function () {
+test('remove member deletes a stranded invitee who still owns a personal workspace', function () {
     [
         'member' => $member,
         'personal_account_id' => $personalAccountId,
@@ -75,9 +75,7 @@ test('remove member restores personal workspace instead of keeping a cross-accou
 
     RemoveMember::execute($shared, $member->id);
 
-    $member->refresh();
-
-    expect($member->account_id)->toBe($personalAccountId);
-    expect($member->isAccountOwner())->toBeTrue();
-    expect($member->current_workspace_id)->toBe($personalWorkspace->id);
+    expect(User::find($member->id))->toBeNull();
+    expect(Account::find($personalAccountId))->toBeNull();
+    expect($personalWorkspace->fresh())->toBeNull();
 });

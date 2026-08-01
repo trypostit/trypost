@@ -9,7 +9,6 @@ use App\Actions\Account\CancelAccounts;
 use App\Actions\Account\DeleteAccount;
 use App\Actions\Account\PurgeOwnedAccounts;
 use App\Actions\Auth\LogoutAndInvalidateSession;
-use App\Actions\Media\DeleteOrphanedMediaFiles;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,28 +32,27 @@ class DeleteUser
             return false;
         }
 
-        $mediaPaths = DB::transaction(function () use ($user, $account, $isOwner): array {
+        $settlement = DB::transaction(function () use ($user, $account, $isOwner): StrandedSettlement {
             $user->update(['current_workspace_id' => null]);
 
-            $mediaPaths = [];
-
             if ($isOwner && $account) {
-                $mediaPaths = DeleteAccount::execute($account, $user);
+                $settlement = DeleteAccount::execute($account, $user);
             } else {
                 // Members must never delete shared-account workspaces (even ones
                 // they created). Only tear down accounts/workspaces they own.
                 $user->workspaces()->detach();
-                $mediaPaths = PurgeOwnedAccounts::execute($user);
+                $settlement = new StrandedSettlement(
+                    mediaPaths: PurgeOwnedAccounts::execute($user),
+                );
                 $user->update(['account_id' => null]);
             }
 
-            return [
-                ...$mediaPaths,
-                ...PurgeUserAccess::execute($user),
-            ];
+            return $settlement->merge(new StrandedSettlement(
+                mediaPaths: PurgeUserAccess::execute($user),
+            ));
         });
 
-        DeleteOrphanedMediaFiles::execute($mediaPaths);
+        $settlement->flush();
 
         // Logout while the user row still exists — SessionGuard cycles the
         // remember token via save(), which fails if the user was already deleted.

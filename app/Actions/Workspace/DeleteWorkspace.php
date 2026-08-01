@@ -17,7 +17,8 @@ use Illuminate\Support\Facades\DB;
 class DeleteWorkspace
 {
     /**
-     * Delete a workspace and settle stranded members (restore or delete).
+     * Delete a workspace and settle stranded members (delete invitees who
+     * lost their last membership on the account).
      *
      * Returns false when SaaS mode blocks deleting the account's last workspace.
      * The account row is locked so concurrent deletes cannot race past that guard.

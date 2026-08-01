@@ -4,21 +4,18 @@ declare(strict_types=1);
 
 use App\Actions\Account\AccountsRequiringCancel;
 
-test('owner delete preflight includes member personals before the shared account', function () {
+test('owner delete preflight only includes the shared account', function () {
     [
         'owner' => $owner,
         'personal_account_id' => $personalAccountId,
-    ] = strandedMemberOnSharedAccount(withPersonalWorkspace: true);
+    ] = strandedMemberOnSharedAccount();
 
     $ids = AccountsRequiringCancel::forDeletingUser($owner, $owner->account, true)
         ->pluck('id')
         ->all();
 
-    expect($ids)->toContain($personalAccountId)
-        ->and($ids)->toContain($owner->account_id)
-        ->and(end($ids))->toBe($owner->account_id)
-        ->and(array_search($personalAccountId, $ids, true))
-        ->toBeLessThan(array_search($owner->account_id, $ids, true));
+    expect($ids)->toBe([$owner->account_id])
+        ->and($ids)->not->toContain($personalAccountId);
 });
 
 test('member delete preflight only includes accounts they own', function () {

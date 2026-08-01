@@ -15,10 +15,16 @@ class PurgeOwnedAccounts
      * Tear down every account the user owns (optionally skipping one), including
      * their workspaces. Returns media paths for post-commit file cleanup.
      *
+     * When $onlyWithWorkspaces is true, empty account shells are left for
+     * {@see DeleteEmptyOwnedAccounts} so Stripe can be canceled outside a lock.
+     *
      * @return list<string>
      */
-    public static function execute(User $user, ?Account $except = null): array
-    {
+    public static function execute(
+        User $user,
+        ?Account $except = null,
+        bool $onlyWithWorkspaces = false,
+    ): array {
         $mediaPaths = [];
 
         Account::query()
@@ -26,6 +32,10 @@ class PurgeOwnedAccounts
             ->when(
                 $except,
                 fn ($query) => $query->where('id', '!=', $except->id),
+            )
+            ->when(
+                $onlyWithWorkspaces,
+                fn ($query) => $query->whereHas('workspaces'),
             )
             ->get()
             ->each(function (Account $owned) use ($user, &$mediaPaths): void {

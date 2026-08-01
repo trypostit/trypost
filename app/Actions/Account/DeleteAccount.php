@@ -6,6 +6,7 @@ namespace App\Actions\Account;
 
 use App\Actions\User\ReassignCurrentWorkspace;
 use App\Actions\User\SettleStrandedMember;
+use App\Actions\User\StrandedSettlement;
 use App\Actions\Workspace\PurgeWorkspace;
 use App\Models\Account;
 use App\Models\Invite;
@@ -19,51 +20,47 @@ class DeleteAccount
      * force-delete remaining members. Does not delete the owner user row.
      *
      * Must run inside a DB transaction. Locks the account row so concurrent
-     * DeleteWorkspace / RemoveMember cannot restore a member off this account
+     * DeleteWorkspace / RemoveMember cannot settle a member off this account
      * before forceDeleteMembers runs.
      *
-     * @return list<string> media paths for DeleteOrphanedMediaFiles after commit
+     * Callers must {@see StrandedSettlement::flush()} after commit.
      */
-    public static function execute(Account $account, User $owner): array
+    public static function execute(Account $account, User $owner): StrandedSettlement
     {
         $locked = Account::query()->whereKey($account->id)->lockForUpdate()->first();
 
         if (! $locked) {
-            return [];
+            return StrandedSettlement::none();
         }
 
-        $mediaPaths = [];
+        $settlement = StrandedSettlement::none();
 
         $owner->update(['current_workspace_id' => null]);
 
         Workspace::query()
             ->where('account_id', $account->id)
             ->get()
-            ->each(function (Workspace $workspace) use ($owner, &$mediaPaths): void {
+            ->each(function (Workspace $workspace) use ($owner, &$settlement): void {
                 ReassignCurrentWorkspace::awayFromWorkspace(
                     $workspace,
                     exceptUserId: $owner->id,
                 );
 
-                $mediaPaths = [
-                    ...$mediaPaths,
-                    ...PurgeWorkspace::execute($workspace),
-                ];
+                $settlement = $settlement->merge(new StrandedSettlement(
+                    mediaPaths: PurgeWorkspace::execute($workspace),
+                ));
             });
 
         $owner->workspaces()->detach();
 
         Invite::query()->where('account_id', $account->id)->delete();
 
-        $settled = SettleStrandedMember::forceDeleteMembers(
-            $account,
-            exceptUserId: $owner->id,
+        $settlement = $settlement->merge(
+            SettleStrandedMember::forceDeleteMembers(
+                $account,
+                exceptUserId: $owner->id,
+            ),
         );
-
-        $mediaPaths = [
-            ...$mediaPaths,
-            ...$settled->mediaPaths,
-        ];
 
         $owner->update(['account_id' => null]);
 
@@ -72,6 +69,6 @@ class DeleteAccount
             $account->delete();
         }
 
-        return $mediaPaths;
+        return $settlement;
     }
 }

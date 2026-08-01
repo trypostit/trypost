@@ -51,17 +51,15 @@ test('deletes a stranded invitee and flushes empty personal account after settle
     expect(Account::find($personalAccountId))->toBeNull();
 });
 
-test('restores a personal account that still has a workspace', function () {
+test('deletes a stranded invitee who still owns a personal workspace', function () {
     ['owner' => $owner, 'member' => $member, 'personal_account_id' => $personalAccountId, 'personal_workspace' => $personalWorkspace] = strandedMemberOnSharedAccount(withPersonalWorkspace: true);
 
     $settled = SettleStrandedMember::execute($member->fresh(), $owner->account);
+    $settled->flush();
 
-    $member->refresh();
-
-    expect($member->account_id)->toBe($personalAccountId);
-    expect($member->current_workspace_id)->toBe($personalWorkspace->id);
-    expect($member->isAccountOwner())->toBeTrue();
-    expect($settled->emptyAccountIds)->toBeEmpty();
+    expect(User::find($member->id))->toBeNull();
+    expect(Account::find($personalAccountId))->toBeNull();
+    expect(Workspace::find($personalWorkspace->id))->toBeNull();
 });
 
 test('deletes stranded invitee and revokes their passport tokens', function () {
@@ -93,16 +91,6 @@ test('deletes stranded invitee avatar media files from storage', function () {
     expect(User::find($member->id))->toBeNull();
     expect(Media::find($avatar->id))->toBeNull();
     Storage::assertMissing($avatarPath);
-});
-
-test('forceDelete removes a member who still owns a personal workspace', function () {
-    ['owner' => $owner, 'member' => $member, 'personal_account_id' => $personalAccountId, 'personal_workspace' => $personalWorkspace] = strandedMemberOnSharedAccount(withPersonalWorkspace: true);
-
-    SettleStrandedMember::forceDelete($member->fresh(), $owner->account);
-
-    expect(User::find($member->id))->toBeNull();
-    expect(Account::find($personalAccountId))->toBeNull();
-    expect(Workspace::find($personalWorkspace->id))->toBeNull();
 });
 
 test('strandedWithoutMemberships only processes users without remaining account workspaces', function () {

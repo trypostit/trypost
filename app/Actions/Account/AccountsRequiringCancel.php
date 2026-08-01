@@ -12,31 +12,20 @@ class AccountsRequiringCancel
 {
     /**
      * Accounts whose Stripe subscription must be canceled before tearing down
-     * $user (and, for owners, force-deleting remaining members' personal leftovers).
+     * $user.
      *
-     * Order matters for partial-failure safety: member-owned personals first,
-     * the shared account last. If a personal cancel fails, the shared sub is
-     * still intact and local delete aborts cleanly. Ended personals no-op on retry.
+     * Owners: only the shared account. Invitees abandon their personal account
+     * on accept, so members do not leave billed personals behind.
+     *
+     * Members: any account they still own (normally none after accept; empty
+     * invite shells may remain if accept cleanup could not cancel Stripe).
      *
      * @return Collection<int, Account>
      */
     public static function forDeletingUser(User $user, ?Account $account, bool $isOwner): Collection
     {
         if ($isOwner && $account) {
-            $memberIds = User::query()
-                ->where('account_id', $account->id)
-                ->where('id', '!=', $user->id)
-                ->pluck('id');
-
-            $memberOwnedAccounts = Account::query()
-                ->whereIn('owner_id', $memberIds)
-                ->where('id', '!=', $account->id)
-                ->get();
-
-            return $memberOwnedAccounts
-                ->concat([$account])
-                ->unique('id')
-                ->values();
+            return collect([$account]);
         }
 
         return Account::query()
