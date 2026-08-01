@@ -74,7 +74,7 @@ class UpdatePostTool extends Tool
         // here, or stored) against the post's stored media — the tool can't change
         // media, so a misconfigured post can't be scheduled even without resubmitting
         // content_type. Mirrors the public API's withValidator check.
-        if (data_get($validated, 'status') === Status::Scheduled->value) {
+        if ($status === Status::Scheduled->value) {
             $errors = ContentTypeCompatibleWithMedia::errorsFor(
                 ContentTypeCompatibleWithMedia::entriesForUpdate($post, data_get($validated, 'platforms')),
                 (array) ($post->media ?? []),

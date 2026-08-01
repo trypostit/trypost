@@ -26,8 +26,7 @@ class UpdatePostRequest extends FormRequest
 
     public function rules(): array
     {
-        $status = $this->input('status');
-        $status = is_string($status) ? $status : null;
+        $status = $this->status();
 
         $enforcesMediaCompatibility = in_array(
             $status,
@@ -99,10 +98,17 @@ class UpdatePostRequest extends FormRequest
     private function isPublishingOrScheduling(): bool
     {
         return in_array(
-            $this->input('status'),
+            $this->status(),
             [Status::Scheduled->value, Status::Publishing->value],
             true,
         );
+    }
+
+    private function status(): ?string
+    {
+        $status = $this->input('status');
+
+        return is_string($status) ? $status : null;
     }
 
     /**

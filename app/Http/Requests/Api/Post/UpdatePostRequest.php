@@ -29,8 +29,7 @@ class UpdatePostRequest extends FormRequest
 
     public function rules(): array
     {
-        $status = $this->input('status');
-        $status = is_string($status) ? $status : null;
+        $status = $this->status();
 
         $enforcesPlatformLimits = in_array(
             $status,
@@ -79,7 +78,7 @@ class UpdatePostRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            if (! in_array($this->input('status'), [Status::Scheduled->value, Status::Publishing->value], true)) {
+            if (! in_array($this->status(), [Status::Scheduled->value, Status::Publishing->value], true)) {
                 return;
             }
 
@@ -118,6 +117,13 @@ class UpdatePostRequest extends FormRequest
         foreach (ContentTypeCompatibleWithMedia::errorsFor($entries, $media) as $key => $message) {
             $validator->errors()->add($key, $message);
         }
+    }
+
+    private function status(): ?string
+    {
+        $status = $this->input('status');
+
+        return is_string($status) ? $status : null;
     }
 
     /**
