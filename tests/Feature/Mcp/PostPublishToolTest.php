@@ -179,11 +179,13 @@ test('update post rejects a content_type that does not match the post_platform',
 
 test('publish post immediate dispatches PublishPost job', function () {
     Queue::fake();
+    $this->freezeTime();
 
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
+        'scheduled_at' => null,
     ]);
 
     PostPlatform::factory()->linkedin()->create([
@@ -198,7 +200,8 @@ test('publish post immediate dispatches PublishPost job', function () {
     $response->assertOk();
 
     Queue::assertPushed(PublishPost::class);
-    expect($post->fresh()->status)->toBe(PostStatus::Publishing);
+    expect($post->fresh()->status)->toBe(PostStatus::Publishing)
+        ->and($post->fresh()->scheduled_at->toDateTimeString())->toBe(now()->toDateTimeString());
 
     // Regression: previously UpdatePost::execute disabled every platform when
     // called without a `platforms` key, leaving the publish job with nothing

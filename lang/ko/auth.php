@@ -136,6 +136,9 @@ return [
         'login_prompt' => '이 초대를 수락하려면 로그인하거나 계정을 만드세요.',
         'log_in' => '로그인',
         'create_account' => '계정 만들기',
+        'expired_title' => '이 초대는 더 이상 유효하지 않습니다',
+        'expired_description' => '이 초대의 워크스페이스가 삭제되었습니다. 계속 접근이 필요하면 계정 소유자에게 새 초대를 요청하세요.',
+        'expired_action' => '홈으로',
     ],
 
 ];

@@ -26,7 +26,7 @@ test('delete workspace dispatches SyncAccountUsage when PostHog is enabled', fun
 
     Bus::fake();
 
-    DeleteWorkspace::execute($user, $workspace);
+    DeleteWorkspace::execute($workspace);
 
     expect(Workspace::find($workspace->id))->toBeNull();
 
@@ -52,7 +52,7 @@ test('delete workspace does not dispatch SyncAccountUsage when PostHog is disabl
 
     Bus::fake();
 
-    DeleteWorkspace::execute($user, $workspace);
+    DeleteWorkspace::execute($workspace);
 
     expect(Workspace::find($workspace->id))->toBeNull();
 

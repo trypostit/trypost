@@ -160,3 +160,64 @@ function subscribeAccount(Account $account): void
         'stripe_price' => 'price_123',
     ]);
 }
+
+/**
+ * Move a member onto a shared account (stranded-member / invitee fixture).
+ *
+ * @return array{
+ *     owner: User,
+ *     member: User,
+ *     shared_workspaces: list<Workspace>
+ * }
+ */
+function strandedMemberOnSharedAccount(
+    int $sharedWorkspaces = 0,
+    bool $attachMember = true,
+    bool $attachMemberToAll = true,
+    bool $setMemberCurrent = false,
+    ?User $owner = null,
+    ?string $memberEmail = null,
+): array {
+    $owner ??= User::factory()->create();
+    $member = User::factory()->create(array_filter([
+        'email' => $memberEmail,
+    ]));
+
+    // Closed-account model: the member's empty signup shell is gone after
+    // accepting the invite, so drop it here to match the real state.
+    $member->account?->delete();
+
+    $shared = [];
+
+    for ($i = 0; $i < $sharedWorkspaces; $i++) {
+        $workspace = Workspace::factory()->create([
+            'account_id' => $owner->account_id,
+            'user_id' => $owner->id,
+        ]);
+
+        $workspace->members()->syncWithoutDetaching([
+            $owner->id => ['role' => Role::Admin->value],
+        ]);
+
+        if ($attachMember && ($attachMemberToAll || $i === 0)) {
+            $workspace->members()->attach($member->id, [
+                'role' => Role::Member->value,
+            ]);
+        }
+
+        $shared[] = $workspace;
+    }
+
+    $member->update([
+        'account_id' => $owner->account_id,
+        'current_workspace_id' => ($setMemberCurrent && $shared !== [])
+            ? $shared[0]->id
+            : null,
+    ]);
+
+    return [
+        'owner' => $owner->fresh(),
+        'member' => $member->fresh(),
+        'shared_workspaces' => $shared,
+    ];
+}

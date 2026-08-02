@@ -48,6 +48,32 @@ test('user can switch workspace', function () {
     expect($user->fresh()->current_workspace_id)->toBe($workspace2->id);
 });
 
+test('user belongs to member workspace on the same account', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $member->update(['account_id' => $owner->account_id]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $owner->account_id,
+        'user_id' => $owner->id,
+    ]);
+    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+
+    expect($member->belongsToWorkspace($workspace))->toBeTrue();
+});
+
+test('user does not belong to a workspace on another account even with a pivot', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $owner->account_id,
+        'user_id' => $owner->id,
+    ]);
+    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+
+    expect($member->account_id)->not->toBe($workspace->account_id);
+    expect($member->belongsToWorkspace($workspace))->toBeFalse();
+});
+
 test('user belongs to owned workspace', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
@@ -56,13 +82,26 @@ test('user belongs to owned workspace', function () {
     expect($user->belongsToWorkspace($workspace))->toBeTrue();
 });
 
-test('user belongs to member workspace', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+test('accountWorkspaces excludes memberships on other accounts', function () {
+    $sharedOwner = User::factory()->create();
+    $user = User::factory()->create();
+    $personalAccountId = $user->account_id;
 
-    expect($member->belongsToWorkspace($workspace))->toBeTrue();
+    $personalWorkspace = Workspace::factory()->create([
+        'account_id' => $personalAccountId,
+        'user_id' => $user->id,
+    ]);
+    $personalWorkspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+
+    $sharedWorkspace = Workspace::factory()->create([
+        'account_id' => $sharedOwner->account_id,
+        'user_id' => $sharedOwner->id,
+    ]);
+    $sharedWorkspace->members()->attach($user->id, ['role' => Role::Member->value]);
+    $user->update(['account_id' => $sharedOwner->account_id]);
+
+    expect($user->fresh()->accountWorkspaces()->pluck('workspaces.id')->all())
+        ->toEqualCanonicalizing([$sharedWorkspace->id]);
 });
 
 test('user does not belong to other workspace', function () {

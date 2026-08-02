@@ -61,15 +61,17 @@ test('creating a workspace syncs the stripe quantity', function () {
 });
 
 test('deleting a workspace syncs the stripe quantity', function () {
+    config()->set('trypost.self_hosted', true);
+
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
 
-    $account = mock(Account::class)->makePartial();
+    $account = Mockery::mock($user->account)->makePartial();
     $account->shouldReceive('syncWorkspaceQuantity')->once();
     $workspace->setRelation('account', $account);
 
-    DeleteWorkspace::execute($user, $workspace);
+    expect(DeleteWorkspace::execute($workspace))->toBeTrue();
 });

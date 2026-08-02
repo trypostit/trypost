@@ -133,7 +133,7 @@ test('regular member cannot update workspace', function () {
     expect($this->policy->update($member, $workspace))->toBeFalse();
 });
 
-test('only account owner can delete workspace', function () {
+test('account owner can delete workspace but workspace admin cannot', function () {
     $account = Account::factory()->create();
     $owner = User::factory()->create([
         'account_id' => $account->id,
@@ -142,16 +142,22 @@ test('only account owner can delete workspace', function () {
     $admin = User::factory()->create([
         'account_id' => $account->id,
     ]);
+    $member = User::factory()->create([
+        'account_id' => $account->id,
+    ]);
     $workspace = Workspace::factory()->create([
         'account_id' => $account->id,
         'user_id' => $owner->id,
     ]);
+    $workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
 
     expect($this->policy->delete($owner, $workspace))->toBeTrue();
     expect($this->policy->delete($admin, $workspace))->toBeFalse();
+    expect($this->policy->delete($member, $workspace))->toBeFalse();
 });
 
-test('only account owner can restore workspace', function () {
+test('account owner can restore workspace but workspace admin cannot', function () {
     $account = Account::factory()->create();
     $owner = User::factory()->create([
         'account_id' => $account->id,
@@ -164,12 +170,13 @@ test('only account owner can restore workspace', function () {
         'account_id' => $account->id,
         'user_id' => $owner->id,
     ]);
+    $workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
 
     expect($this->policy->restore($owner, $workspace))->toBeTrue();
     expect($this->policy->restore($admin, $workspace))->toBeFalse();
 });
 
-test('only account owner can force delete workspace', function () {
+test('account owner can force delete workspace but workspace admin cannot', function () {
     $account = Account::factory()->create();
     $owner = User::factory()->create([
         'account_id' => $account->id,
@@ -182,6 +189,7 @@ test('only account owner can force delete workspace', function () {
         'account_id' => $account->id,
         'user_id' => $owner->id,
     ]);
+    $workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
 
     expect($this->policy->forceDelete($owner, $workspace))->toBeTrue();
     expect($this->policy->forceDelete($admin, $workspace))->toBeFalse();

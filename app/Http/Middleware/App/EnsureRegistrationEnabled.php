@@ -16,7 +16,9 @@ class EnsureRegistrationEnabled
             return $next($request);
         }
 
-        if ($inviteId = $request->query('invite') ?? $request->session()->get('pending_invite_id')) {
+        // `query` covers the GET form; `input` covers the invite field posted
+        // with the registration form (a hidden input, not a query param).
+        if ($inviteId = $request->query('invite') ?? $request->input('invite') ?? $request->session()->get('pending_invite_id')) {
             $request->session()->put('pending_invite_id', $inviteId);
 
             return $next($request);

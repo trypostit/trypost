@@ -136,6 +136,9 @@ return [
         'login_prompt' => 'Log in or create an account to accept this invite.',
         'log_in' => 'Log in',
         'create_account' => 'Create Account',
+        'expired_title' => 'This invite is no longer valid',
+        'expired_description' => 'The workspace for this invite was deleted. Ask the account owner for a new invite if you still need access.',
+        'expired_action' => 'Go to home',
     ],
 
 ];

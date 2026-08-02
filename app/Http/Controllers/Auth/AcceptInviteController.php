@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\Invite\AcceptInvite;
+use App\Actions\Invite\DeclineInvite;
+use App\Actions\Invite\ResolveInviteWorkspaces;
+use App\Actions\Invite\SettleAfterInvite;
 use App\Http\Controllers\Controller;
 use App\Models\Invite;
-use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -21,12 +24,23 @@ class AcceptInviteController extends Controller
     {
         $invite->load('account');
 
-        $firstWorkspaceId = collect($invite->workspaces ?? [])->first();
-        $workspace = $firstWorkspaceId ? Workspace::find($firstWorkspaceId) : null;
+        $workspaces = ResolveInviteWorkspaces::execute($invite);
+        $expired = $workspaces->isEmpty();
 
+        if ($expired) {
+            // Non-mutating for crawler/email prefetch: cleanup happens on
+            // workspace delete and on accept/decline of a dead invite.
+            return Inertia::render('auth/AcceptInvite', [
+                'expired' => true,
+                'invite' => null,
+            ]);
+        }
+
+        $workspace = $workspaces->first();
         $role = $invite->role;
 
         return Inertia::render('auth/AcceptInvite', [
+            'expired' => false,
             'invite' => [
                 'id' => $invite->id,
                 'email' => $invite->email,
@@ -34,10 +48,10 @@ class AcceptInviteController extends Controller
                     'id' => $invite->account->id,
                     'name' => $invite->account->name,
                 ],
-                'workspace' => $workspace ? [
+                'workspace' => [
                     'id' => $workspace->id,
                     'name' => $workspace->name,
-                ] : null,
+                ],
                 'role' => [
                     'value' => $role->value,
                     'label' => $role->label(),
@@ -51,53 +65,13 @@ class AcceptInviteController extends Controller
      */
     public function accept(Request $request, Invite $invite): RedirectResponse
     {
-        $user = $request->user();
+        $result = AcceptInvite::execute($request->user(), $invite);
 
-        // Verify the invite is for this user
-        if ($invite->email !== $user->email) {
-            session()->flash('flash.banner', __('settings.members.flash.wrong_email'));
-            session()->flash('flash.bannerStyle', 'danger');
-
-            return redirect()->route('app.calendar');
-        }
-
-        // Check if already a member of the account
-        if ($user->account_id === $invite->account_id) {
-            $invite->update(['accepted_at' => now()]);
-
-            session()->flash('flash.banner', __('settings.members.flash.already_member'));
-            session()->flash('flash.bannerStyle', 'info');
-
-            return redirect()->route('app.calendar');
-        }
-
-        // Add user to the account
-        $user->update(['account_id' => $invite->account_id]);
-
-        // Attach user to the invited workspaces
-        if ($invite->workspaces) {
-            foreach ($invite->workspaces as $workspaceId) {
-                $workspace = Workspace::find($workspaceId);
-
-                if ($workspace && $workspace->account_id === $invite->account_id) {
-                    $workspace->members()->syncWithoutDetaching([
-                        $user->id => ['role' => $invite->role->value],
-                    ]);
-
-                    // Set first workspace as current
-                    if (! $user->current_workspace_id) {
-                        $user->update(['current_workspace_id' => $workspace->id]);
-                    }
-                }
-            }
-        }
-
-        $invite->update(['accepted_at' => now()]);
-
-        session()->flash('flash.banner', __('settings.members.flash.invite_accepted'));
-        session()->flash('flash.bannerStyle', 'success');
-
-        return redirect()->route('app.calendar');
+        return SettleAfterInvite::flashAndRedirect(
+            $request->user(),
+            $result->flashBanner(),
+            $result->flashStyle(),
+        );
     }
 
     /**
@@ -105,21 +79,12 @@ class AcceptInviteController extends Controller
      */
     public function decline(Request $request, Invite $invite): RedirectResponse
     {
-        $user = $request->user();
+        $result = DeclineInvite::execute($request->user(), $invite);
 
-        // Verify the invite is for this user
-        if ($invite->email !== $user->email) {
-            session()->flash('flash.banner', __('settings.members.flash.wrong_email'));
-            session()->flash('flash.bannerStyle', 'danger');
-
-            return redirect()->route('app.calendar');
-        }
-
-        $invite->delete();
-
-        session()->flash('flash.banner', __('settings.members.flash.invite_declined'));
-        session()->flash('flash.bannerStyle', 'info');
-
-        return redirect()->route('app.calendar');
+        return SettleAfterInvite::flashAndRedirect(
+            $request->user(),
+            $result->flashBanner(),
+            $result->flashStyle(),
+        );
     }
 }

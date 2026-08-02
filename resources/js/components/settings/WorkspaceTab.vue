@@ -2,6 +2,7 @@
 import { Form } from '@inertiajs/vue3';
 
 import WorkspaceController from '@/actions/App/Http/Controllers/App/WorkspaceController';
+import DeleteWorkspace from '@/components/settings/DeleteWorkspace.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import InputError from '@/components/InputError.vue';
 import PhotoUpload from '@/components/PhotoUpload.vue';
@@ -9,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import { uploadLogo, deleteLogo } from '@/routes/app/workspace';
 
 interface Workspace {
@@ -20,7 +22,11 @@ interface Workspace {
 
 defineProps<{
     workspace: Workspace;
+    isOnlyWorkspace: boolean;
+    otherMemberCount: number;
 }>();
+
+const { canManageBilling } = useWorkspaceRole();
 </script>
 
 <template>
@@ -67,5 +73,15 @@ defineProps<{
                 <Button :disabled="processing">{{ $t('settings.workspace.save') }}</Button>
             </Form>
         </div>
+
+        <template v-if="canManageBilling">
+            <Separator />
+
+            <DeleteWorkspace
+                :workspace="workspace"
+                :is-only-workspace="isOnlyWorkspace"
+                :other-member-count="otherMemberCount"
+            />
+        </template>
     </div>
 </template>

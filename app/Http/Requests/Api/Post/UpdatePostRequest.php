@@ -14,6 +14,7 @@ use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Rules\ContentTypeMatchesPostPlatform;
 use App\Support\PostMediaRules;
 use App\Support\PostPlatformMetaRules;
+use App\Support\PostStatusRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -28,8 +29,10 @@ class UpdatePostRequest extends FormRequest
 
     public function rules(): array
     {
+        $status = $this->input('status');
+
         $enforcesPlatformLimits = in_array(
-            $this->input('status'),
+            $status,
             [Status::Scheduled->value, Status::Publishing->value],
             true,
         );
@@ -47,7 +50,7 @@ class UpdatePostRequest extends FormRequest
             ],
             ...PostMediaRules::rules(hosted: false),
             'platforms' => ['sometimes', 'array'],
-            'platforms.*.id' => ['required', 'uuid', Rule::exists('post_platforms', 'id')->where('post_id', $this->route('post') instanceof Post ? $this->route('post')->id : $this->route('post'))],
+            'platforms.*.id' => ['required', 'uuid', Rule::exists('post_platforms', 'id')->where('post_id', $this->route('post')->id)],
             'platforms.*.content_type' => [
                 'sometimes',
                 'string',
@@ -55,14 +58,7 @@ class UpdatePostRequest extends FormRequest
                 new ContentTypeMatchesPostPlatform,
             ],
             ...PostPlatformMetaRules::rules(),
-            'scheduled_at' => [
-                'nullable',
-                'date',
-                Rule::when(
-                    $this->input('status') === Status::Scheduled->value,
-                    ['after:now']
-                ),
-            ],
+            'scheduled_at' => PostStatusRules::scheduledAtRules($this->route('post'), $status),
             'label_ids' => ['sometimes', 'array'],
             'label_ids.*' => ['uuid', Rule::exists('workspace_labels', 'id')->where('workspace_id', $this->user()->currentWorkspace->id)],
         ];
@@ -97,12 +93,8 @@ class UpdatePostRequest extends FormRequest
      */
     private function addMediaCompatibilityErrors(Validator $validator): void
     {
-        $routePost = $this->route('post');
-        $post = $routePost instanceof Post ? $routePost : Post::find($routePost);
-
-        if (! $post) {
-            return;
-        }
+        /** @var Post $post */
+        $post = $this->route('post');
 
         $media = $this->has('media') ? (array) $this->input('media', []) : (array) ($post->media ?? []);
 
@@ -126,11 +118,11 @@ class UpdatePostRequest extends FormRequest
             return collect();
         }
 
+        /** @var Post $post */
         $post = $this->route('post');
-        $postId = $post instanceof Post ? $post->id : $post;
 
         return PostPlatform::query()
-            ->where('post_id', $postId)
+            ->where('post_id', $post->id)
             ->whereIn('id', $ids)
             ->pluck('platform', 'id');
     }

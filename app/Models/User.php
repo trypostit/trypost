@@ -103,7 +103,18 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
 
     public function isAccountOwner(): bool
     {
-        return $this->id === $this->account?->owner_id;
+        if (! $this->account_id) {
+            return false;
+        }
+
+        if ($this->relationLoaded('account')) {
+            return $this->id === $this->account?->owner_id;
+        }
+
+        return Account::query()
+            ->whereKey($this->account_id)
+            ->where('owner_id', $this->id)
+            ->exists();
     }
 
     public function wantsEmailFor(NotificationType $type): bool

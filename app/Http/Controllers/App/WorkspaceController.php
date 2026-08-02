@@ -15,6 +15,7 @@ use App\Http\Requests\App\Workspace\AutofillBrandRequest;
 use App\Http\Requests\App\Workspace\StoreWorkspaceRequest;
 use App\Http\Requests\App\Workspace\UpdateWorkspaceRequest;
 use App\Http\Resources\App\WorkspaceMemberResource;
+use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Brand\LogoAttacher;
@@ -53,7 +54,7 @@ class WorkspaceController extends Controller
     {
         $user = $request->user();
 
-        $workspaces = $user->workspaces()
+        $workspaces = $user->accountWorkspaces()
             ->with('media')
             ->withCount(['socialAccounts', 'posts'])
             ->latest()
@@ -67,6 +68,8 @@ class WorkspaceController extends Controller
 
     public function create(Request $request): Response|RedirectResponse
     {
+        $this->authorize('create', Workspace::class);
+
         if ($redirect = $this->denyAdditionalWorkspaceWithoutSubscription($request->user())) {
             return $redirect;
         }
@@ -87,6 +90,13 @@ class WorkspaceController extends Controller
      */
     private function denyAdditionalWorkspaceWithoutSubscription(User $user): ?RedirectResponse
     {
+        // An invited member joins exactly one account via the invite. Creating a
+        // workspace on their empty invite-signup shell would leave it non-empty
+        // and billable after accept abandons it — send them back to the invite.
+        if (Invite::query()->where('email', $user->email)->whereNull('accepted_at')->exists()) {
+            abort(403);
+        }
+
         if (! config('trypost.self_hosted')
             && $user->ownedWorkspacesCount() > 0
             && ! $user->account?->hasActiveSubscription()) {
@@ -132,6 +142,8 @@ class WorkspaceController extends Controller
     {
         $user = $request->user();
 
+        $this->authorize('view', $workspace);
+
         if (! $user->belongsToWorkspace($workspace)) {
             abort(403);
         }
@@ -154,6 +166,17 @@ class WorkspaceController extends Controller
 
         return Inertia::render('settings/workspace/Workspace', [
             'workspace' => $workspace,
+            'isOnlyWorkspace' => ! config('trypost.self_hosted')
+                && $workspace->account->workspaces()->count() <= 1,
+            'otherMemberCount' => $workspace->members()
+                ->where('users.id', '!=', $user->id)
+                ->whereDoesntHave(
+                    'workspaces',
+                    fn ($query) => $query
+                        ->where('workspaces.account_id', $workspace->account_id)
+                        ->where('workspaces.id', '!=', $workspace->id),
+                )
+                ->count(),
         ]);
     }
 
@@ -235,15 +258,21 @@ class WorkspaceController extends Controller
     {
         $this->authorize('delete', $workspace);
 
-        $user = $request->user();
-
-        if (! config('trypost.self_hosted') && $workspace->account->workspaces()->count() <= 1) {
+        if (! DeleteWorkspace::execute($workspace)) {
             return back()->with('flash.error', __('workspaces.cannot_delete_last'));
         }
 
-        DeleteWorkspace::execute($user, $workspace);
+        $request->user()->refresh();
 
-        return redirect()->route('app.workspaces.index')
+        // No current left (self-hosted last delete / no fallback) — go to create
+        // so EnsureHasWorkspace cannot bounce and drop the flash.
+        if (! $request->user()->current_workspace_id) {
+            return redirect()->route('app.workspaces.create')
+                ->with('flash.success', __('workspaces.flash.deleted'));
+        }
+
+        // Fallback workspace already set — back into the app, not the picker.
+        return redirect()->route('app.calendar')
             ->with('flash.success', __('workspaces.flash.deleted'));
     }
 }

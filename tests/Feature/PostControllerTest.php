@@ -198,6 +198,36 @@ test('calendar payload exposes post content for rendering', function () {
     );
 });
 
+test('calendar does not include unscheduled drafts', function () {
+    $scheduledAt = now('UTC')->startOfWeek()->addDays(2)->setTime(12, 0);
+
+    Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'content' => 'Unscheduled draft stays off the calendar',
+        'status' => PostStatus::Draft,
+        'scheduled_at' => null,
+    ]);
+
+    Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'content' => 'Scheduled post appears on the calendar',
+        'status' => PostStatus::Scheduled,
+        'scheduled_at' => $scheduledAt,
+    ]);
+
+    $dateKey = $scheduledAt->format('Y-m-d');
+
+    $this->actingAs($this->user)
+        ->get(route('app.calendar'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has("posts.{$dateKey}", 1)
+            ->where("posts.{$dateKey}.0.content", 'Scheduled post appears on the calendar')
+        );
+});
+
 // Create tests
 test('create requires authentication', function () {
     $response = $this->get(route('app.posts.create'));
@@ -262,11 +292,11 @@ test('store post creates draft and redirects to edit', function () {
     expect($post->postPlatforms)->toHaveCount(1);
 });
 
-test('store post defaults scheduled_at to today when no date is provided', function () {
+test('store post leaves scheduled_at null when no date is provided', function () {
     $this->actingAs($this->user)->post(route('app.posts.store'))->assertRedirect();
 
     $post = Post::where('workspace_id', $this->workspace->id)->first();
-    expect($post->scheduled_at->format('Y-m-d'))->toBe(now('UTC')->format('Y-m-d'));
+    expect($post->scheduled_at)->toBeNull();
 });
 
 test('store post schedules draft on the date param when provided', function () {
@@ -275,7 +305,7 @@ test('store post schedules draft on the date param when provided', function () {
     ])->assertRedirect();
 
     $post = Post::where('workspace_id', $this->workspace->id)->first();
-    expect($post->scheduled_at->format('Y-m-d'))->toBe('2026-06-15');
+    expect($post->scheduled_at->utc()->format('Y-m-d H:i:s'))->toBe('2026-06-15 09:00:00');
 });
 
 test('store post rejects invalid date format', function () {
@@ -318,6 +348,28 @@ test('edit post shows edit page', function () {
         ->has('post')
         ->has('socialAccounts')
     );
+});
+
+test('edit exposes null scheduled_at for an unscheduled draft', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'scheduled_at' => null,
+    ]);
+
+    PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.edit', $post))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('posts/Edit')
+            ->where('post.scheduled_at', null)
+        );
 });
 
 test('edit post returns 404 for post from different workspace', function () {
@@ -604,6 +656,178 @@ test('publish now updates scheduled_at to current time', function () {
 
     $post->refresh();
     expect($post->scheduled_at->toDateTimeString())->toBe(now()->toDateTimeString());
+});
+
+test('publish now is allowed when the draft has no scheduled_at', function () {
+    Bus::fake();
+    $this->freezeTime();
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'content' => 'Test content',
+        'scheduled_at' => null,
+    ]);
+
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'publishing',
+        'content' => 'Test content',
+        'platforms' => [
+            [
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::LinkedInPost->value,
+            ],
+        ],
+    ])->assertRedirect();
+
+    $post->refresh();
+    expect($post->status)->toBe(PostStatus::Publishing)
+        ->and($post->scheduled_at->toDateTimeString())->toBe(now()->toDateTimeString());
+    Bus::assertDispatched(PublishPost::class);
+});
+
+test('update rejects scheduled status without a future scheduled_at', function (?string $existingScheduledAt) {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'scheduled_at' => $existingScheduledAt,
+        'content' => 'Test content',
+    ]);
+
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+
+    $payload = [
+        'status' => 'scheduled',
+        'content' => 'Test content',
+        'platforms' => [
+            [
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::LinkedInPost->value,
+            ],
+        ],
+    ];
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $post), $payload)
+        ->assertSessionHasErrors('scheduled_at');
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $post), [
+            ...$payload,
+            'scheduled_at' => now()->subHour()->toIso8601String(),
+        ])
+        ->assertSessionHasErrors('scheduled_at');
+
+    expect($post->fresh()->status)->toBe(PostStatus::Draft);
+})->with([
+    'missing schedule' => [null],
+    'past schedule' => [now()->subDay()->toDateTimeString()],
+]);
+
+test('update accepts scheduled status reusing an existing future scheduled_at', function () {
+    $scheduledAt = now()->addDay()->startOfSecond();
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'scheduled_at' => $scheduledAt,
+        'content' => 'Test content',
+    ]);
+
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'scheduled',
+        'content' => 'Test content',
+        'platforms' => [
+            [
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::LinkedInPost->value,
+            ],
+        ],
+    ])->assertRedirect();
+
+    $post->refresh();
+    expect($post->status)->toBe(PostStatus::Scheduled)
+        ->and($post->scheduled_at->toDateTimeString())->toBe($scheduledAt->toDateTimeString());
+});
+
+test('update schedules an unscheduled draft with an explicit future scheduled_at', function () {
+    $scheduledAt = now()->addDay()->startOfSecond();
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'scheduled_at' => null,
+        'content' => 'Test content',
+    ]);
+
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'scheduled',
+        'scheduled_at' => $scheduledAt->toIso8601String(),
+        'content' => 'Test content',
+        'platforms' => [
+            [
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::LinkedInPost->value,
+            ],
+        ],
+    ])->assertRedirect();
+
+    $post->refresh();
+    expect($post->status)->toBe(PostStatus::Scheduled)
+        ->and($post->scheduled_at->toDateTimeString())->toBe($scheduledAt->toDateTimeString());
+});
+
+test('update keeps an unscheduled draft when saving as draft without scheduled_at', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'scheduled_at' => null,
+        'content' => 'Original',
+    ]);
+
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'draft',
+        'content' => 'Still a draft',
+        'platforms' => [
+            [
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::LinkedInPost->value,
+            ],
+        ],
+    ])->assertRedirect();
+
+    $post->refresh();
+    expect($post->status)->toBe(PostStatus::Draft)
+        ->and($post->scheduled_at)->toBeNull()
+        ->and($post->content)->toBe('Still a draft');
 });
 
 // Destroy tests

@@ -37,10 +37,12 @@ class UpdatePostTool extends Tool
             return Response::error('Post not found.');
         }
 
+        $status = data_get($request->all(), 'status');
+
         $validated = $request->validate([
             'post_id' => ['required', 'uuid'],
             'content' => ['nullable', 'string', 'max:10000'],
-            'scheduled_at' => ['nullable', 'date', 'after:now'],
+            'scheduled_at' => PostStatusRules::scheduledAtRules($post, $status),
             'status' => ['sometimes', 'string', Rule::in([Status::Draft->value, Status::Scheduled->value])],
             'label_ids' => ['sometimes', 'array'],
             'label_ids.*' => ['uuid', Rule::exists('workspace_labels', 'id')->where('workspace_id', $workspace->id)],
@@ -63,7 +65,7 @@ class UpdatePostTool extends Tool
         // here, or stored) against the post's stored media — the tool can't change
         // media, so a misconfigured post can't be scheduled even without resubmitting
         // content_type. Mirrors the public API's withValidator check.
-        if (data_get($validated, 'status') === Status::Scheduled->value) {
+        if ($status === Status::Scheduled->value) {
             $errors = ContentTypeCompatibleWithMedia::errorsFor(
                 ContentTypeCompatibleWithMedia::entriesForUpdate($post, data_get($validated, 'platforms')),
                 (array) ($post->media ?? []),
@@ -94,7 +96,7 @@ class UpdatePostTool extends Tool
         return [
             'post_id' => $schema->string()->required()->description('UUID of the post to update.'),
             'content' => $schema->string()->description('New caption/text body.'),
-            'scheduled_at' => $schema->string()->description('ISO 8601 datetime in the future. Required if status is "scheduled".'),
+            'scheduled_at' => $schema->string()->description('Future ISO 8601 datetime. Required for status "scheduled" unless the post already has a future schedule.'),
             'status' => $schema->string()
                 ->enum([Status::Draft->value, Status::Scheduled->value])
                 ->description('Post status. Use "draft" to keep editing, "scheduled" to schedule the post. Use publish-post-tool for immediate publish.'),

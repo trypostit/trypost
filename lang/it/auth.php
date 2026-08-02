@@ -136,6 +136,9 @@ return [
         'login_prompt' => 'Accedi o crea un account per accettare questo invito.',
         'log_in' => 'Accedi',
         'create_account' => 'Crea account',
+        'expired_title' => 'Questo invito non è più valido',
+        'expired_description' => 'Il workspace di questo invito è stato eliminato. Chiedi al proprietario dell’account un nuovo invito se ti serve ancora l’accesso.',
+        'expired_action' => 'Vai alla home',
     ],
 
 ];

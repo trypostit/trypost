@@ -37,11 +37,26 @@ trait HasWorkspace
     }
 
     /**
-     * Check if user belongs to a workspace (owner or member).
+     * Check if user belongs to a workspace on their current account.
      */
     public function belongsToWorkspace(Workspace $workspace): bool
     {
+        if ($workspace->account_id !== $this->account_id) {
+            return false;
+        }
+
         return $this->workspaces()->where('workspaces.id', $workspace->id)->exists();
+    }
+
+    /**
+     * Workspaces the user can use on their current account (never cross-account).
+     *
+     * @return BelongsToMany<Workspace, $this>
+     */
+    public function accountWorkspaces(): BelongsToMany
+    {
+        return $this->workspaces()
+            ->where('workspaces.account_id', $this->account_id);
     }
 
     /**

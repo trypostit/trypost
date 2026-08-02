@@ -7,12 +7,11 @@ namespace App\Http\Controllers\Auth;
 use App\Actions\User\CreateUser;
 use App\Http\Controllers\Auth\Concerns\PreservesUtmParameters;
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Http\Requests\App\Auth\RegisterRequest;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -27,26 +26,19 @@ class RegisteredUserController extends Controller
         return Inertia::render('auth/Register', [
             'email' => $request->query('email'),
             'redirect' => $request->query('redirect'),
+            'invite' => $request->query('invite'),
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(RegisterRequest $request): RedirectResponse
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'password' => ['required', Rules\Password::defaults()],
-        ]);
-
-        $isInviteRegistration = str_contains($request->input('redirect', ''), '/invites/');
-
         $utmParameters = $this->retrieveUtmParameters();
 
         $user = CreateUser::execute([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => $request->password,
-            'is_invite' => $isInviteRegistration,
+            'name' => $request->validated('name'),
+            'email' => $request->validated('email'),
+            'password' => $request->validated('password'),
+            'is_invite' => $request->isInviteRegistration(),
             'registration_ip' => $request->ip(),
         ], $utmParameters);
 

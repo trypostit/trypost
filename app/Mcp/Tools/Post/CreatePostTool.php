@@ -55,7 +55,7 @@ class CreatePostTool extends Tool
     {
         return [
             'content' => $schema->string()->description('The post caption/text body. Optional — can be edited later.'),
-            'scheduled_at' => $schema->string()->description('ISO 8601 datetime in the future (e.g. 2026-05-10T15:30:00Z). Defaults to today at 09:00 UTC.'),
+            'scheduled_at' => $schema->string()->description('Optional ISO 8601 datetime in the future (e.g. 2026-05-10T15:30:00Z). Omit it or pass null to create an unscheduled draft.'),
             'label_ids' => $schema->array()
                 ->items($schema->string())
                 ->description('Workspace label IDs to attach to the post.'),

@@ -3,11 +3,15 @@
 declare(strict_types=1);
 
 use App\Enums\UserWorkspace\Role;
+use App\Models\AccessToken;
 use App\Models\Account;
+use App\Models\Invite;
+use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Cashier\Subscription;
 
 test('profile page is displayed', function () {
     $user = User::factory()->create();
@@ -103,6 +107,18 @@ test('user can delete their account', function () {
     expect($user->fresh())->toBeNull();
 });
 
+test('owner deleting profile revokes their passport tokens', function () {
+    $owner = User::factory()->create();
+    $token = $owner->createToken('API Key')->token;
+
+    $this->actingAs($owner)->delete(route('app.profile.destroy'), [
+        'password' => 'password',
+    ]);
+
+    expect(User::find($owner->id))->toBeNull();
+    expect(AccessToken::find($token->id)->revoked)->toBeTrue();
+});
+
 test('correct password must be provided to delete account', function () {
     $user = User::factory()->create();
 
@@ -120,64 +136,25 @@ test('correct password must be provided to delete account', function () {
     expect($user->fresh())->not->toBeNull();
 });
 
-test('deleting account updates members current_workspace_id when their workspace is deleted', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
+test('deleting account deletes members who belong to the shared account', function () {
+    [
+        'owner' => $owner,
+        'member' => $member,
+        'shared_workspaces' => [$workspace],
+    ] = strandedMemberOnSharedAccount(
+        sharedWorkspaces: 1,
+        setMemberCurrent: true,
+    );
+    $memberToken = $member->createToken('Member API')->token;
 
-    // Create a workspace owned by the owner
-    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
-    $owner->workspaces()->attach($workspace->id, ['role' => Role::Member->value]);
-    $owner->update(['current_workspace_id' => $workspace->id]);
-
-    // Add member to the workspace and set it as their current
-    $member->workspaces()->attach($workspace->id, ['role' => Role::Member->value]);
-    $member->update(['current_workspace_id' => $workspace->id]);
-
-    // Verify setup
-    expect($member->current_workspace_id)->toBe($workspace->id);
-
-    // Owner deletes their account
     $this
         ->actingAs($owner)
         ->delete(route('app.profile.destroy'), [
             'password' => 'password',
         ]);
 
-    // Verify member's current_workspace_id is updated to null (since they have no other workspace)
-    expect($member->fresh()->current_workspace_id)->toBeNull();
-});
-
-test('deleting account updates members current_workspace_id to another workspace when available', function () {
-    $owner = User::factory()->create();
-    $member = User::factory()->create();
-    $otherOwner = User::factory()->create();
-
-    // Create workspace owned by the owner being deleted
-    $workspaceToDelete = Workspace::factory()->create(['user_id' => $owner->id]);
-    $owner->workspaces()->attach($workspaceToDelete->id, ['role' => Role::Member->value]);
-    $owner->update(['current_workspace_id' => $workspaceToDelete->id]);
-
-    // Create another workspace owned by a different user
-    $otherWorkspace = Workspace::factory()->create(['user_id' => $otherOwner->id]);
-    $otherOwner->workspaces()->attach($otherWorkspace->id, ['role' => Role::Member->value]);
-
-    // Add member to both workspaces
-    $member->workspaces()->attach($workspaceToDelete->id, ['role' => Role::Member->value]);
-    $member->workspaces()->attach($otherWorkspace->id, ['role' => Role::Member->value]);
-    $member->update(['current_workspace_id' => $workspaceToDelete->id]);
-
-    // Verify setup
-    expect($member->current_workspace_id)->toBe($workspaceToDelete->id);
-
-    // Owner deletes their account
-    $this
-        ->actingAs($owner)
-        ->delete(route('app.profile.destroy'), [
-            'password' => 'password',
-        ]);
-
-    // Verify member's current_workspace_id is updated to the other workspace
-    expect($member->fresh()->current_workspace_id)->toBe($otherWorkspace->id);
+    expect(User::find($member->id))->toBeNull();
+    expect(AccessToken::find($memberToken->id)->revoked)->toBeTrue();
 });
 
 test('user can upload profile photo', function () {
@@ -275,6 +252,26 @@ test('member deleting profile does NOT destroy the shared account', function (bo
     expect($owner->fresh())->not->toBeNull();
 })->with([true, false]);
 
+test('member deleting profile does not delete shared workspaces they created', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create(['account_id' => $owner->account_id]);
+
+    $sharedWorkspace = Workspace::factory()->create([
+        'account_id' => $owner->account_id,
+        'user_id' => $member->id,
+    ]);
+    $sharedWorkspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
+    $sharedWorkspace->members()->attach($member->id, ['role' => Role::Member->value]);
+
+    $this->actingAs($member)->delete(route('app.profile.destroy'), [
+        'password' => 'password',
+    ]);
+
+    expect(User::find($member->id))->toBeNull();
+    expect(Workspace::find($sharedWorkspace->id))->not->toBeNull();
+    expect(Account::find($owner->account_id))->not->toBeNull();
+});
+
 test('member deleting profile detaches them from workspaces', function (bool $selfHosted) {
     config()->set('trypost.self_hosted', $selfHosted);
 
@@ -293,6 +290,25 @@ test('member deleting profile detaches them from workspaces', function (bool $se
 
     expect($workspace->fresh()->members()->where('users.id', $member->id)->exists())->toBeFalse();
 })->with([true, false]);
+
+test('owner deleting profile deletes remaining members of the account', function () {
+    [
+        'owner' => $owner,
+        'member' => $member,
+        'shared_workspaces' => [$workspace],
+    ] = strandedMemberOnSharedAccount(
+        sharedWorkspaces: 1,
+        setMemberCurrent: true,
+    );
+    $accountId = $owner->account_id;
+
+    $this->actingAs($owner)->delete(route('app.profile.destroy'), [
+        'password' => 'password',
+    ]);
+
+    expect(Account::find($accountId))->toBeNull();
+    expect(User::find($member->id))->toBeNull();
+});
 
 test('owner deleting profile destroys the account and cascades', function (bool $selfHosted) {
     config()->set('trypost.self_hosted', $selfHosted);
@@ -313,3 +329,162 @@ test('owner deleting profile destroys the account and cascades', function (bool 
     expect(Account::find($accountId))->toBeNull();
     expect(Workspace::find($workspace->id))->toBeNull();
 })->with([true, false]);
+
+test('owner deleting profile clears media for account workspaces not owned by user_id', function () {
+    Storage::fake();
+
+    $owner = User::factory()->create();
+    $accountId = $owner->account_id;
+
+    $memberCreated = Workspace::factory()->create([
+        'account_id' => $accountId,
+        'user_id' => User::factory()->create(['account_id' => $accountId])->id,
+    ]);
+    $media = $memberCreated->addMedia(
+        UploadedFile::fake()->image('logo.jpg'),
+        'logo',
+    );
+    $mediaPath = $media->path;
+    Storage::assertExists($mediaPath);
+
+    $this->actingAs($owner)->delete(route('app.profile.destroy'), [
+        'password' => 'password',
+    ]);
+
+    expect(Account::find($accountId))->toBeNull();
+    expect(Workspace::find($memberCreated->id))->toBeNull();
+    expect(Media::find($media->id))->toBeNull();
+    Storage::assertMissing($mediaPath);
+});
+
+test('owner deleting profile clears avatar media', function () {
+    Storage::fake();
+
+    $owner = User::factory()->create();
+    $avatar = $owner->addMedia(
+        UploadedFile::fake()->image('avatar.jpg', 200, 200),
+        'avatar',
+    );
+    $avatarPath = $avatar->path;
+    Storage::assertExists($avatarPath);
+
+    $this->actingAs($owner)->delete(route('app.profile.destroy'), [
+        'password' => 'password',
+    ]);
+
+    expect($owner->fresh())->toBeNull();
+    expect(Media::find($avatar->id))->toBeNull();
+    Storage::assertMissing($avatarPath);
+});
+
+test('owner account delete aborts when stripe cancel fails', function () {
+    Storage::fake();
+
+    $owner = User::factory()->create();
+    $account = $owner->account;
+    $accountId = $account->id;
+
+    $member = User::factory()->create();
+    $member->account?->delete();
+    $member->update(['account_id' => $accountId]);
+
+    $workspace = Workspace::factory()->create([
+        'account_id' => $accountId,
+        'user_id' => $owner->id,
+    ]);
+    $workspace->members()->attach($owner->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+
+    $media = $workspace->addMedia(
+        UploadedFile::fake()->image('logo.jpg'),
+        'logo',
+    );
+    $mediaPath = $media->path;
+    Storage::assertExists($mediaPath);
+
+    $invite = Invite::factory()->create([
+        'account_id' => $accountId,
+        'invited_by' => $owner->id,
+        'workspaces' => [$workspace->id],
+    ]);
+
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test_'.fake()->uuid(),
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_123',
+    ]);
+
+    $mockSubscription = Mockery::mock(Subscription::class);
+    $mockSubscription->shouldReceive('ended')->andReturnFalse();
+    $mockSubscription->shouldReceive('cancelNow')
+        ->once()
+        ->andThrow(new RuntimeException('stripe unavailable'));
+
+    $mockAccount = Mockery::mock($account)->makePartial();
+    $mockAccount->shouldReceive('subscription')
+        ->with(Account::SUBSCRIPTION_NAME)
+        ->andReturn($mockSubscription);
+    $mockAccount->shouldReceive('delete')->never();
+
+    $owner->setRelation('account', $mockAccount);
+
+    $response = $this->actingAs($owner)->delete(route('app.profile.destroy'), [
+        'password' => 'password',
+    ]);
+
+    $response->assertRedirect(route('app.profile.edit'));
+    $response->assertSessionHas('flash.banner', __('settings.flash.delete_failed_billing'));
+    $response->assertSessionHas('flash.bannerStyle', 'danger');
+
+    expect($owner->fresh())->not->toBeNull();
+    expect(User::find($member->id))->not->toBeNull();
+    expect(Account::find($accountId))->not->toBeNull();
+    expect(Account::find($accountId)->subscriptions()->count())->toBe(1);
+    expect(Workspace::find($workspace->id))->not->toBeNull();
+    expect(Media::find($media->id))->not->toBeNull();
+    expect(Invite::find($invite->id))->not->toBeNull();
+    Storage::assertExists($mediaPath);
+});
+
+test('account delete cancels incomplete stripe subscriptions that are not subscribed', function () {
+    $owner = User::factory()->create();
+    $account = $owner->account;
+    $accountId = $account->id;
+    $member = User::factory()->create();
+    $member->update(['account_id' => $accountId]);
+
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_incomplete_'.fake()->uuid(),
+        'stripe_status' => 'incomplete',
+        'stripe_price' => 'price_123',
+    ]);
+
+    expect($account->fresh()->subscribed(Account::SUBSCRIPTION_NAME))->toBeFalse();
+
+    $mockSubscription = Mockery::mock(Subscription::class);
+    $mockSubscription->shouldReceive('ended')->andReturnFalse();
+    $mockSubscription->shouldReceive('cancelNow')
+        ->once()
+        ->andThrow(new RuntimeException('stripe unavailable'));
+
+    $mockAccount = Mockery::mock($account)->makePartial();
+    $mockAccount->shouldReceive('subscription')
+        ->with(Account::SUBSCRIPTION_NAME)
+        ->andReturn($mockSubscription);
+    $mockAccount->shouldReceive('delete')->never();
+
+    $owner->setRelation('account', $mockAccount);
+
+    $response = $this->actingAs($owner)->delete(route('app.profile.destroy'), [
+        'password' => 'password',
+    ]);
+
+    $response->assertRedirect(route('app.profile.edit'));
+    $response->assertSessionHas('flash.banner', __('settings.flash.delete_failed_billing'));
+
+    expect($owner->fresh())->not->toBeNull();
+    expect(User::find($member->id))->not->toBeNull();
+    expect(Account::find($accountId))->not->toBeNull();
+});

@@ -134,3 +134,29 @@ test('an admin without connected accounts is sent to the accounts screen when cr
         ->post(route('app.posts.store'))
         ->assertRedirect(route('app.accounts'));
 });
+
+test('a member cannot open the create workspace form', function () {
+    $this->actingAs($this->member)
+        ->get(route('app.workspaces.create'))
+        ->assertForbidden();
+});
+
+test('a member cannot store a workspace on the shared account', function () {
+    $this->actingAs($this->member)
+        ->post(route('app.workspaces.store'), [
+            'name' => 'Sneaky Workspace',
+        ])
+        ->assertForbidden();
+
+    expect(Workspace::where('name', 'Sneaky Workspace')->exists())->toBeFalse();
+});
+
+test('a workspace admin cannot store a workspace on the shared account', function () {
+    $this->actingAs($this->admin)
+        ->post(route('app.workspaces.store'), [
+            'name' => 'Admin Workspace',
+        ])
+        ->assertForbidden();
+
+    expect(Workspace::where('name', 'Admin Workspace')->exists())->toBeFalse();
+});

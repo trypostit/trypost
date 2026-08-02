@@ -80,6 +80,19 @@ test('store invite creates invite and sends email', function () {
     Mail::assertQueued(WorkspaceInviteMail::class);
 });
 
+test('store invite blocks an email that already belongs to a registered user', function () {
+    User::factory()->create(['email' => 'existing@example.com']);
+
+    $response = $this->actingAs($this->user)->post(route('app.invites.store'), [
+        'email' => 'existing@example.com',
+        'role' => WorkspaceRole::Member->value,
+    ]);
+
+    $response->assertSessionHasErrors('email');
+    $this->assertDatabaseMissing('invites', ['email' => 'existing@example.com']);
+    Mail::assertNothingQueued();
+});
+
 test('store invite requires a role', function () {
     $response = $this->actingAs($this->user)->post(route('app.invites.store'), [
         'email' => 'newmember@example.com',
@@ -191,6 +204,22 @@ test('remove member removes user from workspace', function () {
 
     $response->assertRedirect();
     expect($this->workspace->hasMember($member))->toBeFalse();
+});
+
+test('remove member deletes stranded members', function () {
+    [
+        'member' => $member,
+    ] = strandedMemberOnSharedAccount(
+        owner: $this->user,
+        setMemberCurrent: false,
+    );
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+    $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Member->value]);
+
+    $this->actingAs($this->user)->delete(route('app.members.remove', $member));
+
+    expect($this->workspace->hasMember($member))->toBeFalse();
+    expect(User::find($member->id))->toBeNull();
 });
 
 test('remove member fails for owner', function () {
