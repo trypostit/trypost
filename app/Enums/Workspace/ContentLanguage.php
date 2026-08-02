@@ -34,7 +34,7 @@ enum ContentLanguage: string
     case Turkish = 'tr';
     case Arabic = 'ar';
 
-    public const DEFAULT = self::Ukrainian;
+    public const DEFAULT = self::English;
 
     /**
      * The language's own name, shown in the content-language picker.

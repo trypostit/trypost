@@ -24,7 +24,7 @@ const form = useForm({
     text_color: null as string | null,
     brand_font: 'Inter',
     image_style: 'cinematic',
-    content_language: 'uk',
+    content_language: 'en',
     logo_url: '' as string | null,
 });
 

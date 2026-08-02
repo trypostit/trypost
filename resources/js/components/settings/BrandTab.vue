@@ -39,7 +39,7 @@ const form = useForm({
     text_color: props.workspace.text_color,
     brand_font: props.workspace.brand_font ?? 'Inter',
     image_style: props.workspace.image_style ?? 'cinematic',
-    content_language: props.workspace.content_language ?? 'uk',
+    content_language: props.workspace.content_language ?? 'en',
     logo_url: '' as string | null,
 });
 
@@ -65,6 +65,8 @@ const submit = () => {
             :autofill="!workspace.brand_website"
         />
 
-        <Button :disabled="form.processing">{{ $t('settings.workspace.save') }}</Button>
+        <Button :disabled="form.processing">{{
+            $t('settings.workspace.save')
+        }}</Button>
     </form>
 </template>

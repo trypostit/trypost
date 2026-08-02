@@ -11,9 +11,9 @@ test('values exposes every supported content-language code', function () {
     ]);
 });
 
-test('default content language is Ukrainian', function () {
-    expect(ContentLanguage::DEFAULT)->toBe(ContentLanguage::Ukrainian);
-    expect(ContentLanguage::DEFAULT->value)->toBe('uk');
+test('default content language is English', function () {
+    expect(ContentLanguage::DEFAULT)->toBe(ContentLanguage::English);
+    expect(ContentLanguage::DEFAULT->value)->toBe('en');
 });
 
 test('options pairs each code with its native and English label', function () {
