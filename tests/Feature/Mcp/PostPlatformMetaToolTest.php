@@ -333,3 +333,72 @@ test('create post seeds Pinterest description from content when omitted', functi
     expect(data_get(PostPlatform::where('social_account_id', $pinterest->id)->sole()->meta, 'description'))
         ->toBe('Caption becomes pin description');
 });
+
+test('update post merges Pinterest title and link and seeds description', function () {
+    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'content' => 'Seeded from update content',
+    ]);
+    $platform = PostPlatform::factory()->pinterest()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $pinterest->id,
+        'enabled' => true,
+        'meta' => ['board_id' => 'board-1'],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'content' => 'Seeded from update content',
+            'platforms' => [[
+                'id' => $platform->id,
+                'meta' => [
+                    'board_id' => 'board-1',
+                    'title' => 'Updated Title',
+                    'link' => 'https://example.com/updated',
+                ],
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    $meta = $platform->fresh()->meta;
+
+    expect(data_get($meta, 'title'))->toBe('Updated Title')
+        ->and(data_get($meta, 'link'))->toBe('https://example.com/updated')
+        ->and(data_get($meta, 'description'))->toBe('Seeded from update content')
+        ->and(data_get($meta, 'board_id'))->toBe('board-1');
+});
+
+test('update post keeps an explicit Pinterest description', function () {
+    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'content' => 'Shared caption',
+    ]);
+    $platform = PostPlatform::factory()->pinterest()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $pinterest->id,
+        'enabled' => true,
+        'meta' => ['board_id' => 'board-1', 'description' => 'Keep me'],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'content' => 'Shared caption changed',
+            'platforms' => [[
+                'id' => $platform->id,
+                'meta' => ['board_id' => 'board-1', 'description' => 'Keep me'],
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    expect(data_get($platform->fresh()->meta, 'description'))->toBe('Keep me');
+});

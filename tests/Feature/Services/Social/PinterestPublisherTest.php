@@ -703,6 +703,106 @@ test('pinterest publisher can publish video pin', function () {
         && data_get($request->data(), 'media_source.cover_image_key_frame_time') === 0);
 });
 
+test('pinterest publisher includes title description and link on video pins', function () {
+    $this->postPlatform->update([
+        'content_type' => ContentType::PinterestVideoPin,
+        'meta' => [
+            'board_id' => 'board_123',
+            'title' => 'Video Title',
+            'description' => 'Video description',
+            'link' => 'https://example.com/video',
+        ],
+    ]);
+
+    $this->post->update([
+        'content' => 'Shared caption must not be used',
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/video.mp4',
+                'url' => 'https://example.com/media/2026-01/video.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'video.mp4',
+            ],
+        ],
+    ]);
+
+    $s3UploadUrl = 'https://pinterest-media-upload.s3.amazonaws.com/upload';
+
+    Http::fake(function ($request) use ($s3UploadUrl) {
+        $url = $request->url();
+
+        if (str_contains($url, '/v5/media') && $request->method() === 'POST') {
+            return Http::response([
+                'media_id' => 'media_video_789',
+                'upload_url' => $s3UploadUrl,
+                'upload_parameters' => ['key' => 'uploads/video.mp4'],
+            ], 201);
+        }
+
+        if ($url === $s3UploadUrl) {
+            return Http::response('', 204);
+        }
+
+        if (str_contains($url, '/v5/media/media_video_789')) {
+            return Http::response(['status' => 'succeeded'], 200);
+        }
+
+        if (str_contains($url, '/v5/pins')) {
+            return Http::response(['id' => 'video_pin_999'], 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(fn ($request) => $request->url() === config('trypost.platforms.pinterest.api').'/pins'
+        && data_get($request->data(), 'title') === 'Video Title'
+        && data_get($request->data(), 'description') === 'Video description'
+        && data_get($request->data(), 'link') === 'https://example.com/video'
+        && data_get($request->data(), 'media_source.source_type') === 'video_id');
+});
+
+test('pinterest publisher includes title description and link on carousels', function () {
+    $mediaItems = [];
+    for ($i = 1; $i <= 2; $i++) {
+        $mediaItems[] = [
+            'id' => "test-media-{$i}",
+            'path' => "media/2026-01/image{$i}.jpg",
+            'url' => "https://example.com/media/2026-01/image{$i}.jpg",
+            'mime_type' => 'image/jpeg',
+            'original_filename' => "image{$i}.jpg",
+        ];
+    }
+
+    $this->postPlatform->update([
+        'content_type' => ContentType::PinterestCarousel,
+        'meta' => [
+            'board_id' => 'board_123',
+            'title' => 'Carousel Title',
+            'description' => 'Carousel description',
+            'link' => 'https://example.com/carousel',
+        ],
+    ]);
+
+    $this->post->update(['media' => $mediaItems]);
+
+    Http::fake([
+        '*/v5/pins' => Http::response(['id' => 'carousel_pin_123'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), '/v5/pins')
+            && $request['title'] === 'Carousel Title'
+            && $request['description'] === 'Carousel description'
+            && $request['link'] === 'https://example.com/carousel'
+            && $request['media_source']['source_type'] === 'multiple_image_urls';
+    });
+});
+
 test('pinterest video pin uses the provided cover image url over the default frame', function () {
     $this->postPlatform->update([
         'content_type' => ContentType::PinterestVideoPin,
