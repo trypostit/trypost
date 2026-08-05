@@ -117,11 +117,16 @@ const weekHeaderTitle = computed(() => {
     const start = weekStart.value;
     const end = weekStart.value.add(6, 'day');
 
-    if (start.month() === end.month()) {
-        return `${start.format('MMMM D')}–${end.format('D, YYYY')}`;
+    // Day-first tokens so locales like pt-BR stay "3–9 de agosto", not "August 3–9".
+    if (start.isSame(end, 'month')) {
+        return `${start.format('D')}–${end.format('D MMMM YYYY')}`;
     }
 
-    return `${start.format('MMM D')} – ${end.format('MMM D, YYYY')}`;
+    if (start.isSame(end, 'year')) {
+        return `${start.format('D MMM')} – ${end.format('D MMMM YYYY')}`;
+    }
+
+    return `${start.format('ll')} – ${end.format('ll')}`;
 });
 
 // Month view computed

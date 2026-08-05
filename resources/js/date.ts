@@ -73,12 +73,10 @@ export default {
     },
 
     /**
-     * Short month + day for chart axes (locale-aware order via Intl).
+     * Short day + month for chart axes (day-first so locales keep natural order).
      */
     formatMonthDay(date: string | Date) {
-        return dayjs(date)
-            .toDate()
-            .toLocaleDateString(dayjs.locale(), { month: 'short', day: 'numeric' });
+        return dayjs(date).format('D MMM');
     },
 
     /**
