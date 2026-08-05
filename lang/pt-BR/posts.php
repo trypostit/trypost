@@ -158,6 +158,13 @@ return [
             'search_board' => 'Pesquisar quadros...',
             'no_board_found' => 'Nenhum quadro encontrado.',
             'board_required' => 'Selecione um quadro do Pinterest para publicar este post.',
+            'title' => 'Título',
+            'title_placeholder' => 'Título opcional do pin',
+            'link' => 'Link de destino',
+            'link_placeholder' => 'https://exemplo.com',
+            'link_invalid' => 'Informe um link de destino válido (http ou https).',
+            'title_max' => 'O título pode ter no máximo 100 caracteres.',
+            'link_max' => 'O link de destino pode ter no máximo 2048 caracteres.',
         ],
         'discord' => [
             'settings' => 'Configurações do Discord',

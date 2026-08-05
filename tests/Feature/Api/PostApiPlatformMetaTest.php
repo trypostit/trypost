@@ -288,3 +288,104 @@ it('publishes a Discord post when the channel is set', function () {
     expect($platform->fresh()->meta['channel_id'])->toBe('444555666');
     Queue::assertPushed(PublishPost::class);
 });
+
+it('persists Pinterest title and link meta on store', function () {
+    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Shared caption',
+            'platforms' => [[
+                'social_account_id' => $pinterest->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => [
+                    'board_id' => 'board-1',
+                    'title' => 'Pin Title',
+                    'link' => 'https://example.com/product',
+                ],
+            ]],
+        ])
+        ->assertCreated();
+
+    $meta = PostPlatform::where('social_account_id', $pinterest->id)->sole()->meta;
+
+    expect(data_get($meta, 'board_id'))->toBe('board-1')
+        ->and(data_get($meta, 'title'))->toBe('Pin Title')
+        ->and(data_get($meta, 'link'))->toBe('https://example.com/product')
+        ->and(array_key_exists('description', $meta))->toBeFalse();
+});
+
+it('updates Pinterest title and link meta', function () {
+    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'content' => 'Shared caption',
+    ]);
+    $platform = PostPlatform::factory()->pinterest()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $pinterest->id,
+        'enabled' => true,
+        'meta' => ['board_id' => 'board-1'],
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Draft->value,
+            'platforms' => [[
+                'id' => $platform->id,
+                'meta' => [
+                    'board_id' => 'board-1',
+                    'title' => 'Updated Title',
+                    'link' => 'https://example.com/updated',
+                ],
+            ]],
+        ])
+        ->assertOk();
+
+    $meta = $platform->fresh()->meta;
+
+    expect(data_get($meta, 'title'))->toBe('Updated Title')
+        ->and(data_get($meta, 'link'))->toBe('https://example.com/updated')
+        ->and(data_get($meta, 'board_id'))->toBe('board-1');
+});
+
+it('rejects invalid Pinterest title and link on store', function () {
+    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Hello',
+            'platforms' => [[
+                'social_account_id' => $pinterest->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => [
+                    'title' => str_repeat('t', 101),
+                    'link' => 'not-a-url',
+                ],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'platforms.0.meta.title' => __('posts.form.pinterest.title_max'),
+            'platforms.0.meta.link' => __('posts.form.pinterest.link_invalid'),
+        ]);
+});
+
+it('rejects non-http Pinterest links', function () {
+    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Hello',
+            'platforms' => [[
+                'social_account_id' => $pinterest->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => ['link' => 'ftp://files.example.com/pin'],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'platforms.0.meta.link' => __('posts.form.pinterest.link_invalid'),
+        ]);
+});

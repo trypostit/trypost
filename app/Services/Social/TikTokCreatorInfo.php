@@ -65,7 +65,8 @@ class TikTokCreatorInfo
         $this->accessToken = $account->access_token;
 
         $response = $this->getHttpClient()
-            ->post("{$this->baseUrl}/post/publish/creator_info/query/", []);
+            ->withBody('{}', 'application/json; charset=UTF-8')
+            ->post("{$this->baseUrl}/post/publish/creator_info/query/");
 
         if ($response->failed()) {
             Log::warning('TikTok creator_info query failed', [

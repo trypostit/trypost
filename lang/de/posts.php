@@ -160,6 +160,13 @@ return [
             'search_board' => 'Pinnwände suchen...',
             'no_board_found' => 'Keine Pinnwand passt zu deiner Suche.',
             'board_required' => 'Wähle eine Pinterest-Pinnwand, um diesen Beitrag zu veröffentlichen.',
+            'title' => 'Titel',
+            'title_placeholder' => 'Optionaler Pin-Titel',
+            'link' => 'Ziel-Link',
+            'link_placeholder' => 'https://beispiel.com',
+            'link_invalid' => 'Gib einen gültigen Ziel-Link ein (http oder https).',
+            'title_max' => 'Der Titel darf höchstens 100 Zeichen lang sein.',
+            'link_max' => 'Der Ziel-Link darf höchstens 2048 Zeichen lang sein.',
         ],
         'discord' => [
             'settings' => 'Discord-Einstellungen',

@@ -158,6 +158,13 @@ return [
             'search_board' => '보드 검색...',
             'no_board_found' => '검색과 일치하는 보드가 없습니다.',
             'board_required' => '이 게시물을 게시할 Pinterest 보드를 선택하세요.',
+            'title' => '제목',
+            'title_placeholder' => '선택적 핀 제목',
+            'link' => '도착 링크',
+            'link_placeholder' => 'https://example.com',
+            'link_invalid' => '유효한 목적지 링크를 입력하세요(http 또는 https).',
+            'title_max' => '제목은 100자를 초과할 수 없습니다.',
+            'link_max' => '목적지 링크는 2048자를 초과할 수 없습니다.',
         ],
         'discord' => [
             'settings' => 'Discord 설정',

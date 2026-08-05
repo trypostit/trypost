@@ -19,11 +19,15 @@ interface Props {
     content: string;
     media: MediaItem[];
     contentType?: string;
+    meta?: Record<string, any>;
 }
 
 const props = defineProps<Props>();
 
 const isCarousel = computed(() => props.contentType === 'pinterest_carousel');
+
+const pinTitle = computed(() => (props.meta?.title as string | undefined) || '');
+const pinLink = computed(() => (props.meta?.link as string | undefined) || '');
 </script>
 
 <template>
@@ -116,10 +120,25 @@ const isCarousel = computed(() => props.contentType === 'pinterest_carousel');
 
                     <!-- Pin Info -->
                     <div class="p-2.5">
-                        <!-- Description -->
-                        <div v-if="content" class="text-[13px] text-[#111111] dark:text-[#e0e0e0] line-clamp-2 leading-[17px]">
+                        <div v-if="pinTitle" class="text-[14px] font-semibold text-[#111111] dark:text-[#e0e0e0] line-clamp-2 leading-[18px]">
+                            {{ pinTitle }}
+                        </div>
+                        <div
+                            v-if="content"
+                            class="text-[13px] text-[#111111] dark:text-[#e0e0e0] line-clamp-2 leading-[17px]"
+                            :class="pinTitle ? 'mt-1' : ''"
+                        >
                             {{ content }}
                         </div>
+                        <a
+                            v-if="pinLink"
+                            :href="pinLink"
+                            class="mt-1 block truncate text-[11px] text-[#767676] dark:text-[#a0a0a0]"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            {{ pinLink }}
+                        </a>
 
                         <!-- User Info -->
                         <div class="flex items-center gap-2 mt-2">

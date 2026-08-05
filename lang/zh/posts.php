@@ -158,6 +158,13 @@ return [
             'search_board' => '搜索图板…',
             'no_board_found' => '没有与搜索匹配的图板。',
             'board_required' => '请选择一个 Pinterest 图板以发布此帖子。',
+            'title' => '标题',
+            'title_placeholder' => '可选的 Pin 标题',
+            'link' => '目标链接',
+            'link_placeholder' => 'https://example.com',
+            'link_invalid' => '请输入有效的目标链接（http 或 https）。',
+            'title_max' => '标题不能超过 100 个字符。',
+            'link_max' => '目标链接不能超过 2048 个字符。',
         ],
         'discord' => [
             'settings' => 'Discord 设置',

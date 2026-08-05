@@ -287,3 +287,85 @@ test('publish post succeeds for a Discord platform with a channel', function () 
     $response->assertOk();
     Queue::assertPushed(PublishPost::class);
 });
+
+test('create post persists Pinterest title and link meta', function () {
+    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Shared caption',
+            'platforms' => [[
+                'social_account_id' => $pinterest->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => [
+                    'board_id' => 'board-1',
+                    'title' => 'Pin Title',
+                    'link' => 'https://example.com/product',
+                ],
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    $meta = PostPlatform::where('social_account_id', $pinterest->id)->sole()->meta;
+
+    expect(data_get($meta, 'title'))->toBe('Pin Title')
+        ->and(data_get($meta, 'link'))->toBe('https://example.com/product')
+        ->and(array_key_exists('description', $meta))->toBeFalse();
+});
+
+test('update post merges Pinterest title and link meta', function () {
+    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'content' => 'Shared caption',
+    ]);
+    $platform = PostPlatform::factory()->pinterest()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $pinterest->id,
+        'enabled' => true,
+        'meta' => ['board_id' => 'board-1'],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'platforms' => [[
+                'id' => $platform->id,
+                'meta' => [
+                    'board_id' => 'board-1',
+                    'title' => 'Updated Title',
+                    'link' => 'https://example.com/updated',
+                ],
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    $meta = $platform->fresh()->meta;
+
+    expect(data_get($meta, 'title'))->toBe('Updated Title')
+        ->and(data_get($meta, 'link'))->toBe('https://example.com/updated')
+        ->and(data_get($meta, 'board_id'))->toBe('board-1');
+});
+
+test('create post rejects invalid Pinterest destination link', function () {
+    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Shared caption',
+            'platforms' => [[
+                'social_account_id' => $pinterest->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => [
+                    'board_id' => 'board-1',
+                    'link' => 'ftp://files.example.com/pin',
+                ],
+            ]],
+        ]);
+
+    $response->assertHasErrors();
+});

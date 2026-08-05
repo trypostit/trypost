@@ -49,6 +49,18 @@ test('it returns full creator payload from api response', function () {
         ->and($info['max_video_post_duration_sec'])->toBe(600);
 });
 
+test('it sends an empty json object as the request body', function () {
+    Http::fake([
+        $this->api.'/post/publish/creator_info/query/' => Http::response(['data' => []], 200),
+    ]);
+
+    $this->service->fetch($this->account);
+
+    Http::assertSent(function ($request) {
+        return $request->body() === '{}';
+    });
+});
+
 test('it returns an empty payload when the api fails', function () {
     Http::fake([
         $this->api.'/post/publish/creator_info/query/' => Http::response(['error' => 'unauthorized'], 401),

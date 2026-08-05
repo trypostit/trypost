@@ -14,6 +14,7 @@ import {
     ComboboxList,
     ComboboxTrigger,
 } from '@/components/ui/combobox';
+import { Input } from '@/components/ui/input';
 import { getMediaValidationWarning } from '@/composables/useMedia';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
@@ -95,14 +96,38 @@ const selectedBoard = computed<BoardOption | undefined>({
     set: (board) => emit('update:meta', { ...props.meta, board_id: board?.value ?? null }),
 });
 
-// Surface the backend validation error keyed by platform index
-// (`platforms.0.meta.board_id`). Suffix match avoids threading the index
-// through props. Cleared as soon as a board is picked locally so the user
-// doesn't see a stale error after fixing the issue.
+const pinTitle = computed({
+    get: () => (props.meta?.title as string | undefined) || '',
+    set: (value: string) => {
+        // Whitespace-only clears the field; keep interior spaces while typing.
+        emit('update:meta', { ...props.meta, title: value.trim() === '' ? null : value });
+    },
+});
+
+const pinLink = computed({
+    get: () => (props.meta?.link as string | undefined) || '',
+    set: (value: string) => {
+        // Whitespace-only clears the field; keep partial URLs while typing.
+        emit('update:meta', { ...props.meta, link: value.trim() === '' ? null : value });
+    },
+});
+
+// Surface backend validation errors keyed by platform index
+// (`platforms.0.meta.*`). Suffix match avoids threading the index through props.
+// Board clears as soon as one is picked so the user doesn't see a stale error.
 const errors = usePageErrors();
 const boardError = computed<string | undefined>(() => {
-    if (props.meta?.board_id) return undefined;
+    if (props.meta?.board_id) {
+        return undefined;
+    }
+
     return Object.entries(errors.value).find(([key]) => key.endsWith('.meta.board_id'))?.[1];
+});
+const titleError = computed<string | undefined>(() => {
+    return Object.entries(errors.value).find(([key]) => key.endsWith('.meta.title'))?.[1];
+});
+const linkError = computed<string | undefined>(() => {
+    return Object.entries(errors.value).find(([key]) => key.endsWith('.meta.link'))?.[1];
 });
 </script>
 
@@ -212,6 +237,30 @@ const boardError = computed<string | undefined>(() => {
                         {{ $t('posts.form.pinterest.boards_truncated') }}
                     </p>
                 </template>
+            </div>
+
+            <div class="space-y-2">
+                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.pinterest.title') }}</p>
+                <Input
+                    v-model="pinTitle"
+                    type="text"
+                    :placeholder="$t('posts.form.pinterest.title_placeholder')"
+                    :disabled="disabled || previewOnly"
+                    :class="titleError ? 'border-rose-500' : undefined"
+                />
+                <InputError :message="titleError" />
+            </div>
+
+            <div class="space-y-2">
+                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.pinterest.link') }}</p>
+                <Input
+                    v-model="pinLink"
+                    type="text"
+                    :placeholder="$t('posts.form.pinterest.link_placeholder')"
+                    :disabled="disabled || previewOnly"
+                    :class="linkError ? 'border-rose-500' : undefined"
+                />
+                <InputError :message="linkError" />
             </div>
 
             <p
