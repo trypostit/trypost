@@ -136,7 +136,6 @@ const pinLink = computed(() => (props.meta?.link as string | undefined) || '');
                             class="mt-1 block truncate text-[11px] text-[#767676] dark:text-[#a0a0a0]"
                             target="_blank"
                             rel="noopener noreferrer"
-                            @click.prevent
                         >
                             {{ pinLink }}
                         </a>
