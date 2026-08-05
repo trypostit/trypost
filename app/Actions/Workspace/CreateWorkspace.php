@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Actions\Workspace;
 
 use App\Enums\UserWorkspace\Role;
-use App\Enums\Workspace\ContentLanguage;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +24,7 @@ class CreateWorkspace
             'brand_color' => data_get($data, 'brand_color'),
             'background_color' => data_get($data, 'background_color'),
             'text_color' => data_get($data, 'text_color'),
-            'content_language' => data_get($data, 'content_language', ContentLanguage::DEFAULT->value),
+            'content_language' => data_get($data, 'content_language', app()->getLocale()),
         ], static fn ($value): bool => $value !== null);
 
         $workspace = DB::transaction(function () use ($user, $attributes): Workspace {

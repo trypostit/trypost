@@ -42,7 +42,7 @@ test('CreateWorkspace switches user current workspace and attaches as admin', fu
     expect($member?->pivot->role)->toBe(Role::Admin->value);
 });
 
-test('CreateWorkspace defaults content generation to English when none is given', function () {
+test('CreateWorkspace inherits the app locale as content_language when none is given', function () {
     app()->setLocale('pt-BR');
 
     $account = Account::factory()->create();
@@ -50,10 +50,10 @@ test('CreateWorkspace defaults content generation to English when none is given'
 
     $workspace = CreateWorkspace::execute($user, ['name' => 'Acme']);
 
-    expect($workspace->content_language)->toBe('en');
+    expect($workspace->content_language)->toBe('pt-BR');
 });
 
-test('CreateWorkspace keeps an explicit content_language over the default', function () {
+test('CreateWorkspace keeps an explicit content_language over the app locale', function () {
     app()->setLocale('pt-BR');
 
     $account = Account::factory()->create();
