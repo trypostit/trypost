@@ -367,8 +367,8 @@ it('rejects invalid Pinterest title and link on store', function () {
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors([
-            'platforms.0.meta.title',
-            'platforms.0.meta.link',
+            'platforms.0.meta.title' => __('posts.form.pinterest.title_max'),
+            'platforms.0.meta.link' => __('posts.form.pinterest.link_invalid'),
         ]);
 });
 
@@ -385,5 +385,7 @@ it('rejects non-http Pinterest links', function () {
             ]],
         ])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['platforms.0.meta.link']);
+        ->assertJsonValidationErrors([
+            'platforms.0.meta.link' => __('posts.form.pinterest.link_invalid'),
+        ]);
 });
