@@ -62,6 +62,22 @@ class StorePostRequest extends FormRequest
     }
 
     /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return PostPlatformMetaRules::messages();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return PostPlatformMetaRules::attributes();
+    }
+
+    /**
      * @return Collection<int, Platform>
      */
     public function selectedPlatforms(): Collection

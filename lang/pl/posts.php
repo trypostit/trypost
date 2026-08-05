@@ -162,6 +162,9 @@ return [
             'title_placeholder' => 'Opcjonalny tytuł pina',
             'link' => 'Link docelowy',
             'link_placeholder' => 'https://przyklad.com',
+            'link_invalid' => 'Podaj prawidłowy link docelowy (http lub https).',
+            'title_max' => 'Tytuł nie może być dłuższy niż 100 znaków.',
+            'link_max' => 'Link docelowy nie może być dłuższy niż 2048 znaków.',
         ],
         'discord' => [
             'settings' => 'Ustawienia Discord',

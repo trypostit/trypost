@@ -19,7 +19,6 @@ import { getMediaValidationWarning } from '@/composables/useMedia';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
-import { isValidHttpUrl } from '@/lib/httpUrl';
 import type { PinterestBoard } from '@/types';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -105,42 +104,13 @@ const pinTitle = computed({
     },
 });
 
-// Keep incomplete URLs in a local draft so autosave never sends `https://`
-// (backend rejects non-http(s) URLs). Meta only updates on clear or valid URL.
-const linkDraft = ref<string | null>(null);
-
 const pinLink = computed({
-    get: () => linkDraft.value ?? (props.meta?.link as string | undefined) ?? '',
+    get: () => (props.meta?.link as string | undefined) || '',
     set: (value: string) => {
-        linkDraft.value = value;
-        const trimmed = value.trim();
-
-        if (trimmed === '') {
-            emit('update:meta', { ...props.meta, link: null });
-
-            return;
-        }
-
-        if (isValidHttpUrl(trimmed)) {
-            emit('update:meta', { ...props.meta, link: trimmed });
-        }
+        // Whitespace-only clears the field; keep partial URLs while typing.
+        emit('update:meta', { ...props.meta, link: value.trim() === '' ? null : value });
     },
 });
-
-watch(
-    () => props.meta?.link,
-    (link) => {
-        if (linkDraft.value === null) {
-            return;
-        }
-
-        const trimmed = linkDraft.value.trim();
-
-        if (link === trimmed || (link == null && trimmed === '')) {
-            linkDraft.value = null;
-        }
-    },
-);
 
 // Surface backend validation errors keyed by platform index
 // (`platforms.0.meta.*`). Suffix match avoids threading the index through props.

@@ -164,6 +164,9 @@ return [
             'title_placeholder' => 'İsteğe bağlı pin başlığı',
             'link' => 'Hedef bağlantı',
             'link_placeholder' => 'https://ornek.com',
+            'link_invalid' => 'Geçerli bir hedef bağlantısı girin (http veya https).',
+            'title_max' => 'Başlık en fazla 100 karakter olabilir.',
+            'link_max' => 'Hedef bağlantısı en fazla 2048 karakter olabilir.',
         ],
         'discord' => [
             'settings' => 'Discord Ayarları',

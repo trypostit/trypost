@@ -162,6 +162,9 @@ return [
             'title_placeholder' => 'Необязательный заголовок пина',
             'link' => 'Ссылка назначения',
             'link_placeholder' => 'https://example.com',
+            'link_invalid' => 'Укажите корректную ссылку назначения (http или https).',
+            'title_max' => 'Заголовок не может быть длиннее 100 символов.',
+            'link_max' => 'Ссылка назначения не может быть длиннее 2048 символов.',
         ],
         'discord' => [
             'settings' => 'Настройки Discord',

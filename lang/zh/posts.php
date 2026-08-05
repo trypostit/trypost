@@ -162,6 +162,9 @@ return [
             'title_placeholder' => '可选的 Pin 标题',
             'link' => '目标链接',
             'link_placeholder' => 'https://example.com',
+            'link_invalid' => '请输入有效的目标链接（http 或 https）。',
+            'title_max' => '标题不能超过 100 个字符。',
+            'link_max' => '目标链接不能超过 2048 个字符。',
         ],
         'discord' => [
             'settings' => 'Discord 设置',

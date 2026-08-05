@@ -162,6 +162,9 @@ return [
             'title_placeholder' => '任意のピンタイトル',
             'link' => 'リンク先',
             'link_placeholder' => 'https://example.com',
+            'link_invalid' => '有効なリンク先URLを入力してください（http または https）。',
+            'title_max' => 'タイトルは100文字以内にしてください。',
+            'link_max' => 'リンク先URLは2048文字以内にしてください。',
         ],
         'discord' => [
             'settings' => 'Discord 設定',

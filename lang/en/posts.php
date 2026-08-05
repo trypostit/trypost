@@ -162,6 +162,9 @@ return [
             'title_placeholder' => 'Optional pin title',
             'link' => 'Destination link',
             'link_placeholder' => 'https://example.com',
+            'link_invalid' => 'Enter a valid destination link (http or https).',
+            'title_max' => 'Title may not be longer than 100 characters.',
+            'link_max' => 'Destination link may not be longer than 2048 characters.',
         ],
         'discord' => [
             'settings' => 'Discord Settings',

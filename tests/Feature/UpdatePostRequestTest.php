@@ -694,7 +694,9 @@ test('pinterest rejects invalid link when scheduling', function () {
                 ],
             ]],
         ])
-        ->assertSessionHasErrors(['platforms.0.meta.link']);
+        ->assertSessionHasErrors([
+            'platforms.0.meta.link' => __('posts.form.pinterest.link_invalid'),
+        ]);
 });
 
 test('pinterest meta title and link validation bounds are enforced', function () {
@@ -721,7 +723,7 @@ test('pinterest meta title and link validation bounds are enforced', function ()
             ]],
         ])
         ->assertSessionHasErrors([
-            'platforms.0.meta.title',
-            'platforms.0.meta.link',
+            'platforms.0.meta.title' => __('posts.form.pinterest.title_max'),
+            'platforms.0.meta.link' => __('posts.form.pinterest.link_invalid'),
         ]);
 });

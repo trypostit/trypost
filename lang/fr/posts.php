@@ -162,6 +162,9 @@ return [
             'title_placeholder' => 'Titre optionnel de l’épingle',
             'link' => 'Lien de destination',
             'link_placeholder' => 'https://exemple.com',
+            'link_invalid' => 'Saisissez un lien de destination valide (http ou https).',
+            'title_max' => 'Le titre ne peut pas dépasser 100 caractères.',
+            'link_max' => 'Le lien de destination ne peut pas dépasser 2048 caractères.',
         ],
         'discord' => [
             'settings' => 'Paramètres Discord',

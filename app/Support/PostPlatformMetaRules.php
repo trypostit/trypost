@@ -80,6 +80,33 @@ class PostPlatformMetaRules
     }
 
     /**
+     * Custom validation messages for meta fields shown in the UI.
+     *
+     * @return array<string, string>
+     */
+    public static function messages(): array
+    {
+        return [
+            'platforms.*.meta.link.url' => __('posts.form.pinterest.link_invalid'),
+            'platforms.*.meta.link.max' => __('posts.form.pinterest.link_max'),
+            'platforms.*.meta.title.max' => __('posts.form.pinterest.title_max'),
+        ];
+    }
+
+    /**
+     * Friendly attribute names so default messages never expose `platforms.0.meta.*`.
+     *
+     * @return array<string, string>
+     */
+    public static function attributes(): array
+    {
+        return [
+            'platforms.*.meta.title' => __('posts.form.pinterest.title'),
+            'platforms.*.meta.link' => __('posts.form.pinterest.link'),
+        ];
+    }
+
+    /**
      * Adds validation errors for per-platform meta that becomes mandatory once a
      * post is published or scheduled (TikTok privacy, Pinterest board, Discord
      * channel), based on the submitted request platforms. The caller resolves each

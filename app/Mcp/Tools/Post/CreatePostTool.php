@@ -25,22 +25,26 @@ class CreatePostTool extends Tool
     {
         $workspace = $request->user()->currentWorkspace;
 
-        $validated = $request->validate([
-            'content' => ['nullable', 'string', 'max:10000'],
-            'scheduled_at' => ['nullable', 'date', 'after:now'],
-            'label_ids' => ['sometimes', 'array'],
-            'label_ids.*' => ['uuid', Rule::exists('workspace_labels', 'id')->where('workspace_id', $workspace->id)],
-            'platforms' => ['sometimes', 'array'],
-            'platforms.*.social_account_id' => [
-                'required',
-                'uuid',
-                Rule::exists('social_accounts', 'id')
-                    ->where('workspace_id', $workspace->id)
-                    ->where('is_active', true),
+        $validated = $request->validate(
+            [
+                'content' => ['nullable', 'string', 'max:10000'],
+                'scheduled_at' => ['nullable', 'date', 'after:now'],
+                'label_ids' => ['sometimes', 'array'],
+                'label_ids.*' => ['uuid', Rule::exists('workspace_labels', 'id')->where('workspace_id', $workspace->id)],
+                'platforms' => ['sometimes', 'array'],
+                'platforms.*.social_account_id' => [
+                    'required',
+                    'uuid',
+                    Rule::exists('social_accounts', 'id')
+                        ->where('workspace_id', $workspace->id)
+                        ->where('is_active', true),
+                ],
+                'platforms.*.content_type' => ['required', 'string', Rule::in(array_column(ContentType::cases(), 'value')), new ContentTypeMatchesPlatform],
+                ...PostPlatformMetaRules::rules(),
             ],
-            'platforms.*.content_type' => ['required', 'string', Rule::in(array_column(ContentType::cases(), 'value')), new ContentTypeMatchesPlatform],
-            ...PostPlatformMetaRules::rules(),
-        ]);
+            PostPlatformMetaRules::messages(),
+            PostPlatformMetaRules::attributes(),
+        );
 
         $validated['created_via'] = CreatedVia::Mcp;
 

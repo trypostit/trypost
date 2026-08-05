@@ -39,27 +39,31 @@ class UpdatePostTool extends Tool
 
         $status = data_get($request->all(), 'status');
 
-        $validated = $request->validate([
-            'post_id' => ['required', 'uuid'],
-            'content' => ['nullable', 'string', 'max:10000'],
-            'scheduled_at' => PostStatusRules::scheduledAtRules($post, $status),
-            'status' => ['sometimes', 'string', Rule::in([Status::Draft->value, Status::Scheduled->value])],
-            'label_ids' => ['sometimes', 'array'],
-            'label_ids.*' => ['uuid', Rule::exists('workspace_labels', 'id')->where('workspace_id', $workspace->id)],
-            'platforms' => ['sometimes', 'array'],
-            'platforms.*.id' => [
-                'required',
-                'uuid',
-                Rule::exists('post_platforms', 'id')->where('post_id', $post->id),
+        $validated = $request->validate(
+            [
+                'post_id' => ['required', 'uuid'],
+                'content' => ['nullable', 'string', 'max:10000'],
+                'scheduled_at' => PostStatusRules::scheduledAtRules($post, $status),
+                'status' => ['sometimes', 'string', Rule::in([Status::Draft->value, Status::Scheduled->value])],
+                'label_ids' => ['sometimes', 'array'],
+                'label_ids.*' => ['uuid', Rule::exists('workspace_labels', 'id')->where('workspace_id', $workspace->id)],
+                'platforms' => ['sometimes', 'array'],
+                'platforms.*.id' => [
+                    'required',
+                    'uuid',
+                    Rule::exists('post_platforms', 'id')->where('post_id', $post->id),
+                ],
+                'platforms.*.content_type' => [
+                    'sometimes',
+                    'string',
+                    Rule::in(array_column(ContentType::cases(), 'value')),
+                    new ContentTypeMatchesPostPlatform,
+                ],
+                ...PostPlatformMetaRules::rules(),
             ],
-            'platforms.*.content_type' => [
-                'sometimes',
-                'string',
-                Rule::in(array_column(ContentType::cases(), 'value')),
-                new ContentTypeMatchesPostPlatform,
-            ],
-            ...PostPlatformMetaRules::rules(),
-        ]);
+            PostPlatformMetaRules::messages(),
+            PostPlatformMetaRules::attributes(),
+        );
 
         // On schedule, validate each platform's effective content_type (resubmitted
         // here, or stored) against the post's stored media — the tool can't change

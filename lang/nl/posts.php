@@ -162,6 +162,9 @@ return [
             'title_placeholder' => 'Optionele pin-titel',
             'link' => 'Bestemmingslink',
             'link_placeholder' => 'https://voorbeeld.com',
+            'link_invalid' => 'Voer een geldige bestemmingslink in (http of https).',
+            'title_max' => 'Titel mag niet langer zijn dan 100 tekens.',
+            'link_max' => 'Bestemmingslink mag niet langer zijn dan 2048 tekens.',
         ],
         'discord' => [
             'settings' => 'Discord-instellingen',

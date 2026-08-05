@@ -162,6 +162,9 @@ return [
             'title_placeholder' => 'عنوان اختياري للدبوس',
             'link' => 'رابط الوجهة',
             'link_placeholder' => 'https://example.com',
+            'link_invalid' => 'أدخل رابط وجهة صالحًا (http أو https).',
+            'title_max' => 'يجب ألا يتجاوز العنوان 100 حرفًا.',
+            'link_max' => 'يجب ألا يتجاوز رابط الوجهة 2048 حرفًا.',
         ],
         'discord' => [
             'settings' => 'إعدادات Discord',
