@@ -87,13 +87,12 @@ const weekdayNames = computed(() => {
     return names;
 });
 
-const formatDayMonth = (day: dayjs.Dayjs): string =>
-    day.toDate().toLocaleDateString(dayjs.locale(), { month: 'long', day: 'numeric' });
+const formatDayMonth = (day: dayjs.Dayjs): string => day.format('D MMMM');
 
 // Day view computed
 const currentDay = computed(() => dayjs(props.currentDay));
 
-const dayHeaderTitle = computed(() => currentDay.value.format('dddd, LL'));
+const dayHeaderTitle = computed(() => currentDay.value.format('LL'));
 
 const dayPosts = computed(() => {
     const dateKey = currentDay.value.format('YYYY-MM-DD');
@@ -118,7 +117,11 @@ const weekHeaderTitle = computed(() => {
     const start = weekStart.value;
     const end = weekStart.value.add(6, 'day');
 
-    return `${start.format('LL')} – ${end.format('LL')}`;
+    if (start.month() === end.month()) {
+        return `${start.format('MMMM D')}–${end.format('D, YYYY')}`;
+    }
+
+    return `${start.format('MMM D')} – ${end.format('MMM D, YYYY')}`;
 });
 
 // Month view computed

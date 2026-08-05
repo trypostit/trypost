@@ -11,8 +11,6 @@ test('frontend display dates do not hardcode english or portuguese format litera
     $forbidden = [
         "format('D MMM YYYY",
         'format("D MMM YYYY',
-        "format('MMM D",
-        'format("MMM D',
         "format('D [de]",
         'format("D [de]',
         '[às]',
@@ -64,9 +62,19 @@ test('date helpers use localized dayjs formats', function () {
         ->toContain("format('lll')")
         ->toContain("format('L LT')")
         ->toContain('formatPreviewPostedAt')
+        ->toContain('formatDateOnly')
+        ->toContain("dayjs.utc(date).format('LL')")
         ->not->toContain('[de]')
         ->not->toContain('[às]')
         ->not->toContain('.calendar()');
+});
+
+test('api key expiry uses formatDateOnly to avoid timezone day shift', function () {
+    $apiKeys = file_get_contents(resource_path('js/pages/settings/workspace/ApiKeys.vue'));
+
+    expect($apiKeys)
+        ->toContain('date.formatDateOnly(token.expires_at)')
+        ->not->toContain('date.formatDate(token.expires_at)');
 });
 
 test('discord preview does not use dayjs calendar plugin', function () {

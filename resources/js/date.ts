@@ -28,6 +28,19 @@ export default {
         return dayjs.utc(date).tz(getUserTimezone()).format('LL');
     },
 
+    /**
+     * Format a calendar date (expiry, due date, etc.) without shifting the day
+     * across timezones. Use for values stored as UTC midnight that represent a
+     * chosen calendar day rather than an exact instant.
+     */
+    formatDateOnly(date: string | null | undefined) {
+        if (!date) {
+            return '-';
+        }
+
+        return dayjs.utc(date).format('LL');
+    },
+
     formatDateTime(date: string | null | undefined) {
         if (!date) {
             return '—';

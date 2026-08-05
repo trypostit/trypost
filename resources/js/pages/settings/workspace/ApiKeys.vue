@@ -120,7 +120,7 @@ const tabs = computed(() => [
                         <TableRow v-for="token in apiTokens" :key="token.id">
                             <TableCell>{{ token.name }}</TableCell>
                             <TableCell>
-                                {{ token.expires_at ? date.formatDate(token.expires_at) : $t('settings.api_keys.table.never') }}
+                                {{ token.expires_at ? date.formatDateOnly(token.expires_at) : $t('settings.api_keys.table.never') }}
                             </TableCell>
                             <TableCell>
                                 {{ token.last_used_at ? date.diffForHumans(token.last_used_at) : $t('settings.api_keys.table.never') }}
