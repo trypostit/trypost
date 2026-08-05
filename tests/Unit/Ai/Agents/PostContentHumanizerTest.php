@@ -36,3 +36,10 @@ test('instructions still render the AI-tell removal rules', function () {
 
     expect($agent->instructions())->toContain('AI-tells');
 });
+
+test('instructions use Ukrainian when the workspace content language is uk', function () {
+    $workspace = Workspace::factory()->make(['content_language' => 'uk']);
+
+    expect((new PostContentHumanizer(workspace: $workspace))->instructions())
+        ->toContain('Output language: uk.');
+});

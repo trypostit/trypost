@@ -62,6 +62,7 @@ test('create workspace shows form for user with no workspaces', function () {
         ->component('workspaces/Create', false)
         ->has('availableContentLanguages', count(ContentLanguage::cases()))
         ->where('availableContentLanguages.0', ['value' => 'en', 'label' => 'English', 'englishName' => 'English'])
+        ->where('availableContentLanguages.1', ['value' => 'uk', 'label' => 'Українська', 'englishName' => 'Ukrainian'])
     );
 });
 
@@ -313,6 +314,7 @@ test('brand settings shows the brand settings page', function () {
         ->component('settings/workspace/Brand', false)
         ->has('workspace')
         ->has('availableContentLanguages', count(ContentLanguage::cases()))
+        ->where('availableContentLanguages.1', ['value' => 'uk', 'label' => 'Українська', 'englishName' => 'Ukrainian'])
     );
 });
 
@@ -424,6 +426,18 @@ test('update workspace settings persists a newly supported content language', fu
         ->assertSessionHasNoErrors();
 
     expect($this->workspace->refresh()->content_language)->toBe('fr');
+});
+
+test('update workspace settings persists Ukrainian as a content language', function () {
+    $this->actingAs($this->user)
+        ->from(route('app.workspace.brand'))
+        ->put(route('app.workspace.settings.update'), [
+            'name' => $this->workspace->name,
+            'content_language' => 'uk',
+        ])->assertRedirect(route('app.workspace.brand'))
+        ->assertSessionHasNoErrors();
+
+    expect($this->workspace->refresh()->content_language)->toBe('uk');
 });
 
 test('update workspace settings rejects an unsupported content language', function () {

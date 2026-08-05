@@ -22,6 +22,15 @@ test('instructions render brand context and language', function () {
     expect($instructions)->toContain('pt-BR');
 });
 
+test('instructions use Ukrainian when the workspace content language is uk', function () {
+    $workspace = Workspace::factory()->make([
+        'content_language' => 'uk',
+    ]);
+
+    expect((new PostContentReviewer(workspace: $workspace))->instructions())
+        ->toContain('Output language: uk.');
+});
+
 test('schema requires suggestions array with original/suggestion/reason', function () {
     $workspace = Workspace::factory()->make();
     $agent = new PostContentReviewer(workspace: $workspace);

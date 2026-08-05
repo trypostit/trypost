@@ -17,6 +17,15 @@ test('instructions use English for the default content language', function () {
         ->toContain('Write the output in the language with code: en.');
 });
 
+test('instructions use Ukrainian when the workspace content language is uk', function () {
+    $workspace = Workspace::factory()->make([
+        'content_language' => ContentLanguage::Ukrainian->value,
+    ]);
+
+    expect((new PostContentGenerator(workspace: $workspace))->instructions())
+        ->toContain('Write the output in the language with code: uk.');
+});
+
 test('instructions render brand context', function () {
     $workspace = Workspace::factory()->make([
         'name' => 'TryPost',

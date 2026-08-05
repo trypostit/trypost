@@ -54,7 +54,7 @@
 | **Workspaces** | Isolate each brand, client, or project in its own space. |
 | **REST API + MCP** | Full programmatic control; AI assistants integrate natively. |
 | **Native analytics** | Per-account reach and engagement across every connected platform. |
-| **Multi-language** | English, Spanish, and Portuguese. |
+| **Multi-language** | UI and AI content in 16 languages, including English, Spanish, Portuguese, and Ukrainian. |
 
 ## Supported platforms
 

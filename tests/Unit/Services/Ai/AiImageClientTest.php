@@ -90,6 +90,15 @@ test('generate appends French instruction when language is fr', function () {
     Image::assertGenerated(fn (ImagePrompt $prompt) => $prompt->contains('French'));
 });
 
+test('generate appends Ukrainian instruction when language is uk', function () {
+    Image::fake();
+
+    $client = new AiImageClient;
+    $client->generate(['x'], ImageStyle::Cinematic, language: 'uk');
+
+    Image::assertGenerated(fn (ImagePrompt $prompt) => $prompt->contains('Ukrainian'));
+});
+
 test('generate defaults to English instruction when language is unsupported', function () {
     Image::fake();
 

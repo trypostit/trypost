@@ -78,6 +78,22 @@ test('user can update their locale via cookie', function () {
     $response->assertCookieNotExpired('locale');
 });
 
+test('user can switch the UI locale to Ukrainian', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->from(route('app.posts.index'))
+        ->put(route('app.profile.language'), [
+            'locale' => 'uk',
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('app.posts.index'))
+        ->assertCookieNotExpired('locale');
+});
+
 test('user cannot update locale with invalid code', function () {
     $user = User::factory()->create();
 
