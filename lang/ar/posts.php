@@ -158,6 +158,12 @@ return [
             'search_board' => 'البحث في اللوحات...',
             'no_board_found' => 'لا توجد لوحة مطابقة لبحثك.',
             'board_required' => 'اختر لوحة Pinterest لنشر هذا المنشور.',
+            'title' => 'العنوان',
+            'title_placeholder' => 'عنوان اختياري للدبوس',
+            'description' => 'الوصف',
+            'description_placeholder' => 'وصف الدبوس',
+            'link' => 'رابط الوجهة',
+            'link_placeholder' => 'https://example.com',
         ],
         'discord' => [
             'settings' => 'إعدادات Discord',

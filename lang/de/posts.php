@@ -160,6 +160,12 @@ return [
             'search_board' => 'Pinnwände suchen...',
             'no_board_found' => 'Keine Pinnwand passt zu deiner Suche.',
             'board_required' => 'Wähle eine Pinterest-Pinnwand, um diesen Beitrag zu veröffentlichen.',
+            'title' => 'Titel',
+            'title_placeholder' => 'Optionaler Pin-Titel',
+            'description' => 'Beschreibung',
+            'description_placeholder' => 'Pin-Beschreibung',
+            'link' => 'Ziel-Link',
+            'link_placeholder' => 'https://beispiel.com',
         ],
         'discord' => [
             'settings' => 'Discord-Einstellungen',

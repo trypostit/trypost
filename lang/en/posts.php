@@ -158,6 +158,12 @@ return [
             'search_board' => 'Search boards...',
             'no_board_found' => 'No board matches your search.',
             'board_required' => 'Select a Pinterest board to publish this post.',
+            'title' => 'Title',
+            'title_placeholder' => 'Optional pin title',
+            'description' => 'Description',
+            'description_placeholder' => 'Pin description',
+            'link' => 'Destination link',
+            'link_placeholder' => 'https://example.com',
         ],
         'discord' => [
             'settings' => 'Discord Settings',

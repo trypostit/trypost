@@ -158,6 +158,12 @@ return [
             'search_board' => '보드 검색...',
             'no_board_found' => '검색과 일치하는 보드가 없습니다.',
             'board_required' => '이 게시물을 게시할 Pinterest 보드를 선택하세요.',
+            'title' => '제목',
+            'title_placeholder' => '선택적 핀 제목',
+            'description' => '설명',
+            'description_placeholder' => '핀 설명',
+            'link' => '도착 링크',
+            'link_placeholder' => 'https://example.com',
         ],
         'discord' => [
             'settings' => 'Discord 설정',

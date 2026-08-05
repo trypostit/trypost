@@ -61,6 +61,9 @@ class PostPlatformMetaRules
 
             // Pinterest
             'platforms.*.meta.board_id' => ['sometimes', 'nullable', 'string'],
+            'platforms.*.meta.title' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'platforms.*.meta.description' => ['sometimes', 'nullable', 'string', 'max:800'],
+            'platforms.*.meta.link' => ['sometimes', 'nullable', 'url', 'max:2048'],
 
             // Discord
             'platforms.*.meta.channel_id' => ['sometimes', 'nullable', 'string'],

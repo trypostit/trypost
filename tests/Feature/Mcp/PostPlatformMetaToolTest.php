@@ -287,3 +287,49 @@ test('publish post succeeds for a Discord platform with a channel', function () 
     $response->assertOk();
     Queue::assertPushed(PublishPost::class);
 });
+
+test('create post persists Pinterest title, description and link meta', function () {
+    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Shared caption',
+            'platforms' => [[
+                'social_account_id' => $pinterest->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => [
+                    'board_id' => 'board-1',
+                    'title' => 'Pin Title',
+                    'description' => 'Custom pin description',
+                    'link' => 'https://example.com/product',
+                ],
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    $meta = PostPlatform::where('social_account_id', $pinterest->id)->sole()->meta;
+
+    expect(data_get($meta, 'title'))->toBe('Pin Title')
+        ->and(data_get($meta, 'description'))->toBe('Custom pin description')
+        ->and(data_get($meta, 'link'))->toBe('https://example.com/product');
+});
+
+test('create post seeds Pinterest description from content when omitted', function () {
+    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Caption becomes pin description',
+            'platforms' => [[
+                'social_account_id' => $pinterest->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => ['board_id' => 'board-1'],
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    expect(data_get(PostPlatform::where('social_account_id', $pinterest->id)->sole()->meta, 'description'))
+        ->toBe('Caption becomes pin description');
+});

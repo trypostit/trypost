@@ -14,6 +14,8 @@ import {
     ComboboxList,
     ComboboxTrigger,
 } from '@/components/ui/combobox';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { getMediaValidationWarning } from '@/composables/useMedia';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
@@ -93,6 +95,21 @@ const boardOptions = computed<BoardOption[]>(() =>
 const selectedBoard = computed<BoardOption | undefined>({
     get: () => boardOptions.value.find((b) => b.value === props.meta?.board_id),
     set: (board) => emit('update:meta', { ...props.meta, board_id: board?.value ?? null }),
+});
+
+const pinTitle = computed({
+    get: () => (props.meta?.title as string | undefined) || '',
+    set: (value: string) => emit('update:meta', { ...props.meta, title: value || null }),
+});
+
+const pinDescription = computed({
+    get: () => (props.meta?.description as string | undefined) || '',
+    set: (value: string) => emit('update:meta', { ...props.meta, description: value || null }),
+});
+
+const pinLink = computed({
+    get: () => (props.meta?.link as string | undefined) || '',
+    set: (value: string) => emit('update:meta', { ...props.meta, link: value || null }),
 });
 
 // Surface the backend validation error keyed by platform index
@@ -212,6 +229,36 @@ const boardError = computed<string | undefined>(() => {
                         {{ $t('posts.form.pinterest.boards_truncated') }}
                     </p>
                 </template>
+            </div>
+
+            <div class="space-y-2">
+                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.pinterest.title') }}</p>
+                <Input
+                    v-model="pinTitle"
+                    type="text"
+                    :placeholder="$t('posts.form.pinterest.title_placeholder')"
+                    :disabled="disabled || previewOnly"
+                />
+            </div>
+
+            <div class="space-y-2">
+                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.pinterest.description') }}</p>
+                <Textarea
+                    v-model="pinDescription"
+                    :placeholder="$t('posts.form.pinterest.description_placeholder')"
+                    :disabled="disabled || previewOnly"
+                    class="min-h-24"
+                />
+            </div>
+
+            <div class="space-y-2">
+                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.pinterest.link') }}</p>
+                <Input
+                    v-model="pinLink"
+                    type="text"
+                    :placeholder="$t('posts.form.pinterest.link_placeholder')"
+                    :disabled="disabled || previewOnly"
+                />
             </div>
 
             <p

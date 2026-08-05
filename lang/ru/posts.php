@@ -158,6 +158,12 @@ return [
             'search_board' => 'Поиск досок...',
             'no_board_found' => 'Нет досок по вашему запросу.',
             'board_required' => 'Выберите доску Pinterest, чтобы опубликовать этот пост.',
+            'title' => 'Заголовок',
+            'title_placeholder' => 'Необязательный заголовок пина',
+            'description' => 'Описание',
+            'description_placeholder' => 'Описание пина',
+            'link' => 'Ссылка назначения',
+            'link_placeholder' => 'https://example.com',
         ],
         'discord' => [
             'settings' => 'Настройки Discord',

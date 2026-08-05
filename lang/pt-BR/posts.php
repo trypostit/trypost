@@ -158,6 +158,12 @@ return [
             'search_board' => 'Pesquisar quadros...',
             'no_board_found' => 'Nenhum quadro encontrado.',
             'board_required' => 'Selecione um quadro do Pinterest para publicar este post.',
+            'title' => 'Título',
+            'title_placeholder' => 'Título opcional do pin',
+            'description' => 'Descrição',
+            'description_placeholder' => 'Descrição do pin',
+            'link' => 'Link de destino',
+            'link_placeholder' => 'https://exemplo.com',
         ],
         'discord' => [
             'settings' => 'Configurações do Discord',

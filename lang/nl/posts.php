@@ -158,6 +158,12 @@ return [
             'search_board' => 'Borden zoeken...',
             'no_board_found' => 'Geen bord komt overeen met je zoekopdracht.',
             'board_required' => 'Selecteer een Pinterest-bord om deze post te publiceren.',
+            'title' => 'Titel',
+            'title_placeholder' => 'Optionele pin-titel',
+            'description' => 'Beschrijving',
+            'description_placeholder' => 'Pinbeschrijving',
+            'link' => 'Bestemmingslink',
+            'link_placeholder' => 'https://voorbeeld.com',
         ],
         'discord' => [
             'settings' => 'Discord-instellingen',

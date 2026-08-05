@@ -158,6 +158,12 @@ return [
             'search_board' => 'Αναζήτηση πινάκων...',
             'no_board_found' => 'Κανένας πίνακας δεν ταιριάζει με την αναζήτησή σας.',
             'board_required' => 'Επιλέξτε έναν πίνακα Pinterest για να δημοσιεύσετε αυτή τη δημοσίευση.',
+            'title' => 'Τίτλος',
+            'title_placeholder' => 'Προαιρετικός τίτλος pin',
+            'description' => 'Περιγραφή',
+            'description_placeholder' => 'Περιγραφή pin',
+            'link' => 'Σύνδεσμος προορισμού',
+            'link_placeholder' => 'https://example.com',
         ],
         'discord' => [
             'settings' => 'Ρυθμίσεις Discord',

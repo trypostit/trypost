@@ -38,12 +38,10 @@ class PinterestPublisher
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
-        $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
-
         return match ($postPlatform->content_type) {
-            ContentType::PinterestPin => $this->publishImagePin($postPlatform, $content),
-            ContentType::PinterestVideoPin => $this->publishVideoPin($postPlatform, $content),
-            ContentType::PinterestCarousel => $this->publishCarousel($postPlatform, $content),
+            ContentType::PinterestPin => $this->publishImagePin($postPlatform),
+            ContentType::PinterestVideoPin => $this->publishVideoPin($postPlatform),
+            ContentType::PinterestCarousel => $this->publishCarousel($postPlatform),
             default => throw new PinterestPublishException(
                 userMessage: "Unsupported content type: {$postPlatform->content_type->value}",
                 category: ErrorCategory::ContentPolicy,
@@ -51,7 +49,37 @@ class PinterestPublisher
         };
     }
 
-    private function publishImagePin(PostPlatform $postPlatform, ?string $content): array
+    /**
+     * Apply optional title / description / link from post-platform meta.
+     * Description comes only from meta — never from posts.content.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function applyPinTextFields(array $payload, PostPlatform $postPlatform): array
+    {
+        $description = data_get($postPlatform->meta, 'description');
+
+        if (filled($description)) {
+            $sanitized = app(ContentSanitizer::class)->sanitize((string) $description, Platform::Pinterest);
+
+            if (filled($sanitized)) {
+                $payload['description'] = mb_substr($sanitized, 0, 800);
+            }
+        }
+
+        if (! empty(data_get($postPlatform->meta, 'title'))) {
+            $payload['title'] = mb_substr((string) data_get($postPlatform->meta, 'title'), 0, 100);
+        }
+
+        if (! empty(data_get($postPlatform->meta, 'link'))) {
+            $payload['link'] = data_get($postPlatform->meta, 'link');
+        }
+
+        return $payload;
+    }
+
+    private function publishImagePin(PostPlatform $postPlatform): array
     {
         $account = $postPlatform->socialAccount;
         $media = $postPlatform->post->mediaItems->first();
@@ -98,26 +126,14 @@ class PinterestPublisher
             @unlink($tempFile);
         }
 
-        $payload = [
+        $payload = $this->applyPinTextFields([
             'board_id' => $boardId,
             'media_source' => [
                 'source_type' => 'image_base64',
                 'content_type' => 'image/jpeg',
                 'data' => $imageBase64,
             ],
-        ];
-
-        if ($content) {
-            $payload['description'] = $content;
-        }
-
-        if (! empty(data_get($postPlatform->meta, 'title'))) {
-            $payload['title'] = substr(data_get($postPlatform->meta, 'title'), 0, 100);
-        }
-
-        if (! empty(data_get($postPlatform->meta, 'link'))) {
-            $payload['link'] = data_get($postPlatform->meta, 'link');
-        }
+        ], $postPlatform);
 
         $alt = $postPlatform->post->mediaItems->first(fn ($m) => $m->isImage())?->altTextFor(Platform::Pinterest);
 
@@ -144,7 +160,7 @@ class PinterestPublisher
         ];
     }
 
-    private function publishVideoPin(PostPlatform $postPlatform, ?string $content): array
+    private function publishVideoPin(PostPlatform $postPlatform): array
     {
         $account = $postPlatform->socialAccount;
         $media = $postPlatform->post->mediaItems->first();
@@ -253,25 +269,13 @@ class PinterestPublisher
         $this->waitForMediaProcessing($account, $mediaId);
 
         // Step 4: Create pin with video
-        $payload = [
+        $payload = $this->applyPinTextFields([
             'board_id' => $boardId,
             'media_source' => [
                 'source_type' => 'video_id',
                 'media_id' => $mediaId,
             ],
-        ];
-
-        if ($content) {
-            $payload['description'] = $content;
-        }
-
-        if (! empty(data_get($postPlatform->meta, 'title'))) {
-            $payload['title'] = substr(data_get($postPlatform->meta, 'title'), 0, 100);
-        }
-
-        if (! empty(data_get($postPlatform->meta, 'link'))) {
-            $payload['link'] = data_get($postPlatform->meta, 'link');
-        }
+        ], $postPlatform);
 
         if (! empty(data_get($postPlatform->meta, 'cover_image_url'))) {
             $payload['media_source']['cover_image_url'] = data_get($postPlatform->meta, 'cover_image_url');
@@ -298,7 +302,7 @@ class PinterestPublisher
         ];
     }
 
-    private function publishCarousel(PostPlatform $postPlatform, ?string $content): array
+    private function publishCarousel(PostPlatform $postPlatform): array
     {
         $account = $postPlatform->socialAccount;
         $medias = $postPlatform->post->mediaItems;
@@ -323,25 +327,13 @@ class PinterestPublisher
             'url' => $media->url,
         ])->toArray();
 
-        $payload = [
+        $payload = $this->applyPinTextFields([
             'board_id' => $boardId,
             'media_source' => [
                 'source_type' => 'multiple_image_urls',
                 'items' => $items,
             ],
-        ];
-
-        if ($content) {
-            $payload['description'] = $content;
-        }
-
-        if (! empty(data_get($postPlatform->meta, 'title'))) {
-            $payload['title'] = substr(data_get($postPlatform->meta, 'title'), 0, 100);
-        }
-
-        if (! empty(data_get($postPlatform->meta, 'link'))) {
-            $payload['link'] = data_get($postPlatform->meta, 'link');
-        }
+        ], $postPlatform);
 
         $response = $this->socialHttp()->withToken($account->access_token)
             ->post($this->baseUrl.'/pins', $payload);

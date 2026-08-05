@@ -288,3 +288,50 @@ it('publishes a Discord post when the channel is set', function () {
     expect($platform->fresh()->meta['channel_id'])->toBe('444555666');
     Queue::assertPushed(PublishPost::class);
 });
+
+it('persists Pinterest title, description and link meta on store', function () {
+    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Shared caption',
+            'platforms' => [[
+                'social_account_id' => $pinterest->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => [
+                    'board_id' => 'board-1',
+                    'title' => 'Pin Title',
+                    'description' => 'Custom pin description',
+                    'link' => 'https://example.com/product',
+                ],
+            ]],
+        ])
+        ->assertCreated();
+
+    $meta = PostPlatform::where('social_account_id', $pinterest->id)->sole()->meta;
+
+    expect(data_get($meta, 'board_id'))->toBe('board-1')
+        ->and(data_get($meta, 'title'))->toBe('Pin Title')
+        ->and(data_get($meta, 'description'))->toBe('Custom pin description')
+        ->and(data_get($meta, 'link'))->toBe('https://example.com/product');
+});
+
+it('seeds Pinterest description from content when meta description is omitted', function () {
+    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Caption becomes pin description',
+            'platforms' => [[
+                'social_account_id' => $pinterest->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => ['board_id' => 'board-1'],
+            ]],
+        ])
+        ->assertCreated();
+
+    $meta = PostPlatform::where('social_account_id', $pinterest->id)->sole()->meta;
+
+    expect(data_get($meta, 'description'))->toBe('Caption becomes pin description')
+        ->and(data_get($meta, 'board_id'))->toBe('board-1');
+});
