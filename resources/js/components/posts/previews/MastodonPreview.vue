@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
 import { isVideoMedia } from '@/composables/useMedia';
+import dayjs from '@/dayjs';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -18,6 +21,8 @@ interface Props {
 }
 
 defineProps<Props>();
+
+const postedAtLabel = computed(() => dayjs('2026-01-21T16:30:00').format('lll'));
 </script>
 
 <template>
@@ -78,7 +83,7 @@ defineProps<Props>();
 
                 <!-- Timestamp -->
                 <div class="text-[14px] text-[#606984] dark:text-[#9baec8] mb-2">
-                    <span>Jan 21, 2026, 04:30 PM</span>
+                    <span>{{ postedAtLabel }}</span>
                     <span class="mx-1.5">·</span>
                     <svg class="inline h-4 w-4 align-text-bottom" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2">

@@ -107,7 +107,7 @@ const commentsByDay = computed((): DayGroup[] => {
             ? trans('comments.today')
             : day === yesterday
               ? trans('comments.yesterday')
-              : dayjs(day).format('D MMM YYYY'),
+              : date.formatLocalDate(day),
         comments: items,
     }));
 });

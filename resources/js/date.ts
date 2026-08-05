@@ -14,11 +14,51 @@ export default {
         return dayjs.utc(date).tz(getUserTimezone()).format('LL');
     },
 
-    formatDateTime(date: string) {
-        return dayjs
-            .utc(date)
-            .tz(getUserTimezone())
-            .format('D [de] MMM [de] YYYY [às] HH:mm');
+    formatDateTime(date: string | null | undefined) {
+        if (!date) {
+            return '—';
+        }
+
+        return dayjs.utc(date).tz(getUserTimezone()).format('LLL');
+    },
+
+    /**
+     * Format a local (already timezone-converted) datetime string.
+     * Use for datetime-local values and other non-UTC inputs.
+     */
+    formatLocalDateTime(date: string | null | undefined) {
+        if (!date) {
+            return '—';
+        }
+
+        return dayjs(date).format('lll');
+    },
+
+    /**
+     * Format a local date-only value (YYYY-MM-DD or Date) with the active locale.
+     */
+    formatLocalDate(date: string | Date | null | undefined) {
+        if (!date) {
+            return '—';
+        }
+
+        return dayjs(date).format('LL');
+    },
+
+    /**
+     * Short month + day for chart axes (locale-aware order via Intl).
+     */
+    formatMonthDay(date: string | Date) {
+        return dayjs(date)
+            .toDate()
+            .toLocaleDateString(dayjs.locale(), { month: 'short', day: 'numeric' });
+    },
+
+    /**
+     * Short month + day + year for chart tooltips (locale-aware via L).
+     */
+    formatMonthDayYear(date: string | Date) {
+        return dayjs(date).format('L');
     },
 
     formatTime(date: string | null | undefined) {
@@ -112,7 +152,7 @@ export default {
      * @returns String formatada (ex: "Fev/2025")
      */
     formatMonthYear(month: number, year: number): string {
-        return dayjs(new Date(year, month - 1, 1)).format('MMM/YYYY');
+        return dayjs(new Date(year, month - 1, 1)).format('MMM YYYY');
     },
 
     formatAge(birthDate: string): string {
@@ -145,7 +185,7 @@ export default {
      * @returns String formatada (ex: "31/12/2025 14:25")
      */
     formatBuildDate(date: string): string {
-        return dayjs.utc(date).tz(getUserTimezone()).format('DD/MM/YYYY HH:mm');
+        return dayjs.utc(date).tz(getUserTimezone()).format('L LT');
     },
 
     /**

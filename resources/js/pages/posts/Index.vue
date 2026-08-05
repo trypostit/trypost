@@ -34,7 +34,7 @@ import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
 import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import { getPostStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
-import dayjs from '@/dayjs';
+import date from '@/date';
 import debounce from '@/debounce';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { copyToClipboard } from '@/lib/utils';
@@ -128,9 +128,9 @@ const pageTitle = computed(() => {
     return trans('posts.all_posts');
 });
 
-const formatDateTime = (date: string | null): string => {
-    if (!date) return '—';
-    return dayjs.utc(date).local().format('D MMM YYYY, HH:mm');
+const formatDateTime = (value: string | null): string => {
+    if (!value) return '—';
+    return date.formatDateTime(value);
 };
 
 const getEnabledPlatforms = (post: Post) => post.post_platforms.filter((pp) => pp.enabled);

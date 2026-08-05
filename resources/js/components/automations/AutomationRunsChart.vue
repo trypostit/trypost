@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { CurveType } from '@unovis/ts';
 import { VisArea, VisAxis, VisCrosshair, VisLine, VisTooltip, VisXYContainer } from '@unovis/vue';
-import { getActiveLanguage } from 'laravel-vue-i18n';
 
-import dayjs from '@/dayjs';
+import date from '@/date';
 
 type Point = { date: string; started: number; completed: number; failed: number };
 
@@ -15,9 +14,6 @@ const seriesColors = {
     failed: '#ef4444',
 };
 
-// English puts the month first (MM/DD); pt-BR and es read day first (DD/MM).
-const dayMonthFormat = getActiveLanguage().toLowerCase().startsWith('en') ? 'MM/DD' : 'DD/MM';
-
 const x = (_d: Point, i: number) => i;
 const yStarted = (d: Point) => d.started;
 const yCompleted = (d: Point) => d.completed;
@@ -25,12 +21,12 @@ const yFailed = (d: Point) => d.failed;
 
 const xTickFormat = (value: number): string => {
     const point = props.data[Math.round(value)];
-    return point ? dayjs(point.date).format(dayMonthFormat) : '';
+    return point ? date.formatMonthDay(point.date) : '';
 };
 
 const tooltipTemplate = (d: Point): string =>
     `<div style="font-size:12px;line-height:1.5">
-        <div style="font-weight:600;margin-bottom:2px">${dayjs(d.date).format(`${dayMonthFormat}/YYYY`)}</div>
+        <div style="font-weight:600;margin-bottom:2px">${date.formatMonthDayYear(d.date)}</div>
         <div style="color:${seriesColors.started}">● started: ${d.started}</div>
         <div style="color:${seriesColors.completed}">● completed: ${d.completed}</div>
         <div style="color:${seriesColors.failed}">● failed: ${d.failed}</div>

@@ -130,11 +130,11 @@ watch(
       >
         <template v-if="value.start">
           <template v-if="value.end">
-            {{ dayjs(toDate(value.start)).format('D MMM YYYY') }} -
-            {{ dayjs(toDate(value.end)).format('D MMM YYYY') }}
+            {{ dayjs(toDate(value.start)).format('LL') }} -
+            {{ dayjs(toDate(value.end)).format('LL') }}
           </template>
           <template v-else>
-            {{ dayjs(toDate(value.start)).format('D MMM YYYY') }}
+            {{ dayjs(toDate(value.start)).format('LL') }}
           </template>
         </template>
         <template v-else>

@@ -3,6 +3,7 @@ import { computed } from 'vue';
 
 import VideoPreview from '@/components/posts/previews/VideoPreview.vue';
 import { isVideoMedia } from '@/composables/useMedia';
+import dayjs from '@/dayjs';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -36,6 +37,7 @@ const props = defineProps<{
 const embeds = computed<EmbedDraft[]>(() => (Array.isArray(props.meta?.embeds) ? (props.meta!.embeds as EmbedDraft[]) : []));
 const channelName = computed<string>(() => (props.meta?.channel_name as string) || 'channel');
 const mentions = computed<MentionChip[]>(() => (Array.isArray(props.meta?.mentions) ? (props.meta!.mentions as MentionChip[]) : []));
+const postedAtLabel = computed(() => dayjs().hour(16).minute(30).second(0).millisecond(0).calendar());
 </script>
 
 <template>
@@ -66,7 +68,7 @@ const mentions = computed<MentionChip[]>(() => (Array.isArray(props.meta?.mentio
                     <div class="flex items-baseline gap-2">
                         <span class="text-[15px] font-medium text-[#060607]">{{ socialAccount.display_name || 'TryPost' }}</span>
                         <span class="rounded bg-[#5865F2] px-1 text-[10px] font-bold uppercase tracking-wide text-white">Bot</span>
-                        <span class="text-[11px] text-[#5c5e66]">Today at 4:30 PM</span>
+                        <span class="text-[11px] text-[#5c5e66]">{{ postedAtLabel }}</span>
                     </div>
 
                     <p v-if="content" class="mt-0.5 whitespace-pre-wrap text-[15px] leading-[1.375] text-[#313338]">{{ content }}</p>

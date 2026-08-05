@@ -21,7 +21,6 @@ import {
 } from '@/composables/usePostCompliance';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import date from '@/date';
-import dayjs from '@/dayjs';
 import debounce from '@/debounce';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { destroy as destroyPost, update as updatePost } from '@/routes/app/posts';
@@ -158,7 +157,7 @@ const pickTimeLabel = computed(() => {
     if (! hasPickedTime.value || ! scheduledDateTime.value) {
         return trans('posts.edit.pick_time');
     }
-    return dayjs(scheduledDateTime.value).format('MMM D, HH:mm');
+    return date.formatLocalDateTime(scheduledDateTime.value);
 });
 
 // Labels

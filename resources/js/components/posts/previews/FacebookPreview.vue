@@ -3,6 +3,7 @@ import { IconDots, IconPhoto } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
+import dayjs from '@/dayjs';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -26,6 +27,8 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
+const postedAtLabel = computed(() => dayjs().fromNow());
 
 // Content type helpers
 const isReel = computed(() => props.contentType === 'facebook_reel');
@@ -116,7 +119,7 @@ const displayName = computed(() => props.socialAccount.display_name || props.soc
                             <div class="flex flex-col min-w-0">
                                 <span class="text-[13px] font-semibold leading-tight">{{ displayName }}</span>
                                 <div class="flex items-center gap-1 text-[11px] text-[#65676b] dark:text-[#b0b3b8]">
-                                    <span>Just now</span>
+                                    <span>{{ postedAtLabel }}</span>
                                     <span>·</span>
                                     <!-- Globe icon -->
                                     <svg class="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
