@@ -372,7 +372,7 @@ it('rejects invalid Pinterest title and link on store', function () {
         ]);
 });
 
-it('rejects javascript links for Pinterest meta', function () {
+it('rejects non-http Pinterest links', function () {
     $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
 
     $this->withHeaders($this->headers)
@@ -381,7 +381,7 @@ it('rejects javascript links for Pinterest meta', function () {
             'platforms' => [[
                 'social_account_id' => $pinterest->id,
                 'content_type' => ContentType::PinterestPin->value,
-                'meta' => ['link' => 'javascript:alert(1)'],
+                'meta' => ['link' => 'ftp://files.example.com/pin'],
             ]],
         ])
         ->assertUnprocessable()

@@ -76,6 +76,46 @@ class PinterestPublisher
         return $payload;
     }
 
+    private function resolveBoardId(PostPlatform $postPlatform): string
+    {
+        $boardId = data_get($postPlatform->meta, 'board_id')
+            ?? data_get($postPlatform->socialAccount->meta, 'default_board_id');
+
+        if (! filled($boardId)) {
+            throw new PinterestPublishException(
+                userMessage: 'Pinterest board_id is required',
+                category: ErrorCategory::ContentPolicy,
+            );
+        }
+
+        return (string) $boardId;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{id: mixed, url: string}
+     */
+    private function createPin(SocialAccount $account, array $payload, string $failureLogMessage): array
+    {
+        $response = $this->socialHttp()->withToken($account->access_token)
+            ->post($this->baseUrl.'/pins', $payload);
+
+        if ($response->failed()) {
+            Log::error($failureLogMessage, [
+                'status' => $response->status(),
+                'body' => $this->redactResponseBody($response->body()),
+            ]);
+            $this->handleApiError($response);
+        }
+
+        $pinId = data_get($response->json(), 'id');
+
+        return [
+            'id' => $pinId,
+            'url' => "https://pinterest.com/pin/{$pinId}",
+        ];
+    }
+
     private function publishImagePin(PostPlatform $postPlatform, ?string $content): array
     {
         $account = $postPlatform->socialAccount;
@@ -88,14 +128,7 @@ class PinterestPublisher
             );
         }
 
-        $boardId = data_get($postPlatform->meta, 'board_id') ?? data_get($account->meta, 'default_board_id') ?? null;
-
-        if (! $boardId) {
-            throw new PinterestPublishException(
-                userMessage: 'Pinterest board_id is required',
-                category: ErrorCategory::ContentPolicy,
-            );
-        }
+        $boardId = $this->resolveBoardId($postPlatform);
 
         // Download and optimize image
         $tempFile = tempnam(sys_get_temp_dir(), 'pin_image_');
@@ -138,23 +171,7 @@ class PinterestPublisher
             $payload['alt_text'] = $alt;
         }
 
-        $response = $this->socialHttp()->withToken($account->access_token)
-            ->post($this->baseUrl.'/pins', $payload);
-
-        if ($response->failed()) {
-            Log::error('Pinterest pin creation failed', [
-                'status' => $response->status(),
-                'body' => $this->redactResponseBody($response->body()),
-            ]);
-            $this->handleApiError($response);
-        }
-
-        $data = $response->json();
-
-        return [
-            'id' => data_get($data, 'id'),
-            'url' => 'https://pinterest.com/pin/'.data_get($data, 'id'),
-        ];
+        return $this->createPin($account, $payload, 'Pinterest pin creation failed');
     }
 
     private function publishVideoPin(PostPlatform $postPlatform, ?string $content): array
@@ -169,14 +186,7 @@ class PinterestPublisher
             );
         }
 
-        $boardId = data_get($postPlatform->meta, 'board_id') ?? data_get($account->meta, 'default_board_id') ?? null;
-
-        if (! $boardId) {
-            throw new PinterestPublishException(
-                userMessage: 'Pinterest board_id is required',
-                category: ErrorCategory::ContentPolicy,
-            );
-        }
+        $boardId = $this->resolveBoardId($postPlatform);
 
         // Step 1: Register media upload
         $registerResponse = $this->socialHttp()->withToken($account->access_token)
@@ -280,23 +290,7 @@ class PinterestPublisher
             $payload['media_source']['cover_image_key_frame_time'] = 0;
         }
 
-        $response = $this->socialHttp()->withToken($account->access_token)
-            ->post($this->baseUrl.'/pins', $payload);
-
-        if ($response->failed()) {
-            Log::error('Pinterest video pin creation failed', [
-                'status' => $response->status(),
-                'body' => $this->redactResponseBody($response->body()),
-            ]);
-            $this->handleApiError($response);
-        }
-
-        $data = $response->json();
-
-        return [
-            'id' => data_get($data, 'id'),
-            'url' => 'https://pinterest.com/pin/'.data_get($data, 'id'),
-        ];
+        return $this->createPin($account, $payload, 'Pinterest video pin creation failed');
     }
 
     private function publishCarousel(PostPlatform $postPlatform, ?string $content): array
@@ -311,44 +305,19 @@ class PinterestPublisher
             );
         }
 
-        $boardId = data_get($postPlatform->meta, 'board_id') ?? data_get($account->meta, 'default_board_id') ?? null;
-
-        if (! $boardId) {
-            throw new PinterestPublishException(
-                userMessage: 'Pinterest board_id is required',
-                category: ErrorCategory::ContentPolicy,
-            );
-        }
-
         $items = $medias->map(fn ($media) => [
             'url' => $media->url,
         ])->toArray();
 
         $payload = $this->applyPinTextFields([
-            'board_id' => $boardId,
+            'board_id' => $this->resolveBoardId($postPlatform),
             'media_source' => [
                 'source_type' => 'multiple_image_urls',
                 'items' => $items,
             ],
         ], $postPlatform, $content);
 
-        $response = $this->socialHttp()->withToken($account->access_token)
-            ->post($this->baseUrl.'/pins', $payload);
-
-        if ($response->failed()) {
-            Log::error('Pinterest carousel creation failed', [
-                'status' => $response->status(),
-                'body' => $this->redactResponseBody($response->body()),
-            ]);
-            $this->handleApiError($response);
-        }
-
-        $data = $response->json();
-
-        return [
-            'id' => data_get($data, 'id'),
-            'url' => 'https://pinterest.com/pin/'.data_get($data, 'id'),
-        ];
+        return $this->createPin($account, $payload, 'Pinterest carousel creation failed');
     }
 
     private function waitForMediaProcessing(SocialAccount $account, string $mediaId, int $maxAttempts = 30): void

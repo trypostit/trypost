@@ -19,6 +19,7 @@ import { getMediaValidationWarning } from '@/composables/useMedia';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
+import { isValidHttpUrl } from '@/lib/httpUrl';
 import type { PinterestBoard } from '@/types';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -98,22 +99,65 @@ const selectedBoard = computed<BoardOption | undefined>({
 
 const pinTitle = computed({
     get: () => (props.meta?.title as string | undefined) || '',
-    set: (value: string) => emit('update:meta', { ...props.meta, title: value || null }),
+    set: (value: string) => {
+        // Whitespace-only clears the field; keep interior spaces while typing.
+        emit('update:meta', { ...props.meta, title: value.trim() === '' ? null : value });
+    },
 });
+
+// Keep incomplete URLs in a local draft so autosave never sends `https://`
+// (backend rejects non-http(s) URLs). Meta only updates on clear or valid URL.
+const linkDraft = ref<string | null>(null);
 
 const pinLink = computed({
-    get: () => (props.meta?.link as string | undefined) || '',
-    set: (value: string) => emit('update:meta', { ...props.meta, link: value || null }),
+    get: () => linkDraft.value ?? (props.meta?.link as string | undefined) ?? '',
+    set: (value: string) => {
+        linkDraft.value = value;
+        const trimmed = value.trim();
+
+        if (trimmed === '') {
+            emit('update:meta', { ...props.meta, link: null });
+
+            return;
+        }
+
+        if (isValidHttpUrl(trimmed)) {
+            emit('update:meta', { ...props.meta, link: trimmed });
+        }
+    },
 });
 
-// Surface the backend validation error keyed by platform index
-// (`platforms.0.meta.board_id`). Suffix match avoids threading the index
-// through props. Cleared as soon as a board is picked locally so the user
-// doesn't see a stale error after fixing the issue.
+watch(
+    () => props.meta?.link,
+    (link) => {
+        if (linkDraft.value === null) {
+            return;
+        }
+
+        const trimmed = linkDraft.value.trim();
+
+        if (link === trimmed || (link == null && trimmed === '')) {
+            linkDraft.value = null;
+        }
+    },
+);
+
+// Surface backend validation errors keyed by platform index
+// (`platforms.0.meta.*`). Suffix match avoids threading the index through props.
+// Board clears as soon as one is picked so the user doesn't see a stale error.
 const errors = usePageErrors();
 const boardError = computed<string | undefined>(() => {
-    if (props.meta?.board_id) return undefined;
+    if (props.meta?.board_id) {
+        return undefined;
+    }
+
     return Object.entries(errors.value).find(([key]) => key.endsWith('.meta.board_id'))?.[1];
+});
+const titleError = computed<string | undefined>(() => {
+    return Object.entries(errors.value).find(([key]) => key.endsWith('.meta.title'))?.[1];
+});
+const linkError = computed<string | undefined>(() => {
+    return Object.entries(errors.value).find(([key]) => key.endsWith('.meta.link'))?.[1];
 });
 </script>
 
@@ -232,7 +276,9 @@ const boardError = computed<string | undefined>(() => {
                     type="text"
                     :placeholder="$t('posts.form.pinterest.title_placeholder')"
                     :disabled="disabled || previewOnly"
+                    :class="titleError ? 'border-rose-500' : undefined"
                 />
+                <InputError :message="titleError" />
             </div>
 
             <div class="space-y-2">
@@ -242,7 +288,9 @@ const boardError = computed<string | undefined>(() => {
                     type="text"
                     :placeholder="$t('posts.form.pinterest.link_placeholder')"
                     :disabled="disabled || previewOnly"
+                    :class="linkError ? 'border-rose-500' : undefined"
                 />
+                <InputError :message="linkError" />
             </div>
 
             <p

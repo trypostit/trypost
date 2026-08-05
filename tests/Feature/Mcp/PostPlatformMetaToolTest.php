@@ -350,3 +350,22 @@ test('update post merges Pinterest title and link meta', function () {
         ->and(data_get($meta, 'link'))->toBe('https://example.com/updated')
         ->and(data_get($meta, 'board_id'))->toBe('board-1');
 });
+
+test('create post rejects invalid Pinterest destination link', function () {
+    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Shared caption',
+            'platforms' => [[
+                'social_account_id' => $pinterest->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => [
+                    'board_id' => 'board-1',
+                    'link' => 'ftp://files.example.com/pin',
+                ],
+            ]],
+        ]);
+
+    $response->assertHasErrors();
+});

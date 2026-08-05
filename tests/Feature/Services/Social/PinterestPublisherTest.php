@@ -468,6 +468,82 @@ test('pinterest publisher omits description when post content is blank', functio
     });
 });
 
+test('pinterest publisher truncates title to 100 characters', function () {
+    $longTitle = str_repeat('T', 150);
+
+    $this->postPlatform->update([
+        'meta' => [
+            'board_id' => 'board_123',
+            'title' => $longTitle,
+        ],
+    ]);
+
+    $this->post->update([
+        'content' => 'Within limit',
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/image.jpg',
+                'url' => 'https://example.com/media/2026-01/image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'image.jpg',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        '*/v5/pins' => Http::response(['id' => 'pin_truncated'], 200),
+        '*' => Http::response('fake-image-content', 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), '/v5/pins')
+            && mb_strlen($request['title']) === 100
+            && $request['description'] === 'Within limit';
+    });
+});
+
+test('pinterest publisher omits blank title and link', function () {
+    $this->postPlatform->update([
+        'meta' => [
+            'board_id' => 'board_123',
+            'title' => '',
+            'link' => '',
+        ],
+    ]);
+
+    $this->post->update([
+        'content' => 'Caption only',
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/image.jpg',
+                'url' => 'https://example.com/media/2026-01/image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'image.jpg',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        '*/v5/pins' => Http::response(['id' => 'pin_no_title_link'], 200),
+        '*' => Http::response('fake-image-content', 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(function ($request) {
+        $data = $request->data();
+
+        return str_contains($request->url(), '/v5/pins')
+            && $data['description'] === 'Caption only'
+            && ! array_key_exists('title', $data)
+            && ! array_key_exists('link', $data);
+    });
+});
+
 test('pinterest publisher sends alt text from image meta capped to platform max', function () {
     $longAlt = str_repeat('x', 600);
 
