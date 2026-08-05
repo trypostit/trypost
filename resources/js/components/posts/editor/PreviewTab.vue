@@ -32,6 +32,7 @@ const props = defineProps<{
     media: MediaItem[];
     platformContentTypes: Record<string, string>;
     platformMeta?: Record<string, Record<string, any>>;
+    postedAt?: string | null;
 }>();
 
 const getPlatformAvatar = (pp: PostPlatform): string | null => pp.social_account?.avatar_url ?? pp.platform_avatar ?? null;
@@ -103,6 +104,7 @@ const activeContentType = computed((): string | undefined => {
                     :social-account="activePlatform.social_account"
                     :content-type="activeContentType"
                     :meta="platformMeta?.[activePlatform.id] ?? {}"
+                    :posted-at="postedAt"
                 />
             </PhoneMockup>
             <div v-else class="flex flex-col items-center gap-3 text-center">

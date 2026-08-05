@@ -31,6 +31,8 @@ interface Props {
     media: MediaItem[];
     contentType?: string;
     meta?: Record<string, any>;
+    /** Local scheduled datetime (datetime-local); falls back to now in previews. */
+    postedAt?: string | null;
 }
 
 const props = defineProps<Props>();
@@ -85,5 +87,6 @@ const previewComponent = computed(() => {
         :media="media"
         :content-type="contentType"
         :meta="meta"
+        :posted-at="postedAt"
     />
 </template>

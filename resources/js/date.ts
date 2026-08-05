@@ -8,6 +8,20 @@ function getUserTimezone(): string {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
+/** Platform-preview timestamp styles (scheduled local datetime, else now). */
+export type PreviewPostedAtStyle = 'absolute' | 'datetime' | 'relative' | 'discord';
+
+const resolvePreviewPostedAt = (postedAt?: string | null) => {
+    if (postedAt) {
+        const parsed = dayjs(postedAt);
+        if (parsed.isValid()) {
+            return parsed;
+        }
+    }
+
+    return dayjs();
+};
+
 export default {
     formatDate(date: string | null | undefined) {
         if (!date) return '-';
@@ -59,6 +73,36 @@ export default {
      */
     formatMonthDayYear(date: string | Date) {
         return dayjs(date).format('L');
+    },
+
+    /**
+     * Timestamp label for platform previews.
+     * Uses the scheduled local datetime when set, otherwise now.
+     * Discord needs a localized "Today" label (`todayLabel`) — dayjs calendar() stays English.
+     */
+    formatPreviewPostedAt(
+        postedAt: string | null | undefined,
+        style: PreviewPostedAtStyle,
+        todayLabel?: string,
+    ) {
+        const instant = resolvePreviewPostedAt(postedAt);
+
+        switch (style) {
+            case 'absolute':
+                return `${instant.format('LT')} · ${instant.format('ll')}`;
+            case 'datetime':
+                return instant.format('lll');
+            case 'relative':
+                return instant.fromNow();
+            case 'discord':
+                if (instant.isSame(dayjs(), 'day')) {
+                    return todayLabel
+                        ? `${todayLabel} · ${instant.format('LT')}`
+                        : instant.format('LT');
+                }
+
+                return instant.format('ll');
+        }
     },
 
     formatTime(date: string | null | undefined) {

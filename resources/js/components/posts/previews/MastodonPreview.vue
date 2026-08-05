@@ -3,7 +3,7 @@ import { computed } from 'vue';
 
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
 import { isVideoMedia } from '@/composables/useMedia';
-import dayjs from '@/dayjs';
+import date from '@/date';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -18,11 +18,12 @@ interface Props {
     socialAccount: SocialAccount;
     content: string;
     media: MediaItem[];
+    postedAt?: string | null;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
-const postedAtLabel = computed(() => dayjs('2026-01-21T16:30:00').format('lll'));
+const postedAtLabel = computed(() => date.formatPreviewPostedAt(props.postedAt, 'datetime'));
 </script>
 
 <template>

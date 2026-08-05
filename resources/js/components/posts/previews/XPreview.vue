@@ -5,7 +5,7 @@ import LinkCard from "@/components/posts/previews/LinkCard.vue";
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
 import { useLinkCard } from '@/composables/useLinkCard';
 import { isVideoMedia } from '@/composables/useMedia';
-import dayjs from '@/dayjs';
+import date from '@/date';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -20,16 +20,13 @@ interface Props {
     socialAccount: SocialAccount;
     content: string;
     media: MediaItem[];
+    postedAt?: string | null;
 }
 
 const props = defineProps<Props>();
 
 const username = computed(() => props.socialAccount.username || 'username');
-const postedAtLabel = computed(() => {
-    const postedAt = dayjs('2026-01-20T16:21:00');
-
-    return `${postedAt.format('LT')} · ${postedAt.format('ll')}`;
-});
+const postedAtLabel = computed(() => date.formatPreviewPostedAt(props.postedAt, 'absolute'));
 
 const { card: linkCard, loading: linkCardLoading } = useLinkCard(
     toRef(props, 'content'),

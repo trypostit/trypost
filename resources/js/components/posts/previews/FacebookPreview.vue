@@ -3,7 +3,7 @@ import { IconDots, IconPhoto } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
-import dayjs from '@/dayjs';
+import date from '@/date';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -24,11 +24,12 @@ interface Props {
     maxLength?: number;
     isValid?: boolean;
     validationMessage?: string;
+    postedAt?: string | null;
 }
 
 const props = defineProps<Props>();
 
-const postedAtLabel = computed(() => dayjs().fromNow());
+const postedAtLabel = computed(() => date.formatPreviewPostedAt(props.postedAt, 'relative'));
 
 // Content type helpers
 const isReel = computed(() => props.contentType === 'facebook_reel');

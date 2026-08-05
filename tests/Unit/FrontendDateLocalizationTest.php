@@ -63,6 +63,17 @@ test('date helpers use localized dayjs formats', function () {
         ->toContain("format('LLL')")
         ->toContain("format('lll')")
         ->toContain("format('L LT')")
+        ->toContain('formatPreviewPostedAt')
         ->not->toContain('[de]')
-        ->not->toContain('[às]');
+        ->not->toContain('[às]')
+        ->not->toContain('.calendar()');
+});
+
+test('discord preview does not use dayjs calendar plugin', function () {
+    $contents = file_get_contents(resource_path('js/components/posts/previews/DiscordPreview.vue'));
+
+    expect($contents)
+        ->toContain("formatPreviewPostedAt")
+        ->toContain("'discord'")
+        ->not->toContain('.calendar(');
 });

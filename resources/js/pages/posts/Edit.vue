@@ -464,6 +464,7 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                             :is-read-only="isLocked"
                             :auth-user-id="authUserId"
                             :initial-highlight-comment-id="initialHighlightCommentId"
+                            :posted-at="hasPickedTime ? scheduledDateTime : null"
                             @toggle-platform="togglePlatform"
                             @toggle-label="toggleLabel"
                             @update:platform-meta="updatePlatformMeta"

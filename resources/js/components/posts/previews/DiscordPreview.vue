@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import VideoPreview from '@/components/posts/previews/VideoPreview.vue';
 import { isVideoMedia } from '@/composables/useMedia';
-import dayjs from '@/dayjs';
+import date from '@/date';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -32,12 +33,15 @@ const props = defineProps<{
     content: string;
     media: MediaItem[];
     meta?: Record<string, any>;
+    postedAt?: string | null;
 }>();
 
 const embeds = computed<EmbedDraft[]>(() => (Array.isArray(props.meta?.embeds) ? (props.meta!.embeds as EmbedDraft[]) : []));
 const channelName = computed<string>(() => (props.meta?.channel_name as string) || 'channel');
 const mentions = computed<MentionChip[]>(() => (Array.isArray(props.meta?.mentions) ? (props.meta!.mentions as MentionChip[]) : []));
-const postedAtLabel = computed(() => dayjs().hour(16).minute(30).second(0).millisecond(0).calendar());
+const postedAtLabel = computed(() =>
+    date.formatPreviewPostedAt(props.postedAt, 'discord', trans('common.date_range_picker.today')),
+);
 </script>
 
 <template>

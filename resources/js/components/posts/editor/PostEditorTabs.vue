@@ -66,6 +66,7 @@ const props = defineProps<{
     isReadOnly: boolean;
     authUserId: string;
     initialHighlightCommentId: string | null;
+    postedAt?: string | null;
 }>();
 
 const activeTab = defineModel<string>('activeTab', { required: true });
@@ -104,6 +105,7 @@ defineExpose({
                 :media="media"
                 :platform-content-types="platformContentTypes"
                 :platform-meta="platformMeta"
+                :posted-at="postedAt"
             />
         </TabsContent>
 
