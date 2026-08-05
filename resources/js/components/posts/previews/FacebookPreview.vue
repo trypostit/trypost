@@ -31,7 +31,7 @@ interface Props {
 const props = defineProps<Props>();
 
 const postedAtLabel = computed(() =>
-    date.formatPreviewPostedAt(props.postedAt, 'relative', trans('common.just_now')),
+    date.formatFacebookPreview(props.postedAt, trans('common.just_now')),
 );
 
 // Content type helpers

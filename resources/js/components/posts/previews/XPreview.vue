@@ -26,7 +26,7 @@ interface Props {
 const props = defineProps<Props>();
 
 const username = computed(() => props.socialAccount.username || 'username');
-const postedAtLabel = computed(() => date.formatPreviewPostedAt(props.postedAt, 'absolute'));
+const postedAtLabel = computed(() => date.formatXPreview(props.postedAt));
 
 const { card: linkCard, loading: linkCardLoading } = useLinkCard(
     toRef(props, 'content'),

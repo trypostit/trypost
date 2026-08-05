@@ -25,7 +25,7 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const postedAtLabel = computed(() => date.formatPreviewPostedAt(props.postedAt, 'absolute'));
+const postedAtLabel = computed(() => date.formatBlueskyPreview(props.postedAt));
 
 const { card: linkCard, loading: linkCardLoading } = useLinkCard(
     toRef(props, 'content'),

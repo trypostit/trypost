@@ -23,7 +23,7 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const postedAtLabel = computed(() => date.formatPreviewPostedAt(props.postedAt, 'datetime'));
+const postedAtLabel = computed(() => date.formatMastodonPreview(props.postedAt));
 </script>
 
 <template>

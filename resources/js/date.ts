@@ -8,9 +8,7 @@ function getUserTimezone(): string {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-/** Platform-preview timestamp styles (scheduled local datetime, else now). */
-export type PreviewPostedAtStyle = 'absolute' | 'datetime' | 'relative' | 'discord';
-
+/** Resolve scheduled local datetime for platform previews, else now. */
 const resolvePreviewPostedAt = (postedAt?: string | null) => {
     if (postedAt) {
         const parsed = dayjs(postedAt);
@@ -20,6 +18,13 @@ const resolvePreviewPostedAt = (postedAt?: string | null) => {
     }
 
     return dayjs();
+};
+
+/** X / Bluesky style: `4:21 PM · Aug 5, 2026` (locale-aware). */
+const formatAbsolutePreviewPostedAt = (postedAt?: string | null) => {
+    const instant = resolvePreviewPostedAt(postedAt);
+
+    return `${instant.format('LT')} · ${instant.format('ll')}`;
 };
 
 export default {
@@ -86,39 +91,42 @@ export default {
         return dayjs(date).format('L');
     },
 
+    formatXPreview(postedAt?: string | null) {
+        return formatAbsolutePreviewPostedAt(postedAt);
+    },
+
+    formatBlueskyPreview(postedAt?: string | null) {
+        return formatAbsolutePreviewPostedAt(postedAt);
+    },
+
+    formatMastodonPreview(postedAt?: string | null) {
+        return resolvePreviewPostedAt(postedAt).format('lll');
+    },
+
     /**
-     * Timestamp label for platform previews.
-     * Uses the scheduled local datetime when set, otherwise now.
-     * `label` is the localized same-day prefix for discord, or the empty-schedule
-     * relative fallback (e.g. common.just_now) when style is relative.
+     * @param justNowLabel Localized fallback when no schedule is set (e.g. common.just_now).
      */
-    formatPreviewPostedAt(
-        postedAt: string | null | undefined,
-        style: PreviewPostedAtStyle,
-        label?: string,
-    ) {
+    formatFacebookPreview(postedAt?: string | null, justNowLabel?: string) {
+        if (! postedAt && justNowLabel) {
+            return justNowLabel;
+        }
+
+        return resolvePreviewPostedAt(postedAt).fromNow();
+    },
+
+    /**
+     * @param todayLabel Localized same-day prefix (e.g. common.date_range_picker.today).
+     */
+    formatDiscordPreview(postedAt?: string | null, todayLabel?: string) {
         const instant = resolvePreviewPostedAt(postedAt);
 
-        switch (style) {
-            case 'absolute':
-                return `${instant.format('LT')} · ${instant.format('ll')}`;
-            case 'datetime':
-                return instant.format('lll');
-            case 'relative':
-                if (! postedAt && label) {
-                    return label;
-                }
-
-                return instant.fromNow();
-            case 'discord':
-                if (instant.isSame(dayjs(), 'day')) {
-                    return label
-                        ? `${label} · ${instant.format('LT')}`
-                        : instant.format('LT');
-                }
-
-                return instant.format('lll');
+        if (instant.isSame(dayjs(), 'day')) {
+            return todayLabel
+                ? `${todayLabel} · ${instant.format('LT')}`
+                : instant.format('LT');
         }
+
+        return instant.format('lll');
     },
 
     formatTime(date: string | null | undefined) {

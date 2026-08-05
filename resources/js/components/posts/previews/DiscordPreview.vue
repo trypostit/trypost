@@ -40,7 +40,7 @@ const embeds = computed<EmbedDraft[]>(() => (Array.isArray(props.meta?.embeds) ?
 const channelName = computed<string>(() => (props.meta?.channel_name as string) || 'channel');
 const mentions = computed<MentionChip[]>(() => (Array.isArray(props.meta?.mentions) ? (props.meta!.mentions as MentionChip[]) : []));
 const postedAtLabel = computed(() =>
-    date.formatPreviewPostedAt(props.postedAt, 'discord', trans('common.date_range_picker.today')),
+    date.formatDiscordPreview(props.postedAt, trans('common.date_range_picker.today')),
 );
 </script>
 
