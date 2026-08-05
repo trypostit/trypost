@@ -6,11 +6,9 @@ namespace App\Actions\Post;
 
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\Status as PostStatus;
-use App\Enums\SocialAccount\Platform;
 use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\Workspace;
-use App\Support\PinterestPinMeta;
 use App\Support\PostStatusRules;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
@@ -56,21 +54,12 @@ class UpdatePost
                         $updateData['content_type'] = data_get($platformData, 'content_type');
                     }
 
-                    $postPlatform = $post->postPlatforms()->where('id', data_get($platformData, 'id'))->first();
+                    if (data_get($platformData, 'meta') !== null) {
+                        $postPlatform = $post->postPlatforms()->where('id', data_get($platformData, 'id'))->first();
 
-                    if ($postPlatform && data_get($platformData, 'meta') !== null) {
-                        $merged = array_merge($postPlatform->meta ?? [], data_get($platformData, 'meta'));
-
-                        if ($postPlatform->platform === Platform::Pinterest) {
-                            $merged = PinterestPinMeta::seedDescription($merged, $post->content);
+                        if ($postPlatform) {
+                            $updateData['meta'] = array_merge($postPlatform->meta ?? [], data_get($platformData, 'meta'));
                         }
-
-                        $updateData['meta'] = $merged;
-                    } elseif ($postPlatform?->platform === Platform::Pinterest && filled($post->content)) {
-                        $updateData['meta'] = PinterestPinMeta::seedDescription(
-                            $postPlatform->meta ?? [],
-                            $post->content,
-                        );
                     }
 
                     $post->postPlatforms()

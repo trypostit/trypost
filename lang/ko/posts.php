@@ -160,8 +160,6 @@ return [
             'board_required' => '이 게시물을 게시할 Pinterest 보드를 선택하세요.',
             'title' => '제목',
             'title_placeholder' => '선택적 핀 제목',
-            'description' => '설명',
-            'description_placeholder' => '핀 설명',
             'link' => '도착 링크',
             'link_placeholder' => 'https://example.com',
         ],

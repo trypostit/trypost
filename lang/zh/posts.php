@@ -160,8 +160,6 @@ return [
             'board_required' => '请选择一个 Pinterest 图板以发布此帖子。',
             'title' => '标题',
             'title_placeholder' => '可选的 Pin 标题',
-            'description' => '描述',
-            'description_placeholder' => 'Pin 描述',
             'link' => '目标链接',
             'link_placeholder' => 'https://example.com',
         ],

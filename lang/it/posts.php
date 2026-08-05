@@ -160,8 +160,6 @@ return [
             'board_required' => 'Seleziona una bacheca Pinterest per pubblicare questo post.',
             'title' => 'Titolo',
             'title_placeholder' => 'Titolo opzionale del pin',
-            'description' => 'Descrizione',
-            'description_placeholder' => 'Descrizione del pin',
             'link' => 'Link di destinazione',
             'link_placeholder' => 'https://esempio.com',
         ],

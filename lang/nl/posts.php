@@ -160,8 +160,6 @@ return [
             'board_required' => 'Selecteer een Pinterest-bord om deze post te publiceren.',
             'title' => 'Titel',
             'title_placeholder' => 'Optionele pin-titel',
-            'description' => 'Beschrijving',
-            'description_placeholder' => 'Pinbeschrijving',
             'link' => 'Bestemmingslink',
             'link_placeholder' => 'https://voorbeeld.com',
         ],

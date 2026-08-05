@@ -288,7 +288,7 @@ test('publish post succeeds for a Discord platform with a channel', function () 
     Queue::assertPushed(PublishPost::class);
 });
 
-test('create post persists Pinterest title, description and link meta', function () {
+test('create post persists Pinterest title and link meta', function () {
     $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
 
     $response = TryPostServer::actingAs($this->user)
@@ -300,7 +300,6 @@ test('create post persists Pinterest title, description and link meta', function
                 'meta' => [
                     'board_id' => 'board-1',
                     'title' => 'Pin Title',
-                    'description' => 'Custom pin description',
                     'link' => 'https://example.com/product',
                 ],
             ]],
@@ -311,36 +310,17 @@ test('create post persists Pinterest title, description and link meta', function
     $meta = PostPlatform::where('social_account_id', $pinterest->id)->sole()->meta;
 
     expect(data_get($meta, 'title'))->toBe('Pin Title')
-        ->and(data_get($meta, 'description'))->toBe('Custom pin description')
-        ->and(data_get($meta, 'link'))->toBe('https://example.com/product');
+        ->and(data_get($meta, 'link'))->toBe('https://example.com/product')
+        ->and(array_key_exists('description', $meta))->toBeFalse();
 });
 
-test('create post seeds Pinterest description from content when omitted', function () {
-    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
-
-    $response = TryPostServer::actingAs($this->user)
-        ->tool(CreatePostTool::class, [
-            'content' => 'Caption becomes pin description',
-            'platforms' => [[
-                'social_account_id' => $pinterest->id,
-                'content_type' => ContentType::PinterestPin->value,
-                'meta' => ['board_id' => 'board-1'],
-            ]],
-        ]);
-
-    $response->assertOk();
-
-    expect(data_get(PostPlatform::where('social_account_id', $pinterest->id)->sole()->meta, 'description'))
-        ->toBe('Caption becomes pin description');
-});
-
-test('update post merges Pinterest title and link and seeds description', function () {
+test('update post merges Pinterest title and link meta', function () {
     $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-        'content' => 'Seeded from update content',
+        'content' => 'Shared caption',
     ]);
     $platform = PostPlatform::factory()->pinterest()->create([
         'post_id' => $post->id,
@@ -352,7 +332,6 @@ test('update post merges Pinterest title and link and seeds description', functi
     $response = TryPostServer::actingAs($this->user)
         ->tool(UpdatePostTool::class, [
             'post_id' => $post->id,
-            'content' => 'Seeded from update content',
             'platforms' => [[
                 'id' => $platform->id,
                 'meta' => [
@@ -369,36 +348,5 @@ test('update post merges Pinterest title and link and seeds description', functi
 
     expect(data_get($meta, 'title'))->toBe('Updated Title')
         ->and(data_get($meta, 'link'))->toBe('https://example.com/updated')
-        ->and(data_get($meta, 'description'))->toBe('Seeded from update content')
         ->and(data_get($meta, 'board_id'))->toBe('board-1');
-});
-
-test('update post keeps an explicit Pinterest description', function () {
-    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-        'content' => 'Shared caption',
-    ]);
-    $platform = PostPlatform::factory()->pinterest()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $pinterest->id,
-        'enabled' => true,
-        'meta' => ['board_id' => 'board-1', 'description' => 'Keep me'],
-    ]);
-
-    $response = TryPostServer::actingAs($this->user)
-        ->tool(UpdatePostTool::class, [
-            'post_id' => $post->id,
-            'content' => 'Shared caption changed',
-            'platforms' => [[
-                'id' => $platform->id,
-                'meta' => ['board_id' => 'board-1', 'description' => 'Keep me'],
-            ]],
-        ]);
-
-    $response->assertOk();
-
-    expect(data_get($platform->fresh()->meta, 'description'))->toBe('Keep me');
 });

@@ -160,8 +160,6 @@ return [
             'board_required' => 'Выберите доску Pinterest, чтобы опубликовать этот пост.',
             'title' => 'Заголовок',
             'title_placeholder' => 'Необязательный заголовок пина',
-            'description' => 'Описание',
-            'description_placeholder' => 'Описание пина',
             'link' => 'Ссылка назначения',
             'link_placeholder' => 'https://example.com',
         ],

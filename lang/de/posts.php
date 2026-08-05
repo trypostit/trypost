@@ -162,8 +162,6 @@ return [
             'board_required' => 'Wähle eine Pinterest-Pinnwand, um diesen Beitrag zu veröffentlichen.',
             'title' => 'Titel',
             'title_placeholder' => 'Optionaler Pin-Titel',
-            'description' => 'Beschreibung',
-            'description_placeholder' => 'Pin-Beschreibung',
             'link' => 'Ziel-Link',
             'link_placeholder' => 'https://beispiel.com',
         ],

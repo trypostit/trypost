@@ -586,7 +586,7 @@ test('saving a discord draft without a channel is allowed', function () {
         ->assertSessionDoesntHaveErrors('platforms.0.meta.channel_id');
 });
 
-test('saving a pinterest draft persists title, description and link meta', function () {
+test('saving a pinterest draft persists title and link meta', function () {
     $pinterestAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::Pinterest,
@@ -607,7 +607,6 @@ test('saving a pinterest draft persists title, description and link meta', funct
                 'meta' => [
                     'board_id' => 'board-1',
                     'title' => 'Pin Title',
-                    'description' => 'Custom pin description',
                     'link' => 'https://example.com/product',
                 ],
             ]],
@@ -617,38 +616,11 @@ test('saving a pinterest draft persists title, description and link meta', funct
     $meta = $pinterestPlatform->fresh()->meta;
 
     expect(data_get($meta, 'title'))->toBe('Pin Title')
-        ->and(data_get($meta, 'description'))->toBe('Custom pin description')
-        ->and(data_get($meta, 'link'))->toBe('https://example.com/product');
+        ->and(data_get($meta, 'link'))->toBe('https://example.com/product')
+        ->and(array_key_exists('description', $meta))->toBeFalse();
 });
 
-test('saving a pinterest draft seeds description from content when omitted', function () {
-    $pinterestAccount = SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Pinterest,
-    ]);
-    $pinterestPlatform = PostPlatform::factory()->pinterest()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $pinterestAccount->id,
-        'meta' => [],
-    ]);
-
-    $this->actingAs($this->user)
-        ->put(route('app.posts.update', $this->post), [
-            'status' => Status::Draft->value,
-            'content' => 'Caption becomes pin description',
-            'platforms' => [[
-                'id' => $pinterestPlatform->id,
-                'content_type' => ContentType::PinterestPin->value,
-                'meta' => ['board_id' => 'board-1'],
-            ]],
-        ])
-        ->assertSessionDoesntHaveErrors();
-
-    expect(data_get($pinterestPlatform->fresh()->meta, 'description'))
-        ->toBe('Caption becomes pin description');
-});
-
-test('pinterest meta title, description and link validation bounds are enforced', function () {
+test('pinterest meta title and link validation bounds are enforced', function () {
     $pinterestAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::Pinterest,
@@ -667,14 +639,12 @@ test('pinterest meta title, description and link validation bounds are enforced'
                 'content_type' => ContentType::PinterestPin->value,
                 'meta' => [
                     'title' => str_repeat('t', 101),
-                    'description' => str_repeat('d', 801),
                     'link' => 'not-a-url',
                 ],
             ]],
         ])
         ->assertSessionHasErrors([
             'platforms.0.meta.title',
-            'platforms.0.meta.description',
             'platforms.0.meta.link',
         ]);
 });

@@ -160,8 +160,6 @@ return [
             'board_required' => 'Sélectionnez un tableau Pinterest pour publier cette publication.',
             'title' => 'Titre',
             'title_placeholder' => 'Titre optionnel de l’épingle',
-            'description' => 'Description',
-            'description_placeholder' => 'Description de l’épingle',
             'link' => 'Lien de destination',
             'link_placeholder' => 'https://exemple.com',
         ],

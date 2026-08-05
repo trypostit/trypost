@@ -378,6 +378,7 @@ test('pinterest publisher includes title and link when provided', function () {
     ]);
 
     $this->post->update([
+        'content' => 'Check out this pin!',
         'media' => [
             [
                 'id' => 'test-media-id',
@@ -396,18 +397,19 @@ test('pinterest publisher includes title and link when provided', function () {
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->postPlatform->fresh());
 
     Http::assertSent(function ($request) {
         return str_contains($request->url(), '/v5/pins')
             && $request['title'] === 'My Pin Title'
-            && $request['link'] === 'https://example.com/my-page';
+            && $request['link'] === 'https://example.com/my-page'
+            && $request['description'] === 'Check out this pin!';
     });
 });
 
-test('pinterest publisher sends description from meta only', function () {
+test('pinterest publisher uses post content as description and ignores meta description', function () {
     $this->post->update([
-        'content' => 'Shared post caption that must not be used',
+        'content' => 'Shared post caption',
         'media' => [
             [
                 'id' => 'test-media-id',
@@ -422,7 +424,7 @@ test('pinterest publisher sends description from meta only', function () {
     $this->postPlatform->update([
         'meta' => [
             'board_id' => 'board_123',
-            'description' => 'Meta pin description',
+            'description' => 'Stale meta description must be ignored',
         ],
     ]);
 
@@ -435,13 +437,13 @@ test('pinterest publisher sends description from meta only', function () {
 
     Http::assertSent(function ($request) {
         return str_contains($request->url(), '/v5/pins')
-            && $request['description'] === 'Meta pin description';
+            && $request['description'] === 'Shared post caption';
     });
 });
 
-test('pinterest publisher omits description when meta description is blank', function () {
+test('pinterest publisher omits description when post content is blank', function () {
     $this->post->update([
-        'content' => 'Shared post caption that must not be used',
+        'content' => '',
         'media' => [
             [
                 'id' => 'test-media-id',
@@ -709,13 +711,12 @@ test('pinterest publisher includes title description and link on video pins', fu
         'meta' => [
             'board_id' => 'board_123',
             'title' => 'Video Title',
-            'description' => 'Video description',
             'link' => 'https://example.com/video',
         ],
     ]);
 
     $this->post->update([
-        'content' => 'Shared caption must not be used',
+        'content' => 'Video pin caption',
         'media' => [
             [
                 'id' => 'test-media-video',
@@ -759,7 +760,7 @@ test('pinterest publisher includes title description and link on video pins', fu
 
     Http::assertSent(fn ($request) => $request->url() === config('trypost.platforms.pinterest.api').'/pins'
         && data_get($request->data(), 'title') === 'Video Title'
-        && data_get($request->data(), 'description') === 'Video description'
+        && data_get($request->data(), 'description') === 'Video pin caption'
         && data_get($request->data(), 'link') === 'https://example.com/video'
         && data_get($request->data(), 'media_source.source_type') === 'video_id');
 });
@@ -781,12 +782,14 @@ test('pinterest publisher includes title description and link on carousels', fun
         'meta' => [
             'board_id' => 'board_123',
             'title' => 'Carousel Title',
-            'description' => 'Carousel description',
             'link' => 'https://example.com/carousel',
         ],
     ]);
 
-    $this->post->update(['media' => $mediaItems]);
+    $this->post->update([
+        'content' => 'Carousel pin caption',
+        'media' => $mediaItems,
+    ]);
 
     Http::fake([
         '*/v5/pins' => Http::response(['id' => 'carousel_pin_123'], 200),
@@ -797,7 +800,7 @@ test('pinterest publisher includes title description and link on carousels', fun
     Http::assertSent(function ($request) {
         return str_contains($request->url(), '/v5/pins')
             && $request['title'] === 'Carousel Title'
-            && $request['description'] === 'Carousel description'
+            && $request['description'] === 'Carousel pin caption'
             && $request['link'] === 'https://example.com/carousel'
             && $request['media_source']['source_type'] === 'multiple_image_urls';
     });

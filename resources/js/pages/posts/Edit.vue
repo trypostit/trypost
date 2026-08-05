@@ -27,7 +27,6 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { destroy as destroyPost, update as updatePost } from '@/routes/app/posts';
 import type { PinterestBoardsPayload } from '@/types';
 import type { MediaItem } from '@/types/media';
-import { Platform } from '@/types/platform';
 import { PostStatus } from '@/types/post';
 
 interface SocialAccount {
@@ -125,44 +124,6 @@ const platformMeta = ref<Record<string, Record<string, any>>>(
 const updatePlatformMeta = (platformId: string, meta: Record<string, any>) => {
     platformMeta.value = { ...platformMeta.value, [platformId]: meta };
 };
-
-// Seed Pinterest description from caption when blank (settings box owns the value afterward).
-for (const pp of post.value.post_platforms) {
-    if (pp.platform !== Platform.Pinterest) {
-        continue;
-    }
-
-    const meta = platformMeta.value[pp.id] ?? {};
-
-    if (! meta.description && content.value) {
-        platformMeta.value[pp.id] = { ...meta, description: content.value };
-    }
-}
-
-// Keep Pinterest meta.description in sync with caption until the user edits it manually.
-watch(content, (newContent, oldContent) => {
-    if (isLocked.value) {
-        return;
-    }
-
-    const previous = oldContent ?? '';
-
-    for (const pp of post.value.post_platforms) {
-        if (pp.platform !== Platform.Pinterest) {
-            continue;
-        }
-
-        const meta = platformMeta.value[pp.id] ?? {};
-        const currentDescription = meta.description ?? '';
-
-        if (currentDescription === '' || currentDescription === previous) {
-            updatePlatformMeta(pp.id, {
-                ...meta,
-                description: newContent || null,
-            });
-        }
-    }
-});
 
 // Per-platform content_type (Instagram Feed/Reel/Story, Facebook Post/Reel/Story, etc.)
 const platformContentTypes = ref<Record<string, string>>(

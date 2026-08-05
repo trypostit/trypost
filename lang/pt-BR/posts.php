@@ -160,8 +160,6 @@ return [
             'board_required' => 'Selecione um quadro do Pinterest para publicar este post.',
             'title' => 'Título',
             'title_placeholder' => 'Título opcional do pin',
-            'description' => 'Descrição',
-            'description_placeholder' => 'Descrição do pin',
             'link' => 'Link de destino',
             'link_placeholder' => 'https://exemplo.com',
         ],

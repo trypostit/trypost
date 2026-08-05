@@ -162,8 +162,6 @@ return [
             'board_required' => 'Bu gönderiyi yayınlamak için bir Pinterest panosu seçin.',
             'title' => 'Başlık',
             'title_placeholder' => 'İsteğe bağlı pin başlığı',
-            'description' => 'Açıklama',
-            'description_placeholder' => 'Pin açıklaması',
             'link' => 'Hedef bağlantı',
             'link_placeholder' => 'https://ornek.com',
         ],

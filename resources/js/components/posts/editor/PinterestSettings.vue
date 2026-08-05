@@ -15,7 +15,6 @@ import {
     ComboboxTrigger,
 } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { getMediaValidationWarning } from '@/composables/useMedia';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
@@ -100,11 +99,6 @@ const selectedBoard = computed<BoardOption | undefined>({
 const pinTitle = computed({
     get: () => (props.meta?.title as string | undefined) || '',
     set: (value: string) => emit('update:meta', { ...props.meta, title: value || null }),
-});
-
-const pinDescription = computed({
-    get: () => (props.meta?.description as string | undefined) || '',
-    set: (value: string) => emit('update:meta', { ...props.meta, description: value || null }),
 });
 
 const pinLink = computed({
@@ -238,16 +232,6 @@ const boardError = computed<string | undefined>(() => {
                     type="text"
                     :placeholder="$t('posts.form.pinterest.title_placeholder')"
                     :disabled="disabled || previewOnly"
-                />
-            </div>
-
-            <div class="space-y-2">
-                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.pinterest.description') }}</p>
-                <Textarea
-                    v-model="pinDescription"
-                    :placeholder="$t('posts.form.pinterest.description_placeholder')"
-                    :disabled="disabled || previewOnly"
-                    class="min-h-24"
                 />
             </div>
 

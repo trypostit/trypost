@@ -160,8 +160,6 @@ return [
             'board_required' => 'この投稿を公開する Pinterest ボードを選択してください。',
             'title' => 'タイトル',
             'title_placeholder' => '任意のピンタイトル',
-            'description' => '説明',
-            'description_placeholder' => 'ピンの説明',
             'link' => 'リンク先',
             'link_placeholder' => 'https://example.com',
         ],

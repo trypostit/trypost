@@ -160,8 +160,6 @@ return [
             'board_required' => 'Επιλέξτε έναν πίνακα Pinterest για να δημοσιεύσετε αυτή τη δημοσίευση.',
             'title' => 'Τίτλος',
             'title_placeholder' => 'Προαιρετικός τίτλος pin',
-            'description' => 'Περιγραφή',
-            'description_placeholder' => 'Περιγραφή pin',
             'link' => 'Σύνδεσμος προορισμού',
             'link_placeholder' => 'https://example.com',
         ],

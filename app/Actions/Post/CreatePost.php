@@ -6,11 +6,9 @@ namespace App\Actions\Post;
 
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
-use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Support\PinterestPinMeta;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -76,29 +74,7 @@ class CreatePost
                         ->first();
 
                     if ($existing) {
-                        $merged = array_merge($existing->meta ?? [], $meta);
-
-                        if ($existing->platform === Platform::Pinterest) {
-                            $merged = PinterestPinMeta::seedDescription(
-                                $merged,
-                                data_get($data, 'content', $post->content),
-                            );
-                        }
-
-                        $updates['meta'] = $merged;
-                    }
-                } elseif (
-                    filled(data_get($data, 'content'))
-                ) {
-                    $existing = $post->postPlatforms()
-                        ->where('social_account_id', $accountId)
-                        ->first();
-
-                    if ($existing?->platform === Platform::Pinterest) {
-                        $updates['meta'] = PinterestPinMeta::seedDescription(
-                            $existing->meta ?? [],
-                            data_get($data, 'content'),
-                        );
+                        $updates['meta'] = array_merge($existing->meta ?? [], $meta);
                     }
                 }
 

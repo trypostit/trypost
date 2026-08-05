@@ -289,7 +289,7 @@ it('publishes a Discord post when the channel is set', function () {
     Queue::assertPushed(PublishPost::class);
 });
 
-it('persists Pinterest title, description and link meta on store', function () {
+it('persists Pinterest title and link meta on store', function () {
     $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
 
     $this->withHeaders($this->headers)
@@ -301,7 +301,6 @@ it('persists Pinterest title, description and link meta on store', function () {
                 'meta' => [
                     'board_id' => 'board-1',
                     'title' => 'Pin Title',
-                    'description' => 'Custom pin description',
                     'link' => 'https://example.com/product',
                 ],
             ]],
@@ -312,36 +311,16 @@ it('persists Pinterest title, description and link meta on store', function () {
 
     expect(data_get($meta, 'board_id'))->toBe('board-1')
         ->and(data_get($meta, 'title'))->toBe('Pin Title')
-        ->and(data_get($meta, 'description'))->toBe('Custom pin description')
-        ->and(data_get($meta, 'link'))->toBe('https://example.com/product');
+        ->and(data_get($meta, 'link'))->toBe('https://example.com/product')
+        ->and(array_key_exists('description', $meta))->toBeFalse();
 });
 
-it('seeds Pinterest description from content when meta description is omitted', function () {
-    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
-
-    $this->withHeaders($this->headers)
-        ->postJson(route('api.posts.store'), [
-            'content' => 'Caption becomes pin description',
-            'platforms' => [[
-                'social_account_id' => $pinterest->id,
-                'content_type' => ContentType::PinterestPin->value,
-                'meta' => ['board_id' => 'board-1'],
-            ]],
-        ])
-        ->assertCreated();
-
-    $meta = PostPlatform::where('social_account_id', $pinterest->id)->sole()->meta;
-
-    expect(data_get($meta, 'description'))->toBe('Caption becomes pin description')
-        ->and(data_get($meta, 'board_id'))->toBe('board-1');
-});
-
-it('updates Pinterest title, description and link meta and seeds when blank', function () {
+it('updates Pinterest title and link meta', function () {
     $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'content' => 'Updated caption for seed',
+        'content' => 'Shared caption',
     ]);
     $platform = PostPlatform::factory()->pinterest()->create([
         'post_id' => $post->id,
@@ -353,7 +332,6 @@ it('updates Pinterest title, description and link meta and seeds when blank', fu
     $this->withHeaders($this->headers)
         ->putJson(route('api.posts.update', $post), [
             'status' => PostStatus::Draft->value,
-            'content' => 'Updated caption for seed',
             'platforms' => [[
                 'id' => $platform->id,
                 'meta' => [
@@ -369,39 +347,10 @@ it('updates Pinterest title, description and link meta and seeds when blank', fu
 
     expect(data_get($meta, 'title'))->toBe('Updated Title')
         ->and(data_get($meta, 'link'))->toBe('https://example.com/updated')
-        ->and(data_get($meta, 'description'))->toBe('Updated caption for seed')
         ->and(data_get($meta, 'board_id'))->toBe('board-1');
 });
 
-it('does not overwrite an explicit Pinterest description on update', function () {
-    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'content' => 'Shared caption',
-    ]);
-    $platform = PostPlatform::factory()->pinterest()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $pinterest->id,
-        'enabled' => true,
-        'meta' => ['board_id' => 'board-1', 'description' => 'Keep me'],
-    ]);
-
-    $this->withHeaders($this->headers)
-        ->putJson(route('api.posts.update', $post), [
-            'status' => PostStatus::Draft->value,
-            'content' => 'Shared caption changed',
-            'platforms' => [[
-                'id' => $platform->id,
-                'meta' => ['board_id' => 'board-1', 'description' => 'Keep me'],
-            ]],
-        ])
-        ->assertOk();
-
-    expect(data_get($platform->fresh()->meta, 'description'))->toBe('Keep me');
-});
-
-it('rejects invalid Pinterest title, description and link on store', function () {
+it('rejects invalid Pinterest title and link on store', function () {
     $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
 
     $this->withHeaders($this->headers)
@@ -412,7 +361,6 @@ it('rejects invalid Pinterest title, description and link on store', function ()
                 'content_type' => ContentType::PinterestPin->value,
                 'meta' => [
                     'title' => str_repeat('t', 101),
-                    'description' => str_repeat('d', 801),
                     'link' => 'not-a-url',
                 ],
             ]],
@@ -420,7 +368,22 @@ it('rejects invalid Pinterest title, description and link on store', function ()
         ->assertUnprocessable()
         ->assertJsonValidationErrors([
             'platforms.0.meta.title',
-            'platforms.0.meta.description',
             'platforms.0.meta.link',
         ]);
+});
+
+it('rejects javascript links for Pinterest meta', function () {
+    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Hello',
+            'platforms' => [[
+                'social_account_id' => $pinterest->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => ['link' => 'javascript:alert(1)'],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.link']);
 });

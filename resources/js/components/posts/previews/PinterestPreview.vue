@@ -27,7 +27,6 @@ const props = defineProps<Props>();
 const isCarousel = computed(() => props.contentType === 'pinterest_carousel');
 
 const pinTitle = computed(() => (props.meta?.title as string | undefined) || '');
-const pinDescription = computed(() => (props.meta?.description as string | undefined) || '');
 const pinLink = computed(() => (props.meta?.link as string | undefined) || '');
 </script>
 
@@ -125,11 +124,11 @@ const pinLink = computed(() => (props.meta?.link as string | undefined) || '');
                             {{ pinTitle }}
                         </div>
                         <div
-                            v-if="pinDescription"
+                            v-if="content"
                             class="text-[13px] text-[#111111] dark:text-[#e0e0e0] line-clamp-2 leading-[17px]"
                             :class="pinTitle ? 'mt-1' : ''"
                         >
-                            {{ pinDescription }}
+                            {{ content }}
                         </div>
                         <a
                             v-if="pinLink"

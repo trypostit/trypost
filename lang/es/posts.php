@@ -160,8 +160,6 @@ return [
             'board_required' => 'Selecciona un tablero de Pinterest para publicar este post.',
             'title' => 'Título',
             'title_placeholder' => 'Título opcional del pin',
-            'description' => 'Descripción',
-            'description_placeholder' => 'Descripción del pin',
             'link' => 'Enlace de destino',
             'link_placeholder' => 'https://ejemplo.com',
         ],

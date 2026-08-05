@@ -160,8 +160,6 @@ return [
             'board_required' => 'Wybierz tablicę Pinterest, aby opublikować ten post.',
             'title' => 'Tytuł',
             'title_placeholder' => 'Opcjonalny tytuł pina',
-            'description' => 'Opis',
-            'description_placeholder' => 'Opis pina',
             'link' => 'Link docelowy',
             'link_placeholder' => 'https://przyklad.com',
         ],
