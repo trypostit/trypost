@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { IconDots, IconPhoto } from '@tabler/icons-vue';
+import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
@@ -29,7 +30,9 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const postedAtLabel = computed(() => date.formatPreviewPostedAt(props.postedAt, 'relative'));
+const postedAtLabel = computed(() =>
+    date.formatPreviewPostedAt(props.postedAt, 'relative', trans('common.just_now')),
+);
 
 // Content type helpers
 const isReel = computed(() => props.contentType === 'facebook_reel');

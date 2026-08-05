@@ -73,7 +73,16 @@ test('discord preview does not use dayjs calendar plugin', function () {
     $contents = file_get_contents(resource_path('js/components/posts/previews/DiscordPreview.vue'));
 
     expect($contents)
-        ->toContain("formatPreviewPostedAt")
+        ->toContain('formatPreviewPostedAt')
         ->toContain("'discord'")
         ->not->toContain('.calendar(');
+});
+
+test('preview posted-at uses scheduled datetime when present', function () {
+    $edit = file_get_contents(resource_path('js/pages/posts/Edit.vue'));
+
+    expect($edit)
+        ->toContain(':posted-at="scheduledDateTime || null"')
+        ->toContain('hasPickedTime = ref(Boolean(post.value.scheduled_at))')
+        ->not->toContain('hasPickedTime ? scheduledDateTime');
 });

@@ -35,6 +35,8 @@ return [
         'empty' => 'Fuso horário não encontrado',
     ],
 
+    'just_now' => 'Agora mesmo',
+
     'date_picker' => [
         'label' => 'Seletor de data',
         'select' => 'Selecionar data',

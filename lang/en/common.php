@@ -35,6 +35,8 @@ return [
         'empty' => 'No timezone found',
     ],
 
+    'just_now' => 'Just now',
+
     'date_picker' => [
         'label' => 'Date picker',
         'select' => 'Select date',

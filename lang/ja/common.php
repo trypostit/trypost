@@ -35,6 +35,8 @@ return [
         'empty' => 'タイムゾーンが見つかりません',
     ],
 
+    'just_now' => 'たった今',
+
     'date_picker' => [
         'label' => '日付ピッカー',
         'select' => '日付を選択',

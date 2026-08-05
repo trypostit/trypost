@@ -151,7 +151,7 @@ const {
 
 // Schedule
 const scheduledDateTime = ref(date.formatUtcForDateTimeLocalInput(post.value.scheduled_at));
-const hasPickedTime = ref(post.value.status === PostStatus.Scheduled && !! post.value.scheduled_at);
+const hasPickedTime = ref(Boolean(post.value.scheduled_at));
 
 const pickTimeLabel = computed(() => {
     if (! hasPickedTime.value || ! scheduledDateTime.value) {
@@ -464,7 +464,7 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                             :is-read-only="isLocked"
                             :auth-user-id="authUserId"
                             :initial-highlight-comment-id="initialHighlightCommentId"
-                            :posted-at="hasPickedTime ? scheduledDateTime : null"
+                            :posted-at="scheduledDateTime || null"
                             @toggle-platform="togglePlatform"
                             @toggle-label="toggleLabel"
                             @update:platform-meta="updatePlatformMeta"

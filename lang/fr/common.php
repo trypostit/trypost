@@ -35,6 +35,8 @@ return [
         'empty' => 'Aucun fuseau horaire trouvé',
     ],
 
+    'just_now' => 'À l’instant',
+
     'date_picker' => [
         'label' => 'Sélecteur de date',
         'select' => 'Sélectionner une date',

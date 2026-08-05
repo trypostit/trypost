@@ -78,12 +78,13 @@ export default {
     /**
      * Timestamp label for platform previews.
      * Uses the scheduled local datetime when set, otherwise now.
-     * Discord needs a localized "Today" label (`todayLabel`) — dayjs calendar() stays English.
+     * `label` is the localized same-day prefix for discord, or the empty-schedule
+     * relative fallback (e.g. common.just_now) when style is relative.
      */
     formatPreviewPostedAt(
         postedAt: string | null | undefined,
         style: PreviewPostedAtStyle,
-        todayLabel?: string,
+        label?: string,
     ) {
         const instant = resolvePreviewPostedAt(postedAt);
 
@@ -93,15 +94,19 @@ export default {
             case 'datetime':
                 return instant.format('lll');
             case 'relative':
+                if (! postedAt && label) {
+                    return label;
+                }
+
                 return instant.fromNow();
             case 'discord':
                 if (instant.isSame(dayjs(), 'day')) {
-                    return todayLabel
-                        ? `${todayLabel} · ${instant.format('LT')}`
+                    return label
+                        ? `${label} · ${instant.format('LT')}`
                         : instant.format('LT');
                 }
 
-                return instant.format('ll');
+                return instant.format('lll');
         }
     },
 

@@ -35,6 +35,8 @@ return [
         'empty' => '未找到时区',
     ],
 
+    'just_now' => '刚刚',
+
     'date_picker' => [
         'label' => '日期选择器',
         'select' => '选择日期',
