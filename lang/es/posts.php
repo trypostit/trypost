@@ -158,6 +158,13 @@ return [
             'search_board' => 'Buscar tableros...',
             'no_board_found' => 'Ningún tablero coincide con tu búsqueda.',
             'board_required' => 'Selecciona un tablero de Pinterest para publicar este post.',
+            'title' => 'Título',
+            'title_placeholder' => 'Título opcional del pin',
+            'link' => 'Enlace de destino',
+            'link_placeholder' => 'https://ejemplo.com',
+            'link_invalid' => 'Introduce un enlace de destino válido (http o https).',
+            'title_max' => 'El título no puede tener más de 100 caracteres.',
+            'link_max' => 'El enlace de destino no puede tener más de 2048 caracteres.',
         ],
         'discord' => [
             'settings' => 'Configuración de Discord',

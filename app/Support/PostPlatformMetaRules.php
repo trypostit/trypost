@@ -61,6 +61,8 @@ class PostPlatformMetaRules
 
             // Pinterest
             'platforms.*.meta.board_id' => ['sometimes', 'nullable', 'string'],
+            'platforms.*.meta.title' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'platforms.*.meta.link' => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
 
             // Discord
             'platforms.*.meta.channel_id' => ['sometimes', 'nullable', 'string'],
@@ -74,6 +76,33 @@ class PostPlatformMetaRules
             'platforms.*.meta.embeds.*.url' => ['sometimes', 'nullable', 'url'],
             'platforms.*.meta.embeds.*.image' => ['sometimes', 'nullable', 'url'],
             'platforms.*.meta.embeds.*.color' => ['sometimes', 'nullable', 'string', 'regex:/^#?[0-9A-Fa-f]{6}$/'],
+        ];
+    }
+
+    /**
+     * Custom validation messages for meta fields shown in the UI.
+     *
+     * @return array<string, string>
+     */
+    public static function messages(): array
+    {
+        return [
+            'platforms.*.meta.link.url' => __('posts.form.pinterest.link_invalid'),
+            'platforms.*.meta.link.max' => __('posts.form.pinterest.link_max'),
+            'platforms.*.meta.title.max' => __('posts.form.pinterest.title_max'),
+        ];
+    }
+
+    /**
+     * Friendly attribute names so default messages never expose `platforms.0.meta.*`.
+     *
+     * @return array<string, string>
+     */
+    public static function attributes(): array
+    {
+        return [
+            'platforms.*.meta.title' => __('posts.form.pinterest.title'),
+            'platforms.*.meta.link' => __('posts.form.pinterest.link'),
         ];
     }
 

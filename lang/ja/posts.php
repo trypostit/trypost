@@ -158,6 +158,13 @@ return [
             'search_board' => 'ボードを検索...',
             'no_board_found' => '検索に一致するボードがありません。',
             'board_required' => 'この投稿を公開する Pinterest ボードを選択してください。',
+            'title' => 'タイトル',
+            'title_placeholder' => '任意のピンタイトル',
+            'link' => 'リンク先',
+            'link_placeholder' => 'https://example.com',
+            'link_invalid' => '有効なリンク先URLを入力してください（http または https）。',
+            'title_max' => 'タイトルは100文字以内にしてください。',
+            'link_max' => 'リンク先URLは2048文字以内にしてください。',
         ],
         'discord' => [
             'settings' => 'Discord 設定',

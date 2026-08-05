@@ -12,9 +12,13 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Clones a Post (and its enabled platform rows + label associations) into a
- * fresh Draft. The new post is owned by the actor and unscheduled — the user
- * picks a new date in the editor.
+ * Clones a Post (and its still-connected platform rows + label associations)
+ * into a fresh Draft. The new post is owned by the actor and unscheduled —
+ * the user picks a new date in the editor.
+ *
+ * Only platform rows with a still-existing social account are copied
+ * (`whereHas('socialAccount')`), so orphan history rows left after disconnect
+ * never land on the new draft.
  */
 class DuplicatePost
 {
@@ -31,7 +35,11 @@ class DuplicatePost
                 'published_at' => null,
             ]);
 
-            foreach ($original->postPlatforms as $platform) {
+            $platforms = $original->postPlatforms()
+                ->whereHas('socialAccount')
+                ->get();
+
+            foreach ($platforms as $platform) {
                 $copy->postPlatforms()->create([
                     'social_account_id' => $platform->social_account_id,
                     'platform' => $platform->platform,

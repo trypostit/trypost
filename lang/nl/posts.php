@@ -158,6 +158,13 @@ return [
             'search_board' => 'Borden zoeken...',
             'no_board_found' => 'Geen bord komt overeen met je zoekopdracht.',
             'board_required' => 'Selecteer een Pinterest-bord om deze post te publiceren.',
+            'title' => 'Titel',
+            'title_placeholder' => 'Optionele pin-titel',
+            'link' => 'Bestemmingslink',
+            'link_placeholder' => 'https://voorbeeld.com',
+            'link_invalid' => 'Voer een geldige bestemmingslink in (http of https).',
+            'title_max' => 'Titel mag niet langer zijn dan 100 tekens.',
+            'link_max' => 'Bestemmingslink mag niet langer zijn dan 2048 tekens.',
         ],
         'discord' => [
             'settings' => 'Discord-instellingen',

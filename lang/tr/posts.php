@@ -160,6 +160,13 @@ return [
             'search_board' => 'Pano ara...',
             'no_board_found' => 'Aramanızla eşleşen pano yok.',
             'board_required' => 'Bu gönderiyi yayınlamak için bir Pinterest panosu seçin.',
+            'title' => 'Başlık',
+            'title_placeholder' => 'İsteğe bağlı pin başlığı',
+            'link' => 'Hedef bağlantı',
+            'link_placeholder' => 'https://ornek.com',
+            'link_invalid' => 'Geçerli bir hedef bağlantısı girin (http veya https).',
+            'title_max' => 'Başlık en fazla 100 karakter olabilir.',
+            'link_max' => 'Hedef bağlantısı en fazla 2048 karakter olabilir.',
         ],
         'discord' => [
             'settings' => 'Discord Ayarları',

@@ -585,3 +585,145 @@ test('saving a discord draft without a channel is allowed', function () {
         ])
         ->assertSessionDoesntHaveErrors('platforms.0.meta.channel_id');
 });
+
+test('saving a pinterest draft persists title and link meta', function () {
+    $pinterestAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Pinterest,
+    ]);
+    $pinterestPlatform = PostPlatform::factory()->pinterest()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $pinterestAccount->id,
+        'meta' => ['board_id' => 'board-1'],
+    ]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'content' => 'Shared caption',
+            'platforms' => [[
+                'id' => $pinterestPlatform->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => [
+                    'board_id' => 'board-1',
+                    'title' => 'Pin Title',
+                    'link' => 'https://example.com/product',
+                ],
+            ]],
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    $meta = $pinterestPlatform->fresh()->meta;
+
+    expect(data_get($meta, 'title'))->toBe('Pin Title')
+        ->and(data_get($meta, 'link'))->toBe('https://example.com/product')
+        ->and(array_key_exists('description', $meta))->toBeFalse();
+});
+
+test('clearing pinterest title and link removes the meta keys', function () {
+    $pinterestAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Pinterest,
+    ]);
+    $pinterestPlatform = PostPlatform::factory()->pinterest()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $pinterestAccount->id,
+        'meta' => [
+            'board_id' => 'board-1',
+            'title' => 'Keep me gone',
+            'link' => 'https://example.com/gone',
+        ],
+    ]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'platforms' => [[
+                'id' => $pinterestPlatform->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => [
+                    'board_id' => 'board-1',
+                    'title' => null,
+                    'link' => null,
+                ],
+            ]],
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    $meta = $pinterestPlatform->fresh()->meta;
+
+    expect(data_get($meta, 'board_id'))->toBe('board-1')
+        ->and(array_key_exists('title', $meta))->toBeFalse()
+        ->and(array_key_exists('link', $meta))->toBeFalse();
+});
+
+test('pinterest rejects invalid link when scheduling', function () {
+    $pinterestAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Pinterest,
+    ]);
+    $pinterestPlatform = PostPlatform::factory()->pinterest()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $pinterestAccount->id,
+        'meta' => ['board_id' => 'board-1'],
+    ]);
+
+    $mediaPayload = [
+        [
+            'id' => 'test-image',
+            'path' => 'media/2026-01/pin.jpg',
+            'url' => 'https://example.com/media/2026-01/pin.jpg',
+            'type' => 'image',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'pin.jpg',
+        ],
+    ];
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Scheduled->value,
+            'scheduled_at' => now()->addHour()->toIso8601String(),
+            'content' => 'Ready to schedule',
+            'media' => $mediaPayload,
+            'platforms' => [[
+                'id' => $pinterestPlatform->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => [
+                    'board_id' => 'board-1',
+                    'link' => 'not-a-url',
+                ],
+            ]],
+        ])
+        ->assertSessionHasErrors([
+            'platforms.0.meta.link' => __('posts.form.pinterest.link_invalid'),
+        ]);
+});
+
+test('pinterest meta title and link validation bounds are enforced', function () {
+    $pinterestAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Pinterest,
+    ]);
+    $pinterestPlatform = PostPlatform::factory()->pinterest()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $pinterestAccount->id,
+        'meta' => [],
+    ]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'platforms' => [[
+                'id' => $pinterestPlatform->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => [
+                    'title' => str_repeat('t', 101),
+                    'link' => 'not-a-url',
+                ],
+            ]],
+        ])
+        ->assertSessionHasErrors([
+            'platforms.0.meta.title' => __('posts.form.pinterest.title_max'),
+            'platforms.0.meta.link' => __('posts.form.pinterest.link_invalid'),
+        ]);
+});
