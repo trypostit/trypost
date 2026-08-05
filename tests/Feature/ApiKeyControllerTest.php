@@ -54,10 +54,12 @@ it('creates an api key', function () {
 });
 
 it('creates an api key with expiration', function () {
+    $expiresOn = now()->addDays(30)->format('Y-m-d');
+
     $this->actingAs($this->user)
         ->post(route('app.api-keys.store'), [
             'name' => 'Expiring Key',
-            'expires_at' => now()->addDays(30)->format('Y-m-d'),
+            'expires_at' => $expiresOn,
         ])
         ->assertRedirect();
 
@@ -65,7 +67,29 @@ it('creates an api key with expiration', function () {
         ->where('workspace_id', $this->workspace->id)
         ->first();
 
-    expect($token->expires_at)->not->toBeNull();
+    expect($token->expires_at)->not->toBeNull()
+        ->and($token->expires_at->toDateString())->toBe($expiresOn);
+});
+
+it('passes the chosen expiry calendar day to the api keys page', function () {
+    $expiresOn = '2026-10-31';
+
+    $result = $this->user->createToken('Expiring Key');
+    $token = AccessToken::find($result->token->id);
+    $token->forceFill([
+        'workspace_id' => $this->workspace->id,
+        'expires_at' => $expiresOn,
+    ])->saveQuietly();
+
+    $this->actingAs($this->user)
+        ->get(route('app.api-keys.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('settings/workspace/ApiKeys')
+            ->has('apiTokens', 1)
+            ->where('apiTokens.0.name', 'Expiring Key')
+            ->where('apiTokens.0.expires_at', fn ($value) => is_string($value) && str_starts_with($value, $expiresOn))
+        );
 });
 
 it('validates name is required', function () {
