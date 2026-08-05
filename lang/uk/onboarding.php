@@ -1,0 +1,57 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'title' => 'Ласкаво просимо до TryPost',
+    'description' => 'Розкажіть, що найкраще описує вас або ваш бізнес, щоб ми могли адаптувати ваш досвід.',
+    'continue' => 'Продовжити',
+    'personas' => [
+        'creator' => 'Автор контенту',
+        'freelancer' => 'Фрілансер',
+        'developer' => 'Розробник',
+        'startup' => 'Стартап',
+        'agency' => 'Агенція',
+        'small_business' => 'Малий бізнес',
+        'marketer' => 'Маркетолог',
+        'online_store' => 'Інтернет-магазин',
+        'other' => 'Інше',
+    ],
+    'goals_title' => 'Яка ваша мета з TryPost?',
+    'goals_description' => 'Виберіть усе, що підходить, і ми налаштуємо TryPost для вас.',
+    'goals' => [
+        'save_time' => 'Економити час, публікуючи всюди одразу',
+        'ai_content' => 'Створювати пости швидше з AI',
+        'plan_calendar' => 'Планувати пости в календарі',
+        'stay_on_brand' => 'Тримати кожен пост у стилі бренду',
+        'grow_audience' => 'Збільшувати аудиторію та залучення',
+        'drive_sales' => 'Отримувати більше трафіку та продажів',
+        'manage_clients' => 'Керувати кількома брендами або клієнтами',
+        'team_collaboration' => 'Працювати з командою',
+        'automate_api' => 'Автоматизувати публікацію через API, MCP або код',
+        'track_performance' => 'Бачити, як працюють мої пости',
+        'just_exploring' => 'Поки що просто досліджую',
+        'other' => 'Щось інше',
+    ],
+    'referral_source_title' => 'Як ви нас знайшли?',
+    'referral_source_description' => 'Це допомагає нам зрозуміти, як люди дізнаються про TryPost.',
+    'referral_source' => [
+        'google' => 'Google або пошук',
+        'x' => 'X (Twitter)',
+        'linkedin' => 'LinkedIn',
+        'youtube' => 'YouTube',
+        'tiktok' => 'TikTok',
+        'instagram' => 'Instagram або Threads',
+        'reddit' => 'Reddit',
+        'product_hunt' => 'Product Hunt',
+        'ai_assistant' => 'AI-асистент (ChatGPT, Claude…)',
+        'friend' => 'Друг або колега',
+        'blog' => 'Блог, розсилка або стаття',
+        'other' => 'Щось інше',
+    ],
+    'connect' => [
+        'title' => 'Підключіть першу мережу',
+        'description' => 'Під’єднайте хоча б один соціальний акаунт, щоб почати планування. Ви зможете додати більше будь-коли.',
+        'must_connect' => 'Підключіть хоча б одну мережу, щоб продовжити.',
+    ],
+];

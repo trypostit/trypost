@@ -13,6 +13,7 @@ use App\Enums\Workspace\ContentLanguage;
  */
 $accountDeleteInvitedMemberMarkers = [
     'en' => 'invited members',
+    'uk' => 'запрошених учасників',
     'pt-BR' => 'membros convidados',
     'es' => 'miembros invitados',
     'fr' => 'membres invités',
@@ -34,6 +35,7 @@ $accountDeleteInvitedMemberMarkers = [
  */
 $workspaceDeleteConditionalMemberMarkers = [
     'en' => 'without another TryPost workspace',
+    'uk' => 'без іншого workspace у TryPost',
     'pt-BR' => 'sem outro workspace no TryPost',
     'es' => 'sin otro workspace en TryPost',
     'fr' => 'sans autre workspace TryPost',
