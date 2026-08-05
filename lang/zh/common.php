@@ -36,6 +36,7 @@ return [
     ],
 
     'date_picker' => [
+        'label' => '日期选择器',
         'select' => '选择日期',
     ],
 

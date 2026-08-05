@@ -36,6 +36,7 @@ return [
     ],
 
     'date_picker' => [
+        'label' => '날짜 선택기',
         'select' => '날짜 선택',
     ],
 

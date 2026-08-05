@@ -16,6 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { RangeCalendar } from "@/components/ui/range-calendar"
+import { useCalendarLocale } from "@/composables/useCalendarLocale"
 import { cn } from "@/lib/utils"
 import dayjs from "@/dayjs"
 
@@ -27,6 +28,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: { start: Date, end: Date }]
 }>()
+
+const calendarLocale = useCalendarLocale()
 
 const toCalendarDate = (dateValue: Date) => {
   return new CalendarDate(
@@ -164,6 +167,7 @@ watch(
           <RangeCalendar
             v-model="value"
             initial-focus
+            :locale="calendarLocale"
             :number-of-months="numberOfMonths"
           />
         </div>
