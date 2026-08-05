@@ -38,7 +38,7 @@ test('shares rtl direction and sets the locale for Arabic', function () {
 test('shares ltr direction for a left-to-right locale', function (string $locale) {
     expect(runSetLocale($locale))->toBe('ltr');
     expect(app()->getLocale())->toBe($locale);
-})->with(['en', 'ja', 'pt-BR', 'de']);
+})->with(['en', 'uk', 'ja', 'pt-BR', 'de']);
 
 test('falls back to the default locale and ltr for an unknown cookie', function () {
     expect(runSetLocale('sv'))->toBe('ltr');
