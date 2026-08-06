@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Notification\Type;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status as PlatformStatus;
@@ -31,6 +32,8 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Sleep;
+use TypeError;
 
 beforeEach(function () {
     Mail::fake();
@@ -567,6 +570,122 @@ test('publish job unique id includes the platform and attempt', function () {
     expect($job)->toBeInstanceOf(ShouldBeUnique::class)
         ->and($job->uniqueId())->toBe("{$this->postPlatform->id}:3")
         ->and($job->uniqueFor)->toBeGreaterThanOrEqual($job->timeout);
+});
+
+test('publish job unique lock drops a duplicate dispatch for the same platform attempt', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+
+    PublishToSocialPlatform::dispatch($this->postPlatform, 0);
+    PublishToSocialPlatform::dispatch($this->postPlatform, 0);
+
+    Bus::assertDispatchedTimes(PublishToSocialPlatform::class, 1);
+});
+
+test('publish job unique lock allows concurrent dispatches for different attempts', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+
+    PublishToSocialPlatform::dispatch($this->postPlatform, 0);
+    PublishToSocialPlatform::dispatch($this->postPlatform, 1);
+
+    Bus::assertDispatchedTimes(PublishToSocialPlatform::class, 2);
+    Bus::assertDispatched(PublishToSocialPlatform::class, fn ($job) => $job->uniqueAttempt === 0);
+    Bus::assertDispatched(PublishToSocialPlatform::class, fn ($job) => $job->uniqueAttempt === 1);
+});
+
+test('failed hook skips platforms that are already failed', function () {
+    Event::fake();
+    Mail::fake();
+
+    $this->postPlatform->update([
+        'status' => PlatformStatus::Failed,
+        'error_message' => __('posts.errors.publishing_timed_out'),
+        'error_context' => ['category' => 'timeout'],
+    ]);
+
+    (new PublishToSocialPlatform($this->postPlatform))->failed(new TypeError('Simulated worker kill'));
+
+    $this->postPlatform->refresh();
+
+    expect($this->postPlatform->status)->toBe(PlatformStatus::Failed)
+        ->and($this->postPlatform->error_message)->toBe(__('posts.errors.publishing_timed_out'))
+        ->and($this->postPlatform->error_context['category'] ?? null)->toBe('timeout');
+});
+
+test('pinterest media status 401 marks the account token expired and notifies to reconnect', function () {
+    Event::fake();
+    Queue::fake();
+    Mail::fake();
+    Sleep::fake();
+
+    $pinterestAccount = SocialAccount::factory()->pinterest()->create([
+        'workspace_id' => $this->workspace->id,
+        'status' => AccountStatus::Connected,
+        'token_expires_at' => now()->addDays(30),
+        'meta' => ['default_board_id' => 'board_123'],
+    ]);
+
+    $postPlatform = PostPlatform::factory()->pinterest()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $pinterestAccount->id,
+        'platform' => Platform::Pinterest,
+        'content_type' => ContentType::PinterestVideoPin,
+        'enabled' => true,
+        'status' => PlatformStatus::Pending,
+        'meta' => ['board_id' => 'board_123'],
+    ]);
+
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/video.mp4',
+            'url' => 'https://example.com/media/2026-01/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+
+    $s3UploadUrl = 'https://pinterest-media-upload.s3.amazonaws.com/upload';
+
+    Http::fake(function ($request) use ($s3UploadUrl) {
+        $url = $request->url();
+
+        if (str_contains($url, '/v5/media') && $request->method() === 'POST') {
+            return Http::response([
+                'media_id' => 'media_video_401_job',
+                'upload_url' => $s3UploadUrl,
+                'upload_parameters' => [],
+            ], 201);
+        }
+
+        if ($url === $s3UploadUrl) {
+            return Http::response('', 204);
+        }
+
+        if (str_contains($url, '/v5/media/media_video_401_job')) {
+            return Http::response(['message' => 'Access token has expired or been revoked'], 401);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    $verifier = Mockery::mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')->once()->andThrow(new Exception('Refresh failed'));
+    $this->app->instance(ConnectionVerifier::class, $verifier);
+
+    (new PublishToSocialPlatform($postPlatform))->handle();
+
+    $postPlatform->refresh();
+    $pinterestAccount->refresh();
+
+    expect($postPlatform->status)->toBe(PlatformStatus::Failed)
+        ->and($postPlatform->error_context['category'] ?? null)->toBe('token_expired')
+        ->and($pinterestAccount->status)->toBe(AccountStatus::TokenExpired);
+
+    Queue::assertPushed(SendNotification::class, function ($job) use ($pinterestAccount) {
+        return $job->type === Type::AccountDisconnected
+            && data_get($job->data, 'social_account_id') === $pinterestAccount->id
+            && str_contains($job->title, 'needs to be reconnected');
+    });
 });
 
 test('publish to social platform updates post status when all platforms finished', function () {

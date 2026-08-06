@@ -5,11 +5,15 @@ declare(strict_types=1);
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Platform;
+use App\Jobs\PublishToSocialPlatform;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Social\LinkedInPublisher;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Mail;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -203,4 +207,44 @@ test('it fails stale platforms but keeps the post publishing when another platfo
         ->and($stalePlatform->error_message)->toBe(__('posts.errors.publishing_timed_out'))
         ->and($activeRetry->status)->toBe(PlatformStatus::Retrying)
         ->and($post->status)->toBe(PostStatus::Publishing);
+});
+
+test('delayed publish job no-ops after recover fails a stuck retrying platform', function () {
+    Event::fake();
+    Mail::fake();
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Publishing,
+        'updated_at' => now()->subHours(2),
+    ]);
+
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+        'status' => PlatformStatus::Retrying,
+        'enabled' => true,
+        'error_message' => __('posts.errors.platform_unavailable'),
+        'updated_at' => now()->subHours(2),
+    ]);
+
+    $this->artisan('social:recover-stuck-posts')->assertSuccessful();
+
+    $platform->refresh();
+    expect($platform->status)->toBe(PlatformStatus::Failed)
+        ->and($platform->error_message)->toBe(__('posts.errors.publishing_timed_out'));
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldNotReceive('publish');
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($platform))->handle();
+
+    $platform->refresh();
+    $post->refresh();
+
+    expect($platform->status)->toBe(PlatformStatus::Failed)
+        ->and($platform->error_message)->toBe(__('posts.errors.publishing_timed_out'))
+        ->and($post->status)->toBe(PostStatus::Failed);
 });
