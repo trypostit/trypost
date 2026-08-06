@@ -30,6 +30,45 @@ it('denies when the mcp request has no authenticated user', function () {
     expect($denied)->not->toBeNull();
 });
 
+it('denies when the policy argument is null', function () {
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $workspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
+    $owner->update(['current_workspace_id' => $workspace->id]);
+
+    $tool = new class
+    {
+        use AuthorizesMcpTool;
+
+        public function probe(Request $request): Response|ResponseFactory|null
+        {
+            return $this->denyUnlessCan($request, 'createPost', null, 'Not authorized to create posts.');
+        }
+    };
+
+    $request = Mockery::mock(Request::class);
+    $request->shouldReceive('user')->once()->andReturn($owner->fresh());
+
+    expect($tool->probe($request))->not->toBeNull();
+});
+
+it('authorizeCurrentWorkspace fails closed without a user', function () {
+    $tool = new class
+    {
+        use AuthorizesMcpTool;
+
+        public function probe(Request $request): Workspace|Response|ResponseFactory
+        {
+            return $this->authorizeCurrentWorkspace($request, 'createPost', 'Not authorized to create posts.');
+        }
+    };
+
+    $request = Mockery::mock(Request::class);
+    $request->shouldReceive('user')->twice()->andReturn(null);
+
+    expect($tool->probe($request))->not->toBeInstanceOf(Workspace::class);
+});
+
 it('denies when the user lacks the ability', function () {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);

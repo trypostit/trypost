@@ -10,6 +10,7 @@ use App\Exceptions\Social\PinterestPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\SocialAccount;
+use App\Models\Workspace;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -24,19 +25,25 @@ class ListPinterestBoardsTool extends Tool
 
     public function handle(Request $request): Response|ResponseFactory
     {
+        $workspace = $this->authorizeCurrentWorkspace(
+            $request,
+            'createPost',
+            'Not authorized to manage posts.',
+        );
+
+        if (! $workspace instanceof Workspace) {
+            return $workspace;
+        }
+
         $validated = $request->validate([
             'account_id' => ['required', 'string', 'uuid'],
         ]);
 
-        $account = SocialAccount::where('workspace_id', $request->user()->current_workspace_id)
+        $account = SocialAccount::where('workspace_id', $workspace->id)
             ->find(data_get($validated, 'account_id'));
 
         if (! $account) {
             return Response::error('Social account not found.');
-        }
-
-        if ($denied = $this->denyUnlessCan($request, 'createPost', $request->user()->currentWorkspace, 'Not authorized to manage posts.')) {
-            return $denied;
         }
 
         if ($account->platform !== Platform::Pinterest) {

@@ -30,10 +30,11 @@ class AttachMediaFromUploadTool extends Tool
             'alt' => ['nullable', 'string', 'max:'.PostMediaRules::ALT_TEXT_MAX_LENGTH],
         ]);
 
-        $workspaceId = $request->user()->current_workspace_id;
+        $workspaceId = $request->user()?->current_workspace_id;
 
-        $post = Post::where('workspace_id', $workspaceId)
-            ->find(data_get($validated, 'post_id'));
+        $post = $workspaceId
+            ? Post::where('workspace_id', $workspaceId)->find(data_get($validated, 'post_id'))
+            : null;
 
         if (! $post) {
             return Response::error('Post not found.');

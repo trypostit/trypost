@@ -7,6 +7,7 @@ namespace App\Mcp\Tools\Signature;
 use App\Actions\Signature\CreateSignature;
 use App\Http\Resources\Api\SignatureResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
+use App\Models\Workspace;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -21,10 +22,14 @@ class CreateSignatureTool extends Tool
 
     public function handle(Request $request): Response|ResponseFactory
     {
-        $workspace = $request->user()->currentWorkspace;
+        $workspace = $this->authorizeCurrentWorkspace(
+            $request,
+            'createPost',
+            'Not authorized to manage signatures.',
+        );
 
-        if ($denied = $this->denyUnlessCan($request, 'createPost', $workspace, 'Not authorized to manage signatures.')) {
-            return $denied;
+        if (! $workspace instanceof Workspace) {
+            return $workspace;
         }
 
         $validated = $request->validate([

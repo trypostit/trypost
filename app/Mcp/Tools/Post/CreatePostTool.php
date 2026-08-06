@@ -9,6 +9,7 @@ use App\Enums\Post\CreatedVia;
 use App\Enums\PostPlatform\ContentType;
 use App\Http\Resources\Api\PostResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
+use App\Models\Workspace;
 use App\Rules\ContentTypeMatchesPlatform;
 use App\Support\PostPlatformMetaRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -26,10 +27,14 @@ class CreatePostTool extends Tool
 
     public function handle(Request $request): Response|ResponseFactory
     {
-        $workspace = $request->user()->currentWorkspace;
+        $workspace = $this->authorizeCurrentWorkspace(
+            $request,
+            'createPost',
+            'Not authorized to create posts.',
+        );
 
-        if ($denied = $this->denyUnlessCan($request, 'createPost', $workspace, 'Not authorized to create posts.')) {
-            return $denied;
+        if (! $workspace instanceof Workspace) {
+            return $workspace;
         }
 
         $validated = $request->validate(

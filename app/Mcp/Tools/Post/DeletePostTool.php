@@ -25,7 +25,7 @@ class DeletePostTool extends Tool
     {
         $validated = $request->validate(['post_id' => ['required', 'string']]);
 
-        $post = Post::where('workspace_id', $request->user()->current_workspace_id)
+        $post = Post::where('workspace_id', $request->user()?->current_workspace_id)
             ->find(data_get($validated, 'post_id'));
 
         if (! $post) {

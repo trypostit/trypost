@@ -7,6 +7,7 @@ namespace App\Mcp\Tools\Signature;
 use App\Actions\Signature\UpdateSignature;
 use App\Http\Resources\Api\SignatureResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
+use App\Models\Workspace;
 use App\Models\WorkspaceSignature;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -22,21 +23,27 @@ class UpdateSignatureTool extends Tool
 
     public function handle(Request $request): Response|ResponseFactory
     {
+        $workspace = $this->authorizeCurrentWorkspace(
+            $request,
+            'createPost',
+            'Not authorized to manage signatures.',
+        );
+
+        if (! $workspace instanceof Workspace) {
+            return $workspace;
+        }
+
         $validated = $request->validate([
             'signature_id' => ['required', 'string'],
             'name' => ['required', 'string', 'max:255'],
             'content' => ['required', 'string'],
         ]);
 
-        $signature = WorkspaceSignature::where('workspace_id', $request->user()->current_workspace_id)
+        $signature = WorkspaceSignature::where('workspace_id', $workspace->id)
             ->find(data_get($validated, 'signature_id'));
 
         if (! $signature) {
             return Response::error('Signature not found.');
-        }
-
-        if ($denied = $this->denyUnlessCan($request, 'createPost', $request->user()->currentWorkspace, 'Not authorized to manage signatures.')) {
-            return $denied;
         }
 
         $signature = UpdateSignature::execute($signature, $validated);

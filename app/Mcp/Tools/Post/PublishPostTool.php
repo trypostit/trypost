@@ -29,14 +29,15 @@ class PublishPostTool extends Tool
 
     public function handle(Request $request): Response|ResponseFactory
     {
-        $workspace = $request->user()->currentWorkspace;
-
         $validated = $request->validate([
             'post_id' => ['required', 'uuid'],
             'scheduled_at' => ['nullable', 'date', 'after:now'],
         ]);
 
-        $post = Post::where('workspace_id', $workspace->id)->find(data_get($validated, 'post_id'));
+        $workspace = $request->user()?->currentWorkspace;
+        $post = $workspace
+            ? Post::where('workspace_id', $workspace->id)->find(data_get($validated, 'post_id'))
+            : null;
 
         if (! $post) {
             return Response::error('Post not found.');

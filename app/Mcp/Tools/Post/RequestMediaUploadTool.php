@@ -6,6 +6,7 @@ namespace App\Mcp\Tools\Post;
 
 use App\Enums\Media\Type as MediaType;
 use App\Mcp\Concerns\AuthorizesMcpTool;
+use App\Models\Workspace;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\URL;
@@ -23,14 +24,17 @@ class RequestMediaUploadTool extends Tool
 
     public function handle(Request $request): Response|ResponseFactory
     {
-        $user = $request->user();
-        $workspace = $user->currentWorkspace;
+        $workspace = $this->authorizeCurrentWorkspace(
+            $request,
+            'createPost',
+            'Not authorized to upload media.',
+        );
 
-        if ($denied = $this->denyUnlessCan($request, 'createPost', $workspace, 'Not authorized to upload media.')) {
-            return $denied;
+        if (! $workspace instanceof Workspace) {
+            return $workspace;
         }
 
-        $workspaceId = $user->current_workspace_id;
+        $workspaceId = $workspace->id;
 
         $ttlMinutes = (int) config('trypost.media.signed_upload_url_ttl_minutes');
 

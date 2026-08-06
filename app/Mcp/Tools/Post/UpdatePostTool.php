@@ -11,6 +11,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Http\Resources\Api\PostResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\Post;
+use App\Models\Workspace;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Rules\ContentTypeMatchesPostPlatform;
 use App\Support\PostPlatformMetaRules;
@@ -31,10 +32,11 @@ class UpdatePostTool extends Tool
 
     public function handle(Request $request): Response|ResponseFactory
     {
-        $workspace = $request->user()->currentWorkspace;
-
+        $workspace = $request->user()?->currentWorkspace;
         $postId = data_get($request->all(), 'post_id');
-        $post = is_string($postId) ? Post::where('workspace_id', $workspace->id)->find($postId) : null;
+        $post = ($workspace instanceof Workspace && is_string($postId))
+            ? Post::where('workspace_id', $workspace->id)->find($postId)
+            : null;
 
         if (! $post) {
             return Response::error('Post not found.');

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools\ApiKey;
 
+use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\AccessToken;
+use App\Models\Workspace;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -17,12 +19,18 @@ use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 #[Description('Revoke (delete) a Personal Access Token by ID. The current OAuth session token cannot be revoked through this tool. Existing integrations using the token will stop working.')]
 class DeleteApiKeyTool extends Tool
 {
+    use AuthorizesMcpTool;
+
     public function handle(Request $request): Response|ResponseFactory
     {
-        $user = $request->user();
+        $workspace = $this->authorizeCurrentWorkspace(
+            $request,
+            'manageTeam',
+            'Not authorized to manage API keys.',
+        );
 
-        if ($user->cannot('manageTeam', $user->currentWorkspace)) {
-            return Response::error('Not authorized to manage API keys.');
+        if (! $workspace instanceof Workspace) {
+            return $workspace;
         }
 
         $validated = $request->validate(['api_key_id' => ['required', 'string']]);
@@ -30,8 +38,8 @@ class DeleteApiKeyTool extends Tool
         // workspace_id filter excludes OAuth-flow tokens (which have null
         // workspace_id), so the caller can't accidentally revoke their own
         // ChatGPT/MCP session token through this tool.
-        $token = AccessToken::where('user_id', $user->id)
-            ->where('workspace_id', $user->current_workspace_id)
+        $token = AccessToken::where('user_id', $request->user()->id)
+            ->where('workspace_id', $workspace->id)
             ->where('revoked', false)
             ->find(data_get($validated, 'api_key_id'));
 

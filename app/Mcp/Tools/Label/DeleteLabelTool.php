@@ -6,6 +6,7 @@ namespace App\Mcp\Tools\Label;
 
 use App\Actions\Label\DeleteLabel;
 use App\Mcp\Concerns\AuthorizesMcpTool;
+use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -23,17 +24,23 @@ class DeleteLabelTool extends Tool
 
     public function handle(Request $request): Response|ResponseFactory
     {
+        $workspace = $this->authorizeCurrentWorkspace(
+            $request,
+            'createPost',
+            'Not authorized to manage labels.',
+        );
+
+        if (! $workspace instanceof Workspace) {
+            return $workspace;
+        }
+
         $validated = $request->validate(['label_id' => ['required', 'string']]);
 
-        $label = WorkspaceLabel::where('workspace_id', $request->user()->current_workspace_id)
+        $label = WorkspaceLabel::where('workspace_id', $workspace->id)
             ->find(data_get($validated, 'label_id'));
 
         if (! $label) {
             return Response::error('Label not found.');
-        }
-
-        if ($denied = $this->denyUnlessCan($request, 'createPost', $request->user()->currentWorkspace, 'Not authorized to manage labels.')) {
-            return $denied;
         }
 
         DeleteLabel::execute($label);
