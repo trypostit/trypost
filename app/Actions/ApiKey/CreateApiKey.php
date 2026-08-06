@@ -24,7 +24,7 @@ class CreateApiKey
      */
     public static function execute(User $user, Workspace $workspace, array $data): array
     {
-        $result = $user->createToken((string) data_get($data, 'name'));
+        $result = $user->createToken(data_get($data, 'name'));
         $token = AccessToken::query()->findOrFail($result->token->id);
         $expiresAt = data_get($data, 'expires_at');
 
@@ -32,7 +32,7 @@ class CreateApiKey
             'workspace_id' => $workspace->id,
             // Empty = never expire (overrides Passport's JWT default lifetime in the DB).
             'expires_at' => filled($expiresAt)
-                ? now()->parse((string) $expiresAt)->endOfDay()
+                ? now()->parse($expiresAt)->endOfDay()
                 : null,
         ])->saveQuietly();
 

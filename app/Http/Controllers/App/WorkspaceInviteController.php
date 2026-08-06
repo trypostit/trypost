@@ -167,7 +167,7 @@ class WorkspaceInviteController extends Controller
         $validated = $request->validate([
             'role' => ['required', Rule::in(array_column(WorkspaceRole::cases(), 'value'))],
         ]);
-        $role = WorkspaceRole::from((string) data_get($validated, 'role'));
+        $role = WorkspaceRole::from(data_get($validated, 'role'));
 
         $workspace->members()->updateExistingPivot($userId, [
             'role' => $role->value,

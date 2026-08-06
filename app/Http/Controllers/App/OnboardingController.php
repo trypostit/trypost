@@ -55,7 +55,7 @@ class OnboardingController extends Controller
             return redirect()->route('app.calendar');
         }
 
-        $persona = (string) $request->validated('persona');
+        $persona = $request->validated('persona');
 
         $user->update(['persona' => $persona]);
 
@@ -161,7 +161,7 @@ class OnboardingController extends Controller
             return redirect()->route('app.onboarding.goals');
         }
 
-        $referralSource = (string) $request->validated('referral_source');
+        $referralSource = $request->validated('referral_source');
 
         $user->update(['referral_source' => $referralSource]);
 

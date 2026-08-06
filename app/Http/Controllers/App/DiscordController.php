@@ -40,7 +40,7 @@ class DiscordController extends Controller
         return response()->json([
             'mentions' => $this->discord->mentions(
                 (string) $account->platform_user_id,
-                (string) $request->validated('q', ''),
+                $request->validated('q', ''),
             ),
         ]);
     }

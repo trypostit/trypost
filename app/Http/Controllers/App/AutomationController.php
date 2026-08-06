@@ -231,7 +231,7 @@ class AutomationController extends Controller
         $this->authorize('update', $automation);
 
         $feedUrl = $resolver->resolve(
-            (string) $request->validated('feed_url'),
+            $request->validated('feed_url'),
             ['variables' => $automation->resolvedVariables()],
         );
 
