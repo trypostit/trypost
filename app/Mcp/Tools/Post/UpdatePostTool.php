@@ -33,9 +33,8 @@ class UpdatePostTool extends Tool
     public function handle(Request $request): Response|ResponseFactory
     {
         $workspace = $request->user()?->currentWorkspace;
-        $postId = data_get($request->all(), 'post_id');
-        $post = ($workspace instanceof Workspace && is_string($postId))
-            ? Post::where('workspace_id', $workspace->id)->find($postId)
+        $post = $workspace instanceof Workspace
+            ? Post::where('workspace_id', $workspace->id)->find(data_get($request->all(), 'post_id'))
             : null;
 
         if (! $post) {
