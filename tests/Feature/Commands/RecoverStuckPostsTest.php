@@ -134,3 +134,73 @@ test('it recovers platforms stuck in retrying for over 1 hour', function () {
         ->and($platform->error_message)->toBe(__('posts.errors.publishing_timed_out'))
         ->and($post->status)->toBe(PostStatus::Failed);
 });
+
+test('it does not finalize a post while a platform is still actively retrying', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Publishing,
+        'updated_at' => now()->subHours(2),
+    ]);
+
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+        'status' => PlatformStatus::Retrying,
+        'enabled' => true,
+        'error_message' => __('posts.errors.platform_unavailable'),
+        'updated_at' => now()->subMinutes(5),
+    ]);
+
+    $this->artisan('social:recover-stuck-posts')
+        ->expectsOutput('Recovered 0 stuck posts.')
+        ->assertSuccessful();
+
+    $platform->refresh();
+    $post->refresh();
+
+    expect($platform->status)->toBe(PlatformStatus::Retrying)
+        ->and($post->status)->toBe(PostStatus::Publishing);
+});
+
+test('it fails stale platforms but keeps the post publishing when another platform is still retrying', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Publishing,
+        'updated_at' => now()->subHours(2),
+    ]);
+
+    $stalePlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+        'status' => PlatformStatus::Publishing,
+        'enabled' => true,
+        'updated_at' => now()->subHours(2),
+    ]);
+
+    $activeRetry = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => SocialAccount::factory()->create([
+            'workspace_id' => $this->workspace->id,
+            'platform' => Platform::Pinterest,
+        ])->id,
+        'status' => PlatformStatus::Retrying,
+        'enabled' => true,
+        'error_message' => __('posts.errors.platform_unavailable'),
+        'updated_at' => now()->subMinutes(5),
+    ]);
+
+    $this->artisan('social:recover-stuck-posts')
+        ->expectsOutput('Recovered 0 stuck posts.')
+        ->assertSuccessful();
+
+    $stalePlatform->refresh();
+    $activeRetry->refresh();
+    $post->refresh();
+
+    expect($stalePlatform->status)->toBe(PlatformStatus::Failed)
+        ->and($stalePlatform->error_message)->toBe(__('posts.errors.publishing_timed_out'))
+        ->and($activeRetry->status)->toBe(PlatformStatus::Retrying)
+        ->and($post->status)->toBe(PostStatus::Publishing);
+});

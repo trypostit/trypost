@@ -36,6 +36,17 @@ class RecoverStuckPosts extends Command
                         ],
                     ]);
 
+                // Delayed platform-unavailable retries keep the platform Retrying with a
+                // fresh updated_at — do not finalize the post while that work is still live.
+                $stillActive = $post->postPlatforms()
+                    ->where('enabled', true)
+                    ->whereIn('status', [PlatformStatus::Publishing, PlatformStatus::Pending, PlatformStatus::Retrying])
+                    ->exists();
+
+                if ($stillActive) {
+                    return;
+                }
+
                 $enabledPlatforms = $post->postPlatforms()->where('enabled', true)->get();
                 $total = $enabledPlatforms->count();
                 $publishedCount = $enabledPlatforms->where('status', PlatformStatus::Published)->count();
