@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\PinterestPublisher;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 
@@ -1259,3 +1260,49 @@ test('pinterest publisher treats unknown media status as still processing until 
     'not_a_real_status',
     '',
 ]);
+
+test('pinterest publisher treats media status connection errors as platform unavailable', function () {
+    Sleep::fake();
+
+    $this->postPlatform->update(['content_type' => ContentType::PinterestVideoPin]);
+
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/video.mp4',
+            'url' => 'https://example.com/media/2026-01/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+
+    $s3UploadUrl = 'https://pinterest-media-upload.s3.amazonaws.com/upload';
+
+    Http::fake(function ($request) use ($s3UploadUrl) {
+        $url = $request->url();
+
+        if (str_contains($url, '/v5/media') && $request->method() === 'POST') {
+            return Http::response([
+                'media_id' => 'media_video_conn',
+                'upload_url' => $s3UploadUrl,
+                'upload_parameters' => [],
+            ], 201);
+        }
+
+        if ($url === $s3UploadUrl) {
+            return Http::response('', 204);
+        }
+
+        if (str_contains($url, '/v5/media/media_video_conn')) {
+            throw new ConnectionException('cURL error 28: Connection timed out');
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(PlatformUnavailableException::class, 'Pinterest media status check connection failed');
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/v5/pins'));
+    Sleep::assertNeverSlept();
+});

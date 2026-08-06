@@ -167,6 +167,36 @@ test('it does not finalize a post while a platform is still actively retrying', 
         ->and($post->status)->toBe(PostStatus::Publishing);
 });
 
+test('it does not finalize a post while a platform is still actively pending or publishing', function (PlatformStatus $status) {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Publishing,
+        'updated_at' => now()->subHours(2),
+    ]);
+
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+        'status' => $status,
+        'enabled' => true,
+        'updated_at' => now()->subMinutes(5),
+    ]);
+
+    $this->artisan('social:recover-stuck-posts')
+        ->expectsOutput('Recovered 0 stuck posts.')
+        ->assertSuccessful();
+
+    $platform->refresh();
+    $post->refresh();
+
+    expect($platform->status)->toBe($status)
+        ->and($post->status)->toBe(PostStatus::Publishing);
+})->with([
+    PlatformStatus::Pending,
+    PlatformStatus::Publishing,
+]);
+
 test('it fails stale platforms but keeps the post publishing when another platform is still retrying', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,

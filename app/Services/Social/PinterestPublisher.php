@@ -15,6 +15,7 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -335,8 +336,14 @@ class PinterestPublisher
                 Sleep::for($pollSeconds)->seconds();
             }
 
-            $response = $this->socialHttp()->withToken($account->access_token)
-                ->get($this->baseUrl."/media/{$mediaId}");
+            try {
+                $response = $this->socialHttp()->withToken($account->access_token)
+                    ->get($this->baseUrl."/media/{$mediaId}");
+            } catch (ConnectionException $e) {
+                throw new PlatformUnavailableException(
+                    "Pinterest media status check connection failed (media_id={$mediaId}): {$e->getMessage()}",
+                );
+            }
 
             if ($response->failed()) {
                 if ($response->status() === 401) {

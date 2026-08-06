@@ -556,12 +556,17 @@ test('publish skips platforms that are already failed', function () {
 });
 
 test('publish job timeout leaves headroom above the pinterest media poll budget', function () {
-    expect((new PublishToSocialPlatform($this->postPlatform))->timeout)
-        ->toBeGreaterThanOrEqual(900)
-        ->and(config('horizon.defaults.social-publishing.timeout'))
-        ->toBeGreaterThan((new PublishToSocialPlatform($this->postPlatform))->timeout)
-        ->and(config('queue.connections.redis.retry_after'))
-        ->toBeGreaterThan((new PublishToSocialPlatform($this->postPlatform))->timeout);
+    $job = new PublishToSocialPlatform($this->postPlatform);
+    $horizonTimeout = (int) config('horizon.defaults.social-publishing.timeout');
+    $retryAfter = (int) config('queue.connections.redis.retry_after');
+
+    expect($job->timeout)->toBe(900)
+        ->and($horizonTimeout)->toBe(930)
+        ->and($retryAfter)->toBe(960)
+        ->and($job->uniqueFor)->toBe(960)
+        ->and($job->timeout)->toBeLessThan($horizonTimeout)
+        ->and($horizonTimeout)->toBeLessThan($retryAfter)
+        ->and($job->uniqueFor)->toBeGreaterThanOrEqual($job->timeout);
 });
 
 test('publish job unique id includes the platform and attempt', function () {
@@ -569,7 +574,7 @@ test('publish job unique id includes the platform and attempt', function () {
 
     expect($job)->toBeInstanceOf(ShouldBeUnique::class)
         ->and($job->uniqueId())->toBe("{$this->postPlatform->id}:3")
-        ->and($job->uniqueFor)->toBeGreaterThanOrEqual($job->timeout);
+        ->and($job->uniqueFor)->toBe(960);
 });
 
 test('publish job unique lock drops a duplicate dispatch for the same platform attempt', function () {
@@ -609,6 +614,25 @@ test('failed hook skips platforms that are already failed', function () {
     expect($this->postPlatform->status)->toBe(PlatformStatus::Failed)
         ->and($this->postPlatform->error_message)->toBe(__('posts.errors.publishing_timed_out'))
         ->and($this->postPlatform->error_context['category'] ?? null)->toBe('timeout');
+});
+
+test('failed hook skips platforms that are already published', function () {
+    Event::fake();
+    Mail::fake();
+
+    $this->postPlatform->update([
+        'status' => PlatformStatus::Published,
+        'platform_post_id' => 'already-published',
+        'error_message' => null,
+    ]);
+
+    (new PublishToSocialPlatform($this->postPlatform))->failed(new TypeError('Simulated worker kill'));
+
+    $this->postPlatform->refresh();
+
+    expect($this->postPlatform->status)->toBe(PlatformStatus::Published)
+        ->and($this->postPlatform->platform_post_id)->toBe('already-published')
+        ->and($this->postPlatform->error_message)->toBeNull();
 });
 
 test('pinterest media status 401 marks the account token expired and notifies to reconnect', function () {
