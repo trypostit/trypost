@@ -33,7 +33,6 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Sleep;
-use TypeError;
 
 beforeEach(function () {
     Mail::fake();
