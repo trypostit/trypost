@@ -6,6 +6,7 @@ use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -115,7 +116,8 @@ test('rejects a personal token after its owner is demoted from admin', function 
 
     $this->withHeaders(['Authorization' => "Bearer {$plainToken}"])
         ->getJson(route('api.workspace.show'))
-        ->assertForbidden();
+        ->assertForbidden()
+        ->assertJson(['message' => 'Insufficient workspace permissions.']);
 });
 
 test('rejects a personal token after its owner is removed from the workspace', function () {
@@ -130,7 +132,8 @@ test('rejects a personal token after its owner is removed from the workspace', f
 
     $this->withHeaders(['Authorization' => "Bearer {$plainToken}"])
         ->getJson(route('api.workspace.show'))
-        ->assertForbidden();
+        ->assertForbidden()
+        ->assertJson(['message' => 'Workspace access denied.']);
 });
 
 test('rejects mcp oauth grants on api routes for workspace viewers', function () {
@@ -147,7 +150,8 @@ test('rejects mcp oauth grants on api routes for workspace viewers', function ()
 
     $this->withHeaders(['Authorization' => "Bearer {$result->accessToken}"])
         ->getJson(route('api.workspace.show'))
-        ->assertForbidden();
+        ->assertForbidden()
+        ->assertJson(['message' => 'Personal access token required.']);
 });
 
 test('rejects scoped mcp oauth grants on api routes', function () {
@@ -164,7 +168,8 @@ test('rejects scoped mcp oauth grants on api routes', function () {
 
     $this->withHeaders(['Authorization' => "Bearer {$result->accessToken}"])
         ->getJson(route('api.workspace.show'))
-        ->assertForbidden();
+        ->assertForbidden()
+        ->assertJson(['message' => 'Personal access token required.']);
 });
 
 test('rejects unscoped mcp oauth grants on api routes', function () {
@@ -181,7 +186,8 @@ test('rejects unscoped mcp oauth grants on api routes', function () {
 
     $this->withHeaders(['Authorization' => "Bearer {$result->accessToken}"])
         ->getJson(route('api.workspace.show'))
-        ->assertForbidden();
+        ->assertForbidden()
+        ->assertJson(['message' => 'Personal access token required.']);
 });
 
 test('rejects personal access tokens on the mcp endpoint', function () {
@@ -317,4 +323,123 @@ test('does not treat oauth tokens with a revoked client as personal access token
 
     expect($token->isPersonalAccessToken())->toBeFalse()
         ->and($token->isActiveMcpGrant())->toBeFalse();
+});
+
+test('rejects api requests without a bearer token', function () {
+    $this->getJson(route('api.workspace.show'))
+        ->assertUnauthorized();
+});
+
+test('rejects mcp oauth when no current workspace is selected', function () {
+    subscribeAccount($this->user->account);
+
+    $result = $this->user->createToken('MCP', ['mcp:use']);
+    $token = AccessToken::query()->findOrFail($result->token->id);
+    DB::table('oauth_clients')
+        ->where('id', $token->client_id)
+        ->update(['grant_types' => json_encode(['authorization_code'])]);
+
+    $this->user->update(['current_workspace_id' => null]);
+
+    $this->withHeaders([
+        'Authorization' => "Bearer {$result->accessToken}",
+        'Accept' => 'application/json, text/event-stream',
+    ])->postJson(route('mcp.trypost'), [
+        'jsonrpc' => '2.0',
+        'id' => 1,
+        'method' => 'initialize',
+        'params' => [
+            'protocolVersion' => '2025-03-26',
+            'capabilities' => (object) [],
+            'clientInfo' => ['name' => 'Pest', 'version' => '1.0'],
+        ],
+    ])
+        ->assertUnauthorized()
+        ->assertJson(['message' => 'No workspace selected.']);
+});
+
+test('allows mcp oauth that follows the users current workspace', function () {
+    subscribeAccount($this->user->account);
+
+    $otherWorkspace = Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+    $otherWorkspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+
+    $result = $this->user->createToken('MCP', ['mcp:use']);
+    $token = AccessToken::query()->findOrFail($result->token->id);
+    DB::table('oauth_clients')
+        ->where('id', $token->client_id)
+        ->update(['grant_types' => json_encode(['authorization_code'])]);
+
+    $payload = [
+        'jsonrpc' => '2.0',
+        'id' => 1,
+        'method' => 'initialize',
+        'params' => [
+            'protocolVersion' => '2025-03-26',
+            'capabilities' => (object) [],
+            'clientInfo' => ['name' => 'Pest', 'version' => '1.0'],
+        ],
+    ];
+
+    $this->user->update(['current_workspace_id' => $otherWorkspace->id]);
+
+    $this->withHeaders([
+        'Authorization' => "Bearer {$result->accessToken}",
+        'Accept' => 'application/json, text/event-stream',
+    ])->postJson(route('mcp.trypost'), $payload)->assertSuccessful();
+
+    $this->user->update(['current_workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders([
+        'Authorization' => "Bearer {$result->accessToken}",
+        'Accept' => 'application/json, text/event-stream',
+    ])->postJson(route('mcp.trypost'), $payload)->assertSuccessful();
+});
+
+test('records last_used_at on the access token after a successful api request', function () {
+    subscribeAccount($this->user->account);
+
+    $token = AccessToken::query()
+        ->where('user_id', $this->user->id)
+        ->where('workspace_id', $this->workspace->id)
+        ->firstOrFail();
+
+    expect($token->last_used_at)->toBeNull();
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->getJson(route('api.workspace.show'))
+        ->assertOk();
+
+    expect($token->fresh()->last_used_at)->not->toBeNull();
+});
+
+test('rejects an expired mcp oauth grant on the mcp endpoint', function () {
+    subscribeAccount($this->user->account);
+
+    $result = $this->user->createToken('MCP', ['mcp:use']);
+    $token = AccessToken::query()->findOrFail($result->token->id);
+    DB::table('oauth_clients')
+        ->where('id', $token->client_id)
+        ->update(['grant_types' => json_encode(['authorization_code'])]);
+
+    $token->forceFill(['expires_at' => now()->subMinute()])->saveQuietly();
+
+    $this->withHeaders([
+        'Authorization' => "Bearer {$result->accessToken}",
+        'Accept' => 'application/json, text/event-stream',
+    ])->postJson(route('mcp.trypost'), [
+        'jsonrpc' => '2.0',
+        'id' => 1,
+        'method' => 'initialize',
+        'params' => [
+            'protocolVersion' => '2025-03-26',
+            'capabilities' => (object) [],
+            'clientInfo' => ['name' => 'Pest', 'version' => '1.0'],
+        ],
+    ])
+        ->assertUnauthorized()
+        ->assertJson(['message' => 'Token expired.']);
 });
