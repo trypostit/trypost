@@ -21,7 +21,8 @@ return [
     'goals_description' => 'Size uyan her şeyi seçin, biz de TryPost\'u sizin için ayarlayalım.',
     'goals' => [
         'save_time' => 'Her yere aynı anda paylaşarak zaman kazanmak',
-        'ai_content' => 'AI ile daha hızlı gönderi oluşturmak',
+        'ai_content' => 'TryPost AI ile gönderi oluşturmak',
+        'use_mcp' => 'Claude, ChatGPT veya Cursor ile gönderi oluşturmak',
         'plan_calendar' => 'Gönderilerimi bir takvimde planlamak',
         'stay_on_brand' => 'Her gönderiyi marka çizgisinde tutmak',
         'grow_audience' => 'Kitlemi ve etkileşimimi büyütmek',

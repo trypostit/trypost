@@ -21,7 +21,8 @@ return [
     'goals_description' => '当てはまるものをすべて選んでください。TryPost をあなた向けに設定します。',
     'goals' => [
         'save_time' => 'すべての場所へ一度に投稿して時間を節約する',
-        'ai_content' => 'AI でより速く投稿を作成する',
+        'ai_content' => 'TryPost AI で投稿を生成する',
+        'use_mcp' => 'Claude・ChatGPT・Cursor から投稿を作成する',
         'plan_calendar' => 'カレンダーで投稿を計画する',
         'stay_on_brand' => 'すべての投稿をブランドに沿ったものにする',
         'grow_audience' => 'オーディエンスとエンゲージメントを増やす',

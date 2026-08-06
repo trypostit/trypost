@@ -29,7 +29,8 @@ return [
     'goals_description' => 'Pick everything that fits and we\'ll set TryPost up for you.',
     'goals' => [
         'save_time' => 'Save time by posting everywhere at once',
-        'ai_content' => 'Create posts faster with AI',
+        'ai_content' => 'Generate posts with TryPost AI',
+        'use_mcp' => 'Create posts from Claude, ChatGPT, or Cursor',
         'plan_calendar' => 'Plan my posts on a calendar',
         'stay_on_brand' => 'Keep every post on brand',
         'grow_audience' => 'Grow my audience and engagement',

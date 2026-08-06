@@ -21,7 +21,8 @@ return [
     'goals_description' => '选择所有符合的选项，我们会为你配置好 TryPost。',
     'goals' => [
         'save_time' => '一次发布到所有平台，节省时间',
-        'ai_content' => '借助 AI 更快地创建帖子',
+        'ai_content' => '用 TryPost AI 生成帖子',
+        'use_mcp' => '通过 Claude、ChatGPT 或 Cursor 创建帖子',
         'plan_calendar' => '在日历上规划我的帖子',
         'stay_on_brand' => '让每一条帖子都符合品牌调性',
         'grow_audience' => '增长我的受众和互动',

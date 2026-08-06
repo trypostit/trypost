@@ -8,6 +8,7 @@ enum Goal: string
 {
     case SaveTime = 'save_time';
     case AiContent = 'ai_content';
+    case UseMcp = 'use_mcp';
     case PlanCalendar = 'plan_calendar';
     case StayOnBrand = 'stay_on_brand';
     case GrowAudience = 'grow_audience';

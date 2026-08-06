@@ -21,7 +21,8 @@ return [
     'goals_description' => 'Wähle alles aus, was passt, und wir richten TryPost für dich ein.',
     'goals' => [
         'save_time' => 'Zeit sparen, indem ich überall gleichzeitig poste',
-        'ai_content' => 'Beiträge schneller mit KI erstellen',
+        'ai_content' => 'Beiträge mit TryPost-KI erstellen',
+        'use_mcp' => 'Beiträge über Claude, ChatGPT oder Cursor erstellen',
         'plan_calendar' => 'Meine Beiträge in einem Kalender planen',
         'stay_on_brand' => 'Jeden Beitrag markenkonform halten',
         'grow_audience' => 'Meine Reichweite und mein Engagement steigern',

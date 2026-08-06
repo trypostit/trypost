@@ -21,7 +21,8 @@ return [
     'goals_description' => 'Marque tudo que faz sentido e a gente ajusta o TryPost pra você.',
     'goals' => [
         'save_time' => 'Economizar tempo postando em todas as redes de uma vez',
-        'ai_content' => 'Criar posts mais rápido com IA',
+        'ai_content' => 'Gerar posts com a IA do TryPost',
+        'use_mcp' => 'Criar posts pelo Claude, ChatGPT ou Cursor',
         'plan_calendar' => 'Planejar meus posts num calendário',
         'stay_on_brand' => 'Manter a consistência da minha marca',
         'grow_audience' => 'Crescer minha audiência e engajamento',

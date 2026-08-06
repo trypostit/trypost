@@ -8,6 +8,7 @@ import {
     IconCompass,
     IconDots,
     IconPalette,
+    IconPlug,
     IconSparkles,
     IconTrendingUp,
     IconUsersGroup,
@@ -46,6 +47,11 @@ const goalMeta: Record<
         icon: IconSparkles,
         iconClass: 'text-violet-700',
         badge: 'bg-violet-100',
+    },
+    use_mcp: {
+        icon: IconPlug,
+        iconClass: 'text-teal-700',
+        badge: 'bg-teal-100',
     },
     plan_calendar: {
         icon: IconCalendar,

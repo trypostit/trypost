@@ -21,7 +21,8 @@ return [
     'goals_description' => '해당되는 항목을 모두 선택하면 TryPost를 맞춤 설정해 드립니다.',
     'goals' => [
         'save_time' => '한 번에 여러 곳에 게시하여 시간 절약',
-        'ai_content' => 'AI로 더 빠르게 게시물 작성',
+        'ai_content' => 'TryPost AI로 게시물 생성',
+        'use_mcp' => 'Claude, ChatGPT 또는 Cursor에서 게시물 작성',
         'plan_calendar' => '캘린더에서 게시물 계획',
         'stay_on_brand' => '모든 게시물을 브랜드에 맞게 유지',
         'grow_audience' => '팔로워와 참여 늘리기',

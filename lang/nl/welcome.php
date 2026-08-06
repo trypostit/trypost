@@ -29,7 +29,8 @@ return [
     'goals_description' => 'Kies alles wat past en we stellen TryPost voor je in.',
     'goals' => [
         'save_time' => 'Tijd besparen door overal tegelijk te posten',
-        'ai_content' => 'Sneller posts maken met AI',
+        'ai_content' => 'Posts genereren met TryPost AI',
+        'use_mcp' => 'Posts maken via Claude, ChatGPT of Cursor',
         'plan_calendar' => 'Mijn posts plannen op een kalender',
         'stay_on_brand' => 'Elke post in lijn met mijn merk houden',
         'grow_audience' => 'Mijn publiek en betrokkenheid laten groeien',

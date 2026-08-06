@@ -21,7 +21,8 @@ return [
     'goals_description' => 'Choisissez tout ce qui vous correspond et nous configurerons TryPost pour vous.',
     'goals' => [
         'save_time' => 'Gagner du temps en publiant partout à la fois',
-        'ai_content' => 'Créer des publications plus vite avec l\'IA',
+        'ai_content' => 'Générer des publications avec l\'IA TryPost',
+        'use_mcp' => 'Créer des publications depuis Claude, ChatGPT ou Cursor',
         'plan_calendar' => 'Planifier mes publications sur un calendrier',
         'stay_on_brand' => 'Garder chaque publication fidèle à ma marque',
         'grow_audience' => 'Développer mon audience et mon engagement',
