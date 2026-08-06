@@ -7,6 +7,7 @@ import ScheduleTab from '@/components/posts/editor/ScheduleTab.vue';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { PinterestBoardsPayload } from '@/types';
 import type { MediaItem } from '@/types/media';
+import type { PostPublishModeValue } from '@/types/post';
 
 interface SocialAccount {
     id: string;
@@ -67,6 +68,7 @@ const props = defineProps<{
     authUserId: string;
     initialHighlightCommentId: string | null;
     postedAt?: string | null;
+    publishMode: PostPublishModeValue;
 }>();
 
 const activeTab = defineModel<string>('activeTab', { required: true });
@@ -76,6 +78,7 @@ const emit = defineEmits<{
     (e: 'toggle-label', labelId: string): void;
     (e: 'update:platformMeta', platformId: string, meta: Record<string, any>): void;
     (e: 'update:platformContentType', platformId: string, contentType: string): void;
+    (e: 'update:publishMode', value: PostPublishModeValue): void;
 }>();
 
 const commentsTabRef = ref<InstanceType<typeof CommentsTab> | null>(null);
@@ -123,10 +126,12 @@ defineExpose({
                 :tiktok-creator-infos="tiktokCreatorInfos"
                 :pinterest-boards="pinterestBoards"
                 :media="media"
+                :publish-mode="publishMode"
                 @toggle-platform="(id) => emit('toggle-platform', id)"
                 @toggle-label="(id) => emit('toggle-label', id)"
                 @update:platform-meta="(id, meta) => emit('update:platformMeta', id, meta)"
                 @update:platform-content-type="(id, contentType) => emit('update:platformContentType', id, contentType)"
+                @update:publish-mode="(value) => emit('update:publishMode', value)"
             />
         </TabsContent>
 

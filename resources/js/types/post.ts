@@ -9,6 +9,13 @@ export const PostStatus = {
 
 export type PostStatusValue = (typeof PostStatus)[keyof typeof PostStatus];
 
+export const PostPublishMode = {
+    Auto: 'auto',
+    Manual: 'manual',
+} as const;
+
+export type PostPublishModeValue = (typeof PostPublishMode)[keyof typeof PostPublishMode];
+
 export const PostPlatformStatus = {
     Pending: 'pending',
     Publishing: 'publishing',

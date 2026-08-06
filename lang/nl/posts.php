@@ -5,6 +5,15 @@ return [
     'search' => 'Posts zoeken...',
     'all_posts' => 'Alle posts',
     'new_post' => 'Nieuwe post',
+
+    'publish_mode' => [
+        'auto' => 'Automatisch publiceren',
+        'auto_hint' => 'TryPost publiceert dit bericht automatisch op de geplande tijd.',
+        'manual' => 'Mij waarschuwen om handmatig te publiceren',
+        'manual_hint' => 'TryPost herinnert je wanneer het zover is — jij publiceert zelf.',
+        'schedule_hint' => 'Publicatiemodus',
+        'manual_notice' => 'Je wordt gewaarschuwd wanneer het zover is en publiceert vanuit de app.',
+    ],
     'no_posts' => 'Geen posts gevonden',
     'no_search_results' => 'Geen posts komen overeen met je zoekopdracht',
     'try_different_search' => 'Probeer een ander zoekwoord of wis de zoekopdracht.',

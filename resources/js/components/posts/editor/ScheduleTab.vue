@@ -5,13 +5,14 @@ import { computed } from 'vue';
 import ChannelConfigurator from '@/components/ChannelConfigurator.vue';
 import LabelBadge from '@/components/labels/LabelBadge.vue';
 import { Badge } from '@/components/ui/badge';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { isVideo } from '@/lib/mediaType';
 import type { PinterestBoard, PinterestBoardsPayload } from '@/types';
 import type { Channel } from '@/types/channel';
 import type { MediaItem } from '@/types/media';
-import { PostPlatformStatus } from '@/types/post';
+import { PostPublishMode, type PostPublishModeValue, PostPlatformStatus } from '@/types/post';
 
 interface SocialAccount {
     id: string;
@@ -79,6 +80,7 @@ const props = defineProps<{
     tiktokCreatorInfos?: Record<string, TikTokCreatorInfo> | null;
     pinterestBoards?: Record<string, PinterestBoardsPayload> | null;
     media?: MediaItem[];
+    publishMode: PostPublishModeValue;
 }>();
 
 const emit = defineEmits<{
@@ -86,6 +88,7 @@ const emit = defineEmits<{
     toggleLabel: [labelId: string];
     'update:platformMeta': [platformId: string, meta: Record<string, any>];
     'update:platformContentType': [platformId: string, contentType: string];
+    'update:publishMode': [value: PostPublishModeValue];
 }>();
 
 const getPublishConfig = (pp: PostPlatform): Record<string, any> | null =>
@@ -207,6 +210,45 @@ const channels = computed<Channel[]>(() =>
                     </div>
                 </div>
             </ChannelConfigurator>
+        </div>
+
+        <div>
+            <p class="mb-3 text-[11px] font-black uppercase tracking-widest text-foreground/60">
+                {{ $t('posts.publish_mode.schedule_hint') }}
+            </p>
+            <RadioGroup
+                :model-value="publishMode"
+                :disabled="isReadOnly"
+                class="grid gap-2"
+                @update:model-value="(value) => emit('update:publishMode', value as PostPublishModeValue)"
+            >
+                <label
+                    class="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-foreground/20 bg-card p-3 shadow-2xs transition-colors hover:border-foreground/40"
+                    :class="{ 'opacity-60': isReadOnly }"
+                >
+                    <RadioGroupItem :value="PostPublishMode.Auto" :disabled="isReadOnly" id="publish-mode-auto" />
+                    <span class="min-w-0">
+                        <span class="block text-sm font-bold text-foreground">{{ $t('posts.publish_mode.auto') }}</span>
+                        <span class="block text-xs text-foreground/60">{{ $t('posts.publish_mode.auto_hint') }}</span>
+                    </span>
+                </label>
+                <label
+                    class="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-foreground/20 bg-card p-3 shadow-2xs transition-colors hover:border-foreground/40"
+                    :class="{ 'opacity-60': isReadOnly }"
+                >
+                    <RadioGroupItem :value="PostPublishMode.Manual" :disabled="isReadOnly" id="publish-mode-manual" />
+                    <span class="min-w-0">
+                        <span class="block text-sm font-bold text-foreground">{{ $t('posts.publish_mode.manual') }}</span>
+                        <span class="block text-xs text-foreground/60">{{ $t('posts.publish_mode.manual_hint') }}</span>
+                    </span>
+                </label>
+            </RadioGroup>
+            <p
+                v-if="publishMode === PostPublishMode.Manual"
+                class="mt-2 text-xs font-medium text-foreground/70"
+            >
+                {{ $t('posts.publish_mode.manual_notice') }}
+            </p>
         </div>
 
         <div>

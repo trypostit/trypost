@@ -5,6 +5,15 @@ return [
     'search' => 'Buscar posts...',
     'all_posts' => 'Todos os Posts',
     'new_post' => 'Novo Post',
+
+    'publish_mode' => [
+        'auto' => 'Publicação automática',
+        'auto_hint' => 'O TryPost publica este post automaticamente no horário agendado.',
+        'manual' => 'Notificar-me para publicar manualmente',
+        'manual_hint' => 'O TryPost avisa quando chegar a hora — você publica.',
+        'schedule_hint' => 'Modo de publicação',
+        'manual_notice' => 'Você será notificado quando chegar a hora e publicará pelo aplicativo.',
+    ],
     'no_posts' => 'Nenhum post encontrado',
     'no_search_results' => 'Nenhum post corresponde à sua busca',
     'try_different_search' => 'Tente outra palavra-chave ou limpe a busca.',

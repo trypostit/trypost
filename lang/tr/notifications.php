@@ -7,6 +7,11 @@ return [
         'title' => 'Gönderiniz hazır',
         'body' => 'AI az önce bitirdi. İncelemek ve yayınlamak için dokunun.',
     ],
+
+    'post_manual_publish_due' => [
+        'title' => 'Manuel yayın için bir gönderi hazır',
+        'body' => 'Bu gönderi hazır — uygulamadan yayınlayın: “:caption”',
+    ],
     'account_disconnected' => [
         'title' => ':platform hesabının bağlantısı kesildi',
         'body' => ':account yeniden bağlanmalı',

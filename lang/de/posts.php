@@ -7,6 +7,15 @@ return [
     'search' => 'Beiträge suchen...',
     'all_posts' => 'Alle Beiträge',
     'new_post' => 'Neuer Beitrag',
+
+    'publish_mode' => [
+        'auto' => 'Automatisch veröffentlichen',
+        'auto_hint' => 'TryPost veröffentlicht diesen Beitrag automatisch zur geplanten Zeit.',
+        'manual' => 'Mich benachrichtigen, um manuell zu veröffentlichen',
+        'manual_hint' => 'TryPost erinnert dich, wenn es soweit ist — du veröffentlichst selbst.',
+        'schedule_hint' => 'Veröffentlichungsmodus',
+        'manual_notice' => 'Du wirst benachrichtigt, wenn es soweit ist, und veröffentlichst selbst aus der App.',
+    ],
     'no_posts' => 'Keine Beiträge gefunden',
     'no_search_results' => 'Keine Beiträge passen zu deiner Suche',
     'try_different_search' => 'Versuche ein anderes Stichwort oder setze die Suche zurück.',

@@ -7,6 +7,7 @@ namespace App\Models;
 use App\DataTransferObjects\MediaItem;
 use App\Enums\Media\Type;
 use App\Enums\Post\CreatedVia;
+use App\Enums\Post\PublishMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Observers\PostObserver;
@@ -35,6 +36,8 @@ class Post extends Model
         'content',
         'media',
         'status',
+        'publish_mode',
+        'manual_publish_notified_at',
         'created_via',
         'scheduled_at',
         'published_at',
@@ -44,10 +47,12 @@ class Post extends Model
     {
         return [
             'status' => PostStatus::class,
+            'publish_mode' => PublishMode::class,
             'created_via' => CreatedVia::class,
             'media' => 'array',
             'scheduled_at' => 'datetime',
             'published_at' => 'datetime',
+            'manual_publish_notified_at' => 'datetime',
         ];
     }
 
@@ -98,6 +103,25 @@ class Post extends Model
         return $query->scheduled()->where('scheduled_at', '<=', now());
     }
 
+    /**
+     * Scheduled posts due for auto-publishing — excludes manual (notify-only)
+     * posts so the scheduler never auto-publishes them.
+     */
+    public function scopeDueForAutoPublish(Builder $query): Builder
+    {
+        return $query->due()->where('publish_mode', PublishMode::Auto);
+    }
+
+    /**
+     * Scheduled manual posts that haven't had their one-time notification sent yet.
+     */
+    public function scopeManualDueNotNotified(Builder $query): Builder
+    {
+        return $query->due()
+            ->where('publish_mode', PublishMode::Manual)
+            ->whereNull('manual_publish_notified_at');
+    }
+
     public function scopeDraft(Builder $query): Builder
     {
         return $query->where('status', PostStatus::Draft);
@@ -137,6 +161,18 @@ class Post extends Model
     public function markAsFailed(): void
     {
         $this->update(['status' => PostStatus::Failed]);
+    }
+
+    public function isManualPublish(): bool
+    {
+        return ($this->publish_mode ?? PublishMode::Auto)->isManual();
+    }
+
+    public function markManualPublishNotified(): void
+    {
+        $this->update([
+            'manual_publish_notified_at' => now(),
+        ]);
     }
 
     /**

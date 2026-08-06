@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Post\CreatePost;
 use App\Enums\Post\CreatedVia;
+use App\Enums\Post\PublishMode;
 use App\Events\PostCreated;
 use App\Models\User;
 use App\Models\Workspace;
@@ -53,4 +54,27 @@ test('execute leaves created_via null when omitted', function () {
     ]);
 
     expect($post->fresh()->created_via)->toBeNull();
+});
+
+test('execute defaults publish mode to auto', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+
+    $post = CreatePost::execute($workspace, $user, [
+        'content' => 'Hello world',
+    ]);
+
+    expect($post->fresh()->publish_mode)->toBe(PublishMode::Auto);
+});
+
+test('execute persists manual publish mode', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+
+    $post = CreatePost::execute($workspace, $user, [
+        'content' => 'Hello world',
+        'publish_mode' => PublishMode::Manual,
+    ]);
+
+    expect($post->fresh()->publish_mode)->toBe(PublishMode::Manual);
 });

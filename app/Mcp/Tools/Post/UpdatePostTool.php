@@ -6,6 +6,7 @@ namespace App\Mcp\Tools\Post;
 
 use App\Actions\Post\UpdatePost;
 use App\Enums\Post\Action as PostAction;
+use App\Enums\Post\PublishMode;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Http\Resources\Api\PostResource;
@@ -52,6 +53,7 @@ class UpdatePostTool extends Tool
                 'post_id' => ['required', 'uuid'],
                 'content' => ['nullable', 'string', 'max:10000'],
                 'scheduled_at' => PostStatusRules::scheduledAtRules($post, $status),
+                'publish_mode' => ['sometimes', 'string', Rule::in(array_column(PublishMode::cases(), 'value'))],
                 'status' => ['sometimes', 'string', Rule::in([Status::Draft->value, Status::Scheduled->value])],
                 'label_ids' => ['sometimes', 'array'],
                 'label_ids.*' => ['uuid', Rule::exists('workspace_labels', 'id')->where('workspace_id', $workspace->id)],
@@ -109,6 +111,9 @@ class UpdatePostTool extends Tool
             'post_id' => $schema->string()->required()->description('UUID of the post to update.'),
             'content' => $schema->string()->description('New caption/text body.'),
             'scheduled_at' => $schema->string()->description('Future ISO 8601 datetime. Required for status "scheduled" unless the post already has a future schedule.'),
+            'publish_mode' => $schema->string()
+                ->enum(array_column(PublishMode::cases(), 'value'))
+                ->description('How the post publishes at its scheduled time: "auto" (default) auto-publishes, "manual" notifies you so you can publish it yourself from the native app.'),
             'status' => $schema->string()
                 ->enum([Status::Draft->value, Status::Scheduled->value])
                 ->description('Post status. Use "draft" to keep editing, "scheduled" to schedule the post. Use publish-post-tool for immediate publish.'),

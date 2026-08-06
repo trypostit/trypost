@@ -26,7 +26,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { destroy as destroyPost, update as updatePost } from '@/routes/app/posts';
 import type { PinterestBoardsPayload } from '@/types';
 import type { MediaItem } from '@/types/media';
-import { PostStatus } from '@/types/post';
+import { PostPublishMode, type PostPublishModeValue, PostStatus } from '@/types/post';
 
 interface SocialAccount {
     id: string;
@@ -58,6 +58,7 @@ interface Post {
     content: string;
     media: MediaItem[];
     status: string;
+    publish_mode: string | null;
     scheduled_at: string | null;
     published_at: string | null;
     post_platforms: PostPlatform[];
@@ -152,6 +153,10 @@ const {
 // Schedule
 const scheduledDateTime = ref(date.formatUtcForDateTimeLocalInput(post.value.scheduled_at));
 const hasPickedTime = ref(Boolean(post.value.scheduled_at));
+
+const publishMode = ref<PostPublishModeValue>(
+    (post.value.publish_mode as PostPublishModeValue) || PostPublishMode.Auto,
+);
 
 const pickTimeLabel = computed(() => {
     if (! hasPickedTime.value || ! scheduledDateTime.value) {
@@ -270,6 +275,7 @@ const getSubmitData = () => {
         media: media.value,
         platforms,
         scheduled_at: date.formatLocalDateTimeForApi(scheduledDateTime.value),
+        publish_mode: publishMode.value,
         label_ids: selectedLabelIds.value,
     };
 };
@@ -310,7 +316,7 @@ const triggerAutosave = () => {
     }
 };
 
-watch([content, media, selectedPlatformIds, scheduledDateTime, selectedLabelIds, platformMeta, platformContentTypes], triggerAutosave, { deep: true });
+watch([content, media, selectedPlatformIds, scheduledDateTime, selectedLabelIds, platformMeta, platformContentTypes, publishMode], triggerAutosave, { deep: true });
 
 onUnmounted(() => {
     debouncedSave.cancel();
@@ -465,10 +471,12 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                             :auth-user-id="authUserId"
                             :initial-highlight-comment-id="initialHighlightCommentId"
                             :posted-at="scheduledDateTime || null"
+                            :publish-mode="publishMode"
                             @toggle-platform="togglePlatform"
                             @toggle-label="toggleLabel"
                             @update:platform-meta="updatePlatformMeta"
                             @update:platform-content-type="updatePlatformContentType"
+                            @update:publish-mode="(value) => publishMode = value"
                         />
                     </div>
                 </div>

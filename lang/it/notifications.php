@@ -7,6 +7,11 @@ return [
         'title' => 'Il tuo post è pronto',
         'body' => 'L\'IA ha appena finito. Tocca per rivedere e pubblicare.',
     ],
+
+    'post_manual_publish_due' => [
+        'title' => 'Un post è pronto per la pubblicazione manuale',
+        'body' => 'Questo post è pronto — pubblicalo nell’app: “:caption”',
+    ],
     'account_disconnected' => [
         'title' => 'Account :platform scollegato',
         'body' => ':account deve essere ricollegato',

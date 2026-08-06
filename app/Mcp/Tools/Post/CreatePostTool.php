@@ -6,6 +6,7 @@ namespace App\Mcp\Tools\Post;
 
 use App\Actions\Post\CreatePost;
 use App\Enums\Post\CreatedVia;
+use App\Enums\Post\PublishMode;
 use App\Enums\PostPlatform\ContentType;
 use App\Http\Resources\Api\PostResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
@@ -41,6 +42,7 @@ class CreatePostTool extends Tool
             [
                 'content' => ['nullable', 'string', 'max:10000'],
                 'scheduled_at' => ['nullable', 'date', 'after:now'],
+                'publish_mode' => ['sometimes', 'string', Rule::in(array_column(PublishMode::cases(), 'value'))],
                 'label_ids' => ['sometimes', 'array'],
                 'label_ids.*' => ['uuid', Rule::exists('workspace_labels', 'id')->where('workspace_id', $workspace->id)],
                 'platforms' => ['sometimes', 'array'],
@@ -72,6 +74,9 @@ class CreatePostTool extends Tool
         return [
             'content' => $schema->string()->description('The post caption/text body. Optional — can be edited later.'),
             'scheduled_at' => $schema->string()->description('Optional ISO 8601 datetime in the future (e.g. 2026-05-10T15:30:00Z). Omit it or pass null to create an unscheduled draft.'),
+            'publish_mode' => $schema->string()
+                ->enum(array_column(PublishMode::cases(), 'value'))
+                ->description('How the post publishes at its scheduled time: "auto" (default) auto-publishes, "manual" notifies you so you can publish it yourself from the native app.'),
             'label_ids' => $schema->array()
                 ->items($schema->string())
                 ->description('Workspace label IDs to attach to the post.'),

@@ -7,6 +7,11 @@ return [
         'title' => 'Votre publication est prête',
         'body' => 'L\'IA vient de terminer. Touchez pour relire et publier.',
     ],
+
+    'post_manual_publish_due' => [
+        'title' => 'Une publication est prête à être publiée manuellement',
+        'body' => 'Cette publication est prête — publiez-la dans l’application : “:caption”',
+    ],
     'account_disconnected' => [
         'title' => 'Compte :platform déconnecté',
         'body' => ':account doit être reconnecté',

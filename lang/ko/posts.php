@@ -5,6 +5,15 @@ return [
     'search' => '게시물 검색...',
     'all_posts' => '모든 게시물',
     'new_post' => '새 게시물',
+
+    'publish_mode' => [
+        'auto' => '자동 게시',
+        'auto_hint' => 'TryPost가 예약된 시간에 자동으로 게시합니다.',
+        'manual' => '수동 게시를 위해 알려주기',
+        'manual_hint' => 'TryPost가 게시 시간이 되면 알려줍니다 — 직접 게시합니다.',
+        'schedule_hint' => '게시 모드',
+        'manual_notice' => '게시 시간이 되면 알림을 받고 앱에서 직접 게시합니다.',
+    ],
     'no_posts' => '게시물을 찾을 수 없습니다',
     'no_search_results' => '검색과 일치하는 게시물이 없습니다',
     'try_different_search' => '다른 키워드로 시도하거나 검색을 지우세요.',

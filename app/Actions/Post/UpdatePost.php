@@ -36,6 +36,7 @@ class UpdatePost
             'content' => data_get($data, 'content', $post->content),
             'media' => data_get($data, 'media', $post->media),
             'status' => $status === PostStatus::Publishing->value ? PostStatus::Publishing : $status,
+            'publish_mode' => data_get($data, 'publish_mode', $post->publish_mode),
             'scheduled_at' => $scheduledAt,
         ]);
 
