@@ -16,13 +16,28 @@ const props = defineProps<{
     mcpUrl: string;
 }>();
 
-const advancedClients = [
+type AdvancedMcpClientKey = 'cursor' | 'vscode' | 'claude_code' | 'other';
+type McpConfigRoot = 'servers' | 'mcpServers';
+
+interface AdvancedMcpClient {
+    key: AdvancedMcpClientKey;
+    name: string;
+    description: string;
+    logo: string;
+    tileClass: string;
+    httpType: boolean;
+    configRoot: McpConfigRoot;
+}
+
+const advancedClients: AdvancedMcpClient[] = [
     {
         key: 'cursor',
         name: 'mcp.clients.cursor_name',
         description: 'mcp.clients.cursor',
         logo: '/images/ai/cursor.svg',
         tileClass: 'bg-white -rotate-1',
+        httpType: false,
+        configRoot: 'mcpServers',
     },
     {
         key: 'vscode',
@@ -30,6 +45,8 @@ const advancedClients = [
         description: 'mcp.clients.vscode',
         logo: '/images/ai/vscode.svg',
         tileClass: 'bg-sky-100 rotate-2',
+        httpType: true,
+        configRoot: 'servers',
     },
     {
         key: 'claude_code',
@@ -37,6 +54,8 @@ const advancedClients = [
         description: 'mcp.clients.claude_code',
         logo: '/images/ai/claude.svg',
         tileClass: 'bg-orange-100 rotate-1',
+        httpType: true,
+        configRoot: 'mcpServers',
     },
     {
         key: 'other',
@@ -44,27 +63,28 @@ const advancedClients = [
         description: 'mcp.clients.other',
         logo: '/images/ai/other-clients.svg',
         tileClass: 'bg-amber-100 -rotate-2',
+        httpType: false,
+        configRoot: 'mcpServers',
     },
 ];
 
-const openClient = ref('');
+const openClient = ref<AdvancedMcpClientKey | ''>('');
 const connectorName = computed(() => trans('mcp.connector_name'));
 const copiedMessage = computed(() => trans('mcp.copied'));
 
-const configSnippet = (client: string): string => {
-    const server =
-        client === 'vscode' || client === 'claude_code'
-            ? { type: 'http', url: props.mcpUrl }
-            : { url: props.mcpUrl };
-    const config =
-        client === 'vscode'
-            ? { servers: { [connectorName.value]: server } }
-            : { mcpServers: { [connectorName.value]: server } };
+const configSnippet = (client: AdvancedMcpClient): string => {
+    const server = client.httpType
+        ? { type: 'http', url: props.mcpUrl }
+        : { url: props.mcpUrl };
 
-    return JSON.stringify(config, null, 2);
+    return JSON.stringify(
+        { [client.configRoot]: { [connectorName.value]: server } },
+        null,
+        2,
+    );
 };
 
-const setClientOpen = (client: string, open: boolean): void => {
+const setClientOpen = (client: AdvancedMcpClientKey, open: boolean): void => {
     openClient.value = open ? client : '';
 };
 
@@ -189,14 +209,14 @@ const copy = (value: string): void => {
                                     dir="ltr"
                                     class="overflow-x-auto rounded-xl border-2 border-foreground bg-background p-3 pe-14 text-left font-mono text-xs shadow-2xs"
                                     :data-testid="`mcp-config-${client.key}`"
-                                ><code>{{ configSnippet(client.key) }}</code></pre>
+                                ><code>{{ configSnippet(client) }}</code></pre>
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="icon"
                                     class="absolute inset-e-2 top-2 size-9"
                                     :aria-label="`${$t('common.actions.copy')} ${$t('mcp.config_label')}`"
-                                    @click="copy(configSnippet(client.key))"
+                                    @click="copy(configSnippet(client))"
                                 >
                                     <IconCopy class="size-4" />
                                 </Button>

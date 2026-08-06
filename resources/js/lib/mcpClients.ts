@@ -1,5 +1,7 @@
+export type PrimaryMcpClientId = 'claude' | 'chatgpt';
+
 export interface McpClient {
-    id: string;
+    id: PrimaryMcpClientId;
     label: string;
     logo: string;
     settingsUrl: string;
