@@ -13,6 +13,7 @@ use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Route;
 
 beforeEach(function () {
     config(['trypost.self_hosted' => false]);
@@ -261,53 +262,18 @@ test('welcome steps redirect to calendar in self hosted mode', function (string 
     'referral source store' => ['app.welcome.referral-source.store', 'post', ['referral_source' => ReferralSource::Google->value]],
 ]);
 
-test('legacy welcome URLs redirect to their replacement routes', function (string $legacyRoute, string $routeName) {
-    $this->actingAs($this->user)
-        ->get(route($legacyRoute))
-        ->assertRedirect(route($routeName));
+test('old onboarding icp routes are not registered', function (string $routeName) {
+    expect(Route::has($routeName))->toBeFalse();
 })->with([
-    'root' => ['app.legacy-onboarding', 'app.welcome.persona'],
-    'goals' => ['app.legacy-onboarding.goals', 'app.welcome.goals'],
-    'referral source' => ['app.legacy-onboarding.referral-source', 'app.welcome.referral-source'],
-    'connect' => ['app.legacy-onboarding.connect', 'app.welcome.referral-source'],
+    'root' => 'app.onboarding',
+    'store' => 'app.onboarding.store',
+    'goals' => 'app.onboarding.goals',
+    'goals store' => 'app.onboarding.goals.store',
+    'referral source' => 'app.onboarding.referral-source',
+    'referral source store' => 'app.onboarding.referral-source.store',
+    'connect' => 'app.onboarding.connect',
+    'checkout' => 'app.onboarding.checkout',
 ]);
-
-test('legacy persona and goals posts preserve submissions from an already loaded page', function () {
-    $this->actingAs($this->user)
-        ->post(route('app.legacy-onboarding.store'), [
-            'persona' => Persona::Agency->value,
-        ])
-        ->assertRedirect(route('app.welcome.goals'));
-
-    $this->actingAs($this->user->fresh())
-        ->post(route('app.legacy-onboarding.goals.store'), [
-            'goals' => [Goal::SaveTime->value],
-        ])
-        ->assertRedirect(route('app.welcome.referral-source'));
-
-    expect($this->user->fresh()->persona)->toBe(Persona::Agency)
-        ->and($this->user->fresh()->goals)->toBe([Goal::SaveTime->value]);
-});
-
-test('legacy connect post starts checkout for an already loaded page', function () {
-    $this->user->update([
-        'persona' => Persona::Agency->value,
-        'goals' => [Goal::SaveTime->value],
-        'referral_source' => ReferralSource::Google->value,
-    ]);
-    Plan::where('slug', Slug::Workspace)->firstOrFail()->update([
-        'stripe_monthly_price_id' => 'price_monthly_test',
-    ]);
-
-    $this->mock(StartSubscriptionCheckout::class)
-        ->shouldReceive('redirect')
-        ->once()
-        ->andReturn(redirect('https://checkout.stripe.test/session'));
-
-    $this->actingAs($this->user->fresh())
-        ->post(route('app.legacy-onboarding.checkout'))
-        ->assertRedirect('https://checkout.stripe.test/session');
-});
 
 test('members cannot start Stripe checkout from welcome', function () {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);

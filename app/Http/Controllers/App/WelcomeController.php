@@ -147,25 +147,6 @@ class WelcomeController extends Controller
         return $this->startCheckout($request, $checkout);
     }
 
-    public function legacyCheckout(
-        Request $request,
-        StartSubscriptionCheckout $checkout,
-    ): Response|RedirectResponse {
-        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true)) {
-            return $redirect;
-        }
-
-        $user = $request->user();
-
-        abort_unless($user->isAccountOwner(), Response::HTTP_FORBIDDEN);
-
-        if ($user->referral_source === null) {
-            return redirect()->route('app.welcome.referral-source');
-        }
-
-        return $this->startCheckout($request, $checkout);
-    }
-
     private function startCheckout(
         Request $request,
         StartSubscriptionCheckout $checkout,
