@@ -60,6 +60,6 @@ return [
     'support' => [
         'docs' => '문서',
         'referral' => '30% 추천 수익 받기',
-        'discord' => 'Discord 참여',
+        'discord' => 'Discord 커뮤니티',
     ],
 ];

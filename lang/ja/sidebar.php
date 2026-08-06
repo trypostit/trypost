@@ -60,6 +60,6 @@ return [
     'support' => [
         'docs' => 'ドキュメント',
         'referral' => '30% の紹介報酬を獲得',
-        'discord' => 'Discord に参加',
+        'discord' => 'Discord コミュニティ',
     ],
 ];

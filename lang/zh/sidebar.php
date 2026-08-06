@@ -60,6 +60,6 @@ return [
     'support' => [
         'docs' => '文档',
         'referral' => '赚取 30% 推荐奖励',
-        'discord' => '加入 Discord',
+        'discord' => 'Discord 社区',
     ],
 ];

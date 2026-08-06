@@ -60,6 +60,6 @@ return [
     'support' => [
         'docs' => 'Documentazione',
         'referral' => 'Guadagna il 30% di referral',
-        'discord' => 'Entra su Discord',
+        'discord' => 'Community Discord',
     ],
 ];

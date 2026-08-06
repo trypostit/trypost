@@ -60,6 +60,6 @@ return [
     'support' => [
         'docs' => 'Документація',
         'referral' => 'Отримуйте 30% за рефералами',
-        'discord' => 'Приєднатися до Discord',
+        'discord' => 'Спільнота Discord',
     ],
 ];
