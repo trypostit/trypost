@@ -164,15 +164,11 @@ const workspaceNavItems = computed<NavItem[]>(() => [
               },
           ]
         : []),
-    ...(currentWorkspace.value
-        ? [
-              {
-                  title: trans('sidebar.workspace.mcp'),
-                  href: mcp.url(),
-                  icon: IconPlugConnected,
-              },
-          ]
-        : []),
+    {
+        title: trans('sidebar.workspace.mcp'),
+        href: mcp.url(),
+        icon: IconPlugConnected,
+    },
 ]);
 
 const bottomNavItems = computed(() => [

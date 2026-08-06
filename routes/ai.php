@@ -6,7 +6,7 @@ use App\Mcp\Servers\TryPostServer;
 use Illuminate\Support\Facades\Route;
 use Laravel\Mcp\Facades\Mcp;
 
-Route::middleware('throttle:mcp-oauth-registration')->group(function (): void {
+Route::middleware('throttle:mcp-oauth-registration')->group(function () {
     Mcp::oauthRoutes();
 });
 
