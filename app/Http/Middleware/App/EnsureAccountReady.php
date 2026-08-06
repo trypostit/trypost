@@ -25,7 +25,13 @@ class EnsureAccountReady
             $account = $user->account;
 
             if (! $account?->hasAppAccess()) {
-                return redirect()->route('app.onboarding');
+                // Members can't finish Welcome checkout — send them straight to
+                // the hold screen instead of hopping through persona first.
+                if (! $user->isAccountOwner()) {
+                    return redirect()->route('app.welcome.subscription-required');
+                }
+
+                return redirect()->route('app.welcome.persona');
             }
         }
 

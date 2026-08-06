@@ -280,10 +280,10 @@ it('forbids users without workspace access', function (): void {
         ->assertForbidden();
 });
 
-it('redirects to onboarding when the account has no app access', function (): void {
+it('redirects to welcome when the account has no app access', function (): void {
     $this->user->account->subscriptions()->delete();
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.mcp.index'))
-        ->assertRedirect(route('app.onboarding'));
+        ->assertRedirect(route('app.welcome.persona'));
 });

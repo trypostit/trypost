@@ -11,13 +11,28 @@ beforeEach(function () {
     config()->set('trypost.self_hosted', false);
 });
 
-test('redirects to onboarding when account has no active subscription', function () {
+test('redirects owners to welcome when account has no active subscription', function () {
     $account = Account::factory()->create();
     $user = User::factory()->create(['account_id' => $account->id]);
 
     $this->actingAs($user)
         ->get(route('app.calendar'))
-        ->assertRedirect(route('app.onboarding'));
+        ->assertRedirect(route('app.welcome.persona'));
+});
+
+test('redirects members without app access straight to subscription required', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create(['account_id' => $owner->account_id]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $owner->account_id,
+        'user_id' => $owner->id,
+    ]);
+    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $member->update(['current_workspace_id' => $workspace->id]);
+
+    $this->actingAs($member->fresh())
+        ->get(route('app.calendar'))
+        ->assertRedirect(route('app.welcome.subscription-required'));
 });
 
 test('redirects to workspace create when subscribed but no workspace', function () {

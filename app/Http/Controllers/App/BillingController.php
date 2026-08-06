@@ -18,7 +18,7 @@ class BillingController extends Controller
 {
     public function subscribe(): RedirectResponse
     {
-        return redirect()->route('app.onboarding');
+        return redirect()->route('app.welcome.persona');
     }
 
     public function processing(Request $request): Response|RedirectResponse

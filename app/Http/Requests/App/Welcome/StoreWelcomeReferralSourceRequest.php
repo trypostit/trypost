@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Requests\App\Onboarding;
+namespace App\Http\Requests\App\Welcome;
 
 use App\Enums\User\ReferralSource;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreOnboardingReferralSourceRequest extends FormRequest
+class StoreWelcomeReferralSourceRequest extends FormRequest
 {
     public function authorize(): bool
     {

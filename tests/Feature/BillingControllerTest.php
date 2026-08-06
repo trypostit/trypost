@@ -31,12 +31,12 @@ test('subscribe requires authentication', function () {
     $response->assertRedirect(route('login'));
 });
 
-test('subscribe redirects to onboarding', function () {
+test('subscribe redirects to welcome', function () {
     config(['trypost.self_hosted' => false]);
 
     $response = $this->actingAs($this->user)->get(route('app.subscribe'));
 
-    $response->assertRedirect(route('app.onboarding'));
+    $response->assertRedirect(route('app.welcome.persona'));
 });
 
 test('swapToYearly redirects to calendar in self hosted mode', function () {
