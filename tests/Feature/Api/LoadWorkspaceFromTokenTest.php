@@ -184,23 +184,11 @@ test('rejects unscoped mcp oauth grants on api routes', function () {
         ->assertForbidden();
 });
 
-test('rejects personal access tokens on the mcp endpoint after a member becomes a viewer', function () {
+test('rejects personal access tokens on the mcp endpoint', function () {
     subscribeAccount($this->user->account);
 
-    $member = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
-    $member->update(['current_workspace_id' => $this->workspace->id]);
-
-    $result = $member->createToken('API Key');
-    AccessToken::query()->findOrFail($result->token->id)
-        ->forceFill(['workspace_id' => $this->workspace->id])
-        ->saveQuietly();
-    $this->workspace->members()->updateExistingPivot($member->id, [
-        'role' => Role::Viewer->value,
-    ]);
-
     $this->withHeaders([
-        'Authorization' => "Bearer {$result->accessToken}",
+        'Authorization' => 'Bearer '.$this->plainToken,
         'Accept' => 'application/json, text/event-stream',
     ])->postJson(route('mcp.trypost'), [
         'jsonrpc' => '2.0',
@@ -211,7 +199,9 @@ test('rejects personal access tokens on the mcp endpoint after a member becomes 
             'capabilities' => (object) [],
             'clientInfo' => ['name' => 'Pest', 'version' => '1.0'],
         ],
-    ])->assertForbidden();
+    ])
+        ->assertForbidden()
+        ->assertJson(['message' => 'MCP OAuth authorization required.']);
 });
 
 test('rejects oauth grants without the mcp scope on the mcp endpoint', function () {

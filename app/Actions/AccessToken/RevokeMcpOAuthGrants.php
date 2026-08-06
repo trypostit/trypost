@@ -41,7 +41,6 @@ class RevokeMcpOAuthGrants
                 ->mcpOAuth()
                 ->where('revoked', false)
                 ->get(),
-            $user,
         );
     }
 
@@ -59,7 +58,6 @@ class RevokeMcpOAuthGrants
                 ->mcpOAuth()
                 ->where('revoked', false)
                 ->get(),
-            $user,
         );
     }
 
@@ -73,7 +71,7 @@ class RevokeMcpOAuthGrants
     /**
      * @param  Collection<int, AccessToken>  $tokens
      */
-    private static function revoke(Collection $tokens, User $user): bool
+    private static function revoke(Collection $tokens): bool
     {
         if ($tokens->isEmpty()) {
             return false;
