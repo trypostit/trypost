@@ -60,6 +60,6 @@ return [
     'support' => [
         'docs' => 'التوثيق',
         'referral' => 'اربح عمولة إحالة 30%',
-        'stay_updated' => 'ابقَ على اطلاع',
+        'discord' => 'انضم إلى Discord',
     ],
 ];

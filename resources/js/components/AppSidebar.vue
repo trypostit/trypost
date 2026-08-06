@@ -4,7 +4,7 @@ import {
     IconAffiliate,
     IconAlertTriangle,
     IconBolt,
-    IconBrandX,
+    IconBrandDiscord,
     IconCalendar,
     IconChartBar,
     IconChevronRight,
@@ -178,9 +178,9 @@ const bottomNavItems = computed(() => [
         icon: IconGift,
     },
     {
-        title: trans('sidebar.support.stay_updated'),
-        href: 'https://x.com/trypostit',
-        icon: IconBrandX,
+        title: trans('sidebar.support.discord'),
+        href: 'https://trypost.it/discord',
+        icon: IconBrandDiscord,
     },
     {
         title: trans('sidebar.support.docs'),

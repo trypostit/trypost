@@ -60,6 +60,6 @@ return [
     'support' => [
         'docs' => 'Dokümantasyon',
         'referral' => '%30 referans kazanın',
-        'stay_updated' => 'Güncel kalın',
+        'discord' => 'Discord\'a katıl',
     ],
 ];
