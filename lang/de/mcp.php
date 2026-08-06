@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => 'Verbinde KI-Assistenten, damit sie Beiträge mit deinem TryPost-Konto erstellen und verwalten können.',
+    'subtitle' => 'Verbinde KI-Assistenten mit deinem TryPost-Workspace. Sie nutzen dieselben Berechtigungen wie jeder angemeldete Nutzer.',
     'copy_step' => 'Kopiere deine TryPost-Server-URL',
     'open_step' => 'Öffne deinen KI-Assistenten',
     'copy' => 'URL kopieren',
@@ -28,10 +28,6 @@ return [
     'documentation_description' => 'Einrichtungsguides pro Client, verfügbare Tools und Fehlerhilfe.',
     'view_docs' => 'Dokumentation ansehen',
     'connector_name' => 'TryPost',
-
-    'authorize_denied_title' => 'Cannot connect',
-    'authorize_denied_body' => ':client needs a Member or Admin role on at least one workspace. Ask a workspace admin to upgrade your role, then try again.',
-    'authorize_denied_close' => 'Close',
     'authorize_logged_in_as' => 'Logged in as:',
 
     'other_clients_title' => 'Andere Apps',

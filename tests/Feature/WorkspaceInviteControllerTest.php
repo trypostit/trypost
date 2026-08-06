@@ -319,7 +319,7 @@ test('update role changes admin to member', function () {
     expect($token->fresh()->revoked)->toBeTrue();
 });
 
-test('demoting a member to viewer revokes their mcp oauth grants', function () {
+test('demoting a member to viewer keeps their mcp oauth grants', function () {
     $member = User::factory()->create([
         'account_id' => $this->account->id,
     ]);
@@ -340,11 +340,13 @@ test('demoting a member to viewer revokes their mcp oauth grants', function () {
     ]);
 
     $response->assertRedirect();
-    expect($oauth->fresh()->revoked)->toBeTrue()
-        ->and(DB::table('oauth_refresh_tokens')->where('id', $refreshTokenId)->value('revoked'))->toBeTrue();
+    expect($oauth->fresh()->revoked)->toBeFalse()
+        ->and(DB::table('oauth_refresh_tokens')->where('id', $refreshTokenId)->value('revoked'))->toBeFalse()
+        ->and($member->fresh()->can('createPost', $this->workspace))->toBeFalse()
+        ->and($member->fresh()->can('view', $this->workspace))->toBeTrue();
 });
 
-test('demoting to viewer keeps mcp oauth when create-post access remains elsewhere', function () {
+test('demoting to viewer on one workspace keeps mcp when they remain a member elsewhere', function () {
     $member = User::factory()->create([
         'account_id' => $this->account->id,
     ]);

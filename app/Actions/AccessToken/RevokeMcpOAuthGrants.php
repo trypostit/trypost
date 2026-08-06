@@ -13,15 +13,15 @@ use Illuminate\Support\Facades\DB;
 class RevokeMcpOAuthGrants
 {
     /**
-     * Revoke MCP OAuth grants only when the user can no longer create posts in
-     * any workspace (demotion/removal that still leaves createPost elsewhere
-     * must keep the grant — MCP is account-scoped via current workspace).
+     * Revoke MCP OAuth grants only when the user can no longer view any
+     * workspace (full removal). Demotion to Viewer keeps the grant — write
+     * tools enforce createPost via policies, matching the web app.
      *
      * @return bool True when at least one grant was revoked.
      */
-    public static function forUserIfLacksCreatePost(User $user): bool
+    public static function forUserIfLacksWorkspaceAccess(User $user): bool
     {
-        if (self::canCreatePostSomewhere($user)) {
+        if (self::canViewSomewhere($user)) {
             return false;
         }
 
@@ -61,11 +61,11 @@ class RevokeMcpOAuthGrants
         );
     }
 
-    public static function canCreatePostSomewhere(User $user): bool
+    public static function canViewSomewhere(User $user): bool
     {
         return $user->workspaces()
             ->get()
-            ->contains(fn (Workspace $workspace): bool => $user->can('createPost', $workspace));
+            ->contains(fn (Workspace $workspace): bool => $user->can('view', $workspace));
     }
 
     /**

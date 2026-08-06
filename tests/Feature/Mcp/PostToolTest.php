@@ -476,3 +476,60 @@ test('update post accepts a valid aspect_ratio and persists it', function () {
 
     expect($platform->fresh()->meta['aspect_ratio'])->toBe('16:9');
 });
+
+test('viewers can list and get posts via mcp', function () {
+    $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
+    $viewer->update(['current_workspace_id' => $this->workspace->id]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'content' => 'Visible to viewers',
+    ]);
+
+    TryPostServer::actingAs($viewer)
+        ->tool(ListPostsTool::class, [])
+        ->assertOk()
+        ->assertStructuredContent(function (AssertableJson $json) {
+            $json->has('posts', 1)->etc();
+        });
+
+    TryPostServer::actingAs($viewer)
+        ->tool(GetPostTool::class, ['post_id' => $post->id])
+        ->assertOk()
+        ->assertStructuredContent(function (AssertableJson $json) use ($post) {
+            $json->where('id', $post->id)
+                ->where('content', 'Visible to viewers')
+                ->etc();
+        });
+});
+
+test('viewers cannot create update or delete posts via mcp', function () {
+    $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
+    $viewer->update(['current_workspace_id' => $this->workspace->id]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'content' => 'Protected',
+    ]);
+
+    TryPostServer::actingAs($viewer)
+        ->tool(CreatePostTool::class, ['content' => 'Nope'])
+        ->assertHasErrors(['Not authorized to create posts.']);
+
+    TryPostServer::actingAs($viewer)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'content' => 'Changed',
+        ])
+        ->assertHasErrors(['Not authorized to update this post.']);
+
+    TryPostServer::actingAs($viewer)
+        ->tool(DeletePostTool::class, ['post_id' => $post->id])
+        ->assertHasErrors(['Not authorized to delete this post.']);
+
+    expect($post->fresh()->content)->toBe('Protected');
+});

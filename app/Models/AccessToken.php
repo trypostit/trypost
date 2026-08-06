@@ -194,7 +194,7 @@ class AccessToken extends Token
 
     /**
      * Whether this MCP grant can actually use the product (active token + a
-     * workspace the owner can create posts in).
+     * workspace the owner can view — write tools enforce createPost themselves).
      */
     public function isUsableMcpGrant(?User $user = null, ?Workspace $workspace = null): bool
     {
@@ -202,12 +202,12 @@ class AccessToken extends Token
             return false;
         }
 
-        return $this->ownerCanCreatePosts($user, $workspace);
+        return $this->ownerCanViewWorkspace($user, $workspace);
     }
 
     /**
      * Whether this MCP grant should appear in the connected-clients list
-     * (usable now, or recoverable via refresh, for a user who can create posts).
+     * (usable now, or recoverable via refresh, for a user who can view a workspace).
      */
     public function isListedMcpConnection(?User $user = null, ?Workspace $workspace = null): bool
     {
@@ -219,10 +219,10 @@ class AccessToken extends Token
             return false;
         }
 
-        return $this->ownerCanCreatePosts($user, $workspace);
+        return $this->ownerCanViewWorkspace($user, $workspace);
     }
 
-    private function ownerCanCreatePosts(?User $user = null, ?Workspace $workspace = null): bool
+    private function ownerCanViewWorkspace(?User $user = null, ?Workspace $workspace = null): bool
     {
         $user ??= User::query()
             ->with('currentWorkspace')
@@ -235,6 +235,6 @@ class AccessToken extends Token
         $workspace ??= $this->workspace ?? $user->currentWorkspace;
 
         return $workspace instanceof Workspace
-            && $user->can('createPost', $workspace);
+            && $user->can('view', $workspace);
     }
 }

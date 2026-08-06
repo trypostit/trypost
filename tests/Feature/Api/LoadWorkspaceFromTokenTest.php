@@ -133,13 +133,13 @@ test('rejects a personal token after its owner is removed from the workspace', f
         ->assertForbidden();
 });
 
-test('rejects mcp oauth grants for workspace viewers', function () {
+test('rejects mcp oauth grants on api routes for workspace viewers', function () {
     subscribeAccount($this->user->account);
 
     $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
     $viewer->update(['current_workspace_id' => $this->workspace->id]);
-    $result = $viewer->createToken('MCP');
+    $result = $viewer->createToken('MCP', ['mcp:use']);
     $token = AccessToken::query()->findOrFail($result->token->id);
     DB::table('oauth_clients')
         ->where('id', $token->client_id)
@@ -240,6 +240,34 @@ test('allows scoped oauth grants for workspace members on the mcp endpoint', fun
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $result = $member->createToken('MCP', ['mcp:use']);
+    $token = AccessToken::query()->findOrFail($result->token->id);
+    DB::table('oauth_clients')
+        ->where('id', $token->client_id)
+        ->update(['grant_types' => json_encode(['authorization_code'])]);
+
+    $this->withHeaders([
+        'Authorization' => "Bearer {$result->accessToken}",
+        'Accept' => 'application/json, text/event-stream',
+    ])->postJson(route('mcp.trypost'), [
+        'jsonrpc' => '2.0',
+        'id' => 1,
+        'method' => 'initialize',
+        'params' => [
+            'protocolVersion' => '2025-03-26',
+            'capabilities' => (object) [],
+            'clientInfo' => ['name' => 'Pest', 'version' => '1.0'],
+        ],
+    ])->assertSuccessful();
+});
+
+test('allows scoped oauth grants for workspace viewers on the mcp endpoint', function () {
+    subscribeAccount($this->user->account);
+
+    $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
+    $viewer->update(['current_workspace_id' => $this->workspace->id]);
+
+    $result = $viewer->createToken('MCP', ['mcp:use']);
     $token = AccessToken::query()->findOrFail($result->token->id);
     DB::table('oauth_clients')
         ->where('id', $token->client_id)

@@ -8,6 +8,7 @@ use App\Actions\SocialAccount\ListPinterestBoards;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\PinterestPublishException;
 use App\Exceptions\TokenExpiredException;
+use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\SocialAccount;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -19,6 +20,8 @@ use Laravel\Mcp\Server\Tool;
 #[Description('List Pinterest boards for a connected Pinterest account. Use the returned board id as platforms[].meta.board_id when creating or updating a Pinterest post (required to publish).')]
 class ListPinterestBoardsTool extends Tool
 {
+    use AuthorizesMcpTool;
+
     public function handle(Request $request): Response|ResponseFactory
     {
         $validated = $request->validate([
@@ -30,6 +33,10 @@ class ListPinterestBoardsTool extends Tool
 
         if (! $account) {
             return Response::error('Social account not found.');
+        }
+
+        if ($denied = $this->denyUnlessCan($request, 'createPost', $request->user()->currentWorkspace, 'Not authorized to manage posts.')) {
+            return $denied;
         }
 
         if ($account->platform !== Platform::Pinterest) {

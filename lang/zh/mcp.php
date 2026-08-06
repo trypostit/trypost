@@ -28,10 +28,6 @@ return [
     'documentation_description' => '各客户端设置指南、可用工具和问题排查。',
     'view_docs' => '查看文档',
     'connector_name' => 'TryPost',
-
-    'authorize_denied_title' => 'Cannot connect',
-    'authorize_denied_body' => ':client needs a Member or Admin role on at least one workspace. Ask a workspace admin to upgrade your role, then try again.',
-    'authorize_denied_close' => 'Close',
     'authorize_logged_in_as' => 'Logged in as:',
 
     'other_clients_title' => '其他应用',

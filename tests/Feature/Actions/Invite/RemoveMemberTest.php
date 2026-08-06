@@ -80,7 +80,7 @@ test('remove member keeps mcp oauth when create-post access remains elsewhere', 
         ->and($member->fresh()->can('createPost', $sharedB))->toBeTrue();
 });
 
-test('remove member revokes mcp oauth when create-post access is lost', function () {
+test('remove member keeps mcp oauth when the member remains a viewer elsewhere', function () {
     [
         'member' => $member,
         'shared_workspaces' => [$sharedA, $sharedB],
@@ -95,8 +95,9 @@ test('remove member revokes mcp oauth when create-post access is lost', function
 
     RemoveMember::execute($sharedA, $member->id);
 
-    expect($oauth->fresh()->revoked)->toBeTrue()
-        ->and($member->fresh()->can('createPost', $sharedB))->toBeFalse();
+    expect($oauth->fresh()->revoked)->toBeFalse()
+        ->and($member->fresh()->can('createPost', $sharedB))->toBeFalse()
+        ->and($member->fresh()->can('view', $sharedB))->toBeTrue();
 });
 
 test('remove member revokes api keys without touching mcp oauth grants on the same workspace id', function () {

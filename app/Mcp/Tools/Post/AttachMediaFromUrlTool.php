@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mcp\Tools\Post;
 
 use App\Http\Resources\Api\PostResource;
+use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\Post;
 use App\Services\Post\MediaAttacher;
 use App\Support\PostMediaRules;
@@ -18,6 +19,8 @@ use Laravel\Mcp\Server\Tool;
 #[Description('Download images, videos, or PDF documents from public URLs and attach them to a post. Each URL is fetched, stored, and registered as a Media record on the workspace. Allowed types are intersected with the platforms enabled on the post (e.g. nothing accepted if no platform supports the media type).')]
 class AttachMediaFromUrlTool extends Tool
 {
+    use AuthorizesMcpTool;
+
     public function handle(Request $request): Response|ResponseFactory
     {
         $validated = $request->validate([
@@ -32,6 +35,10 @@ class AttachMediaFromUrlTool extends Tool
 
         if (! $post) {
             return Response::error('Post not found.');
+        }
+
+        if ($denied = $this->denyUnlessCan($request, 'update', $post, 'Not authorized to update this post.')) {
+            return $denied;
         }
 
         $result = app(MediaAttacher::class)->attachFromUrls(

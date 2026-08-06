@@ -162,6 +162,10 @@ const workspaceNavItems = computed<NavItem[]>(() => [
                   href: assets.url(),
                   icon: IconPhoto,
               },
+          ]
+        : []),
+    ...(currentWorkspace.value
+        ? [
               {
                   title: trans('sidebar.workspace.mcp'),
                   href: mcp.url(),

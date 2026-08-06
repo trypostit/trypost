@@ -7,6 +7,7 @@ namespace App\Mcp\Tools\SocialAccount;
 use App\Actions\SocialAccount\ListDiscordChannels;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
+use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\SocialAccount;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -18,6 +19,8 @@ use Laravel\Mcp\Server\Tool;
 #[Description('List Discord text/announcement channels the bot can post to for a connected Discord server. Use the returned channel id as platforms[].meta.channel_id when creating or updating a Discord post (required to publish).')]
 class ListDiscordChannelsTool extends Tool
 {
+    use AuthorizesMcpTool;
+
     public function handle(Request $request): Response|ResponseFactory
     {
         $validated = $request->validate([
@@ -29,6 +32,10 @@ class ListDiscordChannelsTool extends Tool
 
         if (! $account) {
             return Response::error('Social account not found.');
+        }
+
+        if ($denied = $this->denyUnlessCan($request, 'createPost', $request->user()->currentWorkspace, 'Not authorized to manage posts.')) {
+            return $denied;
         }
 
         if ($account->platform !== Platform::Discord) {

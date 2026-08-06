@@ -18,7 +18,7 @@ class McpSettingsController extends Controller
         $user = $request->user();
         $workspace = $user->currentWorkspace;
 
-        $this->authorize('createPost', $workspace);
+        $this->authorize('view', $workspace);
 
         return Inertia::render('settings/workspace/Mcp', [
             'mcpUrl' => route('mcp.trypost'),
@@ -30,7 +30,7 @@ class McpSettingsController extends Controller
     {
         $user = $request->user();
 
-        $this->authorize('createPost', $user->currentWorkspace);
+        $this->authorize('view', $user->currentWorkspace);
 
         if (! RevokeMcpOAuthGrants::forUserClient($user, $client)) {
             return back();

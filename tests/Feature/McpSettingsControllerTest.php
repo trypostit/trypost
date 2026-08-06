@@ -80,17 +80,27 @@ it('lists oauth clients as connected across the account, excluding personal acce
             )));
 });
 
-it('excludes unscoped and viewer oauth grants from connected clients', function (): void {
-    $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
-    $viewer->update(['current_workspace_id' => $this->workspace->id]);
-
+it('excludes unscoped oauth grants from connected clients', function (): void {
     mcpAccessToken($this->user, mcpOauthClient('Unscoped Agent'), scopes: []);
-    mcpAccessToken($viewer, mcpOauthClient('Viewer Agent'));
 
     $this->actingAs($this->user)
         ->get(route('app.mcp.index'))
         ->assertInertia(fn ($page) => $page->where('connectedClients', []));
+});
+
+it('lists viewer oauth grants as connected clients', function (): void {
+    $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
+    $viewer->update(['current_workspace_id' => $this->workspace->id]);
+
+    mcpAccessToken($viewer, mcpOauthClient('Viewer Agent'));
+
+    $this->actingAs($this->user)
+        ->get(route('app.mcp.index'))
+        ->assertInertia(fn ($page) => $page
+            ->has('connectedClients', 1)
+            ->where('connectedClients.0.name', 'Viewer Agent')
+            ->where('connectedClients.0.can_disconnect', false));
 });
 
 it('disconnects a client by revoking its tokens', function (): void {
@@ -210,14 +220,29 @@ it('allows workspace members to view and disconnect their own mcp clients', func
     expect($token->fresh()->revoked)->toBeTrue();
 });
 
-it('forbids workspace viewers from configuring mcp clients', function (): void {
+it('allows workspace viewers to view and disconnect their own mcp clients', function (): void {
     $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
     $viewer->update(['current_workspace_id' => $this->workspace->id]);
 
+    $clientId = mcpOauthClient('Viewer Agent');
+    $token = mcpAccessToken($viewer, $clientId);
+
     $this->actingAs($viewer->fresh())
         ->get(route('app.mcp.index'))
-        ->assertForbidden();
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('settings/workspace/Mcp')
+            ->has('connectedClients', 1)
+            ->where('connectedClients.0.name', 'Viewer Agent')
+            ->where('connectedClients.0.can_disconnect', true));
+
+    $this->actingAs($viewer->fresh())
+        ->delete(route('app.mcp.disconnect', ['client' => $clientId]))
+        ->assertRedirect()
+        ->assertSessionHas('flash.success');
+
+    expect($token->fresh()->revoked)->toBeTrue();
 });
 
 it('does not revoke another users mcp client tokens', function (): void {

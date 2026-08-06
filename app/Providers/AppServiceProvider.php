@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Actions\AccessToken\RevokeMcpOAuthGrants;
-use App\Http\Middleware\App\EnsureCanAuthorizeMcp;
 use App\Listeners\StripeEventListener;
 use App\Models\AccessToken;
 use App\Models\Account;
@@ -49,7 +47,6 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Cashier\Cashier;
@@ -114,28 +111,7 @@ class AppServiceProvider extends ServiceProvider
             'mcp:use' => 'Use MCP server',
         ]);
 
-        Passport::authorizationView(function (array $parameters) {
-            $user = data_get($parameters, 'user');
-
-            if (
-                $user instanceof User
-                && ! RevokeMcpOAuthGrants::canCreatePostSomewhere($user)
-            ) {
-                return response()->view('mcp.authorize-denied', [
-                    'client' => data_get($parameters, 'client'),
-                    'user' => $user,
-                    'authToken' => data_get($parameters, 'authToken'),
-                ]);
-            }
-
-            return response()->view('mcp.authorize', $parameters);
-        });
-
-        $this->app->booted(function (): void {
-            Route::getRoutes()
-                ->getByName('passport.authorizations.approve')
-                ?->middleware(EnsureCanAuthorizeMcp::class);
-        });
+        Passport::authorizationView('mcp.authorize');
     }
 
     protected function configureMorphMap(): void

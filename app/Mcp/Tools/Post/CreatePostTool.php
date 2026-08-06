@@ -8,6 +8,7 @@ use App\Actions\Post\CreatePost;
 use App\Enums\Post\CreatedVia;
 use App\Enums\PostPlatform\ContentType;
 use App\Http\Resources\Api\PostResource;
+use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Rules\ContentTypeMatchesPlatform;
 use App\Support\PostPlatformMetaRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -21,9 +22,15 @@ use Laravel\Mcp\Server\Tool;
 #[Description('Create a draft post in the current workspace. Accepts content, scheduled_at, label_ids, and a list of platforms (social accounts to publish on, with their content_type). Use list-content-types-tool to discover valid content_types per platform.')]
 class CreatePostTool extends Tool
 {
-    public function handle(Request $request): ResponseFactory
+    use AuthorizesMcpTool;
+
+    public function handle(Request $request): Response|ResponseFactory
     {
         $workspace = $request->user()->currentWorkspace;
+
+        if ($denied = $this->denyUnlessCan($request, 'createPost', $workspace, 'Not authorized to create posts.')) {
+            return $denied;
+        }
 
         $validated = $request->validate(
             [

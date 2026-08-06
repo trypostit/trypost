@@ -6,6 +6,7 @@ namespace App\Mcp\Tools\SocialAccount;
 
 use App\Actions\SocialAccount\ToggleSocialAccount;
 use App\Http\Resources\Api\SocialAccountResource;
+use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\SocialAccount;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -17,6 +18,8 @@ use Laravel\Mcp\Server\Tool;
 #[Description('Toggle a social account active/inactive. When inactive, the account is skipped during scheduled publishing. Returns the updated account.')]
 class ToggleSocialAccountTool extends Tool
 {
+    use AuthorizesMcpTool;
+
     public function handle(Request $request): Response|ResponseFactory
     {
         $validated = $request->validate([
@@ -28,6 +31,10 @@ class ToggleSocialAccountTool extends Tool
 
         if (! $account) {
             return Response::error('Social account not found.');
+        }
+
+        if ($denied = $this->denyUnlessCan($request, 'manageAccounts', $request->user()->currentWorkspace, 'Not authorized to manage social accounts.')) {
+            return $denied;
         }
 
         $account = ToggleSocialAccount::execute($account);

@@ -3,9 +3,11 @@
 declare(strict_types=1);
 
 use App\Enums\UserWorkspace\Role;
+use App\Http\Middleware\App\EnsureCanAuthorizeMcp;
 use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Str;
 
 test('dynamic oauth client registration is rate limited', function () {
     $payload = [
@@ -36,7 +38,7 @@ test('dynamic oauth registration rejects custom callback schemes', function (str
     'vscode' => 'vscode://oauth/callback',
 ]);
 
-test('viewers cannot approve mcp oauth authorization', function () {
+test('mcp oauth consent view is available for workspace viewers', function () {
     $account = Account::factory()->create();
     $owner = User::factory()->create(['account_id' => $account->id]);
     $account->update(['owner_id' => $owner->id]);
@@ -50,28 +52,32 @@ test('viewers cannot approve mcp oauth authorization', function () {
     $workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
     $viewer->update(['current_workspace_id' => $workspace->id]);
 
-    $this->actingAs($viewer->fresh())
-        ->post(route('passport.authorizations.approve'))
-        ->assertForbidden()
-        ->assertSee(__('mcp.authorize_denied_title'), false);
+    $html = view('mcp.authorize', [
+        'client' => (object) [
+            'id' => (string) Str::uuid(),
+            'name' => 'Viewer Agent',
+        ],
+        'user' => $viewer,
+        'scopes' => collect([(object) ['description' => 'Use MCP server']]),
+        'authToken' => 'test-auth-token',
+        'request' => request(),
+    ])->render();
+
+    expect($html)
+        ->toContain('Authorize Viewer Agent')
+        ->toContain($viewer->email)
+        ->and(view()->exists('mcp.authorize-denied'))->toBeFalse()
+        ->and(class_exists(EnsureCanAuthorizeMcp::class))->toBeFalse();
 });
 
-test('members are not blocked by the mcp oauth approval gate', function () {
-    $account = Account::factory()->create();
-    $owner = User::factory()->create(['account_id' => $account->id]);
-    $account->update(['owner_id' => $owner->id]);
-    $workspace = Workspace::factory()->create([
-        'account_id' => $account->id,
-        'user_id' => $owner->id,
-    ]);
-    $workspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
+test('passport approve route has no mcp create-post role gate', function () {
+    $route = app('router')->getRoutes()->getByName('passport.authorizations.approve');
 
-    $member = User::factory()->create(['account_id' => $account->id]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
-    $member->update(['current_workspace_id' => $workspace->id]);
+    expect($route)->not->toBeNull();
 
-    // Gate lets members through; Passport then fails on the incomplete OAuth payload.
-    $this->actingAs($member->fresh())
-        ->post(route('passport.authorizations.approve'))
-        ->assertDontSee(__('mcp.authorize_denied_title'), false);
+    $middleware = collect($route->gatherMiddleware())
+        ->map(fn (mixed $middleware): string => is_string($middleware) ? $middleware : $middleware::class)
+        ->implode(',');
+
+    expect($middleware)->not->toContain('EnsureCanAuthorizeMcp');
 });

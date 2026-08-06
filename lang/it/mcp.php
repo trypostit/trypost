@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => 'Collega assistenti IA così possono creare e gestire post con il tuo account TryPost.',
+    'subtitle' => 'Collega assistenti IA al tuo workspace TryPost. Usano le stesse autorizzazioni di ogni utente connesso.',
     'copy_step' => 'Copia l’URL del server TryPost',
     'open_step' => 'Apri il tuo assistente IA',
     'copy' => 'Copia URL',
@@ -28,10 +28,6 @@ return [
     'documentation_description' => 'Guide per client, tools disponibili e risoluzione problemi.',
     'view_docs' => 'Vedi documentazione',
     'connector_name' => 'TryPost',
-
-    'authorize_denied_title' => 'Cannot connect',
-    'authorize_denied_body' => ':client needs a Member or Admin role on at least one workspace. Ask a workspace admin to upgrade your role, then try again.',
-    'authorize_denied_close' => 'Close',
     'authorize_logged_in_as' => 'Logged in as:',
 
     'other_clients_title' => 'Altre app',

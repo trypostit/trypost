@@ -9,6 +9,7 @@ use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Http\Resources\Api\PostResource;
+use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\Post;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Rules\ContentTypeMatchesPostPlatform;
@@ -26,6 +27,8 @@ use Laravel\Mcp\Server\Tool;
 #[Description('Update a draft post — content, media, scheduled_at, labels, and which platforms are enabled. Cannot edit a post that has already been published.')]
 class UpdatePostTool extends Tool
 {
+    use AuthorizesMcpTool;
+
     public function handle(Request $request): Response|ResponseFactory
     {
         $workspace = $request->user()->currentWorkspace;
@@ -35,6 +38,10 @@ class UpdatePostTool extends Tool
 
         if (! $post) {
             return Response::error('Post not found.');
+        }
+
+        if ($denied = $this->denyUnlessCan($request, 'update', $post, 'Not authorized to update this post.')) {
+            return $denied;
         }
 
         $status = data_get($request->all(), 'status');

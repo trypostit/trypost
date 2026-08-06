@@ -6,6 +6,7 @@ namespace App\Mcp\Tools\Label;
 
 use App\Actions\Label\UpdateLabel;
 use App\Http\Resources\Api\LabelResource;
+use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\WorkspaceLabel;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -17,6 +18,8 @@ use Laravel\Mcp\Server\Tool;
 #[Description('Update a label name or color.')]
 class UpdateLabelTool extends Tool
 {
+    use AuthorizesMcpTool;
+
     public function handle(Request $request): Response|ResponseFactory
     {
         $validated = $request->validate([
@@ -30,6 +33,10 @@ class UpdateLabelTool extends Tool
 
         if (! $label) {
             return Response::error('Label not found.');
+        }
+
+        if ($denied = $this->denyUnlessCan($request, 'createPost', $request->user()->currentWorkspace, 'Not authorized to manage labels.')) {
+            return $denied;
         }
 
         $label = UpdateLabel::execute($label, $validated);

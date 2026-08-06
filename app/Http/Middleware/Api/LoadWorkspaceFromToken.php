@@ -51,10 +51,6 @@ class LoadWorkspaceFromToken
             if (! $token->isActiveMcpGrant() || ! $authenticatedToken->can('mcp:use')) {
                 return response()->json(['message' => 'MCP OAuth authorization required.'], Response::HTTP_FORBIDDEN);
             }
-
-            if (! $user->can('createPost', $workspace)) {
-                return response()->json(['message' => 'Insufficient workspace permissions.'], Response::HTTP_FORBIDDEN);
-            }
         } else {
             if (! $token->isPersonalAccessToken()) {
                 return response()->json(['message' => 'Personal access token required.'], Response::HTTP_FORBIDDEN);
