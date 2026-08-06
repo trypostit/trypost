@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Mcp\Servers\TryPostServer;
 use Laravel\Mcp\Server\Attributes\Icon;
-use ReflectionClass;
 
 it('exposes the trypost logo as the mcp server icon', function () {
     $icons = (new ReflectionClass(TryPostServer::class))->getAttributes(Icon::class);
