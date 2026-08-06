@@ -11,7 +11,6 @@ use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\PinterestPublishException;
-use App\Exceptions\TokenExpiredException;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
@@ -332,15 +331,16 @@ class PinterestPublisher
         $lastStatus = null;
 
         for ($i = 0; $i < $maxAttempts; $i++) {
+            if ($i > 0) {
+                Sleep::for($pollSeconds)->seconds();
+            }
+
             $response = $this->socialHttp()->withToken($account->access_token)
                 ->get($this->baseUrl."/media/{$mediaId}");
 
             if ($response->failed()) {
                 if ($response->status() === 401) {
-                    throw new TokenExpiredException(
-                        message: data_get($response->json(), 'message', 'Access token has expired or been revoked'),
-                        platformErrorCode: '401',
-                    );
+                    $this->handleApiError($response);
                 }
 
                 Log::warning('Pinterest media status check failed', [
@@ -349,10 +349,6 @@ class PinterestPublisher
                     'status_code' => $response->status(),
                     'body' => $this->redactResponseBody($response->body()),
                 ]);
-
-                if ($i < $maxAttempts - 1) {
-                    Sleep::for($pollSeconds)->seconds();
-                }
 
                 continue;
             }
@@ -372,10 +368,6 @@ class PinterestPublisher
                     platformErrorCode: (string) $failureCode,
                     rawResponse: $response->body(),
                 );
-            }
-
-            if ($i < $maxAttempts - 1) {
-                Sleep::for($pollSeconds)->seconds();
             }
         }
 
