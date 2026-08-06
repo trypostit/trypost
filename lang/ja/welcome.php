@@ -6,7 +6,6 @@ return [
     'title' => 'あなたに一番近いのは？',
     'description' => '近いものを選ぶと、体験を最適化します。',
     'continue' => '続ける',
-    'checkout_owner_only' => 'アカウントのオーナーにチェックアウトを完了してサブスクリプションを開始するよう依頼してください。',
     'subscription_required_title' => 'アカウントのオーナーを待っています',
     'subscription_required_description' => 'このアカウントにはまだ有効なサブスクリプションがありません。オーナーにチェックアウトの完了を依頼してください — 有効になり次第、フルアクセスできます。',
     'subscription_required_owner' => 'アカウントのオーナーは :name です。',

@@ -6,12 +6,11 @@ return [
     'title' => 'O que melhor descreve você?',
     'description' => 'Escolha a opção mais próxima e a gente personaliza sua experiência.',
     'continue' => 'Continuar',
-    'checkout_owner_only' => 'Peça ao dono da conta para concluir o checkout e iniciar a assinatura.',
     'subscription_required_title' => 'Aguardando o dono da conta',
     'subscription_required_description' => 'Esta conta ainda não tem uma assinatura ativa. Peça ao dono da conta para concluir o checkout — você terá acesso total assim que ela estiver ativa.',
     'subscription_required_owner' => 'O dono da sua conta é :name.',
     'subscription_required_auto' => 'Esta página atualiza automaticamente — não precisa recarregar.',
-    'progress' => 'Progresso do onboarding',
+    'progress' => 'Progresso das boas-vindas',
     'go_to_step' => 'Ir para a etapa :step',
     'step_current' => 'Etapa :step (atual)',
     'personas' => [

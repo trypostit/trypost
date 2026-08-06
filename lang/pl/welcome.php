@@ -6,7 +6,6 @@ return [
     'title' => 'Co najlepiej Cię opisuje?',
     'description' => 'Wybierz najbliższą opcję, a my dopasujemy Twoje doświadczenie.',
     'continue' => 'Kontynuuj',
-    'checkout_owner_only' => 'Poproś właściciela konta o dokończenie płatności i rozpoczęcie subskrypcji.',
     'subscription_required_title' => 'Oczekiwanie na właściciela konta',
     'subscription_required_description' => 'To konto nie ma jeszcze aktywnej subskrypcji. Poproś właściciela o dokończenie płatności — uzyskasz pełny dostęp, gdy tylko będzie aktywna.',
     'subscription_required_owner' => 'Właścicielem Twojego konta jest :name.',

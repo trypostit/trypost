@@ -6,7 +6,6 @@ return [
     'title' => 'Cosa ti descrive meglio?',
     'description' => 'Scegli l\'opzione più vicina e personalizzeremo la tua esperienza.',
     'continue' => 'Continua',
-    'checkout_owner_only' => 'Chiedi al proprietario dell\'account di completare il checkout e avviare l\'abbonamento.',
     'subscription_required_title' => 'In attesa del proprietario dell\'account',
     'subscription_required_description' => 'Questo account non ha ancora un abbonamento attivo. Chiedi al proprietario di completare il checkout: avrai accesso completo non appena sarà attivo.',
     'subscription_required_owner' => 'Il proprietario del tuo account è :name.',

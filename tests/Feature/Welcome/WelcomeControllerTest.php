@@ -136,7 +136,26 @@ test('referral source redirects through incomplete prior steps', function (array
 })->with([
     'missing persona' => [[], 'app.welcome.persona'],
     'missing goals' => [['persona' => Persona::Agency->value], 'app.welcome.goals'],
+    'only removed goals' => [
+        [
+            'persona' => Persona::Agency->value,
+            'goals' => ['team_collaboration', 'automate_api', 'track_performance'],
+        ],
+        'app.welcome.goals',
+    ],
 ]);
+
+test('referral source allows users who still have at least one current goal', function () {
+    $this->user->update([
+        'persona' => Persona::Agency->value,
+        'goals' => [Goal::SaveTime->value, 'team_collaboration'],
+    ]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.referral-source'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('welcome/ReferralSource', false));
+});
 
 test('referral source renders after prior steps are complete', function () {
     $this->user->update([
@@ -151,7 +170,6 @@ test('referral source renders after prior steps are complete', function () {
         ->assertInertia(fn ($page) => $page
             ->component('welcome/ReferralSource', false)
             ->has('sources', count(ReferralSource::cases()))
-            ->where('canCheckout', true)
             ->where('plan.name', $plan->name)
             ->where('plan.interval', 'monthly')
         );

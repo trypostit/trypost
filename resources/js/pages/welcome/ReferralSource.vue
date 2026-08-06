@@ -26,7 +26,6 @@ import { store } from '@/routes/app/welcome/referral-source';
 const props = defineProps<{
     sources: string[];
     selected?: string | null;
-    canCheckout: boolean;
     plan: { name: string; interval: string };
 }>();
 
@@ -123,7 +122,7 @@ const select = (value: string): void => {
 };
 
 const submit = (): void => {
-    if (!props.canCheckout || form.referral_source === '' || form.processing) {
+    if (form.referral_source === '' || form.processing) {
         return;
     }
 
@@ -214,26 +213,17 @@ const submit = (): void => {
         </div>
 
         <div class="mx-auto flex w-full max-w-sm flex-col items-center gap-3">
-            <p
-                v-if="!canCheckout"
-                class="text-center text-sm text-muted-foreground"
-                data-testid="welcome-checkout-owner-only"
+            <InputError :message="form.errors.referral_source" />
+            <Button
+                type="button"
+                size="lg"
+                class="w-full rounded-full"
+                :disabled="form.referral_source === '' || form.processing"
+                data-testid="welcome-start-checkout"
+                @click="submit"
             >
-                {{ $t('welcome.checkout_owner_only') }}
-            </p>
-            <template v-else>
-                <InputError :message="form.errors.referral_source" />
-                <Button
-                    type="button"
-                    size="lg"
-                    class="w-full rounded-full"
-                    :disabled="form.referral_source === '' || form.processing"
-                    data-testid="welcome-start-checkout"
-                    @click="submit"
-                >
-                    {{ $t('welcome.continue') }}
-                </Button>
-            </template>
+                {{ $t('welcome.continue') }}
+            </Button>
         </div>
     </WelcomeLayout>
 </template>

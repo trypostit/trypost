@@ -6,7 +6,6 @@ return [
     'title' => 'Sizi en iyi ne tanımlar?',
     'description' => 'En yakın seçeneği seçin, deneyiminizi kişiselleştirelim.',
     'continue' => 'Devam et',
-    'checkout_owner_only' => 'Hesap sahibinden ödemeyi tamamlayıp aboneliği başlatmasını isteyin.',
     'subscription_required_title' => 'Hesap sahibi bekleniyor',
     'subscription_required_description' => 'Bu hesabın henüz etkin bir aboneliği yok. Hesap sahibinden ödemeyi tamamlamasını isteyin — abonelik etkinleşir etkinleşmez tam erişiminiz olur.',
     'subscription_required_owner' => 'Hesap sahibiniz :name.',

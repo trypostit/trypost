@@ -6,7 +6,6 @@ return [
     'title' => 'Qu\'est-ce qui vous décrit le mieux ?',
     'description' => 'Choisissez l\'option la plus proche et nous personnaliserons votre expérience.',
     'continue' => 'Continuer',
-    'checkout_owner_only' => 'Demandez au propriétaire du compte de finaliser le paiement et de démarrer l\'abonnement.',
     'subscription_required_title' => 'En attente du propriétaire du compte',
     'subscription_required_description' => 'Ce compte n\'a pas encore d\'abonnement actif. Demandez au propriétaire de finaliser le paiement — vous aurez un accès complet dès qu\'il sera actif.',
     'subscription_required_owner' => 'Le propriétaire de votre compte est :name.',

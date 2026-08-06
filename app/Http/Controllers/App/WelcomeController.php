@@ -14,6 +14,7 @@ use App\Http\Requests\App\Welcome\StoreWelcomeGoalsRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeReferralSourceRequest;
 use App\Models\Plan;
+use App\Models\User;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -109,7 +110,6 @@ class WelcomeController extends Controller
         return Inertia::render('welcome/ReferralSource', [
             'sources' => array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases()),
             'selected' => $user->referral_source?->value,
-            'canCheckout' => $user->isAccountOwner(),
             'plan' => [
                 'name' => $plan->name,
                 'interval' => 'monthly',
@@ -193,11 +193,29 @@ class WelcomeController extends Controller
             return redirect()->route('app.welcome.persona');
         }
 
-        if ($requireGoals && ! $user->goals) {
+        if ($requireGoals && ! $this->hasCurrentGoals($user)) {
             return redirect()->route('app.welcome.goals');
         }
 
         return null;
+    }
+
+    /**
+     * True when the user has at least one goal that still exists in Goal.
+     * Dropped enum values must not satisfy the gate or users mid-funnel can
+     * skip re-selecting after we slim the list.
+     */
+    private function hasCurrentGoals(User $user): bool
+    {
+        $goals = $user->goals;
+
+        if (! is_array($goals) || $goals === []) {
+            return false;
+        }
+
+        $allowed = array_map(fn (Goal $goal): string => $goal->value, Goal::cases());
+
+        return array_intersect($goals, $allowed) !== [];
     }
 
     private function redirectIfUnavailable(Request $request): ?RedirectResponse

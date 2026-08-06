@@ -6,7 +6,6 @@ return [
     'title' => 'Wat omschrijft jou het beste?',
     'description' => 'Kies de dichtstbijzijnde optie, dan stemmen we je ervaring af.',
     'continue' => 'Doorgaan',
-    'checkout_owner_only' => 'Vraag de accounteigenaar om de checkout af te ronden en het abonnement te starten.',
     'subscription_required_title' => 'Wachten op de accounteigenaar',
     'subscription_required_description' => 'Dit account heeft nog geen actief abonnement. Vraag de eigenaar om de checkout af te ronden — je krijgt volledige toegang zodra het actief is.',
     'subscription_required_owner' => 'De accounteigenaar is :name.',

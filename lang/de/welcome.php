@@ -6,7 +6,6 @@ return [
     'title' => 'Was beschreibt dich am besten?',
     'description' => 'Wähle die passende Option, und wir passen dein Erlebnis an.',
     'continue' => 'Weiter',
-    'checkout_owner_only' => 'Bitte den Kontoinhaber, den Checkout abzuschließen und das Abo zu starten.',
     'subscription_required_title' => 'Warten auf den Kontoinhaber',
     'subscription_required_description' => 'Dieses Konto hat noch kein aktives Abo. Bitte den Kontoinhaber, den Checkout abzuschließen — du erhältst vollen Zugriff, sobald es aktiv ist.',
     'subscription_required_owner' => 'Der Kontoinhaber ist :name.',

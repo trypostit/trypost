@@ -6,7 +6,6 @@ return [
     'title' => 'ما الذي يصفك بشكل أفضل؟',
     'description' => 'اختر الخيار الأقرب وسنخصص تجربتك.',
     'continue' => 'متابعة',
-    'checkout_owner_only' => 'اطلب من مالك الحساب إكمال الدفع وبدء الاشتراك.',
     'subscription_required_title' => 'في انتظار مالك الحساب',
     'subscription_required_description' => 'هذا الحساب لا يملك اشتراكًا نشطًا بعد. اطلب من مالك الحساب إكمال الدفع — ستحصل على وصول كامل فور تفعيل الاشتراك.',
     'subscription_required_owner' => 'مالك حسابك هو :name.',
