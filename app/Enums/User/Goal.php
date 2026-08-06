@@ -13,9 +13,6 @@ enum Goal: string
     case GrowAudience = 'grow_audience';
     case DriveSales = 'drive_sales';
     case ManageClients = 'manage_clients';
-    case TeamCollaboration = 'team_collaboration';
-    case AutomateApi = 'automate_api';
-    case TrackPerformance = 'track_performance';
     case JustExploring = 'just_exploring';
     case Other = 'other';
 }

@@ -2,17 +2,14 @@
 import { Head, useForm } from '@inertiajs/vue3';
 import {
     IconCalendar,
-    IconChartBar,
     IconCheck,
     IconClock,
     IconCoin,
     IconCompass,
     IconDots,
     IconPalette,
-    IconRobot,
     IconSparkles,
     IconTrendingUp,
-    IconUsers,
     IconUsersGroup,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
@@ -74,21 +71,6 @@ const goalMeta: Record<
         icon: IconUsersGroup,
         iconClass: 'text-cyan-700',
         badge: 'bg-cyan-100',
-    },
-    team_collaboration: {
-        icon: IconUsers,
-        iconClass: 'text-fuchsia-700',
-        badge: 'bg-fuchsia-100',
-    },
-    automate_api: {
-        icon: IconRobot,
-        iconClass: 'text-teal-700',
-        badge: 'bg-teal-100',
-    },
-    track_performance: {
-        icon: IconChartBar,
-        iconClass: 'text-indigo-700',
-        badge: 'bg-indigo-100',
     },
     just_exploring: {
         icon: IconCompass,
