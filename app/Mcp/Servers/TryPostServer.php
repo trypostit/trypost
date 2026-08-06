@@ -33,12 +33,14 @@ use App\Mcp\Tools\SocialAccount\ListSocialAccountsTool;
 use App\Mcp\Tools\SocialAccount\ToggleSocialAccountTool;
 use App\Mcp\Tools\Workspace\GetWorkspaceTool;
 use Laravel\Mcp\Server;
+use Laravel\Mcp\Server\Attributes\Icon;
 use Laravel\Mcp\Server\Attributes\Instructions;
 use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Attributes\Version;
 
 #[Name('TryPost')]
 #[Version('1.0.0')]
+#[Icon('images/trypost/icon.png', mimeType: 'image/png')]
 #[Instructions('TryPost is a social media scheduling platform. Use this server to manage posts, signatures, labels, social accounts, workspaces, and API keys.')]
 class TryPostServer extends Server
 {
