@@ -10,7 +10,7 @@ use App\Models\Workspace;
  * Wait for a data-testid element to mount and lay out. Pest browser assertions
  * do not auto-wait on SPA paint.
  */
-function waitForTestId(mixed $page, string $testId): void
+function waitForSidebarTestId(mixed $page, string $testId): void
 {
     $page->script(<<<JS
         (async () => {
@@ -41,12 +41,12 @@ test('account owners see account and workspace settings in the sidebar menu', fu
 
     $page = visit(route('app.calendar'));
 
-    waitForTestId($page, 'sidebar-workspace-menu');
+    waitForSidebarTestId($page, 'sidebar-workspace-menu');
 
     $page->assertVisible('@sidebar-workspace-menu')
         ->click('@sidebar-workspace-menu');
 
-    waitForTestId($page, 'logout-button');
+    waitForSidebarTestId($page, 'logout-button');
 
     $page->assertVisible('@sidebar-menu-my-account')
         ->assertVisible('@sidebar-menu-account-settings')
@@ -69,12 +69,12 @@ test('account billing is hidden in the sidebar menu when self-hosted', function 
 
     $page = visit(route('app.calendar'));
 
-    waitForTestId($page, 'sidebar-workspace-menu');
+    waitForSidebarTestId($page, 'sidebar-workspace-menu');
 
     $page->assertVisible('@sidebar-workspace-menu')
         ->click('@sidebar-workspace-menu');
 
-    waitForTestId($page, 'logout-button');
+    waitForSidebarTestId($page, 'logout-button');
 
     $page->assertVisible('@sidebar-menu-my-account')
         ->assertMissing('@sidebar-menu-account-settings')
@@ -104,12 +104,12 @@ test('workspace admins see workspace settings but not account billing', function
 
     $page = visit(route('app.calendar'));
 
-    waitForTestId($page, 'sidebar-workspace-menu');
+    waitForSidebarTestId($page, 'sidebar-workspace-menu');
 
     $page->assertVisible('@sidebar-workspace-menu')
         ->click('@sidebar-workspace-menu');
 
-    waitForTestId($page, 'logout-button');
+    waitForSidebarTestId($page, 'logout-button');
 
     $page->assertVisible('@sidebar-menu-my-account')
         ->assertVisible('@sidebar-menu-workspace-settings')
@@ -140,12 +140,12 @@ test('workspace members do not see account or workspace settings in the sidebar 
 
     $page = visit(route('app.calendar'));
 
-    waitForTestId($page, 'sidebar-workspace-menu');
+    waitForSidebarTestId($page, 'sidebar-workspace-menu');
 
     $page->assertVisible('@sidebar-workspace-menu')
         ->click('@sidebar-workspace-menu');
 
-    waitForTestId($page, 'logout-button');
+    waitForSidebarTestId($page, 'logout-button');
 
     $page->assertVisible('@sidebar-menu-my-account')
         ->assertMissing('@sidebar-menu-account-settings')
