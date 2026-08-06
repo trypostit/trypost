@@ -152,3 +152,39 @@ test('workspace members do not see account or workspace settings in the sidebar 
         ->assertMissing('@sidebar-menu-workspace-settings')
         ->assertVisible('@logout-button');
 });
+
+test('workspace viewers do not see account or workspace settings in the sidebar menu', function () {
+    config(['trypost.self_hosted' => false]);
+
+    [
+        'owner' => $owner,
+        'member' => $viewer,
+        'shared_workspaces' => [$workspace],
+    ] = strandedMemberOnSharedAccount(
+        sharedWorkspaces: 1,
+        attachMember: true,
+        setMemberCurrent: true,
+    );
+
+    $workspace->members()->updateExistingPivot($viewer->id, [
+        'role' => Role::Viewer->value,
+    ]);
+
+    subscribeAccount($owner->account);
+
+    $this->actingAs($viewer->fresh());
+
+    $page = visit(route('app.calendar'));
+
+    waitForSidebarTestId($page, 'sidebar-workspace-menu');
+
+    $page->assertVisible('@sidebar-workspace-menu')
+        ->click('@sidebar-workspace-menu');
+
+    waitForSidebarTestId($page, 'logout-button');
+
+    $page->assertVisible('@sidebar-menu-my-account')
+        ->assertMissing('@sidebar-menu-account-settings')
+        ->assertMissing('@sidebar-menu-workspace-settings')
+        ->assertVisible('@logout-button');
+});
