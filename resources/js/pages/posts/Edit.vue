@@ -476,7 +476,7 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                             @toggle-label="toggleLabel"
                             @update:platform-meta="updatePlatformMeta"
                             @update:platform-content-type="updatePlatformContentType"
-                            @update:publish-mode="(value) => publishMode = value"
+                            @update:publish-mode="(value) => (publishMode.value = value as PostPublishModeValue)"
                         />
                     </div>
                 </div>
