@@ -49,7 +49,7 @@ it('shows the mcp settings page without a subscription in self-hosted mode', fun
             ->where('mcpUrl', route('mcp.trypost')));
 });
 
-it('lists oauth clients as connected across the account, excluding personal access tokens', function (): void {
+it('lists only the current users oauth clients as connected, excluding personal access tokens', function (): void {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
     $member->update(['current_workspace_id' => $this->workspace->id]);
@@ -68,15 +68,11 @@ it('lists oauth clients as connected across the account, excluding personal acce
     $this->actingAs($this->user)
         ->get(route('app.mcp.index'))
         ->assertInertia(fn ($page) => $page
-            ->has('connectedClients', 2)
-            ->where('connectedClients', fn ($clients): bool => collect($clients)->contains(
-                fn (array $client): bool => $client['name'] === 'Owner Agent'
-                    && $client['can_disconnect'] === true
-                    && $client['user_id'] === (string) $this->user->id,
-            ) && collect($clients)->contains(
-                fn (array $client): bool => $client['name'] === 'Member Agent'
-                    && $client['can_disconnect'] === false
-                    && $client['user_name'] === $member->name,
+            ->has('connectedClients', 1)
+            ->where('connectedClients.0.name', 'Owner Agent')
+            ->where('connectedClients.0.can_disconnect', true)
+            ->where('connectedClients', fn ($clients): bool => collect($clients)->every(
+                fn (array $client): bool => $client['name'] !== 'Member Agent',
             )));
 });
 
@@ -88,19 +84,19 @@ it('excludes unscoped oauth grants from connected clients', function (): void {
         ->assertInertia(fn ($page) => $page->where('connectedClients', []));
 });
 
-it('lists viewer oauth grants as connected clients', function (): void {
+it('lists viewer own oauth grants as connected clients', function (): void {
     $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
     $viewer->update(['current_workspace_id' => $this->workspace->id]);
 
     mcpAccessToken($viewer, mcpOauthClient('Viewer Agent'));
 
-    $this->actingAs($this->user)
+    $this->actingAs($viewer->fresh())
         ->get(route('app.mcp.index'))
         ->assertInertia(fn ($page) => $page
             ->has('connectedClients', 1)
             ->where('connectedClients.0.name', 'Viewer Agent')
-            ->where('connectedClients.0.can_disconnect', false));
+            ->where('connectedClients.0.can_disconnect', true));
 });
 
 it('disconnects a client by revoking its tokens', function (): void {
@@ -180,21 +176,17 @@ it('does not flash success when disconnecting an unknown client', function (): v
         ->assertSessionMissing('flash.success');
 });
 
-it('lists a teammates connection but does not allow disconnecting it', function (): void {
+it('does not list a teammates mcp connection', function (): void {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
-    $clientId = mcpOauthClient('Owner Agent');
-    mcpAccessToken($this->user, $clientId);
+    mcpAccessToken($this->user, mcpOauthClient('Owner Agent'));
 
     $this->actingAs($member->fresh())
         ->get(route('app.mcp.index'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->has('connectedClients', 1)
-            ->where('connectedClients.0.name', 'Owner Agent')
-            ->where('connectedClients.0.can_disconnect', false));
+        ->assertInertia(fn ($page) => $page->where('connectedClients', []));
 });
 
 it('allows workspace members to view and disconnect their own mcp clients', function (): void {

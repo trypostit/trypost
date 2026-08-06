@@ -18,8 +18,6 @@ import { disconnect as mcpDisconnect } from '@/routes/app/mcp';
 interface ConnectedClient {
     client_id: string;
     name: string;
-    user_id: string;
-    user_name: string;
     can_disconnect: boolean;
     last_used_at: string | null;
 }
@@ -100,7 +98,7 @@ onUnmounted(() => {
                     <div v-else class="grid gap-3">
                         <div
                             v-for="client in connectedClients"
-                            :key="`${client.client_id}:${client.user_id}`"
+                            :key="client.client_id"
                             class="flex items-center justify-between gap-4 rounded-xl border-2 border-foreground bg-card px-4 py-3 shadow-2xs"
                             :data-testid="`mcp-connected-client-${client.client_id}`"
                         >
@@ -115,16 +113,6 @@ onUnmounted(() => {
                                     <span class="truncate">{{
                                         client.name
                                     }}</span>
-                                </p>
-                                <p
-                                    v-if="client.user_name"
-                                    class="truncate text-xs font-medium text-foreground/60"
-                                >
-                                    {{
-                                        $t('mcp.connected_by', {
-                                            name: client.user_name,
-                                        })
-                                    }}
                                 </p>
                                 <p
                                     class="text-xs font-medium text-foreground/60"

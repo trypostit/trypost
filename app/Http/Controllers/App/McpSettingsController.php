@@ -22,7 +22,7 @@ class McpSettingsController extends Controller
 
         return Inertia::render('settings/workspace/Mcp', [
             'mcpUrl' => route('mcp.trypost'),
-            'connectedClients' => ListConnectedMcpClients::forAccount($workspace->account_id, $user),
+            'connectedClients' => ListConnectedMcpClients::forUser($user),
         ]);
     }
 
