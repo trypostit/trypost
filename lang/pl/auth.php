@@ -71,6 +71,8 @@ return [
         'page_title' => 'Zaloguj się',
         'email' => 'Adres e-mail',
         'password' => 'Hasło',
+        'show_password' => 'Pokaż hasło',
+        'hide_password' => 'Ukryj hasło',
         'forgot_password' => 'Nie pamiętasz hasła?',
         'remember_me' => 'Zapamiętaj mnie',
         'submit' => 'Zaloguj się',

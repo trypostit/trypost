@@ -71,6 +71,8 @@ return [
         'page_title' => '登录',
         'email' => '邮箱地址',
         'password' => '密码',
+        'show_password' => '显示密码',
+        'hide_password' => '隐藏密码',
         'forgot_password' => '忘记密码？',
         'remember_me' => '记住我',
         'submit' => '登录',

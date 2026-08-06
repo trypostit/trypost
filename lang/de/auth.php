@@ -73,6 +73,8 @@ return [
         'page_title' => 'Anmelden',
         'email' => 'E-Mail-Adresse',
         'password' => 'Passwort',
+        'show_password' => 'Passwort anzeigen',
+        'hide_password' => 'Passwort verbergen',
         'forgot_password' => 'Passwort vergessen?',
         'remember_me' => 'Angemeldet bleiben',
         'submit' => 'Anmelden',

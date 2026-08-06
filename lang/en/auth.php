@@ -71,6 +71,8 @@ return [
         'page_title' => 'Log in',
         'email' => 'Email address',
         'password' => 'Password',
+        'show_password' => 'Show password',
+        'hide_password' => 'Hide password',
         'forgot_password' => 'Forgot password?',
         'remember_me' => 'Remember me',
         'submit' => 'Log in',

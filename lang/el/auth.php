@@ -71,6 +71,8 @@ return [
         'page_title' => 'Σύνδεση',
         'email' => 'Διεύθυνση email',
         'password' => 'Κωδικός πρόσβασης',
+        'show_password' => 'Εμφάνιση κωδικού',
+        'hide_password' => 'Απόκρυψη κωδικού',
         'forgot_password' => 'Ξεχάσατε τον κωδικό;',
         'remember_me' => 'Να με θυμάσαι',
         'submit' => 'Σύνδεση',

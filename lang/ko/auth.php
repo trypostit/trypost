@@ -71,6 +71,8 @@ return [
         'page_title' => '로그인',
         'email' => '이메일 주소',
         'password' => '비밀번호',
+        'show_password' => '비밀번호 표시',
+        'hide_password' => '비밀번호 숨기기',
         'forgot_password' => '비밀번호를 잊으셨나요?',
         'remember_me' => '로그인 상태 유지',
         'submit' => '로그인',

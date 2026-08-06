@@ -71,6 +71,8 @@ return [
         'page_title' => 'Inloggen',
         'email' => 'E-mailadres',
         'password' => 'Wachtwoord',
+        'show_password' => 'Wachtwoord tonen',
+        'hide_password' => 'Wachtwoord verbergen',
         'forgot_password' => 'Wachtwoord vergeten?',
         'remember_me' => 'Ingelogd blijven',
         'submit' => 'Inloggen',

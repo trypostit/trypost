@@ -71,6 +71,8 @@ return [
         'page_title' => 'Вхід',
         'email' => 'Адреса email',
         'password' => 'Пароль',
+        'show_password' => 'Показати пароль',
+        'hide_password' => 'Приховати пароль',
         'forgot_password' => 'Забули пароль?',
         'remember_me' => 'Запам’ятати мене',
         'submit' => 'Увійти',

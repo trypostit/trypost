@@ -71,6 +71,8 @@ return [
         'page_title' => 'ログイン',
         'email' => 'メールアドレス',
         'password' => 'パスワード',
+        'show_password' => 'パスワードを表示',
+        'hide_password' => 'パスワードを隠す',
         'forgot_password' => 'パスワードをお忘れですか？',
         'remember_me' => 'ログイン状態を保持',
         'submit' => 'ログイン',
