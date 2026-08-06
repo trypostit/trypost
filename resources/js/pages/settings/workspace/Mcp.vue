@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, usePoll } from '@inertiajs/vue3';
 import { IconExternalLink } from '@tabler/icons-vue';
-import { onMounted, onUnmounted, ref } from 'vue';
+import { ref } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
@@ -31,28 +31,16 @@ const docsUrl = 'https://docs.trypost.it/ai/introduction';
 const tabs = useWorkspaceSettingsTabs();
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
+usePoll(1000, {
+    only: ['connectedClients'],
+});
+
 const confirmDisconnect = (client: ConnectedClient): void => {
     deleteModal.value?.open({
         url: mcpDisconnect.url({ client: client.client_id }),
         confirmText: client.name,
     });
 };
-
-const refreshConnectedClients = (): void => {
-    if (document.visibilityState === 'visible') {
-        router.reload({ only: ['connectedClients'] });
-    }
-};
-
-onMounted(() => {
-    window.addEventListener('focus', refreshConnectedClients);
-    document.addEventListener('visibilitychange', refreshConnectedClients);
-});
-
-onUnmounted(() => {
-    window.removeEventListener('focus', refreshConnectedClients);
-    document.removeEventListener('visibilitychange', refreshConnectedClients);
-});
 </script>
 
 <template>
