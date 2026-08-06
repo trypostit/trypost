@@ -47,7 +47,6 @@ return [
         'signatures' => '签名',
         'labels' => '标签',
         'assets' => '素材库',
-        'settings' => '设置',
         'api_keys' => 'API 密钥',
     ],
 

@@ -47,7 +47,6 @@ return [
         'signatures' => 'Sygnatury',
         'labels' => 'Etykiety',
         'assets' => 'Zasoby',
-        'settings' => 'Ustawienia',
         'api_keys' => 'Klucze API',
     ],
 

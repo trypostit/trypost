@@ -47,7 +47,6 @@ return [
         'signatures' => 'التوقيعات',
         'labels' => 'التسميات',
         'assets' => 'الوسائط',
-        'settings' => 'الإعدادات',
         'api_keys' => 'مفاتيح API',
     ],
 

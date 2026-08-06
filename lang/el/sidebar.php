@@ -47,7 +47,6 @@ return [
         'signatures' => 'Υπογραφές',
         'labels' => 'Ετικέτες',
         'assets' => 'Στοιχεία',
-        'settings' => 'Ρυθμίσεις',
         'api_keys' => 'Κλειδιά API',
     ],
 

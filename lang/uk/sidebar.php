@@ -47,7 +47,6 @@ return [
         'signatures' => 'Підписи',
         'labels' => 'Мітки',
         'assets' => 'Медіафайли',
-        'settings' => 'Налаштування',
         'api_keys' => 'API-ключі',
     ],
 

@@ -17,7 +17,6 @@ import {
     IconPencil,
     IconPhoto,
     IconSelector,
-    IconSettings,
     IconTag,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
@@ -55,7 +54,6 @@ import { index as automations } from '@/routes/app/automations';
 import { portal } from '@/routes/app/billing';
 import { index as labels } from '@/routes/app/labels';
 import { index as signatures } from '@/routes/app/signatures';
-import { settings as workspaceSettings } from '@/routes/app/workspace';
 import type { NavItem, User } from '@/types';
 
 interface Workspace {
@@ -80,7 +78,6 @@ const {
     canCreatePost,
     canManageAccounts,
     canManageAutomations,
-    canManageWorkspace,
     canCreateWorkspace,
 } = useWorkspaceRole();
 const { isMobile } = useSidebar();
@@ -162,15 +159,6 @@ const workspaceNavItems = computed<NavItem[]>(() => [
                   title: trans('sidebar.workspace.assets'),
                   href: assets.url(),
                   icon: IconPhoto,
-              },
-          ]
-        : []),
-    ...(canManageWorkspace.value
-        ? [
-              {
-                  title: trans('sidebar.workspace.settings'),
-                  href: workspaceSettings.url(),
-                  icon: IconSettings,
               },
           ]
         : []),

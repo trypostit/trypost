@@ -47,7 +47,6 @@ return [
         'signatures' => 'Подписи',
         'labels' => 'Метки',
         'assets' => 'Медиафайлы',
-        'settings' => 'Настройки',
         'api_keys' => 'API-ключи',
     ],
 

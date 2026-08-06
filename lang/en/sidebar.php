@@ -47,7 +47,6 @@ return [
         'signatures' => 'Signatures',
         'labels' => 'Labels',
         'assets' => 'Assets',
-        'settings' => 'Settings',
         'api_keys' => 'API Keys',
     ],
 

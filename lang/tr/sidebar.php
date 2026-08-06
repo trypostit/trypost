@@ -47,7 +47,6 @@ return [
         'signatures' => 'İmzalar',
         'labels' => 'Etiketler',
         'assets' => 'Varlıklar',
-        'settings' => 'Ayarlar',
         'api_keys' => 'API Anahtarları',
     ],
 
