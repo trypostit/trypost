@@ -575,6 +575,9 @@ return [
         'account_disconnected' => '소셜 계정 연결이 해제되었습니다',
         'account_inactive' => '소셜 계정이 비활성화되었습니다',
         'account_token_expired' => '소셜 계정 세션이 만료되었습니다 — 재연결하세요',
+        'platform_unavailable' => '플랫폼을 일시적으로 사용할 수 없습니다. 곧 다시 시도합니다.',
+        'platform_unavailable_exhausted' => '여러 번 재시도했지만 플랫폼을 사용할 수 없었습니다. 나중에 다시 시도하세요.',
+        'publishing_timed_out' => '게시에 시간이 초과되었습니다. 다시 시도하세요.',
     ],
 
     'delete' => [

@@ -575,6 +575,9 @@ return [
         'account_disconnected' => 'Konto społecznościowe jest rozłączone',
         'account_inactive' => 'Konto społecznościowe jest dezaktywowane',
         'account_token_expired' => 'Sesja konta społecznościowego wygasła — połącz ponownie',
+        'platform_unavailable' => 'Platforma jest tymczasowo niedostępna. Spróbujemy ponownie wkrótce.',
+        'platform_unavailable_exhausted' => 'Platforma pozostała niedostępna po kilku próbach. Spróbuj ponownie później.',
+        'publishing_timed_out' => 'Publikowanie przekroczyło limit czasu. Spróbuj ponownie.',
     ],
 
     'delete' => [

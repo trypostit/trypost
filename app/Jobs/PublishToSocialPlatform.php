@@ -31,29 +31,42 @@ use App\Services\Social\ThreadsPublisher;
 use App\Services\Social\TikTokPublisher;
 use App\Services\Social\XPublisher;
 use App\Services\Social\YouTubePublisher;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 
-class PublishToSocialPlatform implements ShouldQueue
+class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
     public int $tries = 1;
 
-    public int $timeout = 600; // 10 minutes — large video uploads need time
+    /** Download/upload + Pinterest poll headroom; keep Horizon/Redis timeouts above this. */
+    public int $timeout = 900;
 
-    public function __construct(public PostPlatform $postPlatform)
-    {
+    public int $uniqueFor = 960;
+
+    /** Max platform-unavailable reschedules (~1 hour at 10 min each). */
+    public const MAX_PLATFORM_UNAVAILABLE_RETRIES = 6;
+
+    public function __construct(
+        public PostPlatform $postPlatform,
+        public int $uniqueAttempt = 0,
+    ) {
         $this->onQueue($postPlatform->platform->queue());
+    }
+
+    public function uniqueId(): string
+    {
+        return "{$this->postPlatform->id}:{$this->uniqueAttempt}";
     }
 
     public function handle(): void
     {
-        // Idempotency: skip if already published (prevents duplicate posts on retry)
         $this->postPlatform->refresh();
 
-        if ($this->postPlatform->status === PostPlatformStatus::Published) {
+        if ($this->isTerminal()) {
             return;
         }
 
@@ -193,30 +206,57 @@ class PublishToSocialPlatform implements ShouldQueue
 
     private function rescheduleForRetry(PlatformUnavailableException $e): void
     {
-        $retryCount = (int) ($this->postPlatform->error_context['retry_count'] ?? 0) + 1;
+        $retryCount = (int) data_get($this->postPlatform->error_context, 'retry_count', 0) + 1;
+        $context = [
+            'category' => 'platform_unavailable',
+            'http_status' => $e->httpStatus,
+            'retry_count' => $retryCount,
+            'detail' => $e->getMessage(),
+        ];
+
+        if ($retryCount > self::MAX_PLATFORM_UNAVAILABLE_RETRIES) {
+            Log::warning('Publish retries exhausted: platform unavailable', [
+                'post_platform_id' => $this->postPlatform->id,
+                'platform' => $this->postPlatform->platform->value,
+                ...$context,
+            ]);
+
+            $this->postPlatform->markAsFailed(
+                __('posts.errors.platform_unavailable_exhausted'),
+                [...$context, 'failed_at' => now()->toIso8601String()],
+            );
+
+            return;
+        }
+
         $nextAttemptAt = now()->addMinutes(10);
 
         Log::warning('Publish rescheduled: platform unavailable', [
             'post_platform_id' => $this->postPlatform->id,
             'platform' => $this->postPlatform->platform->value,
-            'retry_count' => $retryCount,
             'next_attempt_at' => $nextAttemptAt->toIso8601String(),
-            'error' => $e->getMessage(),
+            ...$context,
         ]);
 
         $this->postPlatform->update([
             'status' => PostPlatformStatus::Retrying,
-            'error_message' => $e->getMessage(),
+            'error_message' => __('posts.errors.platform_unavailable'),
             'error_context' => [
-                'category' => 'platform_unavailable',
-                'http_status' => $e->httpStatus,
-                'retry_count' => $retryCount,
+                ...$context,
                 'last_attempt_at' => now()->toIso8601String(),
                 'next_attempt_at' => $nextAttemptAt->toIso8601String(),
             ],
         ]);
 
-        self::dispatch($this->postPlatform)->delay($nextAttemptAt);
+        self::dispatch($this->postPlatform, $retryCount)->delay($nextAttemptAt);
+    }
+
+    private function isTerminal(): bool
+    {
+        return in_array($this->postPlatform->status, [
+            PostPlatformStatus::Published,
+            PostPlatformStatus::Failed,
+        ], true);
     }
 
     private function broadcastStatus(): void
@@ -319,17 +359,19 @@ class PublishToSocialPlatform implements ShouldQueue
 
         $this->postPlatform->refresh();
 
-        if ($this->postPlatform->status !== PostPlatformStatus::Published) {
-            $this->postPlatform->markAsFailed(
-                $exception ? $this->safeFailureMessage($exception) : 'Unknown error',
-                [
-                    'category' => 'job_failed',
-                    'failed_at' => now()->toIso8601String(),
-                ]
-            );
-            $this->updatePostStatus();
-            $this->broadcastStatus();
+        if ($this->isTerminal()) {
+            return;
         }
+
+        $this->postPlatform->markAsFailed(
+            $exception ? $this->safeFailureMessage($exception) : 'Unknown error',
+            [
+                'category' => 'job_failed',
+                'failed_at' => now()->toIso8601String(),
+            ]
+        );
+        $this->updatePostStatus();
+        $this->broadcastStatus();
     }
 
     private function notifyFailure(Post $post): void

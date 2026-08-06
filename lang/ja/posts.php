@@ -575,6 +575,9 @@ return [
         'account_disconnected' => 'ソーシャルアカウントの接続が解除されています',
         'account_inactive' => 'ソーシャルアカウントが無効化されています',
         'account_token_expired' => 'ソーシャルアカウントのセッションの有効期限が切れました — 再接続してください',
+        'platform_unavailable' => 'プラットフォームが一時的に利用できません。まもなく再試行します。',
+        'platform_unavailable_exhausted' => '何度か再試行しましたがプラットフォームが利用できませんでした。後でもう一度お試しください。',
+        'publishing_timed_out' => '公開がタイムアウトしました。もう一度お試しください。',
     ],
 
     'delete' => [

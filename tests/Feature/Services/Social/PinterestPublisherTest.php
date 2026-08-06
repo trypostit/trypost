@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\PlatformUnavailableException;
+use App\Exceptions\Social\PinterestPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -12,7 +14,9 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\PinterestPublisher;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -950,4 +954,355 @@ test('pinterest publisher throws exception for unsupported content type', functi
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(Exception::class, 'Unsupported content type');
+});
+
+test('pinterest publisher waits through pending video processing before creating the pin', function () {
+    Sleep::fake();
+
+    $this->postPlatform->update(['content_type' => ContentType::PinterestVideoPin]);
+
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/video.mp4',
+            'url' => 'https://example.com/media/2026-01/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+
+    $s3UploadUrl = 'https://pinterest-media-upload.s3.amazonaws.com/upload';
+    $statusChecks = 0;
+
+    Http::fake(function ($request) use ($s3UploadUrl, &$statusChecks) {
+        $url = $request->url();
+
+        if (str_contains($url, '/v5/media') && $request->method() === 'POST') {
+            return Http::response([
+                'media_id' => 'media_video_pending',
+                'upload_url' => $s3UploadUrl,
+                'upload_parameters' => [],
+            ], 201);
+        }
+
+        if ($url === $s3UploadUrl) {
+            return Http::response('', 204);
+        }
+
+        if (str_contains($url, '/v5/media/media_video_pending')) {
+            $statusChecks++;
+
+            return Http::response([
+                'status' => $statusChecks < 3 ? 'processing' : 'succeeded',
+            ], 200);
+        }
+
+        if (str_contains($url, '/v5/pins')) {
+            return Http::response(['id' => 'video_pin_after_wait'], 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('video_pin_after_wait')
+        ->and($statusChecks)->toBe(3);
+
+    Sleep::assertSleptTimes(2);
+});
+
+test('pinterest publisher treats video processing timeout as platform unavailable for retry', function () {
+    Sleep::fake();
+
+    $this->postPlatform->update(['content_type' => ContentType::PinterestVideoPin]);
+
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/video.mp4',
+            'url' => 'https://example.com/media/2026-01/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+
+    $s3UploadUrl = 'https://pinterest-media-upload.s3.amazonaws.com/upload';
+
+    Http::fake(function ($request) use ($s3UploadUrl) {
+        $url = $request->url();
+
+        if (str_contains($url, '/v5/media') && $request->method() === 'POST') {
+            return Http::response([
+                'media_id' => 'media_video_timeout',
+                'upload_url' => $s3UploadUrl,
+                'upload_parameters' => [],
+            ], 201);
+        }
+
+        if ($url === $s3UploadUrl) {
+            return Http::response('', 204);
+        }
+
+        if (str_contains($url, '/v5/media/media_video_timeout')) {
+            return Http::response(['status' => 'processing'], 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(PlatformUnavailableException::class, 'Pinterest media processing timeout after 60 attempts');
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/v5/pins'));
+    Sleep::assertSleptTimes(59);
+});
+
+test('pinterest publisher fails hard when video processing reports failed', function () {
+    Sleep::fake();
+
+    $this->postPlatform->update(['content_type' => ContentType::PinterestVideoPin]);
+
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/video.mp4',
+            'url' => 'https://example.com/media/2026-01/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+
+    $s3UploadUrl = 'https://pinterest-media-upload.s3.amazonaws.com/upload';
+
+    Http::fake(function ($request) use ($s3UploadUrl) {
+        $url = $request->url();
+
+        if (str_contains($url, '/v5/media') && $request->method() === 'POST') {
+            return Http::response([
+                'media_id' => 'media_video_failed',
+                'upload_url' => $s3UploadUrl,
+                'upload_parameters' => [],
+            ], 201);
+        }
+
+        if ($url === $s3UploadUrl) {
+            return Http::response('', 204);
+        }
+
+        if (str_contains($url, '/v5/media/media_video_failed')) {
+            return Http::response([
+                'status' => 'failed',
+                'failure_code' => 'VIDEO_TOO_LONG',
+            ], 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(PinterestPublishException::class, 'Pinterest media processing failed: VIDEO_TOO_LONG');
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/v5/pins'));
+    Sleep::assertNeverSlept();
+});
+
+test('pinterest publisher treats media status 401 as token expired', function () {
+    Sleep::fake();
+
+    $this->postPlatform->update(['content_type' => ContentType::PinterestVideoPin]);
+
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/video.mp4',
+            'url' => 'https://example.com/media/2026-01/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+
+    $s3UploadUrl = 'https://pinterest-media-upload.s3.amazonaws.com/upload';
+
+    Http::fake(function ($request) use ($s3UploadUrl) {
+        $url = $request->url();
+
+        if (str_contains($url, '/v5/media') && $request->method() === 'POST') {
+            return Http::response([
+                'media_id' => 'media_video_401',
+                'upload_url' => $s3UploadUrl,
+                'upload_parameters' => [],
+            ], 201);
+        }
+
+        if ($url === $s3UploadUrl) {
+            return Http::response('', 204);
+        }
+
+        if (str_contains($url, '/v5/media/media_video_401')) {
+            return Http::response(['message' => 'Access token has expired or been revoked'], 401);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(TokenExpiredException::class, 'Access token has expired or been revoked');
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/v5/pins'));
+    Sleep::assertNeverSlept();
+});
+
+test('pinterest publisher keeps polling through transient media status http errors', function () {
+    Sleep::fake();
+
+    $this->postPlatform->update(['content_type' => ContentType::PinterestVideoPin]);
+
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/video.mp4',
+            'url' => 'https://example.com/media/2026-01/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+
+    $s3UploadUrl = 'https://pinterest-media-upload.s3.amazonaws.com/upload';
+    $statusChecks = 0;
+
+    Http::fake(function ($request) use ($s3UploadUrl, &$statusChecks) {
+        $url = $request->url();
+
+        if (str_contains($url, '/v5/media') && $request->method() === 'POST') {
+            return Http::response([
+                'media_id' => 'media_video_5xx',
+                'upload_url' => $s3UploadUrl,
+                'upload_parameters' => [],
+            ], 201);
+        }
+
+        if ($url === $s3UploadUrl) {
+            return Http::response('', 204);
+        }
+
+        if (str_contains($url, '/v5/media/media_video_5xx')) {
+            $statusChecks++;
+
+            if ($statusChecks < 3) {
+                return Http::response(['message' => 'temporary error'], 503);
+            }
+
+            return Http::response(['status' => 'succeeded'], 200);
+        }
+
+        if (str_contains($url, '/v5/pins')) {
+            return Http::response(['id' => 'video_pin_after_5xx'], 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('video_pin_after_5xx')
+        ->and($statusChecks)->toBe(3);
+
+    Sleep::assertSleptTimes(2);
+});
+
+test('pinterest publisher treats unknown media status as still processing until timeout', function (string $status) {
+    Sleep::fake();
+
+    $this->postPlatform->update(['content_type' => ContentType::PinterestVideoPin]);
+
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/video.mp4',
+            'url' => 'https://example.com/media/2026-01/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+
+    $s3UploadUrl = 'https://pinterest-media-upload.s3.amazonaws.com/upload';
+
+    Http::fake(function ($request) use ($s3UploadUrl, $status) {
+        $url = $request->url();
+
+        if (str_contains($url, '/v5/media') && $request->method() === 'POST') {
+            return Http::response([
+                'media_id' => 'media_video_unknown',
+                'upload_url' => $s3UploadUrl,
+                'upload_parameters' => [],
+            ], 201);
+        }
+
+        if ($url === $s3UploadUrl) {
+            return Http::response('', 204);
+        }
+
+        if (str_contains($url, '/v5/media/media_video_unknown')) {
+            return Http::response(['status' => $status], 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(PlatformUnavailableException::class, 'Pinterest media processing timeout after 60 attempts');
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/v5/pins'));
+    Sleep::assertSleptTimes(59);
+})->with([
+    'registered',
+    'not_a_real_status',
+    '',
+]);
+
+test('pinterest publisher treats media status connection errors as platform unavailable', function () {
+    Sleep::fake();
+
+    $this->postPlatform->update(['content_type' => ContentType::PinterestVideoPin]);
+
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/video.mp4',
+            'url' => 'https://example.com/media/2026-01/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+
+    $s3UploadUrl = 'https://pinterest-media-upload.s3.amazonaws.com/upload';
+
+    Http::fake(function ($request) use ($s3UploadUrl) {
+        $url = $request->url();
+
+        if (str_contains($url, '/v5/media') && $request->method() === 'POST') {
+            return Http::response([
+                'media_id' => 'media_video_conn',
+                'upload_url' => $s3UploadUrl,
+                'upload_parameters' => [],
+            ], 201);
+        }
+
+        if ($url === $s3UploadUrl) {
+            return Http::response('', 204);
+        }
+
+        if (str_contains($url, '/v5/media/media_video_conn')) {
+            throw new ConnectionException('cURL error 28: Connection timed out');
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(PlatformUnavailableException::class, 'Pinterest media status check connection failed');
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/v5/pins'));
+    Sleep::assertNeverSlept();
 });

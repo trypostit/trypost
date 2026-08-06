@@ -575,6 +575,9 @@ return [
         'account_disconnected' => 'Social account is losgekoppeld',
         'account_inactive' => 'Social account is gedeactiveerd',
         'account_token_expired' => 'Sessie van social account verlopen — koppel opnieuw',
+        'platform_unavailable' => 'Het platform is tijdelijk niet beschikbaar. We proberen het zo opnieuw.',
+        'platform_unavailable_exhausted' => 'Het platform bleef na meerdere pogingen niet beschikbaar. Probeer het later opnieuw.',
+        'publishing_timed_out' => 'Publiceren is timed-out. Probeer het opnieuw.',
     ],
 
     'delete' => [

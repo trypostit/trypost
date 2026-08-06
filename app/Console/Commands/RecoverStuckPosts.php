@@ -23,25 +23,33 @@ class RecoverStuckPosts extends Command
             ->where('status', PostStatus::Publishing)
             ->where('updated_at', '<=', now()->subHour())
             ->each(function (Post $post) use (&$count) {
-                // Mark stuck platforms as failed
                 $post->postPlatforms()
                     ->where('enabled', true)
-                    ->whereIn('status', [PlatformStatus::Publishing, PlatformStatus::Pending])
+                    ->whereIn('status', [PlatformStatus::Publishing, PlatformStatus::Pending, PlatformStatus::Retrying])
                     ->where('updated_at', '<=', now()->subHour())
                     ->update([
                         'status' => PlatformStatus::Failed,
-                        'error_message' => 'Publishing timed out. Please try again.',
-                        'error_context' => json_encode([
+                        'error_message' => __('posts.errors.publishing_timed_out'),
+                        'error_context' => [
                             'category' => 'timeout',
                             'failed_at' => now()->toIso8601String(),
-                        ]),
+                        ],
                     ]);
 
-                // Recalculate post status
+                // Delayed platform-unavailable retries keep the platform Retrying with a
+                // fresh updated_at — do not finalize the post while that work is still live.
+                $stillActive = $post->postPlatforms()
+                    ->where('enabled', true)
+                    ->whereIn('status', [PlatformStatus::Publishing, PlatformStatus::Pending, PlatformStatus::Retrying])
+                    ->exists();
+
+                if ($stillActive) {
+                    return;
+                }
+
                 $enabledPlatforms = $post->postPlatforms()->where('enabled', true)->get();
                 $total = $enabledPlatforms->count();
                 $publishedCount = $enabledPlatforms->where('status', PlatformStatus::Published)->count();
-                $failedCount = $enabledPlatforms->where('status', PlatformStatus::Failed)->count();
 
                 if ($publishedCount === $total) {
                     $post->markAsPublished();

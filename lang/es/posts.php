@@ -575,6 +575,9 @@ return [
         'account_disconnected' => 'Cuenta social desconectada',
         'account_inactive' => 'Cuenta social desactivada',
         'account_token_expired' => 'Sesión de la cuenta social expirada — reconecta la cuenta',
+        'platform_unavailable' => 'La plataforma no está disponible temporalmente. Reintentaremos en breve.',
+        'platform_unavailable_exhausted' => 'La plataforma siguió sin estar disponible tras varios reintentos. Inténtalo de nuevo más tarde.',
+        'publishing_timed_out' => 'La publicación agotó el tiempo de espera. Inténtalo de nuevo.',
     ],
 
     'delete' => [

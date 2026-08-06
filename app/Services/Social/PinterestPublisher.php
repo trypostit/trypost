@@ -5,17 +5,21 @@ declare(strict_types=1);
 namespace App\Services\Social;
 
 use App\Enums\Media\Type as MediaType;
+use App\Enums\Pinterest\MediaUploadStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\PinterestPublishException;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 
 class PinterestPublisher
 {
@@ -320,45 +324,69 @@ class PinterestPublisher
         return $this->createPin($account, $payload, 'Pinterest carousel creation failed');
     }
 
-    private function waitForMediaProcessing(SocialAccount $account, string $mediaId, int $maxAttempts = 30): void
+    /** @throws PlatformUnavailableException|PinterestPublishException */
+    private function waitForMediaProcessing(SocialAccount $account, string $mediaId): void
     {
+        $maxAttempts = 60;
+        $pollSeconds = 5;
+        $lastStatus = null;
+
         for ($i = 0; $i < $maxAttempts; $i++) {
-            $response = $this->socialHttp()->withToken($account->access_token)
-                ->get($this->baseUrl."/media/{$mediaId}");
+            if ($i > 0) {
+                Sleep::for($pollSeconds)->seconds();
+            }
+
+            try {
+                $response = $this->socialHttp()->withToken($account->access_token)
+                    ->get($this->baseUrl."/media/{$mediaId}");
+            } catch (ConnectionException $e) {
+                throw new PlatformUnavailableException(
+                    "Pinterest media status check connection failed (media_id={$mediaId}): {$e->getMessage()}",
+                );
+            }
 
             if ($response->failed()) {
+                if ($response->status() === 401) {
+                    $this->handleApiError($response);
+                }
+
                 Log::warning('Pinterest media status check failed', [
                     'media_id' => $mediaId,
-                    'attempt' => $i,
+                    'attempt' => $i + 1,
+                    'status_code' => $response->status(),
                     'body' => $this->redactResponseBody($response->body()),
                 ]);
-                sleep(3);
 
                 continue;
             }
 
             $data = $response->json();
-            $status = data_get($data, 'status', 'unknown');
+            $lastStatus = MediaUploadStatus::tryFrom((string) data_get($data, 'status', ''));
 
-            if ($status === 'succeeded') {
+            if ($lastStatus === MediaUploadStatus::Succeeded) {
                 return;
             }
 
-            if ($status === 'failed') {
+            if ($lastStatus === MediaUploadStatus::Failed) {
                 $failureCode = data_get($data, 'failure_code', 'unknown');
                 throw new PinterestPublishException(
                     userMessage: "Pinterest media processing failed: {$failureCode}",
                     category: ErrorCategory::ServerError,
                     platformErrorCode: (string) $failureCode,
+                    rawResponse: $response->body(),
                 );
             }
-
-            sleep(3);
         }
 
-        throw new PinterestPublishException(
-            userMessage: "Pinterest media processing timeout after {$maxAttempts} attempts",
-            category: ErrorCategory::ServerError,
+        Log::warning('Pinterest media processing timeout', [
+            'media_id' => $mediaId,
+            'attempts' => $maxAttempts,
+            'last_status' => $lastStatus?->value,
+            'poll_seconds' => $pollSeconds,
+        ]);
+
+        throw new PlatformUnavailableException(
+            "Pinterest media processing timeout after {$maxAttempts} attempts (media_id={$mediaId}, last_status=".($lastStatus?->value ?? 'unknown').')',
         );
     }
 
