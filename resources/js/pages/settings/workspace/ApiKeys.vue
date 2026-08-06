@@ -27,12 +27,11 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useWorkspaceSettingsTabs } from '@/composables/useWorkspaceSettingsTabs';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { copyToClipboard } from '@/lib/utils';
-import { members as membersRoute } from '@/routes/app';
-import { index as apiKeysRoute } from '@/routes/app/api-keys';
-import { brand as brandRoute, settings as workspaceSettings } from '@/routes/app/workspace';
+
 interface ApiToken {
     id: string;
     name: string;
@@ -48,17 +47,19 @@ interface Props {
 defineProps<Props>();
 
 const page = usePage();
-const newToken = computed(() => (page.props.flash as Record<string, unknown>)?.plainToken as string | undefined);
+const newToken = computed(
+    () =>
+        (page.props.flash as Record<string, unknown>)?.plainToken as
+            | string
+            | undefined,
+);
 
 const createDialogOpen = ref(false);
-const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
+const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(
+    null,
+);
 
-const tabs = computed(() => [
-    { name: 'workspace', label: trans('settings.workspace.tabs.workspace'), href: workspaceSettings.url() },
-    { name: 'brand', label: trans('settings.workspace.tabs.brand'), href: brandRoute.url() },
-    { name: 'members', label: trans('settings.workspace.tabs.users'), href: membersRoute.url() },
-    { name: 'api-keys', label: trans('settings.workspace.tabs.api_keys'), href: apiKeysRoute.url() },
-]);
+const tabs = useWorkspaceSettingsTabs();
 </script>
 
 <template>
@@ -69,11 +70,13 @@ const tabs = computed(() => [
             <PageHeader
                 :title="$t('settings.hub.title')"
                 :description="$t('settings.hub.description')"
-                />
+            />
 
             <SettingsTabsNav :tabs="tabs" active="api-keys" />
 
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div
+                class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+            >
                 <HeadingSmall
                     :title="$t('settings.api_keys.heading')"
                     :description="$t('settings.api_keys.description')"
@@ -92,13 +95,15 @@ const tabs = computed(() => [
                     {{ $t('settings.api_keys.new_token_message') }}
                 </p>
                 <div class="flex items-stretch gap-2">
-                    <code class="flex h-9 min-w-0 flex-1 items-center rounded-md border-2 border-foreground bg-card px-3 font-mono text-sm font-bold text-foreground shadow-2xs">
+                    <code
+                        class="flex h-9 min-w-0 flex-1 items-center rounded-md border-2 border-foreground bg-card px-3 font-mono text-sm font-bold text-foreground shadow-2xs"
+                    >
                         <span class="block truncate">{{ newToken }}</span>
                     </code>
                     <Button
                         variant="outline"
                         class="shrink-0"
-                        @click="copyToClipboard(newToken!, trans('settings.api_keys.copy_success'))"
+                        @click="copyToClipboard(newToken!)"
                     >
                         <IconCopy class="size-4" />
                         {{ $t('settings.api_keys.copy') }}
@@ -110,9 +115,15 @@ const tabs = computed(() => [
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>{{ $t('settings.api_keys.table.name') }}</TableHead>
-                            <TableHead>{{ $t('settings.api_keys.table.expires') }}</TableHead>
-                            <TableHead>{{ $t('settings.api_keys.table.last_used') }}</TableHead>
+                            <TableHead>{{
+                                $t('settings.api_keys.table.name')
+                            }}</TableHead>
+                            <TableHead>{{
+                                $t('settings.api_keys.table.expires')
+                            }}</TableHead>
+                            <TableHead>{{
+                                $t('settings.api_keys.table.last_used')
+                            }}</TableHead>
                             <TableHead class="w-10" />
                         </TableRow>
                     </TableHeader>
@@ -120,32 +131,66 @@ const tabs = computed(() => [
                         <TableRow v-for="token in apiTokens" :key="token.id">
                             <TableCell>{{ token.name }}</TableCell>
                             <TableCell>
-                                {{ token.expires_at ? date.formatDateOnly(token.expires_at) : $t('settings.api_keys.table.never') }}
+                                {{
+                                    token.expires_at
+                                        ? date.formatDate(token.expires_at)
+                                        : $t('settings.api_keys.table.never')
+                                }}
                             </TableCell>
                             <TableCell>
-                                {{ token.last_used_at ? date.diffForHumans(token.last_used_at) : $t('settings.api_keys.table.never') }}
+                                {{
+                                    token.last_used_at
+                                        ? date.diffForHumans(token.last_used_at)
+                                        : $t('settings.api_keys.table.never')
+                                }}
                             </TableCell>
                             <TableCell>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger as-child>
-                                        <Button variant="outline" size="icon" class="size-9">
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            class="size-9"
+                                        >
                                             <IconDots class="size-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem
-                                            @click="copyToClipboard(token.id, trans('settings.api_keys.actions.copy_id_success'))"
+                                            @click="
+                                                copyToClipboard(
+                                                    token.id,
+                                                    trans(
+                                                        'settings.api_keys.actions.copy_id_success',
+                                                    ),
+                                                )
+                                            "
                                         >
                                             <IconCopy class="size-4" />
-                                            {{ $t('settings.api_keys.actions.copy_id') }}
+                                            {{
+                                                $t(
+                                                    'settings.api_keys.actions.copy_id',
+                                                )
+                                            }}
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem
                                             variant="destructive"
-                                            @click="confirmDeleteModal?.open({ url: ApiKeyController.destroy.url(token.id), confirmText: token.name })"
+                                            @click="
+                                                confirmDeleteModal?.open({
+                                                    url: ApiKeyController.destroy.url(
+                                                        token.id,
+                                                    ),
+                                                    confirmText: token.name,
+                                                })
+                                            "
                                         >
                                             <IconTrash class="size-4" />
-                                            {{ $t('settings.api_keys.actions.delete') }}
+                                            {{
+                                                $t(
+                                                    'settings.api_keys.actions.delete',
+                                                )
+                                            }}
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>

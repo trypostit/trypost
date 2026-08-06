@@ -19,13 +19,19 @@ class DeleteApiKeyTool extends Tool
 {
     public function handle(Request $request): Response|ResponseFactory
     {
+        $user = $request->user();
+
+        if ($user->cannot('manageTeam', $user->currentWorkspace)) {
+            return Response::error('Not authorized to manage API keys.');
+        }
+
         $validated = $request->validate(['api_key_id' => ['required', 'string']]);
 
         // workspace_id filter excludes OAuth-flow tokens (which have null
         // workspace_id), so the caller can't accidentally revoke their own
         // ChatGPT/MCP session token through this tool.
-        $token = AccessToken::where('user_id', $request->user()->id)
-            ->where('workspace_id', $request->user()->current_workspace_id)
+        $token = AccessToken::where('user_id', $user->id)
+            ->where('workspace_id', $user->current_workspace_id)
             ->where('revoked', false)
             ->find(data_get($validated, 'api_key_id'));
 

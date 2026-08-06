@@ -102,6 +102,11 @@ class AppServiceProvider extends ServiceProvider
     {
         Passport::useTokenModel(AccessToken::class);
 
+        // API keys may omit an application expiry ("never"). Passport still
+        // embeds a JWT `exp`, so keep that far ahead and enforce optional
+        // `oauth_access_tokens.expires_at` in LoadWorkspaceFromToken.
+        Passport::personalAccessTokensExpireIn(now()->addYears(100));
+
         Passport::tokensCan([
             'mcp:use' => 'Use MCP server',
         ]);
@@ -159,6 +164,11 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(60)->by($request->workspace?->id ?: $request->ip());
         });
+
+        RateLimiter::for(
+            'mcp-oauth-registration',
+            fn (Request $request): Limit => Limit::perMinute(30)->by($request->ip()),
+        );
 
         // Signed media uploads (api.uploads.store). MCP hosts share egress IPs
         // across tenants — key by workspace_id from the signed URL, with a high

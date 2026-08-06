@@ -47,6 +47,7 @@ return [
         'signatures' => '서명',
         'labels' => '라벨',
         'assets' => '에셋',
+        'mcp' => 'MCP',
         'api_keys' => 'API 키',
     ],
 

@@ -79,6 +79,22 @@ class Account extends Model
     }
 
     /**
+     * Whether the account may use the app (active subscription, or a generic
+     * trial when REQUIRE_CARD_FOR_TRIAL is disabled).
+     */
+    public function hasAppAccess(): bool
+    {
+        if (config('trypost.self_hosted')) {
+            return true;
+        }
+
+        $requiresCardForTrial = (bool) config('trypost.billing.require_card_for_trial', true);
+
+        return $this->subscribed(self::SUBSCRIPTION_NAME)
+            || (! $requiresCardForTrial && $this->isOnTrial());
+    }
+
+    /**
      * Align the Stripe subscription quantity with the number of workspaces the
      * account owns. Each workspace is a billed unit. No-op in self-hosted mode
      * or when there is no active subscription (e.g. during onboarding).

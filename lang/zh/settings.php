@@ -129,6 +129,7 @@ return [
             'brand' => '品牌',
             'users' => '成员',
             'api_keys' => 'API 密钥',
+            'mcp' => 'MCP',
         ],
         'title' => '工作区设置',
         'logo_heading' => '工作区徽标',

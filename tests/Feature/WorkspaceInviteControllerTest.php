@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 use App\Enums\UserWorkspace\Role as WorkspaceRole;
 use App\Mail\WorkspaceInvite as WorkspaceInviteMail;
+use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     Mail::fake();
@@ -303,6 +306,9 @@ test('update role changes admin to member', function () {
         'account_id' => $this->account->id,
     ]);
     $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Admin->value]);
+    $result = $member->createToken('Admin Key');
+    $token = AccessToken::query()->findOrFail($result->token->id);
+    $token->forceFill(['workspace_id' => $this->workspace->id])->saveQuietly();
 
     $response = $this->actingAs($this->user)->put(route('app.members.update-role', $member), [
         'role' => WorkspaceRole::Member->value,
@@ -310,6 +316,55 @@ test('update role changes admin to member', function () {
 
     $response->assertRedirect();
     expect($this->workspace->members()->where('user_id', $member->id)->first()->pivot->role)->toBe(WorkspaceRole::Member->value);
+    expect($token->fresh()->revoked)->toBeTrue();
+});
+
+test('demoting a member to viewer revokes their mcp oauth grants', function () {
+    $member = User::factory()->create([
+        'account_id' => $this->account->id,
+    ]);
+    $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Member->value]);
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+
+    $oauth = mcpAccessToken($member, mcpOauthClient());
+    $refreshTokenId = (string) Str::uuid();
+    DB::table('oauth_refresh_tokens')->insert([
+        'id' => $refreshTokenId,
+        'access_token_id' => $oauth->id,
+        'revoked' => false,
+        'expires_at' => now()->addDay(),
+    ]);
+
+    $response = $this->actingAs($this->user)->put(route('app.members.update-role', $member), [
+        'role' => WorkspaceRole::Viewer->value,
+    ]);
+
+    $response->assertRedirect();
+    expect($oauth->fresh()->revoked)->toBeTrue()
+        ->and(DB::table('oauth_refresh_tokens')->where('id', $refreshTokenId)->value('revoked'))->toBeTrue();
+});
+
+test('demoting to viewer keeps mcp oauth when create-post access remains elsewhere', function () {
+    $member = User::factory()->create([
+        'account_id' => $this->account->id,
+    ]);
+    $other = Workspace::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+    ]);
+    $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Member->value]);
+    $other->members()->attach($member->id, ['role' => WorkspaceRole::Member->value]);
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+    $oauth = mcpAccessToken($member, mcpOauthClient());
+
+    $response = $this->actingAs($this->user)->put(route('app.members.update-role', $member), [
+        'role' => WorkspaceRole::Viewer->value,
+    ]);
+
+    $response->assertRedirect();
+    expect($oauth->fresh()->revoked)->toBeFalse()
+        ->and($member->fresh()->can('createPost', $other))->toBeTrue()
+        ->and($member->fresh()->can('createPost', $this->workspace))->toBeFalse();
 });
 
 test('update role fails for workspace owner', function () {

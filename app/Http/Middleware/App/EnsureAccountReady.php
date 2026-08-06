@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware\App;
 
-use App\Models\Account;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,13 +23,8 @@ class EnsureAccountReady
 
         if (! config('trypost.self_hosted')) {
             $account = $user->account;
-            $requiresCardForTrial = (bool) config('trypost.billing.require_card_for_trial', true);
-            $hasAccess = $account && (
-                $account->subscribed(Account::SUBSCRIPTION_NAME)
-                || (! $requiresCardForTrial && $account->isOnTrial())
-            );
 
-            if (! $hasAccess) {
+            if (! $account?->hasAppAccess()) {
                 return redirect()->route('app.onboarding');
             }
         }

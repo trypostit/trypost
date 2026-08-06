@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\ApiKey\CreateApiKey;
 use App\Http\Requests\Api\ApiKey\StoreApiKeyRequest;
 use App\Http\Resources\Api\ApiKeyResource;
 use App\Models\AccessToken;
@@ -16,6 +17,8 @@ class ApiKeyController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
+        $this->authorize('manageTeam', $request->user()->currentWorkspace);
+
         $tokens = AccessToken::where('user_id', $request->user()->id)
             ->where('workspace_id', $request->user()->currentWorkspace->id)
             ->where('revoked', false)
@@ -28,24 +31,24 @@ class ApiKeyController extends Controller
     public function store(StoreApiKeyRequest $request): JsonResponse
     {
         $workspace = $request->user()->currentWorkspace;
-        $validated = $request->validated();
+        $this->authorize('manageTeam', $workspace);
 
-        $result = $request->user()->createToken($validated['name']);
-
-        $token = AccessToken::find($result->token->id);
-        $token->forceFill([
-            'workspace_id' => $workspace->id,
-            'expires_at' => $validated['expires_at'] ?? null,
-        ])->saveQuietly();
+        $created = CreateApiKey::execute(
+            $request->user(),
+            $workspace,
+            $request->validated(),
+        );
 
         return response()->json([
-            'token' => new ApiKeyResource($token->refresh()),
-            'plain_token' => $result->accessToken,
+            'token' => new ApiKeyResource($created['token']),
+            'plain_token' => $created['plain_token'],
         ], Response::HTTP_CREATED);
     }
 
     public function destroy(Request $request, string $tokenId): JsonResponse
     {
+        $this->authorize('manageTeam', $request->user()->currentWorkspace);
+
         $token = AccessToken::where('id', $tokenId)
             ->where('user_id', $request->user()->id)
             ->where('workspace_id', $request->user()->currentWorkspace->id)

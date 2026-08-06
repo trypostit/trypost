@@ -129,6 +129,7 @@ return [
             'brand' => 'Merk',
             'users' => 'Leden',
             'api_keys' => 'API-sleutels',
+            'mcp' => 'MCP',
         ],
         'title' => 'Workspace-instellingen',
         'logo_heading' => 'Workspace-logo',

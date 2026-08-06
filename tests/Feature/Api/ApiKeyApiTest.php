@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
@@ -14,12 +15,12 @@ function createApiKeyApiToken(array $overrides = []): array
 test('list api keys', function () {
     $result = createApiKeyApiToken();
 
-    // Create two more tokens for the same user/workspace.
-    AccessToken::factory()->count(2)->state([
-        'user_id' => $result['user']->id,
-        'workspace_id' => $result['workspace']->id,
-        'revoked' => false,
-    ])->create();
+    foreach (['Second', 'Third'] as $name) {
+        $token = $result['user']->createToken($name)->token;
+        AccessToken::query()->findOrFail($token->id)
+            ->forceFill(['workspace_id' => $result['workspace']->id])
+            ->saveQuietly();
+    }
 
     $response = $this->withHeaders([
         'Authorization' => 'Bearer '.$result['plain_token'],
@@ -29,9 +30,35 @@ test('list api keys', function () {
     );
 
     $response->assertOk();
-    // 1 from auth + 2 created + ? we may also need to ensure factory has client id
     $response->assertJsonCount(3);
-})->skip('AccessToken factory not available; covered by app-level ApiKeyControllerTest.');
+});
+
+test('list api keys excludes revoked and other-workspace tokens', function () {
+    $result = createApiKeyApiToken();
+    $revoked = $result['user']->createToken('Revoked')->token;
+    AccessToken::query()->findOrFail($revoked->id)
+        ->forceFill([
+            'workspace_id' => $result['workspace']->id,
+            'revoked' => true,
+        ])
+        ->saveQuietly();
+
+    $otherWorkspace = Workspace::factory()->create([
+        'account_id' => $result['user']->account_id,
+        'user_id' => $result['user']->id,
+    ]);
+    $other = $result['user']->createToken('Other workspace')->token;
+    AccessToken::query()->findOrFail($other->id)
+        ->forceFill(['workspace_id' => $otherWorkspace->id])
+        ->saveQuietly();
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$result['plain_token']])
+        ->getJson(route('api.api-keys.index'))
+        ->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonMissing(['id' => $revoked->id])
+        ->assertJsonMissing(['id' => $other->id]);
+});
 
 test('create api key returns plain token', function () {
     $result = createApiKeyApiToken();
@@ -51,6 +78,22 @@ test('create api key returns plain token', function () {
     ]);
 
     expect($response->json('plain_token'))->toBeString();
+});
+
+test('workspace members cannot manage api keys through the api', function () {
+    $result = createApiKeyApiToken();
+    $member = User::factory()->create(['account_id' => $result['user']->account_id]);
+    $result['workspace']->members()->attach($member->id, ['role' => Role::Member->value]);
+    $member->update(['current_workspace_id' => $result['workspace']->id]);
+    $plainToken = passportToken($member, $result['workspace']);
+
+    $this->withHeaders(['Authorization' => "Bearer {$plainToken}"])
+        ->getJson(route('api.api-keys.index'))
+        ->assertForbidden();
+
+    $this->withHeaders(['Authorization' => "Bearer {$plainToken}"])
+        ->postJson(route('api.api-keys.store'), ['name' => 'Escalation Key'])
+        ->assertForbidden();
 });
 
 test('create api key validation errors', function () {
@@ -121,6 +164,53 @@ it('validates api key expires_at must be future date', function () {
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['expires_at']);
+});
+
+it('creates an api key without expiration', function () {
+    $result = createApiKeyApiToken();
+
+    $response = $this->withHeaders(['Authorization' => 'Bearer '.$result['plain_token']])
+        ->postJson(route('api.api-keys.store'), [
+            'name' => 'Never Expires',
+        ])
+        ->assertCreated();
+
+    expect($response->json('token.expires_at'))->toBeNull()
+        ->and(AccessToken::query()->findOrFail($response->json('token.id'))->expires_at)->toBeNull();
+});
+
+it('creates an api key with expiration at end of day', function () {
+    $result = createApiKeyApiToken();
+    $expiresAt = now()->addDays(14)->startOfDay();
+
+    $response = $this->withHeaders(['Authorization' => 'Bearer '.$result['plain_token']])
+        ->postJson(route('api.api-keys.store'), [
+            'name' => 'Expiring Key',
+            'expires_at' => $expiresAt->toDateString(),
+        ])
+        ->assertCreated();
+
+    $token = AccessToken::query()->findOrFail($response->json('token.id'));
+
+    expect($token->expires_at->toDateString())->toBe($expiresAt->toDateString())
+        ->and($token->expires_at->format('H:i:s'))->toBe('23:59:59');
+});
+
+it('allows an api key expiration of today', function () {
+    $result = createApiKeyApiToken();
+    $today = now()->toDateString();
+
+    $response = $this->withHeaders(['Authorization' => 'Bearer '.$result['plain_token']])
+        ->postJson(route('api.api-keys.store'), [
+            'name' => 'Expires Today',
+            'expires_at' => $today,
+        ])
+        ->assertCreated();
+
+    $token = AccessToken::query()->findOrFail($response->json('token.id'));
+
+    expect($token->expires_at->toDateString())->toBe($today)
+        ->and($token->expires_at->format('H:i:s'))->toBe('23:59:59');
 });
 
 it('validates api key name max length', function () {

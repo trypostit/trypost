@@ -47,6 +47,7 @@ return [
         'signatures' => 'Firme',
         'labels' => 'Etichette',
         'assets' => 'Risorse',
+        'mcp' => 'MCP',
         'api_keys' => 'Chiavi API',
     ],
 

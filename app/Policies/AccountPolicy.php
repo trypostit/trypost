@@ -32,12 +32,7 @@ class AccountPolicy
             return Response::allow();
         }
 
-        $requiresCardForTrial = (bool) config('trypost.billing.require_card_for_trial', true);
-
-        $hasAccess = $account->subscribed(Account::SUBSCRIPTION_NAME)
-            || (! $requiresCardForTrial && $account->isOnTrial());
-
-        if (! $hasAccess) {
+        if (! $account->hasAppAccess()) {
             return Response::deny(__('billing.flash.subscription_required'));
         }
 

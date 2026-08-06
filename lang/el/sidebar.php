@@ -47,6 +47,7 @@ return [
         'signatures' => 'Υπογραφές',
         'labels' => 'Ετικέτες',
         'assets' => 'Στοιχεία',
+        'mcp' => 'MCP',
         'api_keys' => 'Κλειδιά API',
     ],
 

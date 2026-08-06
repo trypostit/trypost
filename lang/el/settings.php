@@ -129,6 +129,7 @@ return [
             'brand' => 'Μάρκα',
             'users' => 'Μέλη',
             'api_keys' => 'Κλειδιά API',
+            'mcp' => 'MCP',
         ],
         'title' => 'Ρυθμίσεις workspace',
         'logo_heading' => 'Λογότυπο workspace',

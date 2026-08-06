@@ -9,6 +9,8 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\BrowserTestCase;
 use Tests\TestCase;
 
@@ -159,6 +161,49 @@ function subscribeAccount(Account $account): void
         'stripe_status' => 'active',
         'stripe_price' => 'price_123',
     ]);
+}
+
+/**
+ * Insert an OAuth client suitable for MCP connection tests.
+ */
+function mcpOauthClient(string $name = 'My Agent'): string
+{
+    $id = (string) Str::uuid();
+
+    DB::table('oauth_clients')->insert([
+        'id' => $id,
+        'name' => $name,
+        'secret' => null,
+        'provider' => null,
+        'redirect_uris' => '[]',
+        'grant_types' => json_encode(['authorization_code']),
+        'revoked' => false,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    return $id;
+}
+
+/**
+ * Create an active OAuth access token for MCP connection tests.
+ *
+ * @param  list<string>  $scopes
+ */
+function mcpAccessToken(User $user, string $clientId, array $scopes = ['mcp:use']): AccessToken
+{
+    $token = new AccessToken;
+    $token->forceFill([
+        'id' => Str::random(80),
+        'user_id' => $user->id,
+        'client_id' => $clientId,
+        'workspace_id' => null,
+        'name' => 'MCP',
+        'scopes' => $scopes,
+        'revoked' => false,
+    ])->save();
+
+    return $token->refresh();
 }
 
 /**

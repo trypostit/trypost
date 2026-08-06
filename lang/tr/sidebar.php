@@ -47,6 +47,7 @@ return [
         'signatures' => 'İmzalar',
         'labels' => 'Etiketler',
         'assets' => 'Varlıklar',
+        'mcp' => 'MCP',
         'api_keys' => 'API Anahtarları',
     ],
 

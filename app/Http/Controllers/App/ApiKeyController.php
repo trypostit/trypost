@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\ApiKey\CreateApiKey;
+use App\Http\Requests\App\ApiKey\StoreApiKeyRequest;
 use App\Models\AccessToken;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Inertia\Response;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class ApiKeyController extends Controller
 {
-    public function index(Request $request): Response|RedirectResponse
+    public function index(Request $request): InertiaResponse|RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -41,7 +44,7 @@ class ApiKeyController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreApiKeyRequest $request): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -51,21 +54,15 @@ class ApiKeyController extends Controller
 
         $this->authorize('manageTeam', $workspace);
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'expires_at' => ['nullable', 'date', 'after:today'],
-        ]);
-
-        $result = $request->user()->createToken($validated['name']);
-        $accessToken = AccessToken::find($result->token->id);
-        $accessToken->forceFill([
-            'workspace_id' => $workspace->id,
-            'expires_at' => $validated['expires_at'] ?? null,
-        ])->saveQuietly();
+        $created = CreateApiKey::execute(
+            $request->user(),
+            $workspace,
+            $request->validated(),
+        );
 
         return back()
             ->with('flash.success', __('settings.api_keys.flash.created'))
-            ->with('flash.plainToken', $result->accessToken);
+            ->with('flash.plainToken', $created['plain_token']);
     }
 
     public function destroy(Request $request, string $tokenId): RedirectResponse
@@ -84,7 +81,7 @@ class ApiKeyController extends Controller
             ->first();
 
         if (! $token) {
-            abort(404);
+            abort(Response::HTTP_NOT_FOUND);
         }
 
         $token->forceFill(['revoked' => true])->saveQuietly();

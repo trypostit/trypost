@@ -50,6 +50,16 @@ services:
       REVERB_PORT: "8080"
       REVERB_SCHEME: http
 
+      # ===== Passport (OAuth / API keys / MCP) =====
+      # REQUIRED for any durable deploy (and always for multi-node / load
+      # balancers). File keys under storage/ are NOT persisted by the volumes
+      # below — without these env vars a container recreate issues new keys and
+      # invalidates every API/MCP token. Generate once:
+      #   docker compose -f compose.prod.yaml run --rm app php artisan passport:keys --show
+      # then paste the PEM contents here (use \n for newlines).
+      PASSPORT_PRIVATE_KEY: ""
+      PASSPORT_PUBLIC_KEY: ""
+
       # ===== Storage =====
       # Default: local disk, persisted in the "storage" volume below.
       FILESYSTEM_DISK: public

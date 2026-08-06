@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\ApiKey;
 
+use App\Actions\ApiKey\CreateApiKey;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreApiKeyRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+        $workspace = $user?->currentWorkspace;
+
+        return $workspace !== null
+            && $user->can('manageTeam', $workspace);
     }
 
     /**
@@ -20,7 +25,7 @@ class StoreApiKeyRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'expires_at' => ['nullable', 'date', 'after:today'],
+            'expires_at' => CreateApiKey::expiresAtRules(),
         ];
     }
 }

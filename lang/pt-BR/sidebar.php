@@ -47,6 +47,7 @@ return [
         'signatures' => 'Assinaturas',
         'labels' => 'Etiquetas',
         'assets' => 'Mídias',
+        'mcp' => 'MCP',
         'api_keys' => 'API Keys',
     ],
 
