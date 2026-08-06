@@ -8,6 +8,9 @@ return [
     'create_workspace' => 'Criar workspace',
     'create_post' => 'Novo post',
     'profile' => 'Perfil',
+    'my_account' => 'Minha conta',
+    'account_settings' => 'Conta e cobrança',
+    'workspace_settings' => 'Configurações do workspace',
     'log_out' => 'Sair',
 
     'workspace' => 'Workspace: :name',
@@ -44,6 +47,7 @@ return [
         'signatures' => 'Assinaturas',
         'labels' => 'Etiquetas',
         'assets' => 'Mídias',
+        'settings' => 'Configurações',
         'api_keys' => 'API Keys',
     ],
 

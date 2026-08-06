@@ -8,6 +8,9 @@ return [
     'create_workspace' => 'Çalışma alanı oluştur',
     'create_post' => 'Gönderi oluştur',
     'profile' => 'Profil',
+    'my_account' => 'Hesabım',
+    'account_settings' => 'Hesap ve faturalandırma',
+    'workspace_settings' => 'Çalışma alanı ayarları',
     'log_out' => 'Çıkış yap',
 
     'workspace' => 'Çalışma alanı: :name',
@@ -44,6 +47,7 @@ return [
         'signatures' => 'İmzalar',
         'labels' => 'Etiketler',
         'assets' => 'Varlıklar',
+        'settings' => 'Ayarlar',
         'api_keys' => 'API Anahtarları',
     ],
 

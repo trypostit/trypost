@@ -8,6 +8,9 @@ return [
     'create_workspace' => 'Utwórz przestrzeń roboczą',
     'create_post' => 'Utwórz post',
     'profile' => 'Profil',
+    'my_account' => 'Moje konto',
+    'account_settings' => 'Konto i płatności',
+    'workspace_settings' => 'Ustawienia workspace',
     'log_out' => 'Wyloguj się',
 
     'workspace' => 'Przestrzeń robocza: :name',
@@ -44,6 +47,7 @@ return [
         'signatures' => 'Sygnatury',
         'labels' => 'Etykiety',
         'assets' => 'Zasoby',
+        'settings' => 'Ustawienia',
         'api_keys' => 'Klucze API',
     ],
 

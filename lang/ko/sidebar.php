@@ -8,6 +8,9 @@ return [
     'create_workspace' => '워크스페이스 만들기',
     'create_post' => '게시물 만들기',
     'profile' => '프로필',
+    'my_account' => '내 계정',
+    'account_settings' => '계정 및 결제',
+    'workspace_settings' => '워크스페이스 설정',
     'log_out' => '로그아웃',
 
     'workspace' => '워크스페이스: :name',
@@ -44,6 +47,7 @@ return [
         'signatures' => '서명',
         'labels' => '라벨',
         'assets' => '에셋',
+        'settings' => '설정',
         'api_keys' => 'API 키',
     ],
 

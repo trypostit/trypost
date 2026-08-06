@@ -8,6 +8,9 @@ return [
     'create_workspace' => 'ワークスペースを作成',
     'create_post' => '投稿を作成',
     'profile' => 'プロフィール',
+    'my_account' => 'マイアカウント',
+    'account_settings' => 'アカウントと請求',
+    'workspace_settings' => 'ワークスペース設定',
     'log_out' => 'ログアウト',
 
     'workspace' => 'ワークスペース: :name',
@@ -44,6 +47,7 @@ return [
         'signatures' => '署名',
         'labels' => 'ラベル',
         'assets' => 'アセット',
+        'settings' => '設定',
         'api_keys' => 'API キー',
     ],
 

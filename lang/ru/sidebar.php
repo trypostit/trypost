@@ -8,6 +8,9 @@ return [
     'create_workspace' => 'Создать рабочее пространство',
     'create_post' => 'Создать пост',
     'profile' => 'Профиль',
+    'my_account' => 'Мой аккаунт',
+    'account_settings' => 'Аккаунт и оплата',
+    'workspace_settings' => 'Настройки workspace',
     'log_out' => 'Выйти',
 
     'workspace' => 'Рабочее пространство: :name',
@@ -44,6 +47,7 @@ return [
         'signatures' => 'Подписи',
         'labels' => 'Метки',
         'assets' => 'Медиафайлы',
+        'settings' => 'Настройки',
         'api_keys' => 'API-ключи',
     ],
 
