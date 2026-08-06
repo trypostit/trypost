@@ -126,6 +126,43 @@ it('disconnects a client when its access token expired but its refresh token is 
         ->and(DB::table('oauth_refresh_tokens')->where('id', $refreshTokenId)->value('revoked'))->toBeTrue();
 });
 
+it('lists a client when its access token expired but its refresh token is live', function (): void {
+    $clientId = mcpOauthClient('Recoverable Agent');
+    $token = mcpAccessToken($this->user, $clientId);
+    $token->forceFill(['expires_at' => now()->subMinute()])->saveQuietly();
+    DB::table('oauth_refresh_tokens')->insert([
+        'id' => Str::random(80),
+        'access_token_id' => $token->id,
+        'revoked' => false,
+        'expires_at' => now()->addMonth(),
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.mcp.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('connectedClients', 1)
+            ->where('connectedClients.0.name', 'Recoverable Agent')
+            ->where('connectedClients.0.can_disconnect', true));
+});
+
+it('hides a client when both access and refresh tokens are expired', function (): void {
+    $clientId = mcpOauthClient('Dead Agent');
+    $token = mcpAccessToken($this->user, $clientId);
+    $token->forceFill(['expires_at' => now()->subMinute()])->saveQuietly();
+    DB::table('oauth_refresh_tokens')->insert([
+        'id' => Str::random(80),
+        'access_token_id' => $token->id,
+        'revoked' => false,
+        'expires_at' => now()->subMinute(),
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.mcp.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('connectedClients', []));
+});
+
 it('does not flash success when disconnecting an unknown client', function (): void {
     $this->actingAs($this->user)
         ->delete(route('app.mcp.disconnect', ['client' => (string) Str::uuid()]))

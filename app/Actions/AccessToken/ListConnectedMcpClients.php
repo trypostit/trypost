@@ -19,12 +19,12 @@ class ListConnectedMcpClients
     {
         $tokens = AccessToken::query()
             ->whereIn('user_id', User::query()->select('id')->where('account_id', $accountId))
-            ->activeMcpOAuth()
-            ->with(['client', 'user.currentWorkspace', 'workspace'])
+            ->connectedMcpOAuth()
+            ->with(['client', 'user.currentWorkspace', 'workspace', 'refreshToken'])
             ->get();
 
         return $tokens
-            ->filter(fn (AccessToken $token): bool => $token->isUsableMcpGrant($token->user))
+            ->filter(fn (AccessToken $token): bool => $token->isListedMcpConnection($token->user))
             ->groupBy(fn (AccessToken $token): string => "{$token->client_id}:{$token->user_id}")
             ->map(function (Collection $group) use ($viewer): array {
                 /** @var AccessToken $token */

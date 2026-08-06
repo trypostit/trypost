@@ -22,6 +22,7 @@ class RevokeWorkspaceApiKeys
             ->where('user_id', $userId)
             ->where('workspace_id', $workspace->id)
             ->where('revoked', false)
+            ->personalAccessApiKey()
             ->update(['revoked' => true]);
     }
 

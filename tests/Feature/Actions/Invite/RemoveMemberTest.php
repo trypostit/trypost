@@ -6,6 +6,7 @@ use App\Actions\Invite\RemoveMember;
 use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\User;
+use App\Models\Workspace;
 
 test('remove member clears current workspace when it was the removed membership', function () {
     [
@@ -96,4 +97,34 @@ test('remove member revokes mcp oauth when create-post access is lost', function
 
     expect($oauth->fresh()->revoked)->toBeTrue()
         ->and($member->fresh()->can('createPost', $sharedB))->toBeFalse();
+});
+
+test('remove member revokes api keys without touching mcp oauth grants on the same workspace id', function () {
+    [
+        'member' => $member,
+        'shared_workspaces' => [$workspace],
+    ] = strandedMemberOnSharedAccount(
+        sharedWorkspaces: 1,
+        setMemberCurrent: true,
+    );
+
+    $pat = $member->createToken('API Key');
+    $patToken = AccessToken::query()->findOrFail($pat->token->id);
+    $patToken->forceFill(['workspace_id' => $workspace->id])->saveQuietly();
+
+    // Mis-bound workspace_id must still not classify this as a PAT revoke target.
+    $oauth = mcpAccessToken($member, mcpOauthClient());
+    $oauth->forceFill(['workspace_id' => $workspace->id])->saveQuietly();
+
+    // Keep the member alive (second workspace) so we only exercise API-key revoke.
+    $other = Workspace::factory()->create([
+        'account_id' => $member->account_id,
+        'user_id' => $member->account->owner_id,
+    ]);
+    $other->members()->attach($member->id, ['role' => Role::Member->value]);
+
+    RemoveMember::execute($workspace, $member->id);
+
+    expect($patToken->fresh()->revoked)->toBeTrue()
+        ->and($oauth->fresh()->revoked)->toBeFalse();
 });

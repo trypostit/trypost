@@ -71,6 +71,36 @@ class AccessToken extends Token
     }
 
     /**
+     * MCP OAuth grants that still represent a live or recoverable session
+     * (unexpired access token, or expired access with a live refresh token).
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeConnectedMcpOAuth(Builder $query): Builder
+    {
+        return $query
+            ->mcpOAuth()
+            ->where('revoked', false)
+            ->where(function (Builder $alive): void {
+                $alive
+                    ->where(function (Builder $expires): void {
+                        $expires->whereNull('expires_at')
+                            ->orWhere('expires_at', '>', now());
+                    })
+                    ->orWhereHas(
+                        'refreshToken',
+                        fn (Builder $refresh): Builder => $refresh
+                            ->where('revoked', false)
+                            ->where(function (Builder $refreshExpires): void {
+                                $refreshExpires->whereNull('expires_at')
+                                    ->orWhere('expires_at', '>', now());
+                            }),
+                    );
+            });
+    }
+
+    /**
      * @param  Builder<static>  $query
      * @return Builder<static>
      */
@@ -87,6 +117,22 @@ class AccessToken extends Token
     }
 
     /**
+     * Personal-access API keys (REST), excluding MCP OAuth clients.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopePersonalAccessApiKey(Builder $query): Builder
+    {
+        return $query->whereHas(
+            'client',
+            fn (Builder $client): Builder => $client
+                ->where('revoked', false)
+                ->whereJsonContains('grant_types', 'personal_access'),
+        );
+    }
+
+    /**
      * Whether this token was issued by a live personal-access client (REST API keys).
      */
     public function isPersonalAccessToken(): bool
@@ -99,17 +145,13 @@ class AccessToken extends Token
     }
 
     /**
-     * Whether this is a non-revoked, unexpired MCP OAuth grant with mcp:use.
+     * Whether this is a non-revoked MCP OAuth grant with mcp:use (ignores expiry).
      */
-    public function isActiveMcpGrant(): bool
+    public function isMcpOAuthGrant(): bool
     {
         $this->loadMissing('client');
 
         if ($this->revoked) {
-            return false;
-        }
-
-        if ($this->expires_at !== null && $this->expires_at->isPast()) {
             return false;
         }
 
@@ -123,6 +165,34 @@ class AccessToken extends Token
     }
 
     /**
+     * Whether this is a non-revoked, unexpired MCP OAuth grant with mcp:use.
+     */
+    public function isActiveMcpGrant(): bool
+    {
+        if (! $this->isMcpOAuthGrant()) {
+            return false;
+        }
+
+        return $this->expires_at === null || ! $this->expires_at->isPast();
+    }
+
+    /**
+     * Whether a refresh token can still mint a new access token for this grant.
+     */
+    public function hasLiveRefreshToken(): bool
+    {
+        $this->loadMissing('refreshToken');
+
+        $refresh = $this->refreshToken;
+
+        if ($refresh === null || $refresh->revoked) {
+            return false;
+        }
+
+        return $refresh->expires_at === null || $refresh->expires_at->isFuture();
+    }
+
+    /**
      * Whether this MCP grant can actually use the product (active token + a
      * workspace the owner can create posts in).
      */
@@ -132,6 +202,28 @@ class AccessToken extends Token
             return false;
         }
 
+        return $this->ownerCanCreatePosts($user, $workspace);
+    }
+
+    /**
+     * Whether this MCP grant should appear in the connected-clients list
+     * (usable now, or recoverable via refresh, for a user who can create posts).
+     */
+    public function isListedMcpConnection(?User $user = null, ?Workspace $workspace = null): bool
+    {
+        if (! $this->isMcpOAuthGrant()) {
+            return false;
+        }
+
+        if (! $this->isActiveMcpGrant() && ! $this->hasLiveRefreshToken()) {
+            return false;
+        }
+
+        return $this->ownerCanCreatePosts($user, $workspace);
+    }
+
+    private function ownerCanCreatePosts(?User $user = null, ?Workspace $workspace = null): bool
+    {
         $user ??= User::query()
             ->with('currentWorkspace')
             ->find($this->user_id);

@@ -29,6 +29,11 @@ return [
     'view_docs' => 'Vedi documentazione',
     'connector_name' => 'TryPost',
 
+    'authorize_denied_title' => 'Cannot connect',
+    'authorize_denied_body' => ':client needs a Member or Admin role on at least one workspace. Ask a workspace admin to upgrade your role, then try again.',
+    'authorize_denied_close' => 'Close',
+    'authorize_logged_in_as' => 'Logged in as:',
+
     'other_clients_title' => 'Altre app',
     'other_clients_description' => 'Cursor, VS Code, Claude Code e qualsiasi app che parla MCP.',
 

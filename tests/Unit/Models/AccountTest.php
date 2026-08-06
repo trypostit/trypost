@@ -187,3 +187,108 @@ test('activeTrialEndsAt returns null for paying customer post-trial', function (
     expect($account->activeTrialEndsAt())->toBeNull();
     expect($account->isOnTrial())->toBeFalse();
 });
+
+test('hasAppAccess is always true when self-hosted', function () {
+    config(['trypost.self_hosted' => true]);
+
+    $account = Account::factory()->create(['trial_ends_at' => null]);
+
+    expect($account->hasAppAccess())->toBeTrue();
+});
+
+test('hasAppAccess is false without a subscription on saas', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $account = Account::factory()->create(['trial_ends_at' => null]);
+
+    expect($account->hasAppAccess())->toBeFalse();
+});
+
+test('hasAppAccess is true for an active subscription', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $account = Account::factory()->create([
+        'trial_ends_at' => null,
+        'stripe_id' => 'cus_test_'.fake()->uuid(),
+    ]);
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test_'.fake()->uuid(),
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_123',
+    ]);
+
+    expect($account->fresh()->hasAppAccess())->toBeTrue();
+});
+
+test('hasAppAccess is true for a trialing subscription', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $account = Account::factory()->create([
+        'trial_ends_at' => null,
+        'stripe_id' => 'cus_test_'.fake()->uuid(),
+    ]);
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test_'.fake()->uuid(),
+        'stripe_status' => 'trialing',
+        'stripe_price' => 'price_123',
+        'trial_ends_at' => now()->addDays(5),
+    ]);
+
+    expect($account->fresh()->hasAppAccess())->toBeTrue();
+});
+
+test('hasAppAccess is true for a past_due subscription', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $account = Account::factory()->create([
+        'trial_ends_at' => null,
+        'stripe_id' => 'cus_test_'.fake()->uuid(),
+    ]);
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test_'.fake()->uuid(),
+        'stripe_status' => 'past_due',
+        'stripe_price' => 'price_123',
+    ]);
+
+    expect($account->fresh()->hasAppAccess())->toBeTrue();
+});
+
+test('hasAppAccess ignores generic trial when card is required', function () {
+    config([
+        'trypost.self_hosted' => false,
+        'trypost.billing.require_card_for_trial' => true,
+    ]);
+
+    $account = Account::factory()->create(['trial_ends_at' => now()->addDays(7)]);
+
+    expect($account->hasAppAccess())->toBeFalse()
+        ->and($account->isOnTrial())->toBeFalse();
+});
+
+test('hasAppAccess allows generic trial when card is not required', function () {
+    config([
+        'trypost.self_hosted' => false,
+        'trypost.billing.require_card_for_trial' => false,
+    ]);
+
+    $account = Account::factory()->create(['trial_ends_at' => now()->addDays(7)]);
+
+    expect($account->hasAppAccess())->toBeTrue()
+        ->and($account->isOnTrial())->toBeTrue()
+        ->and($account->subscribed(Account::SUBSCRIPTION_NAME))->toBeFalse();
+});
+
+test('hasAppAccess denies expired generic trial when card is not required', function () {
+    config([
+        'trypost.self_hosted' => false,
+        'trypost.billing.require_card_for_trial' => false,
+    ]);
+
+    $account = Account::factory()->create(['trial_ends_at' => now()->subDay()]);
+
+    expect($account->hasAppAccess())->toBeFalse()
+        ->and($account->isOnTrial())->toBeFalse();
+});
