@@ -51,7 +51,7 @@ class WelcomeController extends Controller
         ]);
         $postHog->capture(
             $user->id,
-            WelcomeEvent::PersonaSaved->value,
+            WelcomeEvent::Persona->value,
             ['persona' => $persona],
             $user->account,
         );
@@ -89,7 +89,7 @@ class WelcomeController extends Controller
         ]);
         $postHog->capture(
             $user->id,
-            WelcomeEvent::GoalsSaved->value,
+            WelcomeEvent::Goals->value,
             ['goals' => $goals],
             $user->account,
         );
@@ -139,7 +139,7 @@ class WelcomeController extends Controller
         ]);
         $postHog->capture(
             $user->id,
-            WelcomeEvent::ReferralSaved->value,
+            WelcomeEvent::Referral->value,
             ['referral_source' => $referralSource],
             $user->account,
         );

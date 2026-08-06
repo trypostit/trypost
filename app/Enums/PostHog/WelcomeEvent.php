@@ -6,8 +6,7 @@ namespace App\Enums\PostHog;
 
 enum WelcomeEvent: string
 {
-    case PersonaSaved = 'welcome.persona_saved';
-    case GoalsSaved = 'welcome.goals_saved';
-    case ReferralSaved = 'welcome.referral_saved';
-    case CheckoutStarted = 'welcome.checkout_started';
+    case Persona = 'welcome.persona';
+    case Goals = 'welcome.goals';
+    case Referral = 'welcome.referral';
 }

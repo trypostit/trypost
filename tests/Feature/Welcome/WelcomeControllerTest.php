@@ -58,7 +58,7 @@ test('persona store saves the selection mirrors it to PostHog and advances to go
     expect($this->user->fresh()->persona)->toBe(Persona::Agency);
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
         && data_get($event->payload, 'distinctId') === $this->user->id
-        && data_get($event->payload, 'event') === WelcomeEvent::PersonaSaved->value
+        && data_get($event->payload, 'event') === WelcomeEvent::Persona->value
         && data_get($event->payload, 'properties.persona') === Persona::Agency->value);
 });
 
@@ -106,7 +106,7 @@ test('goals store saves choices mirrors them to PostHog and advances to referral
 
     expect($this->user->fresh()->goals)->toBe($goals);
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
-        && data_get($event->payload, 'event') === WelcomeEvent::GoalsSaved->value
+        && data_get($event->payload, 'event') === WelcomeEvent::Goals->value
         && data_get($event->payload, 'properties.goals') === $goals);
 });
 
@@ -201,12 +201,8 @@ test('referral source store saves the source and starts Stripe checkout without 
 
     expect($this->user->fresh()->referral_source)->toBe(ReferralSource::ProductHunt);
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
-        && data_get($event->payload, 'event') === WelcomeEvent::ReferralSaved->value
+        && data_get($event->payload, 'event') === WelcomeEvent::Referral->value
         && data_get($event->payload, 'properties.referral_source') === ReferralSource::ProductHunt->value);
-    Bus::assertNotDispatched(
-        SendEvent::class,
-        fn (SendEvent $event): bool => data_get($event->payload, 'event') === WelcomeEvent::CheckoutStarted->value,
-    );
 });
 
 test('welcome steps redirect to calendar for subscribed accounts', function (string $routeName, string $method, array $payload = []) {
