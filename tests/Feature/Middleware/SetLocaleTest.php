@@ -64,3 +64,22 @@ test('does not reset the cookie when a valid locale is present', function () {
 
     expect($cookie)->toBeNull();
 });
+
+test('attaches the locale cookie to a raw Symfony response without crashing', function () {
+    $request = Request::create('/', 'GET');
+
+    $response = (new SetLocale)->handle(
+        $request,
+        fn () => new Response('{"error":"invalid_client"}', 401, [
+            'Content-Type' => 'application/json',
+        ]),
+    );
+
+    expect($response->getStatusCode())->toBe(401);
+
+    $cookie = collect($response->headers->getCookies())
+        ->first(fn ($cookie) => $cookie->getName() === 'locale');
+
+    expect($cookie)->not->toBeNull()
+        ->and($cookie->getValue())->toBe(config('languages.default'));
+});
