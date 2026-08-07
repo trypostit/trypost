@@ -12,6 +12,7 @@ enum ReferralSource: string
     case YouTube = 'youtube';
     case TikTok = 'tiktok';
     case Instagram = 'instagram';
+    case Threads = 'threads';
     case Reddit = 'reddit';
     case ProductHunt = 'product_hunt';
     case GitHub = 'github';
@@ -19,6 +20,7 @@ enum ReferralSource: string
     case Directories = 'directories';
     case AiAssistant = 'ai_assistant';
     case Friend = 'friend';
+    case Founder = 'founder';
     case Blog = 'blog';
     case Other = 'other';
 }
