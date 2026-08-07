@@ -8,7 +8,7 @@ return [
     'copy_step' => 'Kopiere deine TryPost-Server-URL',
     'open_step' => 'Öffne deinen KI-Assistenten',
     'copy' => 'URL kopieren',
-    'connect' => 'Mit :client verbinden',
+    'connect' => ':client verbinden',
     'step_add' => 'Füge Name, URL oder Config unten in deine App ein. Die Anmeldung öffnet sich beim ersten Verbinden im Browser.',
     'name_label' => 'Name',
     'url_label' => 'Server-URL',

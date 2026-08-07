@@ -186,6 +186,29 @@ function mcpOauthClient(string $name = 'My Agent'): string
 }
 
 /**
+ * @return array<string, string>
+ */
+function oauthAuthorizeQuery(
+    string $clientId,
+    string $redirectUri = 'https://client.example/callback',
+    string $prompt = 'consent',
+): array {
+    $verifier = Str::random(64);
+    $challenge = rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
+
+    return [
+        'client_id' => $clientId,
+        'redirect_uri' => $redirectUri,
+        'response_type' => 'code',
+        'scope' => 'mcp:use',
+        'state' => 'test-state',
+        'code_challenge' => $challenge,
+        'code_challenge_method' => 'S256',
+        'prompt' => $prompt,
+    ];
+}
+
+/**
  * Create an active OAuth access token for MCP connection tests.
  *
  * @param  list<string>  $scopes

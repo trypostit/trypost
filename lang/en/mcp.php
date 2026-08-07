@@ -8,7 +8,7 @@ return [
     'copy_step' => 'Copy your TryPost server URL',
     'open_step' => 'Open your AI assistant',
     'copy' => 'Copy URL',
-    'connect' => 'Connect with :client',
+    'connect' => 'Connect :client',
     'step_add' => 'Paste the name, URL, or config below into your app. Sign-in opens in the browser the first time it connects.',
     'name_label' => 'Name',
     'url_label' => 'Server URL',

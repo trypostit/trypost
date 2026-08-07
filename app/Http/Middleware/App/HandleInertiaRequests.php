@@ -52,7 +52,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'usage' => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => $account && ! $isSelfHosted ? $account->featureLimits() : null,
-            'onboardingProgress' => $this->onboardingProgress($user),
+            'onboardingProgress' => $this->onboardingProgress($request, $user),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => $request->session()->get('flash', []),
             'applicationUrl' => config('app.url'),
@@ -82,13 +82,29 @@ class HandleInertiaRequests extends Middleware
 
     /**
      * Defer step queries for mid-activation owners; everyone else gets false inline.
+     *
+     * Never defer on Passport consent screens: Inertia deferred props re-request the
+     * same URL, Passport rotates `authToken` on every authorize hit, and approve then
+     * fails with InvalidAuthTokenException against the stale token still on the page.
      */
-    private function onboardingProgress(?User $user): DeferProp|false
+    private function onboardingProgress(Request $request, ?User $user): DeferProp|false
     {
+        if ($this->isPassportAuthorizationRequest($request)) {
+            return false;
+        }
+
         $onboarding = app(ResolveOnboardingStatus::class);
 
         return $user && $onboarding->canShowProgress($user)
             ? Inertia::defer(fn (): array|false => $onboarding->sidebarProgress($user))
             : false;
+    }
+
+    private function isPassportAuthorizationRequest(Request $request): bool
+    {
+        return $request->routeIs(
+            'passport.authorizations.authorize',
+            'passport.device.authorizations.authorize',
+        );
     }
 }

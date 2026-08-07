@@ -8,7 +8,7 @@ return [
     'copy_step' => 'Kopieer je TryPost-server-URL',
     'open_step' => 'Open je AI-assistent',
     'copy' => 'URL kopiëren',
-    'connect' => 'Verbinden met :client',
+    'connect' => 'Verbind :client',
     'step_add' => 'Plak de naam, URL of config hieronder in je app. Inloggen opent in de browser bij de eerste verbinding.',
     'name_label' => 'Naam',
     'url_label' => 'Server-URL',

@@ -8,7 +8,7 @@ return [
     'copy_step' => 'TryPost 서버 URL 복사',
     'open_step' => 'AI 어시스턴트 열기',
     'copy' => 'URL 복사',
-    'connect' => ':client로 연결',
+    'connect' => ':client 연결',
     'step_add' => '아래 이름, URL 또는 설정을 앱에 붙여넣으세요. 처음 연결할 때 브라우저에서 로그인이 열립니다.',
     'name_label' => '이름',
     'url_label' => '서버 URL',

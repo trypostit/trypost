@@ -8,7 +8,7 @@ return [
     'copy_step' => 'TryPost sunucu URL’ini kopyala',
     'open_step' => 'AI asistanını aç',
     'copy' => 'URL’yi kopyala',
-    'connect' => ':client ile bağlan',
+    'connect' => ':client bağla',
     'step_add' => 'Adı, URL’yi veya config’i aşağıdaki gibi uygulamanıza yapıştırın. İlk bağlantıda oturum açma tarayıcıda açılır.',
     'name_label' => 'Ad',
     'url_label' => 'Sunucu URL’si',

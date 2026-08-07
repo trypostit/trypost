@@ -8,7 +8,7 @@ return [
     'copy_step' => 'Skopiuj URL serwera TryPost',
     'open_step' => 'Otwórz asystenta AI',
     'copy' => 'Kopiuj URL',
-    'connect' => 'Połącz z :client',
+    'connect' => 'Połącz :client',
     'step_add' => 'Wklej nazwę, URL lub config poniżej do swojej aplikacji. Logowanie otworzy się w przeglądarce przy pierwszym połączeniu.',
     'name_label' => 'Nazwa',
     'url_label' => 'URL serwera',

@@ -52,32 +52,34 @@ useOnboardingLiveReload({
                     : 'bg-amber-100 hover:bg-amber-200',
             ]"
         >
-            <div class="flex items-start justify-between gap-2">
-                <div class="flex min-w-0 items-center gap-2">
-                    <span
-                        class="inline-flex size-7 shrink-0 items-center justify-center rounded-md border-2 border-foreground bg-card shadow-2xs"
-                    >
-                        <IconListCheck
-                            class="size-4 text-amber-800"
-                            stroke-width="2.5"
-                        />
-                    </span>
-                    <div class="min-w-0">
-                        <p class="truncate text-sm font-bold text-foreground">
+            <div class="flex items-start gap-2">
+                <span
+                    class="inline-flex size-7 shrink-0 items-center justify-center rounded-md border-2 border-foreground bg-card shadow-2xs"
+                >
+                    <IconListCheck
+                        class="size-4 text-amber-800"
+                        stroke-width="2.5"
+                    />
+                </span>
+                <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <div class="flex items-baseline justify-between gap-2">
+                        <p
+                            class="min-w-0 truncate text-sm leading-tight font-bold text-foreground"
+                        >
                             {{ $t('sidebar.onboarding') }}
                         </p>
-                        <p class="truncate text-xs text-foreground/70">
-                            {{ $t('sidebar.onboarding_hint') }}
-                        </p>
+                        <span
+                            class="shrink-0 rounded-full border-2 border-foreground bg-card px-1.5 py-px text-[10px] leading-none font-bold tabular-nums"
+                        >
+                            {{ onboardingProgress.completed }}/{{
+                                onboardingProgress.total
+                            }}
+                        </span>
                     </div>
+                    <p class="text-xs leading-snug text-foreground/70">
+                        {{ $t('sidebar.onboarding_hint') }}
+                    </p>
                 </div>
-                <span
-                    class="shrink-0 rounded-full border-2 border-foreground bg-card px-1.5 py-0.5 text-[10px] font-bold tabular-nums"
-                >
-                    {{ onboardingProgress.completed }}/{{
-                        onboardingProgress.total
-                    }}
-                </span>
             </div>
             <div
                 class="mt-2.5 h-1.5 overflow-hidden rounded-full border border-foreground bg-card"

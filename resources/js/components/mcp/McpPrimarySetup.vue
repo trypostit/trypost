@@ -16,18 +16,11 @@ const copyMcpUrl = (): void => {
 </script>
 
 <template>
-    <ol class="space-y-6">
-        <li>
-            <div class="mb-3 flex items-center gap-3">
-                <span
-                    class="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background"
-                >
-                    1
-                </span>
-                <p class="text-sm font-bold">
-                    {{ $t('mcp.copy_step') }}
-                </p>
-            </div>
+    <div class="space-y-6">
+        <div>
+            <p class="mb-3 text-sm font-bold">
+                {{ $t('mcp.copy_step') }}
+            </p>
             <div
                 class="flex flex-col gap-2 rounded-xl border-2 border-foreground bg-background p-2 shadow-2xs sm:flex-row sm:items-center"
             >
@@ -52,19 +45,12 @@ const copyMcpUrl = (): void => {
                     {{ $t('mcp.copy') }}
                 </Button>
             </div>
-        </li>
+        </div>
 
-        <li>
-            <div class="mb-3 flex items-center gap-3">
-                <span
-                    class="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background"
-                >
-                    2
-                </span>
-                <p class="text-sm font-bold">
-                    {{ $t('mcp.open_step') }}
-                </p>
-            </div>
+        <div>
+            <p class="mb-3 text-sm font-bold">
+                {{ $t('mcp.open_step') }}
+            </p>
 
             <div class="grid gap-4 md:grid-cols-2">
                 <article
@@ -114,6 +100,6 @@ const copyMcpUrl = (): void => {
                     </Button>
                 </article>
             </div>
-        </li>
-    </ol>
+        </div>
+    </div>
 </template>

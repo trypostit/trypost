@@ -8,7 +8,7 @@ return [
     'copy_step' => 'Copia la URL del servidor TryPost',
     'open_step' => 'Abre tu asistente de IA',
     'copy' => 'Copiar URL',
-    'connect' => 'Conectar con :client',
+    'connect' => 'Conectar :client',
     'step_add' => 'Pega el nombre, la URL o la config abajo en tu app. El inicio de sesión se abre en el navegador la primera vez.',
     'name_label' => 'Nombre',
     'url_label' => 'URL del servidor',

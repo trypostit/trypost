@@ -8,7 +8,7 @@ return [
     'copy_step' => 'TryPostサーバーURLをコピー',
     'open_step' => 'AIアシスタントを開く',
     'copy' => 'URLをコピー',
-    'connect' => ':clientで接続',
+    'connect' => ':clientを接続',
     'step_add' => '下の名前・URL・設定をアプリに貼り付けてください。初回接続時はブラウザでログインが開きます。',
     'name_label' => '名前',
     'url_label' => 'サーバーURL',

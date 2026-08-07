@@ -8,7 +8,7 @@ return [
     'copy_step' => '复制你的 TryPost 服务器 URL',
     'open_step' => '打开你的 AI 助手',
     'copy' => '复制 URL',
-    'connect' => '使用 :client 连接',
+    'connect' => '连接 :client',
     'step_add' => '将下方的名称、URL 或配置粘贴到你的应用中。首次连接时会在浏览器中打开登录。',
     'name_label' => '名称',
     'url_label' => '服务器 URL',

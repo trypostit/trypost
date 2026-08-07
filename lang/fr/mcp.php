@@ -8,7 +8,7 @@ return [
     'copy_step' => 'Copiez l’URL du serveur TryPost',
     'open_step' => 'Ouvrez votre assistant IA',
     'copy' => 'Copier l’URL',
-    'connect' => 'Connecter avec :client',
+    'connect' => 'Connecter :client',
     'step_add' => 'Collez le nom, l’URL ou la config ci-dessous dans votre app. La connexion s’ouvre dans le navigateur la première fois.',
     'name_label' => 'Nom',
     'url_label' => 'URL du serveur',
