@@ -33,8 +33,6 @@ class OnboardingController extends Controller
 
         $user = $request->user();
         $workspace = $user->currentWorkspace;
-        // Avoid a stale account relation from an earlier request in the same test process.
-        $user->unsetRelation('account');
         $account = $user->accountOrFail();
         // Pure read on GET — observers + POST complete/skip stamp progress.
         $status = $this->resolveOnboardingStatus->handle($user);

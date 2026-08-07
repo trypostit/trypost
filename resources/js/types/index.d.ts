@@ -89,7 +89,7 @@ export interface SharedData {
     name: string;
     auth: Auth;
     flash: FlashData;
-    onboardingProgress: OnboardingProgress | false;
+    onboardingProgress?: OnboardingProgress | false;
     sidebarOpen: boolean;
     selfHosted: boolean;
     contentTypeMediaRules?: Record<string, ContentTypeMediaRule>;

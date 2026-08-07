@@ -93,12 +93,18 @@ class ResolveOnboardingStatus
 
         $this->captureCompletedSteps($user, $account, $status);
 
-        if (! data_get($status, 'all_complete')) {
+        // Completion stamp is owner-only (matches HTTP skip/complete). Teammate
+        // actions still capture step analytics above and can unlock steps.
+        if (! data_get($status, 'all_complete') || ! $user->isAccountOwner()) {
             return $status;
         }
 
         $this->markCompleted($user);
         $account->refresh();
+
+        if (! $account->isOnboardingCompleted()) {
+            return $status;
+        }
 
         return [
             ...$status,
@@ -133,9 +139,14 @@ class ResolveOnboardingStatus
 
     /**
      * Stamp account onboarding completion once and capture the funnel event.
+     * Owner-only — teammates unlock steps but cannot finish the account funnel.
      */
     public function markCompleted(User $user): bool
     {
+        if (! $user->isAccountOwner()) {
+            return false;
+        }
+
         $account = $user->accountOrFail();
 
         if (! $account->isOnboardingOpen()) {
@@ -240,8 +251,9 @@ class ResolveOnboardingStatus
     }
 
     /**
-     * Cheap gates before handle()'s EXISTS queries (runs on every Inertia load).
-     * Self-hosted and non-owners never reach step state.
+     * Cheap gates before handle()'s step queries.
+     * Self-hosted and non-owners never reach step state. Shared Inertia
+     * props defer the expensive path via Inertia::defer when this is true.
      */
     private function canShowProgress(User $user, ?Account $account = null): bool
     {

@@ -11,12 +11,12 @@ import type { OnboardingProgress } from '@/types';
 const page = usePage();
 const { urlIsActive } = useActiveUrl();
 
-const onboardingProgress = computed<OnboardingProgress | false>(
+const onboardingProgress = computed<OnboardingProgress | false | undefined>(
     () => page.props.onboardingProgress,
 );
 
 const progressPercent = computed(() => {
-    if (onboardingProgress.value === false) {
+    if (! onboardingProgress.value) {
         return 0;
     }
 
@@ -27,7 +27,7 @@ const progressPercent = computed(() => {
 
 const liveEnabled = computed(
     () =>
-        onboardingProgress.value !== false &&
+        Boolean(onboardingProgress.value) &&
         page.component !== 'onboarding/Index',
 );
 
@@ -39,7 +39,7 @@ useOnboardingLiveReload({
 
 <template>
     <div
-        v-if="onboardingProgress !== false"
+        v-if="onboardingProgress"
         class="px-1 pb-1 group-data-[collapsible=icon]:hidden"
     >
         <Link

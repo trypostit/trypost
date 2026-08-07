@@ -71,16 +71,6 @@ useOnboardingLiveReload({
 });
 
 watch(
-    () => props.status.dismissed_at,
-    (dismissedAt) => {
-        if (dismissedAt) {
-            router.visit(calendar.url());
-        }
-    },
-    { immediate: true },
-);
-
-watch(
     () => props.status.all_complete,
     (isComplete) => {
         if (!isComplete || completeForm.processing) {

@@ -196,6 +196,19 @@ test('billing processing skips onboarding when dismissed', function () {
         ->assertInertia(fn ($page) => $page->where('redirectToOnboarding', false));
 });
 
+test('billing processing does not send members to onboarding', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $member = User::factory()->create(['account_id' => $this->account->id]);
+    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($member->fresh())
+        ->get(route('app.billing.processing'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('redirectToOnboarding', false));
+});
+
 test('billing processing still sends satisfied-but-unstamped owners to onboarding', function () {
     config(['trypost.self_hosted' => false]);
     $this->account->subscriptions()->create([

@@ -21,13 +21,16 @@ beforeEach(function () {
     subscribeAccount($this->user->account);
 });
 
-test('shares the onboarding checklist progress for subscribed accounts', function () {
+test('defers the onboarding checklist progress for mid-activation owners', function () {
     $this->actingAs($this->user)
         ->get(route('app.calendar'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('onboardingProgress.completed', 0)
-            ->where('onboardingProgress.total', ResolveOnboardingStatus::totalSteps())
+            ->missing('onboardingProgress')
+            ->loadDeferredProps(fn ($page) => $page
+                ->where('onboardingProgress.completed', 0)
+                ->where('onboardingProgress.total', ResolveOnboardingStatus::totalSteps())
+            )
         );
 });
 

@@ -49,10 +49,12 @@ trait HasOnboarding
 
     /**
      * Whether any bound MCP OAuth grant unlocks the account checklist.
+     * Early-exits on the first matching grant so accounts with many MCP
+     * tokens do not pay for a full collection + Gate pass every time.
      */
     public function hasOnboardingMcpConnection(): bool
     {
-        return AccessToken::query()
+        $tokens = AccessToken::query()
             ->activeMcpOAuth()
             ->whereNotNull('workspace_id')
             ->whereHas(
@@ -60,8 +62,15 @@ trait HasOnboarding
                 fn (Builder $workspace): Builder => $workspace->where('account_id', $this->id),
             )
             ->with(['user', 'workspace', 'client'])
-            ->get()
-            ->contains->unlocksOnboardingChecklist();
+            ->lazyById();
+
+        foreach ($tokens as $token) {
+            if ($token->unlocksOnboardingChecklist()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

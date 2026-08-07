@@ -426,9 +426,7 @@ test('sidebar progress returns false when the banner should not show', function 
     expect(app(ResolveOnboardingStatus::class)->sidebarProgress($this->user->fresh()))->toBeFalse();
 });
 
-test('syncProgress stamps when a teammate is on an empty workspace but account activation is done', function () {
-    Carbon::setTestNow('2026-07-24 12:00:00');
-
+test('syncProgress does not stamp completion for a teammate', function () {
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]));
@@ -450,7 +448,15 @@ test('syncProgress stamps when a teammate is on an empty workspace but account a
     AccessToken::withoutEvents(fn () => mcpAccessToken($member, mcpOauthClient(), $memberWorkspace));
 
     expect(app(ResolveOnboardingStatus::class)->syncProgress($member->fresh())['all_complete'])->toBeTrue()
-        ->and($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
+        ->and($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
+});
+
+test('markCompleted refuses teammates', function () {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+
+    expect(app(ResolveOnboardingStatus::class)->markCompleted($member->fresh()))->toBeFalse()
+        ->and($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
 });
 
 test('mcp connection attributes step analytics to the acting teammate', function () {

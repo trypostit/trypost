@@ -10,7 +10,10 @@ use App\Http\Resources\App\HandleInertiaRequests\AuthAccountResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthPlanResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthUserResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthWorkspaceResource;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Inertia\DeferProp;
+use Inertia\Inertia;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -49,9 +52,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'usage' => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => $account && ! $isSelfHosted ? $account->featureLimits() : null,
-            'onboardingProgress' => fn (): array|false => $user
-                ? app(ResolveOnboardingStatus::class)->sidebarProgress($user)
-                : false,
+            'onboardingProgress' => $this->onboardingProgressProp($user),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => $request->session()->get('flash', []),
             'applicationUrl' => config('app.url'),
@@ -77,5 +78,31 @@ class HandleInertiaRequests extends Middleware
             ...parent::shareOnce($request),
             'contentTypeMediaRules' => fn (): array => ContentType::mediaRulesForFrontend(),
         ];
+    }
+
+    /**
+     * Sidebar checklist progress. Cheap negatives resolve inline; the MCP/social/
+     * post EXISTS work is deferred so mid-activation owners do not pay for it on
+     * every full Inertia visit (loaded via deferred props / partial reload).
+     */
+    private function onboardingProgressProp(?User $user): DeferProp|false
+    {
+        if (
+            $user === null
+            || config('trypost.self_hosted')
+            || ! $user->isAccountOwner()
+        ) {
+            return false;
+        }
+
+        $account = $user->account;
+
+        if ($account === null || ! $account->isOnboardingOpen() || ! $account->hasAppAccess()) {
+            return false;
+        }
+
+        return Inertia::defer(
+            fn (): array|false => app(ResolveOnboardingStatus::class)->sidebarProgress($user),
+        );
     }
 }
