@@ -11,9 +11,7 @@ use App\Events\PostCreated;
 use App\Jobs\Automation\DispatchPostTriggerAutomationsJob;
 use App\Models\Account;
 use App\Models\Post;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class PostObserver
@@ -56,10 +54,7 @@ class PostObserver
         $account = $post->workspace?->account;
 
         if ($account?->isOnboardingOpen() && $this->otherPosts($account, $post)->doesntExist()) {
-            OnboardingStatusUpdated::dispatchForWorkspace(
-                $post->workspace_id,
-                $this->actorFor($post),
-            );
+            OnboardingStatusUpdated::dispatchForWorkspace($post->workspace_id, $post->user);
         }
     }
 
@@ -71,19 +66,5 @@ class PostObserver
         return Post::query()
             ->whereIn('workspace_id', $account->workspaces()->select('id'))
             ->whereKeyNot($post->id);
-    }
-
-    /**
-     * Prefer the authenticated request user (may carry an in-memory API/MCP
-     * workspace) over the persisted post author for checklist sync.
-     */
-    private function actorFor(Post $post): ?User
-    {
-        $user = Auth::user();
-        $accountId = $post->workspace?->account_id;
-
-        return $user instanceof User && $accountId !== null && $user->belongsToAccount($accountId)
-            ? $user
-            : $post->user;
     }
 }
