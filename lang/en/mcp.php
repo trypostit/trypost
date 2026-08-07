@@ -45,6 +45,11 @@ return [
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
+        'error_page_title' => 'Authorization failed - TryPost',
+        'error_title' => 'Could not connect',
+        'error_body' => 'This authorization request is invalid or expired. Close this window and try connecting again from your MCP client.',
+        'error_code' => 'Error: :error',
+        'error_close' => 'Close window',
     ],
 
     'other_clients_title' => 'Other apps',

@@ -45,6 +45,11 @@ return [
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
+        'error_page_title' => 'Échec de l\'autorisation - TryPost',
+        'error_title' => 'Impossible de se connecter',
+        'error_body' => 'Cette demande d\'autorisation est invalide ou a expiré. Fermez cette fenêtre et réessayez depuis votre client MCP.',
+        'error_code' => 'Erreur : :error',
+        'error_close' => 'Fermer la fenêtre',
     ],
 
     'other_clients_title' => 'Autres apps',

@@ -45,6 +45,11 @@ return [
         'search_workspace' => 'Buscar workspaces...',
         'no_workspace_found' => 'Nenhum workspace encontrado',
         'scope_mcp_use' => 'Usar o servidor MCP',
+        'error_page_title' => 'Falha na autorização - TryPost',
+        'error_title' => 'Não foi possível conectar',
+        'error_body' => 'Este pedido de autorização é inválido ou expirou. Feche esta janela e tente conectar de novo pelo seu cliente MCP.',
+        'error_code' => 'Erro: :error',
+        'error_close' => 'Fechar janela',
     ],
 
     'other_clients_title' => 'Outros apps',

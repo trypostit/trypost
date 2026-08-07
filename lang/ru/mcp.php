@@ -45,6 +45,11 @@ return [
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
+        'error_page_title' => 'Ошибка авторизации - TryPost',
+        'error_title' => 'Не удалось подключиться',
+        'error_body' => 'Этот запрос авторизации недействителен или устарел. Закройте это окно и попробуйте подключиться снова из MCP-клиента.',
+        'error_code' => 'Ошибка: :error',
+        'error_close' => 'Закрыть окно',
     ],
 
     'other_clients_title' => 'Другие приложения',

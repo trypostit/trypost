@@ -45,6 +45,11 @@ return [
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
+        'error_page_title' => 'Autorisatie mislukt - TryPost',
+        'error_title' => 'Verbinden mislukt',
+        'error_body' => 'Dit autorisatieverzoek is ongeldig of verlopen. Sluit dit venster en probeer opnieuw te verbinden via je MCP-client.',
+        'error_code' => 'Fout: :error',
+        'error_close' => 'Venster sluiten',
     ],
 
     'other_clients_title' => 'Andere apps',

@@ -45,6 +45,11 @@ return [
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
+        'error_page_title' => 'Autorisierung fehlgeschlagen - TryPost',
+        'error_title' => 'Verbindung fehlgeschlagen',
+        'error_body' => 'Diese Autorisierungsanfrage ist ungültig oder abgelaufen. Schließen Sie dieses Fenster und verbinden Sie sich erneut über Ihren MCP-Client.',
+        'error_code' => 'Fehler: :error',
+        'error_close' => 'Fenster schließen',
     ],
 
     'other_clients_title' => 'Andere Apps',
