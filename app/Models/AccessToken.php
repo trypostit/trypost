@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\UserWorkspace\Role;
 use App\Observers\AccessTokenObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
@@ -71,40 +70,6 @@ class AccessToken extends Token
             ->where(function (Builder $expires): void {
                 $expires->whereNull('expires_at')
                     ->orWhere('expires_at', '>', now());
-            });
-    }
-
-    /**
-     * Bound, active MCP OAuth grant that counts toward account onboarding:
-     * workspace belongs to the account, and the token owner can create posts there.
-     *
-     * @param  Builder<static>  $query
-     * @return Builder<static>
-     */
-    public function scopeOnboardingMcpConnection(Builder $query, Account $account): Builder
-    {
-        $createPostRoles = [Role::Admin->value, Role::Member->value];
-
-        return $query
-            ->activeMcpOAuth()
-            ->whereNotNull('workspace_id')
-            ->whereIn(
-                'user_id',
-                User::query()->select('id')->where('account_id', $account->id),
-            )
-            ->whereHas(
-                'workspace',
-                fn (Builder $workspace): Builder => $workspace->where('account_id', $account->id),
-            )
-            ->where(function (Builder $tokens) use ($account, $createPostRoles): void {
-                $tokens->where('user_id', $account->owner_id)
-                    ->orWhereExists(function ($sub) use ($createPostRoles): void {
-                        $sub->selectRaw('1')
-                            ->from('user_workspace')
-                            ->whereColumn('user_workspace.user_id', 'oauth_access_tokens.user_id')
-                            ->whereColumn('user_workspace.workspace_id', 'oauth_access_tokens.workspace_id')
-                            ->whereIn('user_workspace.role', $createPostRoles);
-                    });
             });
     }
 
@@ -212,6 +177,21 @@ class AccessToken extends Token
         }
 
         return $this->expires_at === null || ! $this->expires_at->isPast();
+    }
+
+    /**
+     * Bound MCP grant that unlocks the account onboarding checklist
+     * (usable grant + createPost on the bound workspace).
+     */
+    public function unlocksOnboardingChecklist(?User $user = null): bool
+    {
+        $user ??= $this->user;
+        $workspace = $this->workspace;
+
+        return $user instanceof User
+            && $workspace instanceof Workspace
+            && $this->isUsableMcpGrant($user, $workspace)
+            && $user->can('createPost', $workspace);
     }
 
     /**

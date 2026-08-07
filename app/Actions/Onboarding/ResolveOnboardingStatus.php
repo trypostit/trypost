@@ -7,7 +7,6 @@ namespace App\Actions\Onboarding;
 use App\Enums\PostHog\OnboardingEvent;
 use App\Enums\SocialAccount\Status;
 use App\Events\OnboardingStatusUpdated;
-use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
@@ -285,7 +284,7 @@ class ResolveOnboardingStatus
 
         // Preserve skip vs real MCP completion for the ready UI badge.
         $mcpConnected = ! $account->hasSkippedOnboardingStep('mcp')
-            || $this->accountHasMcpConnection($account);
+            || $account->hasOnboardingMcpConnection();
 
         return [
             'mcp_connected' => $mcpConnected,
@@ -340,7 +339,7 @@ class ResolveOnboardingStatus
     private function stepStates(Account $account): array
     {
         return [
-            'mcp' => $this->accountHasMcpConnection($account),
+            'mcp' => $account->hasOnboardingMcpConnection(),
             'social' => $this->accountHasSocialConnection($account),
             'first_post' => $this->accountHasPost($account),
         ];
@@ -410,13 +409,6 @@ class ResolveOnboardingStatus
         }
     }
 
-    private function accountHasMcpConnection(Account $account): bool
-    {
-        return AccessToken::query()
-            ->onboardingMcpConnection($account)
-            ->exists();
-    }
-
     private function accountHasSocialConnection(Account $account): bool
     {
         return Workspace::query()
@@ -438,7 +430,7 @@ class ResolveOnboardingStatus
 
     private function clearMcpSkipIfConnected(Account $account): void
     {
-        if (! $account->hasSkippedOnboardingStep('mcp') || ! $this->accountHasMcpConnection($account)) {
+        if (! $account->hasSkippedOnboardingStep('mcp') || ! $account->hasOnboardingMcpConnection()) {
             return;
         }
 

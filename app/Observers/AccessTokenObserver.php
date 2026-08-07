@@ -41,7 +41,7 @@ class AccessTokenObserver
 
         // Revocation always notifies so progress can clear. Live grants only
         // unlock when bound + createPost (viewers must not complete the checklist).
-        if ($accessToken->revoked || $this->unlocksMcpChecklist($accessToken, $user)) {
+        if ($accessToken->revoked || $accessToken->unlocksOnboardingChecklist($user)) {
             OnboardingStatusUpdated::dispatchForAccount($user->accountOrFail(), $user);
         }
     }
@@ -52,14 +52,5 @@ class AccessTokenObserver
         // disconnect still clears progress.
         return in_array('mcp:use', $accessToken->scopes ?? [], true)
             && ! $accessToken->isPersonalAccessToken();
-    }
-
-    private function unlocksMcpChecklist(AccessToken $accessToken, User $user): bool
-    {
-        $workspace = $accessToken->workspace;
-
-        return $workspace !== null
-            && $accessToken->isUsableMcpGrant($user, $workspace)
-            && $user->can('createPost', $workspace);
     }
 }

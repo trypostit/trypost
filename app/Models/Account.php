@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Traits\HasOnboarding;
 use App\Models\Traits\HasUsage;
 use Carbon\CarbonInterface;
 use Database\Factories\AccountFactory;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,7 +20,7 @@ use Throwable;
 class Account extends Model
 {
     /** @use HasFactory<AccountFactory> */
-    use Billable, HasFactory, HasUsage, HasUuids;
+    use Billable, HasFactory, HasOnboarding, HasUsage, HasUuids;
 
     public const SUBSCRIPTION_NAME = 'default';
 
@@ -96,54 +96,6 @@ class Account extends Model
 
         return $this->subscribed(self::SUBSCRIPTION_NAME)
             || (! $requiresCardForTrial && $this->isOnTrial());
-    }
-
-    public function hasFinishedOnboarding(): bool
-    {
-        return $this->isOnboardingCompleted() || $this->isOnboardingDismissed();
-    }
-
-    public function isOnboardingCompleted(): bool
-    {
-        return $this->onboarding_completed_at !== null;
-    }
-
-    public function isOnboardingDismissed(): bool
-    {
-        return $this->onboarding_dismissed_at !== null;
-    }
-
-    /**
-     * @return list<string>
-     */
-    public function skippedOnboardingSteps(): array
-    {
-        return $this->onboarding_skipped_steps ?? [];
-    }
-
-    public function hasSkippedOnboardingStep(string $step): bool
-    {
-        return in_array($step, $this->skippedOnboardingSteps(), true);
-    }
-
-    /**
-     * Whether activation progress should still be tracked for this account.
-     * Prefer `$account?->isOnboardingOpen()` at call sites so null accounts bail out cleanly.
-     */
-    public function isOnboardingOpen(): bool
-    {
-        return ! $this->hasFinishedOnboarding();
-    }
-
-    /**
-     * @param  Builder<Account>  $query
-     * @return Builder<Account>
-     */
-    public function scopeOnboardingOpen(Builder $query): Builder
-    {
-        return $query
-            ->whereNull('onboarding_completed_at')
-            ->whereNull('onboarding_dismissed_at');
     }
 
     /**
