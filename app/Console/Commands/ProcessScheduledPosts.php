@@ -39,6 +39,7 @@ class ProcessScheduledPosts extends Command
         // post reminds the owner to publish it from the native app, and never
         // auto-publishes.
         Post::query()
+            ->with(['workspace.owner'])
             ->manualDueNotNotified()
             ->each(function (Post $post) {
                 $owner = $post->workspace?->owner;

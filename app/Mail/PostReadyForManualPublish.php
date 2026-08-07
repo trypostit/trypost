@@ -24,7 +24,7 @@ class PostReadyForManualPublish extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Your post is ready to publish — '.$this->post->workspace->name,
+            subject: "Your post is ready to publish — {$this->post->workspace->name}",
         );
     }
 

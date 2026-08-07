@@ -35,7 +35,7 @@ class CreatePost
      *     media?: array<int, mixed>,
      *     date?: ?string,
      *     scheduled_at?: ?string,
-     *     publish_mode?: ?PublishMode,
+     *     publish_mode?: PublishMode|string|null,
      *     created_via?: ?CreatedVia,
      *     platforms?: array<int, array{social_account_id: string, content_type?: string, meta?: array<string, mixed>}>,
      *     label_ids?: array<int, string>

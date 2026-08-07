@@ -134,6 +134,10 @@ const updatePlatformContentType = (platformId: string, contentType: string) => {
     platformContentTypes.value = { ...platformContentTypes.value, [platformId]: contentType };
 };
 
+const updatePublishMode = (value: PostPublishModeValue) => {
+    publishMode.value = value;
+};
+
 const {
     platformLimits,
     mediaIssues,
@@ -476,7 +480,7 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                             @toggle-label="toggleLabel"
                             @update:platform-meta="updatePlatformMeta"
                             @update:platform-content-type="updatePlatformContentType"
-                            @update:publish-mode="(value) => (publishMode.value = value as PostPublishModeValue)"
+                            @update:publish-mode="updatePublishMode"
                         />
                     </div>
                 </div>
