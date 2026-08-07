@@ -118,7 +118,7 @@ test('dispatchForWorkspace does not stamp when the surrounding transaction rolls
     $user->update(['current_workspace_id' => $workspace->id]);
     subscribeAccount($user->account);
 
-    AccessToken::withoutEvents(fn () => mcpAccessToken($user, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($user, mcpOauthClient(), $workspace));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
     ]));
@@ -158,7 +158,7 @@ test('dispatchForWorkspace stamps completion when actor current workspace differ
     $user->update(['current_workspace_id' => $otherWorkspace->id]);
     subscribeAccount($user->account);
 
-    AccessToken::withoutEvents(fn () => mcpAccessToken($user, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($user, mcpOauthClient(), $readyWorkspace));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $readyWorkspace->id,
     ]));
@@ -244,7 +244,7 @@ test('completion broadcasts exactly once per workspace', function () {
     $user->update(['current_workspace_id' => $workspace->id]);
     subscribeAccount($user->account);
 
-    AccessToken::withoutEvents(fn () => mcpAccessToken($user, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($user, mcpOauthClient(), $workspace));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
     ]));

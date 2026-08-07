@@ -147,7 +147,7 @@ test('a member visit does not capture onboarding viewed', function () {
 });
 
 test('onboarding does not capture viewed when syncProgress stamps completion', function () {
-    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]));
@@ -211,7 +211,7 @@ test('skipping the last open step completes the onboarding', function () {
 });
 
 test('skipping an already connected step is a no-op', function () {
-    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
 
     $this->actingAs($this->user->fresh())
         ->post(route('app.onboarding.mcp.skip'))
@@ -277,7 +277,7 @@ test('partial reloads keep the ready state after completion is stamped', functio
         ->get(route('app.onboarding'))
         ->assertOk();
 
-    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]));
@@ -304,7 +304,7 @@ test('partial reloads keep the ready state after completion is stamped', functio
 test('same-request auto-stamp still shows the ready state', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 
-    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]));
@@ -335,7 +335,7 @@ test('same-request auto-stamp still shows the ready state', function () {
 test('completed accounts stay on onboarding during partial reloads', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 
-    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]));
@@ -393,7 +393,7 @@ test('onboarding completes after every activation step', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
     Event::fake([OnboardingStatusUpdated::class]);
 
-    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]));
@@ -418,7 +418,7 @@ test('onboarding completes after every activation step', function () {
 test('onboarding complete does not re-fire completed when already stamped', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
 
-    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]));
@@ -489,7 +489,7 @@ test('teammates can stamp completion via the complete endpoint', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
     Event::fake([OnboardingStatusUpdated::class]);
 
-    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]));
@@ -529,7 +529,7 @@ test('complete stamps when activation finished on another workspace', function (
     Carbon::setTestNow('2026-07-29 12:00:00');
     Event::fake([OnboardingStatusUpdated::class]);
 
-    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]));
@@ -554,7 +554,7 @@ test('complete stamps when activation finished on another workspace', function (
 test('complete after dismiss redirects without stamping completion', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
 
-    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]));

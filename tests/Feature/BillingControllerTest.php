@@ -202,7 +202,7 @@ test('billing processing completes already satisfied onboarding before redirecti
         'stripe_price' => 'price_test',
         'quantity' => 1,
     ]);
-    mcpAccessToken($this->user, mcpOauthClient());
+    mcpAccessToken($this->user, mcpOauthClient(), $this->workspace);
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]));

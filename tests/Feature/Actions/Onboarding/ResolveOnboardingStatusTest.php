@@ -49,7 +49,7 @@ test('resolves the empty onboarding state', function () {
 });
 
 test('resolves an OAuth token as MCP connected', function () {
-    mcpAccessToken($this->user, mcpOauthClient());
+    mcpAccessToken($this->user, mcpOauthClient(), $this->workspace);
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user);
 
@@ -81,7 +81,7 @@ test('does not resolve a workspace-bound personal access token as MCP connected'
 });
 
 test('does not resolve a revoked token as MCP connected', function () {
-    $token = mcpAccessToken($this->user, mcpOauthClient());
+    $token = mcpAccessToken($this->user, mcpOauthClient(), $this->workspace);
     $token->forceFill(['revoked' => true])->saveQuietly();
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user);
@@ -118,7 +118,7 @@ test('captures each completed step once without re-firing later', function () {
 });
 
 test('does not resolve an expired oauth token as mcp connected', function () {
-    $token = AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    $token = AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
     $token->forceFill(['expires_at' => now()->subMinute()])->saveQuietly();
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user);
@@ -135,15 +135,16 @@ test('requires an effective workspace for the mcp step', function () {
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]));
-    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    // Bound MCP grants still count without a current-workspace switcher value.
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user->fresh());
 
     expect($status)->toMatchArray([
-        'mcp_connected' => false,
+        'mcp_connected' => true,
         'social_connected' => true,
         'first_post_created' => true,
-        'all_complete' => false,
+        'all_complete' => true,
     ]);
 });
 
@@ -226,7 +227,7 @@ test('resolves a post in another workspace as the first post', function () {
 test('marks onboarding completed once all three steps are complete', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
 
-    mcpAccessToken($this->user, mcpOauthClient());
+    mcpAccessToken($this->user, mcpOauthClient(), $this->workspace);
     SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
     Post::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -254,7 +255,7 @@ test('marks onboarding completed once all three steps are complete', function ()
 });
 
 test('handle does not mutate the account when every step is complete', function () {
-    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]));
@@ -277,7 +278,7 @@ test('stamps completion when the last step completes off the onboarding page', f
     Carbon::setTestNow('2026-07-24 12:00:00');
     Bus::fake();
 
-    mcpAccessToken($this->user, mcpOauthClient());
+    mcpAccessToken($this->user, mcpOauthClient(), $this->workspace);
     SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 
     expect($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
@@ -296,7 +297,7 @@ test('resolves a teammate oauth token as mcp connected for the account', functio
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
     $member->update(['current_workspace_id' => $this->workspace->id]);
-    AccessToken::withoutEvents(fn () => mcpAccessToken($member, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($member, mcpOauthClient(), $this->workspace));
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user);
 
@@ -305,7 +306,7 @@ test('resolves a teammate oauth token as mcp connected for the account', functio
 
 test('does not resolve an unscoped oauth token as mcp connected', function () {
     AccessToken::withoutEvents(
-        fn () => mcpAccessToken($this->user, mcpOauthClient(), scopes: []),
+        fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace, scopes: []),
     );
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user);
@@ -317,7 +318,7 @@ test('does not resolve a viewer oauth token as mcp connected', function () {
     $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
     $viewer->update(['current_workspace_id' => $this->workspace->id]);
-    AccessToken::withoutEvents(fn () => mcpAccessToken($viewer, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($viewer, mcpOauthClient(), $this->workspace));
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user);
 
@@ -383,7 +384,7 @@ test('residual returns progress counts while onboarding is active', function () 
 });
 
 test('checklist and residual both count social and posts from any workspace', function () {
-    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
 
     $otherWorkspace = Workspace::factory()->create([
         'account_id' => $this->user->account_id,
@@ -438,7 +439,7 @@ test('syncProgress stamps when a teammate is on an empty workspace but account a
 
     expect(app(ResolveOnboardingStatus::class)->syncProgress($member->fresh())['all_complete'])->toBeFalse();
 
-    AccessToken::withoutEvents(fn () => mcpAccessToken($member, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($member, mcpOauthClient(), $memberWorkspace));
 
     expect(app(ResolveOnboardingStatus::class)->syncProgress($member->fresh())['all_complete'])->toBeTrue()
         ->and($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
@@ -466,7 +467,7 @@ test('mcp connection attributes step analytics to the acting teammate', function
     // Owner has a lower id and would win if we still fan-out by users.id asc.
     expect($this->user->id < $member->id)->toBeTrue();
 
-    mcpAccessToken($member, mcpOauthClient());
+    mcpAccessToken($member, mcpOauthClient(), $this->workspace);
 
     Bus::assertDispatched(
         SendEvent::class,
@@ -508,7 +509,7 @@ test('syncProgress stamps when another workspace already finished social and pos
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]));
-    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
 
     $emptyWorkspace = Workspace::factory()->create([
         'account_id' => $this->user->account_id,
@@ -531,7 +532,7 @@ test('residual hides without writing when another workspace already finished act
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]));
-    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
 
     $emptyWorkspace = Workspace::factory()->create([
         'account_id' => $this->user->account_id,
@@ -620,7 +621,7 @@ test('skipMcp completes the checklist when MCP was the last open step', function
 });
 
 test('skipMcp refuses when MCP is already connected or already skipped', function () {
-    mcpAccessToken($this->user, mcpOauthClient());
+    mcpAccessToken($this->user, mcpOauthClient(), $this->workspace);
 
     expect(app(ResolveOnboardingStatus::class)->skipMcp($this->user->fresh()))->toBeFalse();
 
@@ -643,7 +644,7 @@ test('residual counts a skipped step as done', function () {
 test('connecting the mcp step after skipping it prefers Complete over Skipped', function () {
     app(ResolveOnboardingStatus::class)->skipMcp($this->user);
 
-    mcpAccessToken($this->user, mcpOauthClient());
+    mcpAccessToken($this->user, mcpOauthClient(), $this->workspace);
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user->fresh());
 
@@ -669,7 +670,7 @@ test('connecting mcp after a skipped step completed onboarding replaces the skip
     expect(app(ResolveOnboardingStatus::class)->skipMcp($this->user))->toBeTrue()
         ->and($this->user->account->fresh()->onboarding_completed_at)->not->toBeNull();
 
-    mcpAccessToken($this->user, mcpOauthClient());
+    mcpAccessToken($this->user, mcpOauthClient(), $this->workspace);
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user->fresh());
 

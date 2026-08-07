@@ -171,7 +171,7 @@ test('creating an oauth mcp token broadcasts onboarding status for every account
     ]);
     $user->update(['current_workspace_id' => $workspaceA->id]);
 
-    mcpAccessToken($user, mcpOauthClient());
+    mcpAccessToken($user, mcpOauthClient(), $workspaceA);
 
     Event::assertDispatchedTimes(OnboardingStatusUpdated::class, 2);
     Event::assertDispatched(
@@ -208,8 +208,8 @@ test('unscoped and viewer oauth tokens do not broadcast onboarding status', func
     $workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
     $viewer->update(['current_workspace_id' => $workspace->id]);
 
-    mcpAccessToken($owner, mcpOauthClient('Unscoped Agent'), scopes: []);
-    mcpAccessToken($viewer, mcpOauthClient('Viewer Agent'));
+    mcpAccessToken($owner, mcpOauthClient('Unscoped Agent'), $workspace, scopes: []);
+    mcpAccessToken($viewer, mcpOauthClient('Viewer Agent'), $workspace);
 
     Event::assertNotDispatched(OnboardingStatusUpdated::class);
 });
@@ -223,7 +223,7 @@ test('creating an oauth mcp token does not broadcast when onboarding is over', f
     $user->update(['current_workspace_id' => $workspace->id]);
     $user->account->forceFill([$column => now()])->save();
 
-    mcpAccessToken($user, mcpOauthClient());
+    mcpAccessToken($user, mcpOauthClient(), $workspace);
 
     Event::assertNotDispatched(OnboardingStatusUpdated::class);
 })->with(['onboarding_completed_at', 'onboarding_dismissed_at']);
@@ -236,7 +236,7 @@ test('revoking an oauth mcp token broadcasts onboarding status', function () {
     ]);
     $user->update(['current_workspace_id' => $workspace->id]);
 
-    $token = AccessToken::withoutEvents(fn () => mcpAccessToken($user, mcpOauthClient()));
+    $token = AccessToken::withoutEvents(fn () => mcpAccessToken($user, mcpOauthClient(), $workspace));
 
     Event::fake([OnboardingStatusUpdated::class]);
 
@@ -256,7 +256,7 @@ test('oauth tokens bound to a workspace still broadcast onboarding status', func
     ]);
     $user->update(['current_workspace_id' => $workspace->id]);
 
-    $token = AccessToken::withoutEvents(fn () => mcpAccessToken($user, mcpOauthClient()));
+    $token = AccessToken::withoutEvents(fn () => mcpAccessToken($user, mcpOauthClient(), $workspace));
     $token->forceFill(['workspace_id' => $workspace->id])->saveQuietly();
 
     Event::fake([OnboardingStatusUpdated::class]);

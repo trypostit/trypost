@@ -197,8 +197,7 @@ class AccessToken extends Token
 
     /**
      * Whether this MCP grant can actually use the product (active token + a
-     * workspace the owner can create posts in). Unbound grants fall back to
-     * the user's current workspace — same as onboarding MCP detection.
+     * workspace the owner can view — write tools enforce createPost themselves).
      */
     public function isUsableMcpGrant(?User $user = null, ?Workspace $workspace = null): bool
     {
@@ -206,18 +205,7 @@ class AccessToken extends Token
             return false;
         }
 
-        $user ??= User::query()
-            ->with('currentWorkspace')
-            ->find($this->user_id);
-
-        if (! $user instanceof User) {
-            return false;
-        }
-
-        $workspace ??= $this->workspace ?? $user->currentWorkspace;
-
-        return $workspace instanceof Workspace
-            && $user->can('createPost', $workspace);
+        return $this->ownerCanViewWorkspace($user, $workspace);
     }
 
     /**

@@ -47,11 +47,16 @@ class AccessTokenObserver
         }
 
         // Revocation always notifies so residual can clear. Live grants only
-        // unlock the step when the owner can create posts (excludes viewers).
+        // unlock the step when the token is bound and the user can create posts
+        // (viewers with read-only MCP must not complete the checklist).
         if (! $accessToken->revoked) {
-            $workspace = $accessToken->workspace ?? $user->currentWorkspace;
+            $workspace = $accessToken->workspace;
 
-            if (! $workspace instanceof Workspace || ! $user->can('createPost', $workspace)) {
+            if (
+                ! $workspace instanceof Workspace
+                || ! $accessToken->isUsableMcpGrant($user, $workspace)
+                || ! $user->can('createPost', $workspace)
+            ) {
                 return;
             }
         }

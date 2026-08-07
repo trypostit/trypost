@@ -307,11 +307,15 @@ class ResolveOnboardingStatus
             ->get()
             ->keyBy('id');
 
-        return $tokens->contains(
-            fn (AccessToken $token): bool => $token->isUsableMcpGrant(
-                $users->get($token->user_id),
-            ),
-        );
+        return $tokens->contains(function (AccessToken $token) use ($users): bool {
+            $user = $users->get($token->user_id);
+            $workspace = $token->workspace;
+
+            return $user instanceof User
+                && $workspace instanceof Workspace
+                && $token->isUsableMcpGrant($user, $workspace)
+                && $user->can('createPost', $workspace);
+        });
     }
 
     private function accountHasSocialConnection(?Account $account): bool
