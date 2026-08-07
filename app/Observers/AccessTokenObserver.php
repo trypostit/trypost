@@ -7,6 +7,7 @@ namespace App\Observers;
 use App\Events\OnboardingStatusUpdated;
 use App\Models\AccessToken;
 use App\Models\User;
+use App\Models\Workspace;
 
 class AccessTokenObserver
 {
@@ -37,10 +38,22 @@ class AccessTokenObserver
             return;
         }
 
-        $user = User::query()->with('account')->find($accessToken->user_id);
+        $user = User::query()
+            ->with(['account', 'currentWorkspace'])
+            ->find($accessToken->user_id);
 
         if ($user?->account === null) {
             return;
+        }
+
+        // Revocation always notifies so residual can clear. Live grants only
+        // unlock the step when the owner can create posts (excludes viewers).
+        if (! $accessToken->revoked) {
+            $workspace = $accessToken->workspace ?? $user->currentWorkspace;
+
+            if (! $workspace instanceof Workspace || ! $user->can('createPost', $workspace)) {
+                return;
+            }
         }
 
         OnboardingStatusUpdated::dispatchForAccount($user->account, $user);
