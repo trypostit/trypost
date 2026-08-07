@@ -20,20 +20,14 @@ class AccessTokenObserver
 
     public function updated(AccessToken $accessToken): void
     {
-        if (! $accessToken->wasChanged('revoked')) {
-            return;
+        if ($accessToken->wasChanged('revoked')) {
+            $this->broadcastIfMcpOAuth($accessToken);
         }
-
-        $this->broadcastIfMcpOAuth($accessToken);
     }
 
     private function broadcastIfMcpOAuth(AccessToken $accessToken): void
     {
-        // Ignore revocation mid-flight so disconnect still clears residual.
-        $looksLikeMcp = in_array('mcp:use', $accessToken->scopes ?? [], true)
-            && ! $accessToken->isPersonalAccessToken();
-
-        if (! $looksLikeMcp) {
+        if (! $this->looksLikeMcpOAuth($accessToken)) {
             return;
         }
 
@@ -41,18 +35,25 @@ class AccessTokenObserver
             ->with(['account', 'currentWorkspace'])
             ->find($accessToken->user_id);
 
-        if ($user?->account === null) {
+        $account = $user?->account;
+
+        if ($account === null) {
             return;
         }
 
         // Revocation always notifies so residual can clear. Live grants only
-        // unlock the step when the token is bound and the user can create posts
-        // (viewers with read-only MCP must not complete the checklist).
-        if (! $accessToken->revoked && ! $this->unlocksMcpChecklist($accessToken, $user)) {
-            return;
+        // unlock when bound + createPost (viewers must not complete the checklist).
+        if ($accessToken->revoked || $this->unlocksMcpChecklist($accessToken, $user)) {
+            OnboardingStatusUpdated::dispatchForAccount($account, $user);
         }
+    }
 
-        OnboardingStatusUpdated::dispatchForAccount($user->account, $user);
+    private function looksLikeMcpOAuth(AccessToken $accessToken): bool
+    {
+        // Ignore personal-access tokens; treat mid-revoke rows as MCP so
+        // disconnect still clears residual.
+        return in_array('mcp:use', $accessToken->scopes ?? [], true)
+            && ! $accessToken->isPersonalAccessToken();
     }
 
     private function unlocksMcpChecklist(AccessToken $accessToken, User $user): bool

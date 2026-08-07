@@ -27,12 +27,8 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
      * Use after complete/skip so owner residual banners update immediately
      * even when dispatchForAccount would early-return on stamped timestamps.
      */
-    public static function broadcastForAccount(?Account $account): void
+    public static function broadcastForAccount(Account $account): void
     {
-        if ($account === null) {
-            return;
-        }
-
         foreach ($account->workspaces()->pluck('id') as $workspaceId) {
             static::dispatch((string) $workspaceId);
         }
@@ -42,13 +38,11 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
      * Sync progress then broadcast to every workspace on the account.
      * Use when a step is account-scoped (e.g. MCP OAuth).
      */
-    public static function dispatchForAccount(?Account $account, ?User $actor = null): void
+    public static function dispatchForAccount(Account $account, ?User $actor = null): void
     {
-        if (! $account?->isOnboardingOpen()) {
-            return;
+        if ($account->isOnboardingOpen()) {
+            static::syncAfterCommit($account->id, $actor?->id);
         }
-
-        static::syncAfterCommit($account->id, $actor?->id);
     }
 
     /**
@@ -57,17 +51,13 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
      */
     public static function dispatchForWorkspace(?string $workspaceId, ?User $actor = null): void
     {
-        if (blank($workspaceId)) {
-            return;
+        $account = filled($workspaceId)
+            ? Workspace::query()->find($workspaceId)?->account
+            : null;
+
+        if ($account?->isOnboardingOpen()) {
+            static::syncAfterCommit($account->id, $actor?->id);
         }
-
-        $account = Workspace::query()->find($workspaceId)?->account;
-
-        if (! $account?->isOnboardingOpen()) {
-            return;
-        }
-
-        static::syncAfterCommit($account->id, $actor?->id);
     }
 
     private static function syncAfterCommit(string $accountId, ?string $actorId): void
@@ -75,11 +65,9 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
         DB::afterCommit(function () use ($accountId, $actorId): void {
             $account = Account::query()->find($accountId);
 
-            if (! $account?->isOnboardingOpen()) {
-                return;
+            if ($account?->isOnboardingOpen()) {
+                app(ResolveOnboardingStatus::class)->syncAndNotify($account, $actorId);
             }
-
-            app(ResolveOnboardingStatus::class)->syncAndNotify($account, $actorId);
         });
     }
 

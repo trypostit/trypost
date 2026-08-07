@@ -9,6 +9,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Events\OnboardingStatusUpdated;
 use App\Events\PostCreated;
 use App\Jobs\Automation\DispatchPostTriggerAutomationsJob;
+use App\Models\Account;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -20,41 +21,34 @@ class PostObserver
     {
         DB::afterCommit(fn () => PostCreated::dispatch($post));
 
-        $account = $post->workspace?->account;
-
-        if (! $account?->isOnboardingOpen()) {
-            return;
-        }
-
-        // Only the account's first post unlocks the onboarding step — later
-        // creates would just spam Echo reloads while activation is still open.
-        $isFirstPost = Post::query()
-            ->whereIn('workspace_id', $account->workspaces()->select('id'))
-            ->whereKeyNot($post->id)
-            ->doesntExist();
-
-        if ($isFirstPost) {
-            OnboardingStatusUpdated::dispatchForWorkspace(
-                $post->workspace_id,
-                $this->actorFor($post),
-            );
-        }
+        $this->notifyOnboarding($post, function (Account $account) use ($post): bool {
+            // Only the account's first post unlocks the step — later creates
+            // would just spam Echo reloads while activation is still open.
+            return Post::query()
+                ->whereIn('workspace_id', $account->workspaces()->select('id'))
+                ->whereKeyNot($post->id)
+                ->doesntExist();
+        });
     }
 
     public function deleted(Post $post): void
     {
+        $this->notifyOnboarding($post, function (Account $account): bool {
+            // The step only flips when the account's last post disappears.
+            return Post::query()
+                ->whereIn('workspace_id', $account->workspaces()->select('id'))
+                ->doesntExist();
+        });
+    }
+
+    /**
+     * @param  callable(Account): bool  $shouldNotify
+     */
+    private function notifyOnboarding(Post $post, callable $shouldNotify): void
+    {
         $account = $post->workspace?->account;
 
-        if (! $account?->isOnboardingOpen()) {
-            return;
-        }
-
-        // The step only flips when the account's last post disappears.
-        $accountHasPosts = Post::query()
-            ->whereIn('workspace_id', $account->workspaces()->select('id'))
-            ->exists();
-
-        if (! $accountHasPosts) {
+        if ($account?->isOnboardingOpen() && $shouldNotify($account)) {
             OnboardingStatusUpdated::dispatchForWorkspace(
                 $post->workspace_id,
                 $this->actorFor($post),
@@ -70,11 +64,9 @@ class PostObserver
     {
         $user = Auth::user();
 
-        if ($user instanceof User && $user->belongsToAccount($post->workspace?->account_id)) {
-            return $user;
-        }
-
-        return $post->user;
+        return $user instanceof User && $user->belongsToAccount($post->workspace?->account_id)
+            ? $user
+            : $post->user;
     }
 
     public function saved(Post $post): void
@@ -89,10 +81,8 @@ class PostObserver
             default => null,
         };
 
-        if ($triggerType === null) {
-            return;
+        if ($triggerType !== null) {
+            DispatchPostTriggerAutomationsJob::dispatch($post, $triggerType)->afterCommit();
         }
-
-        DispatchPostTriggerAutomationsJob::dispatch($post, $triggerType)->afterCommit();
     }
 }

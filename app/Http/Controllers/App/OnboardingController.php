@@ -34,7 +34,8 @@ class OnboardingController extends Controller
         $workspace = $user->currentWorkspace;
         // Avoid a stale account relation from an earlier request in the same test process.
         $user->unsetRelation('account');
-        $wasAlreadyComplete = $user->account?->onboarding_completed_at !== null;
+        $account = $user->account;
+        $wasAlreadyComplete = $account?->isOnboardingCompleted() ?? false;
         // Pure read on GET — observers + POST complete/skip stamp progress.
         $status = $this->resolveOnboardingStatus->handle($user);
 
@@ -52,18 +53,12 @@ class OnboardingController extends Controller
 
         if (
             ! $isPartial
-            && $status['completed_at'] === null
-            && $status['dismissed_at'] === null
-            && ! $status['all_complete']
+            && $account?->isOnboardingOpen()
             && $user->isAccountOwner()
-            && $user->account !== null
+            && ! $status['all_complete']
         ) {
-            $this->captureViewedOnce($user->id, $user->account);
+            $this->captureViewedOnce($user->id, $account);
         }
-
-        $accounts = SocialAccountResource::collection(
-            $workspace->socialAccounts()->orderBy('id')->get(),
-        )->resolve();
 
         return Inertia::render('onboarding/Index', [
             'status' => $status,
@@ -73,8 +68,46 @@ class OnboardingController extends Controller
             'mcpUrl' => route('mcp.trypost'),
             'samplePrompt' => __('onboarding.first_post.sample_prompt'),
             'platforms' => SocialPlatform::connectableOptions(),
-            'accounts' => $accounts,
+            'accounts' => SocialAccountResource::collection(
+                $workspace->socialAccounts()->orderBy('id')->get(),
+            )->resolve(),
         ]);
+    }
+
+    public function skipMcp(Request $request): RedirectResponse
+    {
+        if ($redirect = $this->redirectIfSelfHosted()) {
+            return $redirect;
+        }
+
+        abort_unless($request->user()->isAccountOwner(), Response::HTTP_FORBIDDEN);
+
+        $this->resolveOnboardingStatus->skipMcp($request->user());
+
+        return back();
+    }
+
+    public function complete(Request $request): RedirectResponse
+    {
+        if ($redirect = $this->redirectIfSelfHosted()) {
+            return $redirect;
+        }
+
+        $user = $request->user();
+
+        abort_unless($user->isAccountOwner(), Response::HTTP_FORBIDDEN);
+
+        if (! $user->account?->isOnboardingOpen()) {
+            return redirect()->route('app.calendar');
+        }
+
+        if (! $this->resolveOnboardingStatus->handle($user)['all_complete']) {
+            return redirect()->route('app.onboarding');
+        }
+
+        $this->resolveOnboardingStatus->markCompleted($user);
+
+        return redirect()->route('app.calendar');
     }
 
     /**
@@ -102,53 +135,10 @@ class OnboardingController extends Controller
         }
     }
 
-    public function skipMcp(Request $request): RedirectResponse
-    {
-        if ($redirect = $this->redirectIfSelfHosted()) {
-            return $redirect;
-        }
-
-        abort_unless($request->user()->isAccountOwner(), Response::HTTP_FORBIDDEN);
-
-        $this->resolveOnboardingStatus->skipMcp($request->user());
-
-        return back();
-    }
-
-    public function complete(Request $request): RedirectResponse
-    {
-        if ($redirect = $this->redirectIfSelfHosted()) {
-            return $redirect;
-        }
-
-        $user = $request->user();
-
-        abort_unless($user->isAccountOwner(), Response::HTTP_FORBIDDEN);
-
-        $account = $user->account;
-
-        // Already stamped or legacy-dismissed — just leave.
-        if (! $account?->isOnboardingOpen()) {
-            return redirect()->route('app.calendar');
-        }
-
-        $status = $this->resolveOnboardingStatus->handle($user);
-
-        if (! $status['all_complete']) {
-            return redirect()->route('app.onboarding');
-        }
-
-        $this->resolveOnboardingStatus->markCompleted($user);
-
-        return redirect()->route('app.calendar');
-    }
-
     private function redirectIfSelfHosted(): ?RedirectResponse
     {
-        if (! config('trypost.self_hosted')) {
-            return null;
-        }
-
-        return redirect()->route('app.calendar');
+        return config('trypost.self_hosted')
+            ? redirect()->route('app.calendar')
+            : null;
     }
 }

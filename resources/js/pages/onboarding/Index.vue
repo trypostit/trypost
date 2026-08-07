@@ -58,12 +58,16 @@ const completeForm = useForm({});
 
 const onboardingReloadOnly = ['status', 'accounts', 'onboardingResidual'];
 
-useOnboardingLiveReload({
-    only: onboardingReloadOnly,
-    enabled: () =>
+const activationInProgress = computed(
+    () =>
         !props.status.all_complete &&
         !props.status.completed_at &&
         !props.status.dismissed_at,
+);
+
+useOnboardingLiveReload({
+    only: onboardingReloadOnly,
+    enabled: activationInProgress,
 });
 
 watch(

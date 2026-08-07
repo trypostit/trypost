@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Models\Traits\HasUsage;
 use Carbon\CarbonInterface;
 use Database\Factories\AccountFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -99,8 +100,17 @@ class Account extends Model
 
     public function hasFinishedOnboarding(): bool
     {
-        return $this->onboarding_completed_at !== null
-            || $this->onboarding_dismissed_at !== null;
+        return $this->isOnboardingCompleted() || $this->isOnboardingDismissed();
+    }
+
+    public function isOnboardingCompleted(): bool
+    {
+        return $this->onboarding_completed_at !== null;
+    }
+
+    public function isOnboardingDismissed(): bool
+    {
+        return $this->onboarding_dismissed_at !== null;
     }
 
     /**
@@ -110,6 +120,17 @@ class Account extends Model
     public function isOnboardingOpen(): bool
     {
         return ! $this->hasFinishedOnboarding();
+    }
+
+    /**
+     * @param  Builder<Account>  $query
+     * @return Builder<Account>
+     */
+    public function scopeOnboardingOpen(Builder $query): Builder
+    {
+        return $query
+            ->whereNull('onboarding_completed_at')
+            ->whereNull('onboarding_dismissed_at');
     }
 
     /**

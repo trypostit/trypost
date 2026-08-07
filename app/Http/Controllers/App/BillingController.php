@@ -38,8 +38,7 @@ class BillingController extends Controller
         $fromCheckout = is_string($sessionId) && $sessionId !== ''
             && Cache::add("checkout_tracked:{$sessionId}", true, now()->addDay());
 
-        $subscriptionActive = $account !== null
-            && $account->subscribed(Account::SUBSCRIPTION_NAME);
+        $subscriptionActive = $account?->subscribed(Account::SUBSCRIPTION_NAME) ?? false;
         $redirectToOnboarding = $user->isAccountOwner()
             && ($account?->isOnboardingOpen() ?? false);
 

@@ -9,9 +9,11 @@ use App\Enums\SocialAccount\Status;
 use App\Events\OnboardingStatusUpdated;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Jobs\PostHog\SyncAccountUsage;
+use App\Models\Account;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\PostHogService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 class SocialAccountObserver
@@ -49,55 +51,20 @@ class SocialAccountObserver
     {
         $this->syncUsage($socialAccount);
 
-        $account = $socialAccount->workspace?->account;
-
-        if (
-            ! $account?->isOnboardingOpen()
-            || $socialAccount->status !== Status::Connected
-        ) {
-            return;
-        }
-
-        // Only the account's first connection unlocks the onboarding step.
-        $isFirstConnection = SocialAccount::query()
-            ->whereIn('workspace_id', $account->workspaces()->select('id'))
-            ->whereKeyNot($socialAccount->id)
-            ->where('status', Status::Connected)
-            ->doesntExist();
-
-        if ($isFirstConnection) {
-            OnboardingStatusUpdated::dispatchForWorkspace(
-                $socialAccount->workspace_id,
-                $this->actorFor($socialAccount),
-            );
-        }
+        $this->notifyOnboarding($socialAccount, function (Account $account) use ($socialAccount): bool {
+            // Only the account's first connection unlocks the onboarding step.
+            return $this->otherConnectedAccounts($account, $socialAccount)->doesntExist();
+        });
     }
 
     public function deleted(SocialAccount $socialAccount): void
     {
         $this->syncUsage($socialAccount);
 
-        $account = $socialAccount->workspace?->account;
-
-        if (
-            ! $account?->isOnboardingOpen()
-            || $socialAccount->status !== Status::Connected
-        ) {
-            return;
-        }
-
-        // The step only flips when the account's last connection disappears.
-        $accountHasConnections = SocialAccount::query()
-            ->whereIn('workspace_id', $account->workspaces()->select('id'))
-            ->where('status', Status::Connected)
-            ->exists();
-
-        if (! $accountHasConnections) {
-            OnboardingStatusUpdated::dispatchForWorkspace(
-                $socialAccount->workspace_id,
-                $this->actorFor($socialAccount),
-            );
-        }
+        $this->notifyOnboarding($socialAccount, function (Account $account) use ($socialAccount): bool {
+            // The step only flips when the account's last connection disappears.
+            return $this->otherConnectedAccounts($account, $socialAccount)->doesntExist();
+        });
     }
 
     public function updated(SocialAccount $socialAccount): void
@@ -115,35 +82,49 @@ class SocialAccountObserver
 
         $account = $socialAccount->workspace?->account;
 
-        if (! $account?->isOnboardingOpen()) {
-            return;
+        if ($account?->isOnboardingOpen() && $this->otherConnectedAccounts($account, $socialAccount)->doesntExist()) {
+            OnboardingStatusUpdated::dispatchForWorkspace(
+                $socialAccount->workspace_id,
+                $this->actorFor($socialAccount),
+            );
         }
+    }
 
-        $otherConnectedAccountExists = SocialAccount::query()
+    /**
+     * @param  callable(Account): bool  $shouldNotify
+     */
+    private function notifyOnboarding(SocialAccount $socialAccount, callable $shouldNotify): void
+    {
+        $account = $socialAccount->workspace?->account;
+
+        if (
+            $account?->isOnboardingOpen()
+            && $socialAccount->status === Status::Connected
+            && $shouldNotify($account)
+        ) {
+            OnboardingStatusUpdated::dispatchForWorkspace(
+                $socialAccount->workspace_id,
+                $this->actorFor($socialAccount),
+            );
+        }
+    }
+
+    /**
+     * @return Builder<SocialAccount>
+     */
+    private function otherConnectedAccounts(Account $account, SocialAccount $socialAccount): Builder
+    {
+        return SocialAccount::query()
             ->whereIn('workspace_id', $account->workspaces()->select('id'))
             ->whereKeyNot($socialAccount->id)
-            ->where('status', Status::Connected)
-            ->exists();
-
-        if ($otherConnectedAccountExists) {
-            return;
-        }
-
-        OnboardingStatusUpdated::dispatchForWorkspace(
-            $socialAccount->workspace_id,
-            $this->actorFor($socialAccount),
-        );
+            ->where('status', Status::Connected);
     }
 
     private function actorFor(SocialAccount $socialAccount): ?User
     {
         $user = Auth::user();
 
-        if (! $user instanceof User) {
-            return null;
-        }
-
-        return $user->belongsToAccount($socialAccount->workspace?->account_id)
+        return $user instanceof User && $user->belongsToAccount($socialAccount->workspace?->account_id)
             ? $user
             : null;
     }

@@ -54,57 +54,10 @@ class ResolveOnboardingStatus
     public function handle(User $user): array
     {
         $account = $user->account;
-        $skippedSteps = $account?->onboarding_skipped_steps ?? [];
 
-        if ($account?->onboarding_completed_at !== null) {
-            // Preserve skip vs real MCP completion for the ready UI badge.
-            $mcpConnected = ! in_array('mcp', $skippedSteps, true)
-                || $this->accountHasMcpConnection($account);
-            $effectiveSkippedSteps = $mcpConnected
-                ? array_values(array_diff($skippedSteps, ['mcp']))
-                : $skippedSteps;
-
-            return [
-                'mcp_connected' => $mcpConnected,
-                'social_connected' => true,
-                'first_post_created' => true,
-                'skipped_steps' => $effectiveSkippedSteps,
-                'all_complete' => true,
-                'show_residual' => false,
-                'completed_at' => $account->onboarding_completed_at->toIso8601String(),
-                'dismissed_at' => $account->onboarding_dismissed_at?->toIso8601String(),
-            ];
-        }
-
-        // All three steps are account-scoped so checklist checkmarks, residual
-        // progress, and cross-workspace completion stay aligned.
-        $stepStates = [
-            'mcp' => $this->accountHasMcpConnection($account),
-            'social' => $this->accountHasSocialConnection($account),
-            'first_post' => $this->accountHasPost($account),
-        ];
-
-        // A skipped optional step counts as done for completion purposes.
-        $allComplete = collect($stepStates)
-            ->every(fn (bool $done, string $step): bool => $done || in_array($step, $skippedSteps, true));
-
-        $showResidual = $account !== null
-            && ! config('trypost.self_hosted')
-            && $user->isAccountOwner()
-            && $account->hasAppAccess()
-            && $account->onboarding_dismissed_at === null
-            && ! $allComplete;
-
-        return [
-            'mcp_connected' => $stepStates['mcp'],
-            'social_connected' => $stepStates['social'],
-            'first_post_created' => $stepStates['first_post'],
-            'skipped_steps' => $skippedSteps,
-            'all_complete' => $allComplete,
-            'show_residual' => $showResidual,
-            'completed_at' => null,
-            'dismissed_at' => $account?->onboarding_dismissed_at?->toIso8601String(),
-        ];
+        return $account?->isOnboardingCompleted()
+            ? $this->completedStatus($account)
+            : $this->activeStatus($user, $account);
     }
 
     /**
@@ -126,34 +79,44 @@ class ResolveOnboardingStatus
     {
         $account = $user->account;
 
-        if ($account === null || $account->onboarding_completed_at !== null) {
+        // Completed accounts (or missing account) are read-only. Dismissed still
+        // runs below so a late MCP connect can clear a leftover mcp skip.
+        if (! $account || $account->isOnboardingCompleted()) {
             return $this->handle($user);
         }
 
         $this->clearMcpSkipIfConnected($account);
-
         $status = $this->handle($user);
 
-        if ($account->onboarding_dismissed_at !== null) {
+        if ($account->isOnboardingDismissed()) {
             return $status;
         }
 
         foreach (self::STEPS as $step => $statusKey) {
-            $this->captureCompletedStep($user, $account, $step, $status[$statusKey]);
+            $this->captureOnce(
+                "onboarding:step:{$account->id}:{$step}",
+                fn () => $this->postHog->capture(
+                    $user->id,
+                    OnboardingEvent::StepCompleted->value,
+                    ['step' => $step],
+                    $account,
+                ),
+                when: $status[$statusKey],
+            );
         }
 
-        if ($status['all_complete']) {
-            $this->markCompleted($user);
-            $account->refresh();
-
-            return [
-                ...$status,
-                'show_residual' => false,
-                'completed_at' => $account->onboarding_completed_at?->toIso8601String(),
-            ];
+        if (! $status['all_complete']) {
+            return $status;
         }
 
-        return $status;
+        $this->markCompleted($user);
+        $account->refresh();
+
+        return [
+            ...$status,
+            'show_residual' => false,
+            'completed_at' => $account->onboarding_completed_at?->toIso8601String(),
+        ];
     }
 
     /**
@@ -166,7 +129,7 @@ class ResolveOnboardingStatus
             ? User::query()->with('account')->find($actorId)
             : null;
 
-        $syncTarget = $actor !== null && $actor->belongsToAccount($account->id)
+        $syncTarget = $actor?->belongsToAccount($account->id)
             ? $actor
             : $account->owner;
 
@@ -195,8 +158,7 @@ class ResolveOnboardingStatus
 
         $updated = Account::query()
             ->whereKey($account->id)
-            ->whereNull('onboarding_completed_at')
-            ->whereNull('onboarding_dismissed_at')
+            ->onboardingOpen()
             ->update([
                 'onboarding_completed_at' => $completedAt,
                 'updated_at' => $completedAt,
@@ -208,13 +170,11 @@ class ResolveOnboardingStatus
 
         $account->refresh();
 
-        if (PostHogService::isEnabled()) {
-            $this->postHog->capture(
-                $user->id,
-                OnboardingEvent::Completed->value,
-                account: $account,
-            );
-        }
+        $this->capture(
+            $user->id,
+            OnboardingEvent::Completed->value,
+            account: $account,
+        );
 
         // Every stamp path (endpoint, syncProgress, observers) must clear residual
         // banners account-wide — not only the explicit complete() action.
@@ -244,8 +204,7 @@ class ResolveOnboardingStatus
 
         $updated = Account::query()
             ->whereKey($account->id)
-            ->whereNull('onboarding_completed_at')
-            ->whereNull('onboarding_dismissed_at')
+            ->onboardingOpen()
             ->where(function (Builder $query): void {
                 $query->whereNull('onboarding_skipped_steps')
                     ->orWhereJsonDoesntContain('onboarding_skipped_steps', 'mcp');
@@ -261,14 +220,12 @@ class ResolveOnboardingStatus
 
         $account->refresh();
 
-        if (PostHogService::isEnabled()) {
-            $this->postHog->capture(
-                $user->id,
-                OnboardingEvent::StepSkipped->value,
-                ['step' => 'mcp'],
-                $account,
-            );
-        }
+        $this->capture(
+            $user->id,
+            OnboardingEvent::StepSkipped->value,
+            ['step' => 'mcp'],
+            $account,
+        );
 
         $completed = $this->handle($user)['all_complete'] && $this->markCompleted($user);
 
@@ -315,6 +272,84 @@ class ResolveOnboardingStatus
                     || in_array($step, $status['skipped_steps'], true))
                 ->count(),
             'total' => self::totalSteps(),
+        ];
+    }
+
+    /**
+     * @return array{
+     *     mcp_connected: bool,
+     *     social_connected: bool,
+     *     first_post_created: bool,
+     *     skipped_steps: list<string>,
+     *     all_complete: bool,
+     *     show_residual: bool,
+     *     completed_at: string,
+     *     dismissed_at: ?string
+     * }
+     */
+    private function completedStatus(Account $account): array
+    {
+        $skippedSteps = $account->onboarding_skipped_steps ?? [];
+
+        // Preserve skip vs real MCP completion for the ready UI badge.
+        $mcpConnected = ! in_array('mcp', $skippedSteps, true)
+            || $this->accountHasMcpConnection($account);
+
+        return [
+            'mcp_connected' => $mcpConnected,
+            'social_connected' => true,
+            'first_post_created' => true,
+            'skipped_steps' => $mcpConnected
+                ? array_values(array_diff($skippedSteps, ['mcp']))
+                : $skippedSteps,
+            'all_complete' => true,
+            'show_residual' => false,
+            'completed_at' => $account->onboarding_completed_at->toIso8601String(),
+            'dismissed_at' => $account->onboarding_dismissed_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @return array{
+     *     mcp_connected: bool,
+     *     social_connected: bool,
+     *     first_post_created: bool,
+     *     skipped_steps: list<string>,
+     *     all_complete: bool,
+     *     show_residual: bool,
+     *     completed_at: null,
+     *     dismissed_at: ?string
+     * }
+     */
+    private function activeStatus(User $user, ?Account $account): array
+    {
+        $skippedSteps = $account?->onboarding_skipped_steps ?? [];
+
+        // All three steps are account-scoped so checklist checkmarks, residual
+        // progress, and cross-workspace completion stay aligned.
+        $stepStates = [
+            'mcp' => $this->accountHasMcpConnection($account),
+            'social' => $this->accountHasSocialConnection($account),
+            'first_post' => $this->accountHasPost($account),
+        ];
+
+        $allComplete = collect($stepStates)
+            ->every(fn (bool $done, string $step): bool => $done || in_array($step, $skippedSteps, true));
+
+        return [
+            'mcp_connected' => $stepStates['mcp'],
+            'social_connected' => $stepStates['social'],
+            'first_post_created' => $stepStates['first_post'],
+            'skipped_steps' => $skippedSteps,
+            'all_complete' => $allComplete,
+            'show_residual' => $account !== null
+                && ! config('trypost.self_hosted')
+                && $user->isAccountOwner()
+                && $account->hasAppAccess()
+                && ! $account->isOnboardingDismissed()
+                && ! $allComplete,
+            'completed_at' => null,
+            'dismissed_at' => $account?->onboarding_dismissed_at?->toIso8601String(),
         ];
     }
 
@@ -393,27 +428,34 @@ class ResolveOnboardingStatus
         $account->refresh();
     }
 
-    private function captureCompletedStep(User $user, Account $account, string $step, bool $completed): void
-    {
-        if (! $completed || ! PostHogService::isEnabled()) {
+    /**
+     * @param  array<string, mixed>  $properties
+     */
+    private function capture(
+        string $userId,
+        string $event,
+        array $properties = [],
+        ?Account $account = null,
+    ): void {
+        if (! PostHogService::isEnabled()) {
             return;
         }
 
-        $dedupeKey = "onboarding:step:{$account->id}:{$step}";
+        $this->postHog->capture($userId, $event, $properties, $account);
+    }
 
-        // Claim the slot first so concurrent syncs don't double-fire, then
-        // release it if capture throws so a later retry can still report.
-        if (! Cache::add($dedupeKey, true, now()->addYear())) {
+    /**
+     * Claim a cache slot then capture — concurrent syncs don't double-fire.
+     * Releases the slot if capture throws so a later retry can still report.
+     */
+    private function captureOnce(string $dedupeKey, callable $capture, bool $when = true): void
+    {
+        if (! $when || ! PostHogService::isEnabled() || ! Cache::add($dedupeKey, true, now()->addYear())) {
             return;
         }
 
         try {
-            $this->postHog->capture(
-                $user->id,
-                OnboardingEvent::StepCompleted->value,
-                ['step' => $step],
-                $account,
-            );
+            $capture();
         } catch (\Throwable $exception) {
             Cache::forget($dedupeKey);
 
