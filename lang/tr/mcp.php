@@ -49,7 +49,6 @@ return [
         'error_title' => 'Bağlantı kurulamadı',
         'error_body' => 'Bu yetkilendirme isteği geçersiz veya süresi dolmuş. Bu pencereyi kapatın ve MCP istemcinizden yeniden bağlanmayı deneyin.',
         'error_code' => 'Hata: :error',
-        'error_close' => 'Pencereyi kapat',
     ],
 
     'other_clients_title' => 'Diğer uygulamalar',

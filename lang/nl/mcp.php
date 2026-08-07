@@ -49,7 +49,6 @@ return [
         'error_title' => 'Verbinden mislukt',
         'error_body' => 'Dit autorisatieverzoek is ongeldig of verlopen. Sluit dit venster en probeer opnieuw te verbinden via je MCP-client.',
         'error_code' => 'Fout: :error',
-        'error_close' => 'Venster sluiten',
     ],
 
     'other_clients_title' => 'Andere apps',

@@ -49,7 +49,6 @@ return [
         'error_title' => '연결할 수 없음',
         'error_body' => '이 승인 요청이 잘못되었거나 만료되었습니다. 이 창을 닫고 MCP 클라이언트에서 다시 연결하세요.',
         'error_code' => '오류: :error',
-        'error_close' => '창 닫기',
     ],
 
     'other_clients_title' => '다른 앱',

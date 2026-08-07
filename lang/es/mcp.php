@@ -49,7 +49,6 @@ return [
         'error_title' => 'No se pudo conectar',
         'error_body' => 'Esta solicitud de autorización no es válida o ha caducado. Cierra esta ventana e intenta conectar de nuevo desde tu cliente MCP.',
         'error_code' => 'Error: :error',
-        'error_close' => 'Cerrar ventana',
     ],
 
     'other_clients_title' => 'Otras apps',
