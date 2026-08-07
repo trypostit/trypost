@@ -53,6 +53,8 @@ const workspaceIdForSubmit = computed(
     () => selectedWorkspace.value?.id ?? '',
 );
 
+const canApprove = computed(() => workspaceIdForSubmit.value !== '');
+
 const approving = ref(false);
 const csrfToken =
     document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
@@ -76,7 +78,13 @@ const scopeLabel = (scope: Scope): string =>
         ? trans('mcp.authorize.scope_mcp_use')
         : scope.description;
 
-const onApproveSubmit = (): void => {
+const onApproveSubmit = (event: Event): void => {
+    if (! canApprove.value) {
+        event.preventDefault();
+
+        return;
+    }
+
     approving.value = true;
 
     // Popup MCP clients expect the window to close after the redirect.
@@ -224,6 +232,9 @@ const onDenySubmit = (): void => {
                 <Button
                     type="submit"
                     class="w-full"
+                    :class="{
+                        'pointer-events-none opacity-25': !canApprove,
+                    }"
                     :loading="approving"
                     dusk="mcp-authorize-approve"
                 >

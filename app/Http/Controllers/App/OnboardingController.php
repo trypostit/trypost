@@ -85,7 +85,13 @@ class OnboardingController extends Controller
 
         abort_unless($user->isAccountOwner(), Response::HTTP_FORBIDDEN);
 
-        if (! $user->accountOrFail()->isOnboardingOpen()) {
+        $account = $user->accountOrFail();
+
+        if ($account->isOnboardingDismissed()) {
+            return redirect()->route('app.calendar');
+        }
+
+        if ($account->isOnboardingCompleted()) {
             return redirect()->route('app.onboarding');
         }
 

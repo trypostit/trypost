@@ -43,6 +43,8 @@ const firstName = computed(() => page.props.auth.user.first_name);
 const skipMcpForm = useForm({});
 const completeForm = useForm({});
 const reloadOnly = ['status', 'accounts', 'onboardingProgress'];
+let completeAttempts = 0;
+const maxCompleteAttempts = 3;
 
 const socialConnectedElsewhere = computed(
     () =>
@@ -50,28 +52,38 @@ const socialConnectedElsewhere = computed(
         !props.accounts.some((account) => account.status === 'connected'),
 );
 
+// Keep listening until completion is stamped — all_complete alone is not enough
+// (auto-complete POST can fail before completed_at lands).
 useOnboardingLiveReload({
     only: reloadOnly,
     enabled: () =>
-        !props.status.all_complete &&
-        !props.status.completed_at &&
-        !props.status.dismissed_at,
+        !props.status.completed_at && !props.status.dismissed_at,
 });
 
-watch(
-    () => props.status.all_complete,
-    (done) => {
-        if (
-            ! done ||
-            completeForm.processing ||
-            props.status.completed_at ||
-            ! props.canSkipSteps
-        ) {
-            return;
-        }
+const stampCompletionIfReady = (): void => {
+    if (
+        ! props.status.all_complete ||
+        props.status.completed_at ||
+        completeForm.processing ||
+        ! props.canSkipSteps ||
+        completeAttempts >= maxCompleteAttempts
+    ) {
+        return;
+    }
 
-        completeForm.submit(complete());
-    },
+    completeAttempts += 1;
+
+    completeForm.submit(complete(), {
+        preserveScroll: true,
+        onError: () => {
+            window.setTimeout(() => stampCompletionIfReady(), 1000);
+        },
+    });
+};
+
+watch(
+    () => [props.status.all_complete, props.status.completed_at] as const,
+    () => stampCompletionIfReady(),
     { immediate: true },
 );
 

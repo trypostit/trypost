@@ -246,11 +246,10 @@ test('auth code repository rejects a consent workspace the user does not belong 
     $entity->shouldReceive('getScopes')->andReturn([]);
     $entity->shouldReceive('getExpiryDateTime')->andReturn(now()->addMinutes(10)->toDateTimeImmutable());
 
-    app(AuthCodeRepository::class)->persistNewAuthCode($entity);
+    expect(fn () => app(AuthCodeRepository::class)->persistNewAuthCode($entity))
+        ->toThrow(OAuthServerException::class);
 
-    $stored = AuthCode::query()->where('client_id', $this->clientId)->first();
-
-    expect($stored->workspace_id)->toBeNull();
+    expect(AuthCode::query()->where('client_id', $this->clientId)->exists())->toBeFalse();
 });
 
 test('auth code repository requires workspace_id from the consent form', function () {
@@ -274,11 +273,10 @@ test('auth code repository requires workspace_id from the consent form', functio
     $entity->shouldReceive('getScopes')->andReturn([]);
     $entity->shouldReceive('getExpiryDateTime')->andReturn(now()->addMinutes(10)->toDateTimeImmutable());
 
-    app(AuthCodeRepository::class)->persistNewAuthCode($entity);
+    expect(fn () => app(AuthCodeRepository::class)->persistNewAuthCode($entity))
+        ->toThrow(OAuthServerException::class);
 
-    $stored = AuthCode::query()->where('client_id', $this->clientId)->first();
-
-    expect($stored->workspace_id)->toBeNull();
+    expect(AuthCode::query()->where('client_id', $this->clientId)->exists())->toBeFalse();
 });
 
 test('auth code repository rejects a consent workspace the user no longer belongs to', function () {
@@ -296,11 +294,10 @@ test('auth code repository rejects a consent workspace the user no longer belong
     $entity->shouldReceive('getScopes')->andReturn([]);
     $entity->shouldReceive('getExpiryDateTime')->andReturn(now()->addMinutes(10)->toDateTimeImmutable());
 
-    app(AuthCodeRepository::class)->persistNewAuthCode($entity);
+    expect(fn () => app(AuthCodeRepository::class)->persistNewAuthCode($entity))
+        ->toThrow(OAuthServerException::class);
 
-    $stored = AuthCode::query()->where('client_id', $this->clientId)->first();
-
-    expect($stored->workspace_id)->toBeNull();
+    expect(AuthCode::query()->where('client_id', $this->clientId)->exists())->toBeFalse();
 });
 
 test('oauth grant without a resolvable workspace fails before the token is saved', function () {

@@ -582,7 +582,7 @@ test('complete stamps when activation finished on another workspace', function (
     expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 });
 
-test('complete after dismiss redirects without stamping completion', function () {
+test('complete after dismiss redirects to calendar without stamping completion', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
 
     AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
@@ -599,7 +599,7 @@ test('complete after dismiss redirects without stamping completion', function ()
 
     $this->actingAs($this->user->fresh())
         ->post(route('app.onboarding.complete'))
-        ->assertRedirect(route('app.onboarding'));
+        ->assertRedirect(route('app.calendar'));
 
     expect($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
 

@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Enums\UserWorkspace\Role;
+use App\Http\Middleware\App\HandleInertiaRequests;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\DB;
+use Inertia\DeferProp;
 
 beforeEach(function () {
     config(['trypost.self_hosted' => false]);
@@ -93,4 +97,38 @@ test('does not defer onboarding progress on passport oauth consent', function ()
             // Inline false — never missing/deferred on this URL (see OAuthAuthorizeAuthTokenTest).
             ->where('onboardingProgress', false)
         );
+});
+
+test('does not defer onboarding progress on passport device consent view', function () {
+    // Device consent uses Passport's Blade view (not Inertia mcp/Authorize), so assert
+    // the shared prop directly — same authToken rotation risk as the code authorize GET.
+    expect(app(ResolveOnboardingStatus::class)->canShowProgress($this->user))->toBeTrue();
+
+    $deviceRequest = Request::create('/oauth/device/authorize', 'GET');
+    $deviceRequest->setLaravelSession(app('session.store'));
+    $deviceRequest->setUserResolver(fn (): User => $this->user);
+    $deviceRequest->setRouteResolver(function (): Route {
+        $route = new Route(['GET'], '/oauth/device/authorize', fn () => null);
+        $route->name('passport.device.authorizations.authorize');
+
+        return $route;
+    });
+
+    $deviceShared = app(HandleInertiaRequests::class)->share($deviceRequest);
+
+    expect($deviceShared['onboardingProgress'])->toBeFalse();
+
+    $calendarRequest = Request::create('/calendar', 'GET');
+    $calendarRequest->setLaravelSession(app('session.store'));
+    $calendarRequest->setUserResolver(fn (): User => $this->user);
+    $calendarRequest->setRouteResolver(function (): Route {
+        $route = new Route(['GET'], '/calendar', fn () => null);
+        $route->name('app.calendar');
+
+        return $route;
+    });
+
+    $calendarShared = app(HandleInertiaRequests::class)->share($calendarRequest);
+
+    expect($calendarShared['onboardingProgress'])->toBeInstanceOf(DeferProp::class);
 });

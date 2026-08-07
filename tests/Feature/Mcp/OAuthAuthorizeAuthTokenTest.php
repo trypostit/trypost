@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia;
+use Symfony\Component\HttpFoundation\Response;
 
 beforeEach(function () {
     config(['trypost.self_hosted' => false]);
@@ -99,6 +100,27 @@ test('workspace member can approve oauth consent with the auth token from the co
             'workspace_id' => $this->workspace->id,
         ])
         ->assertRedirect();
+});
+
+test('owner cannot approve oauth consent without a workspace', function () {
+    $this->actingAs($this->user)
+        ->get(route('passport.authorizations.authorize', oauthAuthorizeQuery($this->clientId)))
+        ->assertOk();
+
+    $authToken = session('authToken');
+
+    expect($authToken)->toBeString()->not->toBeEmpty();
+
+    $this->actingAs($this->user)
+        ->post(route('passport.authorizations.approve'), [
+            'state' => 'test-state',
+            'client_id' => $this->clientId,
+            'auth_token' => $authToken,
+            'workspace_id' => '',
+        ])
+        ->assertStatus(Response::HTTP_BAD_REQUEST);
+
+    expect(DB::table('oauth_auth_codes')->where('client_id', $this->clientId)->exists())->toBeFalse();
 });
 
 /**
