@@ -14,6 +14,9 @@ enum ReferralSource: string
     case Instagram = 'instagram';
     case Reddit = 'reddit';
     case ProductHunt = 'product_hunt';
+    case GitHub = 'github';
+    case HackerNews = 'hacker_news';
+    case Directories = 'directories';
     case AiAssistant = 'ai_assistant';
     case Friend = 'friend';
     case Blog = 'blog';

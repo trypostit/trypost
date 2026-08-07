@@ -170,6 +170,9 @@ test('referral source renders after prior steps are complete', function () {
         ->assertInertia(fn ($page) => $page
             ->component('welcome/ReferralSource', false)
             ->has('sources', count(ReferralSource::cases()))
+            ->where('sources', fn ($sources): bool => collect($sources)->contains(ReferralSource::GitHub->value)
+                && collect($sources)->contains(ReferralSource::HackerNews->value)
+                && collect($sources)->contains(ReferralSource::Directories->value))
             ->where('plan.name', $plan->name)
             ->where('plan.interval', 'monthly')
         );

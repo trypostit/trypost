@@ -2,15 +2,18 @@
 import { Head, useForm } from '@inertiajs/vue3';
 import {
     IconArticle,
+    IconBrandGithub,
     IconBrandInstagram,
     IconBrandLinkedin,
     IconBrandProducthunt,
     IconBrandReddit,
     IconBrandTiktokFilled,
     IconBrandXFilled,
+    IconBrandYcombinator,
     IconBrandYoutubeFilled,
     IconCheck,
     IconDots,
+    IconListSearch,
     IconSparkles,
     IconUsers,
 } from '@tabler/icons-vue';
@@ -82,6 +85,21 @@ const sourceMeta: Record<string, SourceMeta> = {
         icon: IconBrandProducthunt,
         iconClass: 'text-[#FF6154]',
         badge: 'bg-white',
+    },
+    github: {
+        icon: IconBrandGithub,
+        iconClass: 'text-white',
+        badge: 'bg-black',
+    },
+    hacker_news: {
+        icon: IconBrandYcombinator,
+        iconClass: 'text-white',
+        badge: 'bg-[#FF6600]',
+    },
+    directories: {
+        icon: IconListSearch,
+        iconClass: 'text-sky-800',
+        badge: 'bg-sky-100',
     },
     ai_assistant: {
         icon: IconSparkles,
