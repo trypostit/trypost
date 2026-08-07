@@ -196,6 +196,40 @@ test('authenticated users still receive invalid_client for an unknown oauth clie
         ]);
 });
 
+test('browser requests render an inertia error page for an unknown oauth client', function () {
+    $user = User::factory()->create();
+    $unknownClientId = (string) Str::uuid();
+
+    $this->actingAs($user)
+        ->get(route('passport.authorizations.authorize', oauthAuthorizeQuery($unknownClientId)))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('mcp/AuthorizeError')
+            ->where('error', 'invalid_client')
+            ->where('errorDescription', 'Client authentication failed'));
+});
+
+test('post-login redirect to authorize renders inertia instead of raw oauth json', function () {
+    $unknownClientId = (string) Str::uuid();
+    $user = User::factory()->create();
+
+    $this->get(route('passport.authorizations.authorize', oauthAuthorizeQuery($unknownClientId)))
+        ->assertRedirect(route('login'));
+
+    $login = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $login->assertRedirect();
+
+    $this->get($login->headers->get('Location'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('mcp/AuthorizeError')
+            ->where('error', 'invalid_client'));
+});
+
 /**
  * @return array<string, string>
  */
