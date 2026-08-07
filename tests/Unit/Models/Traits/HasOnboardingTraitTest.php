@@ -72,7 +72,7 @@ it('detects a bound mcp grant that unlocks the checklist', function () {
     expect($user->account->hasOnboardingMcpConnection())->toBeTrue();
 });
 
-it('ignores unbound expired or viewer mcp grants', function (string $case) {
+it('ignores unbound expired viewer or teammate mcp grants', function (string $case) {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'account_id' => $owner->account_id,
@@ -94,5 +94,11 @@ it('ignores unbound expired or viewer mcp grants', function (string $case) {
         AccessToken::withoutEvents(fn () => mcpAccessToken($viewer, mcpOauthClient(), $workspace));
     }
 
+    if ($case === 'teammate') {
+        $member = User::factory()->create(['account_id' => $owner->account_id]);
+        $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+        AccessToken::withoutEvents(fn () => mcpAccessToken($member, mcpOauthClient(), $workspace));
+    }
+
     expect($owner->account->fresh()->hasOnboardingMcpConnection())->toBeFalse();
-})->with(['unbound', 'expired', 'viewer']);
+})->with(['unbound', 'expired', 'viewer', 'teammate']);

@@ -181,7 +181,7 @@ class AccessToken extends Token
 
     /**
      * Bound MCP grant that unlocks the account onboarding checklist
-     * (usable grant + createPost on the bound workspace).
+     * (account-owner grant + usable + createPost on the bound workspace).
      */
     public function unlocksOnboardingChecklist(?User $user = null): bool
     {
@@ -190,6 +190,7 @@ class AccessToken extends Token
 
         return $user instanceof User
             && $workspace instanceof Workspace
+            && $user->isAccountOwner()
             && $this->isUsableMcpGrant($user, $workspace)
             && $user->can('createPost', $workspace);
     }

@@ -48,14 +48,20 @@ trait HasOnboarding
     }
 
     /**
-     * Whether any bound MCP OAuth grant unlocks the account checklist.
+     * Whether the account owner has a bound MCP OAuth grant that unlocks
+     * the checklist. Teammate grants do not count — activation is owner-owned.
      * Early-exits on the first matching grant so accounts with many MCP
      * tokens do not pay for a full collection + Gate pass every time.
      */
     public function hasOnboardingMcpConnection(): bool
     {
+        if ($this->owner_id === null) {
+            return false;
+        }
+
         $tokens = AccessToken::query()
             ->activeMcpOAuth()
+            ->where('user_id', $this->owner_id)
             ->whereNotNull('workspace_id')
             ->whereHas(
                 'workspace',
