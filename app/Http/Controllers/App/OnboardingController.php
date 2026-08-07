@@ -37,7 +37,7 @@ class OnboardingController extends Controller
         // Pure read on GET — observers + POST complete/skip stamp progress.
         $status = $this->resolveOnboardingStatus->handle($user);
 
-        if (data_get($status, 'dismissed_at') !== null || $account->isOnboardingCompleted()) {
+        if (data_get($status, 'dismissed_at') !== null) {
             return redirect()->route('app.calendar');
         }
 
@@ -86,7 +86,7 @@ class OnboardingController extends Controller
         abort_unless($user->isAccountOwner(), Response::HTTP_FORBIDDEN);
 
         if (! $user->accountOrFail()->isOnboardingOpen()) {
-            return redirect()->route('app.calendar');
+            return redirect()->route('app.onboarding');
         }
 
         if (! data_get($this->resolveOnboardingStatus->handle($user), 'all_complete')) {
@@ -95,7 +95,7 @@ class OnboardingController extends Controller
 
         $this->resolveOnboardingStatus->markCompleted($user);
 
-        return redirect()->route('app.calendar');
+        return redirect()->route('app.onboarding');
     }
 
     /**

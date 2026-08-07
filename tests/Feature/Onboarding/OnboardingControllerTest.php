@@ -279,7 +279,7 @@ test('dismissed accounts are redirected away from onboarding index', function ()
     );
 });
 
-test('completed accounts are redirected away from onboarding', function () {
+test('completed accounts can still view the finished onboarding checklist', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
     $this->user->account->forceFill(['onboarding_completed_at' => now()])->save();
 
@@ -287,7 +287,12 @@ test('completed accounts are redirected away from onboarding', function () {
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.onboarding'))
-        ->assertRedirect(route('app.calendar'));
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('onboarding/Index', false)
+            ->where('status.all_complete', true)
+            ->where('status.completed_at', now()->toIso8601String())
+        );
 
     Bus::assertNotDispatched(
         SendEvent::class,
@@ -399,7 +404,7 @@ test('onboarding completes after every activation step', function () {
 
     $this->actingAs($this->user->fresh())
         ->post(route('app.onboarding.complete'))
-        ->assertRedirect(route('app.calendar'));
+        ->assertRedirect(route('app.onboarding'));
 
     expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 
@@ -427,7 +432,7 @@ test('onboarding complete does not re-fire completed when already stamped', func
 
     $this->actingAs($this->user->fresh())
         ->post(route('app.onboarding.complete'))
-        ->assertRedirect(route('app.calendar'));
+        ->assertRedirect(route('app.onboarding'));
 
     Bus::assertNotDispatched(
         SendEvent::class,
@@ -537,7 +542,7 @@ test('owner stamps completion via the complete endpoint for every workspace', fu
 
     $this->actingAs($this->user->fresh())
         ->post(route('app.onboarding.complete'))
-        ->assertRedirect(route('app.calendar'));
+        ->assertRedirect(route('app.onboarding'));
 
     expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 
@@ -572,7 +577,7 @@ test('complete stamps when activation finished on another workspace', function (
 
     $this->actingAs($this->user->fresh())
         ->post(route('app.onboarding.complete'))
-        ->assertRedirect(route('app.calendar'));
+        ->assertRedirect(route('app.onboarding'));
 
     expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 });
@@ -594,7 +599,7 @@ test('complete after dismiss redirects without stamping completion', function ()
 
     $this->actingAs($this->user->fresh())
         ->post(route('app.onboarding.complete'))
-        ->assertRedirect(route('app.calendar'));
+        ->assertRedirect(route('app.onboarding'));
 
     expect($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
 

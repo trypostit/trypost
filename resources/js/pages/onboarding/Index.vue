@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { IconCopy } from '@tabler/icons-vue';
 import { computed, watch } from 'vue';
 
@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { useOnboardingLiveReload } from '@/composables/useOnboardingLiveReload';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { copyToClipboard } from '@/lib/utils';
-import { calendar } from '@/routes/app';
 import { complete } from '@/routes/app/onboarding';
 import { skip as skipMcpRoute } from '@/routes/app/onboarding/mcp';
 import { create as createPost } from '@/routes/app/posts';
@@ -62,17 +61,16 @@ useOnboardingLiveReload({
 watch(
     () => props.status.all_complete,
     (done) => {
-        if (!done || completeForm.processing) {
+        if (
+            ! done ||
+            completeForm.processing ||
+            props.status.completed_at ||
+            ! props.canSkipSteps
+        ) {
             return;
         }
 
-        if (props.canSkipSteps) {
-            completeForm.submit(complete());
-
-            return;
-        }
-
-        router.visit(calendar.url());
+        completeForm.submit(complete());
     },
     { immediate: true },
 );
