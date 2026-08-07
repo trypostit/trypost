@@ -27,8 +27,10 @@ use Symfony\Component\HttpFoundation\Response;
  * Guests are sent to login before client validation so a stale MCP Inspector
  * client_id does not return invalid_client JSON instead of the login page.
  *
- * Browser / Inertia requests that fail OAuth validation get an Inertia error
- * page instead of raw JSON (which breaks the post-login Inertia redirect).
+ * Browser / Inertia requests that fail OAuth validation with a non-redirect
+ * response (e.g. invalid_client) get an Inertia error page instead of raw JSON.
+ * Redirect errors (prompt=none → login_required / consent_required) still go
+ * back to the client's redirect_uri.
  */
 class AuthorizationController extends PassportAuthorizationController
 {
@@ -54,7 +56,7 @@ class AuthorizationController extends PassportAuthorizationController
         try {
             return parent::authorize($psrRequest, $request, $psrResponse, $viewResponse);
         } catch (OAuthServerException $exception) {
-            if (! $this->shouldRenderAuthorizationErrorPage($request)) {
+            if (! $this->shouldRenderAuthorizationErrorPage($request, $exception)) {
                 throw $exception;
             }
 
@@ -71,12 +73,18 @@ class AuthorizationController extends PassportAuthorizationController
     }
 
     /**
-     * Browser navigations (including Inertia) get an error page. JSON clients
-     * that explicitly expect JSON keep the OAuth error payload.
+     * Browser navigations get an Inertia page for non-redirect OAuth failures.
+     * JSON clients and redirect-style errors (prompt=none) keep Passport's response.
      */
-    private function shouldRenderAuthorizationErrorPage(Request $request): bool
-    {
-        return ! $request->expectsJson();
+    private function shouldRenderAuthorizationErrorPage(
+        Request $request,
+        OAuthServerException $exception,
+    ): bool {
+        if ($request->expectsJson()) {
+            return false;
+        }
+
+        return ! $exception->getResponse()->isRedirection();
     }
 
     private function authorizationErrorPage(Request $request, OAuthServerException $exception): Response

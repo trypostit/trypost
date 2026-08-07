@@ -2,13 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Enums\PostHog\OnboardingEvent;
 use App\Enums\UserWorkspace\Role;
+use App\Jobs\PostHog\SendEvent;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Bus;
 
 beforeEach(function () {
     config(['trypost.billing.require_card_for_trial' => true]);
@@ -211,6 +214,8 @@ test('billing processing still sends satisfied-but-unstamped owners to onboardin
         'user_id' => $this->user->id,
     ]));
 
+    Bus::fake();
+
     // Processing no longer stamps — the owner finishes via /onboarding Continue.
     $this->actingAs($this->user->fresh())
         ->get(route('app.billing.processing'))
@@ -221,6 +226,11 @@ test('billing processing still sends satisfied-but-unstamped owners to onboardin
         );
 
     expect($this->account->fresh()->onboarding_completed_at)->toBeNull();
+
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Completed->value,
+    );
 });
 
 test('billing processing exposes null conversion when session_id query param is missing', function () {

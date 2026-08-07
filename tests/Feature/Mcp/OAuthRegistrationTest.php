@@ -230,11 +230,52 @@ test('post-login redirect to authorize renders inertia instead of raw oauth json
             ->where('error', 'invalid_client'));
 });
 
+test('prompt=none guests receive login_required redirect instead of an inertia error page', function () {
+    $redirectUri = 'https://client.example/callback';
+    $clientId = mcpOauthClient('Silent Auth Guest');
+    DB::table('oauth_clients')->where('id', $clientId)->update([
+        'redirect_uris' => json_encode([$redirectUri]),
+    ]);
+
+    $response = $this->get(route(
+        'passport.authorizations.authorize',
+        oauthAuthorizeQuery($clientId, $redirectUri, prompt: 'none'),
+    ));
+
+    $response->assertRedirect();
+    expect($response->headers->get('Location'))
+        ->toStartWith($redirectUri)
+        ->toContain('error=login_required');
+});
+
+test('prompt=none authenticated users receive consent_required redirect instead of an inertia error page', function () {
+    $user = User::factory()->create();
+    $redirectUri = 'https://client.example/callback';
+    $clientId = mcpOauthClient('Silent Auth User');
+    DB::table('oauth_clients')->where('id', $clientId)->update([
+        'redirect_uris' => json_encode([$redirectUri]),
+    ]);
+
+    $response = $this->actingAs($user)
+        ->get(route(
+            'passport.authorizations.authorize',
+            oauthAuthorizeQuery($clientId, $redirectUri, prompt: 'none'),
+        ));
+
+    $response->assertRedirect();
+    expect($response->headers->get('Location'))
+        ->toStartWith($redirectUri)
+        ->toContain('error=consent_required');
+});
+
 /**
  * @return array<string, string>
  */
-function oauthAuthorizeQuery(string $clientId, string $redirectUri = 'https://client.example/callback'): array
-{
+function oauthAuthorizeQuery(
+    string $clientId,
+    string $redirectUri = 'https://client.example/callback',
+    string $prompt = 'consent',
+): array {
     $verifier = Str::random(64);
     $challenge = rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
 
@@ -246,6 +287,6 @@ function oauthAuthorizeQuery(string $clientId, string $redirectUri = 'https://cl
         'state' => 'test-state',
         'code_challenge' => $challenge,
         'code_challenge_method' => 'S256',
-        'prompt' => 'consent',
+        'prompt' => $prompt,
     ];
 }

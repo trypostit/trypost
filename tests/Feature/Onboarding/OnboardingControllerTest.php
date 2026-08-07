@@ -335,6 +335,14 @@ test('ready state renders without stamping completion on GET', function () {
         SendEvent::class,
         fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
     );
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Completed->value,
+    );
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::StepCompleted->value,
+    );
 });
 
 test('completed accounts stay on onboarding during partial reloads', function () {
@@ -472,25 +480,31 @@ test('viewers cannot manage social accounts or create posts from onboarding', fu
         ->get(route('app.onboarding'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
+            ->where('canSkipSteps', false)
             ->where('canManageAccounts', false)
-            ->where('canCreatePost', false));
+            ->where('canCreatePost', false)
+            // MCP setup stays visible even without createPost — only write CTAs are gated.
+            ->where('mcpUrl', route('mcp.trypost')));
 });
 
-test('only the account owner can skip onboarding steps', function () {
-    $member = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($member->id, [
-        'role' => Role::Member->value,
+test('only the account owner can skip onboarding steps', function (Role $role) {
+    $teammate = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($teammate->id, [
+        'role' => $role->value,
     ]);
-    $member->update(['current_workspace_id' => $this->workspace->id]);
+    $teammate->update(['current_workspace_id' => $this->workspace->id]);
 
-    $this->actingAs($member->fresh())
+    $this->actingAs($teammate->fresh())
         ->post(route('app.onboarding.mcp.skip'))
         ->assertForbidden();
 
     expect($this->user->account->fresh()->onboarding_skipped_steps)->toBeNull();
-});
+})->with([
+    'member' => Role::Member,
+    'viewer' => Role::Viewer,
+]);
 
-test('teammates cannot stamp completion via the complete endpoint', function () {
+test('teammates cannot stamp completion via the complete endpoint', function (Role $role) {
     Carbon::setTestNow('2026-07-29 12:00:00');
     Event::fake([OnboardingStatusUpdated::class]);
 
@@ -503,20 +517,23 @@ test('teammates cannot stamp completion via the complete endpoint', function () 
         'user_id' => $this->user->id,
     ]));
 
-    $member = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($member->id, [
-        'role' => Role::Member->value,
+    $teammate = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($teammate->id, [
+        'role' => $role->value,
     ]);
-    $member->update(['current_workspace_id' => $this->workspace->id]);
+    $teammate->update(['current_workspace_id' => $this->workspace->id]);
 
-    $this->actingAs($member->fresh())
+    $this->actingAs($teammate->fresh())
         ->post(route('app.onboarding.complete'))
         ->assertForbidden();
 
     expect($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
 
     Event::assertNotDispatched(OnboardingStatusUpdated::class);
-});
+})->with([
+    'member' => Role::Member,
+    'viewer' => Role::Viewer,
+]);
 
 test('owner stamps completion via the complete endpoint for every workspace', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');

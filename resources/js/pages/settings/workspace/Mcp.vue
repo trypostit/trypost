@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, usePoll } from '@inertiajs/vue3';
-import { IconExternalLink } from '@tabler/icons-vue';
+import { IconExternalLink, IconPlugConnected } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
@@ -83,42 +83,53 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                         {{ $t('mcp.connected_empty') }}
                     </div>
 
-                    <div v-else class="grid gap-3">
+                    <div v-else class="space-y-3">
                         <div
                             v-for="client in connectedClients"
                             :key="client.client_id"
-                            class="flex items-center justify-between gap-4 rounded-xl border-2 border-foreground bg-card px-4 py-3 shadow-2xs"
+                            class="flex items-center gap-4 rounded-xl border-2 border-foreground bg-card p-4 shadow-2xs"
                             :data-testid="`mcp-connected-client-${client.client_id}`"
                         >
-                            <div class="min-w-0">
-                                <p
-                                    class="flex items-center gap-2 truncate text-sm font-bold"
+                            <div
+                                class="inline-flex size-10 -rotate-2 flex-shrink-0 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-100 shadow-2xs"
+                            >
+                                <IconPlugConnected
+                                    class="size-5 text-foreground"
+                                    stroke-width="2"
+                                />
+                            </div>
+                            <div class="min-w-0 flex-1 space-y-0.5">
+                                <div class="truncate text-sm font-bold text-foreground">
+                                    {{ client.name }}
+                                </div>
+                                <div
+                                    class="flex items-center gap-1.5 text-xs font-medium text-foreground/60"
                                 >
-                                    <span
-                                        class="size-2 shrink-0 rounded-full bg-emerald-500"
-                                        aria-hidden="true"
-                                    />
-                                    <span class="truncate">{{
-                                        client.name
-                                    }}</span>
-                                </p>
-                                <p
-                                    class="text-xs font-medium text-foreground/60"
-                                >
-                                    {{ $t('mcp.last_used') }}:
-                                    {{
-                                        client.last_used_at
-                                            ? date.diffForHumans(
-                                                  client.last_used_at,
-                                              )
-                                            : $t('mcp.never')
-                                    }}
-                                </p>
+                                    <span class="relative flex size-2">
+                                        <span
+                                            class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60"
+                                        />
+                                        <span
+                                            class="relative inline-flex size-2 rounded-full bg-emerald-500"
+                                        />
+                                    </span>
+                                    <span>
+                                        {{ $t('mcp.last_used') }}:
+                                        {{
+                                            client.last_used_at
+                                                ? date.diffForHumans(
+                                                      client.last_used_at,
+                                                  )
+                                                : $t('mcp.never')
+                                        }}
+                                    </span>
+                                </div>
                             </div>
                             <Button
                                 v-if="client.can_disconnect"
                                 variant="outline"
                                 size="sm"
+                                class="shrink-0"
                                 @click="confirmDisconnect(client)"
                             >
                                 {{ $t('mcp.disconnect') }}
