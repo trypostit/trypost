@@ -75,7 +75,10 @@ class AuthorizationController extends PassportAuthorizationController
      */
     private function shouldRenderAuthorizationErrorPage(Request $request): bool
     {
-        if ($request->headers->has('X-Inertia')) {
+        // Login (and other Inertia forms) follow the intended /oauth/authorize
+        // redirect with X-Inertia; raw OAuth JSON triggers the "plain JSON
+        // response was received" client error.
+        if ($request->inertia()) {
             return true;
         }
 
