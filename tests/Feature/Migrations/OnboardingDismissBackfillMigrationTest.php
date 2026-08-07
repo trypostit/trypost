@@ -2,17 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Models\Account;
 use App\Models\User;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 beforeEach(function () {
-    config([
-        'trypost.self_hosted' => false,
-        'trypost.billing.require_card_for_trial' => true,
-    ]);
-
     $this->runBackfill = function (): void {
         $migration = require database_path(
             'migrations/2026_07_29_183500_backfill_onboarding_dismissed_for_accounts_with_app_access.php',
@@ -22,167 +15,73 @@ beforeEach(function () {
     };
 });
 
-test('dismisses accounts with past_due subscriptions that still have app access', function () {
+test('completes every open account regardless of subscription or hosting mode', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 
-    $user = User::factory()->create();
-    $account = $user->account;
+    $open = User::factory()->create();
+    $subscribed = User::factory()->create();
+    subscribeAccount($subscribed->account);
 
-    $account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_'.fake()->uuid(),
-        'stripe_status' => 'past_due',
-        'stripe_price' => 'price_123',
-    ]);
+    config(['trypost.self_hosted' => true]);
+    $selfHosted = User::factory()->create();
 
-    expect($account->fresh()->hasAppAccess())->toBeTrue()
-        ->and($account->fresh()->onboarding_dismissed_at)->toBeNull();
+    expect($open->account->subscriptions()->exists())->toBeFalse()
+        ->and($selfHosted->account->subscriptions()->exists())->toBeFalse();
 
     ($this->runBackfill)();
 
-    expect($account->fresh()->onboarding_dismissed_at?->equalTo(now()))->toBeTrue();
-});
-
-test('dismisses accounts on a canceled subscription that is still in grace', function () {
-    Carbon::setTestNow('2026-07-29 12:00:00');
-
-    $user = User::factory()->create();
-    $account = $user->account;
-
-    $account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_'.fake()->uuid(),
-        'stripe_status' => 'canceled',
-        'stripe_price' => 'price_123',
-        'ends_at' => now()->addDays(5),
-    ]);
-
-    expect($account->fresh()->hasAppAccess())->toBeTrue();
-
-    ($this->runBackfill)();
-
-    expect($account->fresh()->onboarding_dismissed_at?->equalTo(now()))->toBeTrue();
-});
-
-test('does not dismiss accounts without app access', function () {
-    $user = User::factory()->create();
-
-    ($this->runBackfill)();
-
-    expect($user->account->fresh()->onboarding_dismissed_at)->toBeNull();
-});
-
-test('does not dismiss accounts with subscription statuses that lack app access', function (string $status) {
-    $user = User::factory()->create();
-    $account = $user->account;
-
-    $account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_'.fake()->uuid(),
-        'stripe_status' => $status,
-        'stripe_price' => 'price_123',
-    ]);
-
-    expect($account->fresh()->hasAppAccess())->toBeFalse("Status {$status} unexpectedly has app access.");
-
-    ($this->runBackfill)();
-
-    expect($account->fresh()->onboarding_dismissed_at)->toBeNull();
-})->with([
-    'unpaid',
-    'incomplete',
-    'incomplete_expired',
-]);
-
-test('does not dismiss an account whose latest subscription is incomplete', function () {
-    Carbon::setTestNow('2026-07-29 12:00:00');
-
-    $user = User::factory()->create();
-    $account = $user->account;
-    subscribeAccount($account);
-
-    Carbon::setTestNow(now()->addMinute());
-    $account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_'.fake()->uuid(),
-        'stripe_status' => 'incomplete',
-        'stripe_price' => 'price_123',
-    ]);
-
-    expect($account->fresh()->hasAppAccess())->toBeFalse();
-
-    ($this->runBackfill)();
-
-    expect($account->fresh()->onboarding_dismissed_at)->toBeNull();
+    expect($open->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue()
+        ->and($subscribed->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue()
+        ->and($selfHosted->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 });
 
 test('does not overwrite already completed or dismissed accounts', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 
     $completed = User::factory()->create();
-    subscribeAccount($completed->account);
     $completed->account->forceFill(['onboarding_completed_at' => now()->subDay()])->save();
 
     $dismissed = User::factory()->create();
-    subscribeAccount($dismissed->account);
     $dismissed->account->forceFill(['onboarding_dismissed_at' => now()->subDay()])->save();
 
     ($this->runBackfill)();
 
-    expect($completed->account->fresh()->onboarding_dismissed_at)->toBeNull()
-        ->and($completed->account->fresh()->onboarding_completed_at?->equalTo(now()->subDay()))->toBeTrue()
-        ->and($dismissed->account->fresh()->onboarding_dismissed_at?->equalTo(now()->subDay()))->toBeTrue();
+    expect($completed->account->fresh()->onboarding_completed_at?->equalTo(now()->subDay()))->toBeTrue()
+        ->and($completed->account->fresh()->onboarding_dismissed_at)->toBeNull()
+        ->and($dismissed->account->fresh()->onboarding_dismissed_at?->equalTo(now()->subDay()))->toBeTrue()
+        ->and($dismissed->account->fresh()->onboarding_completed_at)->toBeNull();
 });
 
-test('dismisses generic-trial accounts when card is not required', function () {
-    Carbon::setTestNow('2026-07-29 12:00:00');
-    config(['trypost.billing.require_card_for_trial' => false]);
-
-    $user = User::factory()->create();
-    DB::table('accounts')->where('id', $user->account_id)->update([
-        'trial_ends_at' => now()->addDays(7),
-    ]);
-
-    expect($user->account->fresh()->hasAppAccess())->toBeTrue();
-
-    ($this->runBackfill)();
-
-    expect($user->account->fresh()->onboarding_dismissed_at?->equalTo(now()))->toBeTrue();
-});
-
-test('does not dismiss accounts in self hosted mode', function () {
-    Carbon::setTestNow('2026-07-29 12:00:00');
-    config(['trypost.self_hosted' => true]);
-
-    $withoutSubscription = User::factory()->create();
-    $withSubscription = User::factory()->create();
-    subscribeAccount($withSubscription->account);
-
-    $alreadyCompleted = User::factory()->create();
-    $alreadyCompleted->account->forceFill(['onboarding_completed_at' => now()->subDay()])->save();
-
-    expect($withoutSubscription->account->fresh()->hasAppAccess())->toBeTrue();
-
-    ($this->runBackfill)();
-
-    expect($withoutSubscription->account->fresh()->onboarding_dismissed_at)->toBeNull()
-        ->and($withSubscription->account->fresh()->onboarding_dismissed_at)->toBeNull()
-        ->and($alreadyCompleted->account->fresh()->onboarding_dismissed_at)->toBeNull();
-});
-
-test('stamps every matching account through the chunked update', function () {
+test('stamps every open account in a single update', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 
     $accounts = collect();
-    for ($i = 0; $i < 501; $i++) {
-        $user = User::factory()->create();
-        subscribeAccount($user->account);
-        $accounts->push($user->account);
+    for ($i = 0; $i < 50; $i++) {
+        $accounts->push(User::factory()->create()->account);
     }
 
     ($this->runBackfill)();
 
     foreach ($accounts as $account) {
-        expect($account->fresh()->onboarding_dismissed_at?->equalTo(now()))->toBeTrue();
+        expect($account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
     }
+});
+
+test('down clears completed_at stamped by the backfill', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+
+    $open = User::factory()->create();
+    $dismissed = User::factory()->create();
+    $dismissed->account->forceFill(['onboarding_dismissed_at' => now()->subDay()])->save();
+
+    ($this->runBackfill)();
+
+    $migration = require database_path(
+        'migrations/2026_07_29_183500_backfill_onboarding_dismissed_for_accounts_with_app_access.php',
+    );
+    $migration->down();
+
+    expect($open->account->fresh()->onboarding_completed_at)->toBeNull()
+        ->and($dismissed->account->fresh()->onboarding_dismissed_at?->equalTo(now()->subDay()))->toBeTrue()
+        ->and($dismissed->account->fresh()->onboarding_completed_at)->toBeNull();
 });
