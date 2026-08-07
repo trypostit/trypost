@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class OnboardingController extends Controller
 {
@@ -128,7 +129,7 @@ class OnboardingController extends Controller
                 OnboardingEvent::Viewed->value,
                 account: $account,
             );
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             Cache::forget($dedupeKey);
 
             throw $exception;

@@ -13,6 +13,7 @@ use App\Models\Workspace;
 use App\Services\PostHogService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
+use Throwable;
 
 class ResolveOnboardingStatus
 {
@@ -476,7 +477,7 @@ class ResolveOnboardingStatus
 
         try {
             $capture();
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             Cache::forget($dedupeKey);
 
             throw $exception;

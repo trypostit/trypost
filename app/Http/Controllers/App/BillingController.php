@@ -35,7 +35,7 @@ class BillingController extends Controller
         // time this session_id is seen, so a back-button/refresh to the success URL
         // can't re-fire `checkout.completed`. `Cache::add` is atomic — it returns
         // true only when the key didn't exist yet.
-        $fromCheckout = is_string($sessionId) && $sessionId !== ''
+        $fromCheckout = is_string($sessionId) && filled($sessionId)
             && Cache::add("checkout_tracked:{$sessionId}", true, now()->addDay());
 
         $subscriptionActive = $account->subscribed(Account::SUBSCRIPTION_NAME);
