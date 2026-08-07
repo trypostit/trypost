@@ -178,8 +178,9 @@ test('personal access tokens are left alone for controllers to bind', function (
     expect($token->workspace_id)->toBeNull();
 });
 
-test('auth code repository captures the authorizing user current workspace', function () {
+test('auth code repository captures workspace_id from the consent form', function () {
     $this->actingAs($this->user);
+    request()->merge(['workspace_id' => $this->workspace->id]);
 
     $client = Mockery::mock(ClientEntityInterface::class);
     $client->shouldReceive('getIdentifier')->andReturn($this->clientId);
@@ -252,7 +253,7 @@ test('auth code repository rejects a consent workspace the user does not belong 
     expect($stored->workspace_id)->toBeNull();
 });
 
-test('auth code repository uses current workspace on silent reconsent after switch', function () {
+test('auth code repository requires workspace_id from the consent form', function () {
     $otherWorkspace = Workspace::factory()->create([
         'account_id' => $this->user->account_id,
         'user_id' => $this->user->id,
@@ -261,6 +262,7 @@ test('auth code repository uses current workspace on silent reconsent after swit
     $otherWorkspace->members()->attach($this->user->id, ['role' => Role::Admin->value]);
     $this->user->update(['current_workspace_id' => $otherWorkspace->id]);
     $this->actingAs($this->user->fresh());
+    // No workspace_id in the request — current workspace must not be used.
 
     $client = Mockery::mock(ClientEntityInterface::class);
     $client->shouldReceive('getIdentifier')->andReturn($this->clientId);
@@ -276,12 +278,13 @@ test('auth code repository uses current workspace on silent reconsent after swit
 
     $stored = AuthCode::query()->where('client_id', $this->clientId)->first();
 
-    expect($stored->workspace_id)->toBe($otherWorkspace->id);
+    expect($stored->workspace_id)->toBeNull();
 });
 
-test('auth code repository rejects a current workspace the user no longer belongs to', function () {
+test('auth code repository rejects a consent workspace the user no longer belongs to', function () {
     $this->workspace->members()->detach($this->user->id);
     $this->actingAs($this->user->fresh());
+    request()->merge(['workspace_id' => $this->workspace->id]);
 
     $client = Mockery::mock(ClientEntityInterface::class);
     $client->shouldReceive('getIdentifier')->andReturn($this->clientId);

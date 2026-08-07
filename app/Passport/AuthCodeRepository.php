@@ -15,9 +15,9 @@ use League\OAuth2\Server\Entities\AuthCodeEntityInterface;
  * Persists the chosen workspace on the auth code so the subsequent token
  * exchange (no browser session) can bind the access token.
  *
- * Prefers `workspace_id` from the consent form when present and valid;
- * otherwise falls back to the authorizing user's current workspace (including
- * Passport silent re-consent). Always resolves membership at consent time.
+ * Requires an explicit `workspace_id` from the consent form (membership-
+ * checked). No current-workspace fallback — silent re-consent is disabled
+ * so the picker always runs.
  */
 class AuthCodeRepository extends PassportAuthCodeRepository
 {
@@ -46,16 +46,13 @@ class AuthCodeRepository extends PassportAuthCodeRepository
             return null;
         }
 
-        $requestedId = request()->input('workspace_id');
-        $candidateId = is_string($requestedId) && $requestedId !== ''
-            ? $requestedId
-            : $user->current_workspace_id;
+        $requestedId = request()->string('workspace_id');
 
-        if (blank($candidateId)) {
+        if ($requestedId->isEmpty()) {
             return null;
         }
 
-        $workspace = Workspace::query()->find($candidateId);
+        $workspace = Workspace::query()->find($requestedId->value());
 
         if ($workspace === null || ! $user->belongsToWorkspace($workspace)) {
             return null;

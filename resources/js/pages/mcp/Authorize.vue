@@ -134,7 +134,7 @@ const onDenySubmit = (): void => {
                         </p>
                     </div>
 
-                    <div v-if="workspaces.length > 0" class="space-y-1.5">
+                    <div class="space-y-1.5">
                         <Label>{{ $t('mcp.authorize.workspace') }}</Label>
                         <Combobox
                             v-model="selectedWorkspace"

@@ -29,10 +29,6 @@ use App\Models\Workspace;
 use App\Models\WorkspaceInvite;
 use App\Models\WorkspaceLabel;
 use App\Models\WorkspaceSignature;
-use App\Passport\AccessTokenRepository;
-use App\Passport\AuthCode;
-use App\Passport\AuthCodeRepository;
-use App\Passport\AuthorizationView;
 use App\Services\PostHogService;
 use App\Services\PostTemplate\Registry as PostTemplateRegistry;
 use App\Socialite\DiscordProvider;
@@ -57,9 +53,6 @@ use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Events\WebhookReceived;
 use Laravel\Nightwatch\Facades\Nightwatch;
 use Laravel\Nightwatch\Records\CacheEvent;
-use Laravel\Passport\Bridge\AccessTokenRepository as PassportAccessTokenRepository;
-use Laravel\Passport\Bridge\AuthCodeRepository as PassportAuthCodeRepository;
-use Laravel\Passport\Passport;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\GoogleProvider;
 use PostHog\PostHog;
@@ -77,9 +70,6 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(PostTemplateRegistry::class);
-
-        $this->app->bind(PassportAuthCodeRepository::class, AuthCodeRepository::class);
-        $this->app->bind(PassportAccessTokenRepository::class, AccessTokenRepository::class);
 
         if ($this->app->environment('local') && class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
             $this->app->register(\Laravel\Telescope\TelescopeServiceProvider::class);
@@ -103,27 +93,6 @@ class AppServiceProvider extends ServiceProvider
         Cashier::useSubscriptionModel(Subscription::class);
         Cashier::useSubscriptionItemModel(SubscriptionItem::class);
         Cashier::keepPastDueSubscriptionsActive();
-
-        $this->configurePassport();
-    }
-
-    protected function configurePassport(): void
-    {
-        Passport::useTokenModel(AccessToken::class);
-        Passport::useAuthCodeModel(AuthCode::class);
-
-        // API keys may omit an application expiry ("never"). Passport still
-        // embeds a JWT `exp`, so keep that far ahead and enforce optional
-        // `oauth_access_tokens.expires_at` in LoadWorkspaceFromToken.
-        Passport::personalAccessTokensExpireIn(now()->addYears(100));
-
-        Passport::tokensCan([
-            'mcp:use' => 'Use MCP server',
-        ]);
-
-        Passport::authorizationView(
-            fn (array $parameters) => $this->app->make(AuthorizationView::class)($parameters),
-        );
     }
 
     protected function configureMorphMap(): void

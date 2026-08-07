@@ -126,6 +126,35 @@ test('mcp oauth consent page lists every workspace the user can access', functio
             ->where('workspaces.1.id', (string) $beta->id));
 });
 
+test('mcp oauth always shows consent even when scopes were previously granted', function () {
+    $account = Account::factory()->create();
+    $user = User::factory()->create(['account_id' => $account->id]);
+    $account->update(['owner_id' => $user->id]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $account->id,
+        'user_id' => $user->id,
+    ]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $clientId = mcpOauthClient('Reconnect Agent');
+    DB::table('oauth_clients')->where('id', $clientId)->update([
+        'redirect_uris' => json_encode(['https://client.example/callback']),
+    ]);
+    mcpAccessToken($user, $clientId, $workspace);
+
+    $query = oauthAuthorizeQuery($clientId);
+    unset($query['prompt']);
+
+    $this->actingAs($user)
+        ->get(route('passport.authorizations.authorize', $query))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('mcp/Authorize')
+            ->where('client.name', 'Reconnect Agent')
+            ->where('selectedWorkspaceId', (string) $workspace->id));
+});
+
 test('passport approve route has no mcp create-post role gate', function () {
     $route = app('router')->getRoutes()->getByName('passport.authorizations.approve');
 
