@@ -93,7 +93,7 @@ class ResolveOnboardingStatus
 
         $this->captureCompletedSteps($user, $account, $status);
 
-        if (! $status['all_complete']) {
+        if (! data_get($status, 'all_complete')) {
             return $status;
         }
 
@@ -179,11 +179,11 @@ class ResolveOnboardingStatus
 
         $status = $this->handle($user);
 
-        if ($status['mcp_connected'] || in_array('mcp', $status['skipped_steps'], true)) {
+        if ($this->stepIsSettled($status, 'mcp')) {
             return false;
         }
 
-        $skippedSteps = [...$status['skipped_steps'], 'mcp'];
+        $skippedSteps = [...data_get($status, 'skipped_steps', []), 'mcp'];
 
         $updated = Account::query()
             ->whereKey($account->id)
@@ -210,11 +210,7 @@ class ResolveOnboardingStatus
             $account,
         );
 
-        if ($this->handle($user)['all_complete'] && $this->markCompleted($user)) {
-            return true;
-        }
-
-        OnboardingStatusUpdated::broadcastForAccount($account);
+        $this->completeChecklistOrBroadcast($user, $account);
 
         return true;
     }
@@ -227,22 +223,20 @@ class ResolveOnboardingStatus
      *
      * @return array{completed: int, total: int}|false
      */
-    public function sidebarProgress(?User $user): array|false
+    public function sidebarProgress(User $user): array|false
     {
-        if ($user === null || ! $this->canShowProgress($user)) {
+        if (! $this->canShowProgress($user)) {
             return false;
         }
 
         $status = $this->handle($user);
 
-        if (! $status['show_progress']) {
-            return false;
-        }
-
-        return [
-            'completed' => $this->completedStepCount($status),
-            'total' => self::totalSteps(),
-        ];
+        return data_get($status, 'show_progress')
+            ? [
+                'completed' => $this->completedStepCount($status),
+                'total' => self::totalSteps(),
+            ]
+            : false;
     }
 
     /**
@@ -261,6 +255,19 @@ class ResolveOnboardingStatus
     }
 
     /**
+     * After skipping a step: stamp completion when the checklist is done,
+     * otherwise broadcast so sidebar progress refreshes.
+     */
+    private function completeChecklistOrBroadcast(User $user, Account $account): void
+    {
+        if (data_get($this->handle($user), 'all_complete') && $this->markCompleted($user)) {
+            return;
+        }
+
+        OnboardingStatusUpdated::broadcastForAccount($account);
+    }
+
+    /**
      * @return array{
      *     mcp_connected: bool,
      *     social_connected: bool,
@@ -274,10 +281,10 @@ class ResolveOnboardingStatus
      */
     private function completedStatus(Account $account): array
     {
-        $skippedSteps = $account->onboarding_skipped_steps ?? [];
+        $skippedSteps = $account->skippedOnboardingSteps();
 
         // Preserve skip vs real MCP completion for the ready UI badge.
-        $mcpConnected = ! in_array('mcp', $skippedSteps, true)
+        $mcpConnected = ! $account->hasSkippedOnboardingStep('mcp')
             || $this->accountHasMcpConnection($account);
 
         return [
@@ -285,7 +292,7 @@ class ResolveOnboardingStatus
             'social_connected' => true,
             'first_post_created' => true,
             'skipped_steps' => $mcpConnected
-                ? array_values(array_diff($skippedSteps, ['mcp']))
+                ? $this->withoutSkippedStep($skippedSteps, 'mcp')
                 : $skippedSteps,
             'all_complete' => true,
             'show_progress' => false,
@@ -308,7 +315,7 @@ class ResolveOnboardingStatus
      */
     private function activeStatus(User $user, Account $account): array
     {
-        $skippedSteps = $account->onboarding_skipped_steps ?? [];
+        $skippedSteps = $account->skippedOnboardingSteps();
         $steps = $this->stepStates($account);
 
         $allComplete = collect($steps)->every(
@@ -316,9 +323,9 @@ class ResolveOnboardingStatus
         );
 
         return [
-            'mcp_connected' => $steps['mcp'],
-            'social_connected' => $steps['social'],
-            'first_post_created' => $steps['first_post'],
+            'mcp_connected' => data_get($steps, 'mcp'),
+            'social_connected' => data_get($steps, 'social'),
+            'first_post_created' => data_get($steps, 'first_post'),
             'skipped_steps' => $skippedSteps,
             'all_complete' => $allComplete,
             'show_progress' => $this->canShowProgress($user, $account) && ! $allComplete,
@@ -340,11 +347,34 @@ class ResolveOnboardingStatus
     }
 
     /**
+     * Whether a checklist step is already done or skipped in a status payload.
+     *
+     * @param  array{mcp_connected?: bool, social_connected?: bool, first_post_created?: bool, skipped_steps?: list<string>}  $status
+     */
+    private function stepIsSettled(array $status, string $step): bool
+    {
+        return $this->stepIsComplete(
+            (bool) data_get($status, data_get(self::STEPS, $step)),
+            $step,
+            data_get($status, 'skipped_steps', []),
+        );
+    }
+
+    /**
      * @param  list<string>  $skippedSteps
      */
     private function stepIsComplete(bool $done, string $step, array $skippedSteps): bool
     {
         return $done || in_array($step, $skippedSteps, true);
+    }
+
+    /**
+     * @param  list<string>  $skippedSteps
+     * @return list<string>
+     */
+    private function withoutSkippedStep(array $skippedSteps, string $step): array
+    {
+        return array_values(array_diff($skippedSteps, [$step]));
     }
 
     /**
@@ -354,9 +384,9 @@ class ResolveOnboardingStatus
     {
         return collect(self::STEPS)
             ->filter(fn (string $statusKey, string $step): bool => $this->stepIsComplete(
-                $status[$statusKey],
+                (bool) data_get($status, $statusKey),
                 $step,
-                $status['skipped_steps'],
+                data_get($status, 'skipped_steps', []),
             ))
             ->count();
     }
@@ -375,7 +405,7 @@ class ResolveOnboardingStatus
                     ['step' => $step],
                     $account,
                 ),
-                when: $status[$statusKey],
+                when: (bool) data_get($status, $statusKey),
             );
         }
     }
@@ -408,9 +438,7 @@ class ResolveOnboardingStatus
 
     private function clearMcpSkipIfConnected(Account $account): void
     {
-        $skipped = $account->onboarding_skipped_steps ?? [];
-
-        if (! in_array('mcp', $skipped, true) || ! $this->accountHasMcpConnection($account)) {
+        if (! $account->hasSkippedOnboardingStep('mcp') || ! $this->accountHasMcpConnection($account)) {
             return;
         }
 
@@ -418,7 +446,10 @@ class ResolveOnboardingStatus
             ->whereKey($account->id)
             ->whereNull('onboarding_completed_at')
             ->update([
-                'onboarding_skipped_steps' => array_values(array_diff($skipped, ['mcp'])) ?: null,
+                'onboarding_skipped_steps' => $this->withoutSkippedStep(
+                    $account->skippedOnboardingSteps(),
+                    'mcp',
+                ) ?: null,
                 'updated_at' => now(),
             ]);
 

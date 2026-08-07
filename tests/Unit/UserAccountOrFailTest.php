@@ -21,3 +21,19 @@ it('throws ModelNotFoundException when the user has no account', function () {
 
     $user->accountOrFail();
 })->throws(ModelNotFoundException::class);
+
+it('identifies the account owner', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create(['account_id' => $owner->account_id]);
+
+    expect($owner->isAccountOwner())->toBeTrue()
+        ->and($member->isAccountOwner())->toBeFalse();
+});
+
+it('checks whether the user belongs to an account', function () {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+
+    expect($user->belongsToAccount($user->account_id))->toBeTrue()
+        ->and($user->belongsToAccount($other->account_id))->toBeFalse();
+});

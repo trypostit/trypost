@@ -114,6 +114,19 @@ class Account extends Model
     }
 
     /**
+     * @return list<string>
+     */
+    public function skippedOnboardingSteps(): array
+    {
+        return $this->onboarding_skipped_steps ?? [];
+    }
+
+    public function hasSkippedOnboardingStep(string $step): bool
+    {
+        return in_array($step, $this->skippedOnboardingSteps(), true);
+    }
+
+    /**
      * Whether activation progress should still be tracked for this account.
      * Prefer `$account?->isOnboardingOpen()` at call sites so null accounts bail out cleanly.
      */

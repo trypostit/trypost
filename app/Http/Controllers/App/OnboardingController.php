@@ -40,7 +40,7 @@ class OnboardingController extends Controller
         $status = $this->resolveOnboardingStatus->handle($user);
 
         // Legacy dismiss (deploy backfill) is terminal, including Echo partial reloads.
-        if ($status['dismissed_at'] !== null) {
+        if (data_get($status, 'dismissed_at') !== null) {
             return redirect()->route('app.calendar');
         }
 
@@ -55,7 +55,7 @@ class OnboardingController extends Controller
             ! $isPartial
             && $account->isOnboardingOpen()
             && $user->isAccountOwner()
-            && ! $status['all_complete']
+            && ! data_get($status, 'all_complete')
         ) {
             $this->captureViewedOnce($user->id, $account);
         }
@@ -101,7 +101,7 @@ class OnboardingController extends Controller
             return redirect()->route('app.calendar');
         }
 
-        if (! $this->resolveOnboardingStatus->handle($user)['all_complete']) {
+        if (! data_get($this->resolveOnboardingStatus->handle($user), 'all_complete')) {
             return redirect()->route('app.onboarding');
         }
 

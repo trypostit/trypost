@@ -49,7 +49,9 @@ class HandleInertiaRequests extends Middleware
             ],
             'usage' => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => $account && ! $isSelfHosted ? $account->featureLimits() : null,
-            'onboardingProgress' => fn (): array|false => app(ResolveOnboardingStatus::class)->sidebarProgress($user),
+            'onboardingProgress' => fn (): array|false => $user
+                ? app(ResolveOnboardingStatus::class)->sidebarProgress($user)
+                : false,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => $request->session()->get('flash', []),
             'applicationUrl' => config('app.url'),

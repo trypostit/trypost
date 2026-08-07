@@ -7,13 +7,13 @@ namespace App\Models;
 use App\Enums\Notification\Type as NotificationType;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
+use App\Models\Traits\HasAccount;
 use App\Models\Traits\HasMedia;
 use App\Models\Traits\HasWorkspace;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -24,7 +24,7 @@ use Laravel\Passport\HasApiTokens;
 class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, HasMedia, HasUuids, HasWorkspace, Notifiable;
+    use HasAccount, HasApiTokens, HasFactory, HasMedia, HasUuids, HasWorkspace, Notifiable;
 
     /**
      * @var list<string>
@@ -94,41 +94,6 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
     public function notificationPreference(): HasOne
     {
         return $this->hasOne(NotificationPreference::class);
-    }
-
-    public function account(): BelongsTo
-    {
-        return $this->belongsTo(Account::class);
-    }
-
-    /**
-     * Account for authenticated product flows (onboarding, billing, settings).
-     * In-app users always have one; null only during account teardown.
-     */
-    public function accountOrFail(): Account
-    {
-        return $this->account ?? $this->account()->firstOrFail();
-    }
-
-    public function isAccountOwner(): bool
-    {
-        if (! $this->account_id) {
-            return false;
-        }
-
-        if ($this->relationLoaded('account')) {
-            return $this->id === $this->account?->owner_id;
-        }
-
-        return Account::query()
-            ->whereKey($this->account_id)
-            ->where('owner_id', $this->id)
-            ->exists();
-    }
-
-    public function belongsToAccount(string $accountId): bool
-    {
-        return $this->account_id === $accountId;
     }
 
     public function wantsEmailFor(NotificationType $type): bool

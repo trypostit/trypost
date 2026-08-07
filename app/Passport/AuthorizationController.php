@@ -92,8 +92,8 @@ class AuthorizationController extends PassportAuthorizationController
         $payload = $this->oauthErrorPayload($exception);
 
         return Inertia::render('mcp/AuthorizeError', [
-            'error' => (string) ($payload['error'] ?? 'server_error'),
-            'errorDescription' => (string) ($payload['error_description'] ?? __('mcp.authorize.error_body')),
+            'error' => (string) data_get($payload, 'error', 'server_error'),
+            'errorDescription' => (string) data_get($payload, 'error_description', __('mcp.authorize.error_body')),
         ])->toResponse($request);
     }
 
