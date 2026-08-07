@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router, useForm, usePage, usePoll } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { IconCheck, IconCopy } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, nextTick, ref, watch } from 'vue';
@@ -11,7 +11,7 @@ import NetworkConnectGrid, {
 import McpPrimarySetup from '@/components/mcp/McpPrimarySetup.vue';
 import OnboardingStepCard from '@/components/onboarding/OnboardingStepCard.vue';
 import { Button } from '@/components/ui/button';
-import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
+import { useOnboardingLiveReload } from '@/composables/useOnboardingLiveReload';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { copyToClipboard } from '@/lib/utils';
 import { calendar } from '@/routes/app';
@@ -58,38 +58,20 @@ const completeForm = useForm({});
 
 const onboardingReloadOnly = ['status', 'accounts', 'onboardingResidual'];
 
-// Echo is the fast path; slow poll covers MCP clients when Reverb is down.
-useWorkspaceEcho('.onboarding.status.updated', () => {
-    router.reload({ only: onboardingReloadOnly });
+useOnboardingLiveReload({
+    only: onboardingReloadOnly,
+    enabled: () =>
+        !props.status.all_complete &&
+        !props.status.completed_at &&
+        !props.status.dismissed_at,
 });
 
-const { start: startOnboardingPoll, stop: stopOnboardingPoll } = usePoll(
-    5000,
-    { only: onboardingReloadOnly },
-    { autoStart: false },
-);
-
 watch(
-    () => ({
-        allComplete: props.status.all_complete,
-        completedAt: props.status.completed_at,
-        dismissedAt: props.status.dismissed_at,
-    }),
-    ({ allComplete, completedAt, dismissedAt }) => {
+    () => props.status.dismissed_at,
+    (dismissedAt) => {
         if (dismissedAt) {
-            stopOnboardingPoll();
             router.visit(calendar.url());
-
-            return;
         }
-
-        if (allComplete || completedAt) {
-            stopOnboardingPoll();
-
-            return;
-        }
-
-        startOnboardingPoll();
     },
     { immediate: true },
 );
@@ -150,25 +132,21 @@ watch(
         <div
             class="mx-auto flex h-full w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10"
         >
-            <div
-                class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
-            >
-                <div class="min-w-0 space-y-1.5">
-                    <h1
-                        class="text-xl font-bold text-foreground sm:text-2xl"
-                        data-testid="onboarding-welcome"
-                    >
-                        <template v-if="firstName">
-                            {{ $t('onboarding.welcome', { name: firstName }) }}
-                        </template>
-                        <template v-else>
-                            {{ $t('onboarding.welcome_anonymous') }}
-                        </template>
-                    </h1>
-                    <p class="text-sm text-muted-foreground sm:text-base">
-                        {{ $t('onboarding.description') }}
-                    </p>
-                </div>
+            <div class="min-w-0 space-y-1.5">
+                <h1
+                    class="text-xl font-bold text-foreground sm:text-2xl"
+                    data-testid="onboarding-welcome"
+                >
+                    <template v-if="firstName">
+                        {{ $t('onboarding.welcome', { name: firstName }) }}
+                    </template>
+                    <template v-else>
+                        {{ $t('onboarding.welcome_anonymous') }}
+                    </template>
+                </h1>
+                <p class="text-sm text-muted-foreground sm:text-base">
+                    {{ $t('onboarding.description') }}
+                </p>
             </div>
 
             <div class="grid gap-6">
@@ -183,7 +161,6 @@ watch(
                 >
                     <div class="space-y-6">
                         <McpPrimarySetup
-                            v-if="canCreatePost"
                             :mcp-url="mcpUrl"
                             :copied-message="$t('onboarding.mcp.copied')"
                         />
@@ -308,6 +285,7 @@ watch(
                 </div>
 
                 <Button
+                    v-if="canSkipSteps"
                     type="button"
                     size="lg"
                     :disabled="completeForm.processing"
@@ -315,6 +293,11 @@ watch(
                     @click="continueToTryPost"
                 >
                     {{ $t('onboarding.continue') }}
+                </Button>
+                <Button v-else as-child size="lg" data-testid="onboarding-continue">
+                    <Link :href="calendar.url()">
+                        {{ $t('onboarding.continue') }}
+                    </Link>
                 </Button>
             </section>
         </div>

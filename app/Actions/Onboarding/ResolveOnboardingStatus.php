@@ -6,6 +6,7 @@ namespace App\Actions\Onboarding;
 
 use App\Enums\PostHog\OnboardingEvent;
 use App\Enums\SocialAccount\Status;
+use App\Enums\UserWorkspace\Role;
 use App\Events\OnboardingStatusUpdated;
 use App\Models\AccessToken;
 use App\Models\Account;
@@ -17,8 +18,6 @@ use Illuminate\Support\Facades\Cache;
 
 class ResolveOnboardingStatus
 {
-    public const TOTAL_STEPS = 3;
-
     /**
      * Checklist step identifiers mapped to their status keys. Steps are derived
      * from real state; optional steps may additionally be skipped.
@@ -32,6 +31,11 @@ class ResolveOnboardingStatus
     public function __construct(
         private readonly PostHogService $postHog,
     ) {}
+
+    public static function totalSteps(): int
+    {
+        return count(self::STEPS);
+    }
 
     /**
      * Pure read of activation checklist state. Safe for Inertia shared props.
@@ -104,7 +108,7 @@ class ResolveOnboardingStatus
 
     /**
      * Read checklist state, capture step analytics, and stamp completion when done.
-     * Call from intentional onboarding surfaces — not from shared Inertia props.
+     * Call from observers / explicit mutations — not from shared Inertia props or GETs.
      *
      * @return array{
      *     mcp_connected: bool,
@@ -119,12 +123,15 @@ class ResolveOnboardingStatus
      */
     public function syncProgress(User $user): array
     {
-        $status = $this->handle($user);
         $account = $user->account;
 
         if ($account === null || $account->onboarding_completed_at !== null) {
-            return $status;
+            return $this->handle($user);
         }
+
+        $this->clearMcpSkipIfConnected($account);
+
+        $status = $this->handle($user);
 
         if ($account->onboarding_dismissed_at === null) {
             foreach (self::STEPS as $step => $statusKey) {
@@ -148,6 +155,30 @@ class ResolveOnboardingStatus
         }
 
         return $status;
+    }
+
+    /**
+     * Sync checklist progress for an account actor, then broadcast residual updates.
+     * Used by observers after a step unlocks (post-commit).
+     */
+    public function syncAndNotify(Account $account, ?string $actorId = null): void
+    {
+        $actor = $actorId !== null
+            ? User::query()->with('account')->find($actorId)
+            : null;
+
+        $syncTarget = $actor !== null && (string) $actor->account_id === (string) $account->id
+            ? $actor
+            : $account->owner;
+
+        if ($syncTarget !== null) {
+            $this->syncProgress($syncTarget);
+            $account->refresh();
+        }
+
+        if (! $account->hasFinishedOnboarding()) {
+            OnboardingStatusUpdated::broadcastForAccount($account);
+        }
     }
 
     /**
@@ -219,6 +250,10 @@ class ResolveOnboardingStatus
             ->whereKey($account->id)
             ->whereNull('onboarding_completed_at')
             ->whereNull('onboarding_dismissed_at')
+            ->where(function (Builder $query): void {
+                $query->whereNull('onboarding_skipped_steps')
+                    ->orWhereJsonDoesntContain('onboarding_skipped_steps', 'mcp');
+            })
             ->update([
                 'onboarding_skipped_steps' => $skippedSteps,
                 'updated_at' => now(),
@@ -283,39 +318,43 @@ class ResolveOnboardingStatus
                 ->filter(fn (string $statusKey, string $step): bool => $status[$statusKey]
                     || in_array($step, $status['skipped_steps'], true))
                 ->count(),
-            'total' => self::TOTAL_STEPS,
+            'total' => self::totalSteps(),
         ];
     }
 
+    /**
+     * Bound, active MCP OAuth grant whose owner can create posts in that workspace.
+     */
     private function accountHasMcpConnection(?Account $account): bool
     {
         if ($account === null) {
             return false;
         }
 
-        $tokens = AccessToken::query()
+        $createPostRoles = [Role::Admin->value, Role::Member->value];
+
+        return AccessToken::query()
+            ->activeMcpOAuth()
+            ->whereNotNull('workspace_id')
             ->whereIn(
                 'user_id',
                 User::query()->select('id')->where('account_id', $account->id),
             )
-            ->activeMcpOAuth()
-            ->with('workspace')
-            ->get();
-        $users = User::query()
-            ->with('currentWorkspace')
-            ->whereIn('id', $tokens->pluck('user_id')->filter()->unique())
-            ->get()
-            ->keyBy('id');
-
-        return $tokens->contains(function (AccessToken $token) use ($users): bool {
-            $user = $users->get($token->user_id);
-            $workspace = $token->workspace;
-
-            return $user instanceof User
-                && $workspace instanceof Workspace
-                && $token->isUsableMcpGrant($user, $workspace)
-                && $user->can('createPost', $workspace);
-        });
+            ->whereHas(
+                'workspace',
+                fn (Builder $workspace): Builder => $workspace->where('account_id', $account->id),
+            )
+            ->where(function (Builder $query) use ($account, $createPostRoles): void {
+                $query->where('user_id', $account->owner_id)
+                    ->orWhereExists(function ($sub) use ($createPostRoles): void {
+                        $sub->selectRaw('1')
+                            ->from('user_workspace')
+                            ->whereColumn('user_workspace.user_id', 'oauth_access_tokens.user_id')
+                            ->whereColumn('user_workspace.workspace_id', 'oauth_access_tokens.workspace_id')
+                            ->whereIn('user_workspace.role', $createPostRoles);
+                    });
+            })
+            ->exists();
     }
 
     private function accountHasSocialConnection(?Account $account): bool
@@ -345,6 +384,25 @@ class ResolveOnboardingStatus
             ->exists();
     }
 
+    private function clearMcpSkipIfConnected(Account $account): void
+    {
+        $skipped = $account->onboarding_skipped_steps ?? [];
+
+        if (! in_array('mcp', $skipped, true) || ! $this->accountHasMcpConnection($account)) {
+            return;
+        }
+
+        Account::query()
+            ->whereKey($account->id)
+            ->whereNull('onboarding_completed_at')
+            ->update([
+                'onboarding_skipped_steps' => array_values(array_diff($skipped, ['mcp'])) ?: null,
+                'updated_at' => now(),
+            ]);
+
+        $account->refresh();
+    }
+
     private function captureCompletedStep(User $user, Account $account, string $step, bool $completed): void
     {
         if (! $completed || ! PostHogService::isEnabled()) {
@@ -355,7 +413,7 @@ class ResolveOnboardingStatus
 
         // Claim the slot first so concurrent syncs don't double-fire, then
         // release it if capture throws so a later retry can still report.
-        if (! Cache::add($dedupeKey, true)) {
+        if (! Cache::add($dedupeKey, true, now()->addYear())) {
             return;
         }
 

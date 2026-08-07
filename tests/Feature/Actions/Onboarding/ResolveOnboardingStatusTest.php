@@ -171,7 +171,7 @@ test('generic trial without card still shows residual for the owner', function (
 
     expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBe([
         'completed' => 0,
-        'total' => ResolveOnboardingStatus::TOTAL_STEPS,
+        'total' => ResolveOnboardingStatus::totalSteps(),
     ]);
 });
 
@@ -387,7 +387,7 @@ test('residual returns progress counts while onboarding is active', function () 
 
     expect(app(ResolveOnboardingStatus::class)->residual($this->user))->toBe([
         'completed' => 1,
-        'total' => ResolveOnboardingStatus::TOTAL_STEPS,
+        'total' => ResolveOnboardingStatus::totalSteps(),
     ]);
 });
 
@@ -416,7 +416,7 @@ test('checklist and residual both count social and posts from any workspace', fu
         'show_residual' => true,
     ])->and(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBe([
         'completed' => 2,
-        'total' => ResolveOnboardingStatus::TOTAL_STEPS,
+        'total' => ResolveOnboardingStatus::totalSteps(),
     ]);
 });
 
@@ -645,25 +645,20 @@ test('residual counts a skipped step as done', function () {
 
     expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBe([
         'completed' => 2,
-        'total' => ResolveOnboardingStatus::TOTAL_STEPS,
+        'total' => ResolveOnboardingStatus::totalSteps(),
     ]);
 });
 
-test('connecting the mcp step after skipping it prefers Complete over Skipped', function () {
+test('connecting the mcp step after skipping it clears the skip on sync', function () {
     app(ResolveOnboardingStatus::class)->skipMcp($this->user);
 
     mcpAccessToken($this->user, mcpOauthClient(), $this->workspace);
 
-    $status = app(ResolveOnboardingStatus::class)->handle($this->user->fresh());
+    $status = app(ResolveOnboardingStatus::class)->syncProgress($this->user->fresh());
 
     expect($status['mcp_connected'])->toBeTrue()
-        ->and($status['skipped_steps'])->toBe(['mcp']);
-
-    // Mirrors Index.vue: skipped prop is only true when not actually connected.
-    $showSkippedBadge = in_array('mcp', $status['skipped_steps'], true)
-        && ! $status['mcp_connected'];
-
-    expect($showSkippedBadge)->toBeFalse();
+        ->and($status['skipped_steps'])->toBe([])
+        ->and($this->user->account->fresh()->onboarding_skipped_steps)->toBeNull();
 });
 
 test('connecting mcp after a skipped step completed onboarding replaces the skipped status', function () {

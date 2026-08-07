@@ -193,7 +193,7 @@ test('billing processing skips onboarding when dismissed', function () {
         ->assertInertia(fn ($page) => $page->where('redirectToOnboarding', false));
 });
 
-test('billing processing completes already satisfied onboarding before redirecting', function () {
+test('billing processing still sends satisfied-but-unstamped owners to onboarding', function () {
     config(['trypost.self_hosted' => false]);
     $this->account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
@@ -211,15 +211,16 @@ test('billing processing completes already satisfied onboarding before redirecti
         'user_id' => $this->user->id,
     ]));
 
+    // Processing no longer stamps — the owner finishes via /onboarding Continue.
     $this->actingAs($this->user->fresh())
         ->get(route('app.billing.processing'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('subscriptionActive', true)
-            ->where('redirectToOnboarding', false)
+            ->where('redirectToOnboarding', true)
         );
 
-    expect($this->account->fresh()->onboarding_completed_at)->not->toBeNull();
+    expect($this->account->fresh()->onboarding_completed_at)->toBeNull();
 });
 
 test('billing processing exposes null conversion when session_id query param is missing', function () {

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { Link, router, usePage, usePoll } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import { IconListCheck } from '@tabler/icons-vue';
-import { computed, watch } from 'vue';
+import { computed } from 'vue';
 
-import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
+import { useOnboardingLiveReload } from '@/composables/useOnboardingLiveReload';
 import { useActiveUrl } from '@/composables/useActiveUrl';
 import { onboarding } from '@/routes/app';
 import type { OnboardingResidual } from '@/types';
@@ -25,40 +25,15 @@ const progress = computed(() => {
     return total > 0 ? Math.round((completed / total) * 100) : 0;
 });
 
-// Echo is the fast path; the slow poll covers Reverb outages while the banner
-// shows. Skip on the onboarding page — that page already reloads residual with
-// status. Keep the poll sparse — every tick re-runs the current page's
-// controller server-side, not just the residual prop.
-useWorkspaceEcho('.onboarding.status.updated', () => {
-    if (
-        page.props.onboardingResidual === false ||
-        page.component === 'onboarding/Index'
-    ) {
-        return;
-    }
+const liveEnabled = computed(
+    () =>
+        residual.value !== false && page.component !== 'onboarding/Index',
+);
 
-    router.reload({ only: ['onboardingResidual'] });
+useOnboardingLiveReload({
+    only: ['onboardingResidual'],
+    enabled: liveEnabled,
 });
-
-const { start, stop } = usePoll(
-    30000,
-    { only: ['onboardingResidual'] },
-    { autoStart: false },
-);
-
-watch(
-    () => [page.props.onboardingResidual, page.component] as const,
-    ([current, component]) => {
-        if (current === false || component === 'onboarding/Index') {
-            stop();
-
-            return;
-        }
-
-        start();
-    },
-    { immediate: true },
-);
 </script>
 
 <template>
@@ -104,6 +79,7 @@ watch(
             <div
                 class="mt-2.5 h-1.5 overflow-hidden rounded-full border border-foreground bg-card"
                 role="progressbar"
+                :aria-label="$t('sidebar.onboarding')"
                 :aria-valuenow="residual.completed"
                 :aria-valuemin="0"
                 :aria-valuemax="residual.total"

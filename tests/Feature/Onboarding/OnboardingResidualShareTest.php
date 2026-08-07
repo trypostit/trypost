@@ -27,7 +27,7 @@ test('shares the onboarding residual progress for subscribed accounts', function
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('onboardingResidual.completed', 0)
-            ->where('onboardingResidual.total', ResolveOnboardingStatus::TOTAL_STEPS)
+            ->where('onboardingResidual.total', ResolveOnboardingStatus::totalSteps())
         );
 });
 

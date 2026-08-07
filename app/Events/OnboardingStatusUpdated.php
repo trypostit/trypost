@@ -39,11 +39,8 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
     }
 
     /**
-     * Broadcast to every workspace on the account and sync progress for the actor.
+     * Sync progress then broadcast to every workspace on the account.
      * Use when a step is account-scoped (e.g. MCP OAuth).
-     *
-     * Sync/analytics run afterCommit so Cache/PostHog never outlive a rolled-back
-     * CreatePost (or similar) transaction.
      */
     public static function dispatchForAccount(?Account $account, ?User $actor = null): void
     {
@@ -61,17 +58,13 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
                 return;
             }
 
-            static::syncAndBroadcast($account, $actorId);
+            app(ResolveOnboardingStatus::class)->syncAndNotify($account, $actorId);
         });
     }
 
     /**
-     * Broadcast only while the workspace account still has active onboarding.
-     * Steps are account-scoped, so syncing the actor (or the account owner when
-     * there is no actor, e.g. webhook-driven connects) is enough to stamp.
-     *
-     * Sync/analytics run afterCommit so Cache/PostHog never outlive a rolled-back
-     * CreatePost (or similar) transaction.
+     * Sync progress for the workspace account, then broadcast.
+     * Actor-less flows (webhooks/jobs) fall back to the account owner.
      */
     public static function dispatchForWorkspace(?string $workspaceId, ?User $actor = null): void
     {
@@ -95,34 +88,8 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
                 return;
             }
 
-            static::syncAndBroadcast($account, $actorId);
+            app(ResolveOnboardingStatus::class)->syncAndNotify($account, $actorId);
         });
-    }
-
-    /**
-     * Stamp completion for the actor — falling back to the account owner so
-     * actor-less flows (Telegram webhook, jobs) still complete — then notify
-     * every workspace channel exactly once. markCompleted already broadcasts
-     * when it stamps, so an un-stamped sync is the only case that fans out here.
-     */
-    private static function syncAndBroadcast(Account $account, ?string $actorId): void
-    {
-        $actor = $actorId !== null
-            ? User::query()->with('account')->find($actorId)
-            : null;
-
-        $syncTarget = $actor !== null && (string) $actor->account_id === (string) $account->id
-            ? $actor
-            : $account->owner;
-
-        if ($syncTarget !== null) {
-            app(ResolveOnboardingStatus::class)->syncProgress($syncTarget);
-            $account->refresh();
-        }
-
-        if (! $account->hasFinishedOnboarding()) {
-            static::broadcastForAccount($account);
-        }
     }
 
     public function broadcastAs(): string

@@ -146,7 +146,7 @@ test('a member visit does not capture onboarding viewed', function () {
     );
 });
 
-test('onboarding does not capture viewed when syncProgress stamps completion', function () {
+test('onboarding does not capture viewed when the checklist is already complete', function () {
     AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -160,13 +160,16 @@ test('onboarding does not capture viewed when syncProgress stamps completion', f
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.onboarding'))
-        ->assertOk();
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('status.all_complete', true)
+            ->where('status.completed_at', null));
 
     Bus::assertNotDispatched(
         SendEvent::class,
         fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
     );
-    Bus::assertDispatched(
+    Bus::assertNotDispatched(
         SendEvent::class,
         fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Completed->value,
     );
@@ -287,6 +290,7 @@ test('partial reloads keep the ready state after completion is stamped', functio
     ]));
 
     expect(app(ResolveOnboardingStatus::class)->markCompleted($this->user->fresh()))->toBeTrue();
+    expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 
     $response->assertInertia(fn ($page) => $page
         ->reloadOnly(['status', 'accounts', 'onboardingResidual'], fn ($reload) => $reload
@@ -301,7 +305,7 @@ test('partial reloads keep the ready state after completion is stamped', functio
         ->assertRedirect(route('app.calendar'));
 });
 
-test('same-request auto-stamp still shows the ready state', function () {
+test('ready state renders without stamping completion on GET', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
 
     AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
@@ -315,16 +319,17 @@ test('same-request auto-stamp still shows the ready state', function () {
 
     Bus::fake();
 
-    // Steps are done but completed_at is null — syncProgress stamps on this visit
-    // and still renders the ready state (wasAlreadyComplete was false).
+    // Steps are done but completed_at stays null until POST complete / observers.
     $this->actingAs($this->user->fresh())
         ->get(route('app.onboarding'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('onboarding/Index', false)
             ->where('status.all_complete', true)
-            ->where('status.completed_at', now()->toIso8601String())
+            ->where('status.completed_at', null)
         );
+
+    expect($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
 
     Bus::assertNotDispatched(
         SendEvent::class,
@@ -485,7 +490,7 @@ test('only the account owner can skip onboarding steps', function () {
     expect($this->user->account->fresh()->onboarding_skipped_steps)->toBeNull();
 });
 
-test('teammates can stamp completion via the complete endpoint', function () {
+test('teammates cannot stamp completion via the complete endpoint', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
     Event::fake([OnboardingStatusUpdated::class]);
 
@@ -504,12 +509,34 @@ test('teammates can stamp completion via the complete endpoint', function () {
     ]);
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
+    $this->actingAs($member->fresh())
+        ->post(route('app.onboarding.complete'))
+        ->assertForbidden();
+
+    expect($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
+
+    Event::assertNotDispatched(OnboardingStatusUpdated::class);
+});
+
+test('owner stamps completion via the complete endpoint for every workspace', function () {
+    Carbon::setTestNow('2026-07-29 12:00:00');
+    Event::fake([OnboardingStatusUpdated::class]);
+
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]));
+
     $otherWorkspace = Workspace::factory()->create([
         'account_id' => $this->user->account_id,
         'user_id' => $this->user->id,
     ]);
 
-    $this->actingAs($member->fresh())
+    $this->actingAs($this->user->fresh())
         ->post(route('app.onboarding.complete'))
         ->assertRedirect(route('app.calendar'));
 

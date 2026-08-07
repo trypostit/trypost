@@ -30,9 +30,11 @@ class OnboardingController extends Controller
 
         $user = $request->user();
         $workspace = $user->currentWorkspace;
-        // Capture before syncProgress — same-request auto-stamp still shows the ready state.
+        // Avoid a stale account relation from an earlier request in the same test process.
+        $user->unsetRelation('account');
         $wasAlreadyComplete = $user->account?->onboarding_completed_at !== null;
-        $status = $this->resolveOnboardingStatus->syncProgress($user);
+        // Pure read on GET — observers + POST complete/skip stamp progress.
+        $status = $this->resolveOnboardingStatus->handle($user);
 
         // Legacy dismiss (deploy backfill) is terminal, including Echo partial reloads.
         if ($status['dismissed_at'] !== null) {
@@ -41,8 +43,7 @@ class OnboardingController extends Controller
 
         $isPartial = $request->hasHeader('X-Inertia-Partial-Component');
 
-        // Full revisit after completion → calendar. Partials (Echo) and the same
-        // request that just stamped still render the ready state.
+        // Full revisit after completion → calendar. Partials (Echo) keep the ready state.
         if ($wasAlreadyComplete && ! $isPartial) {
             return redirect()->route('app.calendar');
         }
@@ -51,6 +52,7 @@ class OnboardingController extends Controller
             ! $isPartial
             && $status['completed_at'] === null
             && $status['dismissed_at'] === null
+            && ! $status['all_complete']
             && $user->isAccountOwner()
             && $user->account !== null
         ) {
@@ -97,9 +99,12 @@ class OnboardingController extends Controller
         }
 
         $user = $request->user();
+
+        abort_unless($user->isAccountOwner(), Response::HTTP_FORBIDDEN);
+
         $account = $user->account;
 
-        // Already stamped (e.g. observer / syncProgress auto-complete) — just leave.
+        // Already stamped (e.g. observer auto-complete) — just leave.
         if ($account?->onboarding_completed_at !== null) {
             return redirect()->route('app.calendar');
         }
