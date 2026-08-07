@@ -29,13 +29,13 @@ class BillingController extends Controller
 
         $user = $request->user();
         $account = $user->accountOrFail();
-        $sessionId = $request->query('session_id');
+        $sessionId = $request->string('session_id')->toString();
 
         // Consume the checkout session once: `fromCheckout` is true only the first
         // time this session_id is seen, so a back-button/refresh to the success URL
         // can't re-fire `checkout.completed`. `Cache::add` is atomic — it returns
         // true only when the key didn't exist yet.
-        $fromCheckout = is_string($sessionId) && filled($sessionId)
+        $fromCheckout = filled($sessionId)
             && Cache::add("checkout_tracked:{$sessionId}", true, now()->addDay());
 
         $subscriptionActive = $account->subscribed(Account::SUBSCRIPTION_NAME);

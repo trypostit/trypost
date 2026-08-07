@@ -89,27 +89,15 @@ class AuthorizationController extends PassportAuthorizationController
 
     private function authorizationErrorPage(Request $request, OAuthServerException $exception): Response
     {
-        $payload = $this->oauthErrorPayload($exception);
-
-        return Inertia::render('mcp/AuthorizeError', [
-            'error' => (string) data_get($payload, 'error', 'server_error'),
-            'errorDescription' => (string) data_get($payload, 'error_description', __('mcp.authorize.error_body')),
-        ])->toResponse($request);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function oauthErrorPayload(OAuthServerException $exception): array
-    {
         $previous = $exception->getPrevious();
 
-        if ($previous instanceof LeagueOAuthServerException) {
-            return $previous->getPayload();
-        }
-
-        $decoded = json_decode($exception->getResponse()->getContent() ?: '[]', true);
-
-        return is_array($decoded) ? $decoded : [];
+        return Inertia::render('mcp/AuthorizeError', [
+            'error' => $previous instanceof LeagueOAuthServerException
+                ? $previous->getErrorType()
+                : 'server_error',
+            'errorDescription' => $previous instanceof LeagueOAuthServerException
+                ? $previous->getMessage()
+                : __('mcp.authorize.error_body'),
+        ])->toResponse($request);
     }
 }
