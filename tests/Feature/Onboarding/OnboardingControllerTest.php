@@ -91,6 +91,34 @@ test('onboarding captures viewed only once per account', function () {
     );
 });
 
+test('onboarding does not claim viewed cache when PostHog is disabled', function () {
+    config(['services.posthog.enabled' => false]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.onboarding'))
+        ->assertOk();
+
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
+    );
+
+    config([
+        'services.posthog.enabled' => true,
+        'services.posthog.api_key' => 'phc_test',
+    ]);
+    Bus::fake();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.onboarding'))
+        ->assertOk();
+
+    Bus::assertDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
+    );
+});
+
 test('onboarding flags the social step when only a sibling workspace is connected', function () {
     $otherWorkspace = Workspace::factory()->create([
         'account_id' => $this->user->account_id,

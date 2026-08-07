@@ -12,8 +12,6 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\PostHogService;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Cache;
-use Throwable;
 
 class ResolveOnboardingStatus
 {
@@ -169,7 +167,7 @@ class ResolveOnboardingStatus
 
         $account->refresh();
 
-        $this->capture($user->id, OnboardingEvent::Completed->value, account: $account);
+        $this->postHog->capture($user->id, OnboardingEvent::Completed->value, account: $account);
 
         // Every stamp path must clear progress banners account-wide.
         OnboardingStatusUpdated::broadcastForAccount($account);
@@ -214,7 +212,7 @@ class ResolveOnboardingStatus
 
         $account->refresh();
 
-        $this->capture(
+        $this->postHog->capture(
             $user->id,
             OnboardingEvent::StepSkipped->value,
             ['step' => 'mcp'],
@@ -410,14 +408,12 @@ class ResolveOnboardingStatus
     private function captureCompletedSteps(User $user, Account $account, array $status): void
     {
         foreach (self::STEPS as $step => $statusKey) {
-            $this->captureOnce(
+            $this->postHog->captureOnce(
                 "onboarding:step:{$account->id}:{$step}",
-                fn () => $this->postHog->capture(
-                    $user->id,
-                    OnboardingEvent::StepCompleted->value,
-                    ['step' => $step],
-                    $account,
-                ),
+                $user->id,
+                OnboardingEvent::StepCompleted->value,
+                ['step' => $step],
+                $account,
                 when: (bool) data_get($status, $statusKey),
             );
         }
@@ -460,40 +456,5 @@ class ResolveOnboardingStatus
             ]);
 
         $account->refresh();
-    }
-
-    /**
-     * @param  array<string, mixed>  $properties
-     */
-    private function capture(
-        string $userId,
-        string $event,
-        array $properties = [],
-        ?Account $account = null,
-    ): void {
-        if (! PostHogService::isEnabled()) {
-            return;
-        }
-
-        $this->postHog->capture($userId, $event, $properties, $account);
-    }
-
-    /**
-     * Claim a cache slot then capture — concurrent syncs don't double-fire.
-     * Releases the slot if capture throws so a later retry can still report.
-     */
-    private function captureOnce(string $dedupeKey, callable $capture, bool $when = true): void
-    {
-        if (! $when || ! PostHogService::isEnabled() || ! Cache::add($dedupeKey, true, now()->addYear())) {
-            return;
-        }
-
-        try {
-            $capture();
-        } catch (Throwable $exception) {
-            Cache::forget($dedupeKey);
-
-            throw $exception;
-        }
     }
 }

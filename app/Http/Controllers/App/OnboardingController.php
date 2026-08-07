@@ -8,15 +8,12 @@ use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Enums\PostHog\OnboardingEvent;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Http\Resources\App\SocialAccountResource;
-use App\Models\Account;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
-use Throwable;
 
 class OnboardingController extends Controller
 {
@@ -42,7 +39,12 @@ class OnboardingController extends Controller
             && $user->isAccountOwner()
             && ! data_get($status, 'all_complete')
         ) {
-            $this->captureViewedOnce($user->id, $account);
+            $this->postHog->captureOnce(
+                "onboarding:viewed:{$account->id}",
+                $user->id,
+                OnboardingEvent::Viewed->value,
+                account: $account,
+            );
         }
 
         return Inertia::render('onboarding/Index', [
@@ -90,30 +92,5 @@ class OnboardingController extends Controller
         $this->resolveOnboardingStatus->markCompleted($user);
 
         return redirect()->route('app.onboarding');
-    }
-
-    /**
-     * Funnel "viewed" once per account — revisits while activation is open
-     * should not spam PostHog (Cache::add is the dedupe, including Echo reloads).
-     */
-    private function captureViewedOnce(string $userId, Account $account): void
-    {
-        $dedupeKey = "onboarding:viewed:{$account->id}";
-
-        if (! Cache::add($dedupeKey, true, now()->addYear())) {
-            return;
-        }
-
-        try {
-            $this->postHog->capture(
-                $userId,
-                OnboardingEvent::Viewed->value,
-                account: $account,
-            );
-        } catch (Throwable $exception) {
-            Cache::forget($dedupeKey);
-
-            throw $exception;
-        }
     }
 }
