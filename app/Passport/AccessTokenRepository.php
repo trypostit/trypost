@@ -20,7 +20,8 @@ use League\OAuth2\Server\Exception\OAuthServerException;
  * stay null so CreateApiKey (and friends) can bind afterward.
  *
  * Authorization-code grants use only the auth code's workspace (no current-
- * workspace fallback). Refresh grants inherit the refreshed token's workspace.
+ * workspace fallback). Refresh grants inherit the refreshed token's workspace
+ * only when the user still belongs to it. Unknown grant types fail closed.
  */
 class AccessTokenRepository extends PassportAccessTokenRepository
 {
@@ -73,20 +74,18 @@ class AccessTokenRepository extends PassportAccessTokenRepository
         $user = $userId ? User::query()->find($userId) : null;
 
         return match (request('grant_type')) {
-            'refresh_token' => AccessToken::query()
-                ->find($this->payloadId('refresh_token', 'access_token_id'))
-                ?->workspace_id,
+            'refresh_token' => $this->ownedWorkspace(
+                $user,
+                AccessToken::query()
+                    ->find($this->payloadId('refresh_token', 'access_token_id'))
+                    ?->workspace_id,
+            ),
             'authorization_code' => $this->ownedWorkspace(
                 $user,
                 AuthCode::query()->find($this->payloadId('code', 'auth_code_id'))?->workspace_id,
             ),
-            default => $this->currentWorkspace($user),
+            default => null,
         };
-    }
-
-    private function currentWorkspace(?User $user): ?string
-    {
-        return $this->ownedWorkspace($user, $user?->current_workspace_id);
     }
 
     private function ownedWorkspace(?User $user, mixed $workspaceId): ?string

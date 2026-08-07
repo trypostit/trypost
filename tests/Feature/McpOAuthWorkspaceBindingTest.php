@@ -103,6 +103,74 @@ test('refresh grant inherits workspace from the refreshed access token id', func
         ->and($refreshed->workspace_id)->not->toBe($otherWorkspace->id);
 });
 
+test('refresh grant fails when the user no longer belongs to the bound workspace', function () {
+    $previous = mcpAccessToken($this->user, $this->clientId, $this->workspace);
+    $tokenId = Str::random(80);
+
+    $this->workspace->members()->detach($this->user->id);
+
+    request()->merge([
+        'grant_type' => 'refresh_token',
+        'refresh_token' => $this->decryptor->encrypt([
+            'client_id' => $this->clientId,
+            'refresh_token_id' => Str::random(80),
+            'access_token_id' => $previous->id,
+            'scopes' => [],
+            'user_id' => (string) $this->user->id,
+            'expire_time' => now()->addMonth()->timestamp,
+        ]),
+    ]);
+
+    expect(fn () => persistAccessTokenEntity($tokenId, (string) $this->user->id, $this->clientId))
+        ->toThrow(OAuthServerException::class);
+
+    expect(AccessToken::query()->find($tokenId))->toBeNull();
+});
+
+test('unexpected grant types fail closed instead of using the current workspace', function () {
+    $tokenId = Str::random(80);
+
+    request()->merge(['grant_type' => 'client_credentials']);
+
+    expect(fn () => persistAccessTokenEntity($tokenId, (string) $this->user->id, $this->clientId))
+        ->toThrow(OAuthServerException::class);
+
+    expect(AccessToken::query()->find($tokenId))->toBeNull();
+});
+
+test('authorization code grant fails when the user left the auth code workspace before exchange', function () {
+    $authCodeId = Str::random(80);
+    $tokenId = Str::random(80);
+
+    AuthCode::query()->forceCreate([
+        'id' => $authCodeId,
+        'user_id' => $this->user->id,
+        'client_id' => $this->clientId,
+        'workspace_id' => $this->workspace->id,
+        'scopes' => '[]',
+        'revoked' => true,
+        'expires_at' => now()->addMinutes(10),
+    ]);
+
+    $this->workspace->members()->detach($this->user->id);
+
+    request()->merge([
+        'grant_type' => 'authorization_code',
+        'code' => $this->decryptor->encrypt([
+            'client_id' => $this->clientId,
+            'auth_code_id' => $authCodeId,
+            'user_id' => (string) $this->user->id,
+            'scopes' => [],
+            'expire_time' => now()->addMinutes(10)->timestamp,
+        ]),
+    ]);
+
+    expect(fn () => persistAccessTokenEntity($tokenId, (string) $this->user->id, $this->clientId))
+        ->toThrow(OAuthServerException::class);
+
+    expect(AccessToken::query()->find($tokenId))->toBeNull();
+});
+
 test('personal access tokens are left alone for controllers to bind', function () {
     $result = $this->user->createToken('PAT');
     $token = AccessToken::query()->find($result->token->id);

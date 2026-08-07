@@ -17,7 +17,7 @@ function backfillMcpOAuthTokenWorkspacesMigration(): object
     return require database_path('migrations/2026_08_06_144848_backfill_mcp_oauth_token_workspaces.php');
 }
 
-test('backfill binds mcp oauth tokens to the users current workspace', function () {
+test('backfill revokes mcp oauth tokens when the user has multiple workspaces', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
@@ -35,9 +35,8 @@ test('backfill binds mcp oauth tokens to the users current workspace', function 
 
     backfillMcpOAuthTokenWorkspacesMigration()->up();
 
-    expect($token->refresh()->workspace_id)->toBe($workspace->id)
-        ->and($token->refresh()->workspace_id)->not->toBe($other->id)
-        ->and($token->refresh()->revoked)->toBeFalse();
+    expect($token->refresh()->revoked)->toBeTrue()
+        ->and($token->refresh()->workspace_id)->toBeNull();
 });
 
 test('backfill binds the sole account workspace when current is missing', function () {

@@ -15,9 +15,9 @@ use Illuminate\Support\Facades\DB;
  * failure leaves no partially backfilled rows.
  *
  * Only touches live/recoverable MCP sessions (AccessToken::connectedMcpOAuth).
- * Workspace mapping is conservative: a single membership binds automatically;
- * multiple memberships bind only when current_workspace_id is still valid —
- * otherwise the grant is revoked so the client reconnects deliberately.
+ * Mapping is conservative: a single account membership binds automatically;
+ * multiple memberships always revoke so the client reconnects with an explicit
+ * workspace pick (never guess from current_workspace_id).
  */
 return new class extends Migration
 {
@@ -93,20 +93,10 @@ return new class extends Migration
             ->sortBy('created_at')
             ->values();
 
-        if ($accountWorkspaces->isEmpty()) {
+        if ($accountWorkspaces->count() !== 1) {
             return null;
         }
 
-        if ($accountWorkspaces->count() === 1) {
-            return (string) $accountWorkspaces->first()->id;
-        }
-
-        if (! $user->current_workspace_id) {
-            return null;
-        }
-
-        $current = $accountWorkspaces->firstWhere('id', $user->current_workspace_id);
-
-        return $current ? (string) $current->id : null;
+        return (string) $accountWorkspaces->first()->id;
     }
 };
