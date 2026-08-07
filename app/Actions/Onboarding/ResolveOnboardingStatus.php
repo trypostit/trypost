@@ -408,13 +408,15 @@ class ResolveOnboardingStatus
     private function captureCompletedSteps(User $user, Account $account, array $status): void
     {
         foreach (self::STEPS as $step => $statusKey) {
-            $this->postHog->captureOnce(
-                "onboarding:step:{$account->id}:{$step}",
+            if (! data_get($status, $statusKey)) {
+                continue;
+            }
+
+            $this->postHog->capture(
                 $user->id,
                 OnboardingEvent::StepCompleted->value,
                 ['step' => $step],
                 $account,
-                when: (bool) data_get($status, $statusKey),
             );
         }
     }

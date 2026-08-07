@@ -6,7 +6,6 @@ namespace App\Services;
 
 use App\Jobs\PostHog\SendEvent;
 use App\Models\Account;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -40,33 +39,6 @@ class PostHogService
         }
 
         $this->dispatch('capture', $payload);
-    }
-
-    /**
-     * Capture at most once per dedupe key. Skips the cache claim when PostHog
-     * is off (or `$when` is false) so enabling later can still fire.
-     *
-     * @param  array<string, mixed>  $properties
-     */
-    public function captureOnce(
-        string $dedupeKey,
-        string $distinctId,
-        string $event,
-        array $properties = [],
-        ?Account $account = null,
-        bool $when = true,
-    ): void {
-        if (! $when || ! self::isEnabled() || ! Cache::add($dedupeKey, true, now()->addYear())) {
-            return;
-        }
-
-        try {
-            $this->capture($distinctId, $event, $properties, $account);
-        } catch (Throwable $exception) {
-            Cache::forget($dedupeKey);
-
-            throw $exception;
-        }
     }
 
     /**

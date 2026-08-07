@@ -69,56 +69,6 @@ test('onboarding renders activation status and connection props', function () {
         && data_get($event->payload, 'event') === OnboardingEvent::Viewed->value);
 });
 
-test('onboarding captures viewed only once per account', function () {
-    $this->actingAs($this->user)
-        ->get(route('app.onboarding'))
-        ->assertOk();
-
-    Bus::assertDispatched(
-        SendEvent::class,
-        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
-    );
-
-    Bus::fake();
-
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.onboarding'))
-        ->assertOk();
-
-    Bus::assertNotDispatched(
-        SendEvent::class,
-        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
-    );
-});
-
-test('onboarding does not claim viewed cache when PostHog is disabled', function () {
-    config(['services.posthog.enabled' => false]);
-
-    $this->actingAs($this->user)
-        ->get(route('app.onboarding'))
-        ->assertOk();
-
-    Bus::assertNotDispatched(
-        SendEvent::class,
-        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
-    );
-
-    config([
-        'services.posthog.enabled' => true,
-        'services.posthog.api_key' => 'phc_test',
-    ]);
-    Bus::fake();
-
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.onboarding'))
-        ->assertOk();
-
-    Bus::assertDispatched(
-        SendEvent::class,
-        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
-    );
-});
-
 test('onboarding flags the social step when only a sibling workspace is connected', function () {
     $otherWorkspace = Workspace::factory()->create([
         'account_id' => $this->user->account_id,
@@ -148,23 +98,16 @@ test('onboarding does not flag social elsewhere when the current workspace is co
         );
 });
 
-test('onboarding does not capture viewed during a partial reload', function () {
+test('onboarding partial reload refreshes status and accounts', function () {
     $response = $this->actingAs($this->user)
         ->get(route('app.onboarding'))
         ->assertOk();
-
-    Bus::fake();
 
     $response->assertInertia(fn ($page) => $page
         ->reloadOnly(['status', 'accounts', 'onboardingProgress'], fn ($reload) => $reload
             ->has('status')
             ->has('accounts')
         )
-    );
-
-    Bus::assertNotDispatched(
-        SendEvent::class,
-        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
     );
 });
 

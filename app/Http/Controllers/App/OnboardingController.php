@@ -39,8 +39,7 @@ class OnboardingController extends Controller
             && $user->isAccountOwner()
             && ! data_get($status, 'all_complete')
         ) {
-            $this->postHog->captureOnce(
-                "onboarding:viewed:{$account->id}",
+            $this->postHog->capture(
                 $user->id,
                 OnboardingEvent::Viewed->value,
                 account: $account,
