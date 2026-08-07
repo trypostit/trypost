@@ -123,8 +123,9 @@ class SocialAccountObserver
     private function actorFor(SocialAccount $socialAccount): ?User
     {
         $user = Auth::user();
+        $accountId = $socialAccount->workspace?->account_id;
 
-        return $user instanceof User && $user->belongsToAccount($socialAccount->workspace?->account_id)
+        return $user instanceof User && $accountId !== null && $user->belongsToAccount($accountId)
             ? $user
             : null;
     }

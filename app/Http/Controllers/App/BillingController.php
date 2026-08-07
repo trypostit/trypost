@@ -28,7 +28,7 @@ class BillingController extends Controller
         }
 
         $user = $request->user();
-        $account = $user->account;
+        $account = $user->resolveAccount();
         $sessionId = $request->query('session_id');
 
         // Consume the checkout session once: `fromCheckout` is true only the first
@@ -38,16 +38,16 @@ class BillingController extends Controller
         $fromCheckout = is_string($sessionId) && $sessionId !== ''
             && Cache::add("checkout_tracked:{$sessionId}", true, now()->addDay());
 
-        $subscriptionActive = $account?->subscribed(Account::SUBSCRIPTION_NAME) ?? false;
+        $subscriptionActive = $account->subscribed(Account::SUBSCRIPTION_NAME);
         $redirectToOnboarding = $user->isAccountOwner()
-            && ($account?->isOnboardingOpen() ?? false);
+            && $account->isOnboardingOpen();
 
         return Inertia::render('billing/Processing', [
             'subscriptionActive' => $subscriptionActive,
             'fromCheckout' => $fromCheckout,
             'redirectToOnboarding' => $redirectToOnboarding,
             'persona' => $user->persona?->value,
-            'conversion' => $fromCheckout && $account?->stripe_id
+            'conversion' => $fromCheckout && $account->stripe_id
                 ? fn () => $this->buildConversionData($account, $sessionId)
                 : null,
         ]);

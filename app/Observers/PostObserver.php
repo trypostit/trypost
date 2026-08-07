@@ -63,8 +63,9 @@ class PostObserver
     private function actorFor(Post $post): ?User
     {
         $user = Auth::user();
+        $accountId = $post->workspace?->account_id;
 
-        return $user instanceof User && $user->belongsToAccount($post->workspace?->account_id)
+        return $user instanceof User && $accountId !== null && $user->belongsToAccount($accountId)
             ? $user
             : $post->user;
     }

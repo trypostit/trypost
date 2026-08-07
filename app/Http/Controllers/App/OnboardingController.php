@@ -34,8 +34,8 @@ class OnboardingController extends Controller
         $workspace = $user->currentWorkspace;
         // Avoid a stale account relation from an earlier request in the same test process.
         $user->unsetRelation('account');
-        $account = $user->account;
-        $wasAlreadyComplete = $account?->isOnboardingCompleted() ?? false;
+        $account = $user->resolveAccount();
+        $wasAlreadyComplete = $account->isOnboardingCompleted();
         // Pure read on GET — observers + POST complete/skip stamp progress.
         $status = $this->resolveOnboardingStatus->handle($user);
 
@@ -53,7 +53,7 @@ class OnboardingController extends Controller
 
         if (
             ! $isPartial
-            && $account?->isOnboardingOpen()
+            && $account->isOnboardingOpen()
             && $user->isAccountOwner()
             && ! $status['all_complete']
         ) {
@@ -97,7 +97,7 @@ class OnboardingController extends Controller
 
         abort_unless($user->isAccountOwner(), Response::HTTP_FORBIDDEN);
 
-        if (! $user->account?->isOnboardingOpen()) {
+        if (! $user->resolveAccount()->isOnboardingOpen()) {
             return redirect()->route('app.calendar');
         }
 

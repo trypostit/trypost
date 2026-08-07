@@ -35,16 +35,14 @@ class AccessTokenObserver
             ->with(['account', 'currentWorkspace'])
             ->find($accessToken->user_id);
 
-        $account = $user?->account;
-
-        if ($account === null) {
+        if ($user === null) {
             return;
         }
 
         // Revocation always notifies so residual can clear. Live grants only
         // unlock when bound + createPost (viewers must not complete the checklist).
         if ($accessToken->revoked || $this->unlocksMcpChecklist($accessToken, $user)) {
-            OnboardingStatusUpdated::dispatchForAccount($account, $user);
+            OnboardingStatusUpdated::dispatchForAccount($user->resolveAccount(), $user);
         }
     }
 

@@ -53,9 +53,9 @@ class ResolveOnboardingStatus
      */
     public function handle(User $user): array
     {
-        $account = $user->account;
+        $account = $user->resolveAccount();
 
-        return $account?->isOnboardingCompleted()
+        return $account->isOnboardingCompleted()
             ? $this->completedStatus($account)
             : $this->activeStatus($user, $account);
     }
@@ -77,11 +77,11 @@ class ResolveOnboardingStatus
      */
     public function syncProgress(User $user): array
     {
-        $account = $user->account;
+        $account = $user->resolveAccount();
 
-        // Completed accounts (or missing account) are read-only. Dismissed still
-        // runs below so a late MCP connect can clear a leftover mcp skip.
-        if (! $account || $account->isOnboardingCompleted()) {
+        // Completed is read-only. Dismissed still runs below so a late MCP
+        // connect can clear a leftover mcp skip.
+        if ($account->isOnboardingCompleted()) {
             return $this->handle($user);
         }
 
@@ -148,9 +148,9 @@ class ResolveOnboardingStatus
      */
     public function markCompleted(User $user): bool
     {
-        $account = $user->account;
+        $account = $user->resolveAccount();
 
-        if (! $account?->isOnboardingOpen()) {
+        if (! $account->isOnboardingOpen()) {
             return false;
         }
 
@@ -188,9 +188,9 @@ class ResolveOnboardingStatus
      */
     public function skipMcp(User $user): bool
     {
-        $account = $user->account;
+        $account = $user->resolveAccount();
 
-        if (! $account?->isOnboardingOpen()) {
+        if (! $account->isOnboardingOpen()) {
             return false;
         }
 
@@ -244,19 +244,22 @@ class ResolveOnboardingStatus
      *
      * @return array{completed: int, total: int}|false
      */
-    public function residual(User $user): array|false
+    public function residual(?User $user): array|false
     {
-        $account = $user->account;
-
-        // Cheap gates first: this runs on every full Inertia load, so dismissed /
-        // completed accounts, members, and self-hosted must never pay for the
-        // step EXISTS queries in handle() — or even for a subscription lookup.
+        // Shared on every Inertia load — skip guests, teardown users, and cheap
+        // gates before the step EXISTS queries in handle().
         if (
-            config('trypost.self_hosted')
-            || ! $account?->isOnboardingOpen()
+            $user === null
+            || config('trypost.self_hosted')
+            || $user->account_id === null
             || ! $user->isAccountOwner()
-            || ! $account->hasAppAccess()
         ) {
+            return false;
+        }
+
+        $account = $user->resolveAccount();
+
+        if (! $account->isOnboardingOpen() || ! $account->hasAppAccess()) {
             return false;
         }
 
@@ -321,9 +324,9 @@ class ResolveOnboardingStatus
      *     dismissed_at: ?string
      * }
      */
-    private function activeStatus(User $user, ?Account $account): array
+    private function activeStatus(User $user, Account $account): array
     {
-        $skippedSteps = $account?->onboarding_skipped_steps ?? [];
+        $skippedSteps = $account->onboarding_skipped_steps ?? [];
 
         // All three steps are account-scoped so checklist checkmarks, residual
         // progress, and cross-workspace completion stay aligned.
@@ -342,26 +345,21 @@ class ResolveOnboardingStatus
             'first_post_created' => $stepStates['first_post'],
             'skipped_steps' => $skippedSteps,
             'all_complete' => $allComplete,
-            'show_residual' => $account !== null
-                && ! config('trypost.self_hosted')
+            'show_residual' => ! config('trypost.self_hosted')
                 && $user->isAccountOwner()
                 && $account->hasAppAccess()
                 && ! $account->isOnboardingDismissed()
                 && ! $allComplete,
             'completed_at' => null,
-            'dismissed_at' => $account?->onboarding_dismissed_at?->toIso8601String(),
+            'dismissed_at' => $account->onboarding_dismissed_at?->toIso8601String(),
         ];
     }
 
     /**
      * Bound, active MCP OAuth grant whose owner can create posts in that workspace.
      */
-    private function accountHasMcpConnection(?Account $account): bool
+    private function accountHasMcpConnection(Account $account): bool
     {
-        if ($account === null) {
-            return false;
-        }
-
         $createPostRoles = [Role::Admin->value, Role::Member->value];
 
         return AccessToken::query()
@@ -388,25 +386,23 @@ class ResolveOnboardingStatus
             ->exists();
     }
 
-    private function accountHasSocialConnection(?Account $account): bool
+    private function accountHasSocialConnection(Account $account): bool
     {
-        return $account !== null
-            && Workspace::query()
-                ->where('account_id', $account->id)
-                ->whereHas(
-                    'socialAccounts',
-                    fn (Builder $query): Builder => $query->where('status', Status::Connected),
-                )
-                ->exists();
+        return Workspace::query()
+            ->where('account_id', $account->id)
+            ->whereHas(
+                'socialAccounts',
+                fn (Builder $query): Builder => $query->where('status', Status::Connected),
+            )
+            ->exists();
     }
 
-    private function accountHasPost(?Account $account): bool
+    private function accountHasPost(Account $account): bool
     {
-        return $account !== null
-            && Workspace::query()
-                ->where('account_id', $account->id)
-                ->whereHas('posts')
-                ->exists();
+        return Workspace::query()
+            ->where('account_id', $account->id)
+            ->whereHas('posts')
+            ->exists();
     }
 
     private function clearMcpSkipIfConnected(Account $account): void
