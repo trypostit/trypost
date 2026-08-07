@@ -6,7 +6,6 @@ namespace App\Actions\Onboarding;
 
 use App\Enums\PostHog\OnboardingEvent;
 use App\Enums\SocialAccount\Status;
-use App\Enums\UserWorkspace\Role;
 use App\Events\OnboardingStatusUpdated;
 use App\Models\AccessToken;
 use App\Models\Account;
@@ -46,14 +45,14 @@ class ResolveOnboardingStatus
      *     first_post_created: bool,
      *     skipped_steps: list<string>,
      *     all_complete: bool,
-     *     show_residual: bool,
+     *     show_progress: bool,
      *     completed_at: ?string,
      *     dismissed_at: ?string
      * }
      */
     public function handle(User $user): array
     {
-        $account = $user->resolveAccount();
+        $account = $user->accountOrFail();
 
         return $account->isOnboardingCompleted()
             ? $this->completedStatus($account)
@@ -70,14 +69,14 @@ class ResolveOnboardingStatus
      *     first_post_created: bool,
      *     skipped_steps: list<string>,
      *     all_complete: bool,
-     *     show_residual: bool,
+     *     show_progress: bool,
      *     completed_at: ?string,
      *     dismissed_at: ?string
      * }
      */
     public function syncProgress(User $user): array
     {
-        $account = $user->resolveAccount();
+        $account = $user->accountOrFail();
 
         // Completed is read-only. Dismissed still runs below so a late MCP
         // connect can clear a leftover mcp skip.
@@ -92,18 +91,7 @@ class ResolveOnboardingStatus
             return $status;
         }
 
-        foreach (self::STEPS as $step => $statusKey) {
-            $this->captureOnce(
-                "onboarding:step:{$account->id}:{$step}",
-                fn () => $this->postHog->capture(
-                    $user->id,
-                    OnboardingEvent::StepCompleted->value,
-                    ['step' => $step],
-                    $account,
-                ),
-                when: $status[$statusKey],
-            );
-        }
+        $this->captureCompletedSteps($user, $account, $status);
 
         if (! $status['all_complete']) {
             return $status;
@@ -114,13 +102,13 @@ class ResolveOnboardingStatus
 
         return [
             ...$status,
-            'show_residual' => false,
+            'show_progress' => false,
             'completed_at' => $account->onboarding_completed_at?->toIso8601String(),
         ];
     }
 
     /**
-     * Sync checklist progress for an account actor, then broadcast residual updates.
+     * Sync checklist progress for an account actor, then broadcast progress updates.
      * Used by observers after a step unlocks (post-commit).
      */
     public function syncAndNotify(Account $account, ?string $actorId = null): void
@@ -148,7 +136,7 @@ class ResolveOnboardingStatus
      */
     public function markCompleted(User $user): bool
     {
-        $account = $user->resolveAccount();
+        $account = $user->accountOrFail();
 
         if (! $account->isOnboardingOpen()) {
             return false;
@@ -170,14 +158,9 @@ class ResolveOnboardingStatus
 
         $account->refresh();
 
-        $this->capture(
-            $user->id,
-            OnboardingEvent::Completed->value,
-            account: $account,
-        );
+        $this->capture($user->id, OnboardingEvent::Completed->value, account: $account);
 
-        // Every stamp path (endpoint, syncProgress, observers) must clear residual
-        // banners account-wide — not only the explicit complete() action.
+        // Every stamp path must clear progress banners account-wide.
         OnboardingStatusUpdated::broadcastForAccount($account);
 
         return true;
@@ -188,7 +171,7 @@ class ResolveOnboardingStatus
      */
     public function skipMcp(User $user): bool
     {
-        $account = $user->resolveAccount();
+        $account = $user->accountOrFail();
 
         if (! $account->isOnboardingOpen()) {
             return false;
@@ -227,55 +210,54 @@ class ResolveOnboardingStatus
             $account,
         );
 
-        $completed = $this->handle($user)['all_complete'] && $this->markCompleted($user);
-
-        if (! $completed) {
-            OnboardingStatusUpdated::broadcastForAccount($account);
+        if ($this->handle($user)['all_complete'] && $this->markCompleted($user)) {
+            return true;
         }
+
+        OnboardingStatusUpdated::broadcastForAccount($account);
 
         return true;
     }
 
     /**
-     * Sidebar residual banner payload, or false when the banner should not show.
+     * Sidebar checklist progress, or false when the banner should not show.
      *
      * Pure read — safe for Inertia shared props and prefetch. Cross-workspace
      * completion is stamped by syncProgress / observers, not here.
      *
      * @return array{completed: int, total: int}|false
      */
-    public function residual(?User $user): array|false
+    public function sidebarProgress(?User $user): array|false
     {
-        // Shared on every Inertia load — skip guests, teardown users, and cheap
-        // gates before the step EXISTS queries in handle().
-        if (
-            $user === null
-            || config('trypost.self_hosted')
-            || $user->account_id === null
-            || ! $user->isAccountOwner()
-        ) {
-            return false;
-        }
-
-        $account = $user->resolveAccount();
-
-        if (! $account->isOnboardingOpen() || ! $account->hasAppAccess()) {
+        if ($user === null || ! $this->canShowProgress($user)) {
             return false;
         }
 
         $status = $this->handle($user);
 
-        if (! $status['show_residual']) {
+        if (! $status['show_progress']) {
             return false;
         }
 
         return [
-            'completed' => collect(self::STEPS)
-                ->filter(fn (string $statusKey, string $step): bool => $status[$statusKey]
-                    || in_array($step, $status['skipped_steps'], true))
-                ->count(),
+            'completed' => $this->completedStepCount($status),
             'total' => self::totalSteps(),
         ];
+    }
+
+    /**
+     * Cheap gates before handle()'s EXISTS queries (runs on every Inertia load).
+     * Self-hosted and non-owners never reach step state.
+     */
+    private function canShowProgress(User $user, ?Account $account = null): bool
+    {
+        if (config('trypost.self_hosted') || ! $user->isAccountOwner()) {
+            return false;
+        }
+
+        $account ??= $user->accountOrFail();
+
+        return $account->isOnboardingOpen() && $account->hasAppAccess();
     }
 
     /**
@@ -285,7 +267,7 @@ class ResolveOnboardingStatus
      *     first_post_created: bool,
      *     skipped_steps: list<string>,
      *     all_complete: bool,
-     *     show_residual: bool,
+     *     show_progress: bool,
      *     completed_at: string,
      *     dismissed_at: ?string
      * }
@@ -306,7 +288,7 @@ class ResolveOnboardingStatus
                 ? array_values(array_diff($skippedSteps, ['mcp']))
                 : $skippedSteps,
             'all_complete' => true,
-            'show_residual' => false,
+            'show_progress' => false,
             'completed_at' => $account->onboarding_completed_at->toIso8601String(),
             'dismissed_at' => $account->onboarding_dismissed_at?->toIso8601String(),
         ];
@@ -319,7 +301,7 @@ class ResolveOnboardingStatus
      *     first_post_created: bool,
      *     skipped_steps: list<string>,
      *     all_complete: bool,
-     *     show_residual: bool,
+     *     show_progress: bool,
      *     completed_at: null,
      *     dismissed_at: ?string
      * }
@@ -327,62 +309,81 @@ class ResolveOnboardingStatus
     private function activeStatus(User $user, Account $account): array
     {
         $skippedSteps = $account->onboarding_skipped_steps ?? [];
+        $steps = $this->stepStates($account);
 
-        // All three steps are account-scoped so checklist checkmarks, residual
-        // progress, and cross-workspace completion stay aligned.
-        $stepStates = [
-            'mcp' => $this->accountHasMcpConnection($account),
-            'social' => $this->accountHasSocialConnection($account),
-            'first_post' => $this->accountHasPost($account),
-        ];
-
-        $allComplete = collect($stepStates)
-            ->every(fn (bool $done, string $step): bool => $done || in_array($step, $skippedSteps, true));
+        $allComplete = collect($steps)->every(
+            fn (bool $done, string $step): bool => $this->stepIsComplete($done, $step, $skippedSteps),
+        );
 
         return [
-            'mcp_connected' => $stepStates['mcp'],
-            'social_connected' => $stepStates['social'],
-            'first_post_created' => $stepStates['first_post'],
+            'mcp_connected' => $steps['mcp'],
+            'social_connected' => $steps['social'],
+            'first_post_created' => $steps['first_post'],
             'skipped_steps' => $skippedSteps,
             'all_complete' => $allComplete,
-            'show_residual' => ! config('trypost.self_hosted')
-                && $user->isAccountOwner()
-                && $account->hasAppAccess()
-                && ! $account->isOnboardingDismissed()
-                && ! $allComplete,
+            'show_progress' => $this->canShowProgress($user, $account) && ! $allComplete,
             'completed_at' => null,
             'dismissed_at' => $account->onboarding_dismissed_at?->toIso8601String(),
         ];
     }
 
     /**
-     * Bound, active MCP OAuth grant whose owner can create posts in that workspace.
+     * @return array{mcp: bool, social: bool, first_post: bool}
      */
+    private function stepStates(Account $account): array
+    {
+        return [
+            'mcp' => $this->accountHasMcpConnection($account),
+            'social' => $this->accountHasSocialConnection($account),
+            'first_post' => $this->accountHasPost($account),
+        ];
+    }
+
+    /**
+     * @param  list<string>  $skippedSteps
+     */
+    private function stepIsComplete(bool $done, string $step, array $skippedSteps): bool
+    {
+        return $done || in_array($step, $skippedSteps, true);
+    }
+
+    /**
+     * @param  array{skipped_steps: list<string>, mcp_connected: bool, social_connected: bool, first_post_created: bool}  $status
+     */
+    private function completedStepCount(array $status): int
+    {
+        return collect(self::STEPS)
+            ->filter(fn (string $statusKey, string $step): bool => $this->stepIsComplete(
+                $status[$statusKey],
+                $step,
+                $status['skipped_steps'],
+            ))
+            ->count();
+    }
+
+    /**
+     * @param  array{mcp_connected: bool, social_connected: bool, first_post_created: bool}  $status
+     */
+    private function captureCompletedSteps(User $user, Account $account, array $status): void
+    {
+        foreach (self::STEPS as $step => $statusKey) {
+            $this->captureOnce(
+                "onboarding:step:{$account->id}:{$step}",
+                fn () => $this->postHog->capture(
+                    $user->id,
+                    OnboardingEvent::StepCompleted->value,
+                    ['step' => $step],
+                    $account,
+                ),
+                when: $status[$statusKey],
+            );
+        }
+    }
+
     private function accountHasMcpConnection(Account $account): bool
     {
-        $createPostRoles = [Role::Admin->value, Role::Member->value];
-
         return AccessToken::query()
-            ->activeMcpOAuth()
-            ->whereNotNull('workspace_id')
-            ->whereIn(
-                'user_id',
-                User::query()->select('id')->where('account_id', $account->id),
-            )
-            ->whereHas(
-                'workspace',
-                fn (Builder $workspace): Builder => $workspace->where('account_id', $account->id),
-            )
-            ->where(function (Builder $query) use ($account, $createPostRoles): void {
-                $query->where('user_id', $account->owner_id)
-                    ->orWhereExists(function ($sub) use ($createPostRoles): void {
-                        $sub->selectRaw('1')
-                            ->from('user_workspace')
-                            ->whereColumn('user_workspace.user_id', 'oauth_access_tokens.user_id')
-                            ->whereColumn('user_workspace.workspace_id', 'oauth_access_tokens.workspace_id')
-                            ->whereIn('user_workspace.role', $createPostRoles);
-                    });
-            })
+            ->onboardingMcpConnection($account)
             ->exists();
     }
 

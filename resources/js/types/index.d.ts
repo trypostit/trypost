@@ -62,7 +62,7 @@ export interface NavItem {
     badge?: string;
 }
 
-export interface OnboardingResidual {
+export interface OnboardingProgress {
     completed: number;
     total: number;
 }
@@ -89,7 +89,7 @@ export interface SharedData {
     name: string;
     auth: Auth;
     flash: FlashData;
-    onboardingResidual: OnboardingResidual | false;
+    onboardingProgress: OnboardingProgress | false;
     sidebarOpen: boolean;
     selfHosted: boolean;
     contentTypeMediaRules?: Record<string, ContentTypeMediaRule>;

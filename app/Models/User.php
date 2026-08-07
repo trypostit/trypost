@@ -20,7 +20,6 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Passport\Contracts\OAuthenticatable;
 use Laravel\Passport\HasApiTokens;
-use LogicException;
 
 class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
 {
@@ -106,10 +105,9 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
      * Account for authenticated product flows (onboarding, billing, settings).
      * In-app users always have one; null only during account teardown.
      */
-    public function resolveAccount(): Account
+    public function accountOrFail(): Account
     {
-        return $this->account
-            ?? throw new LogicException("User [{$this->id}] has no account.");
+        return $this->account ?? $this->account()->firstOrFail();
     }
 
     public function isAccountOwner(): bool

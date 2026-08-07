@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { IconCheck, IconCopy } from '@tabler/icons-vue';
+import { IconCopy } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, watch } from 'vue';
 
 import NetworkConnectGrid, {
     type AvailablePlatform,
@@ -25,7 +25,7 @@ interface OnboardingStatus {
     first_post_created: boolean;
     skipped_steps: string[];
     all_complete: boolean;
-    show_residual: boolean;
+    show_progress: boolean;
     completed_at: string | null;
     dismissed_at: string | null;
 }
@@ -56,7 +56,7 @@ const socialConnectedElsewhere = computed(
 const skipMcpForm = useForm({});
 const completeForm = useForm({});
 
-const onboardingReloadOnly = ['status', 'accounts', 'onboardingResidual'];
+const onboardingReloadOnly = ['status', 'accounts', 'onboardingProgress'];
 
 const activationInProgress = computed(
     () =>
@@ -80,6 +80,24 @@ watch(
     { immediate: true },
 );
 
+watch(
+    () => props.status.all_complete,
+    (isComplete) => {
+        if (!isComplete || completeForm.processing) {
+            return;
+        }
+
+        if (props.canSkipSteps) {
+            completeForm.submit(complete());
+
+            return;
+        }
+
+        router.visit(calendar.url());
+    },
+    { immediate: true },
+);
+
 const copySamplePrompt = (): void => {
     copyToClipboard(props.samplePrompt, trans('onboarding.first_post.copied'));
 };
@@ -92,41 +110,6 @@ const skipMcp = (): void => {
         skipMcpForm.submit(skipMcpRoute());
     }
 };
-
-const continueToTryPost = (): void => {
-    if (props.status.all_complete && !completeForm.processing) {
-        completeForm.submit(complete());
-    }
-};
-
-// Bring the ready section into view when the last step completes via Echo.
-const readySection = ref<HTMLElement | null>(null);
-
-watch(
-    () => props.status.all_complete,
-    async (complete) => {
-        if (!complete) {
-            return;
-        }
-
-        await nextTick();
-        const section = readySection.value;
-
-        if (!section) {
-            return;
-        }
-
-        section.focus({ preventScroll: true });
-        section.scrollIntoView({
-            behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
-                .matches
-                ? 'auto'
-                : 'smooth',
-            block: 'center',
-        });
-    },
-    { immediate: true },
-);
 </script>
 
 <template>
@@ -266,44 +249,6 @@ watch(
                     </div>
                 </OnboardingStepCard>
             </div>
-
-            <section
-                v-if="status.all_complete"
-                ref="readySection"
-                tabindex="-1"
-                class="flex flex-col items-center gap-4 rounded-2xl border-2 border-foreground bg-violet-100 p-8 text-center shadow-2xs"
-                data-testid="onboarding-ready"
-            >
-                <span
-                    class="inline-flex size-12 items-center justify-center rounded-full border-2 border-foreground bg-emerald-200 text-emerald-800 shadow-2xs"
-                >
-                    <IconCheck class="size-6" stroke-width="3" />
-                </span>
-                <div>
-                    <h2 class="text-xl font-bold">
-                        {{ $t('onboarding.ready.title') }}
-                    </h2>
-                    <p class="mt-1 text-sm text-foreground/70">
-                        {{ $t('onboarding.ready.description') }}
-                    </p>
-                </div>
-
-                <Button
-                    v-if="canSkipSteps"
-                    type="button"
-                    size="lg"
-                    :disabled="completeForm.processing"
-                    data-testid="onboarding-continue"
-                    @click="continueToTryPost"
-                >
-                    {{ $t('onboarding.continue') }}
-                </Button>
-                <Button v-else as-child size="lg" data-testid="onboarding-continue">
-                    <Link :href="calendar.url()">
-                        {{ $t('onboarding.continue') }}
-                    </Link>
-                </Button>
-            </section>
         </div>
     </AppLayout>
 </template>

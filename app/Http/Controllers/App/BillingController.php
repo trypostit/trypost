@@ -28,7 +28,7 @@ class BillingController extends Controller
         }
 
         $user = $request->user();
-        $account = $user->resolveAccount();
+        $account = $user->accountOrFail();
         $sessionId = $request->query('session_id');
 
         // Consume the checkout session once: `fromCheckout` is true only the first

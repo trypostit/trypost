@@ -39,17 +39,17 @@ class AccessTokenObserver
             return;
         }
 
-        // Revocation always notifies so residual can clear. Live grants only
+        // Revocation always notifies so progress can clear. Live grants only
         // unlock when bound + createPost (viewers must not complete the checklist).
         if ($accessToken->revoked || $this->unlocksMcpChecklist($accessToken, $user)) {
-            OnboardingStatusUpdated::dispatchForAccount($user->resolveAccount(), $user);
+            OnboardingStatusUpdated::dispatchForAccount($user->accountOrFail(), $user);
         }
     }
 
     private function looksLikeMcpOAuth(AccessToken $accessToken): bool
     {
         // Ignore personal-access tokens; treat mid-revoke rows as MCP so
-        // disconnect still clears residual.
+        // disconnect still clears progress.
         return in_array('mcp:use', $accessToken->scopes ?? [], true)
             && ! $accessToken->isPersonalAccessToken();
     }

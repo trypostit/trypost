@@ -4,7 +4,7 @@ import { IconLoader2 } from '@tabler/icons-vue';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 
 import { useTracking } from '@/composables/useTracking';
-import { calendar, onboarding } from '@/routes/app';
+import { accounts, onboarding } from '@/routes/app';
 import type { Auth } from '@/types';
 
 const props = defineProps<{
@@ -37,7 +37,7 @@ let redirectTimer: ReturnType<typeof setTimeout> | null = null;
 
 const goNext = (): void => {
     router.visit(
-        props.redirectToOnboarding ? onboarding.url() : calendar.url(),
+        props.redirectToOnboarding ? onboarding.url() : accounts.url(),
     );
 };
 

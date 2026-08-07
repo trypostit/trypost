@@ -6,39 +6,40 @@ import { computed } from 'vue';
 import { useOnboardingLiveReload } from '@/composables/useOnboardingLiveReload';
 import { useActiveUrl } from '@/composables/useActiveUrl';
 import { onboarding } from '@/routes/app';
-import type { OnboardingResidual } from '@/types';
+import type { OnboardingProgress } from '@/types';
 
 const page = usePage();
 const { urlIsActive } = useActiveUrl();
 
-const residual = computed<OnboardingResidual | false>(
-    () => page.props.onboardingResidual,
+const onboardingProgress = computed<OnboardingProgress | false>(
+    () => page.props.onboardingProgress,
 );
 
-const progress = computed(() => {
-    if (residual.value === false) {
+const progressPercent = computed(() => {
+    if (onboardingProgress.value === false) {
         return 0;
     }
 
-    const { completed, total } = residual.value;
+    const { completed, total } = onboardingProgress.value;
 
     return total > 0 ? Math.round((completed / total) * 100) : 0;
 });
 
 const liveEnabled = computed(
     () =>
-        residual.value !== false && page.component !== 'onboarding/Index',
+        onboardingProgress.value !== false &&
+        page.component !== 'onboarding/Index',
 );
 
 useOnboardingLiveReload({
-    only: ['onboardingResidual'],
+    only: ['onboardingProgress'],
     enabled: liveEnabled,
 });
 </script>
 
 <template>
     <div
-        v-if="residual !== false"
+        v-if="onboardingProgress !== false"
         class="px-1 pb-1 group-data-[collapsible=icon]:hidden"
     >
         <Link
@@ -73,20 +74,22 @@ useOnboardingLiveReload({
                 <span
                     class="shrink-0 rounded-full border-2 border-foreground bg-card px-1.5 py-0.5 text-[10px] font-bold tabular-nums"
                 >
-                    {{ residual.completed }}/{{ residual.total }}
+                    {{ onboardingProgress.completed }}/{{
+                        onboardingProgress.total
+                    }}
                 </span>
             </div>
             <div
                 class="mt-2.5 h-1.5 overflow-hidden rounded-full border border-foreground bg-card"
                 role="progressbar"
                 :aria-label="$t('sidebar.onboarding')"
-                :aria-valuenow="residual.completed"
+                :aria-valuenow="onboardingProgress.completed"
                 :aria-valuemin="0"
-                :aria-valuemax="residual.total"
+                :aria-valuemax="onboardingProgress.total"
             >
                 <div
                     class="h-full bg-foreground transition-[width]"
-                    :style="{ width: `${progress}%` }"
+                    :style="{ width: `${progressPercent}%` }"
                 />
             </div>
         </Link>

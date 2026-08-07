@@ -42,7 +42,7 @@ test('resolves the empty onboarding state', function () {
         'first_post_created' => false,
         'skipped_steps' => [],
         'all_complete' => false,
-        'show_residual' => true,
+        'show_progress' => true,
         'completed_at' => null,
         'dismissed_at' => null,
     ]);
@@ -156,20 +156,20 @@ test('does not resolve an unbound oauth token as mcp connected', function () {
         ->and($status['all_complete'])->toBeFalse();
 });
 
-test('members do not see the residual checklist', function () {
+test('members do not see the progress checklist', function () {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
-    expect(app(ResolveOnboardingStatus::class)->residual($member->fresh()))->toBeFalse()
-        ->and(app(ResolveOnboardingStatus::class)->handle($member->fresh())['show_residual'])->toBeFalse();
+    expect(app(ResolveOnboardingStatus::class)->sidebarProgress($member->fresh()))->toBeFalse()
+        ->and(app(ResolveOnboardingStatus::class)->handle($member->fresh())['show_progress'])->toBeFalse();
 });
 
-test('generic trial without card still shows residual for the owner', function () {
+test('generic trial without card still shows progress for the owner', function () {
     config(['trypost.billing.require_card_for_trial' => false]);
     $this->user->account->subscriptions()->delete();
     $this->user->account->update(['trial_ends_at' => now()->addDays(7)]);
 
-    expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBe([
+    expect(app(ResolveOnboardingStatus::class)->sidebarProgress($this->user->fresh()))->toBe([
         'completed' => 0,
         'total' => ResolveOnboardingStatus::totalSteps(),
     ]);
@@ -250,7 +250,7 @@ test('marks onboarding completed once all three steps are complete', function ()
         'first_post_created' => true,
         'skipped_steps' => [],
         'all_complete' => true,
-        'show_residual' => false,
+        'show_progress' => false,
         'completed_at' => now()->toIso8601String(),
         'dismissed_at' => null,
     ])->and($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
@@ -276,7 +276,7 @@ test('handle does not mutate the account when every step is complete', function 
 
     expect($status)->toMatchArray([
         'all_complete' => true,
-        'show_residual' => false,
+        'show_progress' => false,
         'completed_at' => null,
     ])->and($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
 });
@@ -333,13 +333,13 @@ test('does not resolve a viewer oauth token as mcp connected', function () {
     expect($status['mcp_connected'])->toBeFalse();
 });
 
-test('dismissed onboarding does not show the residual checklist', function () {
+test('dismissed onboarding does not show the progress checklist', function () {
     Carbon::setTestNow('2026-07-24 12:00:00');
     $this->user->account->forceFill(['onboarding_dismissed_at' => now()])->save();
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user->fresh());
 
-    expect($status['show_residual'])->toBeFalse()
+    expect($status['show_progress'])->toBeFalse()
         ->and($status['dismissed_at'])->toBe(now()->toIso8601String());
 });
 
@@ -357,41 +357,41 @@ test('completed onboarding returns immediately without resolving steps or captur
         'first_post_created' => true,
         'skipped_steps' => [],
         'all_complete' => true,
-        'show_residual' => false,
+        'show_progress' => false,
         'completed_at' => now()->toIso8601String(),
         'dismissed_at' => null,
     ]);
     Bus::assertNothingDispatched();
 });
 
-test('self-hosted onboarding does not show the residual checklist', function () {
+test('self-hosted onboarding does not show the progress checklist', function () {
     config(['trypost.self_hosted' => true]);
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user);
 
-    expect($status['show_residual'])->toBeFalse();
+    expect($status['show_progress'])->toBeFalse();
 });
 
-test('unsubscribed account does not show the residual checklist', function () {
+test('unsubscribed account does not show the progress checklist', function () {
     $this->user->account->subscriptions()->delete();
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user);
 
-    expect($status['show_residual'])->toBeFalse();
+    expect($status['show_progress'])->toBeFalse();
 });
 
-test('residual returns progress counts while onboarding is active', function () {
+test('sidebar progress returns progress counts while onboarding is active', function () {
     SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]);
 
-    expect(app(ResolveOnboardingStatus::class)->residual($this->user))->toBe([
+    expect(app(ResolveOnboardingStatus::class)->sidebarProgress($this->user))->toBe([
         'completed' => 1,
         'total' => ResolveOnboardingStatus::totalSteps(),
     ]);
 });
 
-test('checklist and residual both count social and posts from any workspace', function () {
+test('checklist and sidebar progress both count social and posts from any workspace', function () {
     AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
 
     $otherWorkspace = Workspace::factory()->create([
@@ -413,17 +413,17 @@ test('checklist and residual both count social and posts from any workspace', fu
         'social_connected' => true,
         'first_post_created' => false,
         'all_complete' => false,
-        'show_residual' => true,
-    ])->and(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBe([
+        'show_progress' => true,
+    ])->and(app(ResolveOnboardingStatus::class)->sidebarProgress($this->user->fresh()))->toBe([
         'completed' => 2,
         'total' => ResolveOnboardingStatus::totalSteps(),
     ]);
 });
 
-test('residual returns false when the banner should not show', function () {
+test('sidebar progress returns false when the banner should not show', function () {
     $this->user->account->forceFill(['onboarding_dismissed_at' => now()])->save();
 
-    expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBeFalse();
+    expect(app(ResolveOnboardingStatus::class)->sidebarProgress($this->user->fresh()))->toBeFalse();
 });
 
 test('syncProgress stamps when a teammate is on an empty workspace but account activation is done', function () {
@@ -528,11 +528,11 @@ test('syncProgress stamps when another workspace already finished social and pos
     $status = app(ResolveOnboardingStatus::class)->syncProgress($this->user->fresh());
 
     expect($status['all_complete'])->toBeTrue()
-        ->and($status['show_residual'])->toBeFalse()
+        ->and($status['show_progress'])->toBeFalse()
         ->and($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 });
 
-test('residual hides without writing when another workspace already finished activation', function () {
+test('sidebar progress hides without writing when another workspace already finished activation', function () {
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]));
@@ -548,44 +548,44 @@ test('residual hides without writing when another workspace already finished act
     ]);
     $this->user->update(['current_workspace_id' => $emptyWorkspace->id]);
 
-    expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBeFalse()
+    expect(app(ResolveOnboardingStatus::class)->sidebarProgress($this->user->fresh()))->toBeFalse()
         ->and($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
 });
 
-test('residual does not query step state for dismissed accounts', function () {
+test('sidebar progress does not query step state for dismissed accounts', function () {
     $this->user->account->forceFill(['onboarding_dismissed_at' => now()])->save();
 
     $queries = [];
     DB::listen(fn ($query) => $queries[] = $query->sql);
 
-    expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBeFalse();
+    expect(app(ResolveOnboardingStatus::class)->sidebarProgress($this->user->fresh()))->toBeFalse();
 
     expect(collect($queries)->filter(fn (string $sql): bool => str_contains($sql, 'oauth_access_tokens')
         || str_contains($sql, 'social_accounts')
         || str_contains($sql, 'posts')))->toBeEmpty();
 });
 
-test('residual does not query step state for members', function () {
+test('sidebar progress does not query step state for members', function () {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $queries = [];
     DB::listen(fn ($query) => $queries[] = $query->sql);
 
-    expect(app(ResolveOnboardingStatus::class)->residual($member->fresh()))->toBeFalse();
+    expect(app(ResolveOnboardingStatus::class)->sidebarProgress($member->fresh()))->toBeFalse();
 
     expect(collect($queries)->filter(fn (string $sql): bool => str_contains($sql, 'oauth_access_tokens')
         || str_contains($sql, 'social_accounts')
         || str_contains($sql, 'posts')))->toBeEmpty();
 });
 
-test('residual does not query step state in self hosted mode', function () {
+test('sidebar progress does not query step state in self hosted mode', function () {
     config(['trypost.self_hosted' => true]);
 
     $queries = [];
     DB::listen(fn ($query) => $queries[] = $query->sql);
 
-    expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBeFalse();
+    expect(app(ResolveOnboardingStatus::class)->sidebarProgress($this->user->fresh()))->toBeFalse();
 
     expect(collect($queries)->filter(fn (string $sql): bool => str_contains($sql, 'oauth_access_tokens')
         || str_contains($sql, 'social_accounts')
@@ -636,14 +636,14 @@ test('skipMcp refuses when MCP is already connected or already skipped', functio
     expect($this->user->account->fresh()->onboarding_skipped_steps)->toBeNull();
 });
 
-test('residual counts a skipped step as done', function () {
+test('sidebar progress counts a skipped step as done', function () {
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]));
 
     app(ResolveOnboardingStatus::class)->skipMcp($this->user);
 
-    expect(app(ResolveOnboardingStatus::class)->residual($this->user->fresh()))->toBe([
+    expect(app(ResolveOnboardingStatus::class)->sidebarProgress($this->user->fresh()))->toBe([
         'completed' => 2,
         'total' => ResolveOnboardingStatus::totalSteps(),
     ]);

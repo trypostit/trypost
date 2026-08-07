@@ -51,7 +51,7 @@ test('onboarding renders activation status and connection props', function () {
             ->where('status.social_connected', true)
             ->where('status.first_post_created', false)
             ->where('status.all_complete', false)
-            ->where('status.show_residual', true)
+            ->where('status.show_progress', true)
             ->where('status.completed_at', null)
             ->where('status.dismissed_at', null)
             ->where('mcpUrl', route('mcp.trypost'))
@@ -128,7 +128,7 @@ test('onboarding does not capture viewed during a partial reload', function () {
     Bus::fake();
 
     $response->assertInertia(fn ($page) => $page
-        ->reloadOnly(['status', 'accounts', 'onboardingResidual'], fn ($reload) => $reload
+        ->reloadOnly(['status', 'accounts', 'onboardingProgress'], fn ($reload) => $reload
             ->has('status')
             ->has('accounts')
         )
@@ -315,7 +315,7 @@ test('partial reloads keep the ready state after completion is stamped', functio
     expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 
     $response->assertInertia(fn ($page) => $page
-        ->reloadOnly(['status', 'accounts', 'onboardingResidual'], fn ($reload) => $reload
+        ->reloadOnly(['status', 'accounts', 'onboardingProgress'], fn ($reload) => $reload
             ->where('status.all_complete', true)
             ->where('status.completed_at', now()->toIso8601String())
         )
@@ -386,7 +386,7 @@ test('completed accounts stay on onboarding during partial reloads', function ()
     $this->user->account->forceFill(['onboarding_completed_at' => now()])->save();
 
     $response->assertInertia(fn ($page) => $page
-        ->reloadOnly(['status', 'accounts', 'onboardingResidual'], fn ($reload) => $reload
+        ->reloadOnly(['status', 'accounts', 'onboardingProgress'], fn ($reload) => $reload
             ->where('status.all_complete', true)
             ->where('status.completed_at', now()->toIso8601String())
         )
