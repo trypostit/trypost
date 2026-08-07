@@ -71,18 +71,12 @@ class AuthorizationController extends PassportAuthorizationController
     }
 
     /**
-     * HTML / Inertia navigations need a page — JSON stays for API-style clients.
+     * Browser navigations (including Inertia) get an error page. JSON clients
+     * that explicitly expect JSON keep the OAuth error payload.
      */
     private function shouldRenderAuthorizationErrorPage(Request $request): bool
     {
-        // Login (and other Inertia forms) follow the intended /oauth/authorize
-        // redirect with X-Inertia; raw OAuth JSON triggers the "plain JSON
-        // response was received" client error.
-        if ($request->inertia()) {
-            return true;
-        }
-
-        return $request->acceptsHtml() && ! $request->expectsJson();
+        return ! $request->expectsJson();
     }
 
     private function authorizationErrorPage(Request $request, OAuthServerException $exception): Response
