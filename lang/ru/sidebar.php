@@ -34,6 +34,9 @@ return [
     'automations' => 'Автоматизации',
     'settings' => 'Настройки',
 
+    'onboarding' => 'Начало работы',
+    'onboarding_hint' => 'Завершите настройку',
+
     'posts' => [
         'calendar' => 'Календарь',
         'all' => 'Все',

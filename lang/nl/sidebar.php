@@ -34,6 +34,9 @@ return [
     'automations' => 'Automatiseringen',
     'settings' => 'Instellingen',
 
+    'onboarding' => 'Aan de slag',
+    'onboarding_hint' => 'Setup afronden',
+
     'posts' => [
         'calendar' => 'Kalender',
         'all' => 'Alle',

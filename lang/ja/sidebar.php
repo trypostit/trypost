@@ -34,6 +34,9 @@ return [
     'automations' => 'オートメーション',
     'settings' => '設定',
 
+    'onboarding' => 'はじめに',
+    'onboarding_hint' => 'セットアップを完了',
+
     'posts' => [
         'calendar' => 'カレンダー',
         'all' => 'すべて',

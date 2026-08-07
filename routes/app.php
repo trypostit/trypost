@@ -12,6 +12,7 @@ use App\Http\Controllers\App\GiphyController;
 use App\Http\Controllers\App\LinkPreviewController;
 use App\Http\Controllers\App\McpSettingsController;
 use App\Http\Controllers\App\NotificationController;
+use App\Http\Controllers\App\OnboardingController;
 use App\Http\Controllers\App\PostAiCreateController;
 use App\Http\Controllers\App\PostAiGenerateController;
 use App\Http\Controllers\App\PostAiRegenerateMediaController;
@@ -147,8 +148,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('accounts/discord/callback', [DiscordController::class, 'callback'])->name('app.social.discord.callback');
 });
 
-// Routes that require active subscription and completed onboarding
+// Routes that require account access and a current workspace
 Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class])->group(function () {
+    Route::get('onboarding', [OnboardingController::class, 'index'])->name('app.onboarding');
+    Route::post('onboarding/mcp/skip', [OnboardingController::class, 'skipMcp'])->name('app.onboarding.mcp.skip');
+    Route::post('onboarding/complete', [OnboardingController::class, 'complete'])->name('app.onboarding.complete');
+
     // Discord — live lookups for the composer (channel picker + mention autocomplete).
     // Throttled because they proxy the shared bot's (rate-limited) Discord API.
     Route::get('discord/accounts/{account}/channels', [AppDiscordController::class, 'channels'])

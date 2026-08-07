@@ -34,6 +34,9 @@ return [
     'automations' => 'Αυτοματισμοί',
     'settings' => 'Ρυθμίσεις',
 
+    'onboarding' => 'Ξεκινώντας',
+    'onboarding_hint' => 'Ολοκλήρωση ρύθμισης',
+
     'posts' => [
         'calendar' => 'Ημερολόγιο',
         'all' => 'Όλες',

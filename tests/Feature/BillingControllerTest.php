@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
 use App\Models\Plan;
+use App\Models\Post;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -149,6 +151,7 @@ test('billing processing shows processing page', function () {
         ->component('billing/Processing', false)
         ->has('subscriptionActive')
         ->where('fromCheckout', false)
+        ->where('redirectToOnboarding', true)
         ->where('conversion', null)
     );
 });
@@ -168,6 +171,55 @@ test('billing processing exposes fromCheckout=true only the first time a session
         ->get(route('app.billing.processing', ['session_id' => $sessionId]));
     $second->assertOk();
     $second->assertInertia(fn ($page) => $page->where('fromCheckout', false));
+});
+
+test('billing processing skips onboarding when already completed', function () {
+    config(['trypost.self_hosted' => false]);
+    $this->user->account->forceFill(['onboarding_completed_at' => now()])->save();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('redirectToOnboarding', false));
+});
+
+test('billing processing skips onboarding when dismissed', function () {
+    config(['trypost.self_hosted' => false]);
+    $this->user->account->forceFill(['onboarding_dismissed_at' => now()])->save();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('redirectToOnboarding', false));
+});
+
+test('billing processing completes already satisfied onboarding before redirecting', function () {
+    config(['trypost.self_hosted' => false]);
+    $this->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test_'.fake()->uuid(),
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_test',
+        'quantity' => 1,
+    ]);
+    mcpAccessToken($this->user, mcpOauthClient());
+    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]));
+    Post::withoutEvents(fn () => Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]));
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('subscriptionActive', true)
+            ->where('redirectToOnboarding', false)
+        );
+
+    expect($this->account->fresh()->onboarding_completed_at)->not->toBeNull();
 });
 
 test('billing processing exposes null conversion when session_id query param is missing', function () {

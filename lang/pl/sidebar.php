@@ -34,6 +34,9 @@ return [
     'automations' => 'Automatyzacje',
     'settings' => 'Ustawienia',
 
+    'onboarding' => 'Pierwsze kroki',
+    'onboarding_hint' => 'Dokończ konfigurację',
+
     'posts' => [
         'calendar' => 'Kalendarz',
         'all' => 'Wszystkie',

@@ -34,6 +34,9 @@ return [
     'automations' => 'Автоматизації',
     'settings' => 'Налаштування',
 
+    'onboarding' => 'Початок роботи',
+    'onboarding_hint' => 'Завершіть налаштування',
+
     'posts' => [
         'calendar' => 'Календар',
         'all' => 'Усі',

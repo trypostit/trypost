@@ -34,6 +34,9 @@ return [
     'automations' => 'Otomasyonlar',
     'settings' => 'Ayarlar',
 
+    'onboarding' => 'Başlarken',
+    'onboarding_hint' => 'Kurulumu bitir',
+
     'posts' => [
         'calendar' => 'Takvim',
         'all' => 'Tümü',

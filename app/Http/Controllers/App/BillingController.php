@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Models\Account;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,6 +17,10 @@ use Throwable;
 
 class BillingController extends Controller
 {
+    public function __construct(
+        private readonly ResolveOnboardingStatus $resolveOnboardingStatus,
+    ) {}
+
     public function subscribe(): RedirectResponse
     {
         return redirect()->route('app.welcome.persona');
@@ -27,7 +32,8 @@ class BillingController extends Controller
             return redirect()->route('app.calendar');
         }
 
-        $account = $request->user()->account;
+        $user = $request->user();
+        $account = $user->account;
         $sessionId = $request->query('session_id');
 
         // Consume the checkout session once: `fromCheckout` is true only the first
@@ -37,10 +43,22 @@ class BillingController extends Controller
         $fromCheckout = is_string($sessionId) && $sessionId !== ''
             && Cache::add("checkout_tracked:{$sessionId}", true, now()->addDay());
 
+        $subscriptionActive = $account !== null
+            && $account->subscribed(Account::SUBSCRIPTION_NAME);
+        $redirectToOnboarding = $account !== null
+            && $user->isAccountOwner()
+            && ! $account->hasFinishedOnboarding();
+
+        if ($subscriptionActive && $redirectToOnboarding) {
+            $status = $this->resolveOnboardingStatus->syncProgress($user);
+            $redirectToOnboarding = (bool) data_get($status, 'show_residual', true);
+        }
+
         return Inertia::render('billing/Processing', [
-            'subscriptionActive' => $account && $account->subscribed(Account::SUBSCRIPTION_NAME),
+            'subscriptionActive' => $subscriptionActive,
             'fromCheckout' => $fromCheckout,
-            'persona' => $request->user()->persona?->value,
+            'redirectToOnboarding' => $redirectToOnboarding,
+            'persona' => $user->persona?->value,
             'conversion' => $fromCheckout && $account?->stripe_id
                 ? fn () => $this->buildConversionData($account, $sessionId)
                 : null,

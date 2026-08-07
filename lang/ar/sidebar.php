@@ -34,6 +34,9 @@ return [
     'automations' => 'الأتمتة',
     'settings' => 'الإعدادات',
 
+    'onboarding' => 'البدء',
+    'onboarding_hint' => 'أكمل الإعداد',
+
     'posts' => [
         'calendar' => 'التقويم',
         'all' => 'الكل',

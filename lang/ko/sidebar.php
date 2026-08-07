@@ -34,6 +34,9 @@ return [
     'automations' => '자동화',
     'settings' => '설정',
 
+    'onboarding' => '시작하기',
+    'onboarding_hint' => '설정 마치기',
+
     'posts' => [
         'calendar' => '캘린더',
         'all' => '전체',

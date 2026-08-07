@@ -34,6 +34,9 @@ return [
     'automations' => '自动化',
     'settings' => '设置',
 
+    'onboarding' => '开始使用',
+    'onboarding_hint' => '完成设置',
+
     'posts' => [
         'calendar' => '日历',
         'all' => '全部',
