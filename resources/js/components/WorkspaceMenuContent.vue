@@ -104,8 +104,9 @@ const handleLogout = (): void => {
 <template>
     <DropdownMenuLabel
         class="px-2 py-1.5 text-xs font-medium tracking-normal text-muted-foreground normal-case"
+        data-testid="sidebar-menu-greeting"
     >
-        {{ user.name }}
+        {{ user.first_name || user.name }}
     </DropdownMenuLabel>
 
     <DropdownMenuGroup>

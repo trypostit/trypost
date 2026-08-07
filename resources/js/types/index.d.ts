@@ -103,6 +103,7 @@ export type AppPageProps<
 export interface User {
     id: string;
     name: string;
+    first_name: string;
     email: string;
     has_photo: boolean;
     photo_url: string | null;

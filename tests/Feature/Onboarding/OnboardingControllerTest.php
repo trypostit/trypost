@@ -61,6 +61,7 @@ test('onboarding renders activation status and connection props', function () {
             ->where('samplePrompt', __('onboarding.first_post.sample_prompt'))
             ->has('platforms', collect(Platform::cases())->filter->isConnectable()->count())
             ->where('accounts.0.id', $socialAccount->id)
+            ->where('auth.user.first_name', $this->user->firstName())
         );
 
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'

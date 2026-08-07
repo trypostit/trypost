@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Passport\Contracts\OAuthenticatable;
 use Laravel\Passport\HasApiTokens;
 
@@ -72,6 +73,14 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
     public function getPhotoUrlAttribute(): ?string
     {
         return $this->getFirstMediaUrl('avatar');
+    }
+
+    /**
+     * First whitespace-delimited token of the display name (empty when unset).
+     */
+    public function firstName(): string
+    {
+        return (string) Str::of($this->name ?? '')->trim()->before(' ');
     }
 
     protected function casts(): array

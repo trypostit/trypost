@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { IconCopy } from '@tabler/icons-vue';
-import { trans } from 'laravel-vue-i18n';
 import { computed, watch } from 'vue';
 
 import NetworkConnectGrid, {
@@ -42,38 +41,29 @@ const props = defineProps<{
 }>();
 
 const page = usePage();
-const firstName = computed(() => {
-    const name = (page.props.auth.user?.name ?? '').trim();
+const firstName = computed(() => page.props.auth.user?.first_name ?? '');
+const skipMcpForm = useForm({});
+const completeForm = useForm({});
+const reloadOnly = ['status', 'accounts', 'onboardingProgress'];
 
-    return name === '' ? '' : (name.split(/\s+/)[0] ?? '');
-});
 const socialConnectedElsewhere = computed(
     () =>
         props.status.social_connected &&
         !props.accounts.some((account) => account.status === 'connected'),
 );
 
-const skipMcpForm = useForm({});
-const completeForm = useForm({});
-
-const onboardingReloadOnly = ['status', 'accounts', 'onboardingProgress'];
-
-const activationInProgress = computed(
-    () =>
+useOnboardingLiveReload({
+    only: reloadOnly,
+    enabled: () =>
         !props.status.all_complete &&
         !props.status.completed_at &&
         !props.status.dismissed_at,
-);
-
-useOnboardingLiveReload({
-    only: onboardingReloadOnly,
-    enabled: activationInProgress,
 });
 
 watch(
     () => props.status.all_complete,
-    (isComplete) => {
-        if (!isComplete || completeForm.processing) {
+    (done) => {
+        if (!done || completeForm.processing) {
             return;
         }
 
@@ -88,18 +78,8 @@ watch(
     { immediate: true },
 );
 
-const copySamplePrompt = (): void => {
-    copyToClipboard(props.samplePrompt, trans('onboarding.first_post.copied'));
-};
-
 const isStepSkipped = (step: string): boolean =>
     props.status.skipped_steps.includes(step);
-
-const skipMcp = (): void => {
-    if (!skipMcpForm.processing) {
-        skipMcpForm.submit(skipMcpRoute());
-    }
-};
 </script>
 
 <template>
@@ -155,7 +135,7 @@ const skipMcp = (): void => {
                                 class="text-sm font-semibold text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
                                 :disabled="skipMcpForm.processing"
                                 data-testid="onboarding-mcp-skip"
-                                @click="skipMcp"
+                                @click="skipMcpForm.submit(skipMcpRoute())"
                             >
                                 {{ $t('onboarding.skip_step') }}
                             </button>
@@ -182,7 +162,6 @@ const skipMcp = (): void => {
                         v-else-if="canManageAccounts"
                         :platforms="platforms"
                         :connected-accounts="accounts"
-                        :reload-only="onboardingReloadOnly"
                         grid-class="grid-cols-2 sm:grid-cols-3 xl:grid-cols-5"
                         data-testid="onboarding-social-controls"
                     />
@@ -217,7 +196,12 @@ const skipMcp = (): void => {
                         <Button
                             type="button"
                             data-testid="copy-sample-prompt"
-                            @click="copySamplePrompt"
+                            @click="
+                                copyToClipboard(
+                                    samplePrompt,
+                                    $t('onboarding.first_post.copied'),
+                                )
+                            "
                         >
                             <IconCopy class="size-4" />
                             {{ $t('onboarding.first_post.copy_prompt') }}
