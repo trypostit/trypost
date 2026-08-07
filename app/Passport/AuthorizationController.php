@@ -26,17 +26,11 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * Guests are sent to login before client validation so a stale MCP Inspector
  * client_id does not return invalid_client JSON instead of the login page.
- *
- * Browser / Inertia requests that fail OAuth validation with a non-redirect
- * response (e.g. invalid_client) get an Inertia error page instead of raw JSON.
- * Redirect errors (prompt=none → login_required / consent_required) still go
- * back to the client's redirect_uri.
+ * Browser non-redirect OAuth failures get an Inertia error page; JSON clients
+ * and redirect errors (prompt=none) keep Passport's response.
  */
 class AuthorizationController extends PassportAuthorizationController
 {
-    /**
-     * Authorize a client to access the user's account.
-     */
     public function authorize(
         ServerRequestInterface $psrRequest,
         Request $request,
@@ -46,8 +40,7 @@ class AuthorizationController extends PassportAuthorizationController
         if ($this->guard->guest()) {
             $prompt = $request->string('prompt')->explode(' ')->map(trim(...))->filter()->values();
 
-            // prompt=none must not show a login UI — fall through to Passport
-            // validation so the client receives login_required / invalid_client.
+            // prompt=none must not show a login UI — fall through to Passport.
             if ($prompt->doesntContain('none')) {
                 $this->promptForLogin($request);
             }
@@ -56,11 +49,21 @@ class AuthorizationController extends PassportAuthorizationController
         try {
             return parent::authorize($psrRequest, $request, $psrResponse, $viewResponse);
         } catch (OAuthServerException $exception) {
-            if (! $this->shouldRenderAuthorizationErrorPage($request, $exception)) {
+            if ($request->expectsJson() || $exception->getResponse()->isRedirection()) {
                 throw $exception;
             }
 
-            return $this->authorizationErrorPage($request, $exception);
+            $oauth = $exception->getPrevious();
+
+            return Inertia::render('mcp/AuthorizeError', $oauth instanceof LeagueOAuthServerException
+                ? [
+                    'error' => $oauth->getErrorType(),
+                    'errorDescription' => $oauth->getMessage(),
+                ]
+                : [
+                    'error' => 'server_error',
+                    'errorDescription' => __('mcp.authorize.error_body'),
+                ])->toResponse($request);
         }
     }
 
@@ -70,34 +73,5 @@ class AuthorizationController extends PassportAuthorizationController
     protected function hasGrantedScopes(Authenticatable $user, Client $client, array $scopes): bool
     {
         return false;
-    }
-
-    /**
-     * Browser navigations get an Inertia page for non-redirect OAuth failures.
-     * JSON clients and redirect-style errors (prompt=none) keep Passport's response.
-     */
-    private function shouldRenderAuthorizationErrorPage(
-        Request $request,
-        OAuthServerException $exception,
-    ): bool {
-        if ($request->expectsJson()) {
-            return false;
-        }
-
-        return ! $exception->getResponse()->isRedirection();
-    }
-
-    private function authorizationErrorPage(Request $request, OAuthServerException $exception): Response
-    {
-        $previous = $exception->getPrevious();
-
-        return Inertia::render('mcp/AuthorizeError', [
-            'error' => $previous instanceof LeagueOAuthServerException
-                ? $previous->getErrorType()
-                : 'server_error',
-            'errorDescription' => $previous instanceof LeagueOAuthServerException
-                ? $previous->getMessage()
-                : __('mcp.authorize.error_body'),
-        ])->toResponse($request);
     }
 }
