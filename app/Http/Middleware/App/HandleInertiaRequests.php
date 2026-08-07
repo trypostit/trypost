@@ -52,7 +52,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'usage' => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => $account && ! $isSelfHosted ? $account->featureLimits() : null,
-            'onboardingProgress' => $this->onboardingProgressProp($user),
+            'onboardingProgress' => $this->onboardingProgress($user),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => $request->session()->get('flash', []),
             'applicationUrl' => config('app.url'),
@@ -81,28 +81,14 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Sidebar checklist progress. Cheap negatives resolve inline; the MCP/social/
-     * post EXISTS work is deferred so mid-activation owners do not pay for it on
-     * every full Inertia visit (loaded via deferred props / partial reload).
+     * Defer step queries for mid-activation owners; everyone else gets false inline.
      */
-    private function onboardingProgressProp(?User $user): DeferProp|false
+    private function onboardingProgress(?User $user): DeferProp|false
     {
-        if (
-            $user === null
-            || config('trypost.self_hosted')
-            || ! $user->isAccountOwner()
-        ) {
-            return false;
-        }
+        $onboarding = app(ResolveOnboardingStatus::class);
 
-        $account = $user->account;
-
-        if ($account === null || ! $account->isOnboardingOpen() || ! $account->hasAppAccess()) {
-            return false;
-        }
-
-        return Inertia::defer(
-            fn (): array|false => app(ResolveOnboardingStatus::class)->sidebarProgress($user),
-        );
+        return $user && $onboarding->canShowProgress($user)
+            ? Inertia::defer(fn (): array|false => $onboarding->sidebarProgress($user))
+            : false;
     }
 }

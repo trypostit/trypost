@@ -252,18 +252,19 @@ class ResolveOnboardingStatus
 
     /**
      * Cheap gates before handle()'s step queries.
-     * Self-hosted and non-owners never reach step state. Shared Inertia
-     * props defer the expensive path via Inertia::defer when this is true.
+     * Self-hosted and non-owners never reach step state.
      */
-    private function canShowProgress(User $user, ?Account $account = null): bool
+    public function canShowProgress(User $user, ?Account $account = null): bool
     {
         if (config('trypost.self_hosted') || ! $user->isAccountOwner()) {
             return false;
         }
 
-        $account ??= $user->accountOrFail();
+        $account ??= $user->account;
 
-        return $account->isOnboardingOpen() && $account->hasAppAccess();
+        return $account !== null
+            && $account->isOnboardingOpen()
+            && $account->hasAppAccess();
     }
 
     /**
