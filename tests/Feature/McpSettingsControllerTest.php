@@ -297,6 +297,31 @@ it('lists only mcp connections for the current workspace', function (): void {
             ->where('connectedClients.0.name', 'Claude'));
 });
 
+it('orders connected mcp clients by last used descending', function (): void {
+    $older = mcpAccessToken($this->user, mcpOauthClient('Older Agent'), $this->workspace);
+    $newer = mcpAccessToken($this->user, mcpOauthClient('Newer Agent'), $this->workspace);
+
+    $older->forceFill(['last_used_at' => now()->subDay()])->saveQuietly();
+    $newer->forceFill(['last_used_at' => now()])->saveQuietly();
+
+    $this->actingAs($this->user)
+        ->get(route('app.mcp.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('connectedClients', 2)
+            ->where('connectedClients.0.name', 'Newer Agent')
+            ->where('connectedClients.1.name', 'Older Agent'));
+});
+
+it('does not list unbound mcp grants', function (): void {
+    mcpAccessToken($this->user, mcpOauthClient('Legacy Agent'), workspace: null);
+
+    $this->actingAs($this->user)
+        ->get(route('app.mcp.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('connectedClients', []));
+});
+
 it('disconnects a client only on the current workspace', function (): void {
     $workspaceB = Workspace::factory()->create([
         'account_id' => $this->user->account_id,

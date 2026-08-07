@@ -41,6 +41,7 @@ class ListConnectedMcpClients
                     'last_used_at' => $group->max('last_used_at'),
                 ];
             })
+            ->sortByDesc(fn (array $client): mixed => $client['last_used_at'] ?? 0)
             ->values()
             ->all();
     }
