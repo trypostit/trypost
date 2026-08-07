@@ -42,10 +42,6 @@ return [
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
-        'error_page_title' => 'Αποτυχία εξουσιοδότησης - TryPost',
-        'error_title' => 'Αδυναμία σύνδεσης',
-        'error_body' => 'Αυτό το αίτημα εξουσιοδότησης είναι μη έγκυρο ή έχει λήξει. Κλείστε αυτό το παράθυρο και δοκιμάστε ξανά από τον πελάτη MCP.',
-        'error_code' => 'Σφάλμα: :error',
     ],
     'other_clients_title' => 'Άλλες εφαρμογές',
     'other_clients_description' => 'Cursor, VS Code, Claude Code και ό,τι άλλο μιλάει MCP.',
@@ -59,6 +55,6 @@ return [
         'claude_code' => 'Επικολλήστε το config παρακάτω στις ρυθμίσεις MCP του Claude Code.',
         'claude_code_name' => 'Claude Code',
         'other' => 'Λειτουργεί με κάθε client που διαβάζει config mcpServers.',
-        'other_name' => 'Άλλα',
-    ],
+        'other_name' => 'Άλλα'
+    ]
 ];

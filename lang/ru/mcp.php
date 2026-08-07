@@ -42,10 +42,6 @@ return [
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
-        'error_page_title' => 'Ошибка авторизации - TryPost',
-        'error_title' => 'Не удалось подключиться',
-        'error_body' => 'Этот запрос авторизации недействителен или устарел. Закройте это окно и попробуйте подключиться снова из MCP-клиента.',
-        'error_code' => 'Ошибка: :error',
     ],
     'other_clients_title' => 'Другие приложения',
     'other_clients_description' => 'Cursor, VS Code, Claude Code и всё, что говорит на MCP.',
@@ -59,6 +55,6 @@ return [
         'claude_code' => 'Вставьте конфиг ниже в настройки MCP Claude Code.',
         'claude_code_name' => 'Claude Code',
         'other' => 'Работает с любым клиентом, который читает config mcpServers.',
-        'other_name' => 'Другие',
-    ],
+        'other_name' => 'Другие'
+    ]
 ];

@@ -42,10 +42,6 @@ return [
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
-        'error_page_title' => '認可に失敗しました - TryPost',
-        'error_title' => '接続できませんでした',
-        'error_body' => 'この認可リクエストは無効か期限切れです。このウィンドウを閉じ、MCPクライアントからもう一度接続してください。',
-        'error_code' => 'エラー: :error',
     ],
     'other_clients_title' => 'その他のアプリ',
     'other_clients_description' => 'Cursor、VS Code、Claude Code、その他MCP対応アプリ。',
@@ -59,6 +55,6 @@ return [
         'claude_code' => '下の設定をClaude CodeのMCP設定に貼り付けます。',
         'claude_code_name' => 'Claude Code',
         'other' => 'mcpServers設定を読むクライアントならどれでも使えます。',
-        'other_name' => 'その他',
-    ],
+        'other_name' => 'その他'
+    ]
 ];

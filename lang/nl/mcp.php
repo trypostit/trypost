@@ -42,10 +42,6 @@ return [
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
-        'error_page_title' => 'Autorisatie mislukt - TryPost',
-        'error_title' => 'Verbinden mislukt',
-        'error_body' => 'Dit autorisatieverzoek is ongeldig of verlopen. Sluit dit venster en probeer opnieuw te verbinden via je MCP-client.',
-        'error_code' => 'Fout: :error',
     ],
     'other_clients_title' => 'Andere apps',
     'other_clients_description' => 'Cursor, VS Code, Claude Code en alles wat MCP spreekt.',
@@ -59,6 +55,6 @@ return [
         'claude_code' => 'Plak de config hieronder in de MCP-instellingen van Claude Code.',
         'claude_code_name' => 'Claude Code',
         'other' => 'Werkt met elke client die een mcpServers-config leest.',
-        'other_name' => 'Overig',
-    ],
+        'other_name' => 'Overig'
+    ]
 ];

@@ -42,10 +42,6 @@ return [
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
-        'error_page_title' => '승인 실패 - TryPost',
-        'error_title' => '연결할 수 없음',
-        'error_body' => '이 승인 요청이 잘못되었거나 만료되었습니다. 이 창을 닫고 MCP 클라이언트에서 다시 연결하세요.',
-        'error_code' => '오류: :error',
     ],
     'other_clients_title' => '다른 앱',
     'other_clients_description' => 'Cursor, VS Code, Claude Code 및 MCP를 지원하는 모든 앱.',
@@ -59,6 +55,6 @@ return [
         'claude_code' => '아래 설정을 Claude Code MCP 설정에 붙여넣으세요.',
         'claude_code_name' => 'Claude Code',
         'other' => 'mcpServers 설정을 읽는 모든 클라이언트에서 동작합니다.',
-        'other_name' => '기타',
-    ],
+        'other_name' => '기타'
+    ]
 ];

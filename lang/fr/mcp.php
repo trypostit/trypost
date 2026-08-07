@@ -41,11 +41,7 @@ return [
         'select_workspace' => 'Select a workspace',
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
-        'scope_mcp_use' => 'Use MCP server',
-        'error_page_title' => 'Échec de l\'autorisation - TryPost',
-        'error_title' => 'Impossible de se connecter',
-        'error_body' => 'Cette demande d\'autorisation est invalide ou a expiré. Fermez cette fenêtre et réessayez depuis votre client MCP.',
-        'error_code' => 'Erreur : :error',
+        'scope_mcp_use' => 'Use MCP server',autorisation - TryPost',autorisation est invalide ou a expiré. Fermez cette fenêtre et réessayez depuis votre client MCP.'
     ],
     'other_clients_title' => 'Autres apps',
     'other_clients_description' => 'Cursor, VS Code, Claude Code et toute app qui parle MCP.',
@@ -59,6 +55,6 @@ return [
         'claude_code' => 'Collez la configuration ci-dessous dans les paramètres MCP de Claude Code.',
         'claude_code_name' => 'Claude Code',
         'other' => 'Fonctionne avec tout client qui lit une config mcpServers.',
-        'other_name' => 'Autres',
-    ],
+        'other_name' => 'Autres'
+    ]
 ];

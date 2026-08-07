@@ -42,10 +42,6 @@ return [
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
-        'error_page_title' => 'فشل التفويض - TryPost',
-        'error_title' => 'تعذر الاتصال',
-        'error_body' => 'طلب التفويض هذا غير صالح أو منتهٍ. أغلق هذه النافذة وحاول الاتصال مرة أخرى من عميل MCP.',
-        'error_code' => 'خطأ: :error',
     ],
     'other_clients_title' => 'تطبيقات أخرى',
     'other_clients_description' => 'Cursor وVS Code وClaude Code وأي تطبيق يدعم MCP.',
@@ -59,6 +55,6 @@ return [
         'claude_code' => 'الصق الإعداد أدناه في إعدادات MCP في Claude Code.',
         'claude_code_name' => 'Claude Code',
         'other' => 'يعمل مع أي عميل يقرأ إعداد mcpServers.',
-        'other_name' => 'أخرى',
-    ],
+        'other_name' => 'أخرى'
+    ]
 ];

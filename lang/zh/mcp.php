@@ -42,10 +42,6 @@ return [
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
-        'error_page_title' => '授权失败 - TryPost',
-        'error_title' => '无法连接',
-        'error_body' => '此授权请求无效或已过期。请关闭此窗口，然后从 MCP 客户端重新连接。',
-        'error_code' => '错误：:error',
     ],
     'other_clients_title' => '其他应用',
     'other_clients_description' => 'Cursor、VS Code、Claude Code 以及任何支持 MCP 的应用。',
@@ -59,6 +55,6 @@ return [
         'claude_code' => '将下方配置粘贴到 Claude Code 的 MCP 设置中。',
         'claude_code_name' => 'Claude Code',
         'other' => '适用于任何读取 mcpServers 配置的客户端。',
-        'other_name' => '其他',
-    ],
+        'other_name' => '其他'
+    ]
 ];

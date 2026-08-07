@@ -42,10 +42,6 @@ return [
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
-        'error_page_title' => 'Autorizzazione non riuscita - TryPost',
-        'error_title' => 'Impossibile connettersi',
-        'error_body' => 'Questa richiesta di autorizzazione non è valida o è scaduta. Chiudi questa finestra e riprova dal tuo client MCP.',
-        'error_code' => 'Errore: :error',
     ],
     'other_clients_title' => 'Altre app',
     'other_clients_description' => 'Cursor, VS Code, Claude Code e qualsiasi app che parla MCP.',
@@ -59,6 +55,6 @@ return [
         'claude_code' => 'Incolla la config qui sotto nelle impostazioni MCP di Claude Code.',
         'claude_code_name' => 'Claude Code',
         'other' => 'Funziona con qualsiasi client che legge una config mcpServers.',
-        'other_name' => 'Altri',
-    ],
+        'other_name' => 'Altri'
+    ]
 ];

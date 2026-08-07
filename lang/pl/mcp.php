@@ -42,10 +42,6 @@ return [
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
-        'error_page_title' => 'Autoryzacja nie powiodła się - TryPost',
-        'error_title' => 'Nie udało się połączyć',
-        'error_body' => 'To żądanie autoryzacji jest nieprawidłowe lub wygasło. Zamknij to okno i spróbuj ponownie połączyć się z poziomu klienta MCP.',
-        'error_code' => 'Błąd: :error',
     ],
     'other_clients_title' => 'Inne aplikacje',
     'other_clients_description' => 'Cursor, VS Code, Claude Code i wszystko, co mówi MCP.',
@@ -59,6 +55,6 @@ return [
         'claude_code' => 'Wklej poniższą konfigurację w ustawieniach MCP Claude Code.',
         'claude_code_name' => 'Claude Code',
         'other' => 'Działa z każdym klientem, który czyta config mcpServers.',
-        'other_name' => 'Inne',
-    ],
+        'other_name' => 'Inne'
+    ]
 ];

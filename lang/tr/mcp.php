@@ -42,10 +42,6 @@ return [
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
-        'error_page_title' => 'Yetkilendirme başarısız - TryPost',
-        'error_title' => 'Bağlantı kurulamadı',
-        'error_body' => 'Bu yetkilendirme isteği geçersiz veya süresi dolmuş. Bu pencereyi kapatın ve MCP istemcinizden yeniden bağlanmayı deneyin.',
-        'error_code' => 'Hata: :error',
     ],
     'other_clients_title' => 'Diğer uygulamalar',
     'other_clients_description' => 'Cursor, VS Code, Claude Code ve MCP konuşan diğer her şey.',
@@ -59,6 +55,6 @@ return [
         'claude_code' => 'Aşağıdaki yapılandırmayı Claude Code\'un MCP ayarlarına yapıştırın.',
         'claude_code_name' => 'Claude Code',
         'other' => 'mcpServers config okuyan her istemciyle çalışır.',
-        'other_name' => 'Diğer',
-    ],
+        'other_name' => 'Diğer'
+    ]
 ];
