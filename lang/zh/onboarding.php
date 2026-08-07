@@ -5,7 +5,6 @@ declare(strict_types=1);
 return [
     'title' => '开始使用',
     'welcome' => '欢迎使用 TryPost，:name',
-    'welcome_anonymous' => '欢迎使用 TryPost',
     'description' => '按下面的步骤了解 TryPost 的用法，并发布你的第一条内容。',
     'skip_step' => '跳过此步骤',
     'continue' => '继续前往 TryPost',

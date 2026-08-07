@@ -41,7 +41,7 @@ const props = defineProps<{
 }>();
 
 const page = usePage();
-const firstName = computed(() => page.props.auth.user?.first_name ?? '');
+const firstName = computed(() => page.props.auth.user.first_name);
 const skipMcpForm = useForm({});
 const completeForm = useForm({});
 const reloadOnly = ['status', 'accounts', 'onboardingProgress'];
@@ -94,12 +94,7 @@ const isStepSkipped = (step: string): boolean =>
                     class="text-xl font-bold text-foreground sm:text-2xl"
                     data-testid="onboarding-welcome"
                 >
-                    <template v-if="firstName">
-                        {{ $t('onboarding.welcome', { name: firstName }) }}
-                    </template>
-                    <template v-else>
-                        {{ $t('onboarding.welcome_anonymous') }}
-                    </template>
+                    {{ $t('onboarding.welcome', { name: firstName }) }}
                 </h1>
                 <p class="text-sm text-muted-foreground sm:text-base">
                     {{ $t('onboarding.description') }}

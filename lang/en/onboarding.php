@@ -5,7 +5,6 @@ declare(strict_types=1);
 return [
     'title' => 'Getting started',
     'welcome' => 'Welcome to TryPost, :name',
-    'welcome_anonymous' => 'Welcome to TryPost',
     'description' => 'Follow the steps below to see how TryPost works and publish your first post.',
     'skip_step' => 'Skip this step',
     'continue' => 'Continue to TryPost',

@@ -5,7 +5,6 @@ declare(strict_types=1);
 return [
     'title' => '시작하기',
     'welcome' => 'TryPost에 오신 걸 환영해요, :name',
-    'welcome_anonymous' => 'TryPost에 오신 걸 환영해요',
     'description' => '아래 단계를 따라 TryPost 사용법을 확인하고 첫 게시물을 발행하세요.',
     'skip_step' => '이 단계 건너뛰기',
     'continue' => 'TryPost로 계속',

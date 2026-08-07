@@ -5,7 +5,6 @@ declare(strict_types=1);
 return [
     'title' => 'Primeiros passos',
     'welcome' => 'Boas-vindas ao TryPost, :name',
-    'welcome_anonymous' => 'Boas-vindas ao TryPost',
     'description' => 'Siga os passos abaixo pra ver como o TryPost funciona e publicar seu primeiro post.',
     'skip_step' => 'Pular esta etapa',
     'continue' => 'Continuar no TryPost',

@@ -106,7 +106,7 @@ const handleLogout = (): void => {
         class="px-2 py-1.5 text-xs font-medium tracking-normal text-muted-foreground normal-case"
         data-testid="sidebar-menu-greeting"
     >
-        {{ user.first_name || user.name }}
+        {{ user.first_name }}
     </DropdownMenuLabel>
 
     <DropdownMenuGroup>

@@ -5,7 +5,6 @@ declare(strict_types=1);
 return [
     'title' => 'はじめに',
     'welcome' => 'TryPostへようこそ、:nameさん',
-    'welcome_anonymous' => 'TryPostへようこそ',
     'description' => '以下のステップでTryPostの使い方を確認し、最初の投稿を公開しましょう。',
     'skip_step' => 'このステップをスキップ',
     'continue' => 'TryPostへ進む',
