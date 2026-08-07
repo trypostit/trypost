@@ -62,6 +62,11 @@ export interface NavItem {
     badge?: string;
 }
 
+export interface OnboardingResidual {
+    completed: number;
+    total: number;
+}
+
 export interface ContentTypeMediaRule {
     max_files: number;
     min_files: number | null;
@@ -84,6 +89,7 @@ export interface SharedData {
     name: string;
     auth: Auth;
     flash: FlashData;
+    onboardingResidual: OnboardingResidual | false;
     sidebarOpen: boolean;
     selfHosted: boolean;
     contentTypeMediaRules?: Record<string, ContentTypeMediaRule>;

@@ -42,6 +42,9 @@ class Account extends Model
 
     protected $casts = [
         'trial_ends_at' => 'datetime',
+        'onboarding_completed_at' => 'datetime',
+        'onboarding_dismissed_at' => 'datetime',
+        'onboarding_skipped_steps' => 'array',
     ];
 
     public function owner(): BelongsTo
@@ -92,6 +95,12 @@ class Account extends Model
 
         return $this->subscribed(self::SUBSCRIPTION_NAME)
             || (! $requiresCardForTrial && $this->isOnTrial());
+    }
+
+    public function hasFinishedOnboarding(): bool
+    {
+        return $this->onboarding_completed_at !== null
+            || $this->onboarding_dismissed_at !== null;
     }
 
     /**
