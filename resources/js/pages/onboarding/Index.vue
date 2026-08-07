@@ -35,7 +35,6 @@ const props = defineProps<{
     canManageAccounts: boolean;
     canCreatePost: boolean;
     mcpUrl: string;
-    samplePrompt: string;
     platforms: AvailablePlatform[];
     accounts: ConnectedAccount[];
 }>();
@@ -181,7 +180,7 @@ const isStepSkipped = (step: string): boolean =>
                         <p
                             class="mt-3 text-sm leading-7 text-foreground sm:text-base"
                         >
-                            {{ samplePrompt }}
+                            {{ $t('onboarding.first_post.sample_prompt') }}
                         </p>
                     </div>
 
@@ -193,7 +192,7 @@ const isStepSkipped = (step: string): boolean =>
                             data-testid="copy-sample-prompt"
                             @click="
                                 copyToClipboard(
-                                    samplePrompt,
+                                    $t('onboarding.first_post.sample_prompt'),
                                     $t('onboarding.first_post.copied'),
                                 )
                             "

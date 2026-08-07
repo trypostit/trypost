@@ -55,7 +55,6 @@ class OnboardingController extends Controller
             'canManageAccounts' => fn (): bool => $user->can('manageAccounts', $workspace),
             'canCreatePost' => fn (): bool => $user->can('createPost', $workspace),
             'mcpUrl' => fn (): string => route('mcp.trypost'),
-            'samplePrompt' => fn (): string => __('onboarding.first_post.sample_prompt'),
             'platforms' => fn (): array => SocialPlatform::connectableOptions(),
             'accounts' => fn (): array => SocialAccountResource::collection(
                 $workspace->socialAccounts()->orderBy('id')->get(),

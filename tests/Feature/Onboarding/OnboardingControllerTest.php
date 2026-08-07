@@ -58,7 +58,7 @@ test('onboarding renders activation status and connection props', function () {
             ->where('canManageAccounts', true)
             ->where('canCreatePost', true)
             ->missing('mcpClients')
-            ->where('samplePrompt', __('onboarding.first_post.sample_prompt'))
+            ->missing('samplePrompt')
             ->has('platforms', collect(Platform::cases())->filter->isConnectable()->count())
             ->where('accounts.0.id', $socialAccount->id)
             ->where('auth.user.first_name', $this->user->firstName())
