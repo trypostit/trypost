@@ -7,36 +7,27 @@ return [
     'select_workspace' => 'Workspace selecteren',
     'create_workspace' => 'Workspace aanmaken',
     'create_post' => 'Post aanmaken',
-    'profile' => 'Profiel',
     'my_account' => 'Mijn account',
     'account_settings' => 'Account en facturatie',
     'workspace_settings' => 'Workspace-instellingen',
     'log_out' => 'Uitloggen',
-
-    'workspace' => 'Workspace: :name',
-    'workspace_select' => 'Workspace: Selecteren',
-
-    'theme' => 'Thema: :name',
-    'theme_light' => 'Licht',
-    'theme_dark' => 'Donker',
-    'theme_system' => 'Systeem',
-
+    'workspace' => [
+        'connections' => 'Koppelingen',
+        'signatures' => 'Handtekeningen',
+        'labels' => 'Labels',
+        'assets' => 'Assets',
+        'mcp' => 'MCP',
+    ],
     'language' => 'Taal: :name',
-    'language_select' => 'Taal: Selecteren',
-
     'groups' => [
         'posts' => 'Posts',
         'workspace' => 'Workspace',
         'others' => 'Overige',
     ],
-
     'analytics' => 'Statistieken',
     'automations' => 'Automatiseringen',
-    'settings' => 'Instellingen',
-
     'onboarding' => 'Aan de slag',
     'onboarding_hint' => 'Setup afronden',
-
     'posts' => [
         'calendar' => 'Kalender',
         'all' => 'Alle',
@@ -44,22 +35,11 @@ return [
         'posted' => 'Geplaatst',
         'drafts' => 'Concepten',
     ],
-
-    'workspace' => [
-        'connections' => 'Koppelingen',
-        'signatures' => 'Handtekeningen',
-        'labels' => 'Labels',
-        'assets' => 'Assets',
-        'mcp' => 'MCP',
-        'api_keys' => 'API-sleutels',
-    ],
-
     'notifications' => 'Meldingen',
     'mark_all_read' => 'Alles als gelezen markeren',
     'mark_as_read' => 'Als gelezen markeren',
     'archive_all' => 'Alles archiveren',
     'no_notifications' => 'Geen meldingen',
-
     'support' => [
         'docs' => 'Documentatie',
         'referral' => 'Verdien 30% referral',

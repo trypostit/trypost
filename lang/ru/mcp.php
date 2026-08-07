@@ -27,10 +27,8 @@ return [
     'documentation_description' => 'Гайды по клиентам, доступные tools и решение проблем.',
     'view_docs' => 'Открыть документацию',
     'connector_name' => 'TryPost',
-
     'authorize' => [
         'page_title' => 'Authorize Application - TryPost',
-        'app_title' => 'Authorize MCP',
         'heading' => 'Authorize :client',
         'intro' => 'This application will be able to:',
         'intro_capability' => 'Use available MCP functionality.',
@@ -40,16 +38,13 @@ return [
         'permissions' => 'Permissions:',
         'cancel' => 'Cancel',
         'approve' => 'Authorize',
-        'approving' => 'Authorizing...',
         'select_workspace' => 'Select a workspace',
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
     ],
-
     'other_clients_title' => 'Другие приложения',
     'other_clients_description' => 'Cursor, VS Code, Claude Code и всё, что говорит на MCP.',
-
     'clients' => [
         'claude' => 'Откройте Settings → Connectors, добавьте свой connector и вставьте URL выше.',
         'chatgpt' => 'Откройте Settings → Apps & Connectors, создайте свой connector и вставьте URL выше.',

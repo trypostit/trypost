@@ -7,36 +7,27 @@ return [
     'select_workspace' => 'Wybierz przestrzeń roboczą',
     'create_workspace' => 'Utwórz przestrzeń roboczą',
     'create_post' => 'Utwórz post',
-    'profile' => 'Profil',
     'my_account' => 'Moje konto',
     'account_settings' => 'Konto i płatności',
     'workspace_settings' => 'Ustawienia workspace',
     'log_out' => 'Wyloguj się',
-
-    'workspace' => 'Przestrzeń robocza: :name',
-    'workspace_select' => 'Przestrzeń robocza: Wybierz',
-
-    'theme' => 'Motyw: :name',
-    'theme_light' => 'Jasny',
-    'theme_dark' => 'Ciemny',
-    'theme_system' => 'Systemowy',
-
+    'workspace' => [
+        'connections' => 'Połączenia',
+        'signatures' => 'Sygnatury',
+        'labels' => 'Etykiety',
+        'assets' => 'Zasoby',
+        'mcp' => 'MCP',
+    ],
     'language' => 'Język: :name',
-    'language_select' => 'Język: Wybierz',
-
     'groups' => [
         'posts' => 'Posty',
         'workspace' => 'Przestrzeń robocza',
         'others' => 'Inne',
     ],
-
     'analytics' => 'Analityka',
     'automations' => 'Automatyzacje',
-    'settings' => 'Ustawienia',
-
     'onboarding' => 'Pierwsze kroki',
     'onboarding_hint' => 'Dokończ konfigurację',
-
     'posts' => [
         'calendar' => 'Kalendarz',
         'all' => 'Wszystkie',
@@ -44,22 +35,11 @@ return [
         'posted' => 'Opublikowane',
         'drafts' => 'Szkice',
     ],
-
-    'workspace' => [
-        'connections' => 'Połączenia',
-        'signatures' => 'Sygnatury',
-        'labels' => 'Etykiety',
-        'assets' => 'Zasoby',
-        'mcp' => 'MCP',
-        'api_keys' => 'Klucze API',
-    ],
-
     'notifications' => 'Powiadomienia',
     'mark_all_read' => 'Oznacz wszystkie jako przeczytane',
     'mark_as_read' => 'Oznacz jako przeczytane',
     'archive_all' => 'Zarchiwizuj wszystkie',
     'no_notifications' => 'Brak powiadomień',
-
     'support' => [
         'docs' => 'Dokumentacja',
         'referral' => 'Zarabiaj 30% z poleceń',

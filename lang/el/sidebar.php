@@ -7,36 +7,27 @@ return [
     'select_workspace' => 'Επιλογή workspace',
     'create_workspace' => 'Δημιουργία workspace',
     'create_post' => 'Δημιουργία δημοσίευσης',
-    'profile' => 'Προφίλ',
     'my_account' => 'Ο λογαριασμός μου',
     'account_settings' => 'Λογαριασμός και χρέωση',
     'workspace_settings' => 'Ρυθμίσεις workspace',
     'log_out' => 'Αποσύνδεση',
-
-    'workspace' => 'Workspace: :name',
-    'workspace_select' => 'Workspace: Επιλογή',
-
-    'theme' => 'Θέμα: :name',
-    'theme_light' => 'Φωτεινό',
-    'theme_dark' => 'Σκοτεινό',
-    'theme_system' => 'Συστήματος',
-
+    'workspace' => [
+        'connections' => 'Συνδέσεις',
+        'signatures' => 'Υπογραφές',
+        'labels' => 'Ετικέτες',
+        'assets' => 'Στοιχεία',
+        'mcp' => 'MCP',
+    ],
     'language' => 'Γλώσσα: :name',
-    'language_select' => 'Γλώσσα: Επιλογή',
-
     'groups' => [
         'posts' => 'Δημοσιεύσεις',
         'workspace' => 'Workspace',
         'others' => 'Άλλα',
     ],
-
     'analytics' => 'Στατιστικά',
     'automations' => 'Αυτοματισμοί',
-    'settings' => 'Ρυθμίσεις',
-
     'onboarding' => 'Ξεκινώντας',
     'onboarding_hint' => 'Ολοκλήρωση ρύθμισης',
-
     'posts' => [
         'calendar' => 'Ημερολόγιο',
         'all' => 'Όλες',
@@ -44,22 +35,11 @@ return [
         'posted' => 'Δημοσιευμένες',
         'drafts' => 'Πρόχειρα',
     ],
-
-    'workspace' => [
-        'connections' => 'Συνδέσεις',
-        'signatures' => 'Υπογραφές',
-        'labels' => 'Ετικέτες',
-        'assets' => 'Στοιχεία',
-        'mcp' => 'MCP',
-        'api_keys' => 'Κλειδιά API',
-    ],
-
     'notifications' => 'Ειδοποιήσεις',
     'mark_all_read' => 'Επισήμανση όλων ως αναγνωσμένων',
     'mark_as_read' => 'Επισήμανση ως αναγνωσμένου',
     'archive_all' => 'Αρχειοθέτηση όλων',
     'no_notifications' => 'Δεν υπάρχουν ειδοποιήσεις',
-
     'support' => [
         'docs' => 'Τεκμηρίωση',
         'referral' => 'Κερδίστε 30% από συστάσεις',

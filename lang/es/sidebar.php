@@ -7,36 +7,27 @@ return [
     'select_workspace' => 'Seleccionar workspace',
     'create_workspace' => 'Crear workspace',
     'create_post' => 'Crear post',
-    'profile' => 'Perfil',
     'my_account' => 'Mi cuenta',
     'account_settings' => 'Cuenta y facturación',
     'workspace_settings' => 'Configuración del workspace',
     'log_out' => 'Cerrar sesión',
-
-    'workspace' => 'Workspace: :name',
-    'workspace_select' => 'Workspace: Seleccionar',
-
-    'theme' => 'Tema: :name',
-    'theme_light' => 'Claro',
-    'theme_dark' => 'Oscuro',
-    'theme_system' => 'Sistema',
-
+    'workspace' => [
+        'connections' => 'Conexiones',
+        'signatures' => 'Firmas',
+        'labels' => 'Etiquetas',
+        'assets' => 'Medios',
+        'mcp' => 'MCP',
+    ],
     'language' => 'Idioma: :name',
-    'language_select' => 'Idioma: Seleccionar',
-
     'groups' => [
         'posts' => 'Posts',
         'workspace' => 'Workspace',
         'others' => 'Otros',
     ],
-
     'analytics' => 'Analytics',
     'automations' => 'Automatizaciones',
-    'settings' => 'Configuración',
-
     'onboarding' => 'Primeros pasos',
     'onboarding_hint' => 'Termina la configuración',
-
     'posts' => [
         'calendar' => 'Calendario',
         'all' => 'Todos',
@@ -44,22 +35,11 @@ return [
         'posted' => 'Publicados',
         'drafts' => 'Borradores',
     ],
-
-    'workspace' => [
-        'connections' => 'Conexiones',
-        'signatures' => 'Firmas',
-        'labels' => 'Etiquetas',
-        'assets' => 'Medios',
-        'mcp' => 'MCP',
-        'api_keys' => 'API Keys',
-    ],
-
     'notifications' => 'Notificaciones',
     'mark_all_read' => 'Marcar todo como leído',
     'mark_as_read' => 'Marcar como leído',
     'archive_all' => 'Archivar todo',
     'no_notifications' => 'Sin notificaciones',
-
     'support' => [
         'docs' => 'Documentación',
         'referral' => 'Gana 30% de comisión',

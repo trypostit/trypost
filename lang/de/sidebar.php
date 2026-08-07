@@ -7,36 +7,27 @@ return [
     'select_workspace' => 'Workspace auswählen',
     'create_workspace' => 'Workspace erstellen',
     'create_post' => 'Beitrag erstellen',
-    'profile' => 'Profil',
     'my_account' => 'Mein Konto',
     'account_settings' => 'Konto & Abrechnung',
     'workspace_settings' => 'Workspace-Einstellungen',
     'log_out' => 'Abmelden',
-
-    'workspace' => 'Workspace: :name',
-    'workspace_select' => 'Workspace: Auswählen',
-
-    'theme' => 'Design: :name',
-    'theme_light' => 'Hell',
-    'theme_dark' => 'Dunkel',
-    'theme_system' => 'System',
-
+    'workspace' => [
+        'connections' => 'Verbindungen',
+        'signatures' => 'Signaturen',
+        'labels' => 'Labels',
+        'assets' => 'Assets',
+        'mcp' => 'MCP',
+    ],
     'language' => 'Sprache: :name',
-    'language_select' => 'Sprache: Auswählen',
-
     'groups' => [
         'posts' => 'Beiträge',
         'workspace' => 'Workspace',
         'others' => 'Sonstiges',
     ],
-
     'analytics' => 'Analytics',
     'automations' => 'Automatisierungen',
-    'settings' => 'Einstellungen',
-
     'onboarding' => 'Erste Schritte',
     'onboarding_hint' => 'Einrichtung abschließen',
-
     'posts' => [
         'calendar' => 'Kalender',
         'all' => 'Alle',
@@ -44,22 +35,11 @@ return [
         'posted' => 'Veröffentlicht',
         'drafts' => 'Entwürfe',
     ],
-
-    'workspace' => [
-        'connections' => 'Verbindungen',
-        'signatures' => 'Signaturen',
-        'labels' => 'Labels',
-        'assets' => 'Assets',
-        'mcp' => 'MCP',
-        'api_keys' => 'API-Keys',
-    ],
-
     'notifications' => 'Benachrichtigungen',
     'mark_all_read' => 'Alle als gelesen markieren',
     'mark_as_read' => 'Als gelesen markieren',
     'archive_all' => 'Alle archivieren',
     'no_notifications' => 'Keine Benachrichtigungen',
-
     'support' => [
         'docs' => 'Dokumentation',
         'referral' => '30% Provision verdienen',

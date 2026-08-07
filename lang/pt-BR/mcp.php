@@ -27,10 +27,8 @@ return [
     'documentation_description' => 'Guias por cliente, tools disponíveis e solução de problemas.',
     'view_docs' => 'Ver documentação',
     'connector_name' => 'TryPost',
-
     'authorize' => [
         'page_title' => 'Autorizar aplicativo - TryPost',
-        'app_title' => 'Autorizar MCP',
         'heading' => 'Autorizar :client',
         'intro' => 'Este aplicativo poderá:',
         'intro_capability' => 'Usar as funcionalidades MCP disponíveis.',
@@ -40,16 +38,13 @@ return [
         'permissions' => 'Permissões:',
         'cancel' => 'Cancelar',
         'approve' => 'Autorizar',
-        'approving' => 'Autorizando...',
         'select_workspace' => 'Selecione um workspace',
         'search_workspace' => 'Buscar workspaces...',
         'no_workspace_found' => 'Nenhum workspace encontrado',
         'scope_mcp_use' => 'Usar o servidor MCP',
     ],
-
     'other_clients_title' => 'Outros apps',
     'other_clients_description' => 'Cursor, VS Code, Claude Code e qualquer app que fale MCP.',
-
     'clients' => [
         'claude' => 'Abra Settings → Connectors, adicione um connector customizado e cole a URL acima.',
         'chatgpt' => 'Abra Settings → Apps & Connectors, crie um connector customizado e cole a URL acima.',
