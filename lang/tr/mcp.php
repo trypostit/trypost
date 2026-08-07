@@ -27,8 +27,10 @@ return [
     'documentation_description' => 'İstemci kurulum rehberleri, kullanılabilir tools ve sorun giderme.',
     'view_docs' => 'Dokümantasyonu görüntüle',
     'connector_name' => 'TryPost',
+
     'authorize' => [
         'page_title' => 'Authorize Application - TryPost',
+        'app_title' => 'Authorize MCP',
         'heading' => 'Authorize :client',
         'intro' => 'This application will be able to:',
         'intro_capability' => 'Use available MCP functionality.',
@@ -38,13 +40,20 @@ return [
         'permissions' => 'Permissions:',
         'cancel' => 'Cancel',
         'approve' => 'Authorize',
+        'approving' => 'Authorizing...',
         'select_workspace' => 'Select a workspace',
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
+        'error_page_title' => 'Yetkilendirme başarısız - TryPost',
+        'error_title' => 'Bağlantı kurulamadı',
+        'error_body' => 'Bu yetkilendirme isteği geçersiz veya süresi dolmuş. Bu pencereyi kapatın ve MCP istemcinizden yeniden bağlanmayı deneyin.',
+        'error_code' => 'Hata: :error',
     ],
+
     'other_clients_title' => 'Diğer uygulamalar',
     'other_clients_description' => 'Cursor, VS Code, Claude Code ve MCP konuşan diğer her şey.',
+
     'clients' => [
         'claude' => 'Settings → Connectors’ı aç, özel bir connector ekle ve yukarıdaki URL’yi yapıştır.',
         'chatgpt' => 'Settings → Apps & Connectors’ı aç, özel bir connector oluştur ve yukarıdaki URL’yi yapıştır.',
@@ -55,6 +64,6 @@ return [
         'claude_code' => 'Aşağıdaki yapılandırmayı Claude Code\'un MCP ayarlarına yapıştırın.',
         'claude_code_name' => 'Claude Code',
         'other' => 'mcpServers config okuyan her istemciyle çalışır.',
-        'other_name' => 'Diğer'
-    ]
+        'other_name' => 'Diğer',
+    ],
 ];

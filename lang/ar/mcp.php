@@ -27,8 +27,10 @@ return [
     'documentation_description' => 'أدلة الإعداد لكل عميل، والأدوات المتاحة، وحل المشكلات.',
     'view_docs' => 'عرض التوثيق',
     'connector_name' => 'TryPost',
+
     'authorize' => [
         'page_title' => 'Authorize Application - TryPost',
+        'app_title' => 'Authorize MCP',
         'heading' => 'Authorize :client',
         'intro' => 'This application will be able to:',
         'intro_capability' => 'Use available MCP functionality.',
@@ -38,13 +40,20 @@ return [
         'permissions' => 'Permissions:',
         'cancel' => 'Cancel',
         'approve' => 'Authorize',
+        'approving' => 'Authorizing...',
         'select_workspace' => 'Select a workspace',
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
+        'error_page_title' => 'فشل التفويض - TryPost',
+        'error_title' => 'تعذر الاتصال',
+        'error_body' => 'طلب التفويض هذا غير صالح أو منتهٍ. أغلق هذه النافذة وحاول الاتصال مرة أخرى من عميل MCP.',
+        'error_code' => 'خطأ: :error',
     ],
+
     'other_clients_title' => 'تطبيقات أخرى',
     'other_clients_description' => 'Cursor وVS Code وClaude Code وأي تطبيق يدعم MCP.',
+
     'clients' => [
         'claude' => 'افتح Settings → Connectors، أضِف موصلًا مخصصًا، ثم الصق الرابط أعلاه.',
         'chatgpt' => 'افتح Settings → Apps & Connectors، أنشئ موصلًا مخصصًا، ثم الصق الرابط أعلاه.',
@@ -55,6 +64,6 @@ return [
         'claude_code' => 'الصق الإعداد أدناه في إعدادات MCP في Claude Code.',
         'claude_code_name' => 'Claude Code',
         'other' => 'يعمل مع أي عميل يقرأ إعداد mcpServers.',
-        'other_name' => 'أخرى'
-    ]
+        'other_name' => 'أخرى',
+    ],
 ];

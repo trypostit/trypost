@@ -27,8 +27,10 @@ return [
     'documentation_description' => 'Handleidingen per client, beschikbare tools en probleemoplossing.',
     'view_docs' => 'Documentatie bekijken',
     'connector_name' => 'TryPost',
+
     'authorize' => [
         'page_title' => 'Authorize Application - TryPost',
+        'app_title' => 'Authorize MCP',
         'heading' => 'Authorize :client',
         'intro' => 'This application will be able to:',
         'intro_capability' => 'Use available MCP functionality.',
@@ -38,13 +40,20 @@ return [
         'permissions' => 'Permissions:',
         'cancel' => 'Cancel',
         'approve' => 'Authorize',
+        'approving' => 'Authorizing...',
         'select_workspace' => 'Select a workspace',
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
+        'error_page_title' => 'Autorisatie mislukt - TryPost',
+        'error_title' => 'Verbinden mislukt',
+        'error_body' => 'Dit autorisatieverzoek is ongeldig of verlopen. Sluit dit venster en probeer opnieuw te verbinden via je MCP-client.',
+        'error_code' => 'Fout: :error',
     ],
+
     'other_clients_title' => 'Andere apps',
     'other_clients_description' => 'Cursor, VS Code, Claude Code en alles wat MCP spreekt.',
+
     'clients' => [
         'claude' => 'Open Settings → Connectors, voeg een aangepaste connector toe en plak de URL hierboven.',
         'chatgpt' => 'Open Settings → Apps & Connectors, maak een aangepaste connector aan en plak de URL hierboven.',
@@ -55,6 +64,6 @@ return [
         'claude_code' => 'Plak de config hieronder in de MCP-instellingen van Claude Code.',
         'claude_code_name' => 'Claude Code',
         'other' => 'Werkt met elke client die een mcpServers-config leest.',
-        'other_name' => 'Overig'
-    ]
+        'other_name' => 'Overig',
+    ],
 ];

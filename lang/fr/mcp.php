@@ -27,8 +27,10 @@ return [
     'documentation_description' => 'Guides par client, tools disponibles et dépannage.',
     'view_docs' => 'Voir la documentation',
     'connector_name' => 'TryPost',
+
     'authorize' => [
         'page_title' => 'Authorize Application - TryPost',
+        'app_title' => 'Authorize MCP',
         'heading' => 'Authorize :client',
         'intro' => 'This application will be able to:',
         'intro_capability' => 'Use available MCP functionality.',
@@ -38,6 +40,7 @@ return [
         'permissions' => 'Permissions:',
         'cancel' => 'Cancel',
         'approve' => 'Authorize',
+        'approving' => 'Authorizing...',
         'select_workspace' => 'Select a workspace',
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
@@ -47,8 +50,10 @@ return [
         'error_body' => 'Cette demande d\'autorisation est invalide ou a expiré. Fermez cette fenêtre et réessayez depuis votre client MCP.',
         'error_code' => 'Erreur : :error',
     ],
+
     'other_clients_title' => 'Autres apps',
     'other_clients_description' => 'Cursor, VS Code, Claude Code et toute app qui parle MCP.',
+
     'clients' => [
         'claude' => 'Ouvrez Settings → Connectors, ajoutez un connecteur personnalisé, puis collez l’URL ci-dessus.',
         'chatgpt' => 'Ouvrez Settings → Apps & Connectors, créez un connecteur personnalisé, puis collez l’URL ci-dessus.',

@@ -27,8 +27,10 @@ return [
     'documentation_description' => '各客户端设置指南、可用工具和问题排查。',
     'view_docs' => '查看文档',
     'connector_name' => 'TryPost',
+
     'authorize' => [
         'page_title' => 'Authorize Application - TryPost',
+        'app_title' => 'Authorize MCP',
         'heading' => 'Authorize :client',
         'intro' => 'This application will be able to:',
         'intro_capability' => 'Use available MCP functionality.',
@@ -38,13 +40,20 @@ return [
         'permissions' => 'Permissions:',
         'cancel' => 'Cancel',
         'approve' => 'Authorize',
+        'approving' => 'Authorizing...',
         'select_workspace' => 'Select a workspace',
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
+        'error_page_title' => '授权失败 - TryPost',
+        'error_title' => '无法连接',
+        'error_body' => '此授权请求无效或已过期。请关闭此窗口，然后从 MCP 客户端重新连接。',
+        'error_code' => '错误：:error',
     ],
+
     'other_clients_title' => '其他应用',
     'other_clients_description' => 'Cursor、VS Code、Claude Code 以及任何支持 MCP 的应用。',
+
     'clients' => [
         'claude' => '打开 Settings → Connectors，添加自定义连接器，然后粘贴上方 URL。',
         'chatgpt' => '打开 Settings → Apps & Connectors，创建自定义连接器，然后粘贴上方 URL。',
@@ -55,6 +64,6 @@ return [
         'claude_code' => '将下方配置粘贴到 Claude Code 的 MCP 设置中。',
         'claude_code_name' => 'Claude Code',
         'other' => '适用于任何读取 mcpServers 配置的客户端。',
-        'other_name' => '其他'
-    ]
+        'other_name' => '其他',
+    ],
 ];

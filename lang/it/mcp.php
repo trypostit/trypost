@@ -27,8 +27,10 @@ return [
     'documentation_description' => 'Guide per client, tools disponibili e risoluzione problemi.',
     'view_docs' => 'Vedi documentazione',
     'connector_name' => 'TryPost',
+
     'authorize' => [
         'page_title' => 'Authorize Application - TryPost',
+        'app_title' => 'Authorize MCP',
         'heading' => 'Authorize :client',
         'intro' => 'This application will be able to:',
         'intro_capability' => 'Use available MCP functionality.',
@@ -38,13 +40,20 @@ return [
         'permissions' => 'Permissions:',
         'cancel' => 'Cancel',
         'approve' => 'Authorize',
+        'approving' => 'Authorizing...',
         'select_workspace' => 'Select a workspace',
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
+        'error_page_title' => 'Autorizzazione non riuscita - TryPost',
+        'error_title' => 'Impossibile connettersi',
+        'error_body' => 'Questa richiesta di autorizzazione non è valida o è scaduta. Chiudi questa finestra e riprova dal tuo client MCP.',
+        'error_code' => 'Errore: :error',
     ],
+
     'other_clients_title' => 'Altre app',
     'other_clients_description' => 'Cursor, VS Code, Claude Code e qualsiasi app che parla MCP.',
+
     'clients' => [
         'claude' => 'Apri Settings → Connectors, aggiungi un connettore personalizzato e incolla l’URL qui sopra.',
         'chatgpt' => 'Apri Settings → Apps & Connectors, crea un connettore personalizzato e incolla l’URL qui sopra.',
@@ -55,6 +64,6 @@ return [
         'claude_code' => 'Incolla la config qui sotto nelle impostazioni MCP di Claude Code.',
         'claude_code_name' => 'Claude Code',
         'other' => 'Funziona con qualsiasi client che legge una config mcpServers.',
-        'other_name' => 'Altri'
-    ]
+        'other_name' => 'Altri',
+    ],
 ];

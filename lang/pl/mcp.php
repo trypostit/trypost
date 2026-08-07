@@ -27,8 +27,10 @@ return [
     'documentation_description' => 'Przewodniki per klient, dostępne tools i rozwiązywanie problemów.',
     'view_docs' => 'Zobacz dokumentację',
     'connector_name' => 'TryPost',
+
     'authorize' => [
         'page_title' => 'Authorize Application - TryPost',
+        'app_title' => 'Authorize MCP',
         'heading' => 'Authorize :client',
         'intro' => 'This application will be able to:',
         'intro_capability' => 'Use available MCP functionality.',
@@ -38,13 +40,20 @@ return [
         'permissions' => 'Permissions:',
         'cancel' => 'Cancel',
         'approve' => 'Authorize',
+        'approving' => 'Authorizing...',
         'select_workspace' => 'Select a workspace',
         'search_workspace' => 'Search workspaces...',
         'no_workspace_found' => 'No workspace found',
         'scope_mcp_use' => 'Use MCP server',
+        'error_page_title' => 'Autoryzacja nie powiodła się - TryPost',
+        'error_title' => 'Nie udało się połączyć',
+        'error_body' => 'To żądanie autoryzacji jest nieprawidłowe lub wygasło. Zamknij to okno i spróbuj ponownie połączyć się z poziomu klienta MCP.',
+        'error_code' => 'Błąd: :error',
     ],
+
     'other_clients_title' => 'Inne aplikacje',
     'other_clients_description' => 'Cursor, VS Code, Claude Code i wszystko, co mówi MCP.',
+
     'clients' => [
         'claude' => 'Otwórz Settings → Connectors, dodaj niestandardowy connector, a następnie wklej powyższy URL.',
         'chatgpt' => 'Otwórz Settings → Apps & Connectors, utwórz niestandardowy connector, a następnie wklej powyższy URL.',
@@ -55,6 +64,6 @@ return [
         'claude_code' => 'Wklej poniższą konfigurację w ustawieniach MCP Claude Code.',
         'claude_code_name' => 'Claude Code',
         'other' => 'Działa z każdym klientem, który czyta config mcpServers.',
-        'other_name' => 'Inne'
-    ]
+        'other_name' => 'Inne',
+    ],
 ];
