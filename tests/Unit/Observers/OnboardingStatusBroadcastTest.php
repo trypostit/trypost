@@ -269,6 +269,19 @@ test('oauth tokens bound to a workspace still broadcast onboarding status', func
     );
 });
 
+test('unbound oauth tokens do not broadcast onboarding status', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    mcpAccessToken($user, mcpOauthClient());
+
+    Event::assertNotDispatched(OnboardingStatusUpdated::class);
+});
+
 test('tokens without an oauth client do not broadcast', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([

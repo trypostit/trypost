@@ -17,15 +17,7 @@ return [
     'mcp' => [
         'title' => 'Подключите ИИ-ассистента',
         'description' => 'Добавьте TryPost как MCP-сервер, чтобы ассистент мог создавать и вести соцпосты за вас.',
-        'copy_step' => 'Скопируйте URL сервера TryPost',
-        'open_step' => 'Откройте ИИ-ассистента',
-        'copy' => 'Копировать URL',
         'copied' => 'URL MCP скопирован.',
-        'connect' => 'Подключить через :client',
-        'clients' => [
-            'claude' => 'Откройте Settings → Connectors, добавьте свой connector и вставьте URL выше.',
-            'chatgpt' => 'Откройте Settings → Apps & Connectors, создайте свой connector и вставьте URL выше.',
-        ],
     ],
     'social' => [
         'title' => 'Подключите соцсеть',

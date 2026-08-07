@@ -279,7 +279,7 @@ test('welcome steps redirect to calendar in self hosted mode', function (string 
 test('old onboarding icp routes are not registered', function (string $routeName) {
     expect(Route::has($routeName))->toBeFalse();
 })->with([
-    'root' => 'app.onboarding',
+    // `app.onboarding` is reused for the post-subscription activation checklist.
     'store' => 'app.onboarding.store',
     'goals' => 'app.onboarding.goals',
     'goals store' => 'app.onboarding.goals.store',

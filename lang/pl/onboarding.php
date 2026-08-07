@@ -17,15 +17,7 @@ return [
     'mcp' => [
         'title' => 'Połącz asystenta AI',
         'description' => 'Dodaj TryPost jako serwer MCP, aby asystent mógł tworzyć i zarządzać postami społecznościowymi za Ciebie.',
-        'copy_step' => 'Skopiuj URL serwera TryPost',
-        'open_step' => 'Otwórz asystenta AI',
-        'copy' => 'Kopiuj URL',
         'copied' => 'URL MCP skopiowany.',
-        'connect' => 'Połącz z :client',
-        'clients' => [
-            'claude' => 'Otwórz Settings → Connectors, dodaj niestandardowy connector, a następnie wklej powyższy URL.',
-            'chatgpt' => 'Otwórz Settings → Apps & Connectors, utwórz niestandardowy connector, a następnie wklej powyższy URL.',
-        ],
     ],
     'social' => [
         'title' => 'Połącz konto społecznościowe',

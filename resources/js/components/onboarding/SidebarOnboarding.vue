@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Link, router, usePage } from '@inertiajs/vue3';
+import { Link, router, usePage, usePoll } from '@inertiajs/vue3';
 import { IconListCheck } from '@tabler/icons-vue';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 
 import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
 import { useActiveUrl } from '@/composables/useActiveUrl';
@@ -25,6 +25,10 @@ const progress = computed(() => {
     return total > 0 ? Math.round((completed / total) * 100) : 0;
 });
 
+// Echo is the fast path; the slow poll covers Reverb outages while the banner
+// shows. Skip on the onboarding page — that page already reloads residual with
+// status. Keep the poll sparse — every tick re-runs the current page's
+// controller server-side, not just the residual prop.
 useWorkspaceEcho('.onboarding.status.updated', () => {
     if (
         page.props.onboardingResidual === false ||
@@ -35,6 +39,26 @@ useWorkspaceEcho('.onboarding.status.updated', () => {
 
     router.reload({ only: ['onboardingResidual'] });
 });
+
+const { start, stop } = usePoll(
+    30000,
+    { only: ['onboardingResidual'] },
+    { autoStart: false },
+);
+
+watch(
+    () => [page.props.onboardingResidual, page.component] as const,
+    ([current, component]) => {
+        if (current === false || component === 'onboarding/Index') {
+            stop();
+
+            return;
+        }
+
+        start();
+    },
+    { immediate: true },
+);
 </script>
 
 <template>

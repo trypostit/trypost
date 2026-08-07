@@ -17,15 +17,7 @@ return [
     'mcp' => [
         'title' => 'Σύνδεσε τον βοηθό AI σου',
         'description' => 'Πρόσθεσε το TryPost ως διακομιστή MCP ώστε ο βοηθός σου να δημιουργεί και να διαχειρίζεται social posts για εσένα.',
-        'copy_step' => 'Αντίγραψε το URL του διακομιστή TryPost',
-        'open_step' => 'Άνοιξε τον βοηθό AI σου',
-        'copy' => 'Αντιγραφή URL',
         'copied' => 'Το URL MCP αντιγράφηκε.',
-        'connect' => 'Σύνδεση με :client',
-        'clients' => [
-            'claude' => 'Άνοιξε Settings → Connectors, πρόσθεσε έναν προσαρμοσμένο connector και επικόλλησε το παραπάνω URL.',
-            'chatgpt' => 'Άνοιξε Settings → Apps & Connectors, δημιούργησε έναν προσαρμοσμένο connector και επικόλλησε το παραπάνω URL.',
-        ],
     ],
     'social' => [
         'title' => 'Σύνδεσε έναν λογαριασμό social',

@@ -17,15 +17,7 @@ return [
     'mcp' => [
         'title' => '连接你的 AI 助手',
         'description' => '将 TryPost 添加为 MCP 服务器，让助手帮你创建和管理社交内容。',
-        'copy_step' => '复制你的 TryPost 服务器 URL',
-        'open_step' => '打开你的 AI 助手',
-        'copy' => '复制 URL',
         'copied' => '已复制 MCP URL。',
-        'connect' => '使用 :client 连接',
-        'clients' => [
-            'claude' => '打开 Settings → Connectors，添加自定义连接器，然后粘贴上方 URL。',
-            'chatgpt' => '打开 Settings → Apps & Connectors，创建自定义连接器，然后粘贴上方 URL。',
-        ],
     ],
     'social' => [
         'title' => '连接社交账号',

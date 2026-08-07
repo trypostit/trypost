@@ -347,20 +347,29 @@ class ResolveOnboardingStatus
 
     private function captureCompletedStep(User $user, Account $account, string $step, bool $completed): void
     {
-        if (! $completed) {
+        if (! $completed || ! PostHogService::isEnabled()) {
             return;
         }
 
-        // One capture per account/step — replaces the former PostHog job dedupe.
-        if (! Cache::add("onboarding:step:{$account->id}:{$step}", true)) {
+        $dedupeKey = "onboarding:step:{$account->id}:{$step}";
+
+        // Claim the slot first so concurrent syncs don't double-fire, then
+        // release it if capture throws so a later retry can still report.
+        if (! Cache::add($dedupeKey, true)) {
             return;
         }
 
-        $this->postHog->capture(
-            $user->id,
-            OnboardingEvent::StepCompleted->value,
-            ['step' => $step],
-            $account,
-        );
+        try {
+            $this->postHog->capture(
+                $user->id,
+                OnboardingEvent::StepCompleted->value,
+                ['step' => $step],
+                $account,
+            );
+        } catch (\Throwable $exception) {
+            Cache::forget($dedupeKey);
+
+            throw $exception;
+        }
     }
 }

@@ -17,15 +17,7 @@ return [
     'mcp' => [
         'title' => 'AI 어시스턴트 연결',
         'description' => 'TryPost를 MCP 서버로 추가하면 어시스턴트가 소셜 게시물을 만들고 관리할 수 있어요.',
-        'copy_step' => 'TryPost 서버 URL 복사',
-        'open_step' => 'AI 어시스턴트 열기',
-        'copy' => 'URL 복사',
         'copied' => 'MCP URL이 복사되었어요.',
-        'connect' => ':client로 연결',
-        'clients' => [
-            'claude' => 'Settings → Connectors를 열고 커스텀 커넥터를 추가한 뒤 위 URL을 붙여넣으세요.',
-            'chatgpt' => 'Settings → Apps & Connectors를 열고 커스텀 커넥터를 만든 뒤 위 URL을 붙여넣으세요.',
-        ],
     ],
     'social' => [
         'title' => '소셜 계정 연결',

@@ -17,15 +17,7 @@ return [
     'mcp' => [
         'title' => 'AIアシスタントを接続',
         'description' => 'TryPostをMCPサーバーとして追加すると、アシスタントがSNS投稿の作成・管理を行えます。',
-        'copy_step' => 'TryPostサーバーURLをコピー',
-        'open_step' => 'AIアシスタントを開く',
-        'copy' => 'URLをコピー',
         'copied' => 'MCP URLをコピーしました。',
-        'connect' => ':clientで接続',
-        'clients' => [
-            'claude' => 'Settings → Connectors を開き、カスタムコネクタを追加して上のURLを貼り付けます。',
-            'chatgpt' => 'Settings → Apps & Connectors を開き、カスタムコネクタを作成して上のURLを貼り付けます。',
-        ],
     ],
     'social' => [
         'title' => 'SNSアカウントを接続',

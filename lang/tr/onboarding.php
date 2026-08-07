@@ -17,15 +17,7 @@ return [
     'mcp' => [
         'title' => 'AI asistanını bağla',
         'description' => 'Asistanının senin için sosyal gönderiler oluşturup yönetebilmesi için TryPost’u MCP sunucusu olarak ekle.',
-        'copy_step' => 'TryPost sunucu URL’ini kopyala',
-        'open_step' => 'AI asistanını aç',
-        'copy' => 'URL’yi kopyala',
         'copied' => 'MCP URL’si kopyalandı.',
-        'connect' => ':client ile bağlan',
-        'clients' => [
-            'claude' => 'Settings → Connectors’ı aç, özel bir connector ekle ve yukarıdaki URL’yi yapıştır.',
-            'chatgpt' => 'Settings → Apps & Connectors’ı aç, özel bir connector oluştur ve yukarıdaki URL’yi yapıştır.',
-        ],
     ],
     'social' => [
         'title' => 'Bir sosyal hesap bağla',

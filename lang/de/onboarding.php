@@ -17,15 +17,7 @@ return [
     'mcp' => [
         'title' => 'Verbinde deinen KI-Assistenten',
         'description' => 'Füge TryPost als MCP-Server hinzu, damit dein Assistent Social-Beiträge für dich erstellen und verwalten kann.',
-        'copy_step' => 'Kopiere deine TryPost-Server-URL',
-        'open_step' => 'Öffne deinen KI-Assistenten',
-        'copy' => 'URL kopieren',
         'copied' => 'MCP-URL kopiert.',
-        'connect' => 'Mit :client verbinden',
-        'clients' => [
-            'claude' => 'Öffne Settings → Connectors, füge einen benutzerdefinierten Connector hinzu und füge die URL oben ein.',
-            'chatgpt' => 'Öffne Settings → Apps & Connectors, erstelle einen benutzerdefinierten Connector und füge die URL oben ein.',
-        ],
     ],
     'social' => [
         'title' => 'Verbinde ein Social-Konto',

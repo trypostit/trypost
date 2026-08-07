@@ -126,7 +126,7 @@ test('does not resolve an expired oauth token as mcp connected', function () {
     expect($status['mcp_connected'])->toBeFalse();
 });
 
-test('requires an effective workspace for the mcp step', function () {
+test('bound mcp grants count without a current workspace switcher value', function () {
     $this->user->update(['current_workspace_id' => null]);
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -135,7 +135,6 @@ test('requires an effective workspace for the mcp step', function () {
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]));
-    // Bound MCP grants still count without a current-workspace switcher value.
     AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user->fresh());
@@ -146,6 +145,15 @@ test('requires an effective workspace for the mcp step', function () {
         'first_post_created' => true,
         'all_complete' => true,
     ]);
+});
+
+test('does not resolve an unbound oauth token as mcp connected', function () {
+    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient()));
+
+    $status = app(ResolveOnboardingStatus::class)->handle($this->user);
+
+    expect($status['mcp_connected'])->toBeFalse()
+        ->and($status['all_complete'])->toBeFalse();
 });
 
 test('members do not see the residual checklist', function () {

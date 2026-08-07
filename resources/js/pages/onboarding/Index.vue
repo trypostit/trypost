@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage, usePoll } from '@inertiajs/vue3';
 import { IconCheck, IconCopy } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, nextTick, ref, watch } from 'vue';
@@ -58,17 +58,40 @@ const completeForm = useForm({});
 
 const onboardingReloadOnly = ['status', 'accounts', 'onboardingResidual'];
 
+// Echo is the fast path; slow poll covers MCP clients when Reverb is down.
 useWorkspaceEcho('.onboarding.status.updated', () => {
     router.reload({ only: onboardingReloadOnly });
 });
 
+const { start: startOnboardingPoll, stop: stopOnboardingPoll } = usePoll(
+    5000,
+    { only: onboardingReloadOnly },
+    { autoStart: false },
+);
+
 watch(
-    () => props.status.dismissed_at,
-    (dismissedAt) => {
+    () => ({
+        allComplete: props.status.all_complete,
+        completedAt: props.status.completed_at,
+        dismissedAt: props.status.dismissed_at,
+    }),
+    ({ allComplete, completedAt, dismissedAt }) => {
         if (dismissedAt) {
+            stopOnboardingPoll();
             router.visit(calendar.url());
+
+            return;
         }
+
+        if (allComplete || completedAt) {
+            stopOnboardingPoll();
+
+            return;
+        }
+
+        startOnboardingPoll();
     },
+    { immediate: true },
 );
 
 const copySamplePrompt = (): void => {

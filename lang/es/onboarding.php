@@ -17,15 +17,7 @@ return [
     'mcp' => [
         'title' => 'Conecta tu asistente de IA',
         'description' => 'Añade TryPost como servidor MCP para que tu asistente pueda crear y gestionar posts por ti.',
-        'copy_step' => 'Copia la URL del servidor TryPost',
-        'open_step' => 'Abre tu asistente de IA',
-        'copy' => 'Copiar URL',
         'copied' => 'URL de MCP copiada.',
-        'connect' => 'Conectar con :client',
-        'clients' => [
-            'claude' => 'Abre Settings → Connectors, añade un conector personalizado y pega la URL de arriba.',
-            'chatgpt' => 'Abre Settings → Apps & Connectors, crea un conector personalizado y pega la URL de arriba.',
-        ],
     ],
     'social' => [
         'title' => 'Conecta una cuenta social',

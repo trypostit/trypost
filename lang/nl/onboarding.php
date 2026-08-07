@@ -17,15 +17,7 @@ return [
     'mcp' => [
         'title' => 'Koppel je AI-assistent',
         'description' => 'Voeg TryPost toe als MCP-server zodat je assistent social posts voor je kan maken en beheren.',
-        'copy_step' => 'Kopieer je TryPost-server-URL',
-        'open_step' => 'Open je AI-assistent',
-        'copy' => 'URL kopiëren',
         'copied' => 'MCP-URL gekopieerd.',
-        'connect' => 'Verbinden met :client',
-        'clients' => [
-            'claude' => 'Open Settings → Connectors, voeg een aangepaste connector toe en plak de URL hierboven.',
-            'chatgpt' => 'Open Settings → Apps & Connectors, maak een aangepaste connector aan en plak de URL hierboven.',
-        ],
     ],
     'social' => [
         'title' => 'Koppel een social account',

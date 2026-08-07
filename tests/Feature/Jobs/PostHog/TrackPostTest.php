@@ -17,7 +17,11 @@ use Illuminate\Support\Str;
 beforeEach(function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
 
-    $this->account = Account::factory()->create();
+    $this->account = Account::factory()->create([
+        // Avoid PostObserver onboarding broadcasts emitting step_completed
+        // SendEvent jobs that collide with TrackPost assertions.
+        'onboarding_completed_at' => now(),
+    ]);
     $this->user = User::factory()->create(['account_id' => $this->account->id]);
     $this->account->update(['owner_id' => $this->user->id]);
     $this->workspace = Workspace::factory()->create([

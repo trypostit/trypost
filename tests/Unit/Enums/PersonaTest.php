@@ -10,9 +10,9 @@ test('persona values are stable', function () {
         ->toBe(['creator', 'freelancer', 'developer', 'startup', 'agency', 'small_business', 'marketer', 'online_store', 'other']);
 });
 
-test('every persona has an onboarding label in every locale', function (string $locale) {
+test('every persona has a welcome label in every locale', function (string $locale) {
     foreach (Persona::cases() as $persona) {
-        $key = "onboarding.personas.{$persona->value}";
+        $key = "welcome.personas.{$persona->value}";
 
         expect(__($key, [], $locale))->not->toBe($key);
     }
