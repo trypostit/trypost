@@ -43,6 +43,23 @@ test('accounts index shows platforms and connected accounts', function () {
     );
 });
 
+test('accounts index lists platforms alphabetically by label', function () {
+    $response = $this->actingAs($this->user)->get(route('app.accounts'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('accounts/Index', false)
+        ->where('platforms', function ($platforms): bool {
+            $labels = collect($platforms)->pluck('label')->all();
+
+            $sorted = $labels;
+            natcasesort($sorted);
+
+            return array_values($labels) === array_values($sorted);
+        })
+    );
+});
+
 test('accounts index offers a single linkedin card and no standalone linkedin page card', function () {
     $response = $this->actingAs($this->user)->get(route('app.accounts'));
 

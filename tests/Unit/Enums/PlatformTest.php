@@ -135,3 +135,12 @@ test('the linkedin card is connectable while either capability is enabled', func
     config(['trypost.platforms.linkedin-page.enabled' => true]);
     expect(Platform::LinkedInPage->isConnectable())->toBeFalse();
 });
+
+test('connectable options are sorted alphabetically by label', function () {
+    $labels = array_column(Platform::connectableOptions(), 'label');
+
+    $sorted = $labels;
+    natcasesort($sorted);
+
+    expect($labels)->toBe(array_values($sorted));
+});
