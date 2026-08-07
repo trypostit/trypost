@@ -426,7 +426,9 @@ test('sidebar progress returns false when the banner should not show', function 
     expect(app(ResolveOnboardingStatus::class)->sidebarProgress($this->user->fresh()))->toBeFalse();
 });
 
-test('syncProgress does not stamp completion for a teammate', function () {
+test('syncProgress stamps via the owner when a teammate unlocks the last step', function () {
+    Carbon::setTestNow('2026-07-24 12:00:00');
+
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]));
@@ -448,7 +450,7 @@ test('syncProgress does not stamp completion for a teammate', function () {
     AccessToken::withoutEvents(fn () => mcpAccessToken($member, mcpOauthClient(), $memberWorkspace));
 
     expect(app(ResolveOnboardingStatus::class)->syncProgress($member->fresh())['all_complete'])->toBeTrue()
-        ->and($this->user->account->fresh()->onboarding_completed_at)->toBeNull();
+        ->and($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 });
 
 test('markCompleted refuses teammates', function () {

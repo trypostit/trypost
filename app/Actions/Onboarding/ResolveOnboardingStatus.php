@@ -93,13 +93,13 @@ class ResolveOnboardingStatus
 
         $this->captureCompletedSteps($user, $account, $status);
 
-        // Completion stamp is owner-only (matches HTTP skip/complete). Teammate
-        // actions still capture step analytics above and can unlock steps.
-        if (! data_get($status, 'all_complete') || ! $user->isAccountOwner()) {
+        $owner = $account->owner;
+
+        if (! data_get($status, 'all_complete') || $owner === null) {
             return $status;
         }
 
-        $this->markCompleted($user);
+        $this->markCompleted($owner);
         $account->refresh();
 
         if (! $account->isOnboardingCompleted()) {
