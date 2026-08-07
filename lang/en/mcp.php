@@ -46,7 +46,6 @@ return [
         'error_title' => 'Could not connect',
         'error_body' => 'This authorization request is invalid or expired. Close this window and try connecting again from your MCP client.',
         'error_code' => 'Error: :error',
-        'error_close' => 'Close window',
     ],
     'other_clients_title' => 'Other apps',
     'other_clients_description' => 'Cursor, VS Code, Claude Code, and anything else that speaks MCP.',

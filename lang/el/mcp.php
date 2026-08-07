@@ -46,7 +46,6 @@ return [
         'error_title' => 'Αδυναμία σύνδεσης',
         'error_body' => 'Αυτό το αίτημα εξουσιοδότησης είναι μη έγκυρο ή έχει λήξει. Κλείστε αυτό το παράθυρο και δοκιμάστε ξανά από τον πελάτη MCP.',
         'error_code' => 'Σφάλμα: :error',
-        'error_close' => 'Κλείσιμο παραθύρου',
     ],
     'other_clients_title' => 'Άλλες εφαρμογές',
     'other_clients_description' => 'Cursor, VS Code, Claude Code και ό,τι άλλο μιλάει MCP.',

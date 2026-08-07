@@ -46,7 +46,6 @@ return [
         'error_title' => '接続できませんでした',
         'error_body' => 'この認可リクエストは無効か期限切れです。このウィンドウを閉じ、MCPクライアントからもう一度接続してください。',
         'error_code' => 'エラー: :error',
-        'error_close' => 'ウィンドウを閉じる',
     ],
     'other_clients_title' => 'その他のアプリ',
     'other_clients_description' => 'Cursor、VS Code、Claude Code、その他MCP対応アプリ。',

@@ -46,7 +46,6 @@ return [
         'error_title' => 'Impossibile connettersi',
         'error_body' => 'Questa richiesta di autorizzazione non è valida o è scaduta. Chiudi questa finestra e riprova dal tuo client MCP.',
         'error_code' => 'Errore: :error',
-        'error_close' => 'Chiudi finestra',
     ],
     'other_clients_title' => 'Altre app',
     'other_clients_description' => 'Cursor, VS Code, Claude Code e qualsiasi app che parla MCP.',

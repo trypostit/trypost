@@ -46,7 +46,6 @@ return [
         'error_title' => 'تعذر الاتصال',
         'error_body' => 'طلب التفويض هذا غير صالح أو منتهٍ. أغلق هذه النافذة وحاول الاتصال مرة أخرى من عميل MCP.',
         'error_code' => 'خطأ: :error',
-        'error_close' => 'إغلاق النافذة',
     ],
     'other_clients_title' => 'تطبيقات أخرى',
     'other_clients_description' => 'Cursor وVS Code وClaude Code وأي تطبيق يدعم MCP.',

@@ -46,7 +46,6 @@ return [
         'error_title' => 'Не вдалося підключитися',
         'error_body' => 'Цей запит на авторизацію недійсний або застарів. Закрийте це вікно й спробуйте підключитися знову з MCP-клієнта.',
         'error_code' => 'Помилка: :error',
-        'error_close' => 'Закрити вікно',
     ],
     'other_clients_title' => 'Інші застосунки',
     'other_clients_description' => 'Cursor, VS Code, Claude Code і все, що підтримує MCP.',

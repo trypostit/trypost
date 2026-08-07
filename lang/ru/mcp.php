@@ -46,7 +46,6 @@ return [
         'error_title' => 'Не удалось подключиться',
         'error_body' => 'Этот запрос авторизации недействителен или устарел. Закройте это окно и попробуйте подключиться снова из MCP-клиента.',
         'error_code' => 'Ошибка: :error',
-        'error_close' => 'Закрыть окно',
     ],
     'other_clients_title' => 'Другие приложения',
     'other_clients_description' => 'Cursor, VS Code, Claude Code и всё, что говорит на MCP.',

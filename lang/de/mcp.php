@@ -46,7 +46,6 @@ return [
         'error_title' => 'Verbindung fehlgeschlagen',
         'error_body' => 'Diese Autorisierungsanfrage ist ungültig oder abgelaufen. Schließen Sie dieses Fenster und verbinden Sie sich erneut über Ihren MCP-Client.',
         'error_code' => 'Fehler: :error',
-        'error_close' => 'Fenster schließen',
     ],
     'other_clients_title' => 'Andere Apps',
     'other_clients_description' => 'Cursor, VS Code, Claude Code und alles andere, das MCP spricht.',

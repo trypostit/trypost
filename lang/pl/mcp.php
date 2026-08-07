@@ -46,7 +46,6 @@ return [
         'error_title' => 'Nie udało się połączyć',
         'error_body' => 'To żądanie autoryzacji jest nieprawidłowe lub wygasło. Zamknij to okno i spróbuj ponownie połączyć się z poziomu klienta MCP.',
         'error_code' => 'Błąd: :error',
-        'error_close' => 'Zamknij okno',
     ],
     'other_clients_title' => 'Inne aplikacje',
     'other_clients_description' => 'Cursor, VS Code, Claude Code i wszystko, co mówi MCP.',
