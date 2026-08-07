@@ -74,13 +74,19 @@ test('does not share the onboarding progress with workspace members', function (
         ->assertInertia(fn ($page) => $page->where('onboardingProgress', false));
 });
 
-test('does not share the onboarding progress in self-hosted mode', function () {
+test('defers the onboarding progress in self-hosted mode', function () {
     config(['trypost.self_hosted' => true]);
 
     $this->actingAs($this->user)
         ->get(route('app.calendar'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('onboardingProgress', false));
+        ->assertInertia(fn ($page) => $page
+            ->missing('onboardingProgress')
+            ->loadDeferredProps(fn ($page) => $page
+                ->where('onboardingProgress.completed', 0)
+                ->where('onboardingProgress.total', ResolveOnboardingStatus::totalSteps())
+            )
+        );
 });
 
 test('does not defer onboarding progress on passport oauth consent', function () {

@@ -150,7 +150,7 @@ test('dismisses generic-trial accounts when card is not required', function () {
     expect($user->account->fresh()->onboarding_dismissed_at?->equalTo(now()))->toBeTrue();
 });
 
-test('dismisses every account in self hosted mode regardless of subscription', function () {
+test('does not dismiss accounts in self hosted mode', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
     config(['trypost.self_hosted' => true]);
 
@@ -161,10 +161,12 @@ test('dismisses every account in self hosted mode regardless of subscription', f
     $alreadyCompleted = User::factory()->create();
     $alreadyCompleted->account->forceFill(['onboarding_completed_at' => now()->subDay()])->save();
 
+    expect($withoutSubscription->account->fresh()->hasAppAccess())->toBeTrue();
+
     ($this->runBackfill)();
 
-    expect($withoutSubscription->account->fresh()->onboarding_dismissed_at?->equalTo(now()))->toBeTrue()
-        ->and($withSubscription->account->fresh()->onboarding_dismissed_at?->equalTo(now()))->toBeTrue()
+    expect($withoutSubscription->account->fresh()->onboarding_dismissed_at)->toBeNull()
+        ->and($withSubscription->account->fresh()->onboarding_dismissed_at)->toBeNull()
         ->and($alreadyCompleted->account->fresh()->onboarding_dismissed_at)->toBeNull();
 });
 

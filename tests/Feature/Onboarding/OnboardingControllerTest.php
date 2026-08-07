@@ -624,7 +624,7 @@ test('unsubscribed accounts are redirected to welcome by middleware', function (
     'complete' => ['app.onboarding.complete', 'post'],
 ]);
 
-test('self hosted activation endpoints redirect to calendar', function (string $routeName, string $method, array|string $params = []) {
+test('self hosted activation endpoints remain available', function (string $routeName, string $method, array|string $params = []) {
     config(['trypost.self_hosted' => true]);
     $this->actingAs($this->user);
 
@@ -632,9 +632,42 @@ test('self hosted activation endpoints redirect to calendar', function (string $
         ? $this->get(route($routeName, $params))
         : $this->post(route($routeName, $params));
 
-    $response->assertRedirect(route('app.calendar'));
+    if ($method === 'get') {
+        $response->assertOk()
+            ->assertInertia(fn ($page) => $page->component('onboarding/Index', false));
+
+        return;
+    }
+
+    // Must not bounce to calendar (the old self-hosted gate).
+    expect($response->headers->get('Location'))->not->toBe(route('app.calendar'));
+
+    if ($routeName === 'app.onboarding.mcp.skip') {
+        $response->assertRedirect();
+        expect($this->user->account->fresh()->onboarding_skipped_steps)->toBe(['mcp']);
+
+        return;
+    }
+
+    // Incomplete checklist: stay on onboarding (same as SaaS).
+    $response->assertRedirect(route('app.onboarding'));
 })->with([
     'index' => ['app.onboarding', 'get'],
     'skip step' => ['app.onboarding.mcp.skip', 'post'],
     'complete' => ['app.onboarding.complete', 'post'],
 ]);
+
+test('self hosted owners can open onboarding without a subscription', function () {
+    config(['trypost.self_hosted' => true]);
+    $this->user->account->subscriptions()->delete();
+
+    expect($this->user->account->fresh()->hasAppAccess())->toBeTrue();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.onboarding'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('onboarding/Index', false)
+            ->where('status.show_progress', true)
+        );
+});

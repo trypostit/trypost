@@ -252,11 +252,11 @@ class ResolveOnboardingStatus
 
     /**
      * Cheap gates before handle()'s step queries.
-     * Self-hosted and non-owners never reach step state.
+     * Non-owners never reach step state.
      */
     public function canShowProgress(User $user, ?Account $account = null): bool
     {
-        if (config('trypost.self_hosted') || ! $user->isAccountOwner()) {
+        if (! $user->isAccountOwner()) {
             return false;
         }
 

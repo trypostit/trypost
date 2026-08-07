@@ -364,12 +364,12 @@ test('completed onboarding returns immediately without resolving steps or captur
     Bus::assertNothingDispatched();
 });
 
-test('self-hosted onboarding does not show the progress checklist', function () {
+test('self-hosted onboarding shows the progress checklist for owners', function () {
     config(['trypost.self_hosted' => true]);
 
     $status = app(ResolveOnboardingStatus::class)->handle($this->user);
 
-    expect($status['show_progress'])->toBeFalse();
+    expect($status['show_progress'])->toBeTrue();
 });
 
 test('unsubscribed account does not show the progress checklist', function () {
@@ -573,17 +573,17 @@ test('sidebar progress does not query step state for members', function () {
         || str_contains($sql, 'posts')))->toBeEmpty();
 });
 
-test('sidebar progress does not query step state in self hosted mode', function () {
+test('sidebar progress works in self hosted mode', function () {
     config(['trypost.self_hosted' => true]);
 
-    $queries = [];
-    DB::listen(fn ($query) => $queries[] = $query->sql);
+    SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
 
-    expect(app(ResolveOnboardingStatus::class)->sidebarProgress($this->user->fresh()))->toBeFalse();
-
-    expect(collect($queries)->filter(fn (string $sql): bool => str_contains($sql, 'oauth_access_tokens')
-        || str_contains($sql, 'social_accounts')
-        || str_contains($sql, 'posts')))->toBeEmpty();
+    expect(app(ResolveOnboardingStatus::class)->sidebarProgress($this->user->fresh()))->toBe([
+        'completed' => 1,
+        'total' => ResolveOnboardingStatus::totalSteps(),
+    ]);
 });
 
 test('skipMcp marks the optional MCP step as skipped without completing the checklist', function () {

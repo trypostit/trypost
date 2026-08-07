@@ -27,10 +27,6 @@ class OnboardingController extends Controller
 
     public function index(Request $request): InertiaResponse|RedirectResponse
     {
-        if ($redirect = $this->redirectIfSelfHosted()) {
-            return $redirect;
-        }
-
         $user = $request->user();
         $workspace = $user->currentWorkspace;
         $account = $user->accountOrFail();
@@ -64,10 +60,6 @@ class OnboardingController extends Controller
 
     public function skipMcp(Request $request): RedirectResponse
     {
-        if ($redirect = $this->redirectIfSelfHosted()) {
-            return $redirect;
-        }
-
         abort_unless($request->user()->isAccountOwner(), Response::HTTP_FORBIDDEN);
 
         $this->resolveOnboardingStatus->skipMcp($request->user());
@@ -77,10 +69,6 @@ class OnboardingController extends Controller
 
     public function complete(Request $request): RedirectResponse
     {
-        if ($redirect = $this->redirectIfSelfHosted()) {
-            return $redirect;
-        }
-
         $user = $request->user();
 
         abort_unless($user->isAccountOwner(), Response::HTTP_FORBIDDEN);
@@ -127,12 +115,5 @@ class OnboardingController extends Controller
 
             throw $exception;
         }
-    }
-
-    private function redirectIfSelfHosted(): ?RedirectResponse
-    {
-        return config('trypost.self_hosted')
-            ? redirect()->route('app.calendar')
-            : null;
     }
 }
