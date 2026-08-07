@@ -83,13 +83,13 @@ class HandleInertiaRequests extends Middleware
     /**
      * Defer step queries for mid-activation owners; everyone else gets false inline.
      *
-     * Never defer on Passport consent screens: Inertia deferred props re-request the
+     * Never defer on Passport consent *views*: Inertia deferred props re-request the
      * same URL, Passport rotates `authToken` on every authorize hit, and approve then
      * fails with InvalidAuthTokenException against the stale token still on the page.
      */
     private function onboardingProgress(Request $request, ?User $user): DeferProp|false
     {
-        if ($this->isPassportAuthorizationRequest($request)) {
+        if ($this->isPassportConsentViewRequest($request)) {
             return false;
         }
 
@@ -100,7 +100,12 @@ class HandleInertiaRequests extends Middleware
             : false;
     }
 
-    private function isPassportAuthorizationRequest(Request $request): bool
+    /**
+     * Exact GET consent-view route names only — not approve/deny, and not wildcards
+     * like passport.authorizations.* (those would suppress defer on POST approve too,
+     * which is unnecessary and easy to misread as "all OAuth").
+     */
+    private function isPassportConsentViewRequest(Request $request): bool
     {
         return $request->routeIs(
             'passport.authorizations.authorize',

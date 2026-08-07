@@ -22,9 +22,9 @@ beforeEach(function () {
     subscribeAccount($this->user->account);
 });
 
-test('defers the onboarding checklist progress for mid-activation owners', function () {
+test('defers the onboarding checklist progress for mid-activation owners', function (string $routeName) {
     $this->actingAs($this->user)
-        ->get(route('app.calendar'))
+        ->get(route($routeName))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->missing('onboardingProgress')
@@ -33,7 +33,11 @@ test('defers the onboarding checklist progress for mid-activation owners', funct
                 ->where('onboardingProgress.total', ResolveOnboardingStatus::totalSteps())
             )
         );
-});
+})->with([
+    'calendar' => 'app.calendar',
+    'onboarding' => 'app.onboarding',
+    'mcp settings' => 'app.mcp.index',
+]);
 
 test('does not share the onboarding progress state after dismissal', function () {
     $this->user->account->forceFill(['onboarding_dismissed_at' => now()])->save();
