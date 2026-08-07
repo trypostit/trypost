@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Enums\PostHog\OnboardingEvent;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
@@ -279,7 +278,7 @@ test('dismissed accounts are redirected away from onboarding index', function ()
     );
 });
 
-test('completed accounts are redirected away from onboarding on full visits', function () {
+test('completed accounts are redirected away from onboarding', function () {
     Carbon::setTestNow('2026-07-29 12:00:00');
     $this->user->account->forceFill(['onboarding_completed_at' => now()])->save();
 
@@ -295,36 +294,22 @@ test('completed accounts are redirected away from onboarding on full visits', fu
     );
 });
 
-test('partial reloads keep the ready state after completion is stamped', function () {
-    Carbon::setTestNow('2026-07-29 12:00:00');
-
-    $response = $this->actingAs($this->user->fresh())
+test('partial reload refreshes status and accounts while onboarding is open', function () {
+    $response = $this->actingAs($this->user)
         ->get(route('app.onboarding'))
         ->assertOk();
 
-    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
     SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]));
-    Post::withoutEvents(fn () => Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]));
-
-    expect(app(ResolveOnboardingStatus::class)->markCompleted($this->user->fresh()))->toBeTrue();
-    expect($this->user->account->fresh()->onboarding_completed_at?->equalTo(now()))->toBeTrue();
 
     $response->assertInertia(fn ($page) => $page
         ->reloadOnly(['status', 'accounts', 'onboardingProgress'], fn ($reload) => $reload
-            ->where('status.all_complete', true)
-            ->where('status.completed_at', now()->toIso8601String())
+            ->where('status.social_connected', true)
+            ->has('accounts', 1)
+            ->missing('platforms')
         )
     );
-
-    // Full revisit after completion leaves for the calendar.
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.onboarding'))
-        ->assertRedirect(route('app.calendar'));
 });
 
 test('ready state renders without stamping completion on GET', function () {
@@ -364,32 +349,6 @@ test('ready state renders without stamping completion on GET', function () {
     Bus::assertNotDispatched(
         SendEvent::class,
         fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::StepCompleted->value,
-    );
-});
-
-test('completed accounts stay on onboarding during partial reloads', function () {
-    Carbon::setTestNow('2026-07-29 12:00:00');
-
-    AccessToken::withoutEvents(fn () => mcpAccessToken($this->user, mcpOauthClient(), $this->workspace));
-    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-    ]));
-    Post::withoutEvents(fn () => Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]));
-
-    $response = $this->actingAs($this->user->fresh())
-        ->get(route('app.onboarding'))
-        ->assertOk();
-
-    $this->user->account->forceFill(['onboarding_completed_at' => now()])->save();
-
-    $response->assertInertia(fn ($page) => $page
-        ->reloadOnly(['status', 'accounts', 'onboardingProgress'], fn ($reload) => $reload
-            ->where('status.all_complete', true)
-            ->where('status.completed_at', now()->toIso8601String())
-        )
     );
 });
 

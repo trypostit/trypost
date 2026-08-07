@@ -36,25 +36,15 @@ class OnboardingController extends Controller
         // Avoid a stale account relation from an earlier request in the same test process.
         $user->unsetRelation('account');
         $account = $user->accountOrFail();
-        $wasAlreadyComplete = $account->isOnboardingCompleted();
         // Pure read on GET — observers + POST complete/skip stamp progress.
         $status = $this->resolveOnboardingStatus->handle($user);
 
-        // Legacy dismiss (deploy backfill) is terminal, including Echo partial reloads.
-        if (data_get($status, 'dismissed_at') !== null) {
-            return redirect()->route('app.calendar');
-        }
-
-        $isPartial = $request->hasHeader('X-Inertia-Partial-Component');
-
-        // Full revisit after completion → calendar. Partials (Echo) keep the ready state.
-        if ($wasAlreadyComplete && ! $isPartial) {
+        if (data_get($status, 'dismissed_at') !== null || $account->isOnboardingCompleted()) {
             return redirect()->route('app.calendar');
         }
 
         if (
-            ! $isPartial
-            && $account->isOnboardingOpen()
+            $account->isOnboardingOpen()
             && $user->isAccountOwner()
             && ! data_get($status, 'all_complete')
         ) {
@@ -62,14 +52,14 @@ class OnboardingController extends Controller
         }
 
         return Inertia::render('onboarding/Index', [
-            'status' => $status,
-            'canSkipSteps' => $user->isAccountOwner(),
-            'canManageAccounts' => $user->can('manageAccounts', $workspace),
-            'canCreatePost' => $user->can('createPost', $workspace),
-            'mcpUrl' => route('mcp.trypost'),
-            'samplePrompt' => __('onboarding.first_post.sample_prompt'),
-            'platforms' => SocialPlatform::connectableOptions(),
-            'accounts' => SocialAccountResource::collection(
+            'status' => fn (): array => $status,
+            'canSkipSteps' => fn (): bool => $user->isAccountOwner(),
+            'canManageAccounts' => fn (): bool => $user->can('manageAccounts', $workspace),
+            'canCreatePost' => fn (): bool => $user->can('createPost', $workspace),
+            'mcpUrl' => fn (): string => route('mcp.trypost'),
+            'samplePrompt' => fn (): string => __('onboarding.first_post.sample_prompt'),
+            'platforms' => fn (): array => SocialPlatform::connectableOptions(),
+            'accounts' => fn (): array => SocialAccountResource::collection(
                 $workspace->socialAccounts()->orderBy('id')->get(),
             )->resolve(),
         ]);
@@ -113,7 +103,7 @@ class OnboardingController extends Controller
 
     /**
      * Funnel "viewed" once per account — revisits while activation is open
-     * should not spam PostHog.
+     * should not spam PostHog (Cache::add is the dedupe, including Echo reloads).
      */
     private function captureViewedOnce(string $userId, Account $account): void
     {
