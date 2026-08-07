@@ -40,9 +40,8 @@ class BillingController extends Controller
 
         $subscriptionActive = $account !== null
             && $account->subscribed(Account::SUBSCRIPTION_NAME);
-        $redirectToOnboarding = $account !== null
-            && $user->isAccountOwner()
-            && ! $account->hasFinishedOnboarding();
+        $redirectToOnboarding = $user->isAccountOwner()
+            && ($account?->isOnboardingOpen() ?? false);
 
         return Inertia::render('billing/Processing', [
             'subscriptionActive' => $subscriptionActive,

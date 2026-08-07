@@ -8,9 +8,11 @@ use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Enums\PostHog\OnboardingEvent;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Http\Resources\App\SocialAccountResource;
+use App\Models\Account;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -56,11 +58,7 @@ class OnboardingController extends Controller
             && $user->isAccountOwner()
             && $user->account !== null
         ) {
-            $this->postHog->capture(
-                $user->id,
-                OnboardingEvent::Viewed->value,
-                account: $user->account,
-            );
+            $this->captureViewedOnce($user->id, $user->account);
         }
 
         $accounts = SocialAccountResource::collection(
@@ -77,6 +75,31 @@ class OnboardingController extends Controller
             'platforms' => SocialPlatform::connectableOptions(),
             'accounts' => $accounts,
         ]);
+    }
+
+    /**
+     * Funnel "viewed" once per account — revisits while activation is open
+     * should not spam PostHog.
+     */
+    private function captureViewedOnce(string $userId, Account $account): void
+    {
+        $dedupeKey = "onboarding:viewed:{$account->id}";
+
+        if (! Cache::add($dedupeKey, true, now()->addYear())) {
+            return;
+        }
+
+        try {
+            $this->postHog->capture(
+                $userId,
+                OnboardingEvent::Viewed->value,
+                account: $account,
+            );
+        } catch (\Throwable $exception) {
+            Cache::forget($dedupeKey);
+
+            throw $exception;
+        }
     }
 
     public function skipMcp(Request $request): RedirectResponse
@@ -104,13 +127,8 @@ class OnboardingController extends Controller
 
         $account = $user->account;
 
-        // Already stamped (e.g. observer auto-complete) — just leave.
-        if ($account?->onboarding_completed_at !== null) {
-            return redirect()->route('app.calendar');
-        }
-
-        // Legacy dismiss stays terminal: never let Continue stamp after backfill.
-        if ($account?->onboarding_dismissed_at !== null) {
+        // Already stamped or legacy-dismissed — just leave.
+        if (! $account?->isOnboardingOpen()) {
             return redirect()->route('app.calendar');
         }
 

@@ -44,22 +44,11 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
      */
     public static function dispatchForAccount(?Account $account, ?User $actor = null): void
     {
-        if ($account === null || $account->hasFinishedOnboarding()) {
+        if (! $account?->isOnboardingOpen()) {
             return;
         }
 
-        $accountId = $account->id;
-        $actorId = $actor?->id;
-
-        DB::afterCommit(function () use ($accountId, $actorId): void {
-            $account = Account::query()->find($accountId);
-
-            if ($account === null || $account->hasFinishedOnboarding()) {
-                return;
-            }
-
-            app(ResolveOnboardingStatus::class)->syncAndNotify($account, $actorId);
-        });
+        static::syncAfterCommit($account->id, $actor?->id);
     }
 
     /**
@@ -74,17 +63,19 @@ class OnboardingStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCom
 
         $account = Workspace::query()->find($workspaceId)?->account;
 
-        if ($account === null || $account->hasFinishedOnboarding()) {
+        if (! $account?->isOnboardingOpen()) {
             return;
         }
 
-        $accountId = $account->id;
-        $actorId = $actor?->id;
+        static::syncAfterCommit($account->id, $actor?->id);
+    }
 
+    private static function syncAfterCommit(string $accountId, ?string $actorId): void
+    {
         DB::afterCommit(function () use ($accountId, $actorId): void {
             $account = Account::query()->find($accountId);
 
-            if ($account === null || $account->hasFinishedOnboarding()) {
+            if (! $account?->isOnboardingOpen()) {
                 return;
             }
 

@@ -7,7 +7,6 @@ namespace App\Observers;
 use App\Events\OnboardingStatusUpdated;
 use App\Models\AccessToken;
 use App\Models\User;
-use App\Models\Workspace;
 
 class AccessTokenObserver
 {
@@ -49,18 +48,19 @@ class AccessTokenObserver
         // Revocation always notifies so residual can clear. Live grants only
         // unlock the step when the token is bound and the user can create posts
         // (viewers with read-only MCP must not complete the checklist).
-        if (! $accessToken->revoked) {
-            $workspace = $accessToken->workspace;
-
-            if (
-                ! $workspace instanceof Workspace
-                || ! $accessToken->isUsableMcpGrant($user, $workspace)
-                || ! $user->can('createPost', $workspace)
-            ) {
-                return;
-            }
+        if (! $accessToken->revoked && ! $this->unlocksMcpChecklist($accessToken, $user)) {
+            return;
         }
 
         OnboardingStatusUpdated::dispatchForAccount($user->account, $user);
+    }
+
+    private function unlocksMcpChecklist(AccessToken $accessToken, User $user): bool
+    {
+        $workspace = $accessToken->workspace;
+
+        return $workspace !== null
+            && $accessToken->isUsableMcpGrant($user, $workspace)
+            && $user->can('createPost', $workspace);
     }
 }

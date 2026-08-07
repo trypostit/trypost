@@ -22,7 +22,7 @@ class PostObserver
 
         $account = $post->workspace?->account;
 
-        if ($account === null || $account->hasFinishedOnboarding()) {
+        if (! $account?->isOnboardingOpen()) {
             return;
         }
 
@@ -45,7 +45,7 @@ class PostObserver
     {
         $account = $post->workspace?->account;
 
-        if ($account === null || $account->hasFinishedOnboarding()) {
+        if (! $account?->isOnboardingOpen()) {
             return;
         }
 
@@ -70,9 +70,7 @@ class PostObserver
     {
         $user = Auth::user();
 
-        if ($user instanceof User
-            && (string) $user->account_id === (string) $post->workspace?->account_id
-        ) {
+        if ($user instanceof User && $user->belongsToAccount($post->workspace?->account_id)) {
             return $user;
         }
 

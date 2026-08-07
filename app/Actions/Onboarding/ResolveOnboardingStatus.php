@@ -88,9 +88,10 @@ class ResolveOnboardingStatus
         $allComplete = collect($stepStates)
             ->every(fn (bool $done, string $step): bool => $done || in_array($step, $skippedSteps, true));
 
-        $showResidual = ! config('trypost.self_hosted')
+        $showResidual = $account !== null
+            && ! config('trypost.self_hosted')
             && $user->isAccountOwner()
-            && ($account?->hasAppAccess() ?? false)
+            && $account->hasAppAccess()
             && $account->onboarding_dismissed_at === null
             && ! $allComplete;
 
@@ -133,14 +134,12 @@ class ResolveOnboardingStatus
 
         $status = $this->handle($user);
 
-        if ($account->onboarding_dismissed_at === null) {
-            foreach (self::STEPS as $step => $statusKey) {
-                $this->captureCompletedStep($user, $account, $step, $status[$statusKey]);
-            }
-        }
-
         if ($account->onboarding_dismissed_at !== null) {
             return $status;
+        }
+
+        foreach (self::STEPS as $step => $statusKey) {
+            $this->captureCompletedStep($user, $account, $step, $status[$statusKey]);
         }
 
         if ($status['all_complete']) {
@@ -167,7 +166,7 @@ class ResolveOnboardingStatus
             ? User::query()->with('account')->find($actorId)
             : null;
 
-        $syncTarget = $actor !== null && (string) $actor->account_id === (string) $account->id
+        $syncTarget = $actor !== null && $actor->belongsToAccount($account->id)
             ? $actor
             : $account->owner;
 
@@ -176,7 +175,7 @@ class ResolveOnboardingStatus
             $account->refresh();
         }
 
-        if (! $account->hasFinishedOnboarding()) {
+        if ($account->isOnboardingOpen()) {
             OnboardingStatusUpdated::broadcastForAccount($account);
         }
     }
@@ -188,10 +187,7 @@ class ResolveOnboardingStatus
     {
         $account = $user->account;
 
-        if (
-            $account === null
-            || $account->hasFinishedOnboarding()
-        ) {
+        if (! $account?->isOnboardingOpen()) {
             return false;
         }
 
@@ -234,7 +230,7 @@ class ResolveOnboardingStatus
     {
         $account = $user->account;
 
-        if ($account === null || $account->hasFinishedOnboarding()) {
+        if (! $account?->isOnboardingOpen()) {
             return false;
         }
 
@@ -298,9 +294,9 @@ class ResolveOnboardingStatus
         // Cheap gates first: this runs on every full Inertia load, so dismissed /
         // completed accounts, members, and self-hosted must never pay for the
         // step EXISTS queries in handle() — or even for a subscription lookup.
-        if (config('trypost.self_hosted')
-            || $account === null
-            || $account->hasFinishedOnboarding()
+        if (
+            config('trypost.self_hosted')
+            || ! $account?->isOnboardingOpen()
             || ! $user->isAccountOwner()
             || ! $account->hasAppAccess()
         ) {
@@ -359,29 +355,23 @@ class ResolveOnboardingStatus
 
     private function accountHasSocialConnection(?Account $account): bool
     {
-        if ($account === null) {
-            return false;
-        }
-
-        return Workspace::query()
-            ->where('account_id', $account->id)
-            ->whereHas(
-                'socialAccounts',
-                fn (Builder $query): Builder => $query->where('status', Status::Connected),
-            )
-            ->exists();
+        return $account !== null
+            && Workspace::query()
+                ->where('account_id', $account->id)
+                ->whereHas(
+                    'socialAccounts',
+                    fn (Builder $query): Builder => $query->where('status', Status::Connected),
+                )
+                ->exists();
     }
 
     private function accountHasPost(?Account $account): bool
     {
-        if ($account === null) {
-            return false;
-        }
-
-        return Workspace::query()
-            ->where('account_id', $account->id)
-            ->whereHas('posts')
-            ->exists();
+        return $account !== null
+            && Workspace::query()
+                ->where('account_id', $account->id)
+                ->whereHas('posts')
+                ->exists();
     }
 
     private function clearMcpSkipIfConnected(Account $account): void

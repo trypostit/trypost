@@ -69,6 +69,28 @@ test('onboarding renders activation status and connection props', function () {
         && data_get($event->payload, 'event') === OnboardingEvent::Viewed->value);
 });
 
+test('onboarding captures viewed only once per account', function () {
+    $this->actingAs($this->user)
+        ->get(route('app.onboarding'))
+        ->assertOk();
+
+    Bus::assertDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
+    );
+
+    Bus::fake();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.onboarding'))
+        ->assertOk();
+
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Viewed->value,
+    );
+});
+
 test('onboarding flags the social step when only a sibling workspace is connected', function () {
     $otherWorkspace = Workspace::factory()->create([
         'account_id' => $this->user->account_id,

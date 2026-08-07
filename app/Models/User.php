@@ -117,6 +117,11 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
             ->exists();
     }
 
+    public function belongsToAccount(?string $accountId): bool
+    {
+        return $accountId !== null && $this->account_id === $accountId;
+    }
+
     public function wantsEmailFor(NotificationType $type): bool
     {
         $preference = $this->notificationPreference;

@@ -104,6 +104,15 @@ class Account extends Model
     }
 
     /**
+     * Whether activation progress should still be tracked for this account.
+     * Prefer `$account?->isOnboardingOpen()` at call sites so null accounts bail out cleanly.
+     */
+    public function isOnboardingOpen(): bool
+    {
+        return ! $this->hasFinishedOnboarding();
+    }
+
+    /**
      * Align the Stripe subscription quantity with the number of workspaces the
      * account owns. Each workspace is a billed unit. No-op in self-hosted mode
      * or when there is no active subscription (e.g. during onboarding).

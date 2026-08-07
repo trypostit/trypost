@@ -52,8 +52,7 @@ class SocialAccountObserver
         $account = $socialAccount->workspace?->account;
 
         if (
-            $account === null
-            || $account->hasFinishedOnboarding()
+            ! $account?->isOnboardingOpen()
             || $socialAccount->status !== Status::Connected
         ) {
             return;
@@ -81,8 +80,7 @@ class SocialAccountObserver
         $account = $socialAccount->workspace?->account;
 
         if (
-            $account === null
-            || $account->hasFinishedOnboarding()
+            ! $account?->isOnboardingOpen()
             || $socialAccount->status !== Status::Connected
         ) {
             return;
@@ -117,7 +115,7 @@ class SocialAccountObserver
 
         $account = $socialAccount->workspace?->account;
 
-        if ($account === null || $account->hasFinishedOnboarding()) {
+        if (! $account?->isOnboardingOpen()) {
             return;
         }
 
@@ -145,11 +143,9 @@ class SocialAccountObserver
             return null;
         }
 
-        if ((string) $user->account_id !== (string) $socialAccount->workspace?->account_id) {
-            return null;
-        }
-
-        return $user;
+        return $user->belongsToAccount($socialAccount->workspace?->account_id)
+            ? $user
+            : null;
     }
 
     private function syncUsage(SocialAccount $socialAccount): void
