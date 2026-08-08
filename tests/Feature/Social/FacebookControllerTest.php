@@ -473,6 +473,8 @@ test('facebook page selection creates account', function () {
 });
 
 test('facebook select page returns popup callback when the session expired', function () {
+    // Popup stays on PopupCallback — never dump /accounts. Shared onboarding
+    // must be inline false (not deferred) so Inertia won't re-GET this URL.
     $this->actingAs($this->user)
         ->get(route('app.social.facebook.select-page'))
         ->assertOk()
@@ -480,6 +482,7 @@ test('facebook select page returns popup callback when the session expired', fun
             ->component('accounts/PopupCallback')
             ->where('success', false)
             ->where('message', __('accounts.popup_callback.session_expired'))
+            ->where('onboardingProgress', false)
         );
 });
 

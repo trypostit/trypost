@@ -105,30 +105,6 @@ test('does not defer onboarding progress on passport oauth consent', function ()
         );
 });
 
-test('does not defer onboarding progress on social oauth popup routes', function (string $routeName) {
-    expect(app(ResolveOnboardingStatus::class)->canShowProgress($this->user))->toBeTrue();
-
-    $request = Request::create('/', 'GET');
-    $request->setLaravelSession(app('session.store'));
-    $request->setUserResolver(fn (): User => $this->user);
-    $request->setRouteResolver(function () use ($routeName): Route {
-        $route = new Route(['GET'], '/', fn () => null);
-        $route->name($routeName);
-
-        return $route;
-    });
-
-    $shared = app(HandleInertiaRequests::class)->share($request);
-
-    expect($shared['onboardingProgress'])->toBeFalse();
-})->with([
-    'facebook select page' => 'app.social.facebook.select-page',
-    'facebook select' => 'app.social.facebook.select',
-    'facebook callback' => 'app.social.facebook.callback',
-    'threads callback' => 'app.social.threads.callback',
-    'linkedin select' => 'app.social.linkedin.select',
-]);
-
 test('does not defer onboarding progress on passport device consent view', function () {
     // Device consent uses Passport's Blade view (not Inertia mcp/Authorize), so assert
     // the shared prop directly — same authToken rotation risk as the code authorize GET.

@@ -296,8 +296,11 @@ test('instagram-facebook select connects the page in self-hosted mode', function
     ]);
 
     $response->assertOk();
-    $response->assertInertia(fn (AssertableInertia $page) => $page->component('accounts/PopupCallback'));
-    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->component('accounts/PopupCallback')
+        ->where('success', true)
+        ->where('onboardingProgress', false)
+    );
 
     $this->assertDatabaseHas('social_accounts', [
         'workspace_id' => $this->workspace->id,
@@ -305,6 +308,30 @@ test('instagram-facebook select connects the page in self-hosted mode', function
         'platform_user_id' => 'ig-new',
         'username' => 'mybiz',
     ]);
+
+    // Deferred onboarding used to re-GET this URL after the POST cleared the
+    // session, which redirected the popup to /accounts. Keep the popup closed.
+    $this->actingAs($this->user)
+        ->get(route('app.social.instagram-facebook.select-page'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('accounts/PopupCallback')
+            ->where('success', false)
+            ->where('message', __('accounts.popup_callback.session_expired'))
+            ->where('onboardingProgress', false)
+        );
+});
+
+test('instagram-facebook select page returns popup callback when the session expired', function () {
+    $this->actingAs($this->user)
+        ->get(route('app.social.instagram-facebook.select-page'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('accounts/PopupCallback')
+            ->where('success', false)
+            ->where('message', __('accounts.popup_callback.session_expired'))
+            ->where('onboardingProgress', false)
+        );
 });
 
 test('instagram-facebook select shows network_taken when a standalone instagram is already connected', function () {
