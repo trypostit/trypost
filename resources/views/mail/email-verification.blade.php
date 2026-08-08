@@ -26,9 +26,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" media="screen">
   <style>
-    .hover-i-text-decoration-underline:hover {
-      text-decoration: underline !important
-    }
     @media (max-width: 600px) {
       .sm-my-8 {
         margin-top: 32px !important;
@@ -99,11 +96,6 @@
           <td align="center" style="padding: 24px; text-align: center; font-size: 12px; color: #52525b">
             <p style="margin: 0 0 8px">
               Open-source social media scheduling tool
-            </p>
-            <p style="margin: 8px 0 0">
-              <a href="{{ route('app.notifications.preferences') }}" target="_blank" class="hover-i-text-decoration-underline" style="color: #52525b; text-decoration: none">
-                Manage notifications
-              </a>
             </p>
           </td>
         </tr>

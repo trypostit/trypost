@@ -38,6 +38,19 @@ test('reset password screen can be rendered', function () {
     });
 });
 
+test('reset password email has no manage-notifications link — it is a transactional, unauthenticated email', function () {
+    $user = User::factory()->create();
+
+    $html = view('mail.password-reset', [
+        'title' => 'Reset your password',
+        'previewText' => 'Reset your password.',
+        'user' => $user,
+        'url' => 'https://example.com/reset',
+    ])->render();
+
+    expect($html)->not->toContain('Manage notifications');
+});
+
 test('password can be reset with valid token', function () {
     Notification::fake();
 

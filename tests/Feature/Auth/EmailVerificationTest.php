@@ -95,3 +95,16 @@ test('already verified user visiting verification link is redirected without fir
     Event::assertNotDispatched(Verified::class);
     expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
 });
+
+test('verification email has no manage-notifications link — it is a transactional, unauthenticated email', function () {
+    $user = User::factory()->unverified()->create();
+
+    $html = view('mail.email-verification', [
+        'title' => 'Verify your email address',
+        'previewText' => 'Please verify your email address.',
+        'user' => $user,
+        'url' => 'https://example.com/verify',
+    ])->render();
+
+    expect($html)->not->toContain('Manage notifications');
+});
