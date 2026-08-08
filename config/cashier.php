@@ -131,7 +131,11 @@ return [
     | Trial Period
     |--------------------------------------------------------------------------
     |
-    | The number of days for the trial period. Set to 0 to disable trials.
+    | Days of trial. With REQUIRE_CARD_FOR_TRIAL=true and no first-month coupon
+    | applied, this becomes Stripe Checkout trialDays (status trialing). With
+    | REQUIRE_CARD_FOR_TRIAL=false, it is the generic signup trial length on
+    | accounts.trial_ends_at. Set to 0 to disable trials. Stripe Checkout
+    | rejects trials shorter than 48 hours — values of 1 are clamped to 2.
     |
     */
 
@@ -142,14 +146,28 @@ return [
     | Paid First Month Coupon
     |--------------------------------------------------------------------------
     |
-    | Stripe Coupon ID applied at checkout so the first invoice comes out to
-    | $1 instead of the full monthly price — a real charge validates the
-    | card up front instead of a $0 trial authorization. Must be an
-    | `amount_off` coupon with `duration: once`, so it discounts only the
-    | first invoice and the full price bills automatically afterward.
+    | Optional Stripe Coupon ID (amount_off, duration=once). When set and the
+    | account qualifies (card required, single workspace, first-time), checkout
+    | applies withCoupon and skips trialDays so the first invoice validates the
+    | card. Empty = no coupon; card-required checkouts use trial_days instead.
+    | Cannot be combined with allow_promotion_codes on the same checkout.
     |
     */
 
     'first_month_coupon_id' => env('STRIPE_FIRST_MONTH_COUPON_ID'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow Promotion Codes
+    |--------------------------------------------------------------------------
+    |
+    | When true and no first-month coupon is applied on the session, Stripe
+    | Checkout shows the redeemable promotion-code field. Stripe rejects a
+    | session that sets both discounts (coupon) and allow_promotion_codes —
+    | ConfigureSubscriptionCheckout throws if both would be active.
+    |
+    */
+
+    'allow_promotion_codes' => (bool) env('CASHIER_ALLOW_PROMOTION_CODES', true),
 
 ];

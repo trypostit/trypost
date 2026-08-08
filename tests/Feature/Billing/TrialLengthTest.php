@@ -20,3 +20,7 @@ test('signup grants a trial of cashier.trial_days in no-card mode', function () 
     expect($user->account->trial_ends_at->toDateString())
         ->toBe(now()->addDays(config('cashier.trial_days'))->toDateString());
 });
+
+test('allow_promotion_codes defaults from env config', function () {
+    expect(config('cashier.allow_promotion_codes'))->toBeBool();
+});
