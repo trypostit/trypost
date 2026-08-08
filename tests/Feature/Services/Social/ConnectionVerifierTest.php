@@ -715,6 +715,39 @@ test('facebook verify treats a Meta rate-limit as transient, not a disconnect', 
         ->toThrow(PlatformUnavailableException::class);
 });
 
+test('facebook verify treats a Business Use Case rate-limit (Page token, code 80001) as transient, not a disconnect', function () {
+    // Facebook and InstagramFacebook accounts use Page tokens, which are
+    // throttled by BUC limits (code 80001) rather than Platform Rate Limits
+    // (codes 4/17) — and BUC rejections come back as a plain 400, not 429.
+    Http::fake([
+        config('trypost.platforms.facebook.graph_api').'/me*' => Http::response([
+            'error' => ['message' => 'There have been too many calls to this Page account.', 'code' => 80001],
+        ], 400),
+    ]);
+
+    $account = SocialAccount::factory()->facebook()->create([
+        'token_expires_at' => now()->addDays(30),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('instagram verify treats a Business Use Case rate-limit (code 80005) as transient, not a disconnect', function () {
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/me*' => Http::response([
+            'error' => ['message' => 'Instagram Platform rate limit reached.', 'code' => 80005],
+        ], 400),
+    ]);
+
+    $account = SocialAccount::factory()->instagram()->create([
+        'token_expires_at' => now()->addDays(30),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
 test('facebook verify treats a 5xx as platform unavailable, not a disconnect', function () {
     Http::fake([
         config('trypost.platforms.facebook.graph_api').'/me*' => Http::response('upstream timeout', 503),
