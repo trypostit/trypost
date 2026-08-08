@@ -85,27 +85,39 @@ test('graph paginator returns empty array when the first request fails', functio
     expect($pages)->toBe([]);
 });
 
-test('graph paginator stops after max pages to avoid infinite loops', function () {
+test('graph paginator stops when paging.next repeats to avoid infinite loops', function () {
     Http::preventStrayRequests();
 
     $graphApi = 'https://graph.facebook.com/v25.0';
-    $nextUrl = "{$graphApi}/me/accounts?access_token=token&after=cursor&limit=100";
+    $loopUrl = "{$graphApi}/me/accounts?access_token=token&after=cursor&limit=100";
 
     Http::fake([
-        "{$graphApi}/me/accounts*" => Http::response([
-            'data' => [
-                ['id' => 'page_loop'],
-            ],
-            'paging' => [
-                'next' => $nextUrl,
-            ],
-        ], 200),
+        "{$graphApi}/me/accounts*" => Http::sequence()
+            ->push([
+                'data' => [
+                    ['id' => 'page_1'],
+                ],
+                'paging' => [
+                    'next' => $loopUrl,
+                ],
+            ], 200)
+            ->push([
+                'data' => [
+                    ['id' => 'page_2'],
+                ],
+                'paging' => [
+                    'next' => $loopUrl,
+                ],
+            ], 200),
     ]);
 
     $pages = GraphPaginator::all("{$graphApi}/me/accounts", [
         'access_token' => 'token',
-    ], maxPages: 3);
+    ]);
 
-    expect($pages)->toHaveCount(3);
-    Http::assertSentCount(3);
+    expect($pages)->toHaveCount(2)
+        ->and(data_get($pages, '0.id'))->toBe('page_1')
+        ->and(data_get($pages, '1.id'))->toBe('page_2');
+
+    Http::assertSentCount(2);
 });

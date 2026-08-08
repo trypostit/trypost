@@ -20,14 +20,27 @@ class GraphPaginator
      * @param  array<string, mixed>  $query
      * @return list<array<string, mixed>>
      */
-    public static function all(string $url, array $query = [], int $maxPages = 50): array
+    public static function all(string $url, array $query = []): array
     {
         $items = [];
         $nextUrl = $url;
         $params = $query;
-        $pagesFetched = 0;
+        /** @var array<string, true> */
+        $seenUrls = [];
 
-        while ($nextUrl !== null && $pagesFetched < $maxPages) {
+        while ($nextUrl !== null) {
+            $requestKey = self::requestKey($nextUrl, $params);
+
+            if (isset($seenUrls[$requestKey])) {
+                Log::warning('Meta Graph pagination stopped: repeated paging URL', [
+                    'url' => $nextUrl,
+                ]);
+
+                break;
+            }
+
+            $seenUrls[$requestKey] = true;
+
             $response = Http::timeout(15)
                 ->connectTimeout(5)
                 ->get($nextUrl, $params);
@@ -53,9 +66,22 @@ class GraphPaginator
             $nextUrl = is_string($next) && $next !== '' ? $next : null;
             // Absolute next URLs already include the query string.
             $params = [];
-            $pagesFetched++;
         }
 
         return $items;
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    private static function requestKey(string $url, array $params): string
+    {
+        if ($params === []) {
+            return $url;
+        }
+
+        ksort($params);
+
+        return $url.'?'.http_build_query($params);
     }
 }
