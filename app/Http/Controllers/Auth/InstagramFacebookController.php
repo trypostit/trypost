@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\Workspace;
+use App\Services\Social\Meta\GraphPaginator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -237,21 +238,15 @@ class InstagramFacebookController extends SocialController
         try {
             $graphApi = (string) config('trypost.platforms.instagram-facebook.graph_api');
 
-            $response = Http::get($graphApi.'/me/accounts', [
-                'access_token' => $userToken,
-                'fields' => 'id,name,username,picture{url},access_token,instagram_business_account',
-            ]);
+            $pages = GraphPaginator::all(
+                "{$graphApi}/me/accounts",
+                [
+                    'access_token' => $userToken,
+                    'fields' => 'id,name,username,picture{url},access_token,instagram_business_account',
+                    'limit' => 100,
+                ],
+            );
 
-            if ($response->failed()) {
-                Log::error('Instagram via Facebook pages fetch failed', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-
-                return [];
-            }
-
-            $pages = data_get($response->json(), 'data', []);
             $results = [];
 
             foreach ($pages as $page) {
@@ -262,10 +257,12 @@ class InstagramFacebookController extends SocialController
                 }
 
                 // Fetch IG account details
-                $igResponse = Http::get("{$graphApi}/{$igAccountId}", [
-                    'access_token' => data_get($page, 'access_token'),
-                    'fields' => 'username,name,profile_picture_url',
-                ]);
+                $igResponse = Http::timeout(15)
+                    ->connectTimeout(5)
+                    ->get("{$graphApi}/{$igAccountId}", [
+                        'access_token' => data_get($page, 'access_token'),
+                        'fields' => 'username,name,profile_picture_url',
+                    ]);
 
                 $igData = $igResponse->successful() ? $igResponse->json() : [];
 

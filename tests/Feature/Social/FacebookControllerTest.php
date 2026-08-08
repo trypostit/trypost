@@ -194,6 +194,111 @@ test('facebook callback fails when no pages found', function () {
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'No Facebook Pages found. You need to be an admin of at least one page.'));
 });
 
+test('facebook callback follows accounts pagination and shows picker for pages across pages', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('facebook_user_123');
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
+
+    $graphApi = config('trypost.platforms.facebook.graph_api');
+    $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/accounts*" => Http::sequence()
+            ->push([
+                'data' => [
+                    [
+                        'id' => 'page_1',
+                        'name' => 'First Page',
+                        'username' => 'first',
+                        'picture' => ['data' => ['url' => null]],
+                        'access_token' => 'token-1',
+                    ],
+                ],
+                'paging' => [
+                    'next' => $nextUrl,
+                ],
+            ], 200)
+            ->push([
+                'data' => [
+                    [
+                        'id' => 'page_2',
+                        'name' => 'Second Page',
+                        'username' => 'second',
+                        'picture' => ['data' => ['url' => null]],
+                        'access_token' => 'token-2',
+                    ],
+                ],
+            ], 200),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
+
+    $response->assertRedirect(route('app.social.facebook.select-page'));
+    expect(session('facebook_oauth.pages'))->toHaveCount(2)
+        ->and(data_get(session('facebook_oauth.pages'), '0.id'))->toBe('page_1')
+        ->and(data_get(session('facebook_oauth.pages'), '1.id'))->toBe('page_2');
+});
+
+test('facebook callback connects authorized page when first accounts page is empty', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('facebook_user_123');
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
+
+    $graphApi = config('trypost.platforms.facebook.graph_api');
+    $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/accounts*" => Http::sequence()
+            ->push([
+                'data' => [],
+                'paging' => [
+                    'next' => $nextUrl,
+                ],
+            ], 200)
+            ->push([
+                'data' => [
+                    [
+                        'id' => 'page_desired',
+                        'name' => 'Desired Page',
+                        'username' => 'desired',
+                        'picture' => ['data' => ['url' => null]],
+                        'access_token' => 'desired-token',
+                    ],
+                ],
+            ], 200),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
+
+    $response->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
+
+    $this->assertDatabaseHas('social_accounts', [
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Facebook->value,
+        'platform_user_id' => 'page_desired',
+        'display_name' => 'Desired Page',
+    ]);
+});
+
 test('facebook callback fails with expired session', function () {
     // No session data - simulating expired session
 

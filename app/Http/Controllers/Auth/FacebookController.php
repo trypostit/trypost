@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\Workspace;
+use App\Services\Social\Meta\GraphPaginator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -268,23 +269,16 @@ class FacebookController extends SocialController
     private function fetchPages(string $userToken): array
     {
         try {
-            $response = Http::get(config('trypost.platforms.facebook.graph_api').'/me/accounts', [
-                'access_token' => $userToken,
-                'fields' => 'id,name,username,picture{url},access_token',
-            ]);
+            $pages = GraphPaginator::all(
+                config('trypost.platforms.facebook.graph_api').'/me/accounts',
+                [
+                    'access_token' => $userToken,
+                    'fields' => 'id,name,username,picture{url},access_token',
+                    'limit' => 100,
+                ],
+            );
 
-            if ($response->failed()) {
-                Log::error('Facebook pages fetch failed', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-
-                return [];
-            }
-
-            $data = $response->json();
-
-            return collect(data_get($data, 'data', []))->map(fn ($page) => [
+            return collect($pages)->map(fn ($page) => [
                 'id' => data_get($page, 'id'),
                 'name' => data_get($page, 'name'),
                 'username' => data_get($page, 'username', null),
