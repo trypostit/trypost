@@ -8,7 +8,6 @@ use App\Support\Billing\ConfigureSubscriptionCheckout;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Cashier\SubscriptionBuilder;
-use ReflectionClass;
 
 uses(RefreshDatabase::class);
 
@@ -40,7 +39,7 @@ function givePriorSubscription(Account $account, string $status = 'canceled'): v
 
 function trialExpiresAt(SubscriptionBuilder $subscription): ?Carbon
 {
-    $property = (new ReflectionClass($subscription))->getProperty('trialExpires');
+    $property = (new \ReflectionClass($subscription))->getProperty('trialExpires');
 
     return $property->getValue($subscription);
 }
