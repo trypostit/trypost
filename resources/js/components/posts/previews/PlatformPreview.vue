@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import type { MediaItem } from '@/types/media';
 
 import BlueskyPreview from './BlueskyPreview.vue';
@@ -44,8 +45,8 @@ const resolvedSocialAccount = computed((): SocialAccount => props.socialAccount 
     platform: props.platform,
     display_name: '',
     username: '',
-    display_label: props.platform,
-    handle_label: props.platform,
+    display_label: getPlatformLabel(props.platform),
+    handle_label: getPlatformLabel(props.platform),
     avatar_url: null,
 });
 

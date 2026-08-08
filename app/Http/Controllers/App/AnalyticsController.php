@@ -54,7 +54,6 @@ class AnalyticsController extends Controller
                 'display_name' => $account->display_name,
                 'username' => $account->username,
                 'display_label' => $account->display_label,
-                'handle_label' => $account->handle_label,
                 'avatar_url' => $account->avatar_url,
             ]);
 

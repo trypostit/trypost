@@ -69,8 +69,8 @@ const select = (account: AnalyticsAccount) => {
                     </div>
                     <span class="min-w-0 flex-1 truncate">
                         <span class="font-bold text-foreground">{{ selected.display_label }}</span>
-                        <span v-if="selected.handle_label" class="ml-1.5 text-xs font-medium text-foreground/60">
-                            @{{ selected.handle_label }}
+                        <span v-if="selected.username" class="ml-1.5 text-xs font-medium text-foreground/60">
+                            @{{ selected.username }}
                         </span>
                     </span>
                 </template>
@@ -111,8 +111,8 @@ const select = (account: AnalyticsAccount) => {
                             </div>
                             <div class="min-w-0 flex-1">
                                 <p class="truncate font-bold text-foreground">{{ account.display_label }}</p>
-                                <p v-if="account.handle_label" class="truncate text-xs font-medium text-foreground/60">
-                                    @{{ account.handle_label }}
+                                <p v-if="account.username" class="truncate text-xs font-medium text-foreground/60">
+                                    @{{ account.username }}
                                 </p>
                             </div>
                             <span class="sr-only">{{ getPlatformLabel(account.platform) }}</span>

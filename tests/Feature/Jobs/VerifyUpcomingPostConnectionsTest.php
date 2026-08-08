@@ -277,6 +277,48 @@ test('does not re-verify an account already known token_expired, but still warns
     Mail::assertQueued(PostAtRisk::class);
 });
 
+test('counts distinct posts, not post_platforms, when one post spans multiple broken accounts', function () {
+    Mail::fake();
+
+    $workspace = Workspace::factory()->create();
+    $accountOne = SocialAccount::factory()->threads()->create([
+        'workspace_id' => $workspace->id,
+        'status' => SocialAccountStatus::TokenExpired,
+        'error_message' => 'Threads access token is invalid or expired',
+    ]);
+    $accountTwo = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $workspace->id,
+        'status' => SocialAccountStatus::TokenExpired,
+        'error_message' => 'Facebook access token is invalid or expired',
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(30),
+    ]);
+    PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $accountOne->id,
+        'platform' => $accountOne->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+    PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $accountTwo->id,
+        'platform' => $accountTwo->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldNotReceive('verify');
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
+
+    // Two post_platforms, but they belong to the same post — the count
+    // must reflect distinct posts, not post_platform rows.
+    Mail::assertQueued(PostAtRisk::class, fn ($mail) => $mail->count === 1 && count($mail->postPlatformIds) === 2);
+});
+
 test('does not re-verify an account already known disconnected, but still warns about new posts', function () {
     Mail::fake();
 

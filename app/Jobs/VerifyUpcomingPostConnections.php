@@ -257,8 +257,9 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
      */
     private function notifyOwner(User $owner, Workspace $workspace, Collection $atRisk): void
     {
-        $postCount = $atRisk->sum(fn (array $group) => $group['postPlatforms']->count());
-        $postPlatformIds = $atRisk->flatMap(fn (array $group) => $group['postPlatforms']->pluck('id'))->all();
+        $postPlatforms = $atRisk->flatMap(fn (array $group) => $group['postPlatforms']);
+        $postCount = $postPlatforms->pluck('post_id')->unique()->count();
+        $postPlatformIds = $postPlatforms->pluck('id')->all();
 
         SendNotification::dispatch(
             user: $owner,
