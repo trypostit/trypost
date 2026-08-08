@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Exceptions\Social\IncompleteGraphPaginationException;
 use App\Services\Social\Meta\GraphPaginator;
+use App\Services\Social\Meta\IncompletePaginationException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -139,7 +139,7 @@ test('graph paginator throws when a later request fails after earlier pages succ
         'access_token' => 'secret-token',
         'limit' => 100,
     ]);
-})->throws(IncompleteGraphPaginationException::class);
+})->throws(IncompletePaginationException::class);
 
 test('graph paginator returns empty array when the first request fails', function () {
     Http::preventStrayRequests();
@@ -209,7 +209,7 @@ test('graph paginator throws when a later request cannot connect', function () {
     GraphPaginator::all("{$graphApi}/me/accounts", [
         'access_token' => 'secret-token',
     ]);
-})->throws(IncompleteGraphPaginationException::class);
+})->throws(IncompletePaginationException::class);
 
 test('graph paginator stops when paging.next is not a usable string', function () {
     Http::preventStrayRequests();
