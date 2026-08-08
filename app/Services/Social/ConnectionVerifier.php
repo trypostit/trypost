@@ -11,7 +11,6 @@ use App\Models\SocialAccount;
 use App\Services\Social\Discord\DiscordClient;
 use App\Services\Social\Meta\GraphError;
 use App\Services\Social\Telegram\TelegramApi;
-use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -420,7 +419,7 @@ class ConnectionVerifier
             return true;
         }
 
-        throw $this->classifyMetaVerifyFailure($response, 'Instagram');
+        throw GraphError::classifyVerifyFailure($response, 'Instagram');
     }
 
     private function verifyFacebook(SocialAccount $account): bool
@@ -434,7 +433,7 @@ class ConnectionVerifier
             return true;
         }
 
-        throw $this->classifyMetaVerifyFailure($response, 'Facebook');
+        throw GraphError::classifyVerifyFailure($response, 'Facebook');
     }
 
     private function verifyThreads(SocialAccount $account): bool
@@ -448,26 +447,7 @@ class ConnectionVerifier
             return true;
         }
 
-        throw $this->classifyMetaVerifyFailure($response, 'Threads');
-    }
-
-    /**
-     * Classify a failed Meta Graph "/me" verify call: a rate-limit or other
-     * transient upstream problem must not disconnect a still-valid token,
-     * but every other rejection — including error codes other than 190,
-     * which Meta also uses to signal a dead token — means the account
-     * genuinely needs to be reconnected.
-     */
-    private function classifyMetaVerifyFailure(Response $response, string $label): PlatformUnavailableException|TokenExpiredException
-    {
-        if (GraphError::isTransientFailure($response)) {
-            return new PlatformUnavailableException(
-                "{$label} API returned {$response->status()} during verification",
-                $response->status(),
-            );
-        }
-
-        return new TokenExpiredException("{$label} access token is invalid or expired");
+        throw GraphError::classifyVerifyFailure($response, 'Threads');
     }
 
     private function verifyTikTok(SocialAccount $account): bool

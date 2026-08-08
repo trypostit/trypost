@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Exceptions\PlatformUnavailableException;
+use App\Exceptions\TokenExpiredException;
 use App\Services\Social\Meta\GraphError;
 use Illuminate\Support\Facades\Http;
 
@@ -56,4 +58,24 @@ test('isTransientFailure treats 5xx and 429 as transient regardless of body', fu
 test('isTransientFailure classifies a confirmed 4xx rejection as not transient', function () {
     Http::fake(['example.com/*' => Http::response(['error' => ['code' => 190]], 400)]);
     expect(GraphError::isTransientFailure(Http::get('https://example.com/me')))->toBeFalse();
+});
+
+test('classifyVerifyFailure returns PlatformUnavailableException for a transient failure', function () {
+    Http::fake(['example.com/*' => Http::response('upstream timeout', 503)]);
+
+    expect(GraphError::classifyVerifyFailure(Http::get('https://example.com/me'), 'Threads'))
+        ->toBeInstanceOf(PlatformUnavailableException::class);
+});
+
+test('classifyVerifyFailure returns TokenExpiredException for a confirmed rejection', function () {
+    Http::fake([
+        'example.com/*' => Http::response([
+            'error' => ['message' => 'The requested resource does not exist', 'code' => 100],
+        ], 400),
+    ]);
+
+    $exception = GraphError::classifyVerifyFailure(Http::get('https://example.com/me'), 'Threads');
+
+    expect($exception)->toBeInstanceOf(TokenExpiredException::class)
+        ->and($exception->getMessage())->toBe('Threads access token is invalid or expired');
 });

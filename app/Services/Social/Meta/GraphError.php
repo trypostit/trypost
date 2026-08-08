@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Social\Meta;
 
+use App\Exceptions\PlatformUnavailableException;
+use App\Exceptions\TokenExpiredException;
 use Illuminate\Http\Client\Response;
 
 /**
@@ -68,5 +70,24 @@ class GraphError
         return $response->serverError()
             || $response->status() === 429
             || self::isTransient($response->json());
+    }
+
+    /**
+     * Classify a failed Meta Graph "/me" verify call into the exception the
+     * caller should throw: a rate-limit or other transient upstream problem
+     * must not disconnect a still-valid token, but every other rejection —
+     * including error codes other than 190, which Meta also uses to signal a
+     * dead token — means the account genuinely needs to be reconnected.
+     */
+    public static function classifyVerifyFailure(Response $response, string $label): PlatformUnavailableException|TokenExpiredException
+    {
+        if (self::isTransientFailure($response)) {
+            return new PlatformUnavailableException(
+                "{$label} API returned {$response->status()} during verification",
+                $response->status(),
+            );
+        }
+
+        return new TokenExpiredException("{$label} access token is invalid or expired");
     }
 }
