@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Enums\UserWorkspace\Role;
@@ -459,8 +460,8 @@ test('facebook page selection creates account', function () {
         'username' => 'myfbpage',
     ]);
 
-    // Deferred onboarding used to re-GET this URL after the POST cleared the
-    // session, which redirected the popup to /accounts. Keep the popup closed.
+    // After connect the session is cleared; PopupCallback sets onboardingProgress
+    // inline so Inertia does not deferred-reload this select URL into /accounts.
     $this->actingAs($this->user)
         ->get(route('app.social.facebook.select-page'))
         ->assertOk()
@@ -473,8 +474,8 @@ test('facebook page selection creates account', function () {
 });
 
 test('facebook select page returns popup callback when the session expired', function () {
-    // Popup stays on PopupCallback — never dump /accounts. Shared onboarding
-    // must be inline false (not deferred) so Inertia won't re-GET this URL.
+    // Popup stays on PopupCallback — never dump /accounts. popupCallback() sets
+    // onboardingProgress inline so Inertia won't deferred-reload this URL.
     $this->actingAs($this->user)
         ->get(route('app.social.facebook.select-page'))
         ->assertOk()
@@ -482,6 +483,51 @@ test('facebook select page returns popup callback when the session expired', fun
             ->component('accounts/PopupCallback')
             ->where('success', false)
             ->where('message', __('accounts.popup_callback.session_expired'))
+            ->where('onboardingProgress', false)
+        );
+});
+
+test('facebook popup callback overrides deferred onboarding progress for mid-activation owners', function () {
+    config(['trypost.self_hosted' => false]);
+    subscribeAccount($this->user->account);
+
+    expect(app(ResolveOnboardingStatus::class)->canShowProgress($this->user->fresh()))->toBeTrue();
+
+    // Picker page may still defer onboarding — that is fine while the OAuth session exists.
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'facebook_oauth' => [
+            'user_token' => 'test-user-token',
+            'user_id' => 'facebook_user_123',
+            'pages' => [
+                [
+                    'id' => 'page_123',
+                    'name' => 'My Facebook Page',
+                    'username' => 'myfbpage',
+                    'picture' => null,
+                    'access_token' => 'page-access-token',
+                ],
+            ],
+        ],
+    ]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.social.facebook.select-page'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('accounts/FacebookPageSelect')
+            ->missing('onboardingProgress')
+            ->has('pages', 1)
+        );
+
+    // Close/error page must force inline false so Inertia does not re-GET select-page.
+    session()->forget(['facebook_oauth', 'social_connect_workspace']);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.social.facebook.select-page'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('accounts/PopupCallback')
             ->where('onboardingProgress', false)
         );
 });

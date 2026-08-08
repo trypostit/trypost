@@ -87,13 +87,13 @@ class HandleInertiaRequests extends Middleware
      * same URL, Passport rotates `authToken` on every authorize hit, and approve then
      * fails with InvalidAuthTokenException against the stale token still on the page.
      *
-     * Never defer on social OAuth popup routes either: after a successful page/channel
-     * select POST the response URL is still the select path, so a deferred reload would
-     * GET that path with a cleared session and dump /accounts into the popup.
+     * Social OAuth popup close pages set `onboardingProgress` to false in
+     * `SocialController::popupCallback()` so a deferred reload does not re-hit the
+     * select route after the connect session was cleared.
      */
     private function onboardingProgress(Request $request, ?User $user): DeferProp|false
     {
-        if ($this->isPassportConsentViewRequest($request) || $this->isSocialOAuthPopupRequest($request)) {
+        if ($this->isPassportConsentViewRequest($request)) {
             return false;
         }
 
@@ -115,13 +115,5 @@ class HandleInertiaRequests extends Middleware
             'passport.authorizations.authorize',
             'passport.device.authorizations.authorize',
         );
-    }
-
-    /**
-     * Social connect/callback/select routes that render inside the OAuth popup.
-     */
-    private function isSocialOAuthPopupRequest(Request $request): bool
-    {
-        return $request->routeIs('app.social.*');
     }
 }

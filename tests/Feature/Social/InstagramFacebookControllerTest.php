@@ -309,8 +309,8 @@ test('instagram-facebook select connects the page in self-hosted mode', function
         'username' => 'mybiz',
     ]);
 
-    // Deferred onboarding used to re-GET this URL after the POST cleared the
-    // session, which redirected the popup to /accounts. Keep the popup closed.
+    // After connect the session is cleared; PopupCallback sets onboardingProgress
+    // inline so Inertia does not deferred-reload this select URL into /accounts.
     $this->actingAs($this->user)
         ->get(route('app.social.instagram-facebook.select-page'))
         ->assertOk()

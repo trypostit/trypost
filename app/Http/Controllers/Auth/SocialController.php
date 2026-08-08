@@ -168,6 +168,10 @@ class SocialController extends Controller
      * Render the Inertia page that notifies the opener and closes the connect
      * popup. Used by both the GET OAuth callbacks (a fresh popup page load) and
      * the XHR selection submits (an Inertia visit that swaps to this page).
+     *
+     * Always pass `onboardingProgress` as inline false so it overrides the shared
+     * deferred prop: after select the URL is still the select path, and a deferred
+     * reload would re-GET that route with a cleared session.
      */
     protected function popupCallback(bool $success, string $message, ?string $platform = null): Response
     {
@@ -177,6 +181,7 @@ class SocialController extends Controller
             'success' => $success,
             'message' => $message,
             'platform' => $platform,
+            'onboardingProgress' => false,
         ]);
     }
 }
