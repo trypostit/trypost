@@ -237,11 +237,14 @@ class InstagramFacebookController extends SocialController
     {
         $graphApi = (string) config('trypost.platforms.instagram-facebook.graph_api');
 
-        return collect(GraphPaginator::all("{$graphApi}/me/accounts", [
+        $pages = GraphPaginator::all("{$graphApi}/me/accounts", [
             'access_token' => $userToken,
             'fields' => 'id,name,username,picture{url},access_token,instagram_business_account',
             'limit' => 100,
-        ]))->filter(fn (array $page) => filled(data_get($page, 'instagram_business_account.id')))
+        ]);
+
+        return collect($pages)
+            ->filter(fn (array $page) => filled(data_get($page, 'instagram_business_account.id')))
             ->map(function (array $page) use ($graphApi) {
                 $igId = data_get($page, 'instagram_business_account.id');
                 $token = data_get($page, 'access_token');

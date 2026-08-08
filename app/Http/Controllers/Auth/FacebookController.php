@@ -268,14 +268,16 @@ class FacebookController extends SocialController
 
     private function fetchPages(string $userToken): array
     {
-        return collect(GraphPaginator::all(
+        $pages = GraphPaginator::all(
             config('trypost.platforms.facebook.graph_api').'/me/accounts',
             [
                 'access_token' => $userToken,
                 'fields' => 'id,name,username,picture{url},access_token',
                 'limit' => 100,
             ],
-        ))->map(fn (array $page) => [
+        );
+
+        return collect($pages)->map(fn (array $page) => [
             'id' => data_get($page, 'id'),
             'name' => data_get($page, 'name'),
             'username' => data_get($page, 'username'),
