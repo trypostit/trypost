@@ -120,22 +120,19 @@ class InstagramFacebookController extends SocialController
         }
     }
 
-    public function selectPage(Request $request)
+    public function selectPage(Request $request): InertiaResponse
     {
         $oauthData = session('instagram_facebook_oauth');
         $workspaceId = session('social_connect_workspace');
 
         if (! $oauthData || ! $workspaceId) {
-            session()->flash('flash.banner', 'Session expired. Please try again.');
-            session()->flash('flash.bannerStyle', 'danger');
-
-            return redirect()->route('app.accounts');
+            return $this->popupCallback(false, __('accounts.popup_callback.session_expired'), $this->platform->value);
         }
 
         $workspace = Workspace::find($workspaceId);
 
         if (! $workspace) {
-            return redirect()->route('app.accounts');
+            return $this->popupCallback(false, __('accounts.popup_callback.workspace_not_found'), $this->platform->value);
         }
 
         $pages = collect(data_get($oauthData, 'pages'))

@@ -446,7 +446,11 @@ test('facebook page selection creates account', function () {
     ]);
 
     $response->assertOk();
-    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->component('accounts/PopupCallback')
+        ->where('success', true)
+        ->where('onboardingProgress', false)
+    );
 
     $this->assertDatabaseHas('social_accounts', [
         'workspace_id' => $this->workspace->id,
@@ -454,6 +458,29 @@ test('facebook page selection creates account', function () {
         'platform_user_id' => 'page_123',
         'username' => 'myfbpage',
     ]);
+
+    // Deferred onboarding used to re-GET this URL after the POST cleared the
+    // session, which redirected the popup to /accounts. Keep the popup closed.
+    $this->actingAs($this->user)
+        ->get(route('app.social.facebook.select-page'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('accounts/PopupCallback')
+            ->where('success', false)
+            ->where('message', __('accounts.popup_callback.session_expired'))
+            ->where('onboardingProgress', false)
+        );
+});
+
+test('facebook select page returns popup callback when the session expired', function () {
+    $this->actingAs($this->user)
+        ->get(route('app.social.facebook.select-page'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('accounts/PopupCallback')
+            ->where('success', false)
+            ->where('message', __('accounts.popup_callback.session_expired'))
+        );
 });
 
 test('facebook page selection fails with expired session', function () {
