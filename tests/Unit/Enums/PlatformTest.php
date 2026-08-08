@@ -170,21 +170,19 @@ test('connectable options include a single instagram card and omit the facebook 
 test('instagram connectable option lists only enabled connect methods', function () {
     config(['trypost.platforms.instagram.enabled' => true, 'trypost.platforms.instagram-facebook.enabled' => false]);
 
+    expect(Platform::instagramConnectMethods())->toBe([Platform::Instagram->value]);
+
     $instagram = collect(Platform::connectableOptions())->firstWhere('value', Platform::Instagram->value);
 
     expect($instagram['connect_methods'])->toBe([Platform::Instagram->value]);
 
     config(['trypost.platforms.instagram.enabled' => false, 'trypost.platforms.instagram-facebook.enabled' => true]);
 
-    $instagram = collect(Platform::connectableOptions())->firstWhere('value', Platform::Instagram->value);
-
-    expect($instagram['connect_methods'])->toBe([Platform::InstagramFacebook->value]);
+    expect(Platform::instagramConnectMethods())->toBe([Platform::InstagramFacebook->value]);
 
     config(['trypost.platforms.instagram.enabled' => true, 'trypost.platforms.instagram-facebook.enabled' => true]);
 
-    $instagram = collect(Platform::connectableOptions())->firstWhere('value', Platform::Instagram->value);
-
-    expect($instagram['connect_methods'])->toBe([
+    expect(Platform::instagramConnectMethods())->toBe([
         Platform::Instagram->value,
         Platform::InstagramFacebook->value,
     ]);

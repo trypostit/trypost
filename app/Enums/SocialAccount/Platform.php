@@ -392,6 +392,20 @@ enum Platform: string
     }
 
     /**
+     * OAuth entry points for the Instagram connect dialog. Only enabled methods
+     * are returned so self-hosters who disable one variant do not see that option.
+     *
+     * @return list<string>
+     */
+    public static function instagramConnectMethods(): array
+    {
+        return array_values(array_filter([
+            self::Instagram->isEnabled() ? self::Instagram->value : null,
+            self::InstagramFacebook->isEnabled() ? self::InstagramFacebook->value : null,
+        ]));
+    }
+
+    /**
      * Connectable platforms shaped for Inertia account/onboarding grids.
      * Sorted alphabetically by label (ASC, case-insensitive).
      *
@@ -414,10 +428,7 @@ enum Platform: string
                 ];
 
                 if ($platform === self::Instagram) {
-                    $option['connect_methods'] = array_values(array_filter([
-                        self::Instagram->isEnabled() ? self::Instagram->value : null,
-                        self::InstagramFacebook->isEnabled() ? self::InstagramFacebook->value : null,
-                    ]));
+                    $option['connect_methods'] = self::instagramConnectMethods();
                 }
 
                 return $option;
