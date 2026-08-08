@@ -7,6 +7,7 @@ namespace App\Services\Social\Meta;
 use App\Exceptions\Social\IncompleteMetaGraphPaginationException;
 use App\Services\Social\TokenRedactor;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Uri;
@@ -25,10 +26,10 @@ class GraphPaginator
      */
     public static function all(string $url, array $query = []): array
     {
-        $items = [];
-        $ok = 0;
+        $items = collect();
+        $fetched = 0;
         $seen = [];
-        $next = (string) Uri::of($url)->withQuery($query);
+        $next = Uri::of($url)->withQuery($query)->value();
 
         while (filled($next)) {
             if (isset($seen[$next])) {
@@ -44,32 +45,20 @@ class GraphPaginator
             try {
                 $response = Http::timeout(15)->connectTimeout(5)->get($next);
             } catch (ConnectionException $e) {
-                Log::error('Meta Graph pagination connection failed', [
-                    'url' => TokenRedactor::redact($next),
-                    'error' => $e->getMessage(),
-                ]);
-
-                return self::emptyOrIncomplete($ok, $e);
+                return self::abort($next, $fetched, $e);
             }
 
             if ($response->failed()) {
-                Log::error('Meta Graph pagination request failed', [
-                    'url' => TokenRedactor::redact($next),
-                    'status' => $response->status(),
-                    'body' => TokenRedactor::redact($response->body()),
-                ]);
-
-                return self::emptyOrIncomplete($ok);
+                return self::abort($next, $fetched, response: $response);
             }
 
-            $ok++;
-            $items = [...$items, ...$response->collect('data')->values()->all()];
-
+            $fetched++;
+            $items = $items->concat($response->collect('data'));
             $candidate = $response->json('paging.next');
-            $next = is_string($candidate) && filled($candidate) ? $candidate : null;
+            $next = when(is_string($candidate) && filled($candidate), $candidate);
         }
 
-        return $items;
+        return $items->values()->all();
     }
 
     /**
@@ -77,11 +66,16 @@ class GraphPaginator
      *
      * @throws IncompleteMetaGraphPaginationException
      */
-    private static function emptyOrIncomplete(int $successfulRequests, ?Throwable $previous = null): array
+    private static function abort(string $url, int $fetched, ?Throwable $e = null, ?Response $response = null): array
     {
-        if ($successfulRequests > 0) {
-            throw new IncompleteMetaGraphPaginationException($previous);
-        }
+        Log::error($e ? 'Meta Graph pagination connection failed' : 'Meta Graph pagination request failed', array_filter([
+            'url' => TokenRedactor::redact($url),
+            'error' => $e?->getMessage(),
+            'status' => $response?->status(),
+            'body' => $response ? TokenRedactor::redact($response->body()) : null,
+        ]));
+
+        throw_if($fetched > 0, IncompleteMetaGraphPaginationException::class, $e);
 
         return [];
     }
