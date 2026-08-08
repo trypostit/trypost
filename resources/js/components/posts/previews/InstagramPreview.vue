@@ -23,7 +23,8 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
-    handle_label: string;
+    display_label: string | null;
+    handle_label: string | null;
     avatar_url: string | null;
 }
 
@@ -110,10 +111,10 @@ const truncatedCaption = computed(() => {
                             style="background: conic-gradient(from 180deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5, #feda75)">
                             <div class="p-[1.5px] bg-white dark:bg-black rounded-full">
                                 <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url"
-                                    :alt="socialAccount.display_name" class="w-7 h-7 rounded-full object-cover" />
+                                    :alt="socialAccount.display_label ?? undefined" class="w-7 h-7 rounded-full object-cover" />
                                 <div v-else
                                     class="w-7 h-7 rounded-full bg-gradient-to-br from-[#833ab4] to-[#fd1d1d] flex items-center justify-center text-white font-semibold text-[10px]">
-                                    {{ socialAccount.display_name?.charAt(0).toUpperCase() }}
+                                    {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
                                 </div>
                             </div>
                         </div>
@@ -205,7 +206,7 @@ const truncatedCaption = computed(() => {
                             class="w-7 h-7 rounded-full object-cover border border-white/30" />
                         <div v-else
                             class="w-7 h-7 rounded-full bg-gradient-to-br from-[#833ab4] to-[#fd1d1d] flex items-center justify-center text-white font-semibold text-[10px] border border-white/30">
-                            {{ socialAccount.display_name?.charAt(0).toUpperCase() }}
+                            {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
                         </div>
                         <span class="text-white text-[12px] font-semibold drop-shadow-lg">{{ socialAccount.handle_label }}</span>
                         <button class="px-2 py-0.5 border border-white/70 rounded text-white text-[10px] font-semibold">
@@ -256,7 +257,7 @@ const truncatedCaption = computed(() => {
                                     class="w-7 h-7 rounded-full object-cover" />
                                 <div v-else
                                     class="w-7 h-7 rounded-full bg-gradient-to-br from-[#833ab4] to-[#fd1d1d] flex items-center justify-center text-white font-semibold text-[10px]">
-                                    {{ socialAccount.display_name?.charAt(0).toUpperCase() }}
+                                    {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
                                 </div>
                             </div>
                         </div>

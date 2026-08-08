@@ -2,12 +2,15 @@
 
 declare(strict_types=1);
 
+use App\Enums\Notification\Channel;
+use App\Enums\Notification\Type;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Status as SocialAccountStatus;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
 use App\Jobs\VerifyUpcomingPostConnections;
 use App\Mail\PostAtRisk;
+use App\Models\Notification;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -51,6 +54,41 @@ test('marks the account expired and queues a notification when verify throws Tok
             && $mail->atRiskGroups->count() === 1
             && $mail->atRiskGroups->first()['postPlatforms']->pluck('id')->contains($postPlatform->id);
     });
+});
+
+test('creates an in-app notification for the workspace owner alongside the email', function () {
+    Mail::fake();
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->threads()->create([
+        'workspace_id' => $workspace->id,
+        'status' => SocialAccountStatus::Connected,
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(45),
+    ]);
+    PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')->once()->andThrow(new TokenExpiredException('Threads access token is invalid or expired'));
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
+
+    expect(Notification::count())->toBe(1);
+
+    $notification = Notification::first();
+    expect($notification->user_id)->toBe($workspace->owner->id)
+        ->and($notification->workspace_id)->toBe($workspace->id)
+        ->and($notification->type)->toBe(Type::PostAtRisk)
+        ->and($notification->channel)->toBe(Channel::Both)
+        ->and($notification->title)->toBe('1 upcoming post is at risk');
 });
 
 test('defers to the next run instead of warning when markAsTokenExpired loses the account status lock', function () {

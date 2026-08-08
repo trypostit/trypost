@@ -8,7 +8,8 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
-    handle_label: string;
+    display_label: string | null;
+    handle_label: string | null;
     avatar_url: string | null;
 }
 
@@ -149,10 +150,10 @@ const formatNumber = (num: number): string => {
             <div class="flex items-center gap-2 mb-2">
                 <div class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
                     <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url"
-                        :alt="socialAccount.display_name" class="w-full h-full object-cover" />
+                        :alt="socialAccount.display_label ?? undefined" class="w-full h-full object-cover" />
                     <div v-else
                         class="w-full h-full bg-[#ff0000] flex items-center justify-center text-white font-bold text-[10px]">
-                        {{ socialAccount.display_name?.charAt(0).toUpperCase() }}
+                        {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
                     </div>
                 </div>
                 <span class="text-[13px] font-medium">@{{ socialAccount.handle_label }}</span>
@@ -171,7 +172,7 @@ const formatNumber = (num: number): string => {
                 <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
                 </svg>
-                <span class="text-[11px] text-white/80 truncate">{{ socialAccount.display_name }} - Original
+                <span class="text-[11px] text-white/80 truncate">{{ socialAccount.display_label }} - Original
                     audio</span>
             </div>
         </div>

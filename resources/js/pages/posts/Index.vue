@@ -44,6 +44,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string | null;
     avatar_url: string | null;
 }
 
@@ -249,7 +250,7 @@ useWorkspaceEcho(
                                                         <TooltipContent>
                                                             <div class="space-y-0.5 text-xs">
                                                                 <p class="font-semibold">
-                                                                    {{ pp.social_account?.display_name ?? pp.platform }}<span
+                                                                    {{ pp.social_account?.display_label ?? pp.platform }}<span
                                                                         v-if="pp.social_account?.username"
                                                                         class="font-normal opacity-80"
                                                                     >&nbsp;·&nbsp;@{{ pp.social_account.username }}</span>

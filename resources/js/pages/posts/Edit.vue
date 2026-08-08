@@ -34,7 +34,7 @@ interface SocialAccount {
     display_name: string;
     username: string;
     display_label: string | null;
-    handle_label: string;
+    handle_label: string | null;
     avatar_url: string | null;
 }
 

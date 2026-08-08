@@ -162,7 +162,7 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
             workspaceId: $workspace->id,
             type: Type::PostAtRisk,
             channel: Channel::Both,
-            title: $postCount === 1 ? '1 upcoming post is at risk' : "{$postCount} upcoming posts are at risk",
+            title: trans_choice('notifications.post_at_risk.title', $postCount, ['count' => $postCount]),
             body: $atRisk->map(fn (array $group) => $group['account']->platform->label().' ('.$group['account']->handle().')')->implode(', '),
             data: ['workspace_id' => $workspace->id],
             mailable: new PostAtRisk($workspace, $atRisk),

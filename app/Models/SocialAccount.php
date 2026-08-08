@@ -156,7 +156,7 @@ class SocialAccount extends Model
      */
     public function handle(): string
     {
-        return '@'.($this->username ?? $this->display_name);
+        return '@'.($this->username ?: $this->display_name);
     }
 
     /**
@@ -165,7 +165,7 @@ class SocialAccount extends Model
      */
     public function accountDisplayName(): ?string
     {
-        return $this->display_name ?? $this->username;
+        return $this->display_name ?: $this->username;
     }
 
     /**
@@ -186,7 +186,7 @@ class SocialAccount extends Model
     protected function handleLabel(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->username ?? $this->display_name,
+            get: fn () => $this->username ?: $this->display_name,
         );
     }
 

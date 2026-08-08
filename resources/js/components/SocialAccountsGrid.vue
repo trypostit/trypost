@@ -29,6 +29,8 @@ export interface SocialAccount {
     platform_user_id: string;
     username: string;
     display_name: string;
+    display_label: string | null;
+    handle_label: string | null;
     avatar_url: string;
     status: 'connected' | 'disconnected' | 'token_expired' | null;
     is_active: boolean;
@@ -201,10 +203,7 @@ const isDisconnected = (account: SocialAccount | null): boolean => {
                         v-if="platform.connected && platform.account"
                         class="truncate text-sm text-muted-foreground"
                     >
-                        @{{
-                            platform.account.username ||
-                            platform.account.display_name
-                        }}
+                        @{{ platform.account.handle_label }}
                     </p>
                     <p v-else class="text-sm text-muted-foreground">
                         {{ trans('accounts.not_connected') }}
@@ -244,13 +243,13 @@ const isDisconnected = (account: SocialAccount | null): boolean => {
                                 :src="platform.account.avatar_url"
                             />
                             <AvatarFallback class="text-xs">
-                                {{ platform.account.display_name?.charAt(0) }}
+                                {{ platform.account.display_label?.charAt(0) }}
                             </AvatarFallback>
                         </Avatar>
                         <span
                             class="max-w-[120px] truncate text-sm font-medium"
                         >
-                            {{ platform.account.display_name }}
+                            {{ platform.account.display_label }}
                         </span>
                     </div>
                     <div class="flex items-center gap-1">

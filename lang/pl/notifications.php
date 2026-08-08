@@ -15,4 +15,7 @@ return [
         'title' => 'Konto :platform wymaga ponownego połączenia',
         'body' => 'Sesja :account wygasła — połącz ponownie, aby dalej publikować',
     ],
+    'post_at_risk' => [
+        'title' => ':count nadchodzący post jest zagrożony|:count nadchodzące posty są zagrożone|:count nadchodzących postów jest zagrożonych',
+    ],
 ];

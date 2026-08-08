@@ -15,4 +15,7 @@ return [
         'title' => ':platform 账号需要重新连接',
         'body' => ':account 会话已过期——请重新连接以继续发帖',
     ],
+    'post_at_risk' => [
+        'title' => '{1} 有 :count 篇待发布的帖子存在风险|[2,*] 有 :count 篇待发布的帖子存在风险',
+    ],
 ];

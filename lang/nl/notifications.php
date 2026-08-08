@@ -15,4 +15,7 @@ return [
         'title' => ':platform-account moet opnieuw worden gekoppeld',
         'body' => 'Sessie van :account verlopen — koppel opnieuw om te blijven posten',
     ],
+    'post_at_risk' => [
+        'title' => '{1} :count aankomende post loopt risico|[2,*] :count aankomende posts lopen risico',
+    ],
 ];
