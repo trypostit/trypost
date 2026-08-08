@@ -437,6 +437,44 @@ test('still skips a post_platform warned less than a day ago', function () {
     Mail::assertNothingQueued();
 });
 
+test('does not re-warn a re-armed post_platform when the account has since been reconnected', function () {
+    Mail::fake();
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->threads()->create([
+        'workspace_id' => $workspace->id,
+        'status' => SocialAccountStatus::Connected,
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(30),
+    ]);
+    $warnedAt = now()->subDay()->subMinute();
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+        'status' => PostPlatformStatus::Pending,
+        'connection_warning_sent_at' => $warnedAt,
+    ]);
+
+    // Old warning is stale enough to re-arm the row, but this time the
+    // account verifies fine — the user reconnected in the meantime.
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')->once()->andReturn(true);
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
+
+    // The row was re-evaluated (not skipped — verify() was called), but
+    // since it came back healthy, nothing about it changes: no new
+    // warning, no notification, no touch to the account's status.
+    expect($postPlatform->fresh()->connection_warning_sent_at->format('Y-m-d H:i:s'))
+        ->toBe($warnedAt->format('Y-m-d H:i:s'));
+    expect($account->fresh()->status)->toBe(SocialAccountStatus::Connected);
+    Mail::assertNothingQueued();
+});
+
 test('does not crash the run on a post_platform with a null social_account_id', function () {
     Mail::fake();
 
