@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Mail;
 
 use App\Models\PostPlatform;
-use App\Models\SocialAccount;
 use App\Models\Workspace;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -20,16 +19,30 @@ class PostAtRisk extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     /**
-     * @param  Collection<int, array{account: SocialAccount, postPlatforms: Collection<int, PostPlatform>, postsLabel?: string}>  $atRiskGroups
+     * Rehydrated, grouped-by-account rows — computed once (lazily, at send
+     * time, never on the queue payload) and shared between envelope() and
+     * content() so their counts can't disagree if a row disappears between
+     * dispatch and send.
+     */
+    private ?Collection $atRiskGroups = null;
+
+    /**
+     * Only the workspace (a real Eloquent model, reduced to a lightweight
+     * identifier by SerializesModels) and the post_platform IDs are carried
+     * on the queue payload. The rows are rehydrated in atRiskGroups() so the
+     * queued job's serialized size stays small and the email reflects
+     * account/post state as of send time, not as of dispatch time.
+     *
+     * @param  array<int, string>  $postPlatformIds
      */
     public function __construct(
         public Workspace $workspace,
-        public Collection $atRiskGroups
+        public array $postPlatformIds
     ) {}
 
     public function envelope(): Envelope
     {
-        $count = $this->atRiskGroups->sum(fn (array $group) => $group['postPlatforms']->count());
+        $count = $this->atRiskGroups()->sum(fn (array $group) => $group['postPlatforms']->count());
 
         return new Envelope(
             subject: $this->subjectFor($count),
@@ -38,21 +51,8 @@ class PostAtRisk extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
-        $count = $this->atRiskGroups->sum(fn (array $group) => $group['postPlatforms']->count());
-
-        // Reassigning the public property (not a local variable) is required: Mailable::buildViewData()
-        // overwrites `with()` data with public properties of the same name, so this must stay in sync.
-        $this->atRiskGroups = $this->atRiskGroups->map(function (array $group) {
-            $postCount = $group['postPlatforms']->count();
-            $times = $group['postPlatforms']->map(fn ($pp) => $pp->post->scheduled_at->format('H:i'))->implode(', ');
-            $noun = $postCount === 1 ? 'post' : 'posts';
-
-            return [
-                'account' => $group['account'],
-                'postPlatforms' => $group['postPlatforms'],
-                'postsLabel' => "{$postCount} {$noun} scheduled: {$times} UTC",
-            ];
-        });
+        $atRiskGroups = $this->atRiskGroups();
+        $count = $atRiskGroups->sum(fn (array $group) => $group['postPlatforms']->count());
 
         return new Content(
             view: 'mail.post-at-risk',
@@ -63,10 +63,37 @@ class PostAtRisk extends Mailable implements ShouldQueue
                 'reconnectCta' => 'Please reconnect these accounts now to avoid missing your scheduled posts.',
                 'buttonText' => 'Reconnect Accounts',
                 'workspace' => $this->workspace,
-                'atRiskGroups' => $this->atRiskGroups,
+                'atRiskGroups' => $atRiskGroups,
                 'url' => route('app.accounts'),
             ],
         );
+    }
+
+    /**
+     * @return Collection<int, array{account: mixed, postPlatforms: Collection<int, PostPlatform>, postsLabel: string}>
+     */
+    private function atRiskGroups(): Collection
+    {
+        if ($this->atRiskGroups !== null) {
+            return $this->atRiskGroups;
+        }
+
+        $postPlatforms = PostPlatform::query()
+            ->with(['socialAccount', 'post'])
+            ->whereIn('id', $this->postPlatformIds)
+            ->get();
+
+        return $this->atRiskGroups = $postPlatforms->groupBy('social_account_id')->map(function (Collection $group) {
+            $postCount = $group->count();
+            $times = $group->map(fn ($pp) => $pp->post->scheduled_at->format('H:i'))->implode(', ');
+            $noun = $postCount === 1 ? 'post' : 'posts';
+
+            return [
+                'account' => $group->first()->socialAccount,
+                'postPlatforms' => $group,
+                'postsLabel' => "{$postCount} {$noun} scheduled: {$times} UTC",
+            ];
+        })->values();
     }
 
     private function subjectFor(int $count): string

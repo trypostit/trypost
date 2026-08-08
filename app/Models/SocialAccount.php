@@ -46,6 +46,7 @@ class SocialAccount extends Model
         'error_message',
         'disconnected_at',
         'last_used_at',
+        'last_verified_at',
     ];
 
     protected $hidden = [
@@ -69,6 +70,7 @@ class SocialAccount extends Model
             'token_expires_at' => 'datetime',
             'disconnected_at' => 'datetime',
             'last_used_at' => 'datetime',
+            'last_verified_at' => 'datetime',
             'scopes' => 'array',
             'meta' => 'array',
         ];

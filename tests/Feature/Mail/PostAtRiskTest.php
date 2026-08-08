@@ -7,7 +7,6 @@ use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
-use Illuminate\Support\Collection;
 
 test('renders subject and body listing the at-risk account and its post times', function () {
     $workspace = Workspace::factory()->create(['name' => 'Acme Co']);
@@ -22,11 +21,7 @@ test('renders subject and body listing the at-risk account and its post times', 
         'platform' => $account->platform,
     ]);
 
-    $groups = new Collection([
-        ['account' => $account, 'postPlatforms' => new Collection([$postPlatform])],
-    ]);
-
-    $mailable = new PostAtRisk($workspace, $groups);
+    $mailable = new PostAtRisk($workspace, [$postPlatform->id]);
 
     $mailable->assertHasSubject('1 post is at risk in Acme Co');
     $mailable->assertSeeInHtml('Posts May Fail to Publish');
@@ -38,7 +33,7 @@ test('renders plural subject and postsLabel when multiple posts are at risk', fu
     $workspace = Workspace::factory()->create(['name' => 'Acme Co']);
     $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
 
-    $postPlatforms = collect([
+    $postPlatformIds = collect([
         ['time' => [14, 30]],
         ['time' => [15, 0]],
     ])->map(function (array $data) use ($workspace, $account) {
@@ -51,15 +46,124 @@ test('renders plural subject and postsLabel when multiple posts are at risk', fu
             'post_id' => $post->id,
             'social_account_id' => $account->id,
             'platform' => $account->platform,
-        ]);
-    });
+        ])->id;
+    })->all();
 
-    $groups = new Collection([
-        ['account' => $account, 'postPlatforms' => new Collection($postPlatforms->all())],
-    ]);
-
-    $mailable = new PostAtRisk($workspace, $groups);
+    $mailable = new PostAtRisk($workspace, $postPlatformIds);
 
     $mailable->assertHasSubject('2 posts are at risk in Acme Co');
     $mailable->assertSeeInHtml('2 posts scheduled: 14:30, 15:00 UTC');
+});
+
+test('groups post_platforms by account when rehydrating for send', function () {
+    $workspace = Workspace::factory()->create(['name' => 'Acme Co']);
+    $threadsAccount = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $facebookAccount = SocialAccount::factory()->facebook()->create(['workspace_id' => $workspace->id]);
+
+    $threadsPost = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->setTime(9, 0),
+    ]);
+    $threadsPostPlatform = PostPlatform::factory()->create([
+        'post_id' => $threadsPost->id,
+        'social_account_id' => $threadsAccount->id,
+        'platform' => $threadsAccount->platform,
+    ]);
+
+    $facebookPost = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->setTime(10, 0),
+    ]);
+    $facebookPostPlatform = PostPlatform::factory()->create([
+        'post_id' => $facebookPost->id,
+        'social_account_id' => $facebookAccount->id,
+        'platform' => $facebookAccount->platform,
+    ]);
+
+    $mailable = new PostAtRisk($workspace, [$threadsPostPlatform->id, $facebookPostPlatform->id]);
+
+    $mailable->assertHasSubject('2 posts are at risk in Acme Co');
+    $mailable->assertSeeInHtml('1 post scheduled: 09:00 UTC');
+    $mailable->assertSeeInHtml('1 post scheduled: 10:00 UTC');
+});
+
+test('only carries the workspace and post_platform IDs on the queue payload, not full model graphs', function () {
+    $workspace = Workspace::factory()->create(['name' => 'Acme Co']);
+    $account = SocialAccount::factory()->threads()->create([
+        'workspace_id' => $workspace->id,
+        'access_token' => 'super-secret-token-value',
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->setTime(14, 30),
+    ]);
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+    ]);
+
+    $mailable = new PostAtRisk($workspace, [$postPlatform->id]);
+
+    $serialized = serialize($mailable);
+
+    expect($serialized)->not->toContain('super-secret-token-value')
+        ->and($serialized)->not->toContain(SocialAccount::class)
+        ->and($serialized)->not->toContain(PostPlatform::class)
+        ->and(strlen($serialized))->toBeLessThan(2000);
+});
+
+test('footer links to notification preferences instead of an unsubscribe link', function () {
+    $workspace = Workspace::factory()->create(['name' => 'Acme Co']);
+    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->setTime(14, 30),
+    ]);
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+    ]);
+
+    $mailable = new PostAtRisk($workspace, [$postPlatform->id]);
+
+    $mailable->assertSeeInHtml('Manage notifications');
+    $mailable->assertSeeInHtml(route('app.notifications.preferences'));
+    $mailable->assertDontSeeInHtml('Unsubscribe');
+});
+
+test('envelope and content agree on the count even if a row disappears between the two calls', function () {
+    $workspace = Workspace::factory()->create(['name' => 'Acme Co']);
+    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->setTime(14, 30),
+    ]);
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+    ]);
+
+    $mailable = new PostAtRisk($workspace, [$postPlatform->id]);
+
+    $subject = $mailable->envelope()->subject;
+
+    // Simulate the row disappearing between when this mailable was built
+    // and when it's actually rendered for send.
+    $postPlatform->delete();
+
+    $content = $mailable->content();
+
+    expect($subject)->toBe('1 post is at risk in Acme Co')
+        ->and($content->with['previewText'])->toBe('1 post is at risk in Acme Co');
+});
+
+test('renders without crashing when none of the post_platform ids resolve', function () {
+    $workspace = Workspace::factory()->create(['name' => 'Acme Co']);
+
+    $mailable = new PostAtRisk($workspace, ['00000000-0000-0000-0000-000000000000']);
+
+    $mailable->assertHasSubject('0 posts are at risk in Acme Co');
 });

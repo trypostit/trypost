@@ -85,6 +85,54 @@ test('dispatches nothing when the only at-risk post_platform was already warned 
     Queue::assertNothingPushed();
 });
 
+test('dispatches nothing when the only at-risk post_platform is disabled', function () {
+    Event::fake();
+    Queue::fake();
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(30),
+    ]);
+    PostPlatform::factory()->disabled()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $this->artisan('social:check-upcoming-connections')
+        ->expectsOutput('Dispatched 0 upcoming-post connection checks.')
+        ->assertSuccessful();
+
+    Queue::assertNothingPushed();
+});
+
+test('dispatches nothing when the only at-risk post is still a draft', function () {
+    Event::fake();
+    Queue::fake();
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->draft()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(30),
+    ]);
+    PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $this->artisan('social:check-upcoming-connections')
+        ->expectsOutput('Dispatched 0 upcoming-post connection checks.')
+        ->assertSuccessful();
+
+    Queue::assertNothingPushed();
+});
+
 test('dispatches one job per distinct workspace when multiple workspaces have at-risk posts', function () {
     Event::fake();
     Queue::fake();
