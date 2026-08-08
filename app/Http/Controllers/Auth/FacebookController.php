@@ -289,6 +289,6 @@ class FacebookController extends SocialController
 
     private function graphVersion(): string
     {
-        return Uri::of(str(config('trypost.platforms.facebook.graph_api')))->path();
+        return Uri::of(config('trypost.platforms.facebook.graph_api'))->path();
     }
 }

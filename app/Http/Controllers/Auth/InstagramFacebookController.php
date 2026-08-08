@@ -272,6 +272,6 @@ class InstagramFacebookController extends SocialController
 
     private function graphVersion(): string
     {
-        return Uri::of(str(config('trypost.platforms.instagram-facebook.graph_api')))->path();
+        return Uri::of(config('trypost.platforms.instagram-facebook.graph_api'))->path();
     }
 }
