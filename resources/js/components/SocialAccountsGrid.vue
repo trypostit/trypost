@@ -19,6 +19,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { getInitials } from '@/composables/useInitials';
 import { useOAuthPopup } from '@/composables/useOAuthPopup';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { toggle as toggleAccount } from '@/routes/app/accounts';
@@ -243,7 +244,7 @@ const isDisconnected = (account: SocialAccount | null): boolean => {
                                 :src="platform.account.avatar_url"
                             />
                             <AvatarFallback class="text-xs">
-                                {{ platform.account.display_label?.charAt(0) }}
+                                {{ getInitials(platform.account.display_label) }}
                             </AvatarFallback>
                         </Avatar>
                         <span

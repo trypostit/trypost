@@ -3,6 +3,7 @@ import { computed, toRef } from 'vue';
 
 import LinkCard from "@/components/posts/previews/LinkCard.vue";
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
+import { getInitials } from '@/composables/useInitials';
 import { useLinkCard } from '@/composables/useLinkCard';
 import { isVideoMedia } from '@/composables/useMedia';
 import date from '@/date';
@@ -71,7 +72,7 @@ const { card: linkCard, loading: linkCardLoading } = useLinkCard(
                         :alt="socialAccount.display_label" class="h-11 w-11 rounded-full object-cover shrink-0" />
                     <div v-else
                         class="h-11 w-11 rounded-full bg-gradient-to-br from-[#0085ff] to-[#00d4ff] flex items-center justify-center text-white font-semibold shrink-0">
-                        {{ socialAccount.display_label?.charAt(0) }}
+                        {{ getInitials(socialAccount.display_label) }}
                     </div>
 
                     <!-- Name and handle -->
@@ -193,7 +194,7 @@ const { card: linkCard, loading: linkCardLoading } = useLinkCard(
                     class="h-8 w-8 rounded-full object-cover shrink-0" />
                 <div v-else
                     class="h-8 w-8 rounded-full bg-gradient-to-br from-[#0085ff] to-[#00d4ff] flex items-center justify-center text-white text-xs font-semibold shrink-0">
-                    {{ socialAccount.display_label?.charAt(0) }}
+                    {{ getInitials(socialAccount.display_label) }}
                 </div>
                 <div class="flex-1 text-[15px] text-neutral-400 dark:text-[#7b8d9e]">
                     Write your reply

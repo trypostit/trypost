@@ -4,6 +4,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
+import { getInitials } from '@/composables/useInitials';
 import date from '@/date';
 import type { MediaItem } from '@/types/media';
 
@@ -118,7 +119,7 @@ const truncatedContent = computed(() => {
                                 class="w-10 h-10 rounded-full object-cover" />
                             <div v-else
                                 class="w-10 h-10 rounded-full bg-[#1877f2] flex items-center justify-center text-white font-bold">
-                                {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
+                                {{ getInitials(socialAccount.display_label) }}
                             </div>
                             <div class="flex flex-col min-w-0">
                                 <span class="text-[13px] font-semibold leading-tight">{{ socialAccount.display_label }}</span>
@@ -291,7 +292,7 @@ const truncatedContent = computed(() => {
                             class="w-full h-full object-cover" />
                         <div v-else
                             class="w-full h-full bg-[#1877f2] flex items-center justify-center text-white font-bold text-xs">
-                            {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
+                            {{ getInitials(socialAccount.display_label) }}
                         </div>
                     </div>
                 </div>
@@ -303,7 +304,7 @@ const truncatedContent = computed(() => {
                             class="w-8 h-8 rounded-full object-cover border border-white/30" />
                         <div v-else
                             class="w-8 h-8 rounded-full bg-[#1877f2] flex items-center justify-center text-white font-bold text-[12px] border border-white/30">
-                            {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
+                            {{ getInitials(socialAccount.display_label) }}
                         </div>
                         <span class="text-white text-[13px] font-semibold drop-shadow-lg">{{ socialAccount.display_label }}</span>
                         <button class="px-3 py-1 bg-[#1877f2] text-white text-[11px] font-semibold rounded-md">
@@ -388,7 +389,7 @@ const truncatedContent = computed(() => {
                                 class="w-8 h-8 rounded-full object-cover border-2 border-black" />
                             <div v-else
                                 class="w-8 h-8 rounded-full bg-[#1877f2] flex items-center justify-center text-white font-bold text-[11px] border-2 border-black">
-                                {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
+                                {{ getInitials(socialAccount.display_label) }}
                             </div>
                         </div>
                         <span class="text-white text-[13px] font-semibold drop-shadow-lg">{{ socialAccount.display_label }}</span>

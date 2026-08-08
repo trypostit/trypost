@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
+import { getInitials } from '@/composables/useInitials';
 import { isDocumentMedia, isVideoMedia } from '@/composables/useMedia';
 import type { MediaItem } from '@/types/media';
 
@@ -34,7 +35,7 @@ defineProps<Props>();
                             :alt="socialAccount.display_label" class="h-12 w-12 rounded-full object-cover" />
                         <div v-else
                             class="h-12 w-12 rounded-full bg-[#0a66c2] flex items-center justify-center text-white font-semibold text-lg">
-                            {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
+                            {{ getInitials(socialAccount.display_label) }}
                         </div>
                     </div>
                     <div class="flex-1 min-w-0">
@@ -128,7 +129,7 @@ defineProps<Props>();
                     class="h-8 w-8 rounded-full object-cover shrink-0" />
                 <div v-else
                     class="h-8 w-8 rounded-full bg-[#0a66c2] flex items-center justify-center text-white font-semibold text-sm shrink-0">
-                    {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
+                    {{ getInitials(socialAccount.display_label) }}
                 </div>
                 <div class="flex-1 bg-[#f4f2ee] dark:bg-[#38434f] rounded-full px-4 py-2">
                     <span class="text-[14px] text-[#00000099] dark:text-[#ffffff99]">Leave your thoughts...</span>

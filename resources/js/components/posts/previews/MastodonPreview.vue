@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
+import { getInitials } from '@/composables/useInitials';
 import { isVideoMedia } from '@/composables/useMedia';
 import date from '@/date';
 import type { MediaItem } from '@/types/media';
@@ -40,7 +41,7 @@ const postedAtLabel = computed(() => date.formatMastodonPreview(props.postedAt))
                         :alt="socialAccount.display_label" class="h-10 w-10 rounded-full object-cover" />
                     <div v-else
                         class="h-10 w-10 rounded-full bg-gradient-to-br from-[#6364ff] to-[#563acc] flex items-center justify-center text-white font-semibold">
-                        {{ socialAccount.display_label?.charAt(0) }}
+                        {{ getInitials(socialAccount.display_label) }}
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="font-bold text-[15px]">

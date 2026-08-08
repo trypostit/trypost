@@ -3,6 +3,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import VideoPreview from '@/components/posts/previews/VideoPreview.vue';
+import { getInitials } from '@/composables/useInitials';
 import { isVideoMedia } from '@/composables/useMedia';
 import date from '@/date';
 import type { MediaItem } from '@/types/media';
@@ -66,7 +67,7 @@ const postedAtLabel = computed(() =>
                     v-else
                     class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#5865F2] font-semibold text-white"
                 >
-                    {{ socialAccount.display_label?.charAt(0) }}
+                    {{ getInitials(socialAccount.display_label) }}
                 </div>
 
                 <div class="min-w-0 flex-1">

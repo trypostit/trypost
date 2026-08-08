@@ -15,6 +15,7 @@ import { computed } from 'vue';
 
 import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
 import VerticalMediaCanvas from '@/components/posts/previews/VerticalMediaCanvas.vue';
+import { getInitials } from '@/composables/useInitials';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 
@@ -114,7 +115,7 @@ const truncatedCaption = computed(() => {
                                     :alt="socialAccount.display_label" class="w-7 h-7 rounded-full object-cover" />
                                 <div v-else
                                     class="w-7 h-7 rounded-full bg-gradient-to-br from-[#833ab4] to-[#fd1d1d] flex items-center justify-center text-white font-semibold text-[10px]">
-                                    {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
+                                    {{ getInitials(socialAccount.display_label) }}
                                 </div>
                             </div>
                         </div>
@@ -206,7 +207,7 @@ const truncatedCaption = computed(() => {
                             class="w-7 h-7 rounded-full object-cover border border-white/30" />
                         <div v-else
                             class="w-7 h-7 rounded-full bg-gradient-to-br from-[#833ab4] to-[#fd1d1d] flex items-center justify-center text-white font-semibold text-[10px] border border-white/30">
-                            {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
+                            {{ getInitials(socialAccount.display_label) }}
                         </div>
                         <span class="text-white text-[12px] font-semibold drop-shadow-lg">{{ socialAccount.handle_label }}</span>
                         <button class="px-2 py-0.5 border border-white/70 rounded text-white text-[10px] font-semibold">
@@ -257,7 +258,7 @@ const truncatedCaption = computed(() => {
                                     class="w-7 h-7 rounded-full object-cover" />
                                 <div v-else
                                     class="w-7 h-7 rounded-full bg-gradient-to-br from-[#833ab4] to-[#fd1d1d] flex items-center justify-center text-white font-semibold text-[10px]">
-                                    {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
+                                    {{ getInitials(socialAccount.display_label) }}
                                 </div>
                             </div>
                         </div>

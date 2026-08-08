@@ -2,6 +2,7 @@
 import { IconPlus } from '@tabler/icons-vue';
 
 import VerticalMediaCanvas from '@/components/posts/previews/VerticalMediaCanvas.vue';
+import { getInitials } from '@/composables/useInitials';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -92,7 +93,7 @@ const formatNumber = (num: number): string => {
                         :alt="socialAccount.display_label" class="w-full h-full object-cover" />
                     <div v-else
                         class="w-full h-full bg-[#2f2f2f] flex items-center justify-center text-white font-bold text-sm">
-                        {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
+                        {{ getInitials(socialAccount.display_label) }}
                     </div>
                 </div>
                 <div

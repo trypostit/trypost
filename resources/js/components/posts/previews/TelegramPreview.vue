@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import VideoPreview from '@/components/posts/previews/VideoPreview.vue';
+import { getInitials } from '@/composables/useInitials';
 import { isVideoMedia } from '@/composables/useMedia';
 import type { MediaItem } from '@/types/media';
 
@@ -46,7 +47,7 @@ const sampleReactions = [
                 v-else
                 class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#2aabee] to-[#229ed9] font-semibold text-white"
             >
-                {{ socialAccount.display_label?.charAt(0) }}
+                {{ getInitials(socialAccount.display_label) }}
             </div>
             <div class="min-w-0 flex-1">
                 <div

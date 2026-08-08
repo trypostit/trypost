@@ -14,6 +14,7 @@ import {
     CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { getInitials } from '@/composables/useInitials';
 import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 
 import type { AnalyticsAccount } from './types';
@@ -55,7 +56,7 @@ const select = (account: AnalyticsAccount) => {
                         <Avatar class="size-7 rounded-full border-2 border-foreground shadow-2xs">
                             <AvatarImage v-if="selected.avatar_url" :src="selected.avatar_url" :alt="selected.display_label" />
                             <AvatarFallback class="rounded-full bg-violet-100 text-xs font-bold text-foreground">
-                                {{ selected.display_label?.charAt(0) }}
+                                {{ getInitials(selected.display_label) }}
                             </AvatarFallback>
                         </Avatar>
                         <span class="absolute -bottom-1 -right-1 inline-flex size-4 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs">
@@ -97,7 +98,7 @@ const select = (account: AnalyticsAccount) => {
                                 <Avatar class="size-9 rounded-full border-2 border-foreground shadow-2xs">
                                     <AvatarImage v-if="account.avatar_url" :src="account.avatar_url" :alt="account.display_label" />
                                     <AvatarFallback class="rounded-full bg-violet-100 font-bold text-foreground">
-                                        {{ account.display_label?.charAt(0) }}
+                                        {{ getInitials(account.display_label) }}
                                     </AvatarFallback>
                                 </Avatar>
                                 <span class="absolute -bottom-1 -right-1 inline-flex size-5 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs">

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
+import { getInitials } from '@/composables/useInitials';
 import { isVideoMedia } from '@/composables/useMedia';
 import type { MediaItem } from '@/types/media';
 
@@ -153,7 +154,7 @@ const formatNumber = (num: number): string => {
                         :alt="socialAccount.display_label" class="w-full h-full object-cover" />
                     <div v-else
                         class="w-full h-full bg-[#ff0000] flex items-center justify-center text-white font-bold text-[10px]">
-                        {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
+                        {{ getInitials(socialAccount.display_label) }}
                     </div>
                 </div>
                 <span class="text-[13px] font-medium">@{{ socialAccount.handle_label }}</span>
