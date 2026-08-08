@@ -320,7 +320,7 @@ class ConnectionVerifier
                 'grant_type' => 'th_refresh_token',
                 'access_token' => $account->access_token,
             ]),
-            fn (?array $body) => ! GraphError::isTransient($body),
+            fn (?array $body) => $body !== null && ! GraphError::isTransient($body),
         );
 
         $data = $response->json();
@@ -342,7 +342,7 @@ class ConnectionVerifier
                 'grant_type' => 'ig_refresh_token',
                 'access_token' => $account->access_token,
             ]),
-            fn (?array $body) => ! GraphError::isTransient($body),
+            fn (?array $body) => $body !== null && ! GraphError::isTransient($body),
         );
 
         $data = $response->json();
@@ -460,9 +460,12 @@ class ConnectionVerifier
      */
     private function classifyMetaVerifyFailure(Response $response, string $label): PlatformUnavailableException|TokenExpiredException
     {
-        $body = $response->json() ?? [];
+        $body = $response->json();
 
-        if ($response->serverError() || $response->status() === 429 || GraphError::isTransient($body)) {
+        // A body that doesn't parse as JSON (WAF block page, truncated
+        // response, gateway hiccup) carries no confirmed rejection from
+        // Meta — treat it as transient rather than assuming the token is dead.
+        if ($response->serverError() || $response->status() === 429 || $body === null || GraphError::isTransient($body)) {
             return new PlatformUnavailableException(
                 "{$label} API returned {$response->status()} during verification",
                 $response->status(),
