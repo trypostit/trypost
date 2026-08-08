@@ -21,6 +21,8 @@ class SocialAccountResource extends JsonResource
             'platform_user_id' => $this->platform_user_id,
             'username' => $this->username,
             'display_name' => $this->display_name,
+            'display_label' => $this->display_label,
+            'handle_label' => $this->handle_label,
             'avatar_url' => $this->avatar_url,
             'profile_url' => $this->profile_url,
             'status' => $this->status,

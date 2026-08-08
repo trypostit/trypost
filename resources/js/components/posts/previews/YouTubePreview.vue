@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
 import { isVideoMedia } from '@/composables/useMedia';
 import type { MediaItem } from '@/types/media';
@@ -10,6 +8,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    handle_label: string;
     avatar_url: string | null;
 }
 
@@ -19,7 +18,7 @@ interface Props {
     media: MediaItem[];
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 
 // Format engagement numbers like YouTube does
 const formatNumber = (num: number): string => {
@@ -31,8 +30,6 @@ const formatNumber = (num: number): string => {
     }
     return num.toString();
 };
-
-const username = computed(() => props.socialAccount.username || props.socialAccount.display_name);
 </script>
 
 <template>
@@ -158,7 +155,7 @@ const username = computed(() => props.socialAccount.username || props.socialAcco
                         {{ socialAccount.display_name?.charAt(0).toUpperCase() }}
                     </div>
                 </div>
-                <span class="text-[13px] font-medium">@{{ username }}</span>
+                <span class="text-[13px] font-medium">@{{ socialAccount.handle_label }}</span>
                 <button class="ml-auto bg-white text-black text-[12px] font-medium px-3 py-1 rounded-full">
                     Subscribe
                 </button>

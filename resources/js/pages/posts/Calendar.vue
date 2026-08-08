@@ -25,6 +25,7 @@ interface PostPlatform {
         platform: string;
         display_name: string;
         username: string | null;
+        display_label: string | null;
     };
 }
 
@@ -348,7 +349,7 @@ const formatTime = (scheduledAt: string): string => {
                                                     </TooltipTrigger>
                                                     <TooltipContent>
                                                         <div class="space-y-0.5 text-xs">
-                                                            <p class="font-semibold">{{ pp.social_account?.display_name ?? pp.platform }}<span v-if="pp.social_account?.username" class="font-normal opacity-80">&nbsp;·&nbsp;@{{ pp.social_account.username }}</span></p>
+                                                            <p class="font-semibold">{{ pp.social_account?.display_label ?? pp.platform }}<span v-if="pp.social_account?.username" class="font-normal opacity-80">&nbsp;·&nbsp;@{{ pp.social_account.username }}</span></p>
                                                             <p class="opacity-70">{{ getPlatformLabel(pp.platform) }}</p>
                                                         </div>
                                                     </TooltipContent>
@@ -433,7 +434,7 @@ const formatTime = (scheduledAt: string): string => {
                                             </TooltipTrigger>
                                             <TooltipContent>
                                                 <div class="space-y-0.5 text-xs">
-                                                    <p class="font-semibold">{{ pp.social_account?.display_name ?? pp.platform }}<span v-if="pp.social_account?.username" class="font-normal opacity-80">&nbsp;·&nbsp;@{{ pp.social_account.username }}</span></p>
+                                                    <p class="font-semibold">{{ pp.social_account?.display_label ?? pp.platform }}<span v-if="pp.social_account?.username" class="font-normal opacity-80">&nbsp;·&nbsp;@{{ pp.social_account.username }}</span></p>
                                                     <p class="opacity-70">{{ getPlatformLabel(pp.platform) }}</p>
                                                 </div>
                                             </TooltipContent>
@@ -533,7 +534,7 @@ const formatTime = (scheduledAt: string): string => {
                                                     </TooltipTrigger>
                                                     <TooltipContent>
                                                         <div class="space-y-0.5 text-xs">
-                                                            <p class="font-semibold">{{ pp.social_account?.display_name ?? pp.platform }}<span v-if="pp.social_account?.username" class="font-normal opacity-80">&nbsp;·&nbsp;@{{ pp.social_account.username }}</span></p>
+                                                            <p class="font-semibold">{{ pp.social_account?.display_label ?? pp.platform }}<span v-if="pp.social_account?.username" class="font-normal opacity-80">&nbsp;·&nbsp;@{{ pp.social_account.username }}</span></p>
                                                             <p class="opacity-70">{{ getPlatformLabel(pp.platform) }}</p>
                                                         </div>
                                                     </TooltipContent>

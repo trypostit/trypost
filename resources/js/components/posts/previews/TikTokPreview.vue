@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { IconPlus } from '@tabler/icons-vue';
-import { computed } from 'vue';
 
 import VerticalMediaCanvas from '@/components/posts/previews/VerticalMediaCanvas.vue';
 import type { MediaItem } from '@/types/media';
@@ -10,6 +9,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    handle_label: string;
     avatar_url: string | null;
 }
 
@@ -19,7 +19,7 @@ interface Props {
     media: MediaItem[];
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 
 // Format engagement numbers like TikTok does
 const formatNumber = (num: number): string => {
@@ -31,8 +31,6 @@ const formatNumber = (num: number): string => {
     }
     return num.toString();
 };
-
-const username = computed(() => props.socialAccount.username || props.socialAccount.display_name);
 </script>
 
 <template>
@@ -150,7 +148,7 @@ const username = computed(() => props.socialAccount.username || props.socialAcco
         <!-- Bottom info -->
         <div v-if="media.length > 0" class="absolute left-3 right-14 bottom-[72px] text-white z-10">
             <!-- Username -->
-            <p class="font-bold text-[14px] drop-shadow-lg mb-1">@{{ username }}</p>
+            <p class="font-bold text-[14px] drop-shadow-lg mb-1">@{{ socialAccount.handle_label }}</p>
 
             <!-- Caption -->
             <div v-if="content" class="text-[13px] text-white drop-shadow-lg line-clamp-2 leading-[18px] mb-2">

@@ -31,9 +31,10 @@ test('dispatches the job once per workspace with at-risk posts, even with multip
         ]);
     }
 
-    $this->artisan('social:check-upcoming-connections')->assertSuccessful();
+    $this->artisan('social:check-upcoming-connections')
+        ->expectsOutput('Dispatched 1 upcoming-post connection checks.')
+        ->assertSuccessful();
 
-    Queue::assertPushed(VerifyUpcomingPostConnections::class, 1);
     Queue::assertPushed(VerifyUpcomingPostConnections::class, fn ($job) => $job->workspaceId === $workspace->id);
 });
 

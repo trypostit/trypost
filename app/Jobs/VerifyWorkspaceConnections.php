@@ -120,7 +120,7 @@ class VerifyWorkspaceConnections implements ShouldQueue
         }
 
         $accountNames = $disconnectedAccounts
-            ->map(fn ($account) => $account->platform->label().' (@'.($account->username ?? $account->display_name).')')
+            ->map(fn ($account) => $account->platform->label().' ('.$account->handle().')')
             ->implode(', ');
 
         SendNotification::dispatch(

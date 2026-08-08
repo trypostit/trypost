@@ -13,7 +13,7 @@
                 </h1>
 
                 <p class="m-0 leading-6">
-                  {!! $intro !!}
+                  @{{ $intro }}
                 </p>
 
                 <table class="w-full mt-4" style="border-collapse: collapse">
@@ -24,8 +24,8 @@
                         <div style="width: 8px; height: 8px; border-radius: 50%; background-color: @{{ $group['account']->platform->color() }}; margin-right: 12px"></div>
                         <div>
                           <strong class="text-zinc-900">@{{ $group['account']->platform->label() }}</strong>
-                          @if($group['account']->display_name || $group['account']->username)
-                          <span class="text-zinc-500"> - @{{ $group['account']->display_name ?? $group['account']->username }}</span>
+                          @if($group['account']->accountDisplayName())
+                          <span class="text-zinc-500"> - @{{ $group['account']->accountDisplayName() }}</span>
                           @endif
                           <div class="text-zinc-500" style="font-size: 14px; margin-top: 4px">
                             @{{ $group['postsLabel'] }}

@@ -53,6 +53,11 @@ class SocialAccount extends Model
         'refresh_token',
     ];
 
+    protected $appends = [
+        'display_label',
+        'handle_label',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -145,6 +150,46 @@ class SocialAccount extends Model
         );
     }
 
+    /**
+     * "@handle" for notification bodies — the more specific identifier
+     * (username) wins over the friendlier display name when both are set.
+     */
+    public function handle(): string
+    {
+        return '@'.($this->username ?? $this->display_name);
+    }
+
+    /**
+     * Friendly label for email templates — the display name wins over the
+     * username when both are set. Null only when neither is set.
+     */
+    public function accountDisplayName(): ?string
+    {
+        return $this->display_name ?? $this->username;
+    }
+
+    /**
+     * Frontend-facing mirror of accountDisplayName() — appended to JSON so
+     * Vue components stop re-implementing this fallback.
+     */
+    protected function displayLabel(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->accountDisplayName(),
+        );
+    }
+
+    /**
+     * Frontend-facing mirror of handle() without the "@" prefix — templates
+     * that render their own "@" (e.g. platform previews) use this instead.
+     */
+    protected function handleLabel(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->username ?? $this->display_name,
+        );
+    }
+
     public function markAsDisconnected(string $errorMessage): void
     {
         $lock = Cache::lock("social_account_status:{$this->id}", 10);
@@ -163,7 +208,7 @@ class SocialAccount extends Model
                 if ($wasConnected && $this->workspace->owner) {
                     $placeholders = [
                         'platform' => $this->platform->label(),
-                        'account' => '@'.($this->username ?? $this->display_name),
+                        'account' => $this->handle(),
                     ];
 
                     SendNotification::dispatch(
@@ -204,7 +249,7 @@ class SocialAccount extends Model
             if ($notify && $wasUsable && $this->workspace->owner) {
                 $placeholders = [
                     'platform' => $this->platform->label(),
-                    'account' => '@'.($this->username ?? $this->display_name),
+                    'account' => $this->handle(),
                 ];
 
                 SendNotification::dispatch(

@@ -30,10 +30,10 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 120;
 
-    // Comfortably covers the timeout plus queue-wait headroom, well under the
-    // 15-minute schedule cadence — a stuck/slow run can't leave a stale lock
-    // blocking the next legitimate dispatch for this workspace.
-    public int $uniqueFor = 300;
+    // Covers the timeout plus queue-wait headroom, up to the full 15-minute
+    // schedule cadence — a stuck/slow run can't leave a stale lock blocking
+    // the next legitimate dispatch for this workspace.
+    public int $uniqueFor = 900;
 
     public function __construct(public string $workspaceId) {}
 
@@ -163,7 +163,7 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
             type: Type::PostAtRisk,
             channel: Channel::Both,
             title: $postCount === 1 ? '1 upcoming post is at risk' : "{$postCount} upcoming posts are at risk",
-            body: $atRisk->map(fn (array $group) => $group['account']->platform->label().' (@'.($group['account']->username ?? $group['account']->display_name).')')->implode(', '),
+            body: $atRisk->map(fn (array $group) => $group['account']->platform->label().' ('.$group['account']->handle().')')->implode(', '),
             data: ['workspace_id' => $workspace->id],
             mailable: new PostAtRisk($workspace, $atRisk),
         );

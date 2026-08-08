@@ -13,6 +13,8 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string | null;
+    handle_label: string;
     avatar_url: string | null;
 }
 

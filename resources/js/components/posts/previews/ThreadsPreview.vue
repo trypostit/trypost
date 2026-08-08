@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, toRef } from 'vue';
+import { toRef } from 'vue';
 
 import LinkCard from "@/components/posts/previews/LinkCard.vue";
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
@@ -12,6 +12,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    handle_label: string;
     avatar_url: string | null;
 }
 
@@ -22,8 +23,6 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-
-const username = computed(() => props.socialAccount.username || props.socialAccount.display_name);
 
 const { card: linkCard, loading: linkCardLoading } = useLinkCard(
     toRef(props, 'content'),
@@ -79,7 +78,7 @@ const { card: linkCard, loading: linkCardLoading } = useLinkCard(
                     <!-- Name + verified -->
                     <div class="flex items-center gap-1 min-w-0">
                         <span class="font-semibold text-[15px] text-[#000000] dark:text-[#f5f5f5] truncate">
-                            {{ username }}
+                            {{ socialAccount.handle_label }}
                         </span>
                         <!-- Verified badge -->
                         <svg class="h-3.5 w-3.5 text-[#0095f6] flex-shrink-0" viewBox="0 0 40 40" fill="currentColor">

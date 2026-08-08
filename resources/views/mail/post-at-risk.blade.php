@@ -72,7 +72,7 @@
                     {{ $title }}
                   </h1>
                   <p style="margin: 0; line-height: 24px">
-                    {!! $intro !!}
+                    {{ $intro }}
                   </p>
                   <table style="border-collapse: collapse; margin-top: 16px; width: 100%" cellpadding="0" cellspacing="0" role="none">
                     @foreach($atRiskGroups as $group)
@@ -82,8 +82,8 @@
                           <div style="width: 8px; height: 8px; border-radius: 50%; background-color: {{ $group['account']->platform->color() }}; margin-right: 12px"></div>
                           <div>
                             <strong style="color: #18181b">{{ $group['account']->platform->label() }}</strong>
-                            @if($group['account']->display_name || $group['account']->username)
-                            <span style="color: #71717a"> - {{ $group['account']->display_name ?? $group['account']->username }}</span>
+                            @if($group['account']->accountDisplayName())
+                            <span style="color: #71717a"> - {{ $group['account']->accountDisplayName() }}</span>
                             @endif
                             <div style="font-size: 14px; margin-top: 4px; color: #71717a">
                               {{ $group['postsLabel'] }}

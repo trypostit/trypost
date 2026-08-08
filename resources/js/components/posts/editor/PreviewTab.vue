@@ -14,6 +14,8 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string | null;
+    handle_label: string;
     avatar_url: string | null;
 }
 
@@ -36,7 +38,7 @@ const props = defineProps<{
 }>();
 
 const getPlatformAvatar = (pp: PostPlatform): string | null => pp.social_account?.avatar_url ?? pp.platform_avatar ?? null;
-const getPlatformDisplayName = (pp: PostPlatform): string => pp.social_account?.display_name ?? pp.platform_name ?? pp.platform;
+const getPlatformDisplayName = (pp: PostPlatform): string => pp.social_account?.display_label ?? pp.platform_name ?? pp.platform;
 
 const activeId = ref<string | null>(props.platforms[0]?.id ?? null);
 

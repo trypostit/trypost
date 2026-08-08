@@ -21,6 +21,8 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string | null;
+    handle_label: string;
     avatar_url: string | null;
 }
 
@@ -42,6 +44,8 @@ const resolvedSocialAccount = computed((): SocialAccount => props.socialAccount 
     platform: props.platform,
     display_name: '',
     username: '',
+    display_label: null,
+    handle_label: '',
     avatar_url: null,
 });
 

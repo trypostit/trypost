@@ -27,6 +27,8 @@ export interface ConnectedAccount {
     network: string;
     username: string;
     display_name: string;
+    display_label: string | null;
+    handle_label: string;
     avatar_url: string | null;
     status: 'connected' | 'disconnected' | 'token_expired' | null;
 }
@@ -170,7 +172,7 @@ const { openOAuthPopup } = useOAuthPopup((result) => {
 const disconnectAccount = (account: ConnectedAccount) => {
     disconnectModal.value?.open({
         url: disconnect.url(account.id),
-        confirmText: account.username || account.display_name,
+        confirmText: account.handle_label,
     });
 };
 
@@ -321,10 +323,7 @@ const cardState = computed((): Record<string, CardStateValue> => {
                         v-else
                         class="mt-0.5 truncate text-xs leading-tight text-foreground/70"
                     >
-                        {{
-                            cardConnection[platform.value]?.display_name ||
-                            cardConnection[platform.value]?.username
-                        }}
+                        {{ cardConnection[platform.value]?.display_label }}
                     </p>
                 </div>
 

@@ -12,6 +12,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string | null;
     avatar_url: string | null;
 }
 
@@ -72,7 +73,6 @@ const truncatedContent = computed(() => {
     return props.content.substring(0, 100) + '...';
 });
 
-const displayName = computed(() => props.socialAccount.display_name || props.socialAccount.username);
 </script>
 
 <template>
@@ -114,14 +114,14 @@ const displayName = computed(() => props.socialAccount.display_name || props.soc
                     <!-- Post Header -->
                     <div class="flex-shrink-0 flex items-center px-3 py-2">
                         <div class="flex items-center gap-2 flex-1">
-                            <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url" :alt="displayName"
+                            <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url" :alt="socialAccount.display_label ?? undefined"
                                 class="w-10 h-10 rounded-full object-cover" />
                             <div v-else
                                 class="w-10 h-10 rounded-full bg-[#1877f2] flex items-center justify-center text-white font-bold">
-                                {{ displayName?.charAt(0).toUpperCase() }}
+                                {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
                             </div>
                             <div class="flex flex-col min-w-0">
-                                <span class="text-[13px] font-semibold leading-tight">{{ displayName }}</span>
+                                <span class="text-[13px] font-semibold leading-tight">{{ socialAccount.display_label }}</span>
                                 <div class="flex items-center gap-1 text-[11px] text-[#65676b] dark:text-[#b0b3b8]">
                                     <span>{{ postedAtLabel }}</span>
                                     <span>·</span>
@@ -291,7 +291,7 @@ const displayName = computed(() => props.socialAccount.display_name || props.soc
                             class="w-full h-full object-cover" />
                         <div v-else
                             class="w-full h-full bg-[#1877f2] flex items-center justify-center text-white font-bold text-xs">
-                            {{ displayName?.charAt(0).toUpperCase() }}
+                            {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
                         </div>
                     </div>
                 </div>
@@ -303,9 +303,9 @@ const displayName = computed(() => props.socialAccount.display_name || props.soc
                             class="w-8 h-8 rounded-full object-cover border border-white/30" />
                         <div v-else
                             class="w-8 h-8 rounded-full bg-[#1877f2] flex items-center justify-center text-white font-bold text-[12px] border border-white/30">
-                            {{ displayName?.charAt(0).toUpperCase() }}
+                            {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
                         </div>
-                        <span class="text-white text-[13px] font-semibold drop-shadow-lg">{{ displayName }}</span>
+                        <span class="text-white text-[13px] font-semibold drop-shadow-lg">{{ socialAccount.display_label }}</span>
                         <button class="px-3 py-1 bg-[#1877f2] text-white text-[11px] font-semibold rounded-md">
                             Follow
                         </button>
@@ -388,10 +388,10 @@ const displayName = computed(() => props.socialAccount.display_name || props.soc
                                 class="w-8 h-8 rounded-full object-cover border-2 border-black" />
                             <div v-else
                                 class="w-8 h-8 rounded-full bg-[#1877f2] flex items-center justify-center text-white font-bold text-[11px] border-2 border-black">
-                                {{ displayName?.charAt(0).toUpperCase() }}
+                                {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
                             </div>
                         </div>
-                        <span class="text-white text-[13px] font-semibold drop-shadow-lg">{{ displayName }}</span>
+                        <span class="text-white text-[13px] font-semibold drop-shadow-lg">{{ socialAccount.display_label }}</span>
                         <span class="text-white/70 text-[11px] drop-shadow">2h</span>
                     </div>
                     <div class="flex items-center gap-3">
@@ -410,7 +410,7 @@ const displayName = computed(() => props.socialAccount.display_name || props.soc
                 <!-- Bottom Reply Bar -->
                 <div v-if="media.length > 0" class="absolute bottom-3 left-3 right-3 flex items-center gap-2 z-10">
                     <div class="flex-1 bg-white/20 backdrop-blur-md rounded-full px-4 py-2.5 border border-white/20">
-                        <span class="text-white/80 text-[13px]">Reply to {{ displayName }}...</span>
+                        <span class="text-white/80 text-[13px]">Reply to {{ socialAccount.display_label }}...</span>
                     </div>
                     <svg class="w-7 h-7 text-white drop-shadow-lg" viewBox="0 0 24 24" fill="currentColor">
                         <path

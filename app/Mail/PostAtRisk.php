@@ -20,7 +20,7 @@ class PostAtRisk extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     /**
-     * @param  Collection<int, array{account: SocialAccount, postPlatforms: Collection<int, PostPlatform>}>  $atRiskGroups
+     * @param  Collection<int, array{account: SocialAccount, postPlatforms: Collection<int, PostPlatform>, postsLabel?: string}>  $atRiskGroups
      */
     public function __construct(
         public Workspace $workspace,
@@ -59,7 +59,7 @@ class PostAtRisk extends Mailable implements ShouldQueue
             with: [
                 'title' => 'Posts May Fail to Publish',
                 'previewText' => $this->subjectFor($count),
-                'intro' => "The following social accounts in your <strong>{$this->workspace->name}</strong> workspace need to be reconnected before these scheduled posts can publish:",
+                'intro' => "The following social accounts in your {$this->workspace->name} workspace need to be reconnected before these scheduled posts can publish:",
                 'reconnectCta' => 'Please reconnect these accounts now to avoid missing your scheduled posts.',
                 'buttonText' => 'Reconnect Accounts',
                 'workspace' => $this->workspace,

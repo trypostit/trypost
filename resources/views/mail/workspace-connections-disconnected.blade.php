@@ -82,8 +82,8 @@
                           <div style="width: 8px; height: 8px; border-radius: 50%; background-color: {{ $account->platform->color() }}; margin-right: 12px"></div>
                           <div>
                             <strong style="color: #18181b">{{ $account->platform->label() }}</strong>
-                            @if($account->display_name || $account->username)
-                            <span style="color: #71717a"> - {{ $account->display_name ?? $account->username }}</span>
+                            @if($account->accountDisplayName())
+                            <span style="color: #71717a"> - {{ $account->accountDisplayName() }}</span>
                             @endif
                           </div>
                         </div>
