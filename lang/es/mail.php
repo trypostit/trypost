@@ -26,5 +26,6 @@ return [
         'intro' => 'Las siguientes cuentas sociales en tu workspace <strong>:workspace</strong> deben reconectarse antes de que estas publicaciones programadas puedan publicarse:',
         'reconnect_cta' => 'Reconecta estas cuentas ahora para no perder tus publicaciones programadas.',
         'button' => 'Reconectar cuentas',
+        'posts_label' => '{1} 1 publicación programada: :times UTC|[2,*] :count publicaciones programadas: :times UTC',
     ],
 ];

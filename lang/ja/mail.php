@@ -26,5 +26,6 @@ return [
         'intro' => '<strong>:workspace</strong> ワークスペースの以下のソーシャルアカウントは、これらの予約投稿が公開される前に再接続する必要があります:',
         'reconnect_cta' => '予約投稿が公開されないようにするため、今すぐこれらのアカウントを再接続してください。',
         'button' => 'アカウントを再接続',
+        'posts_label' => '{1} 1件の予約投稿: :times UTC|[2,*] :count件の予約投稿: :times UTC',
     ],
 ];

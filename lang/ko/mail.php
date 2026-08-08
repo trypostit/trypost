@@ -26,5 +26,6 @@ return [
         'intro' => '<strong>:workspace</strong> 워크스페이스의 다음 소셜 계정은 예약된 게시물이 게시되기 전에 재연결해야 합니다:',
         'reconnect_cta' => '예약된 게시물을 놓치지 않으려면 지금 이 계정들을 재연결해 주세요.',
         'button' => '계정 재연결',
+        'posts_label' => '{1} 1개의 예약된 게시물: :times UTC|[2,*] :count개의 예약된 게시물: :times UTC',
     ],
 ];

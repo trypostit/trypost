@@ -26,5 +26,6 @@ return [
         'intro' => 'De volgende social accounts in je workspace <strong>:workspace</strong> moeten opnieuw worden gekoppeld voordat deze geplande posts kunnen worden gepubliceerd:',
         'reconnect_cta' => 'Koppel deze accounts nu opnieuw om je geplande posts niet te missen.',
         'button' => 'Accounts opnieuw koppelen',
+        'posts_label' => '{1} 1 post gepland: :times UTC|[2,*] :count posts gepland: :times UTC',
     ],
 ];

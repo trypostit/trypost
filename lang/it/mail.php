@@ -26,5 +26,6 @@ return [
         'intro' => 'I seguenti account social nel tuo workspace <strong>:workspace</strong> devono essere ricollegati prima che questi post programmati possano essere pubblicati:',
         'reconnect_cta' => 'Ricollega questi account ora per non perdere i tuoi post programmati.',
         'button' => 'Ricollega account',
+        'posts_label' => '{1} 1 post programmato: :times UTC|[2,*] :count post programmati: :times UTC',
     ],
 ];

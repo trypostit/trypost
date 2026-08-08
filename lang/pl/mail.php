@@ -26,5 +26,6 @@ return [
         'intro' => 'Następujące konta społecznościowe w Twojej przestrzeni roboczej <strong>:workspace</strong> muszą zostać ponownie połączone, zanim te zaplanowane posty będą mogły zostać opublikowane:',
         'reconnect_cta' => 'Połącz te konta ponownie teraz, aby nie przegapić zaplanowanych postów.',
         'button' => 'Połącz konta ponownie',
+        'posts_label' => '1 post zaplanowany: :times UTC|:count posty zaplanowane: :times UTC|:count postów zaplanowanych: :times UTC',
     ],
 ];

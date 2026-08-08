@@ -28,5 +28,6 @@ return [
         'intro' => '<strong>:workspace</strong> çalışma alanınızdaki aşağıdaki sosyal hesapların, bu zamanlanmış gönderiler yayınlanmadan önce yeniden bağlanması gerekiyor:',
         'reconnect_cta' => 'Zamanlanmış gönderilerinizi kaçırmamak için lütfen bu hesapları şimdi yeniden bağlayın.',
         'button' => 'Hesapları Yeniden Bağla',
+        'posts_label' => '{1} 1 gönderi zamanlandı: :times UTC|[2,*] :count gönderi zamanlandı: :times UTC',
     ],
 ];

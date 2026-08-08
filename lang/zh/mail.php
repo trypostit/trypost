@@ -26,5 +26,6 @@ return [
         'intro' => '你 <strong>:workspace</strong> 工作区中的以下社交账号需要在这些计划帖子发布之前重新连接：',
         'reconnect_cta' => '请立即重新连接这些账号，以免错过你计划的帖子。',
         'button' => '重新连接账号',
+        'posts_label' => '{1} 1 篇帖子已安排: :times UTC|[2,*] :count 篇帖子已安排: :times UTC',
     ],
 ];

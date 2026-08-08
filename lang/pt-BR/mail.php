@@ -26,5 +26,6 @@ return [
         'intro' => 'As seguintes contas de redes sociais no seu workspace <strong>:workspace</strong> precisam ser reconectadas antes que esses posts agendados possam ser publicados:',
         'reconnect_cta' => 'Por favor, reconecte essas contas agora para não perder seus posts agendados.',
         'button' => 'Reconectar Contas',
+        'posts_label' => '{1} 1 post agendado: :times UTC|[2,*] :count posts agendados: :times UTC',
     ],
 ];

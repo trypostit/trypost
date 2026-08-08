@@ -47,14 +47,19 @@ class PostAtRisk extends Mailable implements ShouldQueue
         $workspaceName = $this->workspace->name;
         $locale = $this->locale;
 
-        $this->atRiskGroups = $this->atRiskGroups->map(function (array $group) {
+        // Reassigning the public property (not a local variable) is required: Mailable::buildViewData()
+        // overwrites `with()` data with public properties of the same name, so this must stay in sync.
+        $this->atRiskGroups = $this->atRiskGroups->map(function (array $group) use ($locale) {
             $postCount = $group['postPlatforms']->count();
             $times = $group['postPlatforms']->map(fn ($pp) => $pp->post->scheduled_at->format('H:i'))->implode(', ');
 
             return [
                 'account' => $group['account'],
                 'postPlatforms' => $group['postPlatforms'],
-                'postsLabel' => ($postCount === 1 ? '1 post' : "{$postCount} posts")." scheduled: {$times}",
+                'postsLabel' => trans_choice('mail.post_at_risk.posts_label', $postCount, [
+                    'count' => $postCount,
+                    'times' => $times,
+                ], $locale),
             ];
         });
 

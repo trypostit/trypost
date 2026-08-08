@@ -26,5 +26,6 @@ return [
         'intro' => 'The following social accounts in your <strong>:workspace</strong> workspace need to be reconnected before these scheduled posts can publish:',
         'reconnect_cta' => 'Please reconnect these accounts now to avoid missing your scheduled posts.',
         'button' => 'Reconnect Accounts',
+        'posts_label' => '{1} 1 post scheduled: :times UTC|[2,*] :count posts scheduled: :times UTC',
     ],
 ];
