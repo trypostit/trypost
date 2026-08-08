@@ -17,6 +17,12 @@ namespace App\Services\Social\Meta;
 class GraphError
 {
     /**
+     * Codes Meta uses for rate-limit and other transient upstream problems.
+     * These must never disconnect a still-valid token.
+     */
+    private const TRANSIENT_CODES = [1, 2, 4, 17];
+
+    /**
      * Whether the given Meta Graph error body means the access token is
      * genuinely invalid or expired (code 190), as opposed to a rate-limit or
      * transient error that must not disconnect a still-valid token.
@@ -26,5 +32,17 @@ class GraphError
     public static function indicatesInvalidToken(?array $body): bool
     {
         return data_get($body, 'error.code') === 190;
+    }
+
+    /**
+     * Whether the given Meta Graph error body is a known rate-limit or
+     * transient upstream problem, as opposed to a confirmed rejection
+     * (dead token, bad request, permission denied, etc.).
+     *
+     * @param  array<string, mixed>|null  $body
+     */
+    public static function isTransient(?array $body): bool
+    {
+        return in_array(data_get($body, 'error.code'), self::TRANSIENT_CODES, true);
     }
 }

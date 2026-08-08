@@ -11,6 +11,7 @@ use App\Models\SocialAccount;
 use App\Services\Social\Discord\DiscordClient;
 use App\Services\Social\Meta\GraphError;
 use App\Services\Social\Telegram\TelegramApi;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -319,7 +320,7 @@ class ConnectionVerifier
                 'grant_type' => 'th_refresh_token',
                 'access_token' => $account->access_token,
             ]),
-            GraphError::indicatesInvalidToken(...),
+            fn (?array $body) => ! GraphError::isTransient($body),
         );
 
         $data = $response->json();
@@ -341,7 +342,7 @@ class ConnectionVerifier
                 'grant_type' => 'ig_refresh_token',
                 'access_token' => $account->access_token,
             ]),
-            GraphError::indicatesInvalidToken(...),
+            fn (?array $body) => ! GraphError::isTransient($body),
         );
 
         $data = $response->json();
@@ -415,13 +416,11 @@ class ConnectionVerifier
             'access_token' => $account->access_token,
         ]);
 
-        $body = $response->json() ?? [];
-
-        if (GraphError::indicatesInvalidToken($body)) {
-            throw new TokenExpiredException('Instagram access token is invalid or expired');
+        if ($response->successful()) {
+            return true;
         }
 
-        return $response->successful();
+        throw $this->classifyMetaVerifyFailure($response, 'Instagram');
     }
 
     private function verifyFacebook(SocialAccount $account): bool
@@ -431,13 +430,11 @@ class ConnectionVerifier
             'access_token' => $account->access_token,
         ]);
 
-        $body = $response->json() ?? [];
-
-        if (GraphError::indicatesInvalidToken($body)) {
-            throw new TokenExpiredException('Facebook access token is invalid or expired');
+        if ($response->successful()) {
+            return true;
         }
 
-        return $response->successful();
+        throw $this->classifyMetaVerifyFailure($response, 'Facebook');
     }
 
     private function verifyThreads(SocialAccount $account): bool
@@ -447,13 +444,32 @@ class ConnectionVerifier
             'access_token' => $account->access_token,
         ]);
 
-        $body = $response->json() ?? [];
-
-        if (GraphError::indicatesInvalidToken($body)) {
-            throw new TokenExpiredException('Threads access token is invalid or expired');
+        if ($response->successful()) {
+            return true;
         }
 
-        return $response->successful();
+        throw $this->classifyMetaVerifyFailure($response, 'Threads');
+    }
+
+    /**
+     * Classify a failed Meta Graph "/me" verify call: a rate-limit or other
+     * transient upstream problem must not disconnect a still-valid token,
+     * but every other rejection — including error codes other than 190,
+     * which Meta also uses to signal a dead token — means the account
+     * genuinely needs to be reconnected.
+     */
+    private function classifyMetaVerifyFailure(Response $response, string $label): PlatformUnavailableException|TokenExpiredException
+    {
+        $body = $response->json() ?? [];
+
+        if ($response->serverError() || $response->status() === 429 || GraphError::isTransient($body)) {
+            return new PlatformUnavailableException(
+                "{$label} API returned {$response->status()} during verification",
+                $response->status(),
+            );
+        }
+
+        return new TokenExpiredException("{$label} access token is invalid or expired");
     }
 
     private function verifyTikTok(SocialAccount $account): bool

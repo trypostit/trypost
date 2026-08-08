@@ -634,7 +634,7 @@ test('instagram refresh treats code 190 as a genuinely expired token', function 
         ->toThrow(TokenExpiredException::class);
 });
 
-test('instagram verify treats a Meta rate-limit (OAuthException code 4) as still-valid, not a disconnect', function () {
+test('instagram verify treats a Meta rate-limit (OAuthException code 4) as transient, not a disconnect', function () {
     Http::fake([
         config('trypost.platforms.instagram.graph_api').'/me*' => Http::response([
             'error' => ['message' => 'Application request limit reached', 'type' => 'OAuthException', 'code' => 4],
@@ -647,6 +647,70 @@ test('instagram verify treats a Meta rate-limit (OAuthException code 4) as still
     ]);
 
     // A rate-limit must NOT raise TokenExpiredException (which would disconnect);
-    // verify returns false and the caller leaves the account connected.
-    expect((new ConnectionVerifier)->verify($account))->toBeFalse();
+    // it must be surfaced as PlatformUnavailableException so the caller retries
+    // next cycle instead of silently — and permanently — treating it as valid.
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('threads verify treats a dead token reported under a non-190 code as genuinely expired', function () {
+    // Meta doesn't always report a dead Threads token as code 190 — this
+    // reproduces the "(#100) The requested resource does not exist" case
+    // from issue #230, which the old code === 190-only check let through
+    // as a silent, un-flagged "still valid".
+    Http::fake([
+        config('trypost.platforms.threads.graph_api').'/me*' => Http::response([
+            'error' => ['message' => 'The requested resource does not exist', 'type' => 'OAuthException', 'code' => 100],
+        ], 400),
+    ]);
+
+    $account = SocialAccount::factory()->threads()->create([
+        'token_expires_at' => now()->addDays(30),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(TokenExpiredException::class);
+});
+
+test('threads verify treats a 5xx as platform unavailable, not a disconnect', function () {
+    Http::fake([
+        config('trypost.platforms.threads.graph_api').'/me*' => Http::response('upstream timeout', 503),
+    ]);
+
+    $account = SocialAccount::factory()->threads()->create([
+        'token_expires_at' => now()->addDays(30),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('facebook verify treats a dead token reported under a non-190 code as genuinely expired', function () {
+    Http::fake([
+        config('trypost.platforms.facebook.graph_api').'/me*' => Http::response([
+            'error' => ['message' => 'The requested resource does not exist', 'type' => 'OAuthException', 'code' => 100],
+        ], 400),
+    ]);
+
+    $account = SocialAccount::factory()->facebook()->create([
+        'token_expires_at' => now()->addDays(30),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(TokenExpiredException::class);
+});
+
+test('threads refresh treats a dead token reported under a non-190 code as genuinely expired', function () {
+    Http::fake([
+        config('trypost.platforms.threads.auth_api').'/refresh_access_token*' => Http::response([
+            'error' => ['message' => 'The requested resource does not exist', 'type' => 'OAuthException', 'code' => 100],
+        ], 400),
+    ]);
+
+    $account = SocialAccount::factory()->threads()->create([
+        'token_expires_at' => now()->subHour(),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->refreshToken($account))
+        ->toThrow(TokenExpiredException::class);
 });
