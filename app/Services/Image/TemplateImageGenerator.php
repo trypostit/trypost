@@ -362,7 +362,7 @@ class TemplateImageGenerator
         $footerColor = '#9ca3af';
 
         $username = $socialAccount->username ?? '';
-        $displayName = $socialAccount->display_label ?? '';
+        $displayName = $socialAccount->display_label;
 
         // Footer row anchored from the bottom: avatar + handle + displayName
         // share the same vertical center so they line up cleanly.
@@ -748,7 +748,7 @@ class TemplateImageGenerator
 
         $nameX = $avatarX + $avatarSize + 16;
 
-        $displayNameText = $socialAccount->display_label ?? '';
+        $displayNameText = $socialAccount->display_label;
         $handleText = '@'.($socialAccount->username ?? '');
         $nameBox = $fontBold ? imagettfbbox($nameSize, 0, $fontBold, $displayNameText) : [0, 0, 0, 0, 0, 0, 0, 0];
         $handleBox = $fontLight ? imagettfbbox($handleSize, 0, $fontLight, $handleText) : [0, 0, 0, 0, 0, 0, 0, 0];
