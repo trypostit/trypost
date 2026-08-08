@@ -9,6 +9,7 @@ use App\Services\Social\TokenRedactor;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Uri;
 use Throwable;
 
 /**
@@ -27,7 +28,7 @@ class GraphPaginator
         $items = [];
         $ok = 0;
         $seen = [];
-        $next = $query === [] ? $url : "{$url}?".http_build_query($query);
+        $next = (string) Uri::of($url)->withQuery($query);
 
         while (is_string($next) && $next !== '') {
             if (isset($seen[$next])) {
