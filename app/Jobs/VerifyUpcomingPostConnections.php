@@ -18,7 +18,6 @@ use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -87,6 +86,13 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
         foreach ($postPlatforms->groupBy('social_account_id') as $group) {
             $account = $group->first()->socialAccount;
 
+            if (! $account) {
+                // The account was hard-deleted between the main query and its
+                // eager-loaded relation resolving (two separate queries) —
+                // nothing left to verify or warn about for this group.
+                continue;
+            }
+
             if (in_array($account->status, [SocialAccountStatus::TokenExpired, SocialAccountStatus::Disconnected], true)) {
                 if ($this->recentlyWarnedAbout($account) || $this->recentlyDisconnected($account)) {
                     continue;
@@ -139,13 +145,20 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
 
                     $account->markAsTokenExpired($e->getMessage(), notify: false);
                     $account->refresh();
-                } catch (ModelNotFoundException) {
-                    // The account was deleted (e.g. the user disconnected it)
-                    // in the brief window between this loop picking it up and
-                    // us handling the exception here. An exception thrown from
-                    // inside a catch block isn't routed to a sibling catch, so
-                    // this must be handled here to avoid aborting the run for
-                    // every other account in this workspace.
+                } catch (\Exception $lockOrDbError) {
+                    // Covers the account being deleted mid-run (refresh()
+                    // throws ModelNotFoundException) as well as infrastructure
+                    // failures inside markAsTokenExpired() itself (its
+                    // Cache::lock() or ->update() call). An exception thrown
+                    // from inside a catch block isn't routed to a sibling
+                    // catch, so this must be handled here to avoid aborting
+                    // the run for every other account in this workspace.
+                    Log::error('Failed to mark account token_expired for upcoming-post check', [
+                        'account_id' => $account->id,
+                        'platform' => $account->platform->value,
+                        'error' => $lockOrDbError->getMessage(),
+                    ]);
+
                     continue;
                 }
 

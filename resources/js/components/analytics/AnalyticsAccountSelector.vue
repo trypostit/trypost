@@ -53,7 +53,7 @@ const select = (account: AnalyticsAccount) => {
                 <template v-if="selected">
                     <div class="relative shrink-0">
                         <Avatar class="size-7 rounded-full border-2 border-foreground shadow-2xs">
-                            <AvatarImage v-if="selected.avatar_url" :src="selected.avatar_url" :alt="selected.display_label ?? undefined" />
+                            <AvatarImage v-if="selected.avatar_url" :src="selected.avatar_url" :alt="selected.display_label" />
                             <AvatarFallback class="rounded-full bg-violet-100 text-xs font-bold text-foreground">
                                 {{ selected.display_label?.charAt(0) }}
                             </AvatarFallback>
@@ -68,8 +68,8 @@ const select = (account: AnalyticsAccount) => {
                     </div>
                     <span class="min-w-0 flex-1 truncate">
                         <span class="font-bold text-foreground">{{ selected.display_label }}</span>
-                        <span v-if="selected.username" class="ml-1.5 text-xs font-medium text-foreground/60">
-                            @{{ selected.username }}
+                        <span v-if="selected.handle_label" class="ml-1.5 text-xs font-medium text-foreground/60">
+                            @{{ selected.handle_label }}
                         </span>
                     </span>
                 </template>
@@ -95,7 +95,7 @@ const select = (account: AnalyticsAccount) => {
                         >
                             <div class="relative shrink-0">
                                 <Avatar class="size-9 rounded-full border-2 border-foreground shadow-2xs">
-                                    <AvatarImage v-if="account.avatar_url" :src="account.avatar_url" :alt="account.display_label ?? undefined" />
+                                    <AvatarImage v-if="account.avatar_url" :src="account.avatar_url" :alt="account.display_label" />
                                     <AvatarFallback class="rounded-full bg-violet-100 font-bold text-foreground">
                                         {{ account.display_label?.charAt(0) }}
                                     </AvatarFallback>
@@ -110,8 +110,8 @@ const select = (account: AnalyticsAccount) => {
                             </div>
                             <div class="min-w-0 flex-1">
                                 <p class="truncate font-bold text-foreground">{{ account.display_label }}</p>
-                                <p v-if="account.username" class="truncate text-xs font-medium text-foreground/60">
-                                    @{{ account.username }}
+                                <p v-if="account.handle_label" class="truncate text-xs font-medium text-foreground/60">
+                                    @{{ account.handle_label }}
                                 </p>
                             </div>
                             <span class="sr-only">{{ getPlatformLabel(account.platform) }}</span>

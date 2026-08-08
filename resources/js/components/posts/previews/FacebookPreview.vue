@@ -12,7 +12,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
-    display_label: string | null;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -114,7 +114,7 @@ const truncatedContent = computed(() => {
                     <!-- Post Header -->
                     <div class="flex-shrink-0 flex items-center px-3 py-2">
                         <div class="flex items-center gap-2 flex-1">
-                            <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url" :alt="socialAccount.display_label ?? undefined"
+                            <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url" :alt="socialAccount.display_label"
                                 class="w-10 h-10 rounded-full object-cover" />
                             <div v-else
                                 class="w-10 h-10 rounded-full bg-[#1877f2] flex items-center justify-center text-white font-bold">

@@ -82,9 +82,7 @@
                           <div style="width: 8px; height: 8px; border-radius: 50%; background-color: {{ $group['account']->platform->color() }}; margin-right: 12px"></div>
                           <div>
                             <strong style="color: #18181b">{{ $group['account']->platform->label() }}</strong>
-                            @if($group['account']->accountDisplayName())
                             <span style="color: #71717a"> - {{ $group['account']->accountDisplayName() }}</span>
-                            @endif
                             <div style="font-size: 14px; margin-top: 4px; color: #71717a">
                               {{ $group['postsLabel'] }}
                             </div>

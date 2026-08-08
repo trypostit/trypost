@@ -155,19 +155,22 @@ class SocialAccount extends Model
     /**
      * "@handle" for notification bodies — the more specific identifier
      * (username) wins over the friendlier display name when both are set.
+     * Every connector requests enough scope to always populate at least one
+     * of username/display_name (e.g. TikTok always requests user.info.profile);
+     * the platform label is a last-resort fallback, not an expected path.
      */
     public function handle(): string
     {
-        return '@'.($this->username ?: $this->display_name);
+        return '@'.($this->username ?: $this->display_name ?: $this->platform->label());
     }
 
     /**
      * Friendly label for email templates — the display name wins over the
-     * username when both are set. Null only when neither is set.
+     * username when both are set.
      */
-    public function accountDisplayName(): ?string
+    public function accountDisplayName(): string
     {
-        return $this->display_name ?: $this->username;
+        return $this->display_name ?: $this->username ?: $this->platform->label();
     }
 
     /**
@@ -188,7 +191,7 @@ class SocialAccount extends Model
     protected function handleLabel(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->username ?: $this->display_name,
+            get: fn () => $this->username ?: $this->display_name ?: $this->platform->label(),
         );
     }
 

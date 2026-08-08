@@ -24,7 +24,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
-    display_label: string | null;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -307,7 +307,7 @@ const startGeneration = async () => {
                         <img
                             v-if="account.avatar_url"
                             :src="account.avatar_url"
-                            :alt="account.display_label ?? undefined"
+                            :alt="account.display_label"
                             class="size-full object-cover"
                         />
                         <img v-else :src="getPlatformLogo(account.platform)" :alt="account.platform" class="size-4" />

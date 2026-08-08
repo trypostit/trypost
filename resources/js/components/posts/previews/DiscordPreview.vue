@@ -12,7 +12,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
-    display_label: string | null;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -59,7 +59,7 @@ const postedAtLabel = computed(() =>
                 <img
                     v-if="socialAccount.avatar_url"
                     :src="socialAccount.avatar_url"
-                    :alt="socialAccount.display_label ?? undefined"
+                    :alt="socialAccount.display_label"
                     class="h-10 w-10 shrink-0 rounded-full object-cover"
                 />
                 <div

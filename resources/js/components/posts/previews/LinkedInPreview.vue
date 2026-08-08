@@ -8,7 +8,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
-    display_label: string | null;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -31,7 +31,7 @@ defineProps<Props>();
                 <div class="flex items-start gap-3">
                     <div class="relative flex-shrink-0">
                         <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url"
-                            :alt="socialAccount.display_label ?? undefined" class="h-12 w-12 rounded-full object-cover" />
+                            :alt="socialAccount.display_label" class="h-12 w-12 rounded-full object-cover" />
                         <div v-else
                             class="h-12 w-12 rounded-full bg-[#0a66c2] flex items-center justify-center text-white font-semibold text-lg">
                             {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
@@ -124,7 +124,7 @@ defineProps<Props>();
 
             <!-- Comment Input -->
             <div class="px-2 py-4 flex items-center gap-2">
-                <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url" :alt="socialAccount.display_label ?? undefined"
+                <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url" :alt="socialAccount.display_label"
                     class="h-8 w-8 rounded-full object-cover shrink-0" />
                 <div v-else
                     class="h-8 w-8 rounded-full bg-[#0a66c2] flex items-center justify-center text-white font-semibold text-sm shrink-0">

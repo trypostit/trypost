@@ -166,3 +166,29 @@ test('renders without crashing when none of the post_platform ids resolve', func
 
     $mailable->assertHasSubject('0 posts are at risk in Acme Co');
 });
+
+test('renders without crashing when the account is deleted before send', function () {
+    $workspace = Workspace::factory()->create(['name' => 'Acme Co']);
+    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->setTime(14, 30),
+    ]);
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+    ]);
+
+    $mailable = new PostAtRisk($workspace, [$postPlatform->id], 1);
+
+    // Deleting the account (not the post_platform) between dispatch and
+    // send: the FK's nullOnDelete sets post_platforms.social_account_id to
+    // null, so the rehydrated group's account resolves to null. There's
+    // nothing meaningful to render for it (no platform, no handle), so it
+    // must be dropped from the body rather than crash the render.
+    $account->delete();
+
+    $mailable->assertHasSubject('1 post is at risk in Acme Co');
+    $mailable->assertDontSeeInHtml('scheduled: 14:30 UTC');
+});

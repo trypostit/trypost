@@ -51,9 +51,15 @@ test('display_name falls back to the account username when display_name is not s
     expect($this->postPlatform->fresh()->display_name)->toBe('acme_handle');
 });
 
-test('display_name falls back to the platform_name snapshot when the account has neither name set', function () {
+test('display_name falls back to the platform label when the live account has neither name set', function () {
     $this->socialAccount->update(['display_name' => null, 'username' => null]);
+
+    expect($this->postPlatform->fresh()->display_name)->toBe($this->socialAccount->platform->label());
+});
+
+test('display_name falls back to the platform_name snapshot when the account has been deleted', function () {
     $this->postPlatform->update(['platform_name' => 'Snapshot Name']);
+    $this->socialAccount->delete();
 
     expect($this->postPlatform->fresh()->display_name)->toBe('Snapshot Name');
 });

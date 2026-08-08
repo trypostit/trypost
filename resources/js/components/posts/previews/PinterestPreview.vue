@@ -11,7 +11,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
-    display_label: string | null;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -146,7 +146,7 @@ const pinLink = computed(() => (props.meta?.link as string | undefined) || '');
                             <img
                                 v-if="socialAccount.avatar_url"
                                 :src="socialAccount.avatar_url"
-                                :alt="socialAccount.display_label ?? undefined"
+                                :alt="socialAccount.display_label"
                                 class="h-6 w-6 rounded-full object-cover"
                             />
                             <div v-else class="h-6 w-6 rounded-full bg-[#e60023] flex items-center justify-center text-white font-semibold text-[10px]">

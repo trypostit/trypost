@@ -11,7 +11,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
-    display_label: string | null;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -37,7 +37,7 @@ const postedAtLabel = computed(() => date.formatMastodonPreview(props.postedAt))
                 <!-- Author -->
                 <div class="flex items-center gap-3 mb-3">
                     <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url"
-                        :alt="socialAccount.display_label ?? undefined" class="h-10 w-10 rounded-full object-cover" />
+                        :alt="socialAccount.display_label" class="h-10 w-10 rounded-full object-cover" />
                     <div v-else
                         class="h-10 w-10 rounded-full bg-gradient-to-br from-[#6364ff] to-[#563acc] flex items-center justify-center text-white font-semibold">
                         {{ socialAccount.display_label?.charAt(0) }}

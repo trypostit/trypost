@@ -8,7 +8,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
-    display_label: string | null;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -39,7 +39,7 @@ const sampleReactions = [
             <img
                 v-if="socialAccount.avatar_url"
                 :src="socialAccount.avatar_url"
-                :alt="socialAccount.display_label ?? undefined"
+                :alt="socialAccount.display_label"
                 class="h-9 w-9 rounded-full object-cover"
             />
             <div

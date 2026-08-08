@@ -13,7 +13,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
-    display_label: string | null;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -68,7 +68,7 @@ const { card: linkCard, loading: linkCardLoading } = useLinkCard(
                 <div class="flex items-start gap-3">
                     <!-- Avatar -->
                     <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url"
-                        :alt="socialAccount.display_label ?? undefined" class="h-11 w-11 rounded-full object-cover shrink-0" />
+                        :alt="socialAccount.display_label" class="h-11 w-11 rounded-full object-cover shrink-0" />
                     <div v-else
                         class="h-11 w-11 rounded-full bg-gradient-to-br from-[#0085ff] to-[#00d4ff] flex items-center justify-center text-white font-semibold shrink-0">
                         {{ socialAccount.display_label?.charAt(0) }}
@@ -189,7 +189,7 @@ const { card: linkCard, loading: linkCardLoading } = useLinkCard(
 
             <!-- Reply input -->
             <div class="px-4 py-3 border-t border-neutral-200 dark:border-[#1e3a5f] flex items-center gap-3">
-                <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url" :alt="socialAccount.display_label ?? undefined"
+                <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url" :alt="socialAccount.display_label"
                     class="h-8 w-8 rounded-full object-cover shrink-0" />
                 <div v-else
                     class="h-8 w-8 rounded-full bg-gradient-to-br from-[#0085ff] to-[#00d4ff] flex items-center justify-center text-white text-xs font-semibold shrink-0">

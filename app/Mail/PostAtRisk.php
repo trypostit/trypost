@@ -87,17 +87,22 @@ class PostAtRisk extends Mailable implements ShouldQueue
             ->whereIn('id', $this->postPlatformIds)
             ->get();
 
-        return $this->atRiskGroups = $postPlatforms->groupBy('social_account_id')->map(function (Collection $group) {
-            $postCount = $group->count();
-            $times = $group->map(fn ($pp) => $pp->post->scheduled_at->format('H:i'))->implode(', ');
-            $noun = $postCount === 1 ? 'post' : 'posts';
+        return $this->atRiskGroups = $postPlatforms->groupBy('social_account_id')
+            // The account can be null if it was hard-deleted between dispatch
+            // and send — nothing meaningful to render for it (no platform, no
+            // handle), so it's dropped rather than crashing the render.
+            ->filter(fn (Collection $group) => $group->first()->socialAccount !== null)
+            ->map(function (Collection $group) {
+                $postCount = $group->count();
+                $times = $group->map(fn ($pp) => $pp->post->scheduled_at->format('H:i'))->implode(', ');
+                $noun = $postCount === 1 ? 'post' : 'posts';
 
-            return [
-                'account' => $group->first()->socialAccount,
-                'postPlatforms' => $group,
-                'postsLabel' => "{$postCount} {$noun} scheduled: {$times} UTC",
-            ];
-        })->values();
+                return [
+                    'account' => $group->first()->socialAccount,
+                    'postPlatforms' => $group,
+                    'postsLabel' => "{$postCount} {$noun} scheduled: {$times} UTC",
+                ];
+            })->values();
     }
 
     private function subjectFor(int $count): string

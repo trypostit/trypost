@@ -27,8 +27,8 @@ export interface ConnectedAccount {
     network: string;
     username: string;
     display_name: string;
-    display_label: string | null;
-    handle_label: string | null;
+    display_label: string;
+    handle_label: string;
     avatar_url: string | null;
     status: 'connected' | 'disconnected' | 'token_expired' | null;
 }
@@ -172,7 +172,7 @@ const { openOAuthPopup } = useOAuthPopup((result) => {
 const disconnectAccount = (account: ConnectedAccount) => {
     disconnectModal.value?.open({
         url: disconnect.url(account.id),
-        confirmText: account.handle_label ?? undefined,
+        confirmText: account.handle_label,
     });
 };
 

@@ -3,7 +3,7 @@ export interface AnalyticsAccount {
     platform: string;
     display_name: string;
     username: string | null;
-    display_label: string | null;
-    handle_label: string | null;
+    display_label: string;
+    handle_label: string;
     avatar_url: string | null;
 }

@@ -12,8 +12,8 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
-    display_label: string | null;
-    handle_label: string | null;
+    display_label: string;
+    handle_label: string;
     avatar_url: string | null;
 }
 
@@ -69,7 +69,7 @@ const { card: linkCard, loading: linkCardLoading } = useLinkCard(
                     <!-- Avatar -->
                     <div class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
                         <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url"
-                            :alt="socialAccount.display_label ?? undefined" class="w-full h-full object-cover" />
+                            :alt="socialAccount.display_label" class="w-full h-full object-cover" />
                         <div v-else
                             class="w-full h-full bg-gradient-to-br from-[#833ab4] via-[#fd1d1d] to-[#fcb045] flex items-center justify-center text-white font-bold text-sm">
                             {{ socialAccount.display_label?.charAt(0).toUpperCase() }}

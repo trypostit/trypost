@@ -16,7 +16,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
-    display_label: string | null;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -205,7 +205,7 @@ const updateEmbed = (index: number, patch: Partial<EmbedDraft>) =>
             <div v-if="socialAccount" class="flex items-center gap-3 rounded-lg bg-foreground/5 p-3">
                 <Avatar
                     :src="socialAccount.avatar_url"
-                    :name="socialAccount.display_label ?? undefined"
+                    :name="socialAccount.display_label"
                     class="size-9 shrink-0 rounded-full border-2 border-foreground shadow-2xs"
                 />
                 <div class="min-w-0 flex-1">

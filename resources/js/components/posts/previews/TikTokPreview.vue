@@ -9,8 +9,8 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
-    display_label: string | null;
-    handle_label: string | null;
+    display_label: string;
+    handle_label: string;
     avatar_url: string | null;
 }
 
@@ -89,7 +89,7 @@ const formatNumber = (num: number): string => {
             <div class="relative mb-1">
                 <div class="w-11 h-11 rounded-full border-[1.5px] border-white overflow-hidden">
                     <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url"
-                        :alt="socialAccount.display_label ?? undefined" class="w-full h-full object-cover" />
+                        :alt="socialAccount.display_label" class="w-full h-full object-cover" />
                     <div v-else
                         class="w-full h-full bg-[#2f2f2f] flex items-center justify-center text-white font-bold text-sm">
                         {{ socialAccount.display_label?.charAt(0).toUpperCase() }}
