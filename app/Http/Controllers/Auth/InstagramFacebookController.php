@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Uri;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Laravel\Socialite\Facades\Socialite;
@@ -271,6 +272,6 @@ class InstagramFacebookController extends SocialController
 
     private function graphVersion(): string
     {
-        return basename((string) parse_url((string) config('trypost.platforms.instagram-facebook.graph_api'), PHP_URL_PATH));
+        return basename((string) Uri::of((string) config('trypost.platforms.instagram-facebook.graph_api'))->path());
     }
 }

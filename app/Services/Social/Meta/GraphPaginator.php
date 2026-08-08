@@ -30,7 +30,7 @@ class GraphPaginator
         $seen = [];
         $next = (string) Uri::of($url)->withQuery($query);
 
-        while (is_string($next) && $next !== '') {
+        while (filled($next)) {
             if (isset($seen[$next])) {
                 Log::warning('Meta Graph pagination stopped: repeated paging URL', [
                     'url' => TokenRedactor::redact($next),
@@ -63,15 +63,10 @@ class GraphPaginator
             }
 
             $ok++;
-            $payload = $response->json();
-            $chunk = data_get($payload, 'data', []);
+            $items = [...$items, ...$response->collect('data')->values()->all()];
 
-            if (is_array($chunk) && $chunk !== []) {
-                array_push($items, ...array_values($chunk));
-            }
-
-            $candidate = data_get($payload, 'paging.next');
-            $next = is_string($candidate) && $candidate !== '' ? $candidate : null;
+            $candidate = $response->json('paging.next');
+            $next = is_string($candidate) && filled($candidate) ? $candidate : null;
         }
 
         return $items;
