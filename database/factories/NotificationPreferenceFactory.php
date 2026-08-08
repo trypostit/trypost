@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Factories;
 
 use App\Models\NotificationPreference;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -20,6 +21,7 @@ class NotificationPreferenceFactory extends Factory
     public function definition(): array
     {
         return [
+            'user_id' => User::factory(),
             'post_published' => true,
             'post_failed' => true,
             'account_disconnected' => true,
