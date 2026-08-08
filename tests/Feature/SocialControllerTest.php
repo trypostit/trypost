@@ -133,7 +133,28 @@ test('the instagram card still shows when only facebook business is enabled', fu
 
     $response->assertInertia(fn ($page) => $page
         ->component('accounts/Index', false)
-        ->where('platforms', fn ($platforms) => collect($platforms)->contains('value', Platform::Instagram->value))
+        ->where('platforms', function ($platforms): bool {
+            $instagram = collect($platforms)->firstWhere('value', Platform::Instagram->value);
+
+            return $instagram !== null
+                && data_get($instagram, 'connect_methods') === [Platform::InstagramFacebook->value];
+        })
+    );
+});
+
+test('instagram card connect methods omit disabled facebook business entry', function () {
+    config(['trypost.platforms.instagram.enabled' => true]);
+    config(['trypost.platforms.instagram-facebook.enabled' => false]);
+
+    $response = $this->actingAs($this->user)->get(route('app.accounts'));
+
+    $response->assertInertia(fn ($page) => $page
+        ->component('accounts/Index', false)
+        ->where('platforms', function ($platforms): bool {
+            $instagram = collect($platforms)->firstWhere('value', Platform::Instagram->value);
+
+            return data_get($instagram, 'connect_methods') === [Platform::Instagram->value];
+        })
     );
 });
 

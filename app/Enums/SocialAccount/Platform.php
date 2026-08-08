@@ -395,19 +395,33 @@ enum Platform: string
      * Connectable platforms shaped for Inertia account/onboarding grids.
      * Sorted alphabetically by label (ASC, case-insensitive).
      *
-     * @return list<array{value: string, label: string, color: string, network: string}>
+     * Instagram includes `connect_methods` so the connect dialog only lists
+     * OAuth entry points that are actually enabled (self-hosters may disable one).
+     *
+     * @return list<array{value: string, label: string, color: string, network: string, connect_methods?: list<string>}>
      */
     public static function connectableOptions(): array
     {
         return collect(self::cases())
             ->filter(fn (self $platform): bool => $platform->isConnectable())
             ->sortBy(fn (self $platform): string => mb_strtolower($platform->label()))
-            ->map(fn (self $platform): array => [
-                'value' => $platform->value,
-                'label' => $platform->label(),
-                'color' => $platform->color(),
-                'network' => $platform->network(),
-            ])
+            ->map(function (self $platform): array {
+                $option = [
+                    'value' => $platform->value,
+                    'label' => $platform->label(),
+                    'color' => $platform->color(),
+                    'network' => $platform->network(),
+                ];
+
+                if ($platform === self::Instagram) {
+                    $option['connect_methods'] = array_values(array_filter([
+                        self::Instagram->isEnabled() ? self::Instagram->value : null,
+                        self::InstagramFacebook->isEnabled() ? self::InstagramFacebook->value : null,
+                    ]));
+                }
+
+                return $option;
+            })
             ->values()
             ->all();
     }
