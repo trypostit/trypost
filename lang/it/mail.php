@@ -19,4 +19,12 @@ return [
         'reconnect_cta' => 'Ricollega questi account per continuare a programmare e pubblicare i post.',
         'button' => 'Ricollega account',
     ],
+
+    'post_at_risk' => [
+        'subject' => '{1} :count post è a rischio in :workspace|[2,*] :count post sono a rischio in :workspace',
+        'title' => 'Alcuni post potrebbero non essere pubblicati',
+        'intro' => 'I seguenti account social nel tuo workspace <strong>:workspace</strong> devono essere ricollegati prima che questi post programmati possano essere pubblicati:',
+        'reconnect_cta' => 'Ricollega questi account ora per non perdere i tuoi post programmati.',
+        'button' => 'Ricollega account',
+    ],
 ];

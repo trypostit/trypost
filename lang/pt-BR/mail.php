@@ -19,4 +19,12 @@ return [
         'reconnect_cta' => 'Por favor, reconecte essas contas para continuar agendando e publicando posts.',
         'button' => 'Reconectar Contas',
     ],
+
+    'post_at_risk' => [
+        'subject' => '{1} :count post está em risco em :workspace|[2,*] :count posts estão em risco em :workspace',
+        'title' => 'Posts Podem Não Ser Publicados',
+        'intro' => 'As seguintes contas de redes sociais no seu workspace <strong>:workspace</strong> precisam ser reconectadas antes que esses posts agendados possam ser publicados:',
+        'reconnect_cta' => 'Por favor, reconecte essas contas agora para não perder seus posts agendados.',
+        'button' => 'Reconectar Contas',
+    ],
 ];

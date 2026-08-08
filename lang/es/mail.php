@@ -19,4 +19,12 @@ return [
         'reconnect_cta' => 'Reconecta estas cuentas para seguir programando y publicando posts.',
         'button' => 'Reconectar cuentas',
     ],
+
+    'post_at_risk' => [
+        'subject' => '{1} :count publicación está en riesgo en :workspace|[2,*] :count publicaciones están en riesgo en :workspace',
+        'title' => 'Publicaciones podrían no publicarse',
+        'intro' => 'Las siguientes cuentas sociales en tu workspace <strong>:workspace</strong> deben reconectarse antes de que estas publicaciones programadas puedan publicarse:',
+        'reconnect_cta' => 'Reconecta estas cuentas ahora para no perder tus publicaciones programadas.',
+        'button' => 'Reconectar cuentas',
+    ],
 ];

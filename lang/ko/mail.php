@@ -19,4 +19,12 @@ return [
         'reconnect_cta' => '게시물 예약 및 게시를 계속하려면 이 계정들을 재연결해 주세요.',
         'button' => '계정 재연결',
     ],
+
+    'post_at_risk' => [
+        'subject' => '{1} :workspace에서 :count개 게시물이 위험합니다|[2,*] :workspace에서 :count개 게시물이 위험합니다',
+        'title' => '게시물이 게시되지 않을 수 있습니다',
+        'intro' => '<strong>:workspace</strong> 워크스페이스의 다음 소셜 계정은 예약된 게시물이 게시되기 전에 재연결해야 합니다:',
+        'reconnect_cta' => '예약된 게시물을 놓치지 않으려면 지금 이 계정들을 재연결해 주세요.',
+        'button' => '계정 재연결',
+    ],
 ];

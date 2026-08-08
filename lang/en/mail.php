@@ -19,4 +19,12 @@ return [
         'reconnect_cta' => 'Please reconnect these accounts to continue scheduling and publishing posts.',
         'button' => 'Reconnect Accounts',
     ],
+
+    'post_at_risk' => [
+        'subject' => '{1} :count post is at risk in :workspace|[2,*] :count posts are at risk in :workspace',
+        'title' => 'Posts May Fail to Publish',
+        'intro' => 'The following social accounts in your <strong>:workspace</strong> workspace need to be reconnected before these scheduled posts can publish:',
+        'reconnect_cta' => 'Please reconnect these accounts now to avoid missing your scheduled posts.',
+        'button' => 'Reconnect Accounts',
+    ],
 ];

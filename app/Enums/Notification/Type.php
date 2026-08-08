@@ -11,6 +11,7 @@ enum Type: string
     case PostPartiallyPublished = 'post_partially_published';
     case PostReady = 'post_ready';
     case AccountDisconnected = 'account_disconnected';
+    case PostAtRisk = 'post_at_risk';
     case InviteReceived = 'invite_received';
     case MemberJoined = 'member_joined';
     case MemberRemoved = 'member_removed';
