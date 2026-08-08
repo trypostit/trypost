@@ -13,15 +13,6 @@ import { Platform } from '@/types/platform';
 
 const open = defineModel<boolean>('open', { required: true });
 
-const props = withDefaults(
-    defineProps<{
-        methods?: string[];
-    }>(),
-    {
-        methods: () => [Platform.Instagram, Platform.InstagramFacebook],
-    },
-);
-
 const emit = defineEmits<{
     select: [method: string];
 }>();
@@ -30,9 +21,6 @@ const choose = (method: string) => {
     open.value = false;
     emit('select', method);
 };
-
-const showsStandalone = () => props.methods.includes(Platform.Instagram);
-const showsFacebook = () => props.methods.includes(Platform.InstagramFacebook);
 </script>
 
 <template>
@@ -58,7 +46,6 @@ const showsFacebook = () => props.methods.includes(Platform.InstagramFacebook);
 
             <div class="grid gap-3 py-2">
                 <Button
-                    v-if="showsStandalone()"
                     variant="outline"
                     class="h-auto justify-start gap-3 px-4 py-3 text-left whitespace-normal"
                     dusk="instagram-connect-standalone"
@@ -80,7 +67,6 @@ const showsFacebook = () => props.methods.includes(Platform.InstagramFacebook);
                 </Button>
 
                 <Button
-                    v-if="showsFacebook()"
                     variant="outline"
                     class="h-auto justify-start gap-3 px-4 py-3 text-left whitespace-normal"
                     dusk="instagram-connect-facebook"

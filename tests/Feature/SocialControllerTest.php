@@ -119,18 +119,9 @@ test('accounts index offers a single instagram card and no instagram-facebook ca
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('accounts/Index', false)
-        ->where('platforms', function ($platforms): bool {
-            $collection = collect($platforms);
-
-            $instagram = $collection->firstWhere('value', Platform::Instagram->value);
-
-            return $collection->contains('value', Platform::Instagram->value)
-                && ! $collection->contains('value', Platform::InstagramFacebook->value)
-                && data_get($instagram, 'connect_methods') === [
-                    Platform::Instagram->value,
-                    Platform::InstagramFacebook->value,
-                ];
-        })
+        ->where('platforms', fn ($platforms) => collect($platforms)->contains('value', Platform::Instagram->value)
+            && ! collect($platforms)->contains('value', Platform::InstagramFacebook->value)
+        )
     );
 });
 
@@ -142,12 +133,7 @@ test('the instagram card still shows when only facebook business is enabled', fu
 
     $response->assertInertia(fn ($page) => $page
         ->component('accounts/Index', false)
-        ->where('platforms', function ($platforms): bool {
-            $instagram = collect($platforms)->firstWhere('value', Platform::Instagram->value);
-
-            return $instagram !== null
-                && data_get($instagram, 'connect_methods') === [Platform::InstagramFacebook->value];
-        })
+        ->where('platforms', fn ($platforms) => collect($platforms)->contains('value', Platform::Instagram->value))
     );
 });
 

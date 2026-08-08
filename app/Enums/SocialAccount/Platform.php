@@ -392,28 +392,10 @@ enum Platform: string
     }
 
     /**
-     * OAuth/connect entry points offered when the user clicks this card.
-     * Most platforms have a single method; Instagram offers Login and/or
-     * Facebook Pages depending on which capabilities are enabled.
-     *
-     * @return list<string>
-     */
-    public function connectMethods(): array
-    {
-        return match ($this) {
-            self::Instagram => array_values(array_filter([
-                self::Instagram->isEnabled() ? self::Instagram->value : null,
-                self::InstagramFacebook->isEnabled() ? self::InstagramFacebook->value : null,
-            ])),
-            default => $this->isEnabled() ? [$this->value] : [],
-        };
-    }
-
-    /**
      * Connectable platforms shaped for Inertia account/onboarding grids.
      * Sorted alphabetically by label (ASC, case-insensitive).
      *
-     * @return list<array{value: string, label: string, color: string, network: string, connect_methods: list<string>}>
+     * @return list<array{value: string, label: string, color: string, network: string}>
      */
     public static function connectableOptions(): array
     {
@@ -425,7 +407,6 @@ enum Platform: string
                 'label' => $platform->label(),
                 'color' => $platform->color(),
                 'network' => $platform->network(),
-                'connect_methods' => $platform->connectMethods(),
             ])
             ->values()
             ->all();

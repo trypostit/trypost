@@ -139,28 +139,16 @@ test('the linkedin card is connectable while either capability is enabled', func
 test('the instagram card is connectable while either capability is enabled', function () {
     config(['trypost.platforms.instagram.enabled' => true, 'trypost.platforms.instagram-facebook.enabled' => false]);
     expect(Platform::Instagram->isConnectable())->toBeTrue();
-    expect(Platform::Instagram->connectMethods())->toBe([Platform::Instagram->value]);
 
     config(['trypost.platforms.instagram.enabled' => false, 'trypost.platforms.instagram-facebook.enabled' => true]);
     expect(Platform::Instagram->isConnectable())->toBeTrue();
-    expect(Platform::Instagram->connectMethods())->toBe([Platform::InstagramFacebook->value]);
 
     config(['trypost.platforms.instagram.enabled' => false, 'trypost.platforms.instagram-facebook.enabled' => false]);
     expect(Platform::Instagram->isConnectable())->toBeFalse();
-    expect(Platform::Instagram->connectMethods())->toBe([]);
 
     // Via-Facebook never gets its own card regardless of toggles.
     config(['trypost.platforms.instagram-facebook.enabled' => true]);
     expect(Platform::InstagramFacebook->isConnectable())->toBeFalse();
-});
-
-test('instagram connect methods include both when enabled', function () {
-    config(['trypost.platforms.instagram.enabled' => true, 'trypost.platforms.instagram-facebook.enabled' => true]);
-
-    expect(Platform::Instagram->connectMethods())->toBe([
-        Platform::Instagram->value,
-        Platform::InstagramFacebook->value,
-    ]);
 });
 
 test('connectable options are sorted alphabetically by label', function () {
@@ -172,17 +160,9 @@ test('connectable options are sorted alphabetically by label', function () {
     expect($labels)->toBe(array_values($sorted));
 });
 
-test('connectable options expose instagram connect methods and omit the facebook variant card', function () {
-    $options = Platform::connectableOptions();
-    $values = array_column($options, 'value');
+test('connectable options include a single instagram card and omit the facebook variant', function () {
+    $values = array_column(Platform::connectableOptions(), 'value');
 
     expect($values)->toContain(Platform::Instagram->value)
         ->and($values)->not->toContain(Platform::InstagramFacebook->value);
-
-    $instagram = collect($options)->firstWhere('value', Platform::Instagram->value);
-
-    expect($instagram['connect_methods'])->toBe([
-        Platform::Instagram->value,
-        Platform::InstagramFacebook->value,
-    ]);
 });

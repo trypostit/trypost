@@ -18,7 +18,6 @@ export interface AvailablePlatform {
     label: string;
     color: string;
     network: string;
-    connect_methods?: string[];
 }
 
 export interface ConnectedAccount {
@@ -180,19 +179,6 @@ const needsReconnect = (account: ConnectedAccount): boolean =>
 const connectEntryFor = (platformValue: string): string =>
     platformValue === Platform.LinkedInPage ? Platform.LinkedIn : platformValue;
 
-const instagramMethods = computed((): string[] => {
-    const instagram = props.platforms.find(
-        (platform) => platform.value === Platform.Instagram,
-    );
-
-    return (
-        instagram?.connect_methods ?? [
-            Platform.Instagram,
-            Platform.InstagramFacebook,
-        ]
-    );
-});
-
 const openConnect = (platformValue: string) => {
     if (platformValue === Platform.Telegram) {
         telegramOpen.value = true;
@@ -200,17 +186,7 @@ const openConnect = (platformValue: string) => {
     }
 
     if (platformValue === Platform.Instagram) {
-        const methods = instagramMethods.value;
-
-        if (methods.length === 1) {
-            openOAuthPopup(methods[0]);
-            return;
-        }
-
-        if (methods.length > 1) {
-            instagramOpen.value = true;
-        }
-
+        instagramOpen.value = true;
         return;
     }
 
@@ -370,7 +346,6 @@ const cardState = computed((): Record<string, CardStateValue> => {
 
         <InstagramConnectDialog
             v-model:open="instagramOpen"
-            :methods="instagramMethods"
             @select="openOAuthPopup"
         />
 
