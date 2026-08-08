@@ -154,6 +154,31 @@ test('ignores posts outside the 1-hour window', function () {
     Mail::assertNothingQueued();
 });
 
+test('ignores draft posts even with a scheduled_at inside the window', function () {
+    Mail::fake();
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->draft()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(30),
+    ]);
+    PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldNotReceive('verify');
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
+
+    Mail::assertNothingQueued();
+});
+
 test('ignores posts already warned', function () {
     Mail::fake();
 
@@ -236,6 +261,7 @@ test('does not warn and does not mark connection_warning_sent_at on PlatformUnav
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
     expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
+    expect($account->fresh()->status)->toBe(SocialAccountStatus::Connected);
     Mail::assertNothingQueued();
 });
 
