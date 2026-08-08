@@ -30,7 +30,8 @@ test('graph paginator returns a single page when there is no paging.next', funct
         ->and(data_get($pages, '0.id'))->toBe('page_only');
 
     Http::assertSentCount(1);
-    Http::assertSent(fn (Request $request) => $request['limit'] === 100 && $request['access_token'] === 'token');
+    Http::assertSent(fn (Request $request) => str_contains($request->url(), 'limit=100')
+        && str_contains($request->url(), 'access_token=token'));
 });
 
 test('graph paginator follows paging.next until exhausted', function () {

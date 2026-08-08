@@ -9,13 +9,10 @@ use App\Services\Social\TokenRedactor;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Collects every item from a paginated Meta Graph API edge by following `paging.next`.
- *
- * `/me/accounts` (and similar edges) return at most one page of results per request.
- * With granular Page permissions, the first response can even be empty while authorized
- * Pages appear only on later pages — callers must paginate or they will miss Pages.
  */
 class GraphPaginator
 {
@@ -23,63 +20,48 @@ class GraphPaginator
      * @param  array<string, mixed>  $query
      * @return list<array<string, mixed>>
      *
-     * @throws IncompleteGraphPaginationException When a later page fails after earlier pages succeeded.
+     * @throws IncompleteGraphPaginationException
      */
     public static function all(string $url, array $query = []): array
     {
         $items = [];
-        $nextUrl = $url;
-        $params = $query;
-        $successfulRequests = 0;
-        /** @var array<string, true> */
-        $seenUrls = [];
+        $ok = 0;
+        $seen = [];
+        $next = $query === [] ? $url : "{$url}?".http_build_query($query);
 
-        while ($nextUrl !== null) {
-            $requestKey = self::requestKey($nextUrl, $params);
-
-            if (isset($seenUrls[$requestKey])) {
+        while (is_string($next) && $next !== '') {
+            if (isset($seen[$next])) {
                 Log::warning('Meta Graph pagination stopped: repeated paging URL', [
-                    'url' => TokenRedactor::redact($nextUrl),
+                    'url' => TokenRedactor::redact($next),
                 ]);
 
                 break;
             }
 
-            $seenUrls[$requestKey] = true;
+            $seen[$next] = true;
 
             try {
-                $response = Http::timeout(15)
-                    ->connectTimeout(5)
-                    ->get($nextUrl, $params);
+                $response = Http::timeout(15)->connectTimeout(5)->get($next);
             } catch (ConnectionException $e) {
                 Log::error('Meta Graph pagination connection failed', [
-                    'url' => TokenRedactor::redact($nextUrl),
+                    'url' => TokenRedactor::redact($next),
                     'error' => $e->getMessage(),
                 ]);
 
-                if ($successfulRequests > 0) {
-                    throw new IncompleteGraphPaginationException(previous: $e);
-                }
-
-                return [];
+                return self::emptyOrIncomplete($ok, $e);
             }
 
             if ($response->failed()) {
                 Log::error('Meta Graph pagination request failed', [
-                    'url' => TokenRedactor::redact($nextUrl),
+                    'url' => TokenRedactor::redact($next),
                     'status' => $response->status(),
                     'body' => TokenRedactor::redact($response->body()),
                 ]);
 
-                if ($successfulRequests > 0) {
-                    throw new IncompleteGraphPaginationException;
-                }
-
-                return [];
+                return self::emptyOrIncomplete($ok);
             }
 
-            $successfulRequests++;
-
+            $ok++;
             $payload = $response->json();
             $chunk = data_get($payload, 'data', []);
 
@@ -87,26 +69,24 @@ class GraphPaginator
                 array_push($items, ...array_values($chunk));
             }
 
-            $next = data_get($payload, 'paging.next');
-            $nextUrl = is_string($next) && $next !== '' ? $next : null;
-            // Absolute next URLs already include the query string.
-            $params = [];
+            $candidate = data_get($payload, 'paging.next');
+            $next = is_string($candidate) && $candidate !== '' ? $candidate : null;
         }
 
         return $items;
     }
 
     /**
-     * @param  array<string, mixed>  $params
+     * @return list<array<string, mixed>>
+     *
+     * @throws IncompleteGraphPaginationException
      */
-    private static function requestKey(string $url, array $params): string
+    private static function emptyOrIncomplete(int $successfulRequests, ?Throwable $previous = null): array
     {
-        if ($params === []) {
-            return $url;
+        if ($successfulRequests > 0) {
+            throw new IncompleteGraphPaginationException($previous);
         }
 
-        ksort($params);
-
-        return $url.'?'.http_build_query($params);
+        return [];
     }
 }

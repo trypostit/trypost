@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
-use App\Exceptions\Social\IncompleteGraphPaginationException;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\Workspace;
 use App\Services\Social\Meta\GraphPaginator;
@@ -236,56 +235,35 @@ class InstagramFacebookController extends SocialController
 
     private function fetchPagesWithInstagram(string $userToken): array
     {
-        try {
-            $graphApi = (string) config('trypost.platforms.instagram-facebook.graph_api');
+        $graphApi = (string) config('trypost.platforms.instagram-facebook.graph_api');
 
-            $pages = GraphPaginator::all(
-                "{$graphApi}/me/accounts",
-                [
-                    'access_token' => $userToken,
-                    'fields' => 'id,name,username,picture{url},access_token,instagram_business_account',
-                    'limit' => 100,
-                ],
-            );
-
-            $results = [];
-
-            foreach ($pages as $page) {
-                $igAccountId = data_get($page, 'instagram_business_account.id');
-
-                if (! $igAccountId) {
-                    continue;
-                }
-
-                // Fetch IG account details (no custom timeout — match prior behavior; a throw
-                // here would wipe the whole list via the outer catch).
-                $igResponse = Http::get("{$graphApi}/{$igAccountId}", [
-                    'access_token' => data_get($page, 'access_token'),
+        return collect(GraphPaginator::all("{$graphApi}/me/accounts", [
+            'access_token' => $userToken,
+            'fields' => 'id,name,username,picture{url},access_token,instagram_business_account',
+            'limit' => 100,
+        ]))->filter(fn (array $page) => filled(data_get($page, 'instagram_business_account.id')))
+            ->map(function (array $page) use ($graphApi) {
+                $igId = data_get($page, 'instagram_business_account.id');
+                $token = data_get($page, 'access_token');
+                $ig = Http::get("{$graphApi}/{$igId}", [
+                    'access_token' => $token,
                     'fields' => 'username,name,profile_picture_url',
                 ]);
+                $igData = $ig->successful() ? $ig->json() : [];
 
-                $igData = $igResponse->successful() ? $igResponse->json() : [];
-
-                $results[] = [
+                return [
                     'page_id' => data_get($page, 'id'),
                     'page_name' => data_get($page, 'name'),
                     'page_picture' => data_get($page, 'picture.data.url'),
-                    'page_access_token' => data_get($page, 'access_token'),
-                    'ig_id' => $igAccountId,
+                    'page_access_token' => $token,
+                    'ig_id' => $igId,
                     'ig_username' => data_get($igData, 'username'),
                     'ig_name' => data_get($igData, 'name'),
                     'ig_picture' => data_get($igData, 'profile_picture_url'),
                 ];
-            }
-
-            return $results;
-        } catch (IncompleteGraphPaginationException $e) {
-            throw $e;
-        } catch (\Exception $e) {
-            Log::error('Instagram via Facebook pages fetch error', ['error' => $e->getMessage()]);
-
-            return [];
-        }
+            })
+            ->values()
+            ->all();
     }
 
     private function graphVersion(): string

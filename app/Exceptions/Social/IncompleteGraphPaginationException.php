@@ -8,17 +8,13 @@ use RuntimeException;
 use Throwable;
 
 /**
- * Thrown when a Meta Graph edge was only partially fetched (a later page failed
- * after earlier pages succeeded). Callers must not treat the partial list as complete
- * — e.g. auto-connecting when count === 1 would recreate missed-Page bugs.
+ * Thrown when a Meta Graph edge was only partially fetched. Callers must not
+ * treat a truncated list as complete (e.g. auto-connect when count === 1).
  */
 class IncompleteGraphPaginationException extends RuntimeException
 {
-    public function __construct(
-        string $message = 'Meta Graph pagination did not complete.',
-        int $code = 0,
-        ?Throwable $previous = null,
-    ) {
-        parent::__construct($message, $code, $previous);
+    public function __construct(?Throwable $previous = null)
+    {
+        parent::__construct('Meta Graph pagination did not complete.', previous: $previous);
     }
 }

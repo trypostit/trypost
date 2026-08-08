@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
-use App\Exceptions\Social\IncompleteGraphPaginationException;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\Workspace;
 use App\Services\Social\Meta\GraphPaginator;
@@ -269,32 +268,20 @@ class FacebookController extends SocialController
 
     private function fetchPages(string $userToken): array
     {
-        try {
-            $pages = GraphPaginator::all(
-                config('trypost.platforms.facebook.graph_api').'/me/accounts',
-                [
-                    'access_token' => $userToken,
-                    'fields' => 'id,name,username,picture{url},access_token',
-                    'limit' => 100,
-                ],
-            );
-
-            return collect($pages)->map(fn ($page) => [
-                'id' => data_get($page, 'id'),
-                'name' => data_get($page, 'name'),
-                'username' => data_get($page, 'username', null),
-                'picture' => data_get($page, 'picture.data.url'),
-                'access_token' => data_get($page, 'access_token'),
-            ])->toArray();
-        } catch (IncompleteGraphPaginationException $e) {
-            throw $e;
-        } catch (\Exception $e) {
-            Log::error('Facebook pages fetch error', [
-                'error' => $e->getMessage(),
-            ]);
-
-            return [];
-        }
+        return collect(GraphPaginator::all(
+            config('trypost.platforms.facebook.graph_api').'/me/accounts',
+            [
+                'access_token' => $userToken,
+                'fields' => 'id,name,username,picture{url},access_token',
+                'limit' => 100,
+            ],
+        ))->map(fn (array $page) => [
+            'id' => data_get($page, 'id'),
+            'name' => data_get($page, 'name'),
+            'username' => data_get($page, 'username'),
+            'picture' => data_get($page, 'picture.data.url'),
+            'access_token' => data_get($page, 'access_token'),
+        ])->all();
     }
 
     private function graphVersion(): string
