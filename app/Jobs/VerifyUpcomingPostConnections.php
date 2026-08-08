@@ -121,7 +121,14 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
             }
 
             try {
-                $verifier->verify($account);
+                // Telegram/Discord verify() reports a dead connection by
+                // returning false rather than throwing — route it through
+                // the same TokenExpiredException handling below instead of
+                // silently stamping last_verified_at on a broken account.
+                if (! $verifier->verify($account)) {
+                    throw new TokenExpiredException("{$account->platform->label()} bot no longer has access to the channel/guild");
+                }
+
                 $account->update(['last_verified_at' => now()]);
             } catch (PlatformUnavailableException $e) {
                 Log::warning('Upcoming-post connection check skipped: platform unavailable', [

@@ -94,7 +94,9 @@ class PostAtRisk extends Mailable implements ShouldQueue
             ->filter(fn (Collection $group) => $group->first()->socialAccount !== null)
             ->map(function (Collection $group) {
                 $postCount = $group->count();
-                $times = $group->map(fn ($pp) => $pp->post->scheduled_at->format('H:i'))->implode(', ');
+                $times = $group->sortBy(fn ($pp) => $pp->post->scheduled_at)
+                    ->map(fn ($pp) => $pp->post->scheduled_at->format('H:i'))
+                    ->implode(', ');
                 $noun = $postCount === 1 ? 'post' : 'posts';
 
                 return [

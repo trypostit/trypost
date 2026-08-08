@@ -56,6 +56,38 @@ test('marks the account expired and queues a notification when verify throws Tok
     });
 });
 
+test('marks the account expired when verify returns false instead of throwing (Telegram/Discord)', function () {
+    Mail::fake();
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->telegram()->create([
+        'workspace_id' => $workspace->id,
+        'status' => SocialAccountStatus::Connected,
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(20),
+    ]);
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')->once()->andReturn(false);
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
+
+    expect($account->fresh()->status)->toBe(SocialAccountStatus::TokenExpired)
+        ->and($account->fresh()->last_verified_at)->toBeNull()
+        ->and($postPlatform->fresh()->connection_warning_sent_at)->not->toBeNull();
+
+    Mail::assertQueued(PostAtRisk::class);
+});
+
 test('creates an in-app notification for the workspace owner alongside the email', function () {
     Mail::fake();
 
