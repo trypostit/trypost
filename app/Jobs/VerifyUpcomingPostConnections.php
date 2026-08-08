@@ -244,7 +244,7 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
             title: trans_choice('notifications.post_at_risk.title', $postCount, ['count' => $postCount]),
             body: $atRisk->map(fn (array $group) => $group['account']->platform->label().' ('.$group['account']->handle().')')->implode(', '),
             data: ['workspace_id' => $workspace->id],
-            mailable: new PostAtRisk($workspace, $postPlatformIds),
+            mailable: new PostAtRisk($workspace, $postPlatformIds, $postCount),
         );
     }
 }

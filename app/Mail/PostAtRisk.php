@@ -20,50 +20,54 @@ class PostAtRisk extends Mailable implements ShouldQueue
 
     /**
      * Rehydrated, grouped-by-account rows — computed once (lazily, at send
-     * time, never on the queue payload) and shared between envelope() and
-     * content() so their counts can't disagree if a row disappears between
-     * dispatch and send.
+     * time, never on the queue payload).
      */
     private ?Collection $atRiskGroups = null;
 
     /**
      * Only the workspace (a real Eloquent model, reduced to a lightweight
-     * identifier by SerializesModels) and the post_platform IDs are carried
-     * on the queue payload. The rows are rehydrated in atRiskGroups() so the
-     * queued job's serialized size stays small and the email reflects
-     * account/post state as of send time, not as of dispatch time.
+     * identifier by SerializesModels), the post_platform IDs, and the count
+     * observed at dispatch time are carried on the queue payload. The rows
+     * themselves are rehydrated in atRiskGroups() so the queued job's
+     * serialized size stays small and the account/post details reflect
+     * state as of send time, not as of dispatch time.
+     *
+     * $count drives the subject and preview text specifically — kept as the
+     * dispatch-time value (rather than re-derived from the rehydrated rows)
+     * so it always matches the in-app notification's title, which is built
+     * from this same count in VerifyUpcomingPostConnections::notifyOwner().
+     * If a row disappears between dispatch and send, the subject may then
+     * differ from the number of rows actually listed in the body — an
+     * acceptable rare edge case, in exchange for the subject never
+     * disagreeing with the in-app notification.
      *
      * @param  array<int, string>  $postPlatformIds
      */
     public function __construct(
         public Workspace $workspace,
-        public array $postPlatformIds
+        public array $postPlatformIds,
+        public int $count
     ) {}
 
     public function envelope(): Envelope
     {
-        $count = $this->atRiskGroups()->sum(fn (array $group) => $group['postPlatforms']->count());
-
         return new Envelope(
-            subject: $this->subjectFor($count),
+            subject: $this->subjectFor($this->count),
         );
     }
 
     public function content(): Content
     {
-        $atRiskGroups = $this->atRiskGroups();
-        $count = $atRiskGroups->sum(fn (array $group) => $group['postPlatforms']->count());
-
         return new Content(
             view: 'mail.post-at-risk',
             with: [
                 'title' => 'Posts May Fail to Publish',
-                'previewText' => $this->subjectFor($count),
+                'previewText' => $this->subjectFor($this->count),
                 'intro' => "The following social accounts in your {$this->workspace->name} workspace need to be reconnected before these scheduled posts can publish:",
                 'reconnectCta' => 'Please reconnect these accounts now to avoid missing your scheduled posts.',
                 'buttonText' => 'Reconnect Accounts',
                 'workspace' => $this->workspace,
-                'atRiskGroups' => $atRiskGroups,
+                'atRiskGroups' => $this->atRiskGroups(),
                 'url' => route('app.accounts'),
             ],
         );

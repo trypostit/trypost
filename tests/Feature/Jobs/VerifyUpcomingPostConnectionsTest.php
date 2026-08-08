@@ -89,6 +89,10 @@ test('creates an in-app notification for the workspace owner alongside the email
         ->and($notification->type)->toBe(Type::PostAtRisk)
         ->and($notification->channel)->toBe(Channel::Both)
         ->and($notification->title)->toBe('1 upcoming post is at risk');
+
+    // The in-app title and the email subject are built from the same count,
+    // captured once at dispatch time — they must never disagree.
+    Mail::assertQueued(PostAtRisk::class, fn ($mail) => $mail->count === 1);
 });
 
 test('defers to the next run instead of warning when markAsTokenExpired loses the account status lock', function () {
