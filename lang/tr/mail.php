@@ -21,13 +21,4 @@ return [
         'reconnect_cta' => 'Gönderi zamanlamaya ve yayınlamaya devam etmek için lütfen bu hesapları yeniden bağlayın.',
         'button' => 'Hesapları Yeniden Bağla',
     ],
-
-    'post_at_risk' => [
-        'subject' => '{1} :workspace çalışma alanında :count gönderi risk altında|[2,*] :workspace çalışma alanında :count gönderi risk altında',
-        'title' => 'Gönderiler Yayınlanamayabilir',
-        'intro' => '<strong>:workspace</strong> çalışma alanınızdaki aşağıdaki sosyal hesapların, bu zamanlanmış gönderiler yayınlanmadan önce yeniden bağlanması gerekiyor:',
-        'reconnect_cta' => 'Zamanlanmış gönderilerinizi kaçırmamak için lütfen bu hesapları şimdi yeniden bağlayın.',
-        'button' => 'Hesapları Yeniden Bağla',
-        'posts_label' => '{1} 1 gönderi zamanlandı: :times UTC|[2,*] :count gönderi zamanlandı: :times UTC',
-    ],
 ];

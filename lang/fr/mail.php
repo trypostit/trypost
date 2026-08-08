@@ -19,13 +19,4 @@ return [
         'reconnect_cta' => 'Veuillez reconnecter ces comptes pour continuer à programmer et publier vos publications.',
         'button' => 'Reconnecter les comptes',
     ],
-
-    'post_at_risk' => [
-        'subject' => '{1} :count publication est en danger dans :workspace|[2,*] :count publications sont en danger dans :workspace',
-        'title' => 'Des publications risquent de ne pas être publiées',
-        'intro' => 'Les comptes sociaux suivants de votre espace de travail <strong>:workspace</strong> doivent être reconnectés avant que ces publications programmées puissent être publiées :',
-        'reconnect_cta' => 'Veuillez reconnecter ces comptes maintenant pour ne pas manquer vos publications programmées.',
-        'button' => 'Reconnecter les comptes',
-        'posts_label' => '{1} 1 publication programmée: :times UTC|[2,*] :count publications programmées: :times UTC',
-    ],
 ];

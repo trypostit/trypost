@@ -19,13 +19,4 @@ return [
         'reconnect_cta' => 'Koppel deze accounts opnieuw om posts te blijven plannen en publiceren.',
         'button' => 'Accounts opnieuw koppelen',
     ],
-
-    'post_at_risk' => [
-        'subject' => '{1} :count post loopt risico in :workspace|[2,*] :count posts lopen risico in :workspace',
-        'title' => 'Posts kunnen mogelijk niet worden gepubliceerd',
-        'intro' => 'De volgende social accounts in je workspace <strong>:workspace</strong> moeten opnieuw worden gekoppeld voordat deze geplande posts kunnen worden gepubliceerd:',
-        'reconnect_cta' => 'Koppel deze accounts nu opnieuw om je geplande posts niet te missen.',
-        'button' => 'Accounts opnieuw koppelen',
-        'posts_label' => '{1} 1 post gepland: :times UTC|[2,*] :count posts gepland: :times UTC',
-    ],
 ];

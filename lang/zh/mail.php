@@ -19,13 +19,4 @@ return [
         'reconnect_cta' => '请重新连接这些账号，以继续安排和发布帖子。',
         'button' => '重新连接账号',
     ],
-
-    'post_at_risk' => [
-        'subject' => '{1} :workspace 工作区中有 :count 个帖子面临风险|[2,*] :workspace 工作区中有 :count 个帖子面临风险',
-        'title' => '帖子可能无法发布',
-        'intro' => '你 <strong>:workspace</strong> 工作区中的以下社交账号需要在这些计划帖子发布之前重新连接：',
-        'reconnect_cta' => '请立即重新连接这些账号，以免错过你计划的帖子。',
-        'button' => '重新连接账号',
-        'posts_label' => '{1} 1 篇帖子已安排: :times UTC|[2,*] :count 篇帖子已安排: :times UTC',
-    ],
 ];

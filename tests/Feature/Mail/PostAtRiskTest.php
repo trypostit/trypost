@@ -30,5 +30,5 @@ test('renders subject and body listing the at-risk account and its post times', 
 
     $mailable->assertSeeInHtml('Posts May Fail to Publish');
     $mailable->assertSeeInHtml('Acme Co');
-    $mailable->assertSeeInHtml('14:30');
+    $mailable->assertSeeInHtml('1 post scheduled: 14:30 UTC');
 });

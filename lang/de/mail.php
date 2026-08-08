@@ -21,13 +21,4 @@ return [
         'reconnect_cta' => 'Bitte verbinde diese Konten erneut, um weiterhin Beiträge zu planen und zu veröffentlichen.',
         'button' => 'Konten erneut verbinden',
     ],
-
-    'post_at_risk' => [
-        'subject' => '{1} :count Beitrag ist gefährdet in :workspace|[2,*] :count Beiträge sind gefährdet in :workspace',
-        'title' => 'Beiträge könnten nicht veröffentlicht werden',
-        'intro' => 'Die folgenden Social-Media-Konten in deinem Workspace <strong>:workspace</strong> müssen erneut verbunden werden, bevor diese geplanten Beiträge veröffentlicht werden können:',
-        'reconnect_cta' => 'Bitte verbinde diese Konten jetzt erneut, um deine geplanten Beiträge nicht zu verpassen.',
-        'button' => 'Konten erneut verbinden',
-        'posts_label' => '{1} 1 Beitrag geplant: :times UTC|[2,*] :count Beiträge geplant: :times UTC',
-    ],
 ];
