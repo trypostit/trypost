@@ -53,7 +53,7 @@ const sampleReactions = [
                 <div
                     class="truncate text-[15px] font-semibold text-[#1f232b] dark:text-white"
                 >
-                    {{ socialAccount.display_label || 'Channel' }}
+                    {{ socialAccount.display_label }}
                 </div>
                 <div class="text-[13px] text-[#707991] dark:text-[#708499]">
                     channel

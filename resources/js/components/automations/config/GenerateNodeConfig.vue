@@ -303,7 +303,7 @@ const channels = computed<Channel[]>(() =>
         return {
             id: account.id,
             platform: account.platform,
-            displayName: account.display_label ?? account.platform,
+            displayName: account.display_label,
             username: account.username,
             avatarUrl: account.avatar_url,
             socialAccount: account,

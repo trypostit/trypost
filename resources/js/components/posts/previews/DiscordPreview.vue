@@ -72,7 +72,7 @@ const postedAtLabel = computed(() =>
 
                 <div class="min-w-0 flex-1">
                     <div class="flex items-baseline gap-2">
-                        <span class="text-[15px] font-medium text-[#060607]">{{ socialAccount.display_label || 'TryPost' }}</span>
+                        <span class="text-[15px] font-medium text-[#060607]">{{ socialAccount.display_label }}</span>
                         <span class="rounded bg-[#5865F2] px-1 text-[10px] font-bold uppercase tracking-wide text-white">Bot</span>
                         <span class="text-[11px] text-[#5c5e66]">{{ postedAtLabel }}</span>
                     </div>
