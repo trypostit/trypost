@@ -45,7 +45,7 @@ const resolvedSocialAccount = computed((): SocialAccount => props.socialAccount 
     display_name: '',
     username: '',
     display_label: null,
-    handle_label: '',
+    handle_label: null,
     avatar_url: null,
 });
 

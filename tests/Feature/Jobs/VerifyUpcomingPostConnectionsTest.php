@@ -655,6 +655,104 @@ test('defers to the next run instead of duplicating AccountDisconnected when ano
     Mail::assertNothingQueued();
 });
 
+test('does not crash when the account is deleted between being loaded and the TokenExpiredException being handled', function () {
+    Mail::fake();
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->threads()->create([
+        'workspace_id' => $workspace->id,
+        'status' => SocialAccountStatus::Connected,
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(20),
+    ]);
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')->once()->andReturnUsing(function () use ($account) {
+        // Simulate the user disconnecting (hard-deleting) the account in the
+        // brief window between this job loading it and handling the
+        // exception thrown here.
+        SocialAccount::where('id', $account->id)->delete();
+
+        throw new TokenExpiredException('Threads access token is invalid or expired');
+    });
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
+
+    expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
+    Mail::assertNothingQueued();
+});
+
+test('a deleted account does not abort the run for other accounts in the same workspace', function () {
+    Mail::fake();
+
+    $workspace = Workspace::factory()->create();
+
+    $deletedAccount = SocialAccount::factory()->threads()->create([
+        'workspace_id' => $workspace->id,
+        'status' => SocialAccountStatus::Connected,
+    ]);
+    $deletedPost = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(15),
+    ]);
+    $deletedPostPlatform = PostPlatform::factory()->create([
+        'post_id' => $deletedPost->id,
+        'social_account_id' => $deletedAccount->id,
+        'platform' => $deletedAccount->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $survivingAccount = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $workspace->id,
+        'status' => SocialAccountStatus::Connected,
+    ]);
+    $survivingPost = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(20),
+    ]);
+    $survivingPostPlatform = PostPlatform::factory()->create([
+        'post_id' => $survivingPost->id,
+        'social_account_id' => $survivingAccount->id,
+        'platform' => $survivingAccount->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')
+        ->once()
+        ->with(Mockery::on(fn ($account) => $account->id === $deletedAccount->id))
+        ->andReturnUsing(function () use ($deletedAccount) {
+            SocialAccount::where('id', $deletedAccount->id)->delete();
+
+            throw new TokenExpiredException('Threads access token is invalid or expired');
+        });
+    $verifier->shouldReceive('verify')
+        ->once()
+        ->with(Mockery::on(fn ($account) => $account->id === $survivingAccount->id))
+        ->andThrow(new TokenExpiredException('Facebook access token is invalid or expired'));
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
+
+    expect($deletedPostPlatform->fresh()->connection_warning_sent_at)->toBeNull();
+    expect($survivingPostPlatform->fresh()->connection_warning_sent_at)->not->toBeNull();
+    expect($survivingAccount->fresh()->status)->toBe(SocialAccountStatus::TokenExpired);
+
+    Mail::assertQueued(PostAtRisk::class, function ($mail) use ($survivingPostPlatform) {
+        return count($mail->postPlatformIds) === 1
+            && in_array($survivingPostPlatform->id, $mail->postPlatformIds, true);
+    });
+});
+
 test('does not warn and does not mark connection_warning_sent_at on PlatformUnavailableException', function () {
     Mail::fake();
 

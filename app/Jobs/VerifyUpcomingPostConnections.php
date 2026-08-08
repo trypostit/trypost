@@ -18,6 +18,7 @@ use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -125,18 +126,28 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
 
                 continue;
             } catch (TokenExpiredException $e) {
-                // Re-check right before mutating: if the account is no longer
-                // Connected here, a concurrent process (e.g. RefreshExpiringTokens)
-                // beat us to discovering and announcing this same break via its
-                // own AccountDisconnected email. Only skip in that case — not
-                // when disconnected_at is fresh purely because our own update
-                // below is about to set it for the first time.
-                if ($account->refresh()->status !== SocialAccountStatus::Connected && $this->recentlyDisconnected($account)) {
+                try {
+                    // Re-check right before mutating: if the account is no longer
+                    // Connected here, a concurrent process (e.g. RefreshExpiringTokens)
+                    // beat us to discovering and announcing this same break via its
+                    // own AccountDisconnected email. Only skip in that case — not
+                    // when disconnected_at is fresh purely because our own update
+                    // below is about to set it for the first time.
+                    if ($account->refresh()->status !== SocialAccountStatus::Connected && $this->recentlyDisconnected($account)) {
+                        continue;
+                    }
+
+                    $account->markAsTokenExpired($e->getMessage(), notify: false);
+                    $account->refresh();
+                } catch (ModelNotFoundException) {
+                    // The account was deleted (e.g. the user disconnected it)
+                    // in the brief window between this loop picking it up and
+                    // us handling the exception here. An exception thrown from
+                    // inside a catch block isn't routed to a sibling catch, so
+                    // this must be handled here to avoid aborting the run for
+                    // every other account in this workspace.
                     continue;
                 }
-
-                $account->markAsTokenExpired($e->getMessage(), notify: false);
-                $account->refresh();
 
                 // markAsTokenExpired() no-ops if it couldn't acquire the
                 // account's status lock (another process — e.g. a concurrent
