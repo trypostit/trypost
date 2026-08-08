@@ -208,16 +208,16 @@ Vue components must have a single root element.
 
 Checkout options are configured only via env — do not hardcode trial/coupon/promo behavior in controllers. All of it goes through `App\Support\Billing\ConfigureSubscriptionCheckout` (called from `StartSubscriptionCheckout`).
 
-| Env | Config | Effect |
-| --- | --- | --- |
-| `REQUIRE_CARD_FOR_TRIAL` | `trypost.billing.require_card_for_trial` | `true`: app access only after Stripe Checkout (no generic signup trial). `false`: generic `accounts.trial_ends_at` trial without a card |
-| `CASHIER_TRIAL_DAYS` | `cashier.trial_days` | Card-required Checkout: `trialDays(N)` when no first-month coupon is applied (`0` = off). No-card mode: length of the generic signup trial |
-| `STRIPE_FIRST_MONTH_COUPON_ID` | `cashier.first_month_coupon_id` | Optional. When set for a qualifying first-time single-workspace checkout, applies `withCoupon` and **skips** trial. Empty = trial mode |
-| `CASHIER_ALLOW_PROMOTION_CODES` | `cashier.allow_promotion_codes` | When `true` and no coupon is applied, show the Checkout promo-code field |
+| Env | Config | Default | Effect |
+| --- | --- | --- | --- |
+| `REQUIRE_CARD_FOR_TRIAL` | `trypost.billing.require_card_for_trial` | `true` | `true`: app access only after Stripe Checkout (no generic signup trial). `false`: generic `accounts.trial_ends_at` trial without a card |
+| `CASHIER_TRIAL_DAYS` | `cashier.trial_days` | `8` | Card-required Checkout: `trialDays(N)` for **first-time** subscribers when no first-month coupon is applied (`0` = off). Re-subscribers skip trial. No-card mode: length of the generic signup trial |
+| `STRIPE_FIRST_MONTH_COUPON_ID` | `cashier.first_month_coupon_id` | empty | Optional. When set for a qualifying first-time single-workspace checkout, applies `withCoupon` and **skips** trial. Empty = trial mode |
+| `CASHIER_ALLOW_PROMOTION_CODES` | `cashier.allow_promotion_codes` | `false` | When `true` and no coupon is applied, show the Checkout promo-code field |
 
 Standing constraints:
-- Stripe rejects `discounts` (coupon) and `allow_promotion_codes` on the same session — if both would apply, `ConfigureSubscriptionCheckout` must throw (fail loud). Never “prefer one silently.”
+- Stripe rejects `discounts` (coupon) and `allow_promotion_codes` on the same session — if both would apply, `ConfigureSubscriptionCheckout` must throw (fail loud). Never “prefer one silently.” Envs may both be set when the account does **not** qualify for the coupon (no throw).
 - A set first-month coupon wins over trial (`trialDays` is skipped for that checkout).
-- Empty coupon + card required must use `trialDays` — do **not** reintroduce a required-coupon throw.
+- Empty coupon + card required + first-time must use `trialDays` — do **not** reintroduce a required-coupon throw.
 - Coupon qualification stays: card required, exactly one workspace, no prior real subscription (`incomplete` / `incomplete_expired` still qualify).
 - Prefer documenting durable billing decisions here (and in `CLAUDE.md`) — do **not** create a `.ai/` rules folder for this project.
