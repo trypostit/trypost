@@ -35,6 +35,7 @@ class PostPlatform extends Model
         'error_context',
         'published_at',
         'meta',
+        'connection_warning_sent_at',
     ];
 
     protected function casts(): array
@@ -47,6 +48,7 @@ class PostPlatform extends Model
             'published_at' => 'datetime',
             'meta' => 'array',
             'error_context' => 'array',
+            'connection_warning_sent_at' => 'datetime',
         ];
     }
 
