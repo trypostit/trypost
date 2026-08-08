@@ -700,6 +700,75 @@ test('facebook verify treats a dead token reported under a non-190 code as genui
         ->toThrow(TokenExpiredException::class);
 });
 
+test('facebook verify treats a Meta rate-limit as transient, not a disconnect', function () {
+    Http::fake([
+        config('trypost.platforms.facebook.graph_api').'/me*' => Http::response([
+            'error' => ['message' => 'Application request limit reached', 'type' => 'OAuthException', 'code' => 4],
+        ], 400),
+    ]);
+
+    $account = SocialAccount::factory()->facebook()->create([
+        'token_expires_at' => now()->addDays(30),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('facebook verify treats a 5xx as platform unavailable, not a disconnect', function () {
+    Http::fake([
+        config('trypost.platforms.facebook.graph_api').'/me*' => Http::response('upstream timeout', 503),
+    ]);
+
+    $account = SocialAccount::factory()->facebook()->create([
+        'token_expires_at' => now()->addDays(30),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('facebook verify treats a non-JSON failure body as platform unavailable, not a confirmed dead token', function () {
+    Http::fake([
+        config('trypost.platforms.facebook.graph_api').'/me*' => Http::response('<html>blocked</html>', 400),
+    ]);
+
+    $account = SocialAccount::factory()->facebook()->create([
+        'token_expires_at' => now()->addDays(30),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('instagram verify treats a dead token reported under a non-190 code as genuinely expired', function () {
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/me*' => Http::response([
+            'error' => ['message' => 'The requested resource does not exist', 'type' => 'OAuthException', 'code' => 100],
+        ], 400),
+    ]);
+
+    $account = SocialAccount::factory()->instagram()->create([
+        'token_expires_at' => now()->addDays(30),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(TokenExpiredException::class);
+});
+
+test('instagram verify treats a 5xx as platform unavailable, not a disconnect', function () {
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/me*' => Http::response('upstream timeout', 503),
+    ]);
+
+    $account = SocialAccount::factory()->instagram()->create([
+        'token_expires_at' => now()->addDays(30),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
 test('threads refresh treats a dead token reported under a non-190 code as genuinely expired', function () {
     Http::fake([
         config('trypost.platforms.threads.auth_api').'/refresh_access_token*' => Http::response([
