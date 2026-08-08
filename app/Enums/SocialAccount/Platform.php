@@ -61,7 +61,7 @@ enum Platform: string
             self::TikTok => 'TikTok',
             self::YouTube => 'YouTube Shorts',
             self::Facebook => 'Facebook Page',
-            self::Instagram => 'Instagram (Standalone)',
+            self::Instagram => 'Instagram',
             self::InstagramFacebook => 'Instagram (Facebook Business)',
             self::Threads => 'Threads',
             self::Pinterest => 'Pinterest',
@@ -376,17 +376,36 @@ enum Platform: string
 
     /**
      * Whether this platform gets its own "Connect" card in the accounts grid.
-     * LinkedIn company pages are reached through the unified LinkedIn connect
-     * flow's identity picker, never a standalone card. The single LinkedIn card
-     * stands for the whole network, so it shows whenever the profile OR the
-     * company-page capability is enabled (self-hosters may run with only one).
+     * LinkedIn company pages and Instagram-via-Facebook are reached through the
+     * unified network card (identity picker / method dialog), never a standalone
+     * card. That card stands for the whole network, so it shows whenever any
+     * variant capability is enabled (self-hosters may run with only one).
      */
     public function isConnectable(): bool
     {
         return match ($this) {
-            self::LinkedInPage => false,
+            self::LinkedInPage, self::InstagramFacebook => false,
             self::LinkedIn => self::LinkedIn->isEnabled() || self::LinkedInPage->isEnabled(),
+            self::Instagram => self::Instagram->isEnabled() || self::InstagramFacebook->isEnabled(),
             default => $this->isEnabled(),
+        };
+    }
+
+    /**
+     * OAuth/connect entry points offered when the user clicks this card.
+     * Most platforms have a single method; Instagram offers Login and/or
+     * Facebook Pages depending on which capabilities are enabled.
+     *
+     * @return list<string>
+     */
+    public function connectMethods(): array
+    {
+        return match ($this) {
+            self::Instagram => array_values(array_filter([
+                self::Instagram->isEnabled() ? self::Instagram->value : null,
+                self::InstagramFacebook->isEnabled() ? self::InstagramFacebook->value : null,
+            ])),
+            default => $this->isEnabled() ? [$this->value] : [],
         };
     }
 
@@ -394,7 +413,7 @@ enum Platform: string
      * Connectable platforms shaped for Inertia account/onboarding grids.
      * Sorted alphabetically by label (ASC, case-insensitive).
      *
-     * @return list<array{value: string, label: string, color: string, network: string}>
+     * @return list<array{value: string, label: string, color: string, network: string, connect_methods: list<string>}>
      */
     public static function connectableOptions(): array
     {
@@ -406,6 +425,7 @@ enum Platform: string
                 'label' => $platform->label(),
                 'color' => $platform->color(),
                 'network' => $platform->network(),
+                'connect_methods' => $platform->connectMethods(),
             ])
             ->values()
             ->all();

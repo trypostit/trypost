@@ -21,7 +21,7 @@ return [
         'tiktok' => 'Подключите аккаунт TikTok',
         'youtube' => 'Подключите канал YouTube',
         'facebook' => 'Подключите страницу Facebook',
-        'instagram' => 'Подключите профессиональный аккаунт Instagram',
+        'instagram' => 'Connect via Instagram Login or Facebook Pages',
         'instagram-facebook' => 'Подключите Instagram через страницу Facebook',
         'threads' => 'Подключите аккаунт Threads',
         'pinterest' => 'Подключите аккаунт Pinterest',
@@ -94,6 +94,15 @@ return [
         'no_pages_description' => 'Не найдено страниц Facebook со связанными бизнес-аккаунтами Instagram.',
         'view' => 'Открыть',
         'choose' => 'Выбрать',
+    ],
+
+    'instagram_connect' => [
+        'title' => 'Connect Instagram',
+        'description' => 'Choose how you want to connect your Instagram account',
+        'standalone_title' => 'Instagram Login',
+        'standalone_description' => 'Sign in with your Instagram professional account',
+        'facebook_title' => 'Facebook Pages',
+        'facebook_description' => 'Connect an Instagram account linked to a Facebook Page',
     ],
 
     'linkedin' => [

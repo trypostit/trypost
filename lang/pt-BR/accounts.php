@@ -21,7 +21,7 @@ return [
         'tiktok' => 'Conecte sua conta do TikTok',
         'youtube' => 'Conecte um canal do YouTube',
         'facebook' => 'Conecte uma página do Facebook',
-        'instagram' => 'Conecte uma conta profissional do Instagram',
+        'instagram' => 'Conecte via Instagram Login ou Facebook Pages',
         'instagram-facebook' => 'Conecte Instagram via página do Facebook',
         'threads' => 'Conecte sua conta do Threads',
         'pinterest' => 'Conecte sua conta do Pinterest',
@@ -94,6 +94,15 @@ return [
         'no_pages_description' => 'Nenhuma Página do Facebook com conta Instagram Business vinculada foi encontrada.',
         'view' => 'Ver',
         'choose' => 'Escolher',
+    ],
+
+    'instagram_connect' => [
+        'title' => 'Conectar Instagram',
+        'description' => 'Escolha como você quer conectar sua conta do Instagram',
+        'standalone_title' => 'Instagram Login',
+        'standalone_description' => 'Entre com sua conta profissional do Instagram',
+        'facebook_title' => 'Facebook Pages',
+        'facebook_description' => 'Conecte um Instagram vinculado a uma Página do Facebook',
     ],
 
     'linkedin' => [

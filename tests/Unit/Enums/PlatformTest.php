@@ -12,7 +12,7 @@ test('platform has correct labels', function () {
     expect(Platform::TikTok->label())->toBe('TikTok');
     expect(Platform::YouTube->label())->toBe('YouTube Shorts');
     expect(Platform::Facebook->label())->toBe('Facebook Page');
-    expect(Platform::Instagram->label())->toBe('Instagram (Standalone)');
+    expect(Platform::Instagram->label())->toBe('Instagram');
     expect(Platform::InstagramFacebook->label())->toBe('Instagram (Facebook Business)');
     expect(Platform::Threads->label())->toBe('Threads');
     expect(Platform::Pinterest->label())->toBe('Pinterest');
@@ -114,10 +114,10 @@ test('platform can be disabled via config', function () {
     expect(Platform::LinkedIn->isEnabled())->toBeFalse();
 });
 
-test('only linkedin pages are not directly connectable', function () {
+test('linkedin pages and instagram facebook are not directly connectable', function () {
     expect(Platform::LinkedInPage->isConnectable())->toBeFalse();
     expect(Platform::LinkedIn->isConnectable())->toBeTrue();
-    expect(Platform::InstagramFacebook->isConnectable())->toBeTrue();
+    expect(Platform::InstagramFacebook->isConnectable())->toBeFalse();
     expect(Platform::Instagram->isConnectable())->toBeTrue();
 });
 
@@ -136,6 +136,33 @@ test('the linkedin card is connectable while either capability is enabled', func
     expect(Platform::LinkedInPage->isConnectable())->toBeFalse();
 });
 
+test('the instagram card is connectable while either capability is enabled', function () {
+    config(['trypost.platforms.instagram.enabled' => true, 'trypost.platforms.instagram-facebook.enabled' => false]);
+    expect(Platform::Instagram->isConnectable())->toBeTrue();
+    expect(Platform::Instagram->connectMethods())->toBe([Platform::Instagram->value]);
+
+    config(['trypost.platforms.instagram.enabled' => false, 'trypost.platforms.instagram-facebook.enabled' => true]);
+    expect(Platform::Instagram->isConnectable())->toBeTrue();
+    expect(Platform::Instagram->connectMethods())->toBe([Platform::InstagramFacebook->value]);
+
+    config(['trypost.platforms.instagram.enabled' => false, 'trypost.platforms.instagram-facebook.enabled' => false]);
+    expect(Platform::Instagram->isConnectable())->toBeFalse();
+    expect(Platform::Instagram->connectMethods())->toBe([]);
+
+    // Via-Facebook never gets its own card regardless of toggles.
+    config(['trypost.platforms.instagram-facebook.enabled' => true]);
+    expect(Platform::InstagramFacebook->isConnectable())->toBeFalse();
+});
+
+test('instagram connect methods include both when enabled', function () {
+    config(['trypost.platforms.instagram.enabled' => true, 'trypost.platforms.instagram-facebook.enabled' => true]);
+
+    expect(Platform::Instagram->connectMethods())->toBe([
+        Platform::Instagram->value,
+        Platform::InstagramFacebook->value,
+    ]);
+});
+
 test('connectable options are sorted alphabetically by label', function () {
     $labels = array_column(Platform::connectableOptions(), 'label');
 
@@ -143,4 +170,19 @@ test('connectable options are sorted alphabetically by label', function () {
     natcasesort($sorted);
 
     expect($labels)->toBe(array_values($sorted));
+});
+
+test('connectable options expose instagram connect methods and omit the facebook variant card', function () {
+    $options = Platform::connectableOptions();
+    $values = array_column($options, 'value');
+
+    expect($values)->toContain(Platform::Instagram->value)
+        ->and($values)->not->toContain(Platform::InstagramFacebook->value);
+
+    $instagram = collect($options)->firstWhere('value', Platform::Instagram->value);
+
+    expect($instagram['connect_methods'])->toBe([
+        Platform::Instagram->value,
+        Platform::InstagramFacebook->value,
+    ]);
 });

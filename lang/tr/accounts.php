@@ -23,7 +23,7 @@ return [
         'tiktok' => 'TikTok hesabınızı bağlayın',
         'youtube' => 'Bir YouTube kanalı bağlayın',
         'facebook' => 'Bir Facebook sayfası bağlayın',
-        'instagram' => 'Bir Instagram profesyonel hesabı bağlayın',
+        'instagram' => 'Connect via Instagram Login or Facebook Pages',
         'instagram-facebook' => 'Facebook sayfası üzerinden Instagram bağlayın',
         'threads' => 'Threads hesabınızı bağlayın',
         'pinterest' => 'Pinterest hesabınızı bağlayın',
@@ -96,6 +96,15 @@ return [
         'no_pages_description' => 'Bağlı Instagram İşletme hesabı olan Facebook Sayfası bulunamadı.',
         'view' => 'Görüntüle',
         'choose' => 'Seç',
+    ],
+
+    'instagram_connect' => [
+        'title' => 'Connect Instagram',
+        'description' => 'Choose how you want to connect your Instagram account',
+        'standalone_title' => 'Instagram Login',
+        'standalone_description' => 'Sign in with your Instagram professional account',
+        'facebook_title' => 'Facebook Pages',
+        'facebook_description' => 'Connect an Instagram account linked to a Facebook Page',
     ],
 
     'linkedin' => [

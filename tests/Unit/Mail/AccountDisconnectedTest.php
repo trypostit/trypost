@@ -17,7 +17,7 @@ test('account disconnected mail has correct subject', function () {
 
     $mail = new AccountDisconnected($account);
 
-    expect($mail->envelope()->subject)->toBe('Your Instagram (Standalone) account in My Workspace needs to be reconnected');
+    expect($mail->envelope()->subject)->toBe('Your Instagram account in My Workspace needs to be reconnected');
 });
 
 test('account disconnected mail has correct content', function () {

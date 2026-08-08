@@ -5,6 +5,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
+import InstagramConnectDialog from '@/components/accounts/InstagramConnectDialog.vue';
 import TelegramConnectDialog from '@/components/accounts/TelegramConnectDialog.vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ export interface AvailablePlatform {
     label: string;
     color: string;
     network: string;
+    connect_methods?: string[];
 }
 
 export interface ConnectedAccount {
@@ -150,6 +152,7 @@ const cardConnection = computed(
 );
 
 const telegramOpen = ref(false);
+const instagramOpen = ref(false);
 const disconnectModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(
     null,
 );
@@ -177,9 +180,37 @@ const needsReconnect = (account: ConnectedAccount): boolean =>
 const connectEntryFor = (platformValue: string): string =>
     platformValue === Platform.LinkedInPage ? Platform.LinkedIn : platformValue;
 
+const instagramMethods = computed((): string[] => {
+    const instagram = props.platforms.find(
+        (platform) => platform.value === Platform.Instagram,
+    );
+
+    return (
+        instagram?.connect_methods ?? [
+            Platform.Instagram,
+            Platform.InstagramFacebook,
+        ]
+    );
+});
+
 const openConnect = (platformValue: string) => {
     if (platformValue === Platform.Telegram) {
         telegramOpen.value = true;
+        return;
+    }
+
+    if (platformValue === Platform.Instagram) {
+        const methods = instagramMethods.value;
+
+        if (methods.length === 1) {
+            openOAuthPopup(methods[0]);
+            return;
+        }
+
+        if (methods.length > 1) {
+            instagramOpen.value = true;
+        }
+
         return;
     }
 
@@ -195,7 +226,15 @@ const connectPlatform = (platformValue: string) => {
 };
 
 const reconnectAccount = (account: ConnectedAccount) => {
-    openConnect(connectEntryFor(account.platform));
+    const entry = connectEntryFor(account.platform);
+
+    if (entry === Platform.Telegram) {
+        telegramOpen.value = true;
+        return;
+    }
+
+    // Reconnect with the same OAuth method — skip the Instagram method picker.
+    openOAuthPopup(entry);
 };
 
 const CardState = {
@@ -328,6 +367,12 @@ const cardState = computed((): Record<string, CardStateValue> => {
         </div>
 
         <TelegramConnectDialog v-model:open="telegramOpen" />
+
+        <InstagramConnectDialog
+            v-model:open="instagramOpen"
+            :methods="instagramMethods"
+            @select="openOAuthPopup"
+        />
 
         <ConfirmDeleteModal
             ref="disconnectModal"
