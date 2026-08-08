@@ -9,6 +9,7 @@ use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\Workspace;
 use App\Services\Social\Meta\GraphPaginator;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -246,11 +247,18 @@ class InstagramFacebookController extends SocialController
             ->map(function (array $page) use ($graphApi) {
                 $igId = data_get($page, 'instagram_business_account.id');
                 $token = data_get($page, 'access_token');
-                $ig = Http::get("{$graphApi}/{$igId}", [
-                    'access_token' => $token,
-                    'fields' => 'username,name,profile_picture_url',
-                ]);
-                $igData = $ig->successful() ? $ig->json() : [];
+                $igData = [];
+
+                try {
+                    $ig = Http::timeout(15)->connectTimeout(5)->get("{$graphApi}/{$igId}", [
+                        'access_token' => $token,
+                        'fields' => 'username,name,profile_picture_url',
+                    ]);
+
+                    $igData = $ig->successful() ? $ig->json() : [];
+                } catch (ConnectionException) {
+                    // Page listing still succeeds; username/avatar may be empty.
+                }
 
                 return [
                     'page_id' => data_get($page, 'id'),

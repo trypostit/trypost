@@ -8,8 +8,10 @@ use RuntimeException;
 use Throwable;
 
 /**
- * Thrown when a Meta Graph edge was only partially fetched. Callers must not
- * treat a truncated list as complete (e.g. auto-connect when count === 1).
+ * Thrown when a Meta Graph edge could not be fully fetched — the first page
+ * failed, a later page failed, or pagination stopped pathologically. Callers
+ * must not treat this as an empty or complete list (e.g. "no pages" or
+ * auto-connect when count === 1).
  */
 class IncompleteMetaGraphPaginationException extends RuntimeException
 {

@@ -195,6 +195,37 @@ test('facebook callback fails when no pages found', function () {
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'No Facebook Pages found. You need to be an admin of at least one page.'));
 });
 
+test('facebook callback fails with error connecting when the first accounts request fails', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('facebook_user_123');
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
+
+    $graphApi = config('trypost.platforms.facebook.graph_api');
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/accounts*" => Http::response(['error' => ['message' => 'fail']], 400),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
+
+    $response->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('success', false)
+        ->where('message', __('accounts.popup_callback.error_connecting'))
+    );
+
+    expect($this->workspace->socialAccounts()->where('platform', Platform::Facebook)->count())->toBe(0);
+});
+
 test('facebook callback follows accounts pagination and shows picker for pages across pages', function () {
     session([
         'social_connect_workspace' => $this->workspace->id,

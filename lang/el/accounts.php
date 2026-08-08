@@ -21,7 +21,7 @@ return [
         'tiktok' => 'Συνδέστε τον λογαριασμό σας TikTok',
         'youtube' => 'Συνδέστε ένα κανάλι YouTube',
         'facebook' => 'Συνδέστε μια σελίδα Facebook',
-        'instagram' => 'Connect via Instagram Login or Facebook Pages',
+        'instagram' => 'Συνδέστε μέσω Instagram Login ή σελίδων Facebook',
         'instagram-facebook' => 'Συνδέστε το Instagram μέσω σελίδας Facebook',
         'threads' => 'Συνδέστε τον λογαριασμό σας Threads',
         'pinterest' => 'Συνδέστε τον λογαριασμό σας Pinterest',
@@ -97,12 +97,12 @@ return [
     ],
 
     'instagram_connect' => [
-        'title' => 'Connect Instagram',
-        'description' => 'Choose how you want to connect your Instagram account',
+        'title' => 'Σύνδεση Instagram',
+        'description' => 'Επιλέξτε πώς θέλετε να συνδέσετε τον λογαριασμό Instagram',
         'standalone_title' => 'Instagram Login',
-        'standalone_description' => 'Sign in with your Instagram professional account',
-        'facebook_title' => 'Facebook Pages',
-        'facebook_description' => 'Connect an Instagram account linked to a Facebook Page',
+        'standalone_description' => 'Συνδεθείτε με τον επαγγελματικό λογαριασμό Instagram',
+        'facebook_title' => 'Σελίδες Facebook',
+        'facebook_description' => 'Συνδέστε έναν λογαριασμό Instagram συνδεδεμένο με σελίδα Facebook',
     ],
 
     'linkedin' => [

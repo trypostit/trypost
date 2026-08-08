@@ -151,6 +151,56 @@ test('instagram-facebook callback connects page when first accounts response is 
     ]);
 });
 
+test('instagram-facebook callback still connects when the instagram profile lookup times out', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(
+            Mockery::mock()
+                ->shouldReceive('usingGraphVersion')->andReturnSelf()
+                ->shouldReceive('redirectUrl')->andReturnSelf()
+                ->shouldReceive('user')->andReturn($socialiteUser)
+                ->getMock()
+        );
+
+    $graphApi = config('trypost.platforms.instagram-facebook.graph_api');
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
+        "{$graphApi}/me/accounts*" => Http::response([
+            'data' => [
+                [
+                    'id' => 'page_1',
+                    'name' => 'My Page',
+                    'picture' => ['data' => ['url' => null]],
+                    'access_token' => 'page-token',
+                    'instagram_business_account' => ['id' => 'ig_1'],
+                ],
+            ],
+        ], 200),
+        "{$graphApi}/ig_1*" => Http::failedConnection(),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.instagram-facebook.callback'));
+
+    $response->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
+
+    $this->assertDatabaseHas('social_accounts', [
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::InstagramFacebook->value,
+        'platform_user_id' => 'ig_1',
+    ]);
+
+    expect($this->workspace->socialAccounts()->where('platform', Platform::InstagramFacebook)->value('username'))->toBeNull();
+});
+
 test('instagram-facebook callback skips pages without instagram across paginated results', function () {
     session([
         'social_connect_workspace' => $this->workspace->id,

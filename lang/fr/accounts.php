@@ -21,7 +21,7 @@ return [
         'tiktok' => 'Connectez votre compte TikTok',
         'youtube' => 'Connectez une chaîne YouTube',
         'facebook' => 'Connectez une page Facebook',
-        'instagram' => 'Connect via Instagram Login or Facebook Pages',
+        'instagram' => 'Connectez via Instagram Login ou des pages Facebook',
         'instagram-facebook' => 'Connectez Instagram via une page Facebook',
         'threads' => 'Connectez votre compte Threads',
         'pinterest' => 'Connectez votre compte Pinterest',
@@ -97,12 +97,12 @@ return [
     ],
 
     'instagram_connect' => [
-        'title' => 'Connect Instagram',
-        'description' => 'Choose how you want to connect your Instagram account',
+        'title' => 'Connecter Instagram',
+        'description' => 'Choisissez comment connecter votre compte Instagram',
         'standalone_title' => 'Instagram Login',
-        'standalone_description' => 'Sign in with your Instagram professional account',
-        'facebook_title' => 'Facebook Pages',
-        'facebook_description' => 'Connect an Instagram account linked to a Facebook Page',
+        'standalone_description' => 'Connectez-vous avec votre compte Instagram professionnel',
+        'facebook_title' => 'Pages Facebook',
+        'facebook_description' => 'Connectez un compte Instagram lié à une page Facebook',
     ],
 
     'linkedin' => [

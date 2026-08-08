@@ -21,7 +21,7 @@ return [
         'tiktok' => 'Підключіть акаунт TikTok',
         'youtube' => 'Підключіть канал YouTube',
         'facebook' => 'Підключіть сторінку Facebook',
-        'instagram' => 'Connect via Instagram Login or Facebook Pages',
+        'instagram' => 'Підключіть через Instagram Login або сторінки Facebook',
         'instagram-facebook' => 'Підключіть Instagram через сторінку Facebook',
         'threads' => 'Підключіть акаунт Threads',
         'pinterest' => 'Підключіть акаунт Pinterest',
@@ -97,12 +97,12 @@ return [
     ],
 
     'instagram_connect' => [
-        'title' => 'Connect Instagram',
-        'description' => 'Choose how you want to connect your Instagram account',
+        'title' => 'Підключити Instagram',
+        'description' => 'Оберіть спосіб підключення акаунта Instagram',
         'standalone_title' => 'Instagram Login',
-        'standalone_description' => 'Sign in with your Instagram professional account',
-        'facebook_title' => 'Facebook Pages',
-        'facebook_description' => 'Connect an Instagram account linked to a Facebook Page',
+        'standalone_description' => 'Увійдіть за допомогою професійного акаунта Instagram',
+        'facebook_title' => 'Сторінки Facebook',
+        'facebook_description' => 'Підключіть акаунт Instagram, повʼязаний зі сторінкою Facebook',
     ],
 
     'linkedin' => [

@@ -141,7 +141,7 @@ test('graph paginator throws when a later request fails after earlier pages succ
     ]);
 })->throws(IncompleteMetaGraphPaginationException::class);
 
-test('graph paginator returns empty array when the first request fails', function () {
+test('graph paginator throws when the first request fails', function () {
     Http::preventStrayRequests();
 
     Log::shouldReceive('error')->once()->withArgs(function (string $message) {
@@ -152,14 +152,12 @@ test('graph paginator returns empty array when the first request fails', functio
         'https://graph.facebook.com/v25.0/me/accounts*' => Http::response(['error' => ['message' => 'fail']], 400),
     ]);
 
-    $pages = GraphPaginator::all('https://graph.facebook.com/v25.0/me/accounts', [
+    GraphPaginator::all('https://graph.facebook.com/v25.0/me/accounts', [
         'access_token' => 'token',
     ]);
+})->throws(IncompleteMetaGraphPaginationException::class);
 
-    expect($pages)->toBe([]);
-});
-
-test('graph paginator returns empty array when the first request cannot connect', function () {
+test('graph paginator throws when the first request cannot connect', function () {
     Http::preventStrayRequests();
 
     Log::shouldReceive('error')->once()->withArgs(function (string $message) {
@@ -170,13 +168,10 @@ test('graph paginator returns empty array when the first request cannot connect'
         'https://graph.facebook.com/v25.0/me/accounts*' => Http::failedConnection(),
     ]);
 
-    $pages = GraphPaginator::all('https://graph.facebook.com/v25.0/me/accounts', [
+    GraphPaginator::all('https://graph.facebook.com/v25.0/me/accounts', [
         'access_token' => 'token',
     ]);
-
-    expect($pages)->toBe([]);
-});
-
+})->throws(IncompleteMetaGraphPaginationException::class);
 test('graph paginator throws when a later request cannot connect', function () {
     Http::preventStrayRequests();
 
@@ -235,13 +230,13 @@ test('graph paginator stops when paging.next is not a usable string', function (
     Http::assertSentCount(1);
 });
 
-test('graph paginator stops when paging.next repeats to avoid infinite loops', function () {
+test('graph paginator throws when paging.next repeats after pages were fetched', function () {
     Http::preventStrayRequests();
 
     $graphApi = 'https://graph.facebook.com/v25.0';
     $loopUrl = "{$graphApi}/me/accounts?access_token=secret-token&after=cursor&limit=100";
 
-    Log::shouldReceive('warning')->once()->withArgs(function (string $message, array $context) {
+    Log::shouldReceive('error')->once()->withArgs(function (string $message, array $context) {
         return $message === 'Meta Graph pagination stopped: repeated paging URL'
             && ! str_contains((string) data_get($context, 'url'), 'secret-token')
             && str_contains((string) data_get($context, 'url'), 'access_token=[REDACTED]');
@@ -267,13 +262,61 @@ test('graph paginator stops when paging.next repeats to avoid infinite loops', f
             ], 200),
     ]);
 
-    $pages = GraphPaginator::all("{$graphApi}/me/accounts", [
+    GraphPaginator::all("{$graphApi}/me/accounts", [
         'access_token' => 'token',
     ]);
+})->throws(IncompleteMetaGraphPaginationException::class);
 
-    expect($pages)->toHaveCount(2)
-        ->and(data_get($pages, '0.id'))->toBe('page_1')
-        ->and(data_get($pages, '1.id'))->toBe('page_2');
+test('graph paginator throws when paging.next points to another host', function () {
+    Http::preventStrayRequests();
 
-    Http::assertSentCount(2);
-});
+    $graphApi = 'https://graph.facebook.com/v25.0';
+
+    Log::shouldReceive('error')->once()->withArgs(function (string $message) {
+        return $message === 'Meta Graph pagination stopped: unexpected paging host';
+    });
+
+    Http::fake([
+        "{$graphApi}/me/accounts*" => Http::response([
+            'data' => [
+                ['id' => 'page_1'],
+            ],
+            'paging' => [
+                'next' => 'https://evil.example/me/accounts?access_token=secret-token',
+            ],
+        ], 200),
+    ]);
+
+    GraphPaginator::all("{$graphApi}/me/accounts", [
+        'access_token' => 'token',
+    ]);
+})->throws(IncompleteMetaGraphPaginationException::class);
+
+test('graph paginator throws when the safety page ceiling is reached', function () {
+    Http::preventStrayRequests();
+
+    $graphApi = 'https://graph.facebook.com/v25.0';
+    $requestCount = 0;
+
+    Log::shouldReceive('error')->once()->withArgs(function (string $message) {
+        return $message === 'Meta Graph pagination stopped: page limit reached';
+    });
+
+    Http::fake(function () use (&$requestCount, $graphApi) {
+        $requestCount++;
+        $after = $requestCount;
+
+        return Http::response([
+            'data' => [
+                ['id' => "page_{$requestCount}"],
+            ],
+            'paging' => [
+                'next' => "{$graphApi}/me/accounts?access_token=token&after={$after}",
+            ],
+        ], 200);
+    });
+
+    GraphPaginator::all("{$graphApi}/me/accounts", [
+        'access_token' => 'token',
+    ]);
+})->throws(IncompleteMetaGraphPaginationException::class);

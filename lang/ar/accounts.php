@@ -21,7 +21,7 @@ return [
         'tiktok' => 'اربط حسابك على TikTok',
         'youtube' => 'اربط قناة على YouTube',
         'facebook' => 'اربط صفحة على Facebook',
-        'instagram' => 'Connect via Instagram Login or Facebook Pages',
+        'instagram' => 'اربط عبر Instagram Login أو صفحات Facebook',
         'instagram-facebook' => 'اربط Instagram عبر صفحة Facebook',
         'threads' => 'اربط حسابك على Threads',
         'pinterest' => 'اربط حسابك على Pinterest',
@@ -97,12 +97,12 @@ return [
     ],
 
     'instagram_connect' => [
-        'title' => 'Connect Instagram',
-        'description' => 'Choose how you want to connect your Instagram account',
+        'title' => 'ربط Instagram',
+        'description' => 'اختر طريقة ربط حساب Instagram',
         'standalone_title' => 'Instagram Login',
-        'standalone_description' => 'Sign in with your Instagram professional account',
-        'facebook_title' => 'Facebook Pages',
-        'facebook_description' => 'Connect an Instagram account linked to a Facebook Page',
+        'standalone_description' => 'سجّل الدخول بحساب Instagram الاحترافي',
+        'facebook_title' => 'صفحات Facebook',
+        'facebook_description' => 'اربط حساب Instagram مرتبطًا بصفحة Facebook',
     ],
 
     'linkedin' => [

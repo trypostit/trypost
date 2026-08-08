@@ -21,7 +21,7 @@ return [
         'tiktok' => 'TikTok 계정을 연결하세요',
         'youtube' => 'YouTube 채널을 연결하세요',
         'facebook' => 'Facebook 페이지를 연결하세요',
-        'instagram' => 'Connect via Instagram Login or Facebook Pages',
+        'instagram' => 'Instagram Login 또는 Facebook 페이지로 연결하세요',
         'instagram-facebook' => 'Facebook 페이지를 통해 Instagram을 연결하세요',
         'threads' => 'Threads 계정을 연결하세요',
         'pinterest' => 'Pinterest 계정을 연결하세요',
@@ -97,12 +97,12 @@ return [
     ],
 
     'instagram_connect' => [
-        'title' => 'Connect Instagram',
-        'description' => 'Choose how you want to connect your Instagram account',
+        'title' => 'Instagram 연결',
+        'description' => 'Instagram 계정을 연결할 방법을 선택하세요',
         'standalone_title' => 'Instagram Login',
-        'standalone_description' => 'Sign in with your Instagram professional account',
-        'facebook_title' => 'Facebook Pages',
-        'facebook_description' => 'Connect an Instagram account linked to a Facebook Page',
+        'standalone_description' => 'Instagram 프로페셔널 계정으로 로그인하세요',
+        'facebook_title' => 'Facebook 페이지',
+        'facebook_description' => 'Facebook 페이지에 연결된 Instagram 계정을 연결하세요',
     ],
 
     'linkedin' => [
