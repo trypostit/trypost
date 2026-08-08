@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
+use App\Exceptions\Social\IncompleteGraphPaginationException;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\Workspace;
 use App\Services\Social\Meta\GraphPaginator;
@@ -285,6 +286,8 @@ class FacebookController extends SocialController
                 'picture' => data_get($page, 'picture.data.url'),
                 'access_token' => data_get($page, 'access_token'),
             ])->toArray();
+        } catch (IncompleteGraphPaginationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Facebook pages fetch error', [
                 'error' => $e->getMessage(),

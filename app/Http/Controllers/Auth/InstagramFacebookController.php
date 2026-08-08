@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
+use App\Exceptions\Social\IncompleteGraphPaginationException;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\Workspace;
 use App\Services\Social\Meta\GraphPaginator;
@@ -256,13 +257,12 @@ class InstagramFacebookController extends SocialController
                     continue;
                 }
 
-                // Fetch IG account details
-                $igResponse = Http::timeout(15)
-                    ->connectTimeout(5)
-                    ->get("{$graphApi}/{$igAccountId}", [
-                        'access_token' => data_get($page, 'access_token'),
-                        'fields' => 'username,name,profile_picture_url',
-                    ]);
+                // Fetch IG account details (no custom timeout — match prior behavior; a throw
+                // here would wipe the whole list via the outer catch).
+                $igResponse = Http::get("{$graphApi}/{$igAccountId}", [
+                    'access_token' => data_get($page, 'access_token'),
+                    'fields' => 'username,name,profile_picture_url',
+                ]);
 
                 $igData = $igResponse->successful() ? $igResponse->json() : [];
 
@@ -279,6 +279,8 @@ class InstagramFacebookController extends SocialController
             }
 
             return $results;
+        } catch (IncompleteGraphPaginationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Instagram via Facebook pages fetch error', ['error' => $e->getMessage()]);
 

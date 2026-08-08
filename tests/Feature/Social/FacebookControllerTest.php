@@ -301,6 +301,51 @@ test('facebook callback connects authorized page when first accounts page is emp
     ]);
 });
 
+test('facebook callback fails without connecting when accounts pagination is incomplete', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('facebook_user_123');
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
+
+    $graphApi = config('trypost.platforms.facebook.graph_api');
+    $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/accounts*" => Http::sequence()
+            ->push([
+                'data' => [
+                    [
+                        'id' => 'page_1',
+                        'name' => 'First Page',
+                        'username' => 'first',
+                        'picture' => ['data' => ['url' => null]],
+                        'access_token' => 'token-1',
+                    ],
+                ],
+                'paging' => [
+                    'next' => $nextUrl,
+                ],
+            ], 200)
+            ->push(['error' => ['message' => 'rate limit']], 400),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
+
+    $response->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', __('accounts.popup_callback.error_connecting')));
+
+    expect($this->workspace->socialAccounts()->where('platform', Platform::Facebook)->count())->toBe(0);
+});
+
 test('facebook callback fails with expired session', function () {
     // No session data - simulating expired session
 

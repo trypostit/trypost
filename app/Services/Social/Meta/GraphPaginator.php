@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Social\Meta;
 
+use App\Exceptions\Social\IncompleteGraphPaginationException;
 use App\Services\Social\TokenRedactor;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -20,12 +22,15 @@ class GraphPaginator
     /**
      * @param  array<string, mixed>  $query
      * @return list<array<string, mixed>>
+     *
+     * @throws IncompleteGraphPaginationException When a later page fails after earlier pages succeeded.
      */
     public static function all(string $url, array $query = []): array
     {
         $items = [];
         $nextUrl = $url;
         $params = $query;
+        $successfulRequests = 0;
         /** @var array<string, true> */
         $seenUrls = [];
 
@@ -42,9 +47,22 @@ class GraphPaginator
 
             $seenUrls[$requestKey] = true;
 
-            $response = Http::timeout(15)
-                ->connectTimeout(5)
-                ->get($nextUrl, $params);
+            try {
+                $response = Http::timeout(15)
+                    ->connectTimeout(5)
+                    ->get($nextUrl, $params);
+            } catch (ConnectionException $e) {
+                Log::error('Meta Graph pagination connection failed', [
+                    'url' => TokenRedactor::redact($nextUrl),
+                    'error' => $e->getMessage(),
+                ]);
+
+                if ($successfulRequests > 0) {
+                    throw new IncompleteGraphPaginationException(previous: $e);
+                }
+
+                return [];
+            }
 
             if ($response->failed()) {
                 Log::error('Meta Graph pagination request failed', [
@@ -53,8 +71,14 @@ class GraphPaginator
                     'body' => TokenRedactor::redact($response->body()),
                 ]);
 
-                break;
+                if ($successfulRequests > 0) {
+                    throw new IncompleteGraphPaginationException;
+                }
+
+                return [];
             }
+
+            $successfulRequests++;
 
             $payload = $response->json();
             $chunk = data_get($payload, 'data', []);

@@ -219,6 +219,56 @@ test('instagram-facebook callback skips pages without instagram across paginated
     ]);
 });
 
+test('instagram-facebook callback fails without connecting when accounts pagination is incomplete', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(
+            Mockery::mock()
+                ->shouldReceive('usingGraphVersion')->andReturnSelf()
+                ->shouldReceive('redirectUrl')->andReturnSelf()
+                ->shouldReceive('user')->andReturn($socialiteUser)
+                ->getMock()
+        );
+
+    $graphApi = config('trypost.platforms.instagram-facebook.graph_api');
+    $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
+        "{$graphApi}/me/accounts*" => Http::sequence()
+            ->push([
+                'data' => [
+                    [
+                        'id' => 'page_1',
+                        'name' => 'First Page',
+                        'picture' => ['data' => ['url' => null]],
+                        'access_token' => 'page-token-1',
+                        'instagram_business_account' => ['id' => 'ig_1'],
+                    ],
+                ],
+                'paging' => [
+                    'next' => $nextUrl,
+                ],
+            ], 200)
+            ->push(['error' => ['message' => 'rate limit']], 400),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.instagram-facebook.callback'));
+
+    $response->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', __('accounts.popup_callback.error_connecting')));
+
+    expect($this->workspace->socialAccounts()->where('platform', Platform::InstagramFacebook)->count())->toBe(0);
+});
+
 test('instagram-facebook select connects the page in self-hosted mode', function () {
     config()->set('trypost.self_hosted', true);
 
