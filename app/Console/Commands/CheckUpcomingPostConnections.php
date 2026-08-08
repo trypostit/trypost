@@ -20,7 +20,7 @@ class CheckUpcomingPostConnections extends Command
     {
         $workspaceIds = PostPlatform::query()
             ->where('post_platforms.status', PostPlatformStatus::Pending)
-            ->where('post_platforms.enabled', true)
+            ->enabled()
             ->whereNotNull('post_platforms.social_account_id')
             ->where(function ($query) {
                 $query->whereNull('post_platforms.connection_warning_sent_at')

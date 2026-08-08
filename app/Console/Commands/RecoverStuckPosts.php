@@ -24,7 +24,7 @@ class RecoverStuckPosts extends Command
             ->where('updated_at', '<=', now()->subHour())
             ->each(function (Post $post) use (&$count) {
                 $post->postPlatforms()
-                    ->where('enabled', true)
+                    ->enabled()
                     ->whereIn('status', [PlatformStatus::Publishing, PlatformStatus::Pending, PlatformStatus::Retrying])
                     ->where('updated_at', '<=', now()->subHour())
                     ->update([
@@ -39,7 +39,7 @@ class RecoverStuckPosts extends Command
                 // Delayed platform-unavailable retries keep the platform Retrying with a
                 // fresh updated_at — do not finalize the post while that work is still live.
                 $stillActive = $post->postPlatforms()
-                    ->where('enabled', true)
+                    ->enabled()
                     ->whereIn('status', [PlatformStatus::Publishing, PlatformStatus::Pending, PlatformStatus::Retrying])
                     ->exists();
 
@@ -47,7 +47,7 @@ class RecoverStuckPosts extends Command
                     return;
                 }
 
-                $enabledPlatforms = $post->postPlatforms()->where('enabled', true)->get();
+                $enabledPlatforms = $post->postPlatforms()->enabled()->get();
                 $total = $enabledPlatforms->count();
                 $publishedCount = $enabledPlatforms->where('status', PlatformStatus::Published)->count();
 

@@ -140,7 +140,7 @@ class PostPlatformMetaRules
     {
         $errors = [];
 
-        foreach ($post->postPlatforms()->where('enabled', true)->get()->values() as $index => $postPlatform) {
+        foreach ($post->postPlatforms()->enabled()->get()->values() as $index => $postPlatform) {
             $violation = self::requiredMetaViolation($postPlatform->platform, $postPlatform->meta);
 
             if ($violation !== null) {

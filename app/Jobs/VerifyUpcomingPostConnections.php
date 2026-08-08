@@ -108,7 +108,7 @@ class VerifyUpcomingPostConnections implements ShouldQueue
     {
         return PostPlatform::query()
             ->where('status', PostPlatformStatus::Pending)
-            ->where('enabled', true) // PublishPost only iterates enabled=true platforms — an at-risk warning for a disabled one would be a false positive.
+            ->enabled() // PublishPost only iterates enabled platforms — an at-risk warning for a disabled one would be a false positive.
             ->whereNotNull('social_account_id')
             ->where(function ($query) {
                 $query->whereNull('connection_warning_sent_at')

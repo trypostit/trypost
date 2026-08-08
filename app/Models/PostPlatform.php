@@ -8,6 +8,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use Database\Factories\PostPlatformFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -60,6 +61,16 @@ class PostPlatform extends Model
     public function socialAccount(): BelongsTo
     {
         return $this->belongsTo(SocialAccount::class);
+    }
+
+    /**
+     * Only platforms still enabled for publishing — disabled ones are
+     * excluded from PublishPost, so anything else that mirrors publish
+     * eligibility (previews, validation, proactive checks) must too.
+     */
+    public function scopeEnabled(Builder $query): Builder
+    {
+        return $query->where('post_platforms.enabled', true);
     }
 
     /**

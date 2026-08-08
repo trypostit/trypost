@@ -47,7 +47,7 @@ class PublishPostTool extends Tool
             return $denied;
         }
 
-        if (! $post->postPlatforms()->where('enabled', true)->exists()) {
+        if (! $post->postPlatforms()->enabled()->exists()) {
             return Response::error('Post has no enabled platforms. Use update-post-tool to enable at least one platform first.');
         }
 

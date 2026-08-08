@@ -331,7 +331,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
         $publishedPlatforms = $post->postPlatforms()
             ->with('socialAccount')
-            ->where('enabled', true)
+            ->enabled()
             ->get()
             ->filter(fn ($pp) => $pp->status === PostPlatformStatus::Published)
             ->map(fn ($pp) => $pp->platform->label().' (@'.data_get($pp, 'socialAccount.username', '').')')
@@ -384,7 +384,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
         $failedPlatforms = $post->postPlatforms()
             ->with('socialAccount')
-            ->where('enabled', true)
+            ->enabled()
             ->get()
             ->filter(fn ($pp) => $pp->status === PostPlatformStatus::Failed)
             ->map(fn ($pp) => $pp->platform->label().' (@'.data_get($pp, 'socialAccount.username', '').')')

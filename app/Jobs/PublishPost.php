@@ -21,7 +21,7 @@ class PublishPost implements ShouldQueue
     {
         $this->post->markAsPublishing();
 
-        foreach ($this->post->postPlatforms()->where('enabled', true)->get() as $postPlatform) {
+        foreach ($this->post->postPlatforms()->enabled()->get() as $postPlatform) {
             PublishToSocialPlatform::dispatch($postPlatform);
         }
     }

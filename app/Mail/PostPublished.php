@@ -32,7 +32,7 @@ class PostPublished extends Mailable implements ShouldQueue
     {
         $publishedPlatforms = $this->post->postPlatforms()
             ->with('socialAccount')
-            ->where('enabled', true)
+            ->enabled()
             ->get()
             ->filter(fn ($pp) => $pp->status === Status::Published)
             ->map(fn ($pp) => [

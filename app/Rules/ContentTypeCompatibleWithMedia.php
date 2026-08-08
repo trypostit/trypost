@@ -77,7 +77,7 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
             ])->all();
         }
 
-        return $post->postPlatforms()->where('enabled', true)->get()->values()
+        return $post->postPlatforms()->enabled()->get()->values()
             ->map(fn ($postPlatform, $index): array => [
                 'key' => "platforms.{$index}.content_type",
                 'content_type' => $postPlatform->content_type?->value,
