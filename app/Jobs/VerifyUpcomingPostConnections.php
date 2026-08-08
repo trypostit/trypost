@@ -70,6 +70,15 @@ class VerifyUpcomingPostConnections implements ShouldQueue
             } catch (TokenExpiredException $e) {
                 $account->markAsTokenExpired($e->getMessage(), notify: false);
                 $atRisk->push(['account' => $account, 'postPlatforms' => $group]);
+            } catch (\Exception $e) {
+                Log::error('Failed to verify social account connection for upcoming-post check', [
+                    'account_id' => $account->id,
+                    'platform' => $account->platform->value,
+                    'error' => $e->getMessage(),
+                ]);
+
+                // Unknown error — don't mark as broken, retry next run.
+                continue;
             }
         }
 
@@ -97,7 +106,7 @@ class VerifyUpcomingPostConnections implements ShouldQueue
                     ->scheduled()
                     ->whereBetween('scheduled_at', [now(), now()->addHour()]);
             })
-            ->with(['socialAccount', 'post'])
+            ->with(['socialAccount.workspace', 'post'])
             ->get();
     }
 

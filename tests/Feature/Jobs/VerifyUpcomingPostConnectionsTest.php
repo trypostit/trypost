@@ -13,6 +13,7 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Mail;
 
 test('marks the account expired and queues a notification when verify throws TokenExpiredException', function () {
@@ -224,4 +225,150 @@ test('does nothing when the account verifies successfully', function () {
     expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
     expect($account->fresh()->status)->toBe(SocialAccountStatus::Connected);
     Mail::assertNothingQueued();
+});
+
+test('an unexpected exception verifying one account does not abort the run for other accounts', function () {
+    Mail::fake();
+
+    $workspace = Workspace::factory()->create();
+
+    $brokenAccount = SocialAccount::factory()->threads()->create([
+        'workspace_id' => $workspace->id,
+        'status' => SocialAccountStatus::Connected,
+    ]);
+    $brokenPost = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(20),
+    ]);
+    $brokenPostPlatform = PostPlatform::factory()->create([
+        'post_id' => $brokenPost->id,
+        'social_account_id' => $brokenAccount->id,
+        'platform' => $brokenAccount->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $expiredAccount = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $workspace->id,
+        'status' => SocialAccountStatus::Connected,
+    ]);
+    $expiredPost = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(40),
+    ]);
+    $expiredPostPlatform = PostPlatform::factory()->create([
+        'post_id' => $expiredPost->id,
+        'social_account_id' => $expiredAccount->id,
+        'platform' => $expiredAccount->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')
+        ->once()
+        ->with(Mockery::on(fn ($account) => $account->id === $brokenAccount->id))
+        ->andThrow(new ConnectionException('Could not resolve host'));
+    $verifier->shouldReceive('verify')
+        ->once()
+        ->with(Mockery::on(fn ($account) => $account->id === $expiredAccount->id))
+        ->andThrow(new TokenExpiredException('Facebook access token is invalid or expired'));
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
+
+    expect($brokenPostPlatform->fresh()->connection_warning_sent_at)->toBeNull();
+    expect($brokenAccount->fresh()->status)->toBe(SocialAccountStatus::Connected);
+
+    expect($expiredPostPlatform->fresh()->connection_warning_sent_at)->not->toBeNull();
+    expect($expiredAccount->fresh()->status)->toBe(SocialAccountStatus::TokenExpired);
+
+    Mail::assertQueued(PostAtRisk::class, function ($mail) use ($expiredPostPlatform) {
+        return $mail->atRiskGroups->count() === 1
+            && $mail->atRiskGroups->first()['postPlatforms']->pluck('id')->contains($expiredPostPlatform->id);
+    });
+});
+
+test('ignores disabled platforms even inside the risk window', function () {
+    Mail::fake();
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(30),
+    ]);
+    PostPlatform::factory()->disabled()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldNotReceive('verify');
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
+
+    Mail::assertNothingQueued();
+});
+
+test('does not leak another workspace\'s at-risk posts into this workspace\'s notification', function () {
+    Mail::fake();
+
+    $workspaceA = Workspace::factory()->create();
+    $accountA = SocialAccount::factory()->threads()->create([
+        'workspace_id' => $workspaceA->id,
+        'status' => SocialAccountStatus::Connected,
+    ]);
+    $postA = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspaceA->id,
+        'scheduled_at' => now()->addMinutes(30),
+    ]);
+    $postPlatformA = PostPlatform::factory()->create([
+        'post_id' => $postA->id,
+        'social_account_id' => $accountA->id,
+        'platform' => $accountA->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $workspaceB = Workspace::factory()->create();
+    $accountB = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $workspaceB->id,
+        'status' => SocialAccountStatus::Connected,
+    ]);
+    $postB = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspaceB->id,
+        'scheduled_at' => now()->addMinutes(30),
+    ]);
+    $postPlatformB = PostPlatform::factory()->create([
+        'post_id' => $postB->id,
+        'social_account_id' => $accountB->id,
+        'platform' => $accountB->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')
+        ->once()
+        ->with(Mockery::on(fn ($account) => $account->id === $accountA->id))
+        ->andThrow(new TokenExpiredException('Threads access token is invalid or expired'));
+    $verifier->shouldNotReceive('verify')
+        ->with(Mockery::on(fn ($account) => $account->id === $accountB->id));
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyUpcomingPostConnections::dispatchSync($workspaceA->id);
+
+    expect($postPlatformA->fresh()->connection_warning_sent_at)->not->toBeNull();
+    expect($postPlatformB->fresh()->connection_warning_sent_at)->toBeNull();
+    expect($accountB->fresh()->status)->toBe(SocialAccountStatus::Connected);
+
+    Mail::assertQueued(PostAtRisk::class, function ($mail) use ($workspaceA, $postPlatformA, $postPlatformB) {
+        $postPlatformIds = $mail->atRiskGroups->flatMap(fn (array $group) => $group['postPlatforms']->pluck('id'));
+
+        return $mail->workspace->id === $workspaceA->id
+            && $postPlatformIds->contains($postPlatformA->id)
+            && ! $postPlatformIds->contains($postPlatformB->id);
+    });
+
+    Mail::assertQueuedCount(1);
 });
