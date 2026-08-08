@@ -246,6 +246,8 @@ test('facebook callback follows accounts pagination and shows picker for pages a
     expect(session('facebook_oauth.pages'))->toHaveCount(2)
         ->and(data_get(session('facebook_oauth.pages'), '0.id'))->toBe('page_1')
         ->and(data_get(session('facebook_oauth.pages'), '1.id'))->toBe('page_2');
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/me/accounts'));
 });
 
 test('facebook callback connects authorized page when first accounts page is empty', function () {

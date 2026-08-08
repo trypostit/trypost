@@ -86,6 +86,8 @@ test('instagram-facebook callback follows accounts pagination and shows picker',
     expect(session('instagram_facebook_oauth.pages'))->toHaveCount(2)
         ->and(data_get(session('instagram_facebook_oauth.pages'), '0.ig_id'))->toBe('ig_1')
         ->and(data_get(session('instagram_facebook_oauth.pages'), '1.ig_id'))->toBe('ig_2');
+
+    Http::assertSentCount(5); // /me + 2 accounts pages + 2 IG lookups
 });
 
 test('instagram-facebook callback connects page when first accounts response is empty', function () {
@@ -146,6 +148,74 @@ test('instagram-facebook callback connects page when first accounts response is 
         'platform' => Platform::InstagramFacebook->value,
         'platform_user_id' => 'ig_desired',
         'username' => 'desired_ig',
+    ]);
+});
+
+test('instagram-facebook callback skips pages without instagram across paginated results', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(
+            Mockery::mock()
+                ->shouldReceive('usingGraphVersion')->andReturnSelf()
+                ->shouldReceive('redirectUrl')->andReturnSelf()
+                ->shouldReceive('user')->andReturn($socialiteUser)
+                ->getMock()
+        );
+
+    $graphApi = config('trypost.platforms.instagram-facebook.graph_api');
+    $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
+        "{$graphApi}/me/accounts*" => Http::sequence()
+            ->push([
+                'data' => [
+                    [
+                        'id' => 'page_no_ig',
+                        'name' => 'No IG Page',
+                        'picture' => ['data' => ['url' => null]],
+                        'access_token' => 'page-token-1',
+                    ],
+                ],
+                'paging' => [
+                    'next' => $nextUrl,
+                ],
+            ], 200)
+            ->push([
+                'data' => [
+                    [
+                        'id' => 'page_with_ig',
+                        'name' => 'With IG Page',
+                        'picture' => ['data' => ['url' => null]],
+                        'access_token' => 'page-token-2',
+                        'instagram_business_account' => ['id' => 'ig_only'],
+                    ],
+                ],
+            ], 200),
+        "{$graphApi}/ig_only*" => Http::response([
+            'username' => 'only_ig',
+            'name' => 'Only IG',
+            'profile_picture_url' => null,
+        ], 200),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.instagram-facebook.callback'));
+
+    $response->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
+
+    $this->assertDatabaseHas('social_accounts', [
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::InstagramFacebook->value,
+        'platform_user_id' => 'ig_only',
+        'username' => 'only_ig',
     ]);
 });
 

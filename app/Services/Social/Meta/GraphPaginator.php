@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social\Meta;
 
+use App\Services\Social\TokenRedactor;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -33,7 +34,7 @@ class GraphPaginator
 
             if (isset($seenUrls[$requestKey])) {
                 Log::warning('Meta Graph pagination stopped: repeated paging URL', [
-                    'url' => $nextUrl,
+                    'url' => TokenRedactor::redact($nextUrl),
                 ]);
 
                 break;
@@ -47,9 +48,9 @@ class GraphPaginator
 
             if ($response->failed()) {
                 Log::error('Meta Graph pagination request failed', [
-                    'url' => $nextUrl,
+                    'url' => TokenRedactor::redact($nextUrl),
                     'status' => $response->status(),
-                    'body' => $response->body(),
+                    'body' => TokenRedactor::redact($response->body()),
                 ]);
 
                 break;
