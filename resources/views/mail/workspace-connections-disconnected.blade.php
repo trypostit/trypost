@@ -122,13 +122,11 @@
             <p style="margin: 0 0 8px">
               Open-source social media scheduling tool
             </p>
-            @if(isset($unsubscribe_url))
             <p style="margin: 8px 0 0">
-              <a href="{{ unsubscribe_url }}" target="_blank" class="hover-i-text-decoration-underline" style="color: #52525b; text-decoration: none">
-                Unsubscribe
+              <a href="{{ route('app.notifications.preferences') }}" target="_blank" class="hover-i-text-decoration-underline" style="color: #52525b; text-decoration: none">
+                Manage notifications
               </a>
             </p>
-            @endif
           </td>
         </tr>
       </table>

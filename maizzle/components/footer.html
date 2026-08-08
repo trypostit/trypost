@@ -1,22 +1,14 @@
-<script props>
-  module.exports = {
-    unsubscribe_url: props.unsubscribe_url
-  }
-</script>
-
 <tr>
   <td align="center" class="text-center text-zinc-600 text-xs p-6">
     <p class="m-0 mb-2">
       Open-source social media scheduling tool
     </p>
 
-    @if(isset($unsubscribe_url))
     <p class="m-0 mt-2">
-      <a href="{{ unsubscribe_url }}" target="_blank"
+      <a href="@{{ route('app.notifications.preferences') }}" target="_blank"
         class="text-zinc-600 [text-decoration:none] hover:![text-decoration:underline]">
-        Unsubscribe
+        Manage notifications
       </a>
     </p>
-    @endif
   </td>
 </tr>

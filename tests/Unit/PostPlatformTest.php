@@ -45,6 +45,19 @@ test('markAsPublished clears stale error_message and error_context', function ()
         ->and($this->postPlatform->error_context)->toBeNull();
 });
 
+test('display_name falls back to the account username when display_name is not set', function () {
+    $this->socialAccount->update(['display_name' => null, 'username' => 'acme_handle']);
+
+    expect($this->postPlatform->fresh()->display_name)->toBe('acme_handle');
+});
+
+test('display_name falls back to the platform_name snapshot when the account has neither name set', function () {
+    $this->socialAccount->update(['display_name' => null, 'username' => null]);
+    $this->postPlatform->update(['platform_name' => 'Snapshot Name']);
+
+    expect($this->postPlatform->fresh()->display_name)->toBe('Snapshot Name');
+});
+
 test('markAsFailed clears stale platform_post_id and platform_url', function () {
     $this->postPlatform->update([
         'status' => Status::Published,

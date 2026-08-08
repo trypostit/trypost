@@ -78,7 +78,7 @@ class PostPlatform extends Model
      */
     public function getDisplayNameAttribute(): string
     {
-        return $this->socialAccount?->display_name ?? $this->platform_name ?? $this->platform->label();
+        return $this->socialAccount?->accountDisplayName() ?? $this->platform_name ?? $this->platform->label();
     }
 
     /**

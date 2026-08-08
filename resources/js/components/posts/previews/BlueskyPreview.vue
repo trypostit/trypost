@@ -13,6 +13,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string | null;
     avatar_url: string | null;
 }
 
@@ -67,16 +68,16 @@ const { card: linkCard, loading: linkCardLoading } = useLinkCard(
                 <div class="flex items-start gap-3">
                     <!-- Avatar -->
                     <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url"
-                        :alt="socialAccount.display_name" class="h-11 w-11 rounded-full object-cover shrink-0" />
+                        :alt="socialAccount.display_label ?? undefined" class="h-11 w-11 rounded-full object-cover shrink-0" />
                     <div v-else
                         class="h-11 w-11 rounded-full bg-gradient-to-br from-[#0085ff] to-[#00d4ff] flex items-center justify-center text-white font-semibold shrink-0">
-                        {{ socialAccount.display_name?.charAt(0) }}
+                        {{ socialAccount.display_label?.charAt(0) }}
                     </div>
 
                     <!-- Name and handle -->
                     <div class="flex-1 min-w-0">
                         <div class="font-semibold text-[15px] text-black dark:text-white">
-                            {{ socialAccount.display_name }}
+                            {{ socialAccount.display_label }}
                         </div>
                         <div class="text-[14px] text-neutral-500 dark:text-[#7b8d9e] truncate">
                             @{{ socialAccount.username || 'handle' }}.bsky.social
@@ -188,11 +189,11 @@ const { card: linkCard, loading: linkCardLoading } = useLinkCard(
 
             <!-- Reply input -->
             <div class="px-4 py-3 border-t border-neutral-200 dark:border-[#1e3a5f] flex items-center gap-3">
-                <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url" :alt="socialAccount.display_name"
+                <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url" :alt="socialAccount.display_label ?? undefined"
                     class="h-8 w-8 rounded-full object-cover shrink-0" />
                 <div v-else
                     class="h-8 w-8 rounded-full bg-gradient-to-br from-[#0085ff] to-[#00d4ff] flex items-center justify-center text-white text-xs font-semibold shrink-0">
-                    {{ socialAccount.display_name?.charAt(0) }}
+                    {{ socialAccount.display_label?.charAt(0) }}
                 </div>
                 <div class="flex-1 text-[15px] text-neutral-400 dark:text-[#7b8d9e]">
                     Write your reply

@@ -69,3 +69,13 @@ test('account disconnected mail is queueable', function () {
 
     expect($mail)->toBeInstanceOf(ShouldQueue::class);
 });
+
+test('footer links to notification preferences instead of an unsubscribe link', function () {
+    $account = SocialAccount::factory()->create();
+
+    $mail = new AccountDisconnected($account);
+
+    $mail->assertSeeInHtml('Manage notifications');
+    $mail->assertSeeInHtml(route('app.notifications.preferences'));
+    $mail->assertDontSeeInHtml('Unsubscribe');
+});

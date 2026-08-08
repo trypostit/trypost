@@ -53,9 +53,9 @@ const select = (account: AnalyticsAccount) => {
                 <template v-if="selected">
                     <div class="relative shrink-0">
                         <Avatar class="size-7 rounded-full border-2 border-foreground shadow-2xs">
-                            <AvatarImage v-if="selected.avatar_url" :src="selected.avatar_url" :alt="selected.display_name" />
+                            <AvatarImage v-if="selected.avatar_url" :src="selected.avatar_url" :alt="selected.display_label ?? undefined" />
                             <AvatarFallback class="rounded-full bg-violet-100 text-xs font-bold text-foreground">
-                                {{ selected.display_name?.charAt(0) }}
+                                {{ selected.display_label?.charAt(0) }}
                             </AvatarFallback>
                         </Avatar>
                         <span class="absolute -bottom-1 -right-1 inline-flex size-4 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs">
@@ -67,7 +67,7 @@ const select = (account: AnalyticsAccount) => {
                         </span>
                     </div>
                     <span class="min-w-0 flex-1 truncate">
-                        <span class="font-bold text-foreground">{{ selected.display_name }}</span>
+                        <span class="font-bold text-foreground">{{ selected.display_label }}</span>
                         <span v-if="selected.username" class="ml-1.5 text-xs font-medium text-foreground/60">
                             @{{ selected.username }}
                         </span>
@@ -95,9 +95,9 @@ const select = (account: AnalyticsAccount) => {
                         >
                             <div class="relative shrink-0">
                                 <Avatar class="size-9 rounded-full border-2 border-foreground shadow-2xs">
-                                    <AvatarImage v-if="account.avatar_url" :src="account.avatar_url" :alt="account.display_name" />
+                                    <AvatarImage v-if="account.avatar_url" :src="account.avatar_url" :alt="account.display_label ?? undefined" />
                                     <AvatarFallback class="rounded-full bg-violet-100 font-bold text-foreground">
-                                        {{ account.display_name?.charAt(0) }}
+                                        {{ account.display_label?.charAt(0) }}
                                     </AvatarFallback>
                                 </Avatar>
                                 <span class="absolute -bottom-1 -right-1 inline-flex size-5 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs">
@@ -109,7 +109,7 @@ const select = (account: AnalyticsAccount) => {
                                 </span>
                             </div>
                             <div class="min-w-0 flex-1">
-                                <p class="truncate font-bold text-foreground">{{ account.display_name }}</p>
+                                <p class="truncate font-bold text-foreground">{{ account.display_label }}</p>
                                 <p v-if="account.username" class="truncate text-xs font-medium text-foreground/60">
                                     @{{ account.username }}
                                 </p>

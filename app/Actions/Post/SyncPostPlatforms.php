@@ -31,7 +31,7 @@ class SyncPostPlatforms
             $post->postPlatforms()->create([
                 'social_account_id' => $account->id,
                 'platform' => $account->platform->value,
-                'platform_name' => $account->display_name,
+                'platform_name' => $account->accountDisplayName(),
                 'platform_username' => $account->username,
                 'platform_avatar' => $account->getRawOriginal('avatar_url'),
                 'content_type' => ContentType::defaultFor($account->platform),
