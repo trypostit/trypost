@@ -13,7 +13,9 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 
 test('marks the account expired and queues a notification when verify throws TokenExpiredException', function () {
@@ -49,6 +51,46 @@ test('marks the account expired and queues a notification when verify throws Tok
             && $mail->atRiskGroups->count() === 1
             && $mail->atRiskGroups->first()['postPlatforms']->pluck('id')->contains($postPlatform->id);
     });
+});
+
+test('defers to the next run instead of warning when markAsTokenExpired loses the account status lock', function () {
+    Mail::fake();
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->threads()->create([
+        'workspace_id' => $workspace->id,
+        'status' => SocialAccountStatus::Connected,
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(45),
+    ]);
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')->once()->andThrow(new TokenExpiredException('Threads access token is invalid or expired'));
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    // Simulate a concurrent process (e.g. a publish attempt) already holding
+    // this account's status lock, so markAsTokenExpired() can't acquire it
+    // and silently no-ops.
+    $lock = Cache::lock("social_account_status:{$account->id}", 10);
+    $lock->get();
+
+    try {
+        VerifyUpcomingPostConnections::dispatchSync($workspace->id);
+
+        expect($account->fresh()->status)->toBe(SocialAccountStatus::Connected);
+        expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
+        Mail::assertNothingQueued();
+    } finally {
+        $lock->release();
+    }
 });
 
 test('verifies a distinct account only once even with multiple at-risk posts', function () {
@@ -547,4 +589,12 @@ test('leaves posts unwarned and does not send an email when the workspace has no
 
     expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
     Mail::assertNothingQueued();
+});
+
+test('job is unique per workspace with a window covering its timeout', function () {
+    $job = new VerifyUpcomingPostConnections('workspace-uuid');
+
+    expect($job)->toBeInstanceOf(ShouldBeUnique::class)
+        ->and($job->uniqueId())->toBe('workspace-uuid')
+        ->and($job->uniqueFor)->toBeGreaterThanOrEqual($job->timeout);
 });

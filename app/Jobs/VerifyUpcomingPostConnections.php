@@ -16,12 +16,13 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
-class VerifyUpcomingPostConnections implements ShouldQueue
+class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -29,7 +30,17 @@ class VerifyUpcomingPostConnections implements ShouldQueue
 
     public int $timeout = 120;
 
+    // Comfortably covers the timeout plus queue-wait headroom, well under the
+    // 15-minute schedule cadence — a stuck/slow run can't leave a stale lock
+    // blocking the next legitimate dispatch for this workspace.
+    public int $uniqueFor = 300;
+
     public function __construct(public string $workspaceId) {}
+
+    public function uniqueId(): string
+    {
+        return $this->workspaceId;
+    }
 
     public function handle(ConnectionVerifier $verifier): void
     {
@@ -70,6 +81,22 @@ class VerifyUpcomingPostConnections implements ShouldQueue
                 continue;
             } catch (TokenExpiredException $e) {
                 $account->markAsTokenExpired($e->getMessage(), notify: false);
+                $account->refresh();
+
+                // markAsTokenExpired() no-ops if it couldn't acquire the
+                // account's status lock (another process — e.g. a concurrent
+                // publish attempt or the daily check — holds it). Only warn
+                // once the status change is confirmed; a lost race here just
+                // means this account is picked up again on the next run.
+                if ($account->status !== SocialAccountStatus::TokenExpired) {
+                    Log::warning('Upcoming-post connection check: could not mark account token_expired (status lock contended), deferring to next run', [
+                        'account_id' => $account->id,
+                        'platform' => $account->platform->value,
+                    ]);
+
+                    continue;
+                }
+
                 $atRisk->push(['account' => $account, 'postPlatforms' => $group]);
             } catch (\Exception $e) {
                 Log::error('Failed to verify social account connection for upcoming-post check', [

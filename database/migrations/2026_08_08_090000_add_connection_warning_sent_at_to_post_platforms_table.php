@@ -12,14 +12,14 @@ return new class extends Migration
     {
         Schema::table('post_platforms', function (Blueprint $table) {
             $table->timestamp('connection_warning_sent_at')->nullable()->after('error_context');
-            $table->index(['status', 'connection_warning_sent_at']);
+            $table->index(['status', 'enabled', 'connection_warning_sent_at']);
         });
     }
 
     public function down(): void
     {
         Schema::table('post_platforms', function (Blueprint $table) {
-            $table->dropIndex(['status', 'connection_warning_sent_at']);
+            $table->dropIndex(['status', 'enabled', 'connection_warning_sent_at']);
             $table->dropColumn('connection_warning_sent_at');
         });
     }
