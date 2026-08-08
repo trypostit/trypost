@@ -25,7 +25,7 @@ test('Business Use Case (BUC) rate-limit codes are transient', function () {
     ]))->toBeTrue();
 
     expect(GraphError::isTransient([
-        'error' => ['message' => 'Instagram Platform rate limit reached.', 'code' => 80005],
+        'error' => ['message' => 'Instagram Platform rate limit reached.', 'code' => 80002],
     ]))->toBeTrue();
 });
 
@@ -42,9 +42,15 @@ test('code 190 and other confirmed rejections are not transient', function () {
 test('a body with no error is not transient, but a null (unparseable) body is', function () {
     // A body Meta didn't return as parseable JSON (WAF block page, truncated
     // response, gateway hiccup) carries no confirmed rejection — treat it as
-    // transient rather than assuming the token is dead.
+    // transient rather than assuming the token is dead. A body that DID parse
+    // but has no "error" key is a different case: it's a real response from
+    // the server we called, just not shaped like Meta's usual error object —
+    // intentionally NOT treated as transient, so an unrecognized 4xx shape
+    // still results in a confirmed rejection rather than being silently
+    // ignored (the exact bug this class was rewritten to close).
     expect(GraphError::isTransient(null))->toBeTrue();
     expect(GraphError::isTransient([]))->toBeFalse();
+    expect(GraphError::isTransient(['data' => ['id' => '123']]))->toBeFalse();
 });
 
 test('isTransientFailure treats 5xx and 429 as transient regardless of body', function () {

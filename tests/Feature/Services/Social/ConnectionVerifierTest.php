@@ -733,10 +733,10 @@ test('facebook verify treats a Business Use Case rate-limit (Page token, code 80
         ->toThrow(PlatformUnavailableException::class);
 });
 
-test('instagram verify treats a Business Use Case rate-limit (code 80005) as transient, not a disconnect', function () {
+test('instagram verify treats a Business Use Case rate-limit (code 80002) as transient, not a disconnect', function () {
     Http::fake([
         config('trypost.platforms.instagram.graph_api').'/me*' => Http::response([
-            'error' => ['message' => 'Instagram Platform rate limit reached.', 'code' => 80005],
+            'error' => ['message' => 'Instagram Platform rate limit reached.', 'code' => 80002],
         ], 400),
     ]);
 
@@ -831,6 +831,24 @@ test('threads verify treats a non-JSON failure body as platform unavailable, not
 
     expect(fn () => (new ConnectionVerifier)->verify($account))
         ->toThrow(PlatformUnavailableException::class);
+});
+
+test('threads verify treats a failed response with a valid but unrecognized JSON shape as a confirmed rejection', function () {
+    // Unlike an unparseable body, a body that DID parse but has no "error"
+    // key at all is a real response from Meta, just not shaped like its
+    // usual error object. This is deliberately NOT treated as transient —
+    // an unrecognized 4xx shape still disconnects rather than being
+    // silently ignored, which is the exact bug this class replaced.
+    Http::fake([
+        config('trypost.platforms.threads.graph_api').'/me*' => Http::response(['data' => ['id' => '123']], 400),
+    ]);
+
+    $account = SocialAccount::factory()->threads()->create([
+        'token_expires_at' => now()->addDays(30),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(TokenExpiredException::class);
 });
 
 test('threads refresh treats a non-JSON failure body as platform unavailable, not a confirmed dead token', function () {
