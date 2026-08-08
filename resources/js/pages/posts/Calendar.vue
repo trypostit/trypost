@@ -26,7 +26,7 @@ interface PostPlatform {
         display_name: string;
         username: string | null;
         display_label: string;
-    };
+    } | null;
 }
 
 interface Post {

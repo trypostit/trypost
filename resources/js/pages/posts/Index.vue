@@ -54,7 +54,7 @@ interface PostPlatform {
     enabled: boolean;
     platform: string;
     status: string;
-    social_account: SocialAccount;
+    social_account: SocialAccount | null;
 }
 
 interface Label {
