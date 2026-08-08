@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social\Meta;
 
+use App\Exceptions\Social\IncompleteMetaGraphPaginationException;
 use App\Services\Social\TokenRedactor;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
@@ -19,7 +20,7 @@ class GraphPaginator
      * @param  array<string, mixed>  $query
      * @return list<array<string, mixed>>
      *
-     * @throws IncompletePaginationException
+     * @throws IncompleteMetaGraphPaginationException
      */
     public static function all(string $url, array $query = []): array
     {
@@ -78,12 +79,12 @@ class GraphPaginator
     /**
      * @return list<array<string, mixed>>
      *
-     * @throws IncompletePaginationException
+     * @throws IncompleteMetaGraphPaginationException
      */
     private static function emptyOrIncomplete(int $successfulRequests, ?Throwable $previous = null): array
     {
         if ($successfulRequests > 0) {
-            throw new IncompletePaginationException($previous);
+            throw new IncompleteMetaGraphPaginationException($previous);
         }
 
         return [];
