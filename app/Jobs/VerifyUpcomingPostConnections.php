@@ -13,6 +13,7 @@ use App\Exceptions\TokenExpiredException;
 use App\Mail\PostAtRisk;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -86,10 +87,18 @@ class VerifyUpcomingPostConnections implements ShouldQueue
             return;
         }
 
+        $owner = $workspace->owner;
+
+        if (! $owner) {
+            // No owner to notify — leave these rows unwarned so a future run
+            // (once the workspace has an owner) can pick them back up.
+            return;
+        }
+
         $warnedIds = $atRisk->flatMap(fn (array $group) => $group['postPlatforms']->pluck('id'));
         PostPlatform::whereIn('id', $warnedIds)->update(['connection_warning_sent_at' => now()]);
 
-        $this->notifyOwner($workspace, $atRisk);
+        $this->notifyOwner($owner, $workspace, $atRisk);
     }
 
     /**
@@ -100,7 +109,11 @@ class VerifyUpcomingPostConnections implements ShouldQueue
         return PostPlatform::query()
             ->where('status', PostPlatformStatus::Pending)
             ->where('enabled', true) // PublishPost only iterates enabled=true platforms — an at-risk warning for a disabled one would be a false positive.
-            ->whereNull('connection_warning_sent_at')
+            ->whereNotNull('social_account_id')
+            ->where(function ($query) {
+                $query->whereNull('connection_warning_sent_at')
+                    ->orWhere('connection_warning_sent_at', '<', now()->subDay());
+            })
             ->whereHas('post', function ($query) {
                 $query->where('workspace_id', $this->workspaceId)
                     ->scheduled()
@@ -113,14 +126,8 @@ class VerifyUpcomingPostConnections implements ShouldQueue
     /**
      * @param  Collection<int, array{account: SocialAccount, postPlatforms: Collection<int, PostPlatform>}>  $atRisk
      */
-    private function notifyOwner(Workspace $workspace, Collection $atRisk): void
+    private function notifyOwner(User $owner, Workspace $workspace, Collection $atRisk): void
     {
-        $owner = $workspace->owner;
-
-        if (! $owner) {
-            return;
-        }
-
         $postCount = $atRisk->sum(fn (array $group) => $group['postPlatforms']->count());
 
         SendNotification::dispatch(

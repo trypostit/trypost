@@ -372,3 +372,141 @@ test('does not leak another workspace\'s at-risk posts into this workspace\'s no
 
     Mail::assertQueuedCount(1);
 });
+
+test('re-evaluates a post_platform warned more than a day ago instead of skipping it forever', function () {
+    Mail::fake();
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->threads()->create([
+        'workspace_id' => $workspace->id,
+        'status' => SocialAccountStatus::Connected,
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(30),
+    ]);
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+        'status' => PostPlatformStatus::Pending,
+        'connection_warning_sent_at' => now()->subDay()->subMinute(),
+    ]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')->once()->andThrow(new TokenExpiredException('Threads access token is invalid or expired'));
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
+
+    expect($postPlatform->fresh()->connection_warning_sent_at)->not->toBeNull()
+        ->and($postPlatform->fresh()->connection_warning_sent_at->isAfter(now()->subMinute()))->toBeTrue();
+
+    Mail::assertQueued(PostAtRisk::class);
+});
+
+test('still skips a post_platform warned less than a day ago', function () {
+    Mail::fake();
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->threads()->create([
+        'workspace_id' => $workspace->id,
+        'status' => SocialAccountStatus::Connected,
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(30),
+    ]);
+    $warnedAt = now()->subHours(2);
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+        'status' => PostPlatformStatus::Pending,
+        'connection_warning_sent_at' => $warnedAt,
+    ]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldNotReceive('verify');
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
+
+    expect($postPlatform->fresh()->connection_warning_sent_at->format('Y-m-d H:i:s'))
+        ->toBe($warnedAt->format('Y-m-d H:i:s'));
+    Mail::assertNothingQueued();
+});
+
+test('does not crash the run on a post_platform with a null social_account_id', function () {
+    Mail::fake();
+
+    $workspace = Workspace::factory()->create();
+
+    $orphanedPost = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(20),
+    ]);
+    PostPlatform::factory()->create([
+        'post_id' => $orphanedPost->id,
+        'social_account_id' => null,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $account = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $workspace->id,
+        'status' => SocialAccountStatus::Connected,
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(40),
+    ]);
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')->once()->andThrow(new TokenExpiredException('Facebook access token is invalid or expired'));
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
+
+    expect($postPlatform->fresh()->connection_warning_sent_at)->not->toBeNull();
+    expect($account->fresh()->status)->toBe(SocialAccountStatus::TokenExpired);
+
+    Mail::assertQueued(PostAtRisk::class, function ($mail) use ($postPlatform) {
+        return $mail->atRiskGroups->count() === 1
+            && $mail->atRiskGroups->first()['postPlatforms']->pluck('id')->contains($postPlatform->id);
+    });
+});
+
+test('leaves posts unwarned and does not send an email when the workspace has no owner', function () {
+    Mail::fake();
+
+    $workspace = Workspace::factory()->create(['user_id' => null]);
+    $account = SocialAccount::factory()->threads()->create([
+        'workspace_id' => $workspace->id,
+        'status' => SocialAccountStatus::Connected,
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(30),
+    ]);
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')->once()->andThrow(new TokenExpiredException('Threads access token is invalid or expired'));
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
+
+    expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
+    Mail::assertNothingQueued();
+});

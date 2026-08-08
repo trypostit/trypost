@@ -21,7 +21,11 @@ class CheckUpcomingPostConnections extends Command
         $workspaceIds = PostPlatform::query()
             ->where('post_platforms.status', PostPlatformStatus::Pending)
             ->where('post_platforms.enabled', true)
-            ->whereNull('post_platforms.connection_warning_sent_at')
+            ->whereNotNull('post_platforms.social_account_id')
+            ->where(function ($query) {
+                $query->whereNull('post_platforms.connection_warning_sent_at')
+                    ->orWhere('post_platforms.connection_warning_sent_at', '<', now()->subDay());
+            })
             ->join('posts', 'posts.id', '=', 'post_platforms.post_id')
             ->where('posts.status', PostStatus::Scheduled)
             ->whereBetween('posts.scheduled_at', [now(), now()->addHour()])
