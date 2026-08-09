@@ -29,6 +29,7 @@ class StoreChunkedAssetRequest extends FormRequest
             'range_end' => $parsed[1] ?? null,
             'total_size' => $parsed[2] ?? null,
             'file_name' => strtolower(rawurldecode((string) $this->header('X-File-Name', 'upload'))),
+            'upload_id' => $this->header('X-Upload-Id'),
         ]);
     }
 
@@ -47,6 +48,7 @@ class StoreChunkedAssetRequest extends FormRequest
             'range_end' => ['required', 'integer', 'gte:range_start'],
             'total_size' => ['required', 'integer', 'min:1', 'max:'.MediaType::Video->maxSizeInBytes()],
             'file_name' => ['required', 'string', 'ends_with:'.implode(',', $allowedSuffixes)],
+            'upload_id' => ['nullable', 'string', 'uuid'],
         ];
     }
 

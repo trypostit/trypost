@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
+use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Media\ChunkedAssetReceiver;
 use App\Services\Media\ChunkedCloudUploader;
 use Aws\Result;
 use Aws\S3\S3Client;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 
 beforeEach(function () {
@@ -41,21 +44,27 @@ function fakeMp4Bytes(): string
     return "\0\0\0\x18ftypmp42\0\0\0\0mp42isom".str_repeat("\0", 64);
 }
 
-function postChunkedAsset(string $fileName, string $content, int $rangeStart = 0, ?int $totalSize = null): TestResponse
+function postChunkedAsset(string $fileName, string $content, int $rangeStart = 0, ?int $totalSize = null, ?string $uploadId = null): TestResponse
 {
     $totalSize ??= strlen($content);
     $rangeEnd = $rangeStart + strlen($content) - 1;
+
+    $headers = [
+        'HTTP_CONTENT_RANGE' => "bytes {$rangeStart}-{$rangeEnd}/{$totalSize}",
+        'HTTP_X_FILE_NAME' => rawurlencode($fileName),
+        'HTTP_ACCEPT' => 'application/json',
+        'CONTENT_TYPE' => 'application/octet-stream',
+    ];
+
+    if ($uploadId !== null) {
+        $headers['HTTP_X_UPLOAD_ID'] = $uploadId;
+    }
 
     return test()->actingAs(test()->user)->call(
         'POST',
         route('app.assets.store-chunked'),
         [], [], [],
-        [
-            'HTTP_CONTENT_RANGE' => "bytes {$rangeStart}-{$rangeEnd}/{$totalSize}",
-            'HTTP_X_FILE_NAME' => rawurlencode($fileName),
-            'HTTP_ACCEPT' => 'application/json',
-            'CONTENT_TYPE' => 'application/octet-stream',
-        ],
+        $headers,
         $content,
     );
 }
@@ -200,6 +209,54 @@ test('chunked cloud uploader is idempotent when a chunk is retried', function ()
     expect($retry)->toMatchArray(['done' => false, 'progress' => $first['progress']]);
 });
 
+// ─── Per-attempt identifier (concurrent duplicate uploads) ───────
+
+test('receive derives the legacy identifier when no upload id is provided', function () {
+    seedChunkedUploadWorkspace();
+
+    $totalSize = 1000;
+    $expected = md5(test()->user->id.'video.mp4'.$totalSize);
+
+    $cloud = Mockery::mock(ChunkedCloudUploader::class);
+    $cloud->shouldReceive('shouldUseMultipart')->andReturn(true);
+    $cloud->shouldReceive('receiveChunk')
+        ->once()
+        ->withArgs(fn (string $identifier) => $identifier === $expected)
+        ->andReturn(['done' => false, 'progress' => 10]);
+
+    (new ChunkedAssetReceiver($cloud))->receive(
+        test()->workspace,
+        test()->user,
+        'video.mp4',
+        'chunk',
+        0,
+        99,
+        1000,
+    );
+});
+
+test('receive derives a distinct identifier per upload attempt', function () {
+    seedChunkedUploadWorkspace();
+
+    $seen = [];
+    $cloud = Mockery::mock(ChunkedCloudUploader::class);
+    $cloud->shouldReceive('shouldUseMultipart')->andReturn(true);
+    $cloud->shouldReceive('receiveChunk')
+        ->twice()
+        ->withArgs(function (string $identifier) use (&$seen) {
+            $seen[] = $identifier;
+
+            return true;
+        })
+        ->andReturn(['done' => false, 'progress' => 10]);
+
+    $receiver = new ChunkedAssetReceiver($cloud);
+    $receiver->receive(test()->workspace, test()->user, 'video.mp4', 'chunk', 0, 99, 1000, 'attempt-a');
+    $receiver->receive(test()->workspace, test()->user, 'video.mp4', 'chunk', 0, 99, 1000, 'attempt-b');
+
+    expect($seen[0])->not->toBe($seen[1]);
+});
+
 // ─── HTTP: local / public assemble path ──────────────────────────
 
 test('chunked upload stores video on the local disk via assemble path', function () {
@@ -338,4 +395,107 @@ test('chunked upload on local never calls multipart receiveChunk for videos', fu
     $response->assertSuccessful();
     $response->assertJson(['done' => true, 'type' => 'video']);
     Storage::disk('local')->assertExists(test()->workspace->getMedia('assets')->first()->path);
+});
+
+// ─── Concurrent duplicate uploads (regression for Nightwatch #23) ─
+//
+// Same user, same filename, same total size, in flight at the same time —
+// e.g. the media picker dialog is closed mid-upload and reopened, then the
+// same file is uploaded again. Pre-fix these two attempts shared a single
+// server-side identifier and stepped on each other's state.
+
+test('a second attempt completing does not corrupt or crash an in-flight sibling attempt on the multipart cloud path', function () {
+    config(['filesystems.default' => 'r2', 'filesystems.disks.r2.driver' => 's3']);
+    Storage::fake('r2');
+    seedChunkedUploadWorkspace();
+
+    $client = Mockery::mock(S3Client::class);
+    $client->shouldReceive('createMultipartUpload')
+        ->twice()
+        ->andReturn(new Result(['UploadId' => 'upload-a']), new Result(['UploadId' => 'upload-b']));
+    $client->shouldReceive('uploadPart')
+        ->times(4)
+        ->andReturn(
+            new Result(['ETag' => '"etag-a1"']),
+            new Result(['ETag' => '"etag-b1"']),
+            new Result(['ETag' => '"etag-b2"']),
+            new Result(['ETag' => '"etag-a2"']),
+        );
+    $client->shouldReceive('completeMultipartUpload')
+        ->twice()
+        ->andReturn(new Result([]));
+
+    app()->instance(
+        ChunkedCloudUploader::class,
+        new ChunkedCloudUploader(Cache::store(), $client, 'test-bucket', 'r2'),
+    );
+
+    $total = ChunkedCloudUploader::MIN_PART_BYTES + 50;
+    $attemptA = (string) Str::uuid();
+    $attemptB = (string) Str::uuid();
+
+    // Random bytes so finfo sniffs "application/octet-stream" on the first
+    // chunk, which makes detectMimeType() fall back to the .mp4 allow-list
+    // mime instead of misdetecting a text mime type from repeated bytes.
+    $firstPartA = random_bytes(ChunkedCloudUploader::MIN_PART_BYTES);
+    $firstPartB = random_bytes(ChunkedCloudUploader::MIN_PART_BYTES);
+
+    // A0: attempt A starts, first (non-final) part.
+    postChunkedAsset('clip.mp4', $firstPartA, 0, $total, uploadId: $attemptA)
+        ->assertSuccessful();
+
+    // B0: attempt B, identical filename+size, first part. Pre-fix this shares
+    // A's cache key; since A's next_offset is already > 0 it becomes a no-op
+    // idempotent replay that silently reuses A's session instead of starting
+    // its own.
+    postChunkedAsset('clip.mp4', $firstPartB, 0, $total, uploadId: $attemptB)
+        ->assertSuccessful();
+
+    // B1: attempt B's final chunk. Pre-fix this matches A's next_offset
+    // exactly, so it completes A's own multipart upload using B's bytes as
+    // part 2 (silent corruption), then forgets the shared cache key.
+    $doneB = postChunkedAsset('clip.mp4', str_repeat('b', 50), ChunkedCloudUploader::MIN_PART_BYTES, $total, uploadId: $attemptB);
+
+    // A1: attempt A's own final chunk. Pre-fix the cache key is now gone, so
+    // this throws RuntimeException("Chunked cloud upload session expired or
+    // missing.") — the exact Nightwatch #23 crash.
+    $doneA = postChunkedAsset('clip.mp4', str_repeat('a', 50), ChunkedCloudUploader::MIN_PART_BYTES, $total, uploadId: $attemptA);
+
+    $doneA->assertSuccessful();
+    $doneA->assertJson(['done' => true]);
+    $doneB->assertSuccessful();
+    $doneB->assertJson(['done' => true]);
+
+    expect($doneA->json('id'))->not->toBe($doneB->json('id'));
+    expect($doneA->json('path'))->not->toBe($doneB->json('path'));
+});
+
+test('two concurrent attempts of the same file do not corrupt each other on the local assemble path', function () {
+    config(['filesystems.default' => 'local']);
+    Storage::fake('local');
+    seedChunkedUploadWorkspace();
+
+    $header = fakeMp4Bytes();
+    $tailA = 'AAAA';
+    $tailB = 'BBBB';
+    $total = strlen($header) + 4;
+    $attemptA = (string) Str::uuid();
+    $attemptB = (string) Str::uuid();
+
+    postChunkedAsset('clip.mp4', $header, 0, $total, uploadId: $attemptA)->assertSuccessful();
+    postChunkedAsset('clip.mp4', $header, 0, $total, uploadId: $attemptB)->assertSuccessful();
+
+    $doneA = postChunkedAsset('clip.mp4', $tailA, strlen($header), $total, uploadId: $attemptA);
+    $doneB = postChunkedAsset('clip.mp4', $tailB, strlen($header), $total, uploadId: $attemptB);
+
+    $doneA->assertSuccessful();
+    $doneA->assertJson(['done' => true]);
+    $doneB->assertSuccessful();
+    $doneB->assertJson(['done' => true]);
+
+    $mediaA = Media::find($doneA->json('id'));
+    $mediaB = Media::find($doneB->json('id'));
+
+    expect(Storage::disk('local')->get($mediaA->path))->toBe($header.$tailA);
+    expect(Storage::disk('local')->get($mediaB->path))->toBe($header.$tailB);
 });
