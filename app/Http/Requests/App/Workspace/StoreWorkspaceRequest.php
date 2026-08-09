@@ -42,8 +42,8 @@ class StoreWorkspaceRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required' => 'O nome do workspace é obrigatório.',
-            'name.max' => 'O nome do workspace deve ter no máximo 255 caracteres.',
+            'name.required' => __('validation.required', ['attribute' => __('workspaces.create.name')]),
+            'name.max' => __('validation.max.string', ['attribute' => __('workspaces.create.name'), 'max' => 255]),
         ];
     }
 }

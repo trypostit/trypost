@@ -41,8 +41,8 @@ class UpdateWorkspaceRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required' => 'The workspace name is required.',
-            'name.max' => 'The workspace name must be at most 255 characters.',
+            'name.required' => __('validation.required', ['attribute' => __('workspaces.create.name')]),
+            'name.max' => __('validation.max.string', ['attribute' => __('workspaces.create.name'), 'max' => 255]),
         ];
     }
 }
