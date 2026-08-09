@@ -75,6 +75,8 @@ class AssetController extends Controller
 
         $this->authorize('createPost', $workspace);
 
+        $uploadId = $request->validated('upload_id');
+
         return $receiver->receive(
             $workspace,
             $request->user(),
@@ -83,7 +85,7 @@ class AssetController extends Controller
             (int) $request->validated('range_start'),
             (int) $request->validated('range_end'),
             (int) $request->validated('total_size'),
-            $request->validated('upload_id'),
+            $uploadId === null ? null : (string) $uploadId,
         )->toResponse();
     }
 
