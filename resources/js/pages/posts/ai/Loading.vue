@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { echo } from '@laravel/echo-vue';
 import { IconLoader2, IconSparkles } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { Button } from '@/components/ui/button';
+import { useAiGeneration } from '@/composables/useAiGeneration';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { calendar as calendarRoute } from '@/routes/app';
@@ -22,7 +22,8 @@ const props = defineProps<{
 const status = ref<'loading' | 'error'>('loading');
 const errorMessage = ref('');
 
-let echoChannel: any = null;
+const aiGeneration = useAiGeneration();
+const tracked = aiGeneration.find(props.creationId);
 
 const TEXT_BASELINE_SECONDS = 30;
 const PER_IMAGE_SECONDS = 35;
@@ -61,25 +62,23 @@ const progress = computed(() => {
     return Math.min(0.95, ratio);
 });
 
-const subscribe = () => {
-    echoChannel = echo()
-        .private(props.channel)
-        .listen('.ai.creation.completed', (e: { post_id?: string; error?: string }) => {
-            if (e.error || !e.post_id) {
-                status.value = 'error';
-                errorMessage.value = e.error ?? trans('posts.create.steps.preview_error');
-                return;
-            }
-            router.visit(editPostRoute(e.post_id).url);
-        });
-};
-
-const unsubscribe = () => {
-    if (echoChannel) {
-        echo().leave(`private-${props.channel}`);
-        echoChannel = null;
+// The channel subscription lives in the global composable (sole owner), so the
+// "AI is generating…" notice persists even if the user leaves this screen. Here
+// we only react to the result of this page's generation.
+watch(tracked, (gen) => {
+    if (!gen) {
+        return;
     }
-};
+    if (gen.status === 'error') {
+        status.value = 'error';
+        errorMessage.value = gen.error || trans('posts.create.steps.preview_error');
+        return;
+    }
+    if (gen.status === 'done' && gen.postId) {
+        aiGeneration.remove(props.creationId);
+        router.visit(editPostRoute(gen.postId).url);
+    }
+}, { deep: true });
 
 const leave = () => {
     router.visit(calendarRoute().url);
@@ -90,7 +89,8 @@ const createAnother = () => {
 };
 
 onMounted(() => {
-    subscribe();
+    aiGeneration.hydrate();
+    aiGeneration.track({ id: props.creationId, channel: props.channel, imageCount: props.imageCount });
     tipTimer = setInterval(() => {
         tipIndex.value = (tipIndex.value + 1) % tipKeys.length;
     }, 5000);
@@ -100,7 +100,8 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-    unsubscribe();
+    // We don't leave the channel here: the global composable owns the
+    // subscription, so the generation keeps being tracked on other screens.
     if (tipTimer) clearInterval(tipTimer);
     if (elapsedTimer) clearInterval(elapsedTimer);
 });
