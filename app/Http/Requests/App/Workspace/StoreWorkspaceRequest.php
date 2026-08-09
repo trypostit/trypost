@@ -38,12 +38,4 @@ class StoreWorkspaceRequest extends FormRequest
             'logo_url' => ['nullable', 'url', 'max:1024'],
         ];
     }
-
-    public function messages(): array
-    {
-        return [
-            'name.required' => __('validation.required', ['attribute' => __('workspaces.create.name')]),
-            'name.max' => __('validation.max.string', ['attribute' => __('workspaces.create.name'), 'max' => 255]),
-        ];
-    }
 }
