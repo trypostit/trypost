@@ -1,0 +1,79 @@
+name: Update Shards
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 1'
+
+permissions:
+  contents: write
+
+env:
+  DB_CONNECTION: pgsql
+  DB_DATABASE: trypost_test
+  DB_USERNAME: postgres
+  DB_PASSWORD: password
+  BROADCAST_CONNECTION: "null"
+  CACHE_STORE: array
+  QUEUE_CONNECTION: sync
+  SESSION_DRIVER: array
+
+jobs:
+  update-shards:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: trypost_test
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd="pg_isready"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379/tcp
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup test environment
+        uses: ./.github/actions/setup-laravel
+        with:
+          node: 'true'
+          db-port: ${{ job.services.postgres.ports['5432'] }}
+          redis-port: ${{ job.services.redis.ports['6379'] }}
+
+      - name: Build assets
+        run: npm run build
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Update shard timings
+        env:
+          DB_PORT: ${{ job.services.postgres.ports['5432'] }}
+          REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
+        run: php artisan test tests/Browser --compact --parallel --update-shards
+
+      - name: Commit updated shard timings
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tests/.pest/shards.json
+          git diff --cached --quiet || git commit -m "chore: update e2e shard timings"
+          git push

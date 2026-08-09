@@ -62,6 +62,7 @@ jobs:
         run: php artisan test --compact --parallel
 
   e2e:
+    name: e2e (shard ${{ matrix.shard }}/2)
     runs-on: ubuntu-latest
 
     strategy:
