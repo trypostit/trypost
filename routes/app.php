@@ -212,6 +212,11 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::post('posts/{post}/ai/review', [PostAiReviewController::class, 'review'])->name('app.posts.ai.review');
     Route::post('posts/ai/create', [PostAiCreateController::class, 'start'])->name('app.posts.ai.create');
     Route::get('posts/ai/{creationId}/loading', [PostAiCreateController::class, 'loading'])->name('app.posts.ai.loading')->whereUuid('creationId');
+    Route::get('posts/ai/{creationId}/status', [PostAiCreateController::class, 'creationStatus'])->name('app.posts.ai.creation-status')->whereUuid('creationId');
+    Route::post('posts/ai/drafts/prepare', [PostAiCreateController::class, 'prepare'])->name('app.posts.ai.drafts.prepare');
+    Route::get('posts/ai/drafts/{draft}/review', [PostAiCreateController::class, 'review'])->name('app.posts.ai.drafts.review')->whereUuid('draft');
+    Route::post('posts/ai/drafts/{draft}/generate', [PostAiCreateController::class, 'generate'])->name('app.posts.ai.drafts.generate')->whereUuid('draft');
+    Route::post('posts/ai/drafts/{draft}/autosave', [PostAiCreateController::class, 'autosave'])->name('app.posts.ai.drafts.autosave')->whereUuid('draft');
 
     // Post Comments
     Route::get('posts/{post}/comments', [PostCommentController::class, 'index'])->name('app.posts.comments.index');
