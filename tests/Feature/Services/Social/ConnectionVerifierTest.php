@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Http;
 
 test('verifies account without refresh when token is not expired', function () {
     Http::fake([
-        'api.linkedin.com/*' => Http::response(['sub' => '123'], 200),
+        config('trypost.platforms.linkedin.api').'/*' => Http::response(['sub' => '123'], 200),
     ]);
 
     $account = SocialAccount::factory()->linkedin()->create([
@@ -25,17 +25,17 @@ test('verifies account without refresh when token is not expired', function () {
     expect($result)->toBeTrue();
 
     Http::assertSentCount(1);
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'api.linkedin.com/rest/userinfo'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), config('trypost.platforms.linkedin.api').'/rest/userinfo'));
 });
 
 test('refreshes linkedin token before verifying when expired', function () {
     Http::fake([
-        'www.linkedin.com/oauth/v2/accessToken' => Http::response([
+        config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response([
             'access_token' => 'new_token',
             'refresh_token' => 'new_refresh_token',
             'expires_in' => 5184000,
         ], 200),
-        'api.linkedin.com/*' => Http::response(['sub' => '123'], 200),
+        config('trypost.platforms.linkedin.api').'/*' => Http::response(['sub' => '123'], 200),
     ]);
 
     $account = SocialAccount::factory()->linkedin()->create([
@@ -49,12 +49,12 @@ test('refreshes linkedin token before verifying when expired', function () {
     expect($result)->toBeTrue();
     expect($account->fresh()->token_expires_at)->toBeGreaterThan(now());
 
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'linkedin.com/oauth/v2/accessToken'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken'));
 });
 
 test('refreshing one linkedin row leaves a sibling linkedin-page row untouched', function () {
     Http::fake([
-        'www.linkedin.com/oauth/v2/accessToken' => Http::response([
+        config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response([
             'access_token' => 'new_token',
             'refresh_token' => 'new_refresh_token',
             'expires_in' => 5184000,
@@ -72,12 +72,12 @@ test('refreshing one linkedin row leaves a sibling linkedin-page row untouched',
 
 test('refreshes x token before verifying when expired', function () {
     Http::fake([
-        'api.x.com/2/oauth2/token' => Http::response([
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
             'access_token' => 'new_token',
             'refresh_token' => 'new_refresh_token',
             'expires_in' => 7200,
         ], 200),
-        'api.x.com/2/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
     ]);
 
     $account = SocialAccount::factory()->x()->create([
@@ -91,16 +91,16 @@ test('refreshes x token before verifying when expired', function () {
     expect($result)->toBeTrue();
     expect($account->fresh()->token_expires_at)->toBeGreaterThan(now());
 
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'api.x.com/2/oauth2/token'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), config('trypost.platforms.x.api').'/oauth2/token'));
 });
 
 test('refreshes bluesky token before verifying when expired', function () {
     Http::fake([
-        'bsky.social/xrpc/com.atproto.server.refreshSession' => Http::response([
+        config('trypost.platforms.bluesky.default_service').'/xrpc/com.atproto.server.refreshSession' => Http::response([
             'accessJwt' => 'new_access_token',
             'refreshJwt' => 'new_refresh_token',
         ], 200),
-        'bsky.social/xrpc/app.bsky.actor.getProfile*' => Http::response(['did' => 'did:plc:123'], 200),
+        config('trypost.platforms.bluesky.default_service').'/xrpc/app.bsky.actor.getProfile*' => Http::response(['did' => 'did:plc:123'], 200),
     ]);
 
     $account = SocialAccount::factory()->bluesky()->create([
@@ -119,11 +119,11 @@ test('refreshes bluesky token before verifying when expired', function () {
 
 test('refreshes youtube token before verifying when expired', function () {
     Http::fake([
-        'oauth2.googleapis.com/token' => Http::response([
+        config('trypost.platforms.youtube.oauth_api').'/token' => Http::response([
             'access_token' => 'new_token',
             'expires_in' => 3600,
         ], 200),
-        'www.googleapis.com/youtube/*' => Http::response(['items' => []], 200),
+        config('trypost.platforms.youtube.data_api').'/*' => Http::response(['items' => []], 200),
     ]);
 
     $account = SocialAccount::factory()->youtube()->create([
@@ -136,7 +136,7 @@ test('refreshes youtube token before verifying when expired', function () {
 
     expect($result)->toBeTrue();
 
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'oauth2.googleapis.com/token'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), config('trypost.platforms.youtube.oauth_api').'/token'));
 });
 
 test('refreshes tiktok token before verifying when expired', function () {
@@ -164,12 +164,12 @@ test('refreshes tiktok token before verifying when expired', function () {
 
 test('refreshes pinterest token before verifying when expired', function () {
     Http::fake([
-        'api.pinterest.com/v5/oauth/token' => Http::response([
+        config('trypost.platforms.pinterest.api').'/oauth/token' => Http::response([
             'access_token' => 'new_token',
             'refresh_token' => 'new_refresh_token',
             'expires_in' => 86400,
         ], 200),
-        'api.pinterest.com/v5/user_account' => Http::response(['username' => 'test'], 200),
+        config('trypost.platforms.pinterest.api').'/user_account' => Http::response(['username' => 'test'], 200),
     ]);
 
     $account = SocialAccount::factory()->pinterest()->create([
@@ -182,16 +182,16 @@ test('refreshes pinterest token before verifying when expired', function () {
 
     expect($result)->toBeTrue();
 
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'pinterest.com/v5/oauth/token'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), config('trypost.platforms.pinterest.api').'/oauth/token'));
 });
 
 test('refreshes threads token before verifying when expired', function () {
     Http::fake([
-        'graph.threads.net/refresh_access_token*' => Http::response([
+        config('trypost.platforms.threads.auth_api').'/refresh_access_token*' => Http::response([
             'access_token' => 'new_token',
             'expires_in' => 5184000,
         ], 200),
-        'graph.threads.net/v1.0/me*' => Http::response(['id' => '123', 'username' => 'test'], 200),
+        config('trypost.platforms.threads.graph_api').'/me*' => Http::response(['id' => '123', 'username' => 'test'], 200),
     ]);
 
     $account = SocialAccount::factory()->threads()->create([
@@ -208,7 +208,7 @@ test('refreshes threads token before verifying when expired', function () {
 
 test('throws exception when linkedin refresh fails', function () {
     Http::fake([
-        'www.linkedin.com/oauth/v2/accessToken' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response(['error' => 'invalid_grant'], 400),
     ]);
 
     $account = SocialAccount::factory()->linkedin()->create([
@@ -224,7 +224,7 @@ test('throws exception when linkedin refresh fails', function () {
 
 test('throws exception when x refresh fails', function () {
     Http::fake([
-        'api.x.com/2/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
     ]);
 
     $account = SocialAccount::factory()->x()->create([
@@ -240,7 +240,7 @@ test('throws exception when x refresh fails', function () {
 
 test('does not refresh facebook token as it uses long-lived tokens', function () {
     Http::fake([
-        'graph.facebook.com/*' => Http::response(['id' => '123', 'name' => 'Test'], 200),
+        config('trypost.platforms.facebook.graph_api').'/*' => Http::response(['id' => '123', 'name' => 'Test'], 200),
     ]);
 
     $account = SocialAccount::factory()->facebook()->create([
@@ -254,17 +254,17 @@ test('does not refresh facebook token as it uses long-lived tokens', function ()
 
     // Should only call the verify endpoint, no refresh
     Http::assertSentCount(1);
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'graph.facebook.com'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), config('trypost.platforms.facebook.graph_api')));
 });
 
 test('refreshes instagram token when expired', function () {
     Http::fake([
-        'graph.instagram.com/refresh_access_token*' => Http::response([
+        config('trypost.platforms.instagram.auth_api').'/refresh_access_token*' => Http::response([
             'access_token' => 'new-instagram-token',
             'token_type' => 'bearer',
             'expires_in' => 5184000,
         ], 200),
-        'graph.instagram.com/v25.0/me*' => Http::response(['id' => '123', 'username' => 'test'], 200),
+        config('trypost.platforms.instagram.graph_api').'/me*' => Http::response(['id' => '123', 'username' => 'test'], 200),
     ]);
 
     $account = SocialAccount::factory()->instagram()->create([
@@ -322,7 +322,7 @@ test('instagram refresh records a 60-day expiry when the response omits expires_
 
 test('does NOT refresh proactively when token still works (lazy refresh)', function () {
     Http::fake([
-        'api.linkedin.com/*' => Http::response(['sub' => '123'], 200),
+        config('trypost.platforms.linkedin.api').'/*' => Http::response(['sub' => '123'], 200),
     ]);
 
     // Token is "expiring soon" but access_token still works.
@@ -337,16 +337,16 @@ test('does NOT refresh proactively when token still works (lazy refresh)', funct
 
     // Refresh endpoint must NOT have been called — verify worked without it.
     Http::assertNotSent(fn ($request) => str_contains($request->url(), 'oauth/v2/accessToken'));
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'api.linkedin.com/rest/userinfo'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), config('trypost.platforms.linkedin.api').'/rest/userinfo'));
 });
 
 test('refreshes lazily on 401 then retries verify', function () {
     Http::fake([
         // First verify call returns 401, second (after refresh) returns 200.
-        'api.linkedin.com/*' => Http::sequence()
+        config('trypost.platforms.linkedin.api').'/*' => Http::sequence()
             ->push(['error' => 'unauthorized'], 401)
             ->push(['sub' => '123'], 200),
-        'www.linkedin.com/oauth/v2/accessToken' => Http::response([
+        config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response([
             'access_token' => 'new_token',
             'refresh_token' => 'new_refresh_token',
             'expires_in' => 5184000,
@@ -367,8 +367,8 @@ test('refreshes lazily on 401 then retries verify', function () {
 
 test('throws when verify returns 401 AND refresh also fails', function () {
     Http::fake([
-        'api.linkedin.com/*' => Http::response(['error' => 'unauthorized'], 401),
-        'www.linkedin.com/oauth/v2/accessToken' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.linkedin.api').'/*' => Http::response(['error' => 'unauthorized'], 401),
+        config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response(['error' => 'invalid_grant'], 400),
     ]);
 
     $account = SocialAccount::factory()->linkedin()->create([
@@ -383,12 +383,12 @@ test('throws when verify returns 401 AND refresh also fails', function () {
 
 test('forces refresh when token is hard-expired', function () {
     Http::fake([
-        'www.linkedin.com/oauth/v2/accessToken' => Http::response([
+        config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response([
             'access_token' => 'new_token',
             'refresh_token' => 'new_refresh_token',
             'expires_in' => 5184000,
         ], 200),
-        'api.linkedin.com/*' => Http::response(['sub' => '123'], 200),
+        config('trypost.platforms.linkedin.api').'/*' => Http::response(['sub' => '123'], 200),
     ]);
 
     $account = SocialAccount::factory()->linkedin()->create([
@@ -405,7 +405,7 @@ test('forces refresh when token is hard-expired', function () {
 
 test('throws when refresh fails AND token is hard-expired', function () {
     Http::fake([
-        'www.linkedin.com/oauth/v2/accessToken' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response(['error' => 'invalid_grant'], 400),
     ]);
 
     $account = SocialAccount::factory()->linkedin()->create([
@@ -950,7 +950,7 @@ test('linkedin verify treats a 5xx as platform unavailable, not a disconnect', f
 
 test('linkedin verify throws TokenExpiredException on a bare 401', function () {
     Http::fake([
-        'www.linkedin.com/oauth/v2/accessToken' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response(['error' => 'invalid_grant'], 400),
         config('trypost.platforms.linkedin.api').'/rest/userinfo' => Http::response(['message' => 'Unauthorized'], 401),
     ]);
 
@@ -973,7 +973,7 @@ test('linkedin page verify treats a 5xx as platform unavailable, not a disconnec
 
 test('linkedin page verify throws TokenExpiredException on a bare 401', function () {
     Http::fake([
-        'www.linkedin.com/oauth/v2/accessToken' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response(['error' => 'invalid_grant'], 400),
         config('trypost.platforms.linkedin-page.api').'/rest/organizationAcls*' => Http::response(['message' => 'Unauthorized'], 401),
     ]);
 
@@ -996,7 +996,7 @@ test('x verify treats a 5xx as platform unavailable, not a disconnect', function
 
 test('x verify throws TokenExpiredException on a bare 401', function () {
     Http::fake([
-        'api.x.com/2/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
         config('trypost.platforms.x.api').'/users/me' => Http::response(['title' => 'Unauthorized'], 401),
     ]);
 
@@ -1008,7 +1008,7 @@ test('x verify throws TokenExpiredException on a bare 401', function () {
 
 test('x verify throws TokenExpiredException on an unsupported-authentication error type', function () {
     Http::fake([
-        'api.x.com/2/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
         config('trypost.platforms.x.api').'/users/me' => Http::response([
             'type' => 'https://api.twitter.com/2/problems/unsupported-authentication',
             'title' => 'Unsupported Authentication',
@@ -1034,7 +1034,7 @@ test('youtube verify treats a 5xx as platform unavailable, not a disconnect', fu
 
 test('youtube verify throws TokenExpiredException on a bare 401', function () {
     Http::fake([
-        'oauth2.googleapis.com/token' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.youtube.oauth_api').'/token' => Http::response(['error' => 'invalid_grant'], 400),
         config('trypost.platforms.youtube.data_api').'/channels*' => Http::response(['error' => ['message' => 'Unauthorized']], 401),
     ]);
 
@@ -1057,7 +1057,7 @@ test('pinterest verify treats a 5xx as platform unavailable, not a disconnect', 
 
 test('pinterest verify throws TokenExpiredException on a bare 401', function () {
     Http::fake([
-        'api.pinterest.com/v5/oauth/token' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.pinterest.api').'/oauth/token' => Http::response(['error' => 'invalid_grant'], 400),
         config('trypost.platforms.pinterest.api').'/user_account' => Http::response(['message' => 'Unauthorized'], 401),
     ]);
 
@@ -1142,9 +1142,9 @@ test('bluesky verify throws TokenExpiredException when getProfile reports Expire
     Http::fake([
         // refreshSession and createSession (password re-auth fallback) both
         // rejected, so refreshThenVerify exhausts every recovery path.
-        'bsky.social/xrpc/com.atproto.server.refreshSession' => Http::response(['error' => 'ExpiredToken'], 400),
-        'bsky.social/xrpc/com.atproto.server.createSession' => Http::response(['error' => 'InvalidRequest'], 400),
-        'bsky.social/xrpc/app.bsky.actor.getProfile*' => Http::response(['error' => 'ExpiredToken'], 400),
+        config('trypost.platforms.bluesky.default_service').'/xrpc/com.atproto.server.refreshSession' => Http::response(['error' => 'ExpiredToken'], 400),
+        config('trypost.platforms.bluesky.default_service').'/xrpc/com.atproto.server.createSession' => Http::response(['error' => 'InvalidRequest'], 400),
+        config('trypost.platforms.bluesky.default_service').'/xrpc/app.bsky.actor.getProfile*' => Http::response(['error' => 'ExpiredToken'], 400),
     ]);
 
     $account = SocialAccount::factory()->bluesky()->create();
