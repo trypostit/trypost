@@ -58,12 +58,7 @@ class StoreChunkedAssetRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'range_start.required' => 'Invalid Content-Range header',
-            'range_end.required' => 'Invalid Content-Range header',
-            'total_size.required' => 'Invalid Content-Range header',
-            'total_size.max' => 'File size exceeds the maximum allowed ('.MediaType::Video->maxSizeInMb().' MB).',
-            'file_name.ends_with' => 'File type not supported.',
-            'upload_id.required' => 'Missing X-Upload-Id header',
+            'total_size.max' => __('assets.upload.file_too_large', ['max' => MediaType::Video->maxSizeInMb()]),
         ];
     }
 }

@@ -14,6 +14,7 @@ return [
         'formats' => 'JPEG, PNG, GIF, WebP, MP4, PDF',
         'uploading' => 'Caricamento in corso...',
         'failed' => 'Impossibile caricare :file. Riprova.',
+        'file_too_large' => 'La dimensione del file supera il massimo consentito (:max MB).',
     ],
 
     'empty' => [

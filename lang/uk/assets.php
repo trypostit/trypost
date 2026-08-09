@@ -14,6 +14,7 @@ return [
         'formats' => 'JPEG, PNG, GIF, WebP, MP4, PDF',
         'uploading' => 'Завантаження...',
         'failed' => 'Не вдалося завантажити :file. Спробуйте ще раз.',
+        'file_too_large' => 'Розмір файлу перевищує максимально допустимий (:max МБ).',
     ],
 
     'empty' => [

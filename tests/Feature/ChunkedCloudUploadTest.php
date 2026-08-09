@@ -422,11 +422,12 @@ test('a second attempt completing does not corrupt or crash an in-flight sibling
     $attemptA = Str::uuid()->toString();
     $attemptB = Str::uuid()->toString();
 
-    // Random bytes so finfo sniffs "application/octet-stream" on the first
-    // chunk, which makes detectMimeType() fall back to the .mp4 allow-list
-    // mime instead of misdetecting a text mime type from repeated bytes.
-    $firstPartA = random_bytes(ChunkedCloudUploader::MIN_PART_BYTES);
-    $firstPartB = random_bytes(ChunkedCloudUploader::MIN_PART_BYTES);
+    // Real mp4 magic bytes padded with nulls, so finfo reliably detects
+    // video/mp4 on the first chunk regardless of libmagic's signature
+    // database — random/arbitrary byte patterns occasionally collide with
+    // an unrelated magic number (MZ/PE, SIMH tape, ...) and flake.
+    $firstPartA = str_pad(fakeMp4Bytes(), ChunkedCloudUploader::MIN_PART_BYTES, "\0");
+    $firstPartB = str_pad(fakeMp4Bytes(), ChunkedCloudUploader::MIN_PART_BYTES, "\0");
 
     // A0: attempt A starts, first (non-final) part.
     postChunkedAsset('clip.mp4', $firstPartA, 0, $total, uploadId: $attemptA)
