@@ -17,6 +17,7 @@ return [
         'uploading' => 'Enviando...',
         'failed' => 'Não foi possível enviar :file. Tente novamente.',
         'file_too_large' => 'O tamanho do arquivo excede o máximo permitido (:max MB).',
+        'cancelled' => 'Envio cancelado.',
     ],
 
     'empty' => [

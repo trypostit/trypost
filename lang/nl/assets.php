@@ -15,6 +15,7 @@ return [
         'uploading' => 'Uploaden...',
         'failed' => ':file kon niet worden geüpload. Probeer het opnieuw.',
         'file_too_large' => 'Bestandsgrootte overschrijdt het toegestane maximum (:max MB).',
+        'cancelled' => 'Upload geannuleerd.',
     ],
 
     'empty' => [

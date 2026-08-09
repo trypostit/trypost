@@ -15,6 +15,7 @@ return [
         'uploading' => 'Caricamento in corso...',
         'failed' => 'Impossibile caricare :file. Riprova.',
         'file_too_large' => 'La dimensione del file supera il massimo consentito (:max MB).',
+        'cancelled' => 'Caricamento annullato.',
     ],
 
     'empty' => [

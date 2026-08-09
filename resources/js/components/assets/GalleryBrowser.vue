@@ -225,16 +225,9 @@ watch(uploadsSentinel, async () => {
     setupUploadsObserver();
 });
 
-const triggerFileInput = () => {
-    if (uploading.value) return;
-    fileInput.value?.click();
-};
+const triggerFileInput = () => fileInput.value?.click();
 const handleFileSelect = (event: Event) => {
     const target = event.target as HTMLInputElement;
-    if (uploading.value) {
-        target.value = '';
-        return;
-    }
     if (target.files) {
         void uploadFiles(Array.from(target.files));
         target.value = '';
@@ -242,13 +235,13 @@ const handleFileSelect = (event: Event) => {
 };
 const handleDrop = (event: DragEvent) => {
     isDragging.value = false;
-    if (uploading.value) return;
     if (event.dataTransfer?.files) {
         void uploadFiles(Array.from(event.dataTransfer.files));
     }
 };
 
 const uploadFiles = async (files: File[]) => {
+    if (uploading.value) return;
     uploading.value = true;
     uploadAbortController = new AbortController();
     for (const file of files) {
@@ -260,7 +253,10 @@ const uploadFiles = async (files: File[]) => {
                 signal: uploadAbortController.signal,
             });
         } catch (error) {
-            if (error instanceof DOMException && error.name === 'AbortError') break;
+            if (error instanceof DOMException && error.name === 'AbortError') {
+                toast.info(trans('assets.upload.cancelled'));
+                break;
+            }
             toast.error(trans('assets.upload.failed', { file: file.name }));
         }
     }
