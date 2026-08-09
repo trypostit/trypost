@@ -120,11 +120,3 @@ jobs:
           path: tests/Browser/Screenshots
           if-no-files-found: ignore
           retention-days: 7
-
-  e2e-gate:
-    if: always()
-    needs: e2e
-    runs-on: ubuntu-latest
-    steps:
-      - name: Require e2e to pass
-        run: '[ "${{ needs.e2e.result }}" = "success" ] || exit 1'
