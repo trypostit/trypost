@@ -35,6 +35,19 @@ pest()->extend(BrowserTestCase::class)
 
 /*
 |--------------------------------------------------------------------------
+| Test Impact Analysis
+|--------------------------------------------------------------------------
+|
+| Only re-run tests affected by local changes, replaying cached results for
+| the rest. Scoped to local runs via "locally()" — automatically skipped on
+| CI (or when the "--ci" flag is passed), which always runs the full suite.
+|
+*/
+
+pest()->tia()->locally();
+
+/*
+|--------------------------------------------------------------------------
 | Expectations
 |--------------------------------------------------------------------------
 |
