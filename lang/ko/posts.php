@@ -1,6 +1,40 @@
 <?php
 
 return [
+
+    'viral' => [
+        'title' => 'Viral potential',
+        'analyzing' => 'Analyzing…',
+        'analyzing_hint' => 'Reading the hook, the call to action and the rhythm of your draft.',
+        'subtitle' => 'Based on the hook, call to action, length, hashtags and visuals.',
+        'band_good' => 'Good',
+        'band_great' => 'Great',
+        'band_exceptional' => 'Exceptional',
+    ],
+
+    'ai_review' => [
+        'page_title' => 'Review your post',
+        'title' => 'Review before generating',
+        'description' => 'Edit the copy the AI wrote. Images are only generated after you approve it.',
+        'preparing' => 'Writing your post…',
+        'failed' => 'We could not write this post. Try again.',
+        'back' => 'Back',
+        'generate' => 'Generate images',
+        'saving' => 'Saving…',
+        'saved' => 'Saved',
+        'caption' => 'Caption',
+        'caption_placeholder' => 'The caption published with the post',
+        'no_caption_for_format' => 'This format publishes no caption, so there is nothing to edit here.',
+        'field_tweet_text' => 'Tweet text',
+        'field_title' => 'Title',
+        'field_body' => 'Body',
+        'field_image_title' => 'Image headline',
+        'field_image_body' => 'Image body',
+        'field_image_keywords' => 'Photo keywords',
+        'field_image_keywords_hint' => 'Comma-separated terms used to search the photo for this card.',
+        'field_image_keywords_placeholder' => 'office, team, meeting',
+        'reorder_slide' => 'Reorder slide :number',
+    ],
     'title' => '게시물',
     'search' => '게시물 검색...',
     'all_posts' => '모든 게시물',
