@@ -261,8 +261,8 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
         }
 
         // (Pre-existing trade-off, not introduced by this transaction: a
-        // crash between this commit and notifyOwner() below loses the
-        // warning for 24h, until atRiskPostPlatforms()'s re-check window.)
+        // crash between the DB transaction above and notifyOwner() below
+        // loses the warning for 24h, until atRiskPostPlatforms()'s re-check window.)
 
         // A concurrent run may have already claimed some (not all) of these
         // rows between when $atRisk was built and the claim above — narrow
