@@ -575,7 +575,7 @@ test('verifies discord by checking the bot is still in the guild', function () {
     expect((new ConnectionVerifier)->verify($account))->toBeTrue();
 });
 
-test('reports discord disconnected when the bot was removed from the guild', function () {
+test('throws TokenExpiredException when the discord bot was removed from the guild', function () {
     config(['trypost.platforms.discord.bot_token' => 'BOTTOKEN']);
 
     Http::fake([
@@ -586,7 +586,48 @@ test('reports discord disconnected when the bot was removed from the guild', fun
         'platform_user_id' => '999000111',
     ]);
 
-    expect((new ConnectionVerifier)->verify($account))->toBeFalse();
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(TokenExpiredException::class);
+
+    // Discord has no per-account refresh flow (one bot token shared across
+    // every connected account) — a confirmed rejection must not trigger a
+    // second, identical getGuild call against that shared budget.
+    Http::assertSentCount(1);
+});
+
+test('throws TokenExpiredException when the discord bot is no longer in the guild (403)', function () {
+    config(['trypost.platforms.discord.bot_token' => 'BOTTOKEN']);
+
+    Http::fake([
+        config('trypost.platforms.discord.api').'/guilds/*' => Http::response(['message' => 'Missing Access', 'code' => 50001], 403),
+    ]);
+
+    $account = SocialAccount::factory()->discord()->create([
+        'platform_user_id' => '999000111',
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(TokenExpiredException::class);
+
+    Http::assertSentCount(1);
+});
+
+test('throws PlatformUnavailableException, not TokenExpiredException, when the shared discord bot token is rejected', function () {
+    config(['trypost.platforms.discord.bot_token' => 'BOTTOKEN']);
+
+    // 401 means the app-wide DISCORD_BOT_TOKEN is misconfigured — every
+    // Discord-connected account would fail identically. It is not evidence
+    // that THIS account's connection is broken, so it must not disconnect it.
+    Http::fake([
+        config('trypost.platforms.discord.api').'/guilds/*' => Http::response(['message' => '401: Unauthorized'], 401),
+    ]);
+
+    $account = SocialAccount::factory()->discord()->create([
+        'platform_user_id' => '999000111',
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
 });
 
 test('instagram refresh treats a Meta rate-limit (400 OAuthException code 4) as transient, not a dead token', function () {
@@ -875,4 +916,235 @@ test('instagram refresh treats a non-JSON failure body as platform unavailable, 
 
     expect(fn () => (new ConnectionVerifier)->refreshToken($account))
         ->toThrow(PlatformUnavailableException::class);
+});
+
+test('throws PlatformUnavailableException when the discord guild lookup fails transiently', function () {
+    config(['trypost.platforms.discord.bot_token' => 'BOTTOKEN']);
+
+    Http::fake([
+        config('trypost.platforms.discord.api').'/guilds/*' => Http::response(['message' => 'Internal Server Error'], 500),
+    ]);
+
+    $account = SocialAccount::factory()->discord()->create([
+        'platform_user_id' => '999000111',
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('linkedin verify treats a 5xx as platform unavailable, not a disconnect', function () {
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/rest/userinfo' => Http::response(['message' => 'Internal Server Error'], 500),
+    ]);
+
+    $account = SocialAccount::factory()->linkedin()->create();
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('linkedin verify throws TokenExpiredException on a bare 401', function () {
+    Http::fake([
+        'www.linkedin.com/oauth/v2/accessToken' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.linkedin.api').'/rest/userinfo' => Http::response(['message' => 'Unauthorized'], 401),
+    ]);
+
+    $account = SocialAccount::factory()->linkedin()->create();
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(TokenExpiredException::class);
+});
+
+test('linkedin page verify treats a 5xx as platform unavailable, not a disconnect', function () {
+    Http::fake([
+        config('trypost.platforms.linkedin-page.api').'/rest/organizationAcls*' => Http::response(['message' => 'Internal Server Error'], 500),
+    ]);
+
+    $account = SocialAccount::factory()->linkedinPage()->create();
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('linkedin page verify throws TokenExpiredException on a bare 401', function () {
+    Http::fake([
+        'www.linkedin.com/oauth/v2/accessToken' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.linkedin-page.api').'/rest/organizationAcls*' => Http::response(['message' => 'Unauthorized'], 401),
+    ]);
+
+    $account = SocialAccount::factory()->linkedinPage()->create();
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(TokenExpiredException::class);
+});
+
+test('x verify treats a 5xx as platform unavailable, not a disconnect', function () {
+    Http::fake([
+        config('trypost.platforms.x.api').'/users/me' => Http::response(['title' => 'Internal Server Error'], 503),
+    ]);
+
+    $account = SocialAccount::factory()->x()->create();
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('x verify throws TokenExpiredException on a bare 401', function () {
+    Http::fake([
+        'api.x.com/2/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.x.api').'/users/me' => Http::response(['title' => 'Unauthorized'], 401),
+    ]);
+
+    $account = SocialAccount::factory()->x()->create();
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(TokenExpiredException::class);
+});
+
+test('x verify throws TokenExpiredException on an unsupported-authentication error type', function () {
+    Http::fake([
+        'api.x.com/2/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.x.api').'/users/me' => Http::response([
+            'type' => 'https://api.twitter.com/2/problems/unsupported-authentication',
+            'title' => 'Unsupported Authentication',
+        ], 403),
+    ]);
+
+    $account = SocialAccount::factory()->x()->create();
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(TokenExpiredException::class);
+});
+
+test('youtube verify treats a 5xx as platform unavailable, not a disconnect', function () {
+    Http::fake([
+        config('trypost.platforms.youtube.data_api').'/channels*' => Http::response(['error' => ['message' => 'Backend Error']], 500),
+    ]);
+
+    $account = SocialAccount::factory()->youtube()->create();
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('youtube verify throws TokenExpiredException on a bare 401', function () {
+    Http::fake([
+        'oauth2.googleapis.com/token' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.youtube.data_api').'/channels*' => Http::response(['error' => ['message' => 'Unauthorized']], 401),
+    ]);
+
+    $account = SocialAccount::factory()->youtube()->create();
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(TokenExpiredException::class);
+});
+
+test('pinterest verify treats a 5xx as platform unavailable, not a disconnect', function () {
+    Http::fake([
+        config('trypost.platforms.pinterest.api').'/user_account' => Http::response(['message' => 'Internal Server Error'], 500),
+    ]);
+
+    $account = SocialAccount::factory()->pinterest()->create();
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('pinterest verify throws TokenExpiredException on a bare 401', function () {
+    Http::fake([
+        'api.pinterest.com/v5/oauth/token' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.pinterest.api').'/user_account' => Http::response(['message' => 'Unauthorized'], 401),
+    ]);
+
+    $account = SocialAccount::factory()->pinterest()->create();
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(TokenExpiredException::class);
+});
+
+test('tiktok verify treats a 5xx as platform unavailable, not a disconnect', function () {
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/user/info/*' => Http::response(['error' => ['code' => 'internal_error']], 500),
+    ]);
+
+    $account = SocialAccount::factory()->tiktok()->create();
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('tiktok verify throws TokenExpiredException on a bare 401 from user/info', function () {
+    // /v2/user/info/ only needs the always-granted user.info.basic scope, so
+    // unlike a publish-time 401 (which can be a video.publish scope gap), a
+    // 401 here is unambiguous — the token itself is dead. A 401 also triggers
+    // verify()'s built-in refresh-and-retry, so the refresh endpoint needs a
+    // response too, even though the retried verify call fails identically.
+    Http::fake([
+        'open.tiktokapis.com/v2/oauth/token/' => Http::response([
+            'access_token' => 'new_token',
+            'refresh_token' => 'new_refresh_token',
+            'expires_in' => 86400,
+        ], 200),
+        config('trypost.platforms.tiktok.api').'/user/info/*' => Http::response(['error' => ['code' => 'access_token_invalid']], 401),
+    ]);
+
+    $account = SocialAccount::factory()->tiktok()->create();
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(TokenExpiredException::class);
+});
+
+test('bluesky verify treats a 5xx as platform unavailable, not a disconnect', function () {
+    Http::fake([
+        config('trypost.platforms.bluesky.default_service').'/xrpc/*' => Http::response(['message' => 'Internal Server Error'], 500),
+    ]);
+
+    $account = SocialAccount::factory()->bluesky()->create();
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('bluesky verify throws TokenExpiredException when getProfile reports ExpiredToken', function () {
+    Http::fake([
+        // refreshSession and createSession (password re-auth fallback) both
+        // rejected, so refreshThenVerify exhausts every recovery path.
+        'bsky.social/xrpc/com.atproto.server.refreshSession' => Http::response(['error' => 'ExpiredToken'], 400),
+        'bsky.social/xrpc/com.atproto.server.createSession' => Http::response(['error' => 'InvalidRequest'], 400),
+        'bsky.social/xrpc/app.bsky.actor.getProfile*' => Http::response(['error' => 'ExpiredToken'], 400),
+    ]);
+
+    $account = SocialAccount::factory()->bluesky()->create();
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(TokenExpiredException::class);
+});
+
+test('mastodon verify treats a 5xx as platform unavailable, not a disconnect', function () {
+    $account = SocialAccount::factory()->mastodon()->create();
+    $instance = $account->meta['instance'] ?? config('trypost.platforms.mastodon.default_instance');
+
+    Http::fake([
+        "{$instance}/api/v1/accounts/verify_credentials" => Http::response(['error' => 'Internal Server Error'], 503),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('mastodon verify throws TokenExpiredException on a bare 401, with no refresh attempt (mastodon tokens do not expire)', function () {
+    $account = SocialAccount::factory()->mastodon()->create();
+    $instance = $account->meta['instance'] ?? config('trypost.platforms.mastodon.default_instance');
+
+    Http::fake([
+        "{$instance}/api/v1/accounts/verify_credentials" => Http::response(['error' => 'The access token was revoked'], 401),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(TokenExpiredException::class);
+
+    // Mastodon has no per-account refresh flow — a confirmed rejection must
+    // not trigger a second, identical verify_credentials call.
+    Http::assertSentCount(1);
 });

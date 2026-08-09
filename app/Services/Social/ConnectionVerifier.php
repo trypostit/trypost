@@ -6,6 +6,15 @@ namespace App\Services\Social;
 
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
+use App\Exceptions\Social\BlueskyPublishException;
+use App\Exceptions\Social\DiscordPublishException;
+use App\Exceptions\Social\LinkedInPublishException;
+use App\Exceptions\Social\MastodonPublishException;
+use App\Exceptions\Social\PinterestPublishException;
+use App\Exceptions\Social\TelegramPublishException;
+use App\Exceptions\Social\TikTokPublishException;
+use App\Exceptions\Social\XPublishException;
+use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\SocialAccount;
 use App\Services\Social\Discord\DiscordClient;
@@ -38,6 +47,16 @@ class ConnectionVerifier
         try {
             return $this->callVerifyEndpoint($account);
         } catch (TokenExpiredException $e) {
+            if (! $account->platform->hasTokenRefreshFlow()) {
+                // Facebook/InstagramFacebook (Page tokens) and Mastodon
+                // tokens don't expire, and Telegram/Discord authenticate
+                // with one bot token shared across every connected account
+                // of that platform — none of them have anything to refresh,
+                // so retrying would just repeat this identical rejection
+                // while burning a call against a budget shared app-wide.
+                throw $e;
+            }
+
             // Verify returned 401: the access_token is actually invalid.
             // Refresh and retry once with the new token.
             return $this->refreshThenVerify($account, $e);
@@ -365,11 +384,18 @@ class ConnectionVerifier
             ])
             ->get(config('trypost.platforms.linkedin.api').'/rest/userinfo');
 
-        if ($response->status() === 401) {
+        if (LinkedInPublishException::isConfirmedDeadToken($response)) {
             throw new TokenExpiredException('LinkedIn access token is invalid or expired');
         }
 
-        return $response->successful();
+        if ($response->successful()) {
+            return true;
+        }
+
+        throw new PlatformUnavailableException(
+            "{$account->platform->label()} verify failed ({$response->status()}).",
+            $response->status(),
+        );
     }
 
     private function verifyLinkedInPage(SocialAccount $account): bool
@@ -383,11 +409,18 @@ class ConnectionVerifier
                 'q' => 'roleAssignee',
             ]);
 
-        if ($response->status() === 401) {
+        if (LinkedInPublishException::isConfirmedDeadToken($response)) {
             throw new TokenExpiredException('LinkedIn Page access token is invalid or expired');
         }
 
-        return $response->successful();
+        if ($response->successful()) {
+            return true;
+        }
+
+        throw new PlatformUnavailableException(
+            "{$account->platform->label()} verify failed ({$response->status()}).",
+            $response->status(),
+        );
     }
 
     private function verifyX(SocialAccount $account): bool
@@ -395,11 +428,18 @@ class ConnectionVerifier
         $response = Http::withToken($account->access_token)
             ->get(config('trypost.platforms.x.api').'/users/me');
 
-        if ($response->status() === 401) {
+        if (XPublishException::isConfirmedDeadToken($response)) {
             throw new TokenExpiredException('X access token is invalid or expired');
         }
 
-        return $response->successful();
+        if ($response->successful()) {
+            return true;
+        }
+
+        throw new PlatformUnavailableException(
+            "{$account->platform->label()} verify failed ({$response->status()}).",
+            $response->status(),
+        );
     }
 
     private function verifyInstagram(SocialAccount $account): bool
@@ -460,14 +500,22 @@ class ConnectionVerifier
                 'fields' => 'open_id,display_name',
             ]);
 
-        $body = $response->json() ?? [];
-        $errorCode = $body['error']['code'] ?? null;
-
-        if ($response->status() === 401 || in_array($errorCode, ['access_token_invalid', 'access_token_expired', 10001, 10002])) {
+        // 401 here (unlike a publish-time 401, which TikTok also returns for
+        // scope_not_authorized/scope_permission_missed) is unambiguous: this
+        // endpoint only needs the always-granted user.info.basic scope, so a
+        // 401 can't be a scope gap. See TikTokPublishException::isConfirmedDeadToken().
+        if (TikTokPublishException::isConfirmedDeadToken($response) || $response->status() === 401) {
             throw new TokenExpiredException('TikTok access token is invalid or expired');
         }
 
-        return $response->successful();
+        if ($response->successful()) {
+            return true;
+        }
+
+        throw new PlatformUnavailableException(
+            "{$account->platform->label()} verify failed ({$response->status()}).",
+            $response->status(),
+        );
     }
 
     private function verifyYouTube(SocialAccount $account): bool
@@ -478,11 +526,18 @@ class ConnectionVerifier
                 'mine' => 'true',
             ]);
 
-        if ($response->status() === 401) {
+        if (YouTubePublishException::isConfirmedDeadToken($response)) {
             throw new TokenExpiredException('YouTube access token is invalid or expired');
         }
 
-        return $response->successful();
+        if ($response->successful()) {
+            return true;
+        }
+
+        throw new PlatformUnavailableException(
+            "{$account->platform->label()} verify failed ({$response->status()}).",
+            $response->status(),
+        );
     }
 
     private function verifyPinterest(SocialAccount $account): bool
@@ -490,11 +545,18 @@ class ConnectionVerifier
         $response = Http::withToken($account->access_token)
             ->get(config('trypost.platforms.pinterest.api').'/user_account');
 
-        if ($response->status() === 401) {
+        if (PinterestPublishException::isConfirmedDeadToken($response)) {
             throw new TokenExpiredException('Pinterest access token is invalid or expired');
         }
 
-        return $response->successful();
+        if ($response->successful()) {
+            return true;
+        }
+
+        throw new PlatformUnavailableException(
+            "{$account->platform->label()} verify failed ({$response->status()}).",
+            $response->status(),
+        );
     }
 
     private function verifyBluesky(SocialAccount $account): bool
@@ -506,14 +568,18 @@ class ConnectionVerifier
                 'actor' => $account->platform_user_id,
             ]);
 
-        $body = $response->json() ?? [];
-        $error = $body['error'] ?? null;
-
-        if ($error === 'ExpiredToken' || $error === 'InvalidToken') {
+        if (BlueskyPublishException::isConfirmedDeadToken($response)) {
             throw new TokenExpiredException('Bluesky access token is invalid or expired');
         }
 
-        return $response->successful();
+        if ($response->successful()) {
+            return true;
+        }
+
+        throw new PlatformUnavailableException(
+            "{$account->platform->label()} verify failed ({$response->status()}).",
+            $response->status(),
+        );
     }
 
     private function verifyTelegram(SocialAccount $account): bool
@@ -523,13 +589,31 @@ class ConnectionVerifier
             'chat_id' => data_get($account->meta, 'chat_id'),
         ]);
 
-        return $response->successful() && data_get($response->json(), 'ok') === true;
+        if ($response->successful() && data_get($response->json(), 'ok') === true) {
+            return true;
+        }
+
+        if (TelegramPublishException::isConfirmedDeadChat($response)) {
+            throw new TokenExpiredException('Telegram bot no longer has access to the chat');
+        }
+
+        throw new PlatformUnavailableException("Telegram getChat failed ({$response->status()}).", $response->status());
     }
 
     private function verifyDiscord(SocialAccount $account): bool
     {
         // The guild endpoint succeeds only while the bot is still a member.
-        return app(DiscordClient::class)->getGuild((string) $account->platform_user_id)->successful();
+        $response = app(DiscordClient::class)->getGuild((string) $account->platform_user_id);
+
+        if ($response->successful()) {
+            return true;
+        }
+
+        if (DiscordPublishException::isConfirmedDeadGuild($response)) {
+            throw new TokenExpiredException('Discord bot no longer has access to the guild');
+        }
+
+        throw new PlatformUnavailableException("Discord guild lookup failed ({$response->status()}).", $response->status());
     }
 
     private function verifyMastodon(SocialAccount $account): bool
@@ -539,10 +623,22 @@ class ConnectionVerifier
         $response = Http::withToken($account->access_token)
             ->get("{$instance}/api/v1/accounts/verify_credentials");
 
-        if ($response->status() === 401 || $response->status() === 403) {
+        // 403 here (unlike a publish-time 403 on the write-scoped /statuses
+        // endpoint) means even read access is gone — verify_credentials is
+        // the lowest-privilege endpoint every authorized app token can
+        // reach, so a 403 confirms total revocation, not a scope gap. See
+        // MastodonPublishException::isConfirmedDeadToken().
+        if (MastodonPublishException::isConfirmedDeadToken($response) || $response->status() === 403) {
             throw new TokenExpiredException('Mastodon access token is invalid or expired');
         }
 
-        return $response->successful();
+        if ($response->successful()) {
+            return true;
+        }
+
+        throw new PlatformUnavailableException(
+            "{$account->platform->label()} verify failed ({$response->status()}).",
+            $response->status(),
+        );
     }
 }

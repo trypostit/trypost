@@ -16,6 +16,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
+use Exception;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -93,6 +94,15 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
                 continue;
             }
 
+            $group = $group->filter(fn (PostPlatform $pp) => $pp->post !== null);
+
+            if ($group->isEmpty()) {
+                // Same race as above, but for the post: every row in this
+                // batch was hard-deleted between the main query and its
+                // eager-loaded relation resolving.
+                continue;
+            }
+
             if (in_array($account->status, [SocialAccountStatus::TokenExpired, SocialAccountStatus::Disconnected], true)) {
                 if ($this->recentlyWarnedAbout($account) || $this->recentlyDisconnected($account)) {
                     continue;
@@ -121,14 +131,7 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
             }
 
             try {
-                // Telegram/Discord verify() reports a dead connection by
-                // returning false rather than throwing — route it through
-                // the same TokenExpiredException handling below instead of
-                // silently stamping last_verified_at on a broken account.
-                if (! $verifier->verify($account)) {
-                    throw new TokenExpiredException("{$account->platform->label()} bot no longer has access to the channel/guild");
-                }
-
+                $verifier->verify($account);
                 $account->update(['last_verified_at' => now()]);
             } catch (PlatformUnavailableException $e) {
                 Log::warning('Upcoming-post connection check skipped: platform unavailable', [
@@ -152,7 +155,7 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
 
                     $account->markAsTokenExpired($e->getMessage(), notify: false);
                     $account->refresh();
-                } catch (\Exception $lockOrDbError) {
+                } catch (Exception $lockOrDbError) {
                     // Covers the account being deleted mid-run (refresh()
                     // throws ModelNotFoundException) as well as infrastructure
                     // failures inside markAsTokenExpired() itself (its
@@ -184,7 +187,7 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
                 }
 
                 $atRisk->push(['account' => $account, 'postPlatforms' => $group]);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('Failed to verify social account connection for upcoming-post check', [
                     'account_id' => $account->id,
                     'platform' => $account->platform->value,
@@ -208,8 +211,22 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        // Conditioned on the same "unwarned" window atRiskPostPlatforms() selected
+        // on, so a concurrent run that already claimed these exact rows (the
+        // ShouldBeUnique lock's TTL matches the schedule cadence, so two
+        // instances can briefly overlap if a run takes unusually long) claims
+        // 0 and this one skips notifying instead of sending a duplicate email.
         $warnedIds = $atRisk->flatMap(fn (array $group) => $group['postPlatforms']->pluck('id'));
-        PostPlatform::whereIn('id', $warnedIds)->update(['connection_warning_sent_at' => now()]);
+        $claimed = PostPlatform::whereIn('id', $warnedIds)
+            ->where(function ($query) {
+                $query->whereNull('connection_warning_sent_at')
+                    ->orWhere('connection_warning_sent_at', '<', now()->subDay());
+            })
+            ->update(['connection_warning_sent_at' => now()]);
+
+        if ($claimed === 0) {
+            return;
+        }
 
         $this->notifyOwner($owner, $workspace, $atRisk);
     }
@@ -255,6 +272,12 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
                     ->scheduled()
                     ->whereBetween('scheduled_at', [now(), now()->addHour()]);
             })
+            // socialAccount.workspace is eager-loaded even though this job
+            // never reads it directly — SocialAccountObserver::notifyOnboarding()
+            // (fired by the ->update() calls below via markAsTokenExpired())
+            // accesses $account->workspace, and lazy loading is disabled
+            // app-wide. Dropping this eager load throws LazyLoadingViolationException
+            // the moment a second account in the same run gets updated (see #255).
             ->with(['socialAccount.workspace', 'post'])
             ->get();
     }

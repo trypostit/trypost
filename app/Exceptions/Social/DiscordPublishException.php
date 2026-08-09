@@ -86,4 +86,26 @@ class DiscordPublishException extends SocialPublishException
     {
         return 'discord';
     }
+
+    /**
+     * Whether this response confirms the bot lost access to THIS specific
+     * guild (kicked, missing access, or the guild is gone) — used by
+     * ConnectionVerifier against getGuild's response.
+     *
+     * Deliberately NOT the same check fromApiResponse() uses above, and not
+     * called from it: fromApiResponse() classifies channel-message responses
+     * (channel-send scope, where a 403 there stays a Permission-category
+     * publish failure rather than disconnecting the account — the bot could
+     * still be a guild member with access to other channels), while this
+     * classifies getGuild responses (guild-membership scope, where the same
+     * 403/404 unambiguously means the bot is out of this guild entirely).
+     * 401 is excluded from both: Discord auth is one bot token shared across
+     * every connected account, so a 401 means that shared token is
+     * misconfigured (an operator problem), never evidence that this specific
+     * guild connection is dead.
+     */
+    public static function isConfirmedDeadGuild(Response $response): bool
+    {
+        return in_array($response->status(), [403, 404], true);
+    }
 }

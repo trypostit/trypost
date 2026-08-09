@@ -18,7 +18,7 @@ class LinkedInPublishException extends SocialPublishException
 
         $errorMessage = data_get($body, 'message', $rawResponse);
 
-        if ($statusCode === 401) {
+        if (self::isConfirmedDeadToken($response)) {
             throw new TokenExpiredException(
                 message: $errorMessage ?? 'Access token has expired or been revoked',
                 platformErrorCode: (string) $statusCode,
@@ -60,5 +60,16 @@ class LinkedInPublishException extends SocialPublishException
     public function platform(): string
     {
         return 'linkedin';
+    }
+
+    /**
+     * Whether this response confirms the account's own access_token is dead
+     * (not merely a transient or content-specific failure). Shared with
+     * ConnectionVerifier so both the publish and verify paths agree on what
+     * a dead LinkedIn/LinkedIn Page token looks like.
+     */
+    public static function isConfirmedDeadToken(Response $response): bool
+    {
+        return $response->status() === 401;
     }
 }

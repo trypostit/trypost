@@ -56,38 +56,6 @@ test('marks the account expired and queues a notification when verify throws Tok
     });
 });
 
-test('marks the account expired when verify returns false instead of throwing (Telegram/Discord)', function () {
-    Mail::fake();
-
-    $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->telegram()->create([
-        'workspace_id' => $workspace->id,
-        'status' => SocialAccountStatus::Connected,
-    ]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $workspace->id,
-        'scheduled_at' => now()->addMinutes(20),
-    ]);
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'status' => PostPlatformStatus::Pending,
-    ]);
-
-    $verifier = mock(ConnectionVerifier::class);
-    $verifier->shouldReceive('verify')->once()->andReturn(false);
-    app()->instance(ConnectionVerifier::class, $verifier);
-
-    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
-
-    expect($account->fresh()->status)->toBe(SocialAccountStatus::TokenExpired)
-        ->and($account->fresh()->last_verified_at)->toBeNull()
-        ->and($postPlatform->fresh()->connection_warning_sent_at)->not->toBeNull();
-
-    Mail::assertQueued(PostAtRisk::class);
-});
-
 test('creates an in-app notification for the workspace owner alongside the email', function () {
     Mail::fake();
 
@@ -726,6 +694,44 @@ test('defers to the next run instead of duplicating AccountDisconnected when ano
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
     expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
+    Mail::assertNothingQueued();
+});
+
+test('skips notifying when a concurrent run already claimed the warning window', function () {
+    Mail::fake();
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->threads()->create([
+        'workspace_id' => $workspace->id,
+        'status' => SocialAccountStatus::Connected,
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'scheduled_at' => now()->addMinutes(20),
+    ]);
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+        'status' => PostPlatformStatus::Pending,
+    ]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')->once()->andReturnUsing(function () use ($postPlatform) {
+        // Simulate a second, overlapping run of this same job (the
+        // ShouldBeUnique lock's TTL matches the schedule cadence, so two
+        // instances can briefly overlap if a run takes unusually long)
+        // already claiming and warning about this exact post_platform,
+        // between this run's select and its own claim update below.
+        $postPlatform->update(['connection_warning_sent_at' => now()]);
+
+        throw new TokenExpiredException('Threads access token is invalid or expired');
+    });
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
+
+    expect($account->fresh()->status)->toBe(SocialAccountStatus::TokenExpired);
     Mail::assertNothingQueued();
 });
 

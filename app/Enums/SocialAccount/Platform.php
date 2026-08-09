@@ -311,6 +311,25 @@ enum Platform: string
     }
 
     /**
+     * Whether ConnectionVerifier has a real per-account token refresh flow
+     * for this platform. Facebook/InstagramFacebook use Page tokens and
+     * Mastodon's tokens don't expire (see defaultTokenTtlSeconds()); Telegram
+     * and Discord authenticate with one bot token shared across every
+     * connected account of that platform, with no per-account credential to
+     * refresh at all. For these, a rejected verify call can't be retried
+     * after a refresh — there's nothing to refresh.
+     */
+    public function hasTokenRefreshFlow(): bool
+    {
+        return match ($this) {
+            self::LinkedIn, self::LinkedInPage, self::X, self::Bluesky,
+            self::YouTube, self::TikTok, self::Pinterest,
+            self::Threads, self::Instagram => true,
+            default => false,
+        };
+    }
+
+    /**
      * The `platform` column values of the platforms that refresh by extending
      * their access token in place (Instagram and Threads — see
      * extendsAccessTokenOnRefresh), for use in database whereIn/whereNotIn

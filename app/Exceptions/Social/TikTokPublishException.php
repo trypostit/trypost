@@ -18,7 +18,7 @@ class TikTokPublishException extends SocialPublishException
         $errorCode = data_get($body, 'error.code');
         $errorMessage = data_get($body, 'error.message', 'An unknown TikTok error occurred.');
 
-        if ($errorCode === 'access_token_invalid') {
+        if (self::isConfirmedDeadToken($response)) {
             throw new TokenExpiredException(
                 message: $errorMessage,
                 platformErrorCode: $errorCode,
@@ -78,5 +78,30 @@ class TikTokPublishException extends SocialPublishException
     public function platform(): string
     {
         return 'tiktok';
+    }
+
+    /**
+     * Whether this response confirms the account's own access_token is dead
+     * (not merely a transient or content-specific failure). Shared with
+     * ConnectionVerifier so both the publish and verify paths agree on what
+     * a dead TikTok token looks like. 10001/10002 are the numeric forms of
+     * the same access_token_invalid/expired conditions TikTok also reports.
+     *
+     * A bare HTTP 401 is deliberately NOT treated as confirmed-dead here:
+     * TikTok also returns 401 for scope_not_authorized/scope_permission_missed
+     * (missing video.publish grant — see
+     * https://developers.tiktok.com/doc/content-posting-api-reference-direct-post),
+     * which is a scope gap, not a dead token, and must stay a Permission-category
+     * publish failure (see the match arms above) rather than disconnecting the
+     * account. ConnectionVerifier adds its own bare-401 check on top of this
+     * one, because /v2/user/info/ only needs the always-granted user.info.basic
+     * scope — a 401 there can't be a scope gap, so it's an unambiguous signal
+     * the token itself is dead.
+     */
+    public static function isConfirmedDeadToken(Response $response): bool
+    {
+        $errorCode = data_get($response->json(), 'error.code');
+
+        return in_array($errorCode, ['access_token_invalid', 'access_token_expired', 10001, 10002]);
     }
 }
