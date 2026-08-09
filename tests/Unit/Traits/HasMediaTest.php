@@ -324,6 +324,31 @@ test('WebP upload is converted to JPEG', function () {
         ->and(pathinfo($media->path, PATHINFO_EXTENSION))->toBe('jpg');
 });
 
+test('add media sanitizes invalid UTF-8 bytes in the original filename', function () {
+    $workspace = Workspace::factory()->create();
+    $invalidName = "earnings \x97 report.jpg";
+    $file = UploadedFile::fake()->image($invalidName, 100, 100);
+
+    $media = $workspace->addMedia($file, 'assets');
+
+    expect(mb_check_encoding($media->original_filename, 'UTF-8'))->toBeTrue();
+    expect($media->original_filename)->toBe('earnings ? report.jpg');
+});
+
+test('add media from path sanitizes invalid UTF-8 bytes in the original filename', function () {
+    $workspace = Workspace::factory()->create();
+    $tempFile = tempnam(sys_get_temp_dir(), 'test');
+    file_put_contents($tempFile, file_get_contents(__DIR__.'/../../fixtures/1x1.png'));
+    $invalidName = "earnings \x97 report.png";
+
+    $media = $workspace->addMediaFromPath($tempFile, $invalidName, 'assets');
+
+    expect(mb_check_encoding($media->original_filename, 'UTF-8'))->toBeTrue();
+    expect($media->original_filename)->toBe('earnings ? report.png');
+
+    unlink($tempFile);
+});
+
 test('client meta is merged into media meta', function () {
     $workspace = Workspace::factory()->create();
     $file = UploadedFile::fake()->image('photo.jpg', 640, 480);
