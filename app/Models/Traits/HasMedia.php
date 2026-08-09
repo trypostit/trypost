@@ -258,7 +258,7 @@ trait HasMedia
      */
     private function sanitizeOriginalFilename(string $filename): string
     {
-        return mb_convert_encoding($filename, 'UTF-8', 'UTF-8');
+        return mb_scrub($filename, 'UTF-8');
     }
 
     private function getMediaMeta(UploadedFile $file, string $type): array
