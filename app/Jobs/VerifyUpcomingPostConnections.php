@@ -21,6 +21,7 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
@@ -100,6 +101,18 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
                 // Same race as above, but for the post: every row in this
                 // batch was hard-deleted between the main query and its
                 // eager-loaded relation resolving.
+                continue;
+            }
+
+            // atRiskPostPlatforms()'s is_active guard only runs at query
+            // time; this job can take real wall-clock time working through
+            // a workspace, so re-check fresh (paused/deleted since then
+            // shouldn't burn an API call or warn about it). Keep workspace
+            // eager-loaded — SocialAccountObserver reads it when
+            // markAsTokenExpired() below updates the account (#255).
+            $account = SocialAccount::active()->with('workspace')->find($account->id);
+
+            if (! $account) {
                 continue;
             }
 
@@ -212,21 +225,61 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
         }
 
         // Conditioned on the same "unwarned" window atRiskPostPlatforms() selected
-        // on, so a concurrent run that already claimed these exact rows (the
-        // ShouldBeUnique lock's TTL matches the schedule cadence, so two
-        // instances can briefly overlap if a run takes unusually long) claims
-        // 0 and this one skips notifying instead of sending a duplicate email.
+        // on, so a concurrent run that already claimed some or all of these
+        // exact rows (the ShouldBeUnique lock's TTL matches the schedule
+        // cadence, so two instances can briefly overlap if a run takes
+        // unusually long) never gets re-claimed here. lockForUpdate() closes
+        // the gap between reading which rows are still claimable and
+        // stamping them — without it, two overlapping runs could both read
+        // "unclaimed" for the same row before either writes.
         $warnedIds = $atRisk->flatMap(fn (array $group) => $group['postPlatforms']->pluck('id'));
-        $claimed = PostPlatform::whereIn('id', $warnedIds)
-            ->where(function ($query) {
-                $query->whereNull('connection_warning_sent_at')
-                    ->orWhere('connection_warning_sent_at', '<', now()->subDay());
-            })
-            ->update(['connection_warning_sent_at' => now()]);
+        $claimedIds = DB::transaction(function () use ($warnedIds) {
+            $claimableIds = PostPlatform::whereIn('id', $warnedIds)
+                ->where(function ($query) {
+                    $query->whereNull('connection_warning_sent_at')
+                        ->orWhere('connection_warning_sent_at', '<', now()->subDay());
+                })
+                // Two overlapping runs can both claim rows here (see comment
+                // above the transaction) — locking in a consistent order
+                // (primary key) prevents them from deadlocking by acquiring
+                // the same two rows' locks in opposite order.
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->pluck('id');
 
-        if ($claimed === 0) {
+            if ($claimableIds->isEmpty()) {
+                return $claimableIds;
+            }
+
+            PostPlatform::whereIn('id', $claimableIds)->update(['connection_warning_sent_at' => now()]);
+
+            return $claimableIds;
+        }, attempts: 3);
+
+        if ($claimedIds->isEmpty()) {
             return;
         }
+
+        // (Pre-existing trade-off, not introduced by this transaction: a
+        // crash between this commit and notifyOwner() below loses the
+        // warning for 24h, until atRiskPostPlatforms()'s re-check window.)
+
+        // A concurrent run may have already claimed some (not all) of these
+        // rows between when $atRisk was built and the claim above — narrow
+        // the notification down to what THIS run actually claimed, so the
+        // email never lists an account/post pair another run is already
+        // notifying about. $claimedIds is a non-empty subset of $warnedIds,
+        // which is exactly the union of every group's post_platform ids, so
+        // at least one group is guaranteed to survive this filter.
+        $atRisk = $atRisk
+            ->map(function (array $group) use ($claimedIds) {
+                $group['postPlatforms'] = $group['postPlatforms']->filter(
+                    fn (PostPlatform $pp) => $claimedIds->containsStrict($pp->id)
+                );
+
+                return $group;
+            })
+            ->filter(fn (array $group) => $group['postPlatforms']->isNotEmpty());
 
         $this->notifyOwner($owner, $workspace, $atRisk);
     }
@@ -262,7 +315,14 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
         return PostPlatform::query()
             ->where('status', PostPlatformStatus::Pending)
             ->enabled() // PublishPost only iterates enabled platforms — an at-risk warning for a disabled one would be a false positive.
-            ->whereNotNull('social_account_id')
+            // A paused account already fails at publish time with
+            // posts.errors.account_inactive before any platform API call
+            // (PublishToSocialPlatform::handle()) — verifying it here would
+            // waste a real API call and, if the token also happens to be
+            // dead, warn the owner to "reconnect" an account they paused on
+            // purpose. whereHas() already excludes a null social_account_id
+            // (nothing to join to).
+            ->whereHas('socialAccount', fn ($query) => $query->where('is_active', true))
             ->where(function ($query) {
                 $query->whereNull('connection_warning_sent_at')
                     ->orWhere('connection_warning_sent_at', '<', now()->subDay());

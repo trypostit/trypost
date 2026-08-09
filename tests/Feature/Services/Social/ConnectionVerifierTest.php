@@ -141,12 +141,12 @@ test('refreshes youtube token before verifying when expired', function () {
 
 test('refreshes tiktok token before verifying when expired', function () {
     Http::fake([
-        'open.tiktokapis.com/v2/oauth/token/' => Http::response([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
             'access_token' => 'new_token',
             'refresh_token' => 'new_refresh_token',
             'expires_in' => 86400,
         ], 200),
-        'open.tiktokapis.com/v2/user/info/*' => Http::response(['data' => ['user' => []]], 200),
+        config('trypost.platforms.tiktok.api').'/user/info/*' => Http::response(['data' => ['user' => []]], 200),
     ]);
 
     $account = SocialAccount::factory()->tiktok()->create([
@@ -159,7 +159,7 @@ test('refreshes tiktok token before verifying when expired', function () {
 
     expect($result)->toBeTrue();
 
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'tiktokapis.com/v2/oauth/token'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), config('trypost.platforms.tiktok.api').'/oauth/token'));
 });
 
 test('refreshes pinterest token before verifying when expired', function () {
@@ -739,6 +739,10 @@ test('facebook verify treats a dead token reported under a non-190 code as genui
 
     expect(fn () => (new ConnectionVerifier)->verify($account))
         ->toThrow(TokenExpiredException::class);
+
+    // Facebook Page tokens don't expire — no per-account refresh flow — so a
+    // confirmed rejection must not trigger a second, identical /me call.
+    Http::assertSentCount(1);
 });
 
 test('facebook verify treats a Meta rate-limit as transient, not a disconnect', function () {
@@ -1081,7 +1085,7 @@ test('tiktok verify throws TokenExpiredException on a bare 401 from user/info', 
     // verify()'s built-in refresh-and-retry, so the refresh endpoint needs a
     // response too, even though the retried verify call fails identically.
     Http::fake([
-        'open.tiktokapis.com/v2/oauth/token/' => Http::response([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
             'access_token' => 'new_token',
             'refresh_token' => 'new_refresh_token',
             'expires_in' => 86400,
@@ -1093,6 +1097,34 @@ test('tiktok verify throws TokenExpiredException on a bare 401 from user/info', 
 
     expect(fn () => (new ConnectionVerifier)->verify($account))
         ->toThrow(TokenExpiredException::class);
+});
+
+test('tiktok verify throws TokenExpiredException on a bare 401 with no recognized error code', function () {
+    // Isolates ConnectionVerifier's own status-based check from
+    // TikTokPublishException::isConfirmedDeadToken()'s error-code check:
+    // 'access_token_revoked' IS present as error.code, but it's not one of
+    // the codes that check recognizes (access_token_invalid,
+    // access_token_expired, 10001, 10002) — so only the bare
+    // `$response->status() === 401` clause in verifyTikTok() can catch it.
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
+            'access_token' => 'new_token',
+            'refresh_token' => 'new_refresh_token',
+            'expires_in' => 86400,
+        ], 200),
+        config('trypost.platforms.tiktok.api').'/user/info/*' => Http::response(['error' => ['code' => 'access_token_revoked']], 401),
+    ]);
+
+    $account = SocialAccount::factory()->tiktok()->create();
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(TokenExpiredException::class);
+
+    // 1 refresh call (hits the faked 200) + verify called before, after, and
+    // once more when the refresh rotated the token (refreshThenVerify's own
+    // retry) — those three all hit the same faked 401, since the fake
+    // ignores the token used.
+    Http::assertSentCount(4);
 });
 
 test('bluesky verify treats a 5xx as platform unavailable, not a disconnect', function () {
@@ -1146,5 +1178,25 @@ test('mastodon verify throws TokenExpiredException on a bare 401, with no refres
 
     // Mastodon has no per-account refresh flow — a confirmed rejection must
     // not trigger a second, identical verify_credentials call.
+    Http::assertSentCount(1);
+});
+
+test('mastodon verify throws TokenExpiredException on a bare 403 from verify_credentials', function () {
+    // verify_credentials is the lowest-privilege read endpoint every
+    // authorized app token can reach, so unlike a publish-time 403 on the
+    // write-scoped /statuses endpoint (which stays a Permission-category
+    // publish failure), a 403 here means the app's authorization itself was
+    // revoked. MastodonPublishException::isConfirmedDeadToken() is 401-only
+    // by design — this is ConnectionVerifier's own additional check.
+    $account = SocialAccount::factory()->mastodon()->create();
+    $instance = $account->meta['instance'] ?? config('trypost.platforms.mastodon.default_instance');
+
+    Http::fake([
+        "{$instance}/api/v1/accounts/verify_credentials" => Http::response(['error' => 'This action is not allowed'], 403),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(TokenExpiredException::class);
+
     Http::assertSentCount(1);
 });
