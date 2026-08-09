@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\Status;
 use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\Account;
 use App\Models\SocialAccount;
@@ -64,3 +65,18 @@ test('does not dispatch when PostHog is disabled', function () {
 
     Bus::assertNotDispatched(SyncAccountUsage::class);
 });
+
+test('updating status on multiple batch-hydrated social accounts does not throw a lazy loading violation', function () {
+    $accounts = SocialAccount::factory()->count(2)->create([
+        'workspace_id' => $this->workspace->id,
+        'status' => Status::Connected,
+    ]);
+
+    $batch = SocialAccount::query()
+        ->whereIn('id', $accounts->pluck('id'))
+        ->get();
+
+    foreach ($batch as $socialAccount) {
+        $socialAccount->update(['status' => Status::Disconnected]);
+    }
+})->throwsNoExceptions();

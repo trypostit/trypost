@@ -76,6 +76,8 @@ class SocialAccountObserver
      */
     private function notifyOnboarding(SocialAccount $socialAccount): void
     {
+        $socialAccount->loadMissing('workspace.account');
+
         $account = $socialAccount->workspace?->account;
 
         if (! $account?->isOnboardingOpen()) {
