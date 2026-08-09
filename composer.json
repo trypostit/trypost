@@ -126,7 +126,7 @@
             "@php artisan test tests/Browser"
         ],
         "test:tia": [
-            "herd coverage vendor/bin/pest --parallel --tia"
+            "vendor/bin/pest --parallel --tia"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
