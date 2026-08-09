@@ -335,9 +335,9 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
             // socialAccount.workspace is eager-loaded even though this job
             // never reads it directly — SocialAccountObserver::notifyOnboarding()
             // (fired by the ->update() calls below via markAsTokenExpired())
-            // accesses $account->workspace, and lazy loading is disabled
-            // app-wide. Dropping this eager load throws LazyLoadingViolationException
-            // the moment a second account in the same run gets updated (see #255).
+            // reads $account->workspace. The observer self-heals with
+            // loadMissing() (see #255), but without this eager load every
+            // account in the batch triggers its own extra query there.
             ->with(['socialAccount.workspace', 'post'])
             ->get();
     }
