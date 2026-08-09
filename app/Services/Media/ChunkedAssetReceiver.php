@@ -21,9 +21,9 @@ final class ChunkedAssetReceiver
         int $rangeStart,
         int $rangeEnd,
         int $totalSize,
-        ?string $attemptId = null,
+        string $attemptId,
     ): ChunkReceipt {
-        $identifier = md5($user->id.$fileName.$totalSize.(string) $attemptId);
+        $identifier = md5($user->id.$fileName.$totalSize.$attemptId);
 
         return $this->cloud->shouldUseMultipart($fileName)
             ? $this->receiveViaMultipart($workspace, $identifier, $fileName, $chunk, $rangeStart, $rangeEnd, $totalSize)

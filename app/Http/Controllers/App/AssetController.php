@@ -83,7 +83,7 @@ class AssetController extends Controller
             (int) $request->validated('range_start'),
             (int) $request->validated('range_end'),
             (int) $request->validated('total_size'),
-            $request->validated('upload_id') === null ? null : (string) $request->validated('upload_id'),
+            (string) $request->validated('upload_id'),
         )->toResponse();
     }
 

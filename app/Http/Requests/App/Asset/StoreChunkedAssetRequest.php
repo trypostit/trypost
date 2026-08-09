@@ -48,7 +48,7 @@ class StoreChunkedAssetRequest extends FormRequest
             'range_end' => ['required', 'integer', 'gte:range_start'],
             'total_size' => ['required', 'integer', 'min:1', 'max:'.MediaType::Video->maxSizeInBytes()],
             'file_name' => ['required', 'string', 'ends_with:'.implode(',', $allowedSuffixes)],
-            'upload_id' => ['nullable', 'string', 'uuid'],
+            'upload_id' => ['required', 'string', 'uuid'],
         ];
     }
 
@@ -63,6 +63,7 @@ class StoreChunkedAssetRequest extends FormRequest
             'total_size.required' => 'Invalid Content-Range header',
             'total_size.max' => 'File size exceeds the maximum allowed ('.MediaType::Video->maxSizeInMb().' MB).',
             'file_name.ends_with' => 'File type not supported.',
+            'upload_id.required' => 'Missing X-Upload-Id header',
         ];
     }
 }

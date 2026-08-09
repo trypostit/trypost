@@ -11,6 +11,7 @@ use App\Services\UnsplashService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     Storage::fake();
@@ -214,6 +215,7 @@ test('chunked upload completes with single chunk', function () {
         [
             'HTTP_CONTENT_RANGE' => 'bytes 0-'.($size - 1).'/'.$size,
             'HTTP_X_FILE_NAME' => 'test.png',
+            'HTTP_X_UPLOAD_ID' => Str::uuid()->toString(),
             'HTTP_ACCEPT' => 'application/json',
             'CONTENT_TYPE' => 'application/octet-stream',
         ],
@@ -238,6 +240,7 @@ test('chunked upload completes for a pdf document', function () {
         [
             'HTTP_CONTENT_RANGE' => 'bytes 0-'.($size - 1).'/'.$size,
             'HTTP_X_FILE_NAME' => 'deck.pdf',
+            'HTTP_X_UPLOAD_ID' => Str::uuid()->toString(),
             'HTTP_ACCEPT' => 'application/json',
             'CONTENT_TYPE' => 'application/octet-stream',
         ],
@@ -257,6 +260,7 @@ test('chunked upload reports progress on intermediate chunks', function () {
         [
             'HTTP_CONTENT_RANGE' => 'bytes 0-499/1000',
             'HTTP_X_FILE_NAME' => 'test-video.mp4',
+            'HTTP_X_UPLOAD_ID' => Str::uuid()->toString(),
             'HTTP_ACCEPT' => 'application/json',
             'CONTENT_TYPE' => 'application/octet-stream',
         ],
