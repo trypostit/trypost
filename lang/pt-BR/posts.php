@@ -1,6 +1,36 @@
 <?php
 
 return [
+
+    'rating' => [
+        'prompt' => 'Como ficou este rascunho?',
+        'thanks' => 'Obrigado pelo retorno!',
+        'aria' => 'Avalie este rascunho de 1 a 5',
+    ],
+
+    'ai_review' => [
+        'page_title' => 'Revise seu post',
+        'title' => 'Revise antes de gerar',
+        'description' => 'Edite o texto que a IA escreveu. As imagens só são geradas depois que você aprovar.',
+        'preparing' => 'Escrevendo seu post…',
+        'failed' => 'Não conseguimos escrever este post. Tente de novo.',
+        'back' => 'Voltar',
+        'generate' => 'Gerar imagens',
+        'saving' => 'Salvando…',
+        'saved' => 'Salvo',
+        'caption' => 'Legenda',
+        'caption_placeholder' => 'A legenda publicada junto com o post',
+        'no_caption_for_format' => 'Este formato não publica legenda, então não há o que editar aqui.',
+        'field_tweet_text' => 'Texto do tweet',
+        'field_title' => 'Título',
+        'field_body' => 'Descrição',
+        'field_image_title' => 'Título da imagem',
+        'field_image_body' => 'Texto da imagem',
+        'field_image_keywords' => 'Palavras-chave da foto',
+        'field_image_keywords_hint' => 'Termos separados por vírgula usados para buscar a foto deste card.',
+        'field_image_keywords_placeholder' => 'cidade, equipe, reunião',
+        'reorder_slide' => 'Reordenar slide :number',
+    ],
     'title' => 'Posts',
     'search' => 'Buscar posts...',
     'all_posts' => 'Todos os Posts',

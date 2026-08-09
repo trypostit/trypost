@@ -9,15 +9,15 @@ import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 
-import { start as startRoute } from '@/actions/App/Http/Controllers/App/PostAiCreateController';
 import ContentStylePicker from '@/components/ai/ContentStylePicker.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
-import { loading as loadingRoute } from '@/routes/app/posts/ai';
 import { ContentType, type ContentTypeValue } from '@/types/content-type';
+
+import { prepare as prepareRoute, review as reviewRoute } from '@/routes/app/posts/ai/drafts';
 
 interface SocialAccount {
     id: string;
@@ -220,18 +220,12 @@ const startGeneration = async () => {
     httpStart.apply_brand_visuals = useBrandColors.value;
 
     try {
-        const data = await httpStart.post(startRoute.url()) as { creation_id: string; channel: string };
+        // Phase A: pre-generate only the text, then hand over to the review
+        // screen. Images (the expensive part) are rendered from there, after
+        // the user has approved the copy.
+        const data = await httpStart.post(prepareRoute.url()) as { draft_id: string; channel: string };
 
-        router.visit(loadingRoute(
-            { creationId: data.creation_id },
-            {
-                query: {
-                    images: String(submittedImageCount.value),
-                    format: selectedFormat.value ?? '',
-                    prompt: promptText.value.trim(),
-                },
-            },
-        ).url);
+        router.visit(reviewRoute.url({ draft: data.draft_id }));
     } catch (err: any) {
         toast.error(err?.response?.data?.message ?? trans('posts.create.steps.preview_error'));
         submitting.value = false;
