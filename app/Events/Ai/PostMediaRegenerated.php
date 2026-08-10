@@ -30,6 +30,10 @@ class PostMediaRegenerated implements ShouldBroadcast
         return 'ai.media.regenerated';
     }
 
+    /**
+     * Same format as PostAiRegenerateMediaController's response and the
+     * frontend's aiMediaRegenerationChannel() (useAiMediaRegeneration.ts).
+     */
     public function broadcastOn(): PrivateChannel
     {
         return new PrivateChannel("user.{$this->userId}.ai-media.{$this->regenerationId}");

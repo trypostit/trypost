@@ -14,12 +14,17 @@ class RegeneratePostMediaImageRequest extends FormRequest
     }
 
     /**
+     * `regeneration_id` is minted client-side so the frontend can subscribe to
+     * the broadcast channel before this request is sent — see
+     * PostAiGenerateController / GeneratePostContentRequest for the same pattern.
+     *
      * @return array<string, array<int, mixed>>
      */
     public function rules(): array
     {
         return [
             'instruction' => ['required', 'string', 'max:1000'],
+            'regeneration_id' => ['required', 'string', 'uuid'],
         ];
     }
 

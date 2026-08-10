@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, useHttp } from '@inertiajs/vue3';
 import { echo } from '@laravel/echo-vue';
 import { IconLoader2, IconSparkles } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
+import { start as startPostCreation } from '@/actions/App/Http/Controllers/App/PostAiCreateController';
 import { Button } from '@/components/ui/button';
-import date from '@/date';
+import { subscribePrivateChannel } from '@/composables/echo/subscribePrivateChannel';
+import dateFormat from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { calendar as calendarRoute } from '@/routes/app';
 import { create as createPostRoute, edit as editPostRoute } from '@/routes/app/posts';
@@ -17,12 +19,15 @@ const props = defineProps<{
     imageCount: number;
     format: string;
     prompt: string;
+    socialAccountId: string | null;
+    date: string | null;
+    template: string;
+    applyBrandVisuals: boolean;
 }>();
 
 const status = ref<'loading' | 'error'>('loading');
 const errorMessage = ref('');
-
-let echoChannel: any = null;
+let subscribed = false;
 
 const TEXT_BASELINE_SECONDS = 30;
 const PER_IMAGE_SECONDS = 35;
@@ -54,17 +59,47 @@ const currentTip = computed(() => trans(tipKeys[tipIndex.value % tipKeys.length]
 const elapsed = ref(0);
 let elapsedTimer: ReturnType<typeof setInterval> | null = null;
 
-const elapsedLabel = computed(() => date.formatClock(elapsed.value));
+const elapsedLabel = computed(() => dateFormat.formatClock(elapsed.value));
 
 const progress = computed(() => {
     const ratio = elapsed.value / estimatedSeconds.value;
     return Math.min(0.95, ratio);
 });
 
-const subscribe = () => {
-    echoChannel = echo()
-        .private(props.channel)
-        .listen('.ai.creation.completed', (e: { post_id?: string; error?: string }) => {
+const unsubscribe = () => {
+    if (subscribed) {
+        echo().leave(`private-${props.channel}`);
+        subscribed = false;
+    }
+};
+
+const httpStart = useHttp<{
+    creation_id: string;
+    format: string;
+    social_account_id: string | null;
+    image_count: number;
+    prompt: string;
+    date: string | null;
+    template: string;
+    apply_brand_visuals: boolean;
+}>({
+    creation_id: props.creationId,
+    format: props.format,
+    social_account_id: props.socialAccountId,
+    image_count: props.imageCount,
+    prompt: props.prompt,
+    date: props.date,
+    template: props.template,
+    apply_brand_visuals: props.applyBrandVisuals,
+});
+
+// Subscribe to the channel BEFORE dispatching the job that broadcasts on it —
+// otherwise events sent before the subscription handshake completes are lost
+// with no replay, and this page hangs on 'loading' forever (issue #218).
+const startGeneration = async () => {
+    const confirmed = await subscribePrivateChannel(props.channel, (channel) => {
+        subscribed = true;
+        channel.listen('.ai.creation.completed', (e: { post_id?: string; error?: string }) => {
             if (e.error || !e.post_id) {
                 status.value = 'error';
                 errorMessage.value = e.error ?? trans('posts.create.steps.preview_error');
@@ -72,12 +107,21 @@ const subscribe = () => {
             }
             router.visit(editPostRoute(e.post_id).url);
         });
-};
+    });
 
-const unsubscribe = () => {
-    if (echoChannel) {
-        echo().leave(`private-${props.channel}`);
-        echoChannel = null;
+    if (!confirmed) {
+        unsubscribe();
+        status.value = 'error';
+        errorMessage.value = trans('posts.create.steps.preview_error');
+        return;
+    }
+
+    try {
+        await httpStart.post(startPostCreation.url());
+    } catch {
+        unsubscribe();
+        status.value = 'error';
+        errorMessage.value = trans('posts.create.steps.preview_error');
     }
 };
 
@@ -90,7 +134,7 @@ const createAnother = () => {
 };
 
 onMounted(() => {
-    subscribe();
+    startGeneration();
     tipTimer = setInterval(() => {
         tipIndex.value = (tipIndex.value + 1) % tipKeys.length;
     }, 5000);

@@ -1,15 +1,12 @@
 <script setup lang="ts">
-import { router, useHttp } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3';
 import {
     IconArrowLeft,
     IconCheck,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
-import { toast } from 'vue-sonner';
 
-
-import { start as startRoute } from '@/actions/App/Http/Controllers/App/PostAiCreateController';
 import ContentStylePicker from '@/components/ai/ContentStylePicker.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -72,16 +69,6 @@ const PROMPT_MIN = 3;
 const PROMPT_MAX = 2000;
 
 const submitting = ref(false);
-
-const httpStart = useHttp<{
-    format: string | null;
-    social_account_id: string | null;
-    image_count: number;
-    prompt: string;
-    date: string | null;
-    template: string;
-    apply_brand_visuals: boolean;
-}>({ format: null, social_account_id: null, image_count: 0, prompt: '', date: null, template: 'image_card', apply_brand_visuals: true });
 
 const AI_FORMATS: Array<{ value: AiFormat; platforms: string[] }> = [
     { value: ContentType.InstagramFeed, platforms: ['instagram', 'instagram-facebook'] },
@@ -207,36 +194,28 @@ const goBack = () => {
     emit('cancel');
 };
 
-const startGeneration = async () => {
+// Navigate to the loading page WITHOUT starting the job — Loading.vue
+// subscribes to the broadcast channel first, then dispatches it itself, so
+// events sent before the subscription handshake completes are never lost.
+const startGeneration = () => {
     if (!canSubmit.value || submitting.value) return;
 
     submitting.value = true;
 
-    httpStart.format = selectedFormat.value;
-    httpStart.social_account_id = selectedAccountId.value;
-    httpStart.image_count = submittedImageCount.value;
-    httpStart.prompt = promptText.value.trim();
-    httpStart.date = props.date;
-    httpStart.template = resolvedTemplate.value;
-    httpStart.apply_brand_visuals = useBrandColors.value;
-
-    try {
-        const data = await httpStart.post(startRoute.url()) as { creation_id: string; channel: string };
-
-        router.visit(loadingRoute(
-            { creationId: data.creation_id },
-            {
-                query: {
-                    images: String(submittedImageCount.value),
-                    format: selectedFormat.value ?? '',
-                    prompt: promptText.value.trim(),
-                },
+    router.visit(loadingRoute(
+        { creationId: crypto.randomUUID() },
+        {
+            query: {
+                images: String(submittedImageCount.value),
+                format: selectedFormat.value ?? '',
+                prompt: promptText.value.trim(),
+                social_account_id: selectedAccountId.value ?? '',
+                date: props.date ?? '',
+                template: resolvedTemplate.value,
+                apply_brand_visuals: useBrandColors.value ? '1' : '0',
             },
-        ).url);
-    } catch (err: any) {
-        toast.error(err?.response?.data?.message ?? trans('posts.create.steps.preview_error'));
-        submitting.value = false;
-    }
+        },
+    ).url);
 };
 
 </script>

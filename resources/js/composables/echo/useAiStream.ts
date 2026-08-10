@@ -2,6 +2,8 @@ import { echo } from '@laravel/echo-vue';
 import { trans } from 'laravel-vue-i18n';
 import { onUnmounted, ref } from 'vue';
 
+import { subscribePrivateChannel } from './subscribePrivateChannel';
+
 interface TextDeltaEvent {
     delta: string;
 }
@@ -11,9 +13,6 @@ interface ErrorEvent {
 }
 
 export type AiStreamStatus = 'idle' | 'streaming' | 'completed' | 'failed';
-
-/** How long to wait for the server to confirm the channel subscription before giving up and proceeding anyway. */
-const SUBSCRIBE_CONFIRM_TIMEOUT_MS = 5000;
 
 /** Matches PostAiGenerateController/StreamPostContent's channel format — grep `ai-gen.` if it changes. */
 export const aiGenerationChannel = (userId: string, generationId: string): string => `user.${userId}.ai-gen.${generationId}`;
@@ -54,13 +53,8 @@ export const useAiStream = () => {
         status.value = 'streaming';
         subscribedName = channelName;
 
-        return new Promise((resolve) => {
-            // resolve() no-ops after the first call, so whichever fires first wins.
-            setTimeout(() => resolve(true), SUBSCRIBE_CONFIRM_TIMEOUT_MS);
-
-            echo().private(channelName)
-                .subscribed(() => resolve(true))
-                .error(() => resolve(false))
+        return subscribePrivateChannel(channelName, (channel) => {
+            channel
                 .listen('.text_delta', (e: TextDeltaEvent) => {
                     text.value += e.delta ?? '';
                 })

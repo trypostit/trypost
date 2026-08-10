@@ -11,7 +11,6 @@ use App\Models\Post;
 use App\Support\PostStatusRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class PostAiRegenerateMediaController extends Controller
@@ -48,7 +47,7 @@ class PostAiRegenerateMediaController extends Controller
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $regenerationId = (string) Str::uuid();
+        $regenerationId = $request->string('regeneration_id')->toString();
 
         RegeneratePostMediaImage::dispatch(
             workspaceId: $workspace->id,
@@ -59,6 +58,8 @@ class PostAiRegenerateMediaController extends Controller
             instruction: $request->string('instruction')->toString(),
         );
 
+        // Same format as RegeneratePostMediaImage's PrivateChannel and the
+        // frontend's aiMediaRegenerationChannel() (useAiMediaRegeneration.ts).
         return response()->json([
             'regeneration_id' => $regenerationId,
             'channel' => "user.{$request->user()->id}.ai-media.{$regenerationId}",

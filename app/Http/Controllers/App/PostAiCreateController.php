@@ -10,7 +10,6 @@ use App\Models\SocialAccount;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -40,7 +39,7 @@ class PostAiCreateController extends Controller
             }
         }
 
-        $creationId = (string) Str::uuid();
+        $creationId = $request->string('creation_id')->toString();
 
         StreamPostCreation::dispatch(
             userId: $request->user()->id,
@@ -55,12 +54,21 @@ class PostAiCreateController extends Controller
             applyBrandVisuals: $request->boolean('apply_brand_visuals', true),
         );
 
+        // Same format as PostCreationReady's PrivateChannel and the frontend's
+        // Loading.vue `props.channel` — informational, not the source of truth,
+        // since Loading.vue must already know the channel to subscribe first.
         return response()->json([
             'creation_id' => $creationId,
             'channel' => "user.{$request->user()->id}.ai-creation.{$creationId}",
         ], Response::HTTP_ACCEPTED);
     }
 
+    /**
+     * Renders the loading page without dispatching anything — Loading.vue
+     * subscribes to the broadcast channel first, then itself calls start()
+     * (passing these same fields back) to actually dispatch the job. This
+     * guarantees the subscription is live before any event can be broadcast.
+     */
     public function loading(Request $request, string $creationId): InertiaResponse
     {
         return Inertia::render('posts/ai/Loading', [
@@ -69,6 +77,10 @@ class PostAiCreateController extends Controller
             'imageCount' => (int) $request->query('images', '0'),
             'format' => (string) $request->query('format', ''),
             'prompt' => (string) $request->query('prompt', ''),
+            'socialAccountId' => $request->query('social_account_id') ?: null,
+            'date' => $request->query('date') ?: null,
+            'template' => (string) $request->query('template', 'image_card'),
+            'applyBrandVisuals' => $request->boolean('apply_brand_visuals', true),
         ]);
     }
 }

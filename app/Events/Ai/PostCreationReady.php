@@ -26,6 +26,10 @@ class PostCreationReady implements ShouldBroadcast
         return 'ai.creation.completed';
     }
 
+    /**
+     * Same format as PostAiCreateController's response/props and Loading.vue's
+     * `props.channel`.
+     */
     public function broadcastOn(): PrivateChannel
     {
         return new PrivateChannel("user.{$this->userId}.ai-creation.{$this->creationId}");
