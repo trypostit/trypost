@@ -27,7 +27,6 @@ interface UseAiMediaRegenerationOptions {
     onCompleted?: () => void;
 }
 
-/** Matches PostAiRegenerateMediaController/PostMediaRegenerated's channel format. */
 const aiMediaRegenerationChannel = (userId: string, regenerationId: string): string => `user.${userId}.ai-media.${regenerationId}`;
 
 const REGENERATION_TIMEOUT_MS = 180_000;
@@ -106,8 +105,6 @@ export const useAiMediaRegeneration = (options: UseAiMediaRegenerationOptions) =
         options.onCompleted?.();
     };
 
-    // Await this before dispatching the regenerate request — otherwise events
-    // sent before the subscribe handshake completes are lost with no replay.
     const subscribe = (channel: string): Promise<boolean> => {
         subscribedChannel = channel;
         status.value = 'processing';
@@ -145,16 +142,11 @@ export const useAiMediaRegeneration = (options: UseAiMediaRegenerationOptions) =
         try {
             const subscribed = await subscribe(channel);
 
-            // The composable's owner (e.g. a dialog) was torn down while we
-            // waited on the subscribe handshake — don't dispatch (and bill) a
-            // regeneration nobody will see.
             if (unmounted) {
                 unsubscribe();
                 return;
             }
 
-            // Subscription definitively failed — dispatching now would only
-            // produce another silent hang, waiting out REGENERATION_TIMEOUT_MS.
             if (!subscribed) {
                 throw new Error('Channel subscription failed');
             }

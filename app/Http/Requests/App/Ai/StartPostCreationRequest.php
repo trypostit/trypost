@@ -19,10 +19,6 @@ class StartPostCreationRequest extends FormRequest
     }
 
     /**
-     * `creation_id` is minted client-side so the frontend can subscribe to the
-     * broadcast channel before this request is sent — see
-     * PostAiGenerateController / GeneratePostContentRequest for the same pattern.
-     *
      * @return array<string, mixed>
      */
     public function rules(): array

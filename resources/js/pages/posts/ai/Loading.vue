@@ -93,9 +93,6 @@ const httpStart = useHttp<{
     apply_brand_visuals: props.applyBrandVisuals,
 });
 
-// Subscribe to the channel BEFORE dispatching the job that broadcasts on it —
-// otherwise events sent before the subscription handshake completes are lost
-// with no replay, and this page hangs on 'loading' forever (issue #218).
 const startGeneration = async () => {
     const confirmed = await subscribePrivateChannel(props.channel, (channel) => {
         subscribed = true;

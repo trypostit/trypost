@@ -58,8 +58,6 @@ class PostAiRegenerateMediaController extends Controller
             instruction: $request->string('instruction')->toString(),
         );
 
-        // Same format as RegeneratePostMediaImage's PrivateChannel and the
-        // frontend's aiMediaRegenerationChannel() (useAiMediaRegeneration.ts).
         return response()->json([
             'regeneration_id' => $regenerationId,
             'channel' => "user.{$request->user()->id}.ai-media.{$regenerationId}",

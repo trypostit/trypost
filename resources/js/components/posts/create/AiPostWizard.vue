@@ -194,9 +194,6 @@ const goBack = () => {
     emit('cancel');
 };
 
-// Navigate to the loading page WITHOUT starting the job — Loading.vue
-// subscribes to the broadcast channel first, then dispatches it itself, so
-// events sent before the subscription handshake completes are never lost.
 const startGeneration = () => {
     if (!canSubmit.value || submitting.value) return;
 

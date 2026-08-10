@@ -54,21 +54,12 @@ class PostAiCreateController extends Controller
             applyBrandVisuals: $request->boolean('apply_brand_visuals', true),
         );
 
-        // Same format as PostCreationReady's PrivateChannel and the frontend's
-        // Loading.vue `props.channel` — informational, not the source of truth,
-        // since Loading.vue must already know the channel to subscribe first.
         return response()->json([
             'creation_id' => $creationId,
             'channel' => "user.{$request->user()->id}.ai-creation.{$creationId}",
         ], Response::HTTP_ACCEPTED);
     }
 
-    /**
-     * Renders the loading page without dispatching anything — Loading.vue
-     * subscribes to the broadcast channel first, then itself calls start()
-     * (passing these same fields back) to actually dispatch the job. This
-     * guarantees the subscription is live before any event can be broadcast.
-     */
     public function loading(Request $request, string $creationId): InertiaResponse
     {
         return Inertia::render('posts/ai/Loading', [
