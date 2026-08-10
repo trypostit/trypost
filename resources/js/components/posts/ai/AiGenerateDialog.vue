@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { useHttp, usePage } from '@inertiajs/vue3';
+import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useAiStream } from '@/composables/echo/useAiStream';
+import { aiGenerationChannel, useAiStream } from '@/composables/echo/useAiStream';
 import { generate as generatePostAi } from '@/routes/app/posts/ai';
 
 const props = defineProps<{
@@ -39,16 +40,32 @@ const startGeneration = async () => {
     if (! prompt.value.trim()) return;
     dispatching.value = true;
     const generationId = crypto.randomUUID();
+    const channel = aiGenerationChannel(String(page.props.auth.user.id), generationId);
+
     try {
-        await subscribe(`user.${page.props.auth.user.id}.ai-gen.${generationId}`);
+        const subscribed = await subscribe(channel);
+
+        // The dialog was closed while we were waiting on the subscribe
+        // handshake — don't dispatch (and bill) a generation nobody will see.
+        if (! open.value) {
+            unsubscribe();
+            return;
+        }
+
+        // Subscription definitively failed (e.g. broadcasting auth rejected) —
+        // dispatching now would only produce another silent 'streaming' hang.
+        if (! subscribed) {
+            throw new Error('Channel subscription failed');
+        }
 
         httpGenerate.prompt = prompt.value;
         httpGenerate.current_content = props.currentContent || null;
         httpGenerate.generation_id = generationId;
         await httpGenerate.post(generatePostAi.url(props.postId));
     } catch {
+        unsubscribe();
         status.value = 'failed';
-        errorMessage.value = 'Could not start generation';
+        errorMessage.value = trans('posts.ai.generate.errors.start_failed');
     } finally {
         dispatching.value = false;
     }

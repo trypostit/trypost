@@ -1,4 +1,5 @@
 import { echo } from '@laravel/echo-vue';
+import { trans } from 'laravel-vue-i18n';
 import { onUnmounted, ref } from 'vue';
 
 interface TextDeltaEvent {
@@ -13,6 +14,9 @@ export type AiStreamStatus = 'idle' | 'streaming' | 'completed' | 'failed';
 
 /** How long to wait for the server to confirm the channel subscription before giving up and proceeding anyway. */
 const SUBSCRIBE_CONFIRM_TIMEOUT_MS = 5000;
+
+/** Matches PostAiGenerateController/StreamPostContent's channel format — grep `ai-gen.` if it changes. */
+export const aiGenerationChannel = (userId: string, generationId: string): string => `user.${userId}.ai-gen.${generationId}`;
 
 /**
  * Subscribe to a private channel for an in-flight AI generation.
@@ -39,31 +43,24 @@ export const useAiStream = () => {
     };
 
     /**
-     * Subscribe to the given channel and resolve once the server has confirmed
-     * the subscription — callers should await this before triggering whatever
-     * dispatches events onto the channel, otherwise events broadcast before
-     * the subscription handshake completes are lost with no replay. Resolves
-     * after a timeout regardless, so a stalled websocket doesn't block AI
-     * generation entirely.
+     * Await this before dispatching whatever broadcasts onto the channel —
+     * events sent before the subscribe handshake completes are lost with no
+     * replay. Resolves `true` once confirmed (or on timeout — ambiguous, so
+     * we proceed optimistically), `false` only on a definitive subscribe error.
      */
-    const subscribe = (channelName: string): Promise<void> => {
+    const subscribe = (channelName: string): Promise<boolean> => {
         unsubscribe();
         reset();
         status.value = 'streaming';
         subscribedName = channelName;
 
         return new Promise((resolve) => {
-            let settled = false;
-            const settle = () => {
-                if (settled) return;
-                settled = true;
-                resolve();
-            };
-
-            setTimeout(settle, SUBSCRIBE_CONFIRM_TIMEOUT_MS);
+            // resolve() no-ops after the first call, so whichever fires first wins.
+            setTimeout(() => resolve(true), SUBSCRIBE_CONFIRM_TIMEOUT_MS);
 
             echo().private(channelName)
-                .subscribed(settle)
+                .subscribed(() => resolve(true))
+                .error(() => resolve(false))
                 .listen('.text_delta', (e: TextDeltaEvent) => {
                     text.value += e.delta ?? '';
                 })
@@ -72,7 +69,7 @@ export const useAiStream = () => {
                 })
                 .listen('.error', (e: ErrorEvent) => {
                     status.value = 'failed';
-                    errorMessage.value = e?.message ?? 'AI generation failed';
+                    errorMessage.value = e?.message ?? trans('posts.ai.generate.errors.generation_failed');
                 });
         });
     };

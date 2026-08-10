@@ -15,6 +15,10 @@ class GeneratePostContentRequest extends FormRequest
     }
 
     /**
+     * `generation_id` is minted client-side (not server-side) so the frontend
+     * can subscribe to the broadcast channel before this request is even
+     * sent — see StreamPostContent and useAiStream's `aiGenerationChannel()`.
+     *
      * @return array<string, array<int, string>>
      */
     public function rules(): array
@@ -22,8 +26,6 @@ class GeneratePostContentRequest extends FormRequest
         return [
             'prompt' => ['required', 'string', 'max:'.AiPromptRules::PROMPT_MAX_LENGTH],
             'current_content' => ['nullable', 'string', 'max:10000'],
-            // Client-generated so the frontend can subscribe to the broadcast
-            // channel before this request is even sent — see StreamPostContent.
             'generation_id' => ['required', 'string', 'uuid'],
         ];
     }

@@ -237,6 +237,10 @@ return [
             'apply' => 'Bu içeriği kullan',
             'retry' => 'Tekrar dene',
             'cancel' => 'İptal',
+            'errors' => [
+                'start_failed' => 'Oluşturma başlatılamadı.',
+                'generation_failed' => 'AI oluşturma başarısız oldu.',
+            ],
         ],
         'review' => [
             'button_tooltip' => 'AI ile incele',

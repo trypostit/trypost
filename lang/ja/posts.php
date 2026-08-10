@@ -235,6 +235,10 @@ return [
             'apply' => 'この内容を使用',
             'retry' => 'もう一度試す',
             'cancel' => 'キャンセル',
+            'errors' => [
+                'start_failed' => '生成を開始できませんでした。',
+                'generation_failed' => 'AI生成に失敗しました。',
+            ],
         ],
         'review' => [
             'button_tooltip' => 'AI でレビュー',

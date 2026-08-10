@@ -235,6 +235,10 @@ return [
             'apply' => 'Utiliser ce contenu',
             'retry' => 'Réessayer',
             'cancel' => 'Annuler',
+            'errors' => [
+                'start_failed' => 'Impossible de démarrer la génération.',
+                'generation_failed' => 'Échec de la génération par l\'IA.',
+            ],
         ],
         'review' => [
             'button_tooltip' => 'Relire avec l\'IA',

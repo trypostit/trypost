@@ -235,6 +235,10 @@ return [
             'apply' => '使用此内容',
             'retry' => '重试',
             'cancel' => '取消',
+            'errors' => [
+                'start_failed' => '无法开始生成。',
+                'generation_failed' => 'AI 生成失败。',
+            ],
         ],
         'review' => [
             'button_tooltip' => '用 AI 校对',
