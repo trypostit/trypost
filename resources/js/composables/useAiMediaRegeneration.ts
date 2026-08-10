@@ -1,9 +1,11 @@
-import { useHttp } from '@inertiajs/vue3';
+import { useHttp, usePage } from '@inertiajs/vue3';
 import { echo } from '@laravel/echo-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, onUnmounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
+import { subscribePrivateChannel } from '@/composables/echo/subscribePrivateChannel';
+import { extractErrorMessage } from '@/lib/httpError';
 import { regenerateMedia as regeneratePostAiMedia } from '@/routes/app/posts/ai';
 import type { MediaItem } from '@/types/media';
 
@@ -13,10 +15,6 @@ export interface RegenerationPayload {
 }
 
 type RegenerationStatus = 'idle' | 'starting' | 'processing';
-
-interface RegenerationStartResponse {
-    channel?: string;
-}
 
 interface RegenerationEvent {
     media: MediaItem | null;
@@ -30,19 +28,25 @@ interface UseAiMediaRegenerationOptions {
     onCompleted?: () => void;
 }
 
+const aiMediaRegenerationChannel = (userId: string, regenerationId: string): string => `user.${userId}.ai-media.${regenerationId}`;
+
 const REGENERATION_TIMEOUT_MS = 180_000;
 
 export const useAiMediaRegeneration = (options: UseAiMediaRegenerationOptions) => {
+    const page = usePage();
     const instruction = ref('');
     const errorMessage = ref<string | null>(null);
+    const instructionError = ref<string | undefined>(undefined);
     const status = ref<RegenerationStatus>('idle');
 
-    const httpRegenerate = useHttp<{ instruction: string }>({
+    const httpRegenerate = useHttp<{ instruction: string; regeneration_id: string }>({
         instruction: '',
+        regeneration_id: '',
     });
 
     let subscribedChannel: string | null = null;
     let regenerationTimeout: ReturnType<typeof setTimeout> | null = null;
+    let unmounted = false;
 
     const isBusy = computed(() => status.value !== 'idle');
     const isProcessing = computed(() => status.value === 'processing');
@@ -71,6 +75,7 @@ export const useAiMediaRegeneration = (options: UseAiMediaRegenerationOptions) =
     const resetState = () => {
         instruction.value = '';
         errorMessage.value = null;
+        instructionError.value = undefined;
         status.value = 'idle';
         clearRegenerationTimeout();
         unsubscribe();
@@ -103,7 +108,7 @@ export const useAiMediaRegeneration = (options: UseAiMediaRegenerationOptions) =
         options.onCompleted?.();
     };
 
-    const subscribe = (channel: string) => {
+    const subscribe = (channel: string): Promise<boolean> => {
         subscribedChannel = channel;
         status.value = 'processing';
 
@@ -113,9 +118,9 @@ export const useAiMediaRegeneration = (options: UseAiMediaRegenerationOptions) =
             unsubscribe();
         }, REGENERATION_TIMEOUT_MS);
 
-        echo()
-            .private(channel)
-            .listen('.ai.media.regenerated', (event: RegenerationEvent) => handleRegenerationResult(event));
+        return subscribePrivateChannel(channel, (ch) => {
+            ch.listen('.ai.media.regenerated', (event: RegenerationEvent) => handleRegenerationResult(event));
+        });
     };
 
     const submit = async () => {
@@ -127,32 +132,50 @@ export const useAiMediaRegeneration = (options: UseAiMediaRegenerationOptions) =
         }
 
         if (!instructionValue) {
-            setIdleWithError(trans('posts.ai.image_regenerate.errors.required'));
+            errorMessage.value = null;
+            instructionError.value = trans('posts.ai.image_regenerate.errors.required');
             return;
         }
 
         errorMessage.value = null;
+        instructionError.value = undefined;
         status.value = 'starting';
-        httpRegenerate.instruction = instructionValue;
+
+        const regenerationId = crypto.randomUUID();
+        const channel = aiMediaRegenerationChannel(String(page.props.auth.user.id), regenerationId);
 
         try {
-            const response = (await httpRegenerate.post(
-                regeneratePostAiMedia.url({ post: options.postId, mediaId: mediaItem.id }),
-            )) as RegenerationStartResponse;
-            const channel = String(response.channel ?? '');
+            const subscribed = await subscribe(channel);
 
-            if (!channel) {
-                throw new Error('Missing channel in regeneration response.');
+            if (unmounted) {
+                unsubscribe();
+                return;
             }
 
-            subscribe(channel);
+            if (!subscribed) {
+                throw new Error('Channel subscription failed');
+            }
+
+            httpRegenerate.instruction = instructionValue;
+            httpRegenerate.regeneration_id = regenerationId;
+            await httpRegenerate.post(regeneratePostAiMedia.url({ post: options.postId, mediaId: mediaItem.id }));
+
+            if (httpRegenerate.hasErrors) {
+                clearRegenerationTimeout();
+                unsubscribe();
+                status.value = 'idle';
+                instructionError.value = httpRegenerate.errors.instruction ?? trans('posts.ai.image_regenerate.errors.start_failed');
+                return;
+            }
         } catch (error: unknown) {
-            const responseMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-            setIdleWithError(responseMessage ?? trans('posts.ai.image_regenerate.errors.start_failed'));
+            clearRegenerationTimeout();
+            unsubscribe();
+            setIdleWithError(extractErrorMessage(error) ?? trans('posts.ai.image_regenerate.errors.start_failed'));
         }
     };
 
     onUnmounted(() => {
+        unmounted = true;
         clearRegenerationTimeout();
         unsubscribe();
     });
@@ -160,6 +183,7 @@ export const useAiMediaRegeneration = (options: UseAiMediaRegenerationOptions) =
     return {
         instruction,
         errorMessage,
+        instructionError,
         status,
         isBusy,
         isProcessing,
@@ -169,4 +193,3 @@ export const useAiMediaRegeneration = (options: UseAiMediaRegenerationOptions) =
         blockDismissWhileBusy,
     };
 };
-

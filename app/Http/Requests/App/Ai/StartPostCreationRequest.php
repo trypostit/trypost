@@ -27,6 +27,7 @@ class StartPostCreationRequest extends FormRequest
         $allowedFormats[] = ContentType::CAROUSEL_FORMAT;
 
         return [
+            'creation_id' => ['required', 'string', 'uuid'],
             'format' => [
                 'required',
                 'string',

@@ -11,7 +11,6 @@ use App\Models\Post;
 use App\Support\PostStatusRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class PostAiRegenerateMediaController extends Controller
@@ -25,6 +24,7 @@ class PostAiRegenerateMediaController extends Controller
         if (PostStatusRules::blocksEditing($post)) {
             return response()->json([
                 'message' => PostStatusRules::editBlockedMessage(),
+                'errors' => ['instruction' => [PostStatusRules::editBlockedMessage()]],
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -45,10 +45,11 @@ class PostAiRegenerateMediaController extends Controller
         if (data_get($mediaItem, 'source') !== Source::Ai->value) {
             return response()->json([
                 'message' => __('posts.ai.image_regenerate.errors.not_ai_media'),
+                'errors' => ['instruction' => [__('posts.ai.image_regenerate.errors.not_ai_media')]],
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $regenerationId = (string) Str::uuid();
+        $regenerationId = $request->string('regeneration_id')->toString();
 
         RegeneratePostMediaImage::dispatch(
             workspaceId: $workspace->id,

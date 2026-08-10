@@ -20,6 +20,7 @@ class RegeneratePostMediaImageRequest extends FormRequest
     {
         return [
             'instruction' => ['required', 'string', 'max:1000'],
+            'regeneration_id' => ['required', 'string', 'uuid'],
         ];
     }
 

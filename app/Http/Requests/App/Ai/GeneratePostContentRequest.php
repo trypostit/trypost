@@ -22,6 +22,7 @@ class GeneratePostContentRequest extends FormRequest
         return [
             'prompt' => ['required', 'string', 'max:'.AiPromptRules::PROMPT_MAX_LENGTH],
             'current_content' => ['nullable', 'string', 'max:10000'],
+            'generation_id' => ['required', 'string', 'uuid'],
         ];
     }
 }

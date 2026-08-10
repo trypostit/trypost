@@ -10,7 +10,6 @@ use App\Models\SocialAccount;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -40,7 +39,7 @@ class PostAiCreateController extends Controller
             }
         }
 
-        $creationId = (string) Str::uuid();
+        $creationId = $request->string('creation_id')->toString();
 
         StreamPostCreation::dispatch(
             userId: $request->user()->id,
@@ -69,6 +68,10 @@ class PostAiCreateController extends Controller
             'imageCount' => (int) $request->query('images', '0'),
             'format' => (string) $request->query('format', ''),
             'prompt' => (string) $request->query('prompt', ''),
+            'socialAccountId' => $request->query('social_account_id') ?: null,
+            'date' => $request->query('date') ?: null,
+            'template' => (string) $request->query('template', 'image_card'),
+            'applyBrandVisuals' => $request->boolean('apply_brand_visuals', true),
         ]);
     }
 }

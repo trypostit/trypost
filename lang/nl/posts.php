@@ -235,6 +235,10 @@ return [
             'apply' => 'Gebruik deze inhoud',
             'retry' => 'Opnieuw proberen',
             'cancel' => 'Annuleren',
+            'errors' => [
+                'start_failed' => 'Kan generatie niet starten.',
+                'generation_failed' => 'AI-generatie mislukt.',
+            ],
         ],
         'review' => [
             'button_tooltip' => 'Controleren met AI',

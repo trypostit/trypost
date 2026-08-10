@@ -235,6 +235,10 @@ return [
             'apply' => '이 콘텐츠 사용',
             'retry' => '다시 시도',
             'cancel' => '취소',
+            'errors' => [
+                'start_failed' => '생성을 시작할 수 없습니다.',
+                'generation_failed' => 'AI 생성에 실패했습니다.',
+            ],
         ],
         'review' => [
             'button_tooltip' => 'AI로 검토',

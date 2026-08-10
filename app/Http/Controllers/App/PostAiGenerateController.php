@@ -9,7 +9,6 @@ use App\Jobs\Ai\StreamPostContent;
 use App\Models\Post;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class PostAiGenerateController extends Controller
@@ -25,7 +24,7 @@ class PostAiGenerateController extends Controller
             return response()->json(['message' => $gate->message()], Response::HTTP_PAYMENT_REQUIRED);
         }
 
-        $generationId = (string) Str::uuid();
+        $generationId = $request->string('generation_id')->toString();
 
         StreamPostContent::dispatch(
             workspaceId: $workspace->id,

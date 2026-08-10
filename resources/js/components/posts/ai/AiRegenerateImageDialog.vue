@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { watch } from 'vue';
 
+import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -19,7 +20,7 @@ const emit = defineEmits<{
     (e: 'regenerated', payload: RegenerationPayload): void;
 }>();
 
-const { instruction, errorMessage, status, isBusy, isProcessing, canSubmit, submit, resetState, blockDismissWhileBusy } = useAiMediaRegeneration({
+const { instruction, errorMessage, instructionError, status, isBusy, isProcessing, canSubmit, submit, resetState, blockDismissWhileBusy } = useAiMediaRegeneration({
     postId: props.postId,
     getMediaItem: () => props.mediaItem,
     onRegenerated: (payload) => emit('regenerated', payload),
@@ -62,6 +63,7 @@ watch(open, (isOpen) => {
                         :placeholder="$t('posts.ai.image_regenerate.instruction_placeholder')"
                         rows="4"
                     />
+                    <InputError :message="instructionError" />
                 </div>
 
                 <p v-if="status === 'processing'" class="text-sm text-foreground/70">

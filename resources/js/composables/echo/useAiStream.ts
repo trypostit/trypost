@@ -1,5 +1,8 @@
 import { echo } from '@laravel/echo-vue';
+import { trans } from 'laravel-vue-i18n';
 import { onUnmounted, ref } from 'vue';
+
+import { subscribePrivateChannel } from './subscribePrivateChannel';
 
 interface TextDeltaEvent {
     delta: string;
@@ -10,6 +13,8 @@ interface ErrorEvent {
 }
 
 export type AiStreamStatus = 'idle' | 'streaming' | 'completed' | 'failed';
+
+export const aiGenerationChannel = (userId: string, generationId: string): string => `user.${userId}.ai-gen.${generationId}`;
 
 /**
  * Subscribe to a private channel for an in-flight AI generation.
@@ -35,23 +40,25 @@ export const useAiStream = () => {
         subscribedName = null;
     };
 
-    const subscribe = (channelName: string) => {
+    const subscribe = (channelName: string): Promise<boolean> => {
         unsubscribe();
         reset();
         status.value = 'streaming';
         subscribedName = channelName;
 
-        echo().private(channelName)
-            .listen('.text_delta', (e: TextDeltaEvent) => {
-                text.value += e.delta ?? '';
-            })
-            .listen('.stream_end', () => {
-                status.value = 'completed';
-            })
-            .listen('.error', (e: ErrorEvent) => {
-                status.value = 'failed';
-                errorMessage.value = e?.message ?? 'AI generation failed';
-            });
+        return subscribePrivateChannel(channelName, (channel) => {
+            channel
+                .listen('.text_delta', (e: TextDeltaEvent) => {
+                    text.value += e.delta ?? '';
+                })
+                .listen('.stream_end', () => {
+                    status.value = 'completed';
+                })
+                .listen('.error', (e: ErrorEvent) => {
+                    status.value = 'failed';
+                    errorMessage.value = e?.message ?? trans('posts.ai.generate.errors.generation_failed');
+                });
+        });
     };
 
     onUnmounted(() => unsubscribe());

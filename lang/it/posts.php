@@ -235,6 +235,10 @@ return [
             'apply' => 'Usa questo contenuto',
             'retry' => 'Riprova',
             'cancel' => 'Annulla',
+            'errors' => [
+                'start_failed' => 'Impossibile avviare la generazione.',
+                'generation_failed' => 'Generazione IA non riuscita.',
+            ],
         ],
         'review' => [
             'button_tooltip' => 'Rivedi con l\'IA',

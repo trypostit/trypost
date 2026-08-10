@@ -237,6 +237,10 @@ return [
             'apply' => 'Diesen Inhalt verwenden',
             'retry' => 'Erneut versuchen',
             'cancel' => 'Abbrechen',
+            'errors' => [
+                'start_failed' => 'Generierung konnte nicht gestartet werden.',
+                'generation_failed' => 'KI-Generierung fehlgeschlagen.',
+            ],
         ],
         'review' => [
             'button_tooltip' => 'Mit KI prüfen',

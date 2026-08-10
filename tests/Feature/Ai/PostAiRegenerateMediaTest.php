@@ -12,6 +12,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 beforeEach(function () {
@@ -57,8 +58,10 @@ beforeEach(function () {
     ]);
 });
 
-test('regenerate media dispatches async job and returns channel payload', function () {
+test('regenerate media dispatches async job using the client-supplied regeneration id', function () {
     Bus::fake();
+
+    $regenerationId = Str::uuid()->toString();
 
     $response = $this->actingAs($this->user)
         ->postJson(route('app.posts.ai.regenerate-media', [
@@ -66,11 +69,11 @@ test('regenerate media dispatches async job and returns channel payload', functi
             'mediaId' => 'media-ai-1',
         ]), [
             'instruction' => 'Replace ECP with ICP and keep the same visual style.',
+            'regeneration_id' => $regenerationId,
         ])
         ->assertStatus(Response::HTTP_ACCEPTED);
 
-    $regenerationId = $response->json('regeneration_id');
-    expect($regenerationId)->toBeString()->not->toBeEmpty();
+    expect($response->json('regeneration_id'))->toBe($regenerationId);
     expect($response->json('channel'))->toBe("user.{$this->user->id}.ai-media.{$regenerationId}");
 
     Bus::assertDispatched(RegeneratePostMediaImage::class, function (RegeneratePostMediaImage $job) use ($regenerationId) {
@@ -81,6 +84,26 @@ test('regenerate media dispatches async job and returns channel payload', functi
             && $job->regenerationId === $regenerationId;
     });
 });
+
+test('regenerate media requires a valid regeneration_id', function (mixed $regenerationId) {
+    Bus::fake();
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.regenerate-media', [
+            'post' => $this->post->id,
+            'mediaId' => 'media-ai-1',
+        ]), [
+            'instruction' => 'Fix typo',
+            'regeneration_id' => $regenerationId,
+        ])
+        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
+        ->assertJsonValidationErrors(['regeneration_id']);
+
+    Bus::assertNotDispatched(RegeneratePostMediaImage::class);
+})->with([
+    'missing' => [null],
+    'not a uuid' => ['not-a-uuid'],
+]);
 
 test('regenerate media rejects non ai media items', function () {
     Bus::fake();
@@ -102,8 +125,10 @@ test('regenerate media rejects non ai media items', function () {
             'mediaId' => 'media-static-1',
         ]), [
             'instruction' => 'Change the title text',
+            'regeneration_id' => Str::uuid()->toString(),
         ])
-        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
+        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
+        ->assertJsonStructure(['errors' => ['instruction']]);
 
     Bus::assertNotDispatched(RegeneratePostMediaImage::class);
 });
@@ -117,6 +142,7 @@ test('regenerate media returns not found when media id is missing from post', fu
             'mediaId' => 'missing-media-id',
         ]), [
             'instruction' => 'Fix typo',
+            'regeneration_id' => Str::uuid()->toString(),
         ])
         ->assertStatus(Response::HTTP_NOT_FOUND);
 
@@ -134,8 +160,10 @@ test('regenerate media rejects finalized posts', function () {
             'mediaId' => 'media-ai-1',
         ]), [
             'instruction' => 'Fix typo',
+            'regeneration_id' => Str::uuid()->toString(),
         ])
-        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
+        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
+        ->assertJsonStructure(['errors' => ['instruction']]);
 
     Bus::assertNotDispatched(RegeneratePostMediaImage::class);
 });
@@ -149,6 +177,7 @@ test('regenerate media validates instruction is required', function () {
             'mediaId' => 'media-ai-1',
         ]), [
             'instruction' => '   ',
+            'regeneration_id' => Str::uuid()->toString(),
         ])
         ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
 
@@ -183,6 +212,7 @@ test('regenerate media denies access when post is from another workspace', funct
             'mediaId' => 'other-ai-media',
         ]), [
             'instruction' => 'Fix typo',
+            'regeneration_id' => Str::uuid()->toString(),
         ])
         ->assertNotFound();
 
