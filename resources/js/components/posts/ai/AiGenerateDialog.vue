@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useHttp } from '@inertiajs/vue3';
+import { useHttp, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
 import { Button } from '@/components/ui/button';
@@ -20,23 +20,32 @@ const emit = defineEmits<{
     (e: 'apply', content: string): void;
 }>();
 
+const page = usePage();
+
 const prompt = ref('');
 const dispatching = ref(false);
 const { text, status, errorMessage, subscribe, unsubscribe, reset } = useAiStream();
 
-const httpGenerate = useHttp<{ prompt: string; current_content: string | null }>({
+const httpGenerate = useHttp<{ prompt: string; current_content: string | null; generation_id: string }>({
     prompt: '',
     current_content: null,
+    generation_id: '',
 });
 
+// Subscribe to the channel BEFORE the job that broadcasts on it is dispatched —
+// otherwise events sent before our subscription handshake completes are lost
+// with no replay, and the dialog hangs on 'streaming' forever (issue #218).
 const startGeneration = async () => {
     if (! prompt.value.trim()) return;
     dispatching.value = true;
-    httpGenerate.prompt = prompt.value;
-    httpGenerate.current_content = props.currentContent || null;
+    const generationId = crypto.randomUUID();
     try {
-        const data = (await httpGenerate.post(generatePostAi.url(props.postId))) as { channel: string };
-        subscribe(data.channel);
+        await subscribe(`user.${page.props.auth.user.id}.ai-gen.${generationId}`);
+
+        httpGenerate.prompt = prompt.value;
+        httpGenerate.current_content = props.currentContent || null;
+        httpGenerate.generation_id = generationId;
+        await httpGenerate.post(generatePostAi.url(props.postId));
     } catch {
         status.value = 'failed';
         errorMessage.value = 'Could not start generation';

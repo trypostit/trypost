@@ -11,6 +11,9 @@ interface ErrorEvent {
 
 export type AiStreamStatus = 'idle' | 'streaming' | 'completed' | 'failed';
 
+/** How long to wait for the server to confirm the channel subscription before giving up and proceeding anyway. */
+const SUBSCRIBE_CONFIRM_TIMEOUT_MS = 5000;
+
 /**
  * Subscribe to a private channel for an in-flight AI generation.
  * Reactive state accumulates `.TextDelta` event deltas and transitions to
@@ -35,23 +38,43 @@ export const useAiStream = () => {
         subscribedName = null;
     };
 
-    const subscribe = (channelName: string) => {
+    /**
+     * Subscribe to the given channel and resolve once the server has confirmed
+     * the subscription — callers should await this before triggering whatever
+     * dispatches events onto the channel, otherwise events broadcast before
+     * the subscription handshake completes are lost with no replay. Resolves
+     * after a timeout regardless, so a stalled websocket doesn't block AI
+     * generation entirely.
+     */
+    const subscribe = (channelName: string): Promise<void> => {
         unsubscribe();
         reset();
         status.value = 'streaming';
         subscribedName = channelName;
 
-        echo().private(channelName)
-            .listen('.text_delta', (e: TextDeltaEvent) => {
-                text.value += e.delta ?? '';
-            })
-            .listen('.stream_end', () => {
-                status.value = 'completed';
-            })
-            .listen('.error', (e: ErrorEvent) => {
-                status.value = 'failed';
-                errorMessage.value = e?.message ?? 'AI generation failed';
-            });
+        return new Promise((resolve) => {
+            let settled = false;
+            const settle = () => {
+                if (settled) return;
+                settled = true;
+                resolve();
+            };
+
+            setTimeout(settle, SUBSCRIBE_CONFIRM_TIMEOUT_MS);
+
+            echo().private(channelName)
+                .subscribed(settle)
+                .listen('.text_delta', (e: TextDeltaEvent) => {
+                    text.value += e.delta ?? '';
+                })
+                .listen('.stream_end', () => {
+                    status.value = 'completed';
+                })
+                .listen('.error', (e: ErrorEvent) => {
+                    status.value = 'failed';
+                    errorMessage.value = e?.message ?? 'AI generation failed';
+                });
+        });
     };
 
     onUnmounted(() => unsubscribe());

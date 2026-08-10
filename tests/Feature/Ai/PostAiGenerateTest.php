@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\AiPromptRules;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 beforeEach(function () {
@@ -23,14 +24,14 @@ beforeEach(function () {
 });
 
 test('endpoint requires authentication', function () {
-    $this->postJson(route('app.posts.ai.generate', $this->post), ['prompt' => 'hi'])
+    $this->postJson(route('app.posts.ai.generate', $this->post), ['prompt' => 'hi', 'generation_id' => Str::uuid()->toString()])
         ->assertStatus(Response::HTTP_UNAUTHORIZED);
 });
 
 test('endpoint validates prompt is required', function () {
     Bus::fake();
     $this->actingAs($this->user)
-        ->postJson(route('app.posts.ai.generate', $this->post), [])
+        ->postJson(route('app.posts.ai.generate', $this->post), ['generation_id' => Str::uuid()->toString()])
         ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
         ->assertJsonValidationErrors(['prompt']);
 });
@@ -41,6 +42,7 @@ test('endpoint rejects a prompt longer than the maximum length', function () {
     $this->actingAs($this->user)
         ->postJson(route('app.posts.ai.generate', $this->post), [
             'prompt' => str_repeat('a', AiPromptRules::PROMPT_MAX_LENGTH + 1),
+            'generation_id' => Str::uuid()->toString(),
         ])
         ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
         ->assertJsonValidationErrors(['prompt']);
@@ -48,28 +50,47 @@ test('endpoint rejects a prompt longer than the maximum length', function () {
     Bus::assertNotDispatched(StreamPostContent::class);
 });
 
+test('endpoint requires a valid generation_id', function (mixed $generationId) {
+    Bus::fake();
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.generate', $this->post), [
+            'prompt' => 'hi',
+            'generation_id' => $generationId,
+        ])
+        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
+        ->assertJsonValidationErrors(['generation_id']);
+
+    Bus::assertNotDispatched(StreamPostContent::class);
+})->with([
+    'missing' => [null],
+    'not a uuid' => ['not-a-uuid'],
+]);
+
 test('endpoint blocks access to other workspace posts', function () {
     Bus::fake();
     $otherWorkspace = Workspace::factory()->create();
     $foreignPost = Post::factory()->create(['workspace_id' => $otherWorkspace->id]);
 
     $this->actingAs($this->user)
-        ->postJson(route('app.posts.ai.generate', $foreignPost), ['prompt' => 'hi'])
+        ->postJson(route('app.posts.ai.generate', $foreignPost), ['prompt' => 'hi', 'generation_id' => Str::uuid()->toString()])
         ->assertStatus(Response::HTTP_NOT_FOUND);
 });
 
-test('endpoint dispatches StreamPostContent and returns generation id and channel', function () {
+test('endpoint dispatches StreamPostContent using the client-supplied generation id, so the frontend can subscribe before dispatch', function () {
     Bus::fake();
+
+    $generationId = Str::uuid()->toString();
 
     $response = $this->actingAs($this->user)
         ->postJson(route('app.posts.ai.generate', $this->post), [
             'prompt' => 'Write a post about Mondays',
             'current_content' => 'Old content',
+            'generation_id' => $generationId,
         ])
         ->assertStatus(Response::HTTP_ACCEPTED);
 
-    $generationId = $response->json('generation_id');
-    expect($generationId)->toBeString()->not->toBeEmpty();
+    expect($response->json('generation_id'))->toBe($generationId);
     expect($response->json('channel'))->toBe("user.{$this->user->id}.ai-gen.{$generationId}");
 
     Bus::assertDispatched(StreamPostContent::class, function ($job) use ($generationId) {
