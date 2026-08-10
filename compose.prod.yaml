@@ -114,6 +114,8 @@ services:
       # OPENAI_API_KEY: ""
       # ANTHROPIC_API_KEY: ""
       # GEMINI_API_KEY: ""
+      # OPENROUTER_API_KEY: ""
+      # ELEVENLABS_API_KEY: ""
     ports:
       - "8000:80"     # app (nginx)
       - "8080:8080"   # Reverb WebSocket
