@@ -69,9 +69,9 @@ class PostContentGenerator implements Agent, HasStructuredOutput
             'format' => $this->format->value,
             'slide_count' => $this->slideCount,
             'examples' => $examples,
-            'hard_max_chars' => $budget['hard_max_chars'],
-            'target_chars' => $budget['target_chars'],
-            'platform_label' => $budget['platform_label'],
+            'hard_max_chars' => data_get($budget, 'hard_max_chars'),
+            'target_chars' => data_get($budget, 'target_chars'),
+            'platform_label' => data_get($budget, 'platform_label'),
         ])->render();
     }
 

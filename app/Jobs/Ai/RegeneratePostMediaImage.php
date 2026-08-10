@@ -137,10 +137,10 @@ class RegeneratePostMediaImage implements ShouldQueue
 
         $response = $agent->prompt(json_encode([
             'instruction' => $this->instruction,
-            'title' => $baseContext['title'],
-            'body' => $baseContext['body'],
-            'keywords' => $baseContext['keywords'],
-            'language' => $baseContext['language'],
+            'title' => data_get($baseContext, 'title'),
+            'body' => data_get($baseContext, 'body'),
+            'keywords' => data_get($baseContext, 'keywords'),
+            'language' => data_get($baseContext, 'language'),
         ], JSON_THROW_ON_ERROR));
 
         RecordAiUsage::recordText(
@@ -182,16 +182,16 @@ class RegeneratePostMediaImage implements ShouldQueue
         $changeMode = $this->resolveChangeMode((string) data_get($structured, 'change_mode', 'both'));
         $regenerateImage = in_array($changeMode, ['image_only', 'both'], true);
         $regenerateText = in_array($changeMode, ['text_only', 'both'], true);
-        $keywords = $this->normalizeKeywords(data_get($structured, 'keywords', $baseContext['keywords']));
+        $keywords = $this->normalizeKeywords(data_get($structured, 'keywords', data_get($baseContext, 'keywords')));
 
         return [
             'title' => $regenerateText
-                ? trim((string) data_get($structured, 'title', $baseContext['title']))
-                : $baseContext['title'],
+                ? trim((string) data_get($structured, 'title', data_get($baseContext, 'title')))
+                : data_get($baseContext, 'title'),
             'body' => $regenerateText
-                ? trim((string) data_get($structured, 'body', $baseContext['body']))
-                : $baseContext['body'],
-            'keywords' => $regenerateImage && $keywords !== [] ? $keywords : $baseContext['keywords'],
+                ? trim((string) data_get($structured, 'body', data_get($baseContext, 'body')))
+                : data_get($baseContext, 'body'),
+            'keywords' => $regenerateImage && $keywords !== [] ? $keywords : data_get($baseContext, 'keywords'),
             'regenerate_image' => $regenerateImage,
             'regenerate_text' => $regenerateText,
             'change_mode' => $changeMode,
@@ -230,7 +230,7 @@ class RegeneratePostMediaImage implements ShouldQueue
         }
 
         $reusedBackgroundPath = null;
-        if (! $copy['regenerate_image']) {
+        if (! data_get($copy, 'regenerate_image')) {
             $reusedBackgroundPath = (string) data_get($baseContext, 'background_path', '');
             if ($reusedBackgroundPath === '') {
                 $reusedBackgroundPath = null;
@@ -240,11 +240,11 @@ class RegeneratePostMediaImage implements ShouldQueue
         $rendered = app(TemplateImageGenerator::class)->render(
             workspace: $workspace,
             socialAccount: $socialAccount,
-            title: $copy['title'],
-            body: $copy['body'],
-            imageKeywords: $copy['keywords'],
-            width: $baseContext['width'],
-            height: $baseContext['height'],
+            title: data_get($copy, 'title'),
+            body: data_get($copy, 'body'),
+            imageKeywords: data_get($copy, 'keywords'),
+            width: data_get($baseContext, 'width'),
+            height: data_get($baseContext, 'height'),
             backgroundPath: $reusedBackgroundPath,
         );
 
@@ -266,7 +266,7 @@ class RegeneratePostMediaImage implements ShouldQueue
         Workspace $workspace,
         array $rendered,
     ): array {
-        $renderedPath = $rendered['path'];
+        $renderedPath = data_get($rendered, 'path');
         $newBackgroundPath = (string) data_get($rendered, 'source_meta.background_path', '');
         $oldBackgroundPath = (string) data_get($target, 'source_meta.background_path', '');
 
@@ -444,13 +444,15 @@ class RegeneratePostMediaImage implements ShouldQueue
      */
     private function buildAiMediaItem(Workspace $workspace, array $rendered): array
     {
+        $renderedPath = data_get($rendered, 'path');
+
         $media = $workspace->media()->create([
             'collection' => 'ai-generated',
             'type' => MediaType::Image,
-            'path' => $rendered['path'],
-            'original_filename' => basename($rendered['path']),
+            'path' => $renderedPath,
+            'original_filename' => basename($renderedPath),
             'mime_type' => 'image/webp',
-            'size' => Storage::size($rendered['path']),
+            'size' => Storage::size($renderedPath),
             'order' => 0,
         ]);
 
@@ -461,7 +463,7 @@ class RegeneratePostMediaImage implements ShouldQueue
             'type' => 'image',
             'mime_type' => 'image/webp',
             'source' => Source::Ai->value,
-            'source_meta' => $rendered['source_meta'],
+            'source_meta' => data_get($rendered, 'source_meta'),
         ];
     }
 }

@@ -100,9 +100,9 @@ class TemplateImageGenerator
                 return null;
             }
 
-            $imageData = $generated['bytes'];
-            $imageProvider = $generated['provider'];
-            $imageModel = $generated['model'];
+            $imageData = data_get($generated, 'bytes');
+            $imageProvider = data_get($generated, 'provider');
+            $imageModel = data_get($generated, 'model');
 
             $generatedNewBackground = true;
             $resolvedBackgroundPath = $this->storeBackgroundImage($imageData);
@@ -667,8 +667,8 @@ class TemplateImageGenerator
 
         RecordAiUsage::recordImage(
             workspace: $workspace,
-            provider: $generated['provider'],
-            model: $generated['model'],
+            provider: data_get($generated, 'provider'),
+            model: data_get($generated, 'model'),
             metadata: [
                 'image_style' => $imageStyle->value,
                 'width' => $this->width,
@@ -676,7 +676,7 @@ class TemplateImageGenerator
             ],
         );
 
-        $photo = $manager->decodeBinary($generated['bytes'])->cover($this->width, $this->height);
+        $photo = $manager->decodeBinary(data_get($generated, 'bytes'))->cover($this->width, $this->height);
 
         // Apply Gaussian blur passes to soften the background photo.
         $photoCoreNative = $photo->core()->native();

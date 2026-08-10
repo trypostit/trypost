@@ -167,22 +167,22 @@ class StreamPostCreation implements ShouldQueue
         }
 
         if ($format->isCarousel()) {
-            $structured['caption'] = data_get($humanized, 'caption', $structured['caption'] ?? '');
-            $originalSlides = $structured['slides'] ?? [];
+            $structured['caption'] = data_get($humanized, 'caption', data_get($structured, 'caption', ''));
+            $originalSlides = data_get($structured, 'slides', []);
             $humanizedSlides = data_get($humanized, 'slides', []);
 
             foreach ($originalSlides as $i => $slide) {
                 if (isset($humanizedSlides[$i])) {
-                    $originalSlides[$i]['title'] = data_get($humanizedSlides[$i], 'title', $slide['title'] ?? '');
-                    $originalSlides[$i]['body'] = data_get($humanizedSlides[$i], 'body', $slide['body'] ?? '');
+                    $originalSlides[$i]['title'] = data_get($humanizedSlides[$i], 'title', data_get($slide, 'title', ''));
+                    $originalSlides[$i]['body'] = data_get($humanizedSlides[$i], 'body', data_get($slide, 'body', ''));
                 }
             }
 
             $structured['slides'] = $originalSlides;
         } else {
-            $structured['content'] = data_get($humanized, 'content', $structured['content'] ?? '');
-            $structured['image_title'] = data_get($humanized, 'image_title', $structured['image_title'] ?? '');
-            $structured['image_body'] = data_get($humanized, 'image_body', $structured['image_body'] ?? '');
+            $structured['content'] = data_get($humanized, 'content', data_get($structured, 'content', ''));
+            $structured['image_title'] = data_get($humanized, 'image_title', data_get($structured, 'image_title', ''));
+            $structured['image_body'] = data_get($humanized, 'image_body', data_get($structured, 'image_body', ''));
         }
 
         return $structured;
@@ -243,7 +243,7 @@ class StreamPostCreation implements ShouldQueue
     private function aspectRatioFor(ContentType $type): ?string
     {
         $dims = $type->aiImageDimensions();
-        $ratio = $dims['width'] / $dims['height'];
+        $ratio = data_get($dims, 'width') / data_get($dims, 'height');
 
         return match (true) {
             abs($ratio - 1.0) < 0.01 => '1:1',
