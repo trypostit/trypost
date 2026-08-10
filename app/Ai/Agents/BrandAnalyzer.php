@@ -26,11 +26,6 @@ class BrandAnalyzer implements Agent, HasStructuredOutput
         ])->render();
     }
 
-    public function model(): string
-    {
-        return config('ai.default_text_model');
-    }
-
     public function schema(JsonSchema $schema): array
     {
         return [

@@ -108,9 +108,4 @@ class PostContentGenerator implements Agent, HasStructuredOutput
             'image_keywords' => $schema->array()->items($schema->string())->description('2-4 search keywords for Unsplash for the single image.')->required(),
         ];
     }
-
-    public function model(): string
-    {
-        return config('ai.default_text_model');
-    }
 }

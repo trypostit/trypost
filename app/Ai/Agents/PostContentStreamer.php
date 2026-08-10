@@ -40,9 +40,4 @@ class PostContentStreamer implements Agent
             'slide_count' => 1,
         ])->render();
     }
-
-    public function model(): string
-    {
-        return config('ai.default_text_model');
-    }
 }

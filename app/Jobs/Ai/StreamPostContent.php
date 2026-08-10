@@ -14,6 +14,8 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Responses\Data\Meta;
+use Laravel\Ai\Responses\StreamedAgentResponse;
 
 class StreamPostContent implements ShouldQueue
 {
@@ -41,14 +43,20 @@ class StreamPostContent implements ShouldQueue
         $channel = new PrivateChannel("user.{$this->userId}.ai-gen.{$this->generationId}");
 
         try {
-            $response = $agent->broadcast($this->prompt, $channel, now: true);
+            /** @var Meta|null $meta */
+            $meta = null;
+
+            $response = $agent->broadcast($this->prompt, $channel, now: true)
+                ->then(function (StreamedAgentResponse $streamed) use (&$meta): void {
+                    $meta = $streamed->meta;
+                });
 
             RecordAiUsage::recordText(
                 workspace: $workspace,
                 promptTokens: $response->usage?->promptTokens ?? 0,
                 completionTokens: $response->usage?->completionTokens ?? 0,
-                provider: (string) config('ai.default'),
-                model: (string) config('ai.default_text_model'),
+                provider: (string) $meta?->provider,
+                model: (string) $meta?->model,
                 userId: $this->userId,
                 metadata: ['agent' => 'post_streamer'],
             );

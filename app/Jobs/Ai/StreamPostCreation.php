@@ -85,8 +85,8 @@ class StreamPostCreation implements ShouldQueue
                 workspace: $workspace,
                 promptTokens: $response->usage->promptTokens,
                 completionTokens: $response->usage->completionTokens,
-                provider: (string) config('ai.default'),
-                model: (string) config('ai.default_text_model'),
+                provider: (string) $response->meta->provider,
+                model: (string) $response->meta->model,
                 userId: $this->userId,
                 metadata: ['agent' => 'post_generator', 'format' => $this->format],
             );
@@ -152,8 +152,8 @@ class StreamPostCreation implements ShouldQueue
                 workspace: $workspace,
                 promptTokens: $response->usage->promptTokens,
                 completionTokens: $response->usage->completionTokens,
-                provider: (string) config('ai.default'),
-                model: (string) config('ai.default_text_model'),
+                provider: (string) $response->meta->provider,
+                model: (string) $response->meta->model,
                 userId: $this->userId,
                 metadata: ['agent' => 'post_humanizer', 'format' => $format->value],
             );

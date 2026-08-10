@@ -114,8 +114,8 @@ class RunGenerateNode
             workspace: $workspace,
             promptTokens: $generatorResponse->usage->promptTokens,
             completionTokens: $generatorResponse->usage->completionTokens,
-            provider: (string) config('ai.default'),
-            model: (string) config('ai.default_text_model'),
+            provider: (string) $generatorResponse->meta->provider,
+            model: (string) $generatorResponse->meta->model,
             metadata: ['agent' => 'post_generator', 'format' => $format->value, 'source' => 'automation'],
         );
 
@@ -196,8 +196,8 @@ class RunGenerateNode
                 workspace: $workspace,
                 promptTokens: $response->usage->promptTokens,
                 completionTokens: $response->usage->completionTokens,
-                provider: (string) config('ai.default'),
-                model: (string) config('ai.default_text_model'),
+                provider: (string) $response->meta->provider,
+                model: (string) $response->meta->model,
                 metadata: ['agent' => 'post_humanizer', 'format' => $format->value, 'source' => 'automation'],
             );
 

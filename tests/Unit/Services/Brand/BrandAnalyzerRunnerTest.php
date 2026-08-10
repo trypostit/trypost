@@ -23,8 +23,9 @@ test('isAvailable follows ai.providers for the configured default including open
     expect($runner->isAvailable())->toBeTrue();
 });
 
-test('agents do not override provider so laravel/ai uses config ai.default', function (string $agent) {
-    expect(method_exists($agent, 'provider'))->toBeFalse();
+test('agents do not override provider or model so laravel/ai resolves both from the active provider', function (string $agent) {
+    expect(method_exists($agent, 'provider'))->toBeFalse()
+        ->and(method_exists($agent, 'model'))->toBeFalse();
 })->with([
     BrandAnalyzer::class,
     PostContentGenerator::class,

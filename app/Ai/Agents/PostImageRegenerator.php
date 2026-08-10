@@ -46,9 +46,4 @@ class PostImageRegenerator implements Agent, HasStructuredOutput
                 ->required(),
         ];
     }
-
-    public function model(): string
-    {
-        return config('ai.default_text_model');
-    }
 }

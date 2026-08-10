@@ -71,9 +71,4 @@ class PostContentHumanizer implements Agent, HasStructuredOutput
             'image_body' => $schema->string()->description('The humanized image overlay body.')->required(),
         ];
     }
-
-    public function model(): string
-    {
-        return config('ai.default_text_model');
-    }
 }
