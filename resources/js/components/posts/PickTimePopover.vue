@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { parseDate } from '@internationalized/date';
+import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useCalendarLocale } from '@/composables/useCalendarLocale';
 import date from '@/date';
 import dayjs from '@/dayjs';
 
@@ -15,6 +17,7 @@ const props = defineProps<{
     showRemove?: boolean;
 }>();
 
+const calendarLocale = useCalendarLocale();
 const timezoneAbbr = date.getTimezoneAbbr();
 
 const emit = defineEmits<{
@@ -95,7 +98,13 @@ const remove = () => {
             <DialogTitle class="sr-only">{{ $t('posts.edit.pick_time') }}</DialogTitle>
 
             <div class="flex justify-center px-3 pt-3">
-                <Calendar v-model="internalDate as any" layout="month-and-year" locale="en" calendar-label="Pick a date" initial-focus />
+                <Calendar
+                    v-model="internalDate as any"
+                    layout="month-and-year"
+                    :locale="calendarLocale"
+                    :calendar-label="trans('common.date_picker.label')"
+                    initial-focus
+                />
             </div>
 
             <div class="border-t p-3">

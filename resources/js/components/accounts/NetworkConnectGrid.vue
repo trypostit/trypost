@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
-import { IconAlertTriangle, IconCheck, IconPlus } from '@tabler/icons-vue';
+import { IconAlertTriangle, IconCheck } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
+import InstagramConnectDialog from '@/components/accounts/InstagramConnectDialog.vue';
 import TelegramConnectDialog from '@/components/accounts/TelegramConnectDialog.vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ export interface AvailablePlatform {
     label: string;
     color: string;
     network: string;
+    connect_methods?: string[];
 }
 
 export interface ConnectedAccount {
@@ -25,6 +27,8 @@ export interface ConnectedAccount {
     network: string;
     username: string;
     display_name: string;
+    display_label: string;
+    handle_label: string;
     avatar_url: string | null;
     status: 'connected' | 'disconnected' | 'token_expired' | null;
 }
@@ -150,6 +154,7 @@ const cardConnection = computed(
 );
 
 const telegramOpen = ref(false);
+const instagramOpen = ref(false);
 const disconnectModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(
     null,
 );
@@ -167,7 +172,7 @@ const { openOAuthPopup } = useOAuthPopup((result) => {
 const disconnectAccount = (account: ConnectedAccount) => {
     disconnectModal.value?.open({
         url: disconnect.url(account.id),
-        confirmText: account.username || account.display_name,
+        confirmText: account.handle_label,
     });
 };
 
@@ -177,9 +182,27 @@ const needsReconnect = (account: ConnectedAccount): boolean =>
 const connectEntryFor = (platformValue: string): string =>
     platformValue === Platform.LinkedInPage ? Platform.LinkedIn : platformValue;
 
+const instagramMethods = computed((): string[] => {
+    const instagram = props.platforms.find(
+        (platform) => platform.value === Platform.Instagram,
+    );
+
+    return (
+        instagram?.connect_methods ?? [
+            Platform.Instagram,
+            Platform.InstagramFacebook,
+        ]
+    );
+});
+
 const openConnect = (platformValue: string) => {
     if (platformValue === Platform.Telegram) {
         telegramOpen.value = true;
+        return;
+    }
+
+    if (platformValue === Platform.Instagram) {
+        instagramOpen.value = true;
         return;
     }
 
@@ -195,7 +218,15 @@ const connectPlatform = (platformValue: string) => {
 };
 
 const reconnectAccount = (account: ConnectedAccount) => {
-    openConnect(connectEntryFor(account.platform));
+    const entry = connectEntryFor(account.platform);
+
+    if (entry === Platform.Telegram) {
+        telegramOpen.value = true;
+        return;
+    }
+
+    // Reconnect with the same OAuth method — skip the Instagram method picker.
+    openOAuthPopup(entry);
 };
 
 const CardState = {
@@ -251,13 +282,6 @@ const cardState = computed((): Record<string, CardStateValue> => {
                 >
                     <IconAlertTriangle class="size-3.5" stroke-width="2.5" />
                 </span>
-                <span
-                    v-else
-                    class="pointer-events-none absolute -top-2 -right-2 inline-flex size-6 items-center justify-center rounded-full border-2 border-foreground bg-violet-200 text-foreground opacity-0 shadow-2xs transition-all group-hover:scale-110 group-hover:rotate-90 group-hover:opacity-100"
-                    aria-hidden="true"
-                >
-                    <IconPlus class="size-3.5" stroke-width="3" />
-                </span>
 
                 <div
                     :class="[
@@ -299,10 +323,7 @@ const cardState = computed((): Record<string, CardStateValue> => {
                         v-else
                         class="mt-0.5 truncate text-xs leading-tight text-foreground/70"
                     >
-                        {{
-                            cardConnection[platform.value]?.display_name ||
-                            cardConnection[platform.value]?.username
-                        }}
+                        {{ cardConnection[platform.value]?.display_label }}
                     </p>
                 </div>
 
@@ -335,6 +356,12 @@ const cardState = computed((): Record<string, CardStateValue> => {
         </div>
 
         <TelegramConnectDialog v-model:open="telegramOpen" />
+
+        <InstagramConnectDialog
+            v-model:open="instagramOpen"
+            :methods="instagramMethods"
+            @select="openOAuthPopup"
+        />
 
         <ConfirmDeleteModal
             ref="disconnectModal"

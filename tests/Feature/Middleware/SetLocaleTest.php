@@ -38,7 +38,7 @@ test('shares rtl direction and sets the locale for Arabic', function () {
 test('shares ltr direction for a left-to-right locale', function (string $locale) {
     expect(runSetLocale($locale))->toBe('ltr');
     expect(app()->getLocale())->toBe($locale);
-})->with(['en', 'ja', 'pt-BR', 'de']);
+})->with(['en', 'uk', 'ja', 'pt-BR', 'de']);
 
 test('falls back to the default locale and ltr for an unknown cookie', function () {
     expect(runSetLocale('sv'))->toBe('ltr');
@@ -63,4 +63,23 @@ test('does not reset the cookie when a valid locale is present', function () {
         ->first(fn ($cookie) => $cookie->getName() === 'locale');
 
     expect($cookie)->toBeNull();
+});
+
+test('attaches the locale cookie to a raw Symfony response without crashing', function () {
+    $request = Request::create('/', 'GET');
+
+    $response = (new SetLocale)->handle(
+        $request,
+        fn () => new Response('{"error":"invalid_client"}', 401, [
+            'Content-Type' => 'application/json',
+        ]),
+    );
+
+    expect($response->getStatusCode())->toBe(401);
+
+    $cookie = collect($response->headers->getCookies())
+        ->first(fn ($cookie) => $cookie->getName() === 'locale');
+
+    expect($cookie)->not->toBeNull()
+        ->and($cookie->getValue())->toBe(config('languages.default'));
 });

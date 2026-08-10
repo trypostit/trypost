@@ -17,7 +17,7 @@ import {
     TableLoadMore,
     TableRow,
 } from '@/components/ui/table';
-import dayjs from '@/dayjs';
+import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import {
     metrics as metricsAutomation,
@@ -46,7 +46,7 @@ const statusConfig = (status: string) => {
     return configs[status] ?? configs['draft'];
 };
 
-const formatDate = (date: string) => dayjs.utc(date).local().format('D MMM YYYY');
+const formatDate = (value: string) => date.formatDate(value);
 
 const isCreating = ref(false);
 

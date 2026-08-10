@@ -65,3 +65,12 @@ test('blade view renders without error', function () {
     expect($rendered)->toContain('Alice Author');
     expect($rendered)->toContain('short excerpt');
 });
+
+test('footer links to notification preferences instead of an unsubscribe link', function () {
+    $mail = new MentionedInComment($this->comment, $this->author, 'short excerpt');
+    $rendered = $mail->render();
+
+    expect($rendered)->toContain('Manage notifications');
+    expect($rendered)->toContain(route('app.notifications.preferences'));
+    expect($rendered)->not->toContain('Unsubscribe');
+});

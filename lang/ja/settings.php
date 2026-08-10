@@ -129,6 +129,7 @@ return [
             'brand' => 'ブランド',
             'users' => 'メンバー',
             'api_keys' => 'API キー',
+            'mcp' => 'MCP',
         ],
         'title' => 'ワークスペース設定',
         'logo_heading' => 'ワークスペースのロゴ',

@@ -3,6 +3,7 @@ import { IconPhoto, IconStack2 } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
+import { getInitials } from '@/composables/useInitials';
 import { isVideoMedia } from '@/composables/useMedia';
 import type { MediaItem } from '@/types/media';
 
@@ -11,6 +12,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -19,11 +21,15 @@ interface Props {
     content: string;
     media: MediaItem[];
     contentType?: string;
+    meta?: Record<string, any>;
 }
 
 const props = defineProps<Props>();
 
 const isCarousel = computed(() => props.contentType === 'pinterest_carousel');
+
+const pinTitle = computed(() => (props.meta?.title as string | undefined) || '');
+const pinLink = computed(() => (props.meta?.link as string | undefined) || '');
 </script>
 
 <template>
@@ -116,24 +122,39 @@ const isCarousel = computed(() => props.contentType === 'pinterest_carousel');
 
                     <!-- Pin Info -->
                     <div class="p-2.5">
-                        <!-- Description -->
-                        <div v-if="content" class="text-[13px] text-[#111111] dark:text-[#e0e0e0] line-clamp-2 leading-[17px]">
+                        <div v-if="pinTitle" class="text-[14px] font-semibold text-[#111111] dark:text-[#e0e0e0] line-clamp-2 leading-[18px]">
+                            {{ pinTitle }}
+                        </div>
+                        <div
+                            v-if="content"
+                            class="text-[13px] text-[#111111] dark:text-[#e0e0e0] line-clamp-2 leading-[17px]"
+                            :class="pinTitle ? 'mt-1' : ''"
+                        >
                             {{ content }}
                         </div>
+                        <a
+                            v-if="pinLink"
+                            :href="pinLink"
+                            class="mt-1 block truncate text-[11px] text-[#767676] dark:text-[#a0a0a0]"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            {{ pinLink }}
+                        </a>
 
                         <!-- User Info -->
                         <div class="flex items-center gap-2 mt-2">
                             <img
                                 v-if="socialAccount.avatar_url"
                                 :src="socialAccount.avatar_url"
-                                :alt="socialAccount.display_name"
+                                :alt="socialAccount.display_label"
                                 class="h-6 w-6 rounded-full object-cover"
                             />
                             <div v-else class="h-6 w-6 rounded-full bg-[#e60023] flex items-center justify-center text-white font-semibold text-[10px]">
-                                {{ socialAccount.display_name?.charAt(0) }}
+                                {{ getInitials(socialAccount.display_label) }}
                             </div>
                             <span class="text-[12px] font-medium text-[#111111] dark:text-[#e0e0e0] truncate">
-                                {{ socialAccount.display_name }}
+                                {{ socialAccount.display_label }}
                             </span>
                         </div>
                     </div>

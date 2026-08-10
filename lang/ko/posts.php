@@ -158,6 +158,13 @@ return [
             'search_board' => '보드 검색...',
             'no_board_found' => '검색과 일치하는 보드가 없습니다.',
             'board_required' => '이 게시물을 게시할 Pinterest 보드를 선택하세요.',
+            'title' => '제목',
+            'title_placeholder' => '선택적 핀 제목',
+            'link' => '도착 링크',
+            'link_placeholder' => 'https://example.com',
+            'link_invalid' => '유효한 목적지 링크를 입력하세요(http 또는 https).',
+            'title_max' => '제목은 100자를 초과할 수 없습니다.',
+            'link_max' => '목적지 링크는 2048자를 초과할 수 없습니다.',
         ],
         'discord' => [
             'settings' => 'Discord 설정',
@@ -568,6 +575,9 @@ return [
         'account_disconnected' => '소셜 계정 연결이 해제되었습니다',
         'account_inactive' => '소셜 계정이 비활성화되었습니다',
         'account_token_expired' => '소셜 계정 세션이 만료되었습니다 — 재연결하세요',
+        'platform_unavailable' => '플랫폼을 일시적으로 사용할 수 없습니다. 곧 다시 시도합니다.',
+        'platform_unavailable_exhausted' => '여러 번 재시도했지만 플랫폼을 사용할 수 없었습니다. 나중에 다시 시도하세요.',
+        'publishing_timed_out' => '게시에 시간이 초과되었습니다. 다시 시도하세요.',
     ],
 
     'delete' => [

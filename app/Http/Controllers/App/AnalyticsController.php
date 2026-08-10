@@ -51,8 +51,8 @@ class AnalyticsController extends Controller
             ->map(fn (SocialAccount $account) => [
                 'id' => $account->id,
                 'platform' => $account->platform->value,
-                'display_name' => $account->display_name,
                 'username' => $account->username,
+                'display_label' => $account->display_label,
                 'avatar_url' => $account->avatar_url,
             ]);
 

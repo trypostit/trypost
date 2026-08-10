@@ -24,9 +24,7 @@
                         <div style="width: 8px; height: 8px; border-radius: 50%; background-color: @{{ $account->platform->color() }}; margin-right: 12px"></div>
                         <div>
                           <strong class="text-zinc-900">@{{ $account->platform->label() }}</strong>
-                          @if($account->display_name || $account->username)
-                          <span class="text-zinc-500"> - @{{ $account->display_name ?? $account->username }}</span>
-                          @endif
+                          <span class="text-zinc-500"> - @{{ $account->accountDisplayName() }}</span>
                         </div>
                       </div>
                     </td>
@@ -58,7 +56,7 @@
               </td>
             </tr>
           </table>
-          <x-footer />
+          <x-footer-authenticated />
         </td>
       </tr>
     </table>

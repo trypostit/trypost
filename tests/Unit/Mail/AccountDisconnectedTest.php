@@ -17,7 +17,7 @@ test('account disconnected mail has correct subject', function () {
 
     $mail = new AccountDisconnected($account);
 
-    expect($mail->envelope()->subject)->toBe('Your Instagram (Standalone) account in My Workspace needs to be reconnected');
+    expect($mail->envelope()->subject)->toBe('Your Instagram account in My Workspace needs to be reconnected');
 });
 
 test('account disconnected mail has correct content', function () {
@@ -68,4 +68,14 @@ test('account disconnected mail is queueable', function () {
     $mail = new AccountDisconnected($account);
 
     expect($mail)->toBeInstanceOf(ShouldQueue::class);
+});
+
+test('footer links to notification preferences instead of an unsubscribe link', function () {
+    $account = SocialAccount::factory()->create();
+
+    $mail = new AccountDisconnected($account);
+
+    $mail->assertSeeInHtml('Manage notifications');
+    $mail->assertSeeInHtml(route('app.notifications.preferences'));
+    $mail->assertDontSeeInHtml('Unsubscribe');
 });

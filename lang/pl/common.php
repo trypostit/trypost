@@ -35,7 +35,10 @@ return [
         'empty' => 'Nie znaleziono strefy czasowej',
     ],
 
+    'just_now' => 'Właśnie teraz',
+
     'date_picker' => [
+        'label' => 'Wybór daty',
         'select' => 'Wybierz datę',
     ],
 

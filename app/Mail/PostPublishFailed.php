@@ -32,7 +32,7 @@ class PostPublishFailed extends Mailable implements ShouldQueue
     {
         $failedPlatforms = $this->post->postPlatforms()
             ->with('socialAccount')
-            ->where('enabled', true)
+            ->enabled()
             ->get()
             ->filter(fn ($pp) => $pp->status === Status::Failed)
             ->map(fn ($pp) => [

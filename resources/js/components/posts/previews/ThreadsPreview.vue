@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, toRef } from 'vue';
+import { toRef } from 'vue';
 
 import LinkCard from "@/components/posts/previews/LinkCard.vue";
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
+import { getInitials } from '@/composables/useInitials';
 import { useLinkCard } from '@/composables/useLinkCard';
 import { isVideoMedia } from '@/composables/useMedia';
 import type { MediaItem } from '@/types/media';
@@ -12,6 +13,8 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
+    handle_label: string;
     avatar_url: string | null;
 }
 
@@ -22,8 +25,6 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-
-const username = computed(() => props.socialAccount.username || props.socialAccount.display_name);
 
 const { card: linkCard, loading: linkCardLoading } = useLinkCard(
     toRef(props, 'content'),
@@ -69,17 +70,17 @@ const { card: linkCard, loading: linkCardLoading } = useLinkCard(
                     <!-- Avatar -->
                     <div class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
                         <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url"
-                            :alt="socialAccount.display_name" class="w-full h-full object-cover" />
+                            :alt="socialAccount.display_label" class="w-full h-full object-cover" />
                         <div v-else
                             class="w-full h-full bg-gradient-to-br from-[#833ab4] via-[#fd1d1d] to-[#fcb045] flex items-center justify-center text-white font-bold text-sm">
-                            {{ socialAccount.display_name?.charAt(0).toUpperCase() }}
+                            {{ getInitials(socialAccount.display_label) }}
                         </div>
                     </div>
 
                     <!-- Name + verified -->
                     <div class="flex items-center gap-1 min-w-0">
                         <span class="font-semibold text-[15px] text-[#000000] dark:text-[#f5f5f5] truncate">
-                            {{ username }}
+                            {{ socialAccount.handle_label }}
                         </span>
                         <!-- Verified badge -->
                         <svg class="h-3.5 w-3.5 text-[#0095f6] flex-shrink-0" viewBox="0 0 40 40" fill="currentColor">

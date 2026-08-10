@@ -18,7 +18,7 @@ class CreateInvite
             'account_id' => $workspace->account_id,
             'invited_by' => auth()->id(),
             'email' => data_get($data, 'email'),
-            'role' => WorkspaceRole::from((string) data_get($data, 'role')),
+            'role' => WorkspaceRole::from(data_get($data, 'role')),
             'workspaces' => [$workspace->id],
         ]);
 

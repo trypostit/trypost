@@ -18,7 +18,7 @@ class BillingController extends Controller
 {
     public function subscribe(): RedirectResponse
     {
-        return redirect()->route('app.onboarding');
+        return redirect()->route('app.welcome.persona');
     }
 
     public function processing(Request $request): Response|RedirectResponse
@@ -27,21 +27,27 @@ class BillingController extends Controller
             return redirect()->route('app.calendar');
         }
 
-        $account = $request->user()->account;
-        $sessionId = $request->query('session_id');
+        $user = $request->user();
+        $account = $user->accountOrFail();
+        $sessionId = $request->string('session_id')->toString();
 
         // Consume the checkout session once: `fromCheckout` is true only the first
         // time this session_id is seen, so a back-button/refresh to the success URL
         // can't re-fire `checkout.completed`. `Cache::add` is atomic — it returns
         // true only when the key didn't exist yet.
-        $fromCheckout = is_string($sessionId) && $sessionId !== ''
+        $fromCheckout = filled($sessionId)
             && Cache::add("checkout_tracked:{$sessionId}", true, now()->addDay());
 
+        $subscriptionActive = $account->subscribed(Account::SUBSCRIPTION_NAME);
+        $redirectToOnboarding = $user->isAccountOwner()
+            && $account->isOnboardingOpen();
+
         return Inertia::render('billing/Processing', [
-            'subscriptionActive' => $account && $account->subscribed(Account::SUBSCRIPTION_NAME),
+            'subscriptionActive' => $subscriptionActive,
             'fromCheckout' => $fromCheckout,
-            'persona' => $request->user()->persona?->value,
-            'conversion' => $fromCheckout && $account?->stripe_id
+            'redirectToOnboarding' => $redirectToOnboarding,
+            'persona' => $user->persona?->value,
+            'conversion' => $fromCheckout && $account->stripe_id
                 ? fn () => $this->buildConversionData($account, $sessionId)
                 : null,
         ]);

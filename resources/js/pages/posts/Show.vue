@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { usePostEcho } from '@/composables/echo/usePostEcho';
 import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import { getPlatformStatusConfig, getPostStatusConfig } from '@/composables/usePostStatus';
-import dayjs from '@/dayjs';
+import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { classify, isDocument as isDocumentItem, isVideo as isVideoItem, MediaType } from '@/lib/mediaType';
 import { index as postsIndex } from '@/routes/app/posts';
@@ -83,8 +83,8 @@ const getDisplayUsername = (pp: PostPlatform): string | null => pp.display_usern
 
 const getDisplayAvatar = (pp: PostPlatform): string | null => pp.display_avatar;
 
-const formatDateTime = (date: string | null): string =>
-    date ? dayjs.utc(date).local().format('D MMM YYYY, HH:mm') : '';
+const formatDateTime = (value: string | null): string =>
+    value ? date.formatDateTime(value) : '';
 
 const lightbox = ref<InstanceType<typeof ImagePreviewDialog> | null>(null);
 

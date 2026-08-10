@@ -86,7 +86,7 @@ class WorkspaceController extends Controller
      * Block creating a paid additional workspace without an active subscription.
      * Guards both the form (`create`) and the write (`store`) so a direct POST
      * can't bootstrap a second billable workspace — which would also inflate the
-     * checkout quantity past the fixed first-month coupon.
+     * checkout quantity before the first subscription exists.
      */
     private function denyAdditionalWorkspaceWithoutSubscription(User $user): ?RedirectResponse
     {

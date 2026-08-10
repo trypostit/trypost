@@ -14,6 +14,8 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
+    handle_label: string;
     avatar_url: string | null;
 }
 
@@ -32,10 +34,11 @@ const props = defineProps<{
     media: MediaItem[];
     platformContentTypes: Record<string, string>;
     platformMeta?: Record<string, Record<string, any>>;
+    postedAt?: string | null;
 }>();
 
 const getPlatformAvatar = (pp: PostPlatform): string | null => pp.social_account?.avatar_url ?? pp.platform_avatar ?? null;
-const getPlatformDisplayName = (pp: PostPlatform): string => pp.social_account?.display_name ?? pp.platform_name ?? pp.platform;
+const getPlatformDisplayName = (pp: PostPlatform): string => pp.social_account?.display_label ?? pp.platform_name ?? pp.platform;
 
 const activeId = ref<string | null>(props.platforms[0]?.id ?? null);
 
@@ -103,6 +106,7 @@ const activeContentType = computed((): string | undefined => {
                     :social-account="activePlatform.social_account"
                     :content-type="activeContentType"
                     :meta="platformMeta?.[activePlatform.id] ?? {}"
+                    :posted-at="postedAt"
                 />
             </PhoneMockup>
             <div v-else class="flex flex-col items-center gap-3 text-center">

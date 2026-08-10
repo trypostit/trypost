@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
+import { getInitials } from '@/composables/useInitials';
 import { isDocumentMedia, isVideoMedia } from '@/composables/useMedia';
 import type { MediaItem } from '@/types/media';
 
@@ -8,6 +9,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -30,16 +32,16 @@ defineProps<Props>();
                 <div class="flex items-start gap-3">
                     <div class="relative flex-shrink-0">
                         <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url"
-                            :alt="socialAccount.display_name" class="h-12 w-12 rounded-full object-cover" />
+                            :alt="socialAccount.display_label" class="h-12 w-12 rounded-full object-cover" />
                         <div v-else
                             class="h-12 w-12 rounded-full bg-[#0a66c2] flex items-center justify-center text-white font-semibold text-lg">
-                            {{ socialAccount.display_name?.charAt(0).toUpperCase() }}
+                            {{ getInitials(socialAccount.display_label) }}
                         </div>
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-1">
                             <p class="font-semibold text-[15px] text-[#000000e6] dark:text-[#ffffffe6]">
-                                {{ socialAccount.display_name }}
+                                {{ socialAccount.display_label }}
                             </p>
                             <span class="text-[14px] text-[#00000099] dark:text-[#ffffff99]">• 1st</span>
                         </div>
@@ -123,11 +125,11 @@ defineProps<Props>();
 
             <!-- Comment Input -->
             <div class="px-2 py-4 flex items-center gap-2">
-                <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url" :alt="socialAccount.display_name"
+                <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url" :alt="socialAccount.display_label"
                     class="h-8 w-8 rounded-full object-cover shrink-0" />
                 <div v-else
                     class="h-8 w-8 rounded-full bg-[#0a66c2] flex items-center justify-center text-white font-semibold text-sm shrink-0">
-                    {{ socialAccount.display_name?.charAt(0).toUpperCase() }}
+                    {{ getInitials(socialAccount.display_label) }}
                 </div>
                 <div class="flex-1 bg-[#f4f2ee] dark:bg-[#38434f] rounded-full px-4 py-2">
                     <span class="text-[14px] text-[#00000099] dark:text-[#ffffff99]">Leave your thoughts...</span>

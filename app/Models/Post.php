@@ -148,7 +148,7 @@ class Post extends Model
     public function allowedMediaTypes(): array
     {
         $platforms = $this->postPlatforms()
-            ->where('enabled', true)
+            ->enabled()
             ->with('socialAccount')
             ->get()
             ->pluck('socialAccount.platform')

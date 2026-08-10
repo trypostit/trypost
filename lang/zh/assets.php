@@ -14,6 +14,8 @@ return [
         'formats' => 'JPEG、PNG、GIF、WebP、MP4、PDF',
         'uploading' => '上传中…',
         'failed' => '无法上传 :file，请重试。',
+        'file_too_large' => '文件大小超过允许的最大值(:max MB)。',
+        'cancelled' => '上传已取消。',
     ],
 
     'empty' => [

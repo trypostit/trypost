@@ -104,6 +104,7 @@ test('normalizes various language codes to supported locales', function (string 
 })->with([
     // Every supported language, detected from its primary subtag.
     ['en', 'en'],
+    ['uk', 'uk'],
     ['pt', 'pt-BR'],
     ['es', 'es'],
     ['fr', 'fr'],
@@ -121,6 +122,7 @@ test('normalizes various language codes to supported locales', function (string 
     // Region/script subtags still resolve to the supported language.
     ['pt-PT', 'pt-BR'],
     ['en-US', 'en'],
+    ['uk-UA', 'uk'],
     ['es-MX', 'es'],
     ['ja-JP', 'ja'],
     ['zh-Hans', 'zh'],

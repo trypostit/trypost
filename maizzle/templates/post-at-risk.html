@@ -1,0 +1,57 @@
+<x-main>
+  <div class="bg-zinc-50 sm:px-4 font-sans">
+    <table align="center">
+      <tr>
+        <td class="w-[552px] max-w-full">
+          <x-header />
+
+          <table class="w-full">
+            <tr>
+              <td class="p-12 sm:px-6 text-base text-zinc-700 bg-white rounded shadow-sm">
+                <h1 class="m-0 mb-6 text-2xl sm:leading-8 text-black font-semibold">
+                  @{{ $title }}
+                </h1>
+
+                <p class="m-0 leading-6">
+                  @{{ $intro }}
+                </p>
+
+                <table class="w-full mt-4" style="border-collapse: collapse">
+                  @foreach($atRiskGroups as $group)
+                  <tr>
+                    <td class="py-3" style="border-bottom: 1px solid #e4e4e7">
+                      <div style="display: flex; align-items: center">
+                        <div style="width: 8px; height: 8px; border-radius: 50%; background-color: @{{ $group['account']->platform->color() }}; margin-right: 12px"></div>
+                        <div>
+                          <strong class="text-zinc-900">@{{ $group['account']->platform->label() }}</strong>
+                          <span class="text-zinc-500"> - @{{ $group['account']->accountDisplayName() }}</span>
+                          <div class="text-zinc-500" style="font-size: 14px; margin-top: 4px">
+                            @{{ $group['postsLabel'] }}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  @endforeach
+                </table>
+
+                <p class="m-0 mt-4 leading-6">
+                  @{{ $reconnectCta }}
+                </p>
+
+                <x-spacer height="24px" />
+
+                <div class="flex items-center justify-center">
+                  <x-button href="@{{ $url }}">
+                    @{{ $buttonText }} &rarr;
+                  </x-button>
+                </div>
+              </td>
+            </tr>
+          </table>
+          <x-footer-authenticated />
+        </td>
+      </tr>
+    </table>
+  </div>
+</x-main>

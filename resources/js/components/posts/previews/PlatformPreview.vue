@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import type { MediaItem } from '@/types/media';
 
 import BlueskyPreview from './BlueskyPreview.vue';
@@ -21,6 +22,8 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
+    handle_label: string;
     avatar_url: string | null;
 }
 
@@ -31,6 +34,8 @@ interface Props {
     media: MediaItem[];
     contentType?: string;
     meta?: Record<string, any>;
+    /** Local scheduled datetime (datetime-local); falls back to now in previews. */
+    postedAt?: string | null;
 }
 
 const props = defineProps<Props>();
@@ -40,6 +45,8 @@ const resolvedSocialAccount = computed((): SocialAccount => props.socialAccount 
     platform: props.platform,
     display_name: '',
     username: '',
+    display_label: getPlatformLabel(props.platform),
+    handle_label: getPlatformLabel(props.platform),
     avatar_url: null,
 });
 
@@ -85,5 +92,6 @@ const previewComponent = computed(() => {
         :media="media"
         :content-type="contentType"
         :meta="meta"
+        :posted-at="postedAt"
     />
 </template>

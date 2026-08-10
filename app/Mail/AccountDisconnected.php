@@ -33,7 +33,7 @@ class AccountDisconnected extends Mailable implements ShouldQueue
     public function content(): Content
     {
         $platformName = $this->account->platform->label();
-        $accountName = $this->account->display_name ?? $this->account->username;
+        $accountName = $this->account->accountDisplayName();
         $workspaceName = $this->account->workspace->name;
 
         return new Content(

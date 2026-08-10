@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Mcp\Tools\Signature;
 
 use App\Actions\Signature\DeleteSignature;
+use App\Mcp\Concerns\AuthorizesMcpTool;
+use App\Models\Workspace;
 use App\Models\WorkspaceSignature;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -18,11 +20,23 @@ use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 #[Description('Delete a signature permanently. This cannot be undone.')]
 class DeleteSignatureTool extends Tool
 {
+    use AuthorizesMcpTool;
+
     public function handle(Request $request): Response|ResponseFactory
     {
+        $workspace = $this->authorizeCurrentWorkspace(
+            $request,
+            'createPost',
+            'Not authorized to manage signatures.',
+        );
+
+        if (! $workspace instanceof Workspace) {
+            return $workspace;
+        }
+
         $validated = $request->validate(['signature_id' => ['required', 'string']]);
 
-        $signature = WorkspaceSignature::where('workspace_id', $request->user()->current_workspace_id)
+        $signature = WorkspaceSignature::where('workspace_id', $workspace->id)
             ->find(data_get($validated, 'signature_id'));
 
         if (! $signature) {

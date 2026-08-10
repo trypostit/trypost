@@ -21,7 +21,7 @@ return [
         'tiktok' => 'Koppel je TikTok-account',
         'youtube' => 'Koppel een YouTube-kanaal',
         'facebook' => 'Koppel een Facebook-pagina',
-        'instagram' => 'Koppel een Instagram-professioneel account',
+        'instagram' => 'Koppel via Instagram Login of Facebook-pagina\'s',
         'instagram-facebook' => 'Koppel Instagram via een Facebook-pagina',
         'threads' => 'Koppel je Threads-account',
         'pinterest' => 'Koppel je Pinterest-account',
@@ -94,6 +94,15 @@ return [
         'no_pages_description' => 'Er zijn geen Facebook-pagina\'s met gekoppelde Instagram-zakelijke accounts gevonden.',
         'view' => 'Bekijken',
         'choose' => 'Kiezen',
+    ],
+
+    'instagram_connect' => [
+        'title' => 'Instagram koppelen',
+        'description' => 'Kies hoe je je Instagram-account wilt koppelen',
+        'standalone_title' => 'Instagram Login',
+        'standalone_description' => 'Log in met je professionele Instagram-account',
+        'facebook_title' => 'Facebook-pagina\'s',
+        'facebook_description' => 'Koppel een Instagram-account dat gekoppeld is aan een Facebook-pagina',
     ],
 
     'linkedin' => [

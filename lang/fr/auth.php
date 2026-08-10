@@ -71,6 +71,8 @@ return [
         'page_title' => 'Connexion',
         'email' => 'Adresse e-mail',
         'password' => 'Mot de passe',
+        'show_password' => 'Afficher le mot de passe',
+        'hide_password' => 'Masquer le mot de passe',
         'forgot_password' => 'Mot de passe oublié ?',
         'remember_me' => 'Se souvenir de moi',
         'submit' => 'Se connecter',

@@ -41,6 +41,26 @@ test('HTTP error access_token_invalid throws TokenExpiredException', function ()
     TikTokPublishException::fromApiResponse($fakeResponse);
 })->throws(TokenExpiredException::class);
 
+test('HTTP error scope_not_authorized (also a 401) maps to Permission category, not TokenExpiredException', function () {
+    // TikTok reports a missing video.publish grant as a 401, the same status
+    // it uses for a genuinely dead token — https://developers.tiktok.com/doc/content-posting-api-reference-direct-post.
+    // A scope gap must not disconnect the account.
+    $response = Http::response([
+        'error' => [
+            'code' => 'scope_not_authorized',
+            'message' => "The access_token does not bear user's grant on video.publish scope",
+            'log_id' => 'scope123',
+        ],
+    ], 401);
+
+    $fakeResponse = Http::fake(['*' => $response])->post(config('trypost.platforms.tiktok.api').'/test');
+
+    $exception = TikTokPublishException::fromApiResponse($fakeResponse);
+
+    expect($exception->category)->toBe(ErrorCategory::Permission)
+        ->and($exception->userMessage)->toBe('Missing required permissions. Please reconnect with all scopes.');
+});
+
 test('HTTP error invalid_file_upload maps to MediaFormat category', function () {
     $response = Http::response([
         'error' => [

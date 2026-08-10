@@ -16,7 +16,6 @@ class ThreadsPublishException extends SocialPublishException
         $rawResponse = $response->body();
         $statusCode = $response->status();
 
-        $errorType = data_get($body, 'error.type');
         $errorCode = data_get($body, 'error.code');
         $errorMessage = data_get($body, 'error.message', 'An unknown Threads error occurred.');
 

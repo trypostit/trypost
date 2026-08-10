@@ -158,6 +158,13 @@ return [
             'search_board' => 'ボードを検索...',
             'no_board_found' => '検索に一致するボードがありません。',
             'board_required' => 'この投稿を公開する Pinterest ボードを選択してください。',
+            'title' => 'タイトル',
+            'title_placeholder' => '任意のピンタイトル',
+            'link' => 'リンク先',
+            'link_placeholder' => 'https://example.com',
+            'link_invalid' => '有効なリンク先URLを入力してください（http または https）。',
+            'title_max' => 'タイトルは100文字以内にしてください。',
+            'link_max' => 'リンク先URLは2048文字以内にしてください。',
         ],
         'discord' => [
             'settings' => 'Discord 設定',
@@ -568,6 +575,9 @@ return [
         'account_disconnected' => 'ソーシャルアカウントの接続が解除されています',
         'account_inactive' => 'ソーシャルアカウントが無効化されています',
         'account_token_expired' => 'ソーシャルアカウントのセッションの有効期限が切れました — 再接続してください',
+        'platform_unavailable' => 'プラットフォームが一時的に利用できません。まもなく再試行します。',
+        'platform_unavailable_exhausted' => '何度か再試行しましたがプラットフォームが利用できませんでした。後でもう一度お試しください。',
+        'publishing_timed_out' => '公開がタイムアウトしました。もう一度お試しください。',
     ],
 
     'delete' => [

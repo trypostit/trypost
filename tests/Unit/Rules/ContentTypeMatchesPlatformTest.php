@@ -67,6 +67,14 @@ test('skips validation when social_account_id is missing', function () {
     expect(runMatchesPlatformRule(ContentType::XPost->value, null))->toBe([]);
 });
 
+test('skips validation without querying the database when social_account_id is not a uuid', function () {
+    // Regression: a non-uuid social_account_id (e.g. an MCP client sending a
+    // placeholder string) must not reach SocialAccount::find(), which throws
+    // a QueryException on Postgres for invalid uuid input instead of
+    // returning no rows.
+    expect(runMatchesPlatformRule(ContentType::XPost->value, 'threads-account'))->toBe([]);
+});
+
 test('skips validation when content_type is not a known enum value', function () {
     $workspace = Workspace::factory()->create();
     $linkedin = SocialAccount::factory()->create([

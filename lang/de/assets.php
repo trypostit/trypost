@@ -16,6 +16,8 @@ return [
         'formats' => 'JPEG, PNG, GIF, WebP, MP4, PDF',
         'uploading' => 'Wird hochgeladen...',
         'failed' => ':file konnte nicht hochgeladen werden. Bitte versuche es erneut.',
+        'file_too_large' => 'Die Dateigröße überschreitet das zulässige Maximum (:max MB).',
+        'cancelled' => 'Upload abgebrochen.',
     ],
 
     'empty' => [

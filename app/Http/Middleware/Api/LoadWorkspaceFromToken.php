@@ -4,34 +4,67 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware\Api;
 
+use App\Models\AccessToken;
 use App\Models\Workspace;
 use Closure;
 use Illuminate\Http\Request;
+use Laravel\Passport\AccessToken as PassportAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 
 class LoadWorkspaceFromToken
 {
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next, ?string $context = null): Response
     {
         $user = $request->user();
-        $token = $user?->token();
+        $authenticatedToken = $user?->token();
 
-        if (! $token) {
+        if (! $authenticatedToken instanceof PassportAccessToken) {
             return response()->json(['message' => 'Token not found.'], Response::HTTP_UNAUTHORIZED);
         }
 
-        // Personal API tokens (created from settings) bind to a specific
-        // workspace at creation. OAuth tokens (e.g. ChatGPT MCP) don't —
-        // they follow the user's current workspace.
+        $token = AccessToken::query()->find($authenticatedToken->oauth_access_token_id);
+
+        if ($token === null) {
+            return response()->json(['message' => 'Token not found.'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        if ($token->expires_at?->isPast()) {
+            return response()->json(['message' => 'Token expired.'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        // Personal API keys and MCP OAuth grants both bind to a workspace at
+        // issue time. Resolve from the token — never from the user's current
+        // workspace switcher (that would let a multi-workspace agent silently
+        // act on the wrong tenant).
         $workspace = $token->workspace_id
-            ? Workspace::find($token->workspace_id)
-            : $user->currentWorkspace;
+            ? Workspace::query()->find($token->workspace_id)
+            : null;
 
         if (! $workspace) {
             return response()->json(['message' => 'No workspace selected.'], Response::HTTP_UNAUTHORIZED);
         }
 
-        if (! config('trypost.self_hosted') && ! $workspace->account?->hasActiveSubscription()) {
+        if (! $user->can('view', $workspace)) {
+            return response()->json(['message' => 'Workspace access denied.'], Response::HTTP_FORBIDDEN);
+        }
+
+        if ($context === 'mcp') {
+            if (! $token->isActiveMcpGrant() || ! $authenticatedToken->can('mcp:use')) {
+                return response()->json(['message' => 'MCP OAuth authorization required.'], Response::HTTP_FORBIDDEN);
+            }
+        } else {
+            if (! $token->isPersonalAccessToken()) {
+                return response()->json(['message' => 'Personal access token required.'], Response::HTTP_FORBIDDEN);
+            }
+
+            if (! $user->can('manageTeam', $workspace)) {
+                return response()->json(['message' => 'Insufficient workspace permissions.'], Response::HTTP_FORBIDDEN);
+            }
+        }
+
+        // Match web access (EnsureAccountReady): Stripe subscription OR generic
+        // no-card trial when REQUIRE_CARD_FOR_TRIAL is disabled.
+        if (! config('trypost.self_hosted') && ! $workspace->account?->hasAppAccess()) {
             return response()->json(['message' => 'Active subscription required.'], Response::HTTP_PAYMENT_REQUIRED);
         }
 

@@ -15,4 +15,7 @@ return [
         'title' => ':platform 계정을 재연결해야 합니다',
         'body' => ':account 세션이 만료되었습니다 — 계속 게시하려면 재연결하세요',
     ],
+    'post_at_risk' => [
+        'title' => '{1} 예정된 게시물 :count건이 위험합니다|[2,*] 예정된 게시물 :count건이 위험합니다',
+    ],
 ];

@@ -6,6 +6,8 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Events\TelegramChannelConnected;
 use App\Events\TelegramConnectFailed;
+use App\Exceptions\PlatformUnavailableException;
+use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -370,7 +372,7 @@ it('verifies a connected telegram account via getChat', function () {
     expect(app(ConnectionVerifier::class)->verify($account))->toBeTrue();
 });
 
-it('reports a telegram account as invalid when getChat fails', function () {
+it('throws TokenExpiredException when getChat reports the chat is no longer reachable', function () {
     config(['trypost.platforms.telegram.bot_token' => 'TESTTOKEN']);
 
     $account = SocialAccount::factory()->telegram()->create(['workspace_id' => $this->workspace->id]);
@@ -379,7 +381,42 @@ it('reports a telegram account as invalid when getChat fails', function () {
         '*/botTESTTOKEN/getChat*' => Http::response(['ok' => false, 'description' => 'chat not found'], 400),
     ]);
 
-    expect(app(ConnectionVerifier::class)->verify($account))->toBeFalse();
+    expect(fn () => app(ConnectionVerifier::class)->verify($account))
+        ->toThrow(TokenExpiredException::class);
+
+    // Telegram has no per-account refresh flow (one bot token shared across
+    // every connected account) — a confirmed rejection must not trigger a
+    // second, identical getChat call against that shared budget.
+    Http::assertSentCount(1);
+});
+
+it('throws PlatformUnavailableException when getChat fails transiently', function () {
+    config(['trypost.platforms.telegram.bot_token' => 'TESTTOKEN']);
+
+    $account = SocialAccount::factory()->telegram()->create(['workspace_id' => $this->workspace->id]);
+
+    Http::fake([
+        '*/botTESTTOKEN/getChat*' => Http::response(['ok' => false, 'description' => 'Internal Server Error'], 500),
+    ]);
+
+    expect(fn () => app(ConnectionVerifier::class)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+it('throws PlatformUnavailableException, not TokenExpiredException, when the shared bot token is rejected', function () {
+    config(['trypost.platforms.telegram.bot_token' => 'TESTTOKEN']);
+
+    $account = SocialAccount::factory()->telegram()->create(['workspace_id' => $this->workspace->id]);
+
+    // 401 means the app-wide TELEGRAM_BOT_TOKEN is misconfigured — every
+    // Telegram-connected account would fail identically. It is not evidence
+    // that THIS account's connection is broken, so it must not disconnect it.
+    Http::fake([
+        '*/botTESTTOKEN/getChat*' => Http::response(['ok' => false, 'description' => 'Unauthorized'], 401),
+    ]);
+
+    expect(fn () => app(ConnectionVerifier::class)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
 });
 
 it('registers the webhook via the artisan command', function () {

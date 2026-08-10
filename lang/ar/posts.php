@@ -158,6 +158,13 @@ return [
             'search_board' => 'البحث في اللوحات...',
             'no_board_found' => 'لا توجد لوحة مطابقة لبحثك.',
             'board_required' => 'اختر لوحة Pinterest لنشر هذا المنشور.',
+            'title' => 'العنوان',
+            'title_placeholder' => 'عنوان اختياري للدبوس',
+            'link' => 'رابط الوجهة',
+            'link_placeholder' => 'https://example.com',
+            'link_invalid' => 'أدخل رابط وجهة صالحًا (http أو https).',
+            'title_max' => 'يجب ألا يتجاوز العنوان 100 حرفًا.',
+            'link_max' => 'يجب ألا يتجاوز رابط الوجهة 2048 حرفًا.',
         ],
         'discord' => [
             'settings' => 'إعدادات Discord',
@@ -568,6 +575,9 @@ return [
         'account_disconnected' => 'الحساب الاجتماعي مفصول',
         'account_inactive' => 'الحساب الاجتماعي مُعطَّل',
         'account_token_expired' => 'انتهت جلسة الحساب الاجتماعي — يرجى إعادة الربط',
+        'platform_unavailable' => 'المنصة غير متاحة مؤقتًا. سنعيد المحاولة قريبًا.',
+        'platform_unavailable_exhausted' => 'ظلت المنصة غير متاحة بعد عدة محاولات. يرجى المحاولة لاحقًا.',
+        'publishing_timed_out' => 'انتهت مهلة النشر. يرجى المحاولة مرة أخرى.',
     ],
 
     'delete' => [

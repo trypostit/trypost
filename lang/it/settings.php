@@ -129,6 +129,7 @@ return [
             'brand' => 'Brand',
             'users' => 'Membri',
             'api_keys' => 'Chiavi API',
+            'mcp' => 'MCP',
         ],
         'title' => 'Impostazioni del workspace',
         'logo_heading' => 'Logo del workspace',

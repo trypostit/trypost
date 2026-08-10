@@ -46,7 +46,7 @@ class PostController extends Controller
         $this->authorize('view', $workspace);
 
         $query = $workspace->posts()
-            ->with(['postPlatforms' => fn ($query) => $query->where('enabled', true)->with('socialAccount'), 'user', 'labels']);
+            ->with(['postPlatforms' => fn ($query) => $query->enabled()->with('socialAccount'), 'user', 'labels']);
 
         if ($status) {
             $query = match ($status) {
@@ -123,7 +123,7 @@ class PostController extends Controller
         };
 
         $posts = $workspace->posts()
-            ->with(['postPlatforms' => fn ($query) => $query->where('enabled', true)->with('socialAccount')])
+            ->with(['postPlatforms' => fn ($query) => $query->enabled()->with('socialAccount')])
             ->whereBetween('scheduled_at', [$rangeStart->copy()->utc(), $rangeEnd->copy()->utc()])
             ->orderBy('scheduled_at')
             ->get()

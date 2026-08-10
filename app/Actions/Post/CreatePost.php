@@ -74,7 +74,10 @@ class CreatePost
                         ->first();
 
                     if ($existing) {
-                        $updates['meta'] = array_merge($existing->meta ?? [], $meta);
+                        $updates['meta'] = array_filter(
+                            array_merge($existing->meta ?? [], $meta),
+                            fn (mixed $value): bool => $value !== null,
+                        );
                     }
                 }
 

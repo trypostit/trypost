@@ -324,6 +324,57 @@ test('WebP upload is converted to JPEG', function () {
         ->and(pathinfo($media->path, PATHINFO_EXTENSION))->toBe('jpg');
 });
 
+test('model can add media from stored path', function () {
+    $workspace = Workspace::factory()->create();
+    $content = file_get_contents(__DIR__.'/../../fixtures/1x1.png');
+    Storage::put('medias/existing.png', $content);
+
+    $media = $workspace->addMediaFromStoredPath('medias/existing.png', 'existing.png', 'image/png', strlen($content), 'assets');
+
+    expect($media)->toBeInstanceOf(Media::class);
+    expect($media->original_filename)->toBe('existing.png');
+    expect($media->path)->toBe('medias/existing.png');
+    expect($media->mime_type)->toBe('image/png');
+    expect($media->size)->toBe(strlen($content));
+});
+
+test('add media from stored path sanitizes invalid UTF-8 bytes in the original filename', function () {
+    $workspace = Workspace::factory()->create();
+    $content = file_get_contents(__DIR__.'/../../fixtures/1x1.png');
+    Storage::put('medias/existing.png', $content);
+    $invalidName = "earnings \x97 report.png";
+
+    $media = $workspace->addMediaFromStoredPath('medias/existing.png', $invalidName, 'image/png', strlen($content), 'assets');
+
+    expect(mb_check_encoding($media->original_filename, 'UTF-8'))->toBeTrue();
+    expect($media->original_filename)->toBe('earnings ? report.png');
+});
+
+test('add media sanitizes invalid UTF-8 bytes in the original filename', function () {
+    $workspace = Workspace::factory()->create();
+    $invalidName = "earnings \x97 report.jpg";
+    $file = UploadedFile::fake()->image($invalidName, 100, 100);
+
+    $media = $workspace->addMedia($file, 'assets');
+
+    expect(mb_check_encoding($media->original_filename, 'UTF-8'))->toBeTrue();
+    expect($media->original_filename)->toBe('earnings ? report.jpg');
+});
+
+test('add media from path sanitizes invalid UTF-8 bytes in the original filename', function () {
+    $workspace = Workspace::factory()->create();
+    $tempFile = tempnam(sys_get_temp_dir(), 'test');
+    file_put_contents($tempFile, file_get_contents(__DIR__.'/../../fixtures/1x1.png'));
+    $invalidName = "earnings \x97 report.png";
+
+    $media = $workspace->addMediaFromPath($tempFile, $invalidName, 'assets');
+
+    expect(mb_check_encoding($media->original_filename, 'UTF-8'))->toBeTrue();
+    expect($media->original_filename)->toBe('earnings ? report.png');
+
+    unlink($tempFile);
+});
+
 test('client meta is merged into media meta', function () {
     $workspace = Workspace::factory()->create();
     $file = UploadedFile::fake()->image('photo.jpg', 640, 480);

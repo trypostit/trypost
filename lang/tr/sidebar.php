@@ -7,30 +7,27 @@ return [
     'select_workspace' => 'Çalışma alanı seç',
     'create_workspace' => 'Çalışma alanı oluştur',
     'create_post' => 'Gönderi oluştur',
-    'profile' => 'Profil',
+    'my_account' => 'Hesabım',
+    'account_settings' => 'Hesap ve faturalandırma',
+    'workspace_settings' => 'Çalışma alanı ayarları',
     'log_out' => 'Çıkış yap',
-
-    'workspace' => 'Çalışma alanı: :name',
-    'workspace_select' => 'Çalışma alanı: Seç',
-
-    'theme' => 'Tema: :name',
-    'theme_light' => 'Açık',
-    'theme_dark' => 'Koyu',
-    'theme_system' => 'Sistem',
-
+    'workspace' => [
+        'connections' => 'Bağlantılar',
+        'signatures' => 'İmzalar',
+        'labels' => 'Etiketler',
+        'assets' => 'Varlıklar',
+        'mcp' => 'MCP',
+    ],
     'language' => 'Dil: :name',
-    'language_select' => 'Dil: Seç',
-
     'groups' => [
         'posts' => 'Gönderiler',
         'workspace' => 'Çalışma Alanı',
         'others' => 'Diğerleri',
     ],
-
     'analytics' => 'Analitik',
     'automations' => 'Otomasyonlar',
-    'settings' => 'Ayarlar',
-
+    'onboarding' => 'Başlarken',
+    'onboarding_hint' => 'Kurulumu bitir',
     'posts' => [
         'calendar' => 'Takvim',
         'all' => 'Tümü',
@@ -38,24 +35,14 @@ return [
         'posted' => 'Paylaşılan',
         'drafts' => 'Taslaklar',
     ],
-
-    'workspace' => [
-        'connections' => 'Bağlantılar',
-        'signatures' => 'İmzalar',
-        'labels' => 'Etiketler',
-        'assets' => 'Varlıklar',
-        'api_keys' => 'API Anahtarları',
-    ],
-
     'notifications' => 'Bildirimler',
     'mark_all_read' => 'Tümünü okundu olarak işaretle',
     'mark_as_read' => 'Okundu olarak işaretle',
     'archive_all' => 'Tümünü arşivle',
     'no_notifications' => 'Bildirim yok',
-
     'support' => [
         'docs' => 'Dokümantasyon',
         'referral' => '%30 referans kazanın',
-        'stay_updated' => 'Güncel kalın',
+        'discord' => 'Discord topluluğu',
     ],
 ];

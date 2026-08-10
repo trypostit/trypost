@@ -233,7 +233,7 @@ return [
             'autoScalingStrategy' => 'time',
             'minProcesses' => 1,
             'maxProcesses' => 3,
-            'timeout' => 630,
+            'timeout' => 930,
             'maxTime' => 0,
             'maxJobs' => 0,
             'memory' => 256,

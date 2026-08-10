@@ -18,6 +18,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -110,7 +111,7 @@ const videoDurationSec = computed(() => {
 });
 
 const getPlatformDisplayName = (pp: PostPlatform): string =>
-    pp.social_account?.display_name ?? pp.platform_name ?? pp.platform;
+    pp.social_account?.display_label ?? pp.platform_name ?? pp.platform;
 
 const getPlatformAvatar = (pp: PostPlatform): string | null =>
     pp.social_account?.avatar_url ?? pp.platform_avatar ?? null;

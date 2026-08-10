@@ -35,14 +35,14 @@
     "require": {
         "php": "^8.2",
         "google/apiclient": "^2.19",
-        "inertiajs/inertia-laravel": "^3.0",
+        "inertiajs/inertia-laravel": "^3.3.1",
         "intervention/image": "^4.0",
         "laravel/ai": "^0.10.3",
-        "laravel/boost": "^2.0",
+        "laravel/boost": "^2.5",
         "laravel/cashier": "^16.2",
         "laravel/framework": "^13.0",
         "laravel/horizon": "^5.45",
-        "laravel/mcp": "^0.6.4",
+        "laravel/mcp": "^0.9.1",
         "laravel/nightwatch": "^1.22",
         "laravel/passport": "^13.7",
         "laravel/reverb": "^1.0",
@@ -124,6 +124,9 @@
         "test:all": [
             "@test",
             "@php artisan test tests/Browser"
+        ],
+        "test:tia": [
+            "vendor/bin/pest --parallel --tia"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

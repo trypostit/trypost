@@ -78,11 +78,12 @@ class AssetController extends Controller
         return $receiver->receive(
             $workspace,
             $request->user(),
-            (string) $request->validated('file_name'),
+            $request->validated('file_name'),
             $request->getContent(),
             (int) $request->validated('range_start'),
             (int) $request->validated('range_end'),
             (int) $request->validated('total_size'),
+            (string) $request->validated('upload_id'),
         )->toResponse();
     }
 
@@ -99,7 +100,7 @@ class AssetController extends Controller
             $unsplash->trackDownload($downloadLocation);
         }
 
-        $url = (string) data_get($validated, 'url');
+        $url = data_get($validated, 'url');
 
         try {
             $response = $safeHttp->guardedRequest($url)->timeout(30)->get($url);

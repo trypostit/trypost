@@ -158,6 +158,13 @@ return [
             'search_board' => 'Borden zoeken...',
             'no_board_found' => 'Geen bord komt overeen met je zoekopdracht.',
             'board_required' => 'Selecteer een Pinterest-bord om deze post te publiceren.',
+            'title' => 'Titel',
+            'title_placeholder' => 'Optionele pin-titel',
+            'link' => 'Bestemmingslink',
+            'link_placeholder' => 'https://voorbeeld.com',
+            'link_invalid' => 'Voer een geldige bestemmingslink in (http of https).',
+            'title_max' => 'Titel mag niet langer zijn dan 100 tekens.',
+            'link_max' => 'Bestemmingslink mag niet langer zijn dan 2048 tekens.',
         ],
         'discord' => [
             'settings' => 'Discord-instellingen',
@@ -568,6 +575,9 @@ return [
         'account_disconnected' => 'Social account is losgekoppeld',
         'account_inactive' => 'Social account is gedeactiveerd',
         'account_token_expired' => 'Sessie van social account verlopen — koppel opnieuw',
+        'platform_unavailable' => 'Het platform is tijdelijk niet beschikbaar. We proberen het zo opnieuw.',
+        'platform_unavailable_exhausted' => 'Het platform bleef na meerdere pogingen niet beschikbaar. Probeer het later opnieuw.',
+        'publishing_timed_out' => 'Publiceren is timed-out. Probeer het opnieuw.',
     ],
 
     'delete' => [

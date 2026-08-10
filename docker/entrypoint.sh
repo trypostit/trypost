@@ -7,6 +7,17 @@ cd /var/www/html
 
 TARGET="${TRYPOST_TARGET:-dev}"
 
+# One-off commands from `docker compose run app ...` must bypass the long-lived
+# application bootstrap and execute exactly as requested.
+if [ "$#" -gt 0 ]; then
+    exec "$@"
+fi
+
+if [ "${TARGET}" = "production" ] && [ -z "${APP_KEY:-}" ]; then
+    echo "[entrypoint] APP_KEY is required in production" >&2
+    exit 1
+fi
+
 # 1) Bootstrap .env from the Docker template on first dev boot. The bind-mount
 #    in dev hides /var/www/html/.env.docker.example, so prefer docker/ first.
 if [ "${TRYPOST_DOCKER_BOOTSTRAP:-0}" = "1" ] && [ ! -f .env ]; then
@@ -65,7 +76,7 @@ done
 
 # 7) Run migrations (graceful: succeeds even when nothing to migrate).
 echo "[entrypoint] running migrations"
-php artisan migrate --force --graceful || true
+php artisan migrate --force
 
 # 8) storage:link if missing.
 if [ ! -L public/storage ]; then
@@ -73,17 +84,31 @@ if [ ! -L public/storage ]; then
     php artisan storage:link --force || true
 fi
 
-# 9) Passport keys on first boot.
-if [ ! -f storage/oauth-private.key ]; then
-    echo "[entrypoint] generating Passport keys"
-    php artisan passport:keys --force || true
+# 9) Passport keys. Prefer PASSPORT_PRIVATE_KEY / PASSPORT_PUBLIC_KEY from
+# the environment (required for durable / multi-node deploys — storage/oauth-*
+# is not on a persisted volume in compose.prod.yaml). Fall back to generating
+# files under storage/ only for local/dev when those env vars are unset.
+if [ -n "${PASSPORT_PRIVATE_KEY:-}" ] && [ -n "${PASSPORT_PUBLIC_KEY:-}" ]; then
+    echo "[entrypoint] using Passport keys from environment"
+elif [ "${TRYPOST_TARGET:-}" = "production" ] || [ "${APP_ENV:-}" = "production" ]; then
+    echo "[entrypoint] ERROR: PASSPORT_PRIVATE_KEY and PASSPORT_PUBLIC_KEY must be set in production." >&2
+    echo "[entrypoint] Generate once with: php artisan passport:keys --show" >&2
+    exit 1
+elif [ ! -f storage/oauth-private.key ] || [ ! -f storage/oauth-public.key ]; then
+    echo "[entrypoint] generating Passport keys (dev fallback)"
+    php artisan passport:keys --force
 fi
 
-# 10) Wayfinder TS regen — Vite needs the files before it boots.
+# 10) Personal access client for REST API keys. The seeder is idempotent, so
+# fresh self-hosted installs and existing deployments are both safe.
+echo "[entrypoint] ensuring Passport personal access client"
+php artisan db:seed --class='Database\Seeders\PassportSeeder' --force
+
+# 11) Wayfinder TS regen — Vite needs the files before it boots.
 echo "[entrypoint] regenerating wayfinder helpers"
 php artisan wayfinder:generate --with-form || true
 
-# 11) Cache strategy: prod = pre-cache; dev = clear.
+# 12) Cache strategy: prod = pre-cache; dev = clear.
 if [ "${TARGET}" = "production" ]; then
     php artisan config:cache
     php artisan route:cache
@@ -96,7 +121,7 @@ else
     php artisan event:clear
 fi
 
-# 12) Permissions. Production php-fpm pool runs as www-data (Alpine default),
+# 13) Permissions. Production php-fpm pool runs as www-data (Alpine default),
 # so storage and bootstrap/cache must be writable by that user — Laravel
 # needs to write session files, view cache, log files, etc.
 if [ "${TARGET}" = "production" ]; then

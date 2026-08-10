@@ -64,11 +64,6 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
 
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2]
-
     services:
       postgres:
         image: postgres:16
@@ -115,21 +110,13 @@ jobs:
         env:
           DB_PORT: ${{ job.services.postgres.ports['5432'] }}
           REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
-        run: php artisan test tests/Browser --compact --shard=${{ matrix.shard }}/2
+        run: php artisan test tests/Browser --compact
 
       - name: Upload Playwright artifacts
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-artifacts-${{ matrix.shard }}
+          name: playwright-artifacts
           path: tests/Browser/Screenshots
           if-no-files-found: ignore
           retention-days: 7
-
-  e2e-gate:
-    if: always()
-    needs: e2e
-    runs-on: ubuntu-latest
-    steps:
-      - name: Require all e2e shards to pass
-        run: '[ "${{ needs.e2e.result }}" = "success" ] || exit 1'

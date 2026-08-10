@@ -124,25 +124,19 @@ class YouTubeController extends SocialController
         }
     }
 
-    public function selectChannel(Request $request)
+    public function selectChannel(Request $request): InertiaResponse
     {
         $oauthData = session('youtube_oauth');
         $workspaceId = session('social_connect_workspace');
 
         if (! $oauthData || ! $workspaceId) {
-            session()->flash('flash.banner', __('accounts.flash.session_expired'));
-            session()->flash('flash.bannerStyle', 'danger');
-
-            return redirect()->route('app.accounts');
+            return $this->popupCallback(false, __('accounts.popup_callback.session_expired'), $this->platform->value);
         }
 
         $workspace = Workspace::find($workspaceId);
 
         if (! $workspace) {
-            session()->flash('flash.banner', __('accounts.flash.workspace_not_found'));
-            session()->flash('flash.bannerStyle', 'danger');
-
-            return redirect()->route('app.accounts');
+            return $this->popupCallback(false, __('accounts.popup_callback.workspace_not_found'), $this->platform->value);
         }
 
         // Fetch YouTube channels
@@ -152,13 +146,10 @@ class YouTubeController extends SocialController
             $this->forgetSocialConnectSession();
             session()->forget('youtube_oauth');
 
-            session()->flash('flash.banner', __('accounts.flash.no_youtube_channels'));
-            session()->flash('flash.bannerStyle', 'danger');
-
-            return redirect()->route('app.accounts');
+            return $this->popupCallback(false, __('accounts.popup_callback.no_youtube_channels'), $this->platform->value);
         }
 
-        return inertia('accounts/YouTubeChannelSelect', [
+        return Inertia::render('accounts/YouTubeChannelSelect', [
             'workspace' => $workspace,
             'channels' => $channels,
         ]);

@@ -129,6 +129,7 @@ return [
             'brand' => '브랜드',
             'users' => '멤버',
             'api_keys' => 'API 키',
+            'mcp' => 'MCP',
         ],
         'title' => '워크스페이스 설정',
         'logo_heading' => '워크스페이스 로고',

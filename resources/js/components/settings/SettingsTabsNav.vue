@@ -24,7 +24,12 @@ defineProps<{
                 :value="tab.name"
                 as-child
             >
-                <Link :href="tab.href">{{ tab.label }}</Link>
+                <Link
+                    :href="tab.href"
+                    :data-testid="`settings-tab-${tab.name}`"
+                >
+                    {{ tab.label }}
+                </Link>
             </TabsTrigger>
         </TabsList>
     </Tabs>

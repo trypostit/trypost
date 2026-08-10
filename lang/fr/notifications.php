@@ -15,4 +15,7 @@ return [
         'title' => 'Le compte :platform doit être reconnecté',
         'body' => 'La session de :account a expiré — veuillez reconnecter pour continuer à publier',
     ],
+    'post_at_risk' => [
+        'title' => '{1} :count publication à venir est à risque|[2,*] :count publications à venir sont à risque',
+    ],
 ];

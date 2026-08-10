@@ -46,11 +46,17 @@ class SocialAccount extends Model
         'error_message',
         'disconnected_at',
         'last_used_at',
+        'last_verified_at',
     ];
 
     protected $hidden = [
         'access_token',
         'refresh_token',
+    ];
+
+    protected $appends = [
+        'display_label',
+        'handle_label',
     ];
 
     protected function casts(): array
@@ -64,6 +70,7 @@ class SocialAccount extends Model
             'token_expires_at' => 'datetime',
             'disconnected_at' => 'datetime',
             'last_used_at' => 'datetime',
+            'last_verified_at' => 'datetime',
             'scopes' => 'array',
             'meta' => 'array',
         ];
@@ -145,6 +152,49 @@ class SocialAccount extends Model
         );
     }
 
+    /**
+     * "@handle" for notification bodies — the more specific identifier
+     * (username) wins over the friendlier display name when both are set.
+     * Every connector requests enough scope to always populate at least one
+     * of username/display_name (e.g. TikTok always requests user.info.profile);
+     * the platform label is a last-resort fallback, not an expected path.
+     */
+    public function handle(): string
+    {
+        return '@'.($this->username ?: $this->display_name ?: $this->platform->label());
+    }
+
+    /**
+     * Friendly label for email templates — the display name wins over the
+     * username when both are set.
+     */
+    public function accountDisplayName(): string
+    {
+        return $this->display_name ?: $this->username ?: $this->platform->label();
+    }
+
+    /**
+     * Frontend-facing mirror of accountDisplayName() — appended to JSON so
+     * Vue components stop re-implementing this fallback.
+     */
+    protected function displayLabel(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->accountDisplayName(),
+        );
+    }
+
+    /**
+     * Frontend-facing mirror of handle() without the "@" prefix — templates
+     * that render their own "@" (e.g. platform previews) use this instead.
+     */
+    protected function handleLabel(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->username ?: $this->display_name ?: $this->platform->label(),
+        );
+    }
+
     public function markAsDisconnected(string $errorMessage): void
     {
         $lock = Cache::lock("social_account_status:{$this->id}", 10);
@@ -163,7 +213,7 @@ class SocialAccount extends Model
                 if ($wasConnected && $this->workspace->owner) {
                     $placeholders = [
                         'platform' => $this->platform->label(),
-                        'account' => '@'.($this->username ?? $this->display_name),
+                        'account' => $this->handle(),
                     ];
 
                     SendNotification::dispatch(
@@ -204,7 +254,7 @@ class SocialAccount extends Model
             if ($notify && $wasUsable && $this->workspace->owner) {
                 $placeholders = [
                     'platform' => $this->platform->label(),
-                    'account' => '@'.($this->username ?? $this->display_name),
+                    'account' => $this->handle(),
                 ];
 
                 SendNotification::dispatch(

@@ -158,6 +158,13 @@ return [
             'search_board' => 'Pesquisar quadros...',
             'no_board_found' => 'Nenhum quadro encontrado.',
             'board_required' => 'Selecione um quadro do Pinterest para publicar este post.',
+            'title' => 'Título',
+            'title_placeholder' => 'Título opcional do pin',
+            'link' => 'Link de destino',
+            'link_placeholder' => 'https://exemplo.com',
+            'link_invalid' => 'Informe um link de destino válido (http ou https).',
+            'title_max' => 'O título pode ter no máximo 100 caracteres.',
+            'link_max' => 'O link de destino pode ter no máximo 2048 caracteres.',
         ],
         'discord' => [
             'settings' => 'Configurações do Discord',
@@ -568,6 +575,9 @@ return [
         'account_disconnected' => 'Conta social está desconectada',
         'account_inactive' => 'Conta social está desativada',
         'account_token_expired' => 'Sessão da conta social expirou — reconecte a conta',
+        'platform_unavailable' => 'A plataforma está temporariamente indisponível. Vamos tentar de novo em breve.',
+        'platform_unavailable_exhausted' => 'A plataforma continuou indisponível após várias tentativas. Tente de novo mais tarde.',
+        'publishing_timed_out' => 'A publicação excedeu o tempo limite. Tente novamente.',
     ],
 
     'delete' => [

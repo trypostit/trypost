@@ -8,17 +8,125 @@ function getUserTimezone(): string {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
+/** Resolve scheduled local datetime for platform previews, else now. */
+const resolvePreviewPostedAt = (postedAt?: string | null) => {
+    if (postedAt) {
+        const parsed = dayjs(postedAt);
+        if (parsed.isValid()) {
+            return parsed;
+        }
+    }
+
+    return dayjs();
+};
+
+/** X / Bluesky style: `4:21 PM · Aug 5, 2026` (locale-aware). */
+const formatAbsolutePreviewPostedAt = (postedAt?: string | null) => {
+    const instant = resolvePreviewPostedAt(postedAt);
+
+    return `${instant.format('LT')} · ${instant.format('ll')}`;
+};
+
 export default {
     formatDate(date: string | null | undefined) {
         if (!date) return '-';
         return dayjs.utc(date).tz(getUserTimezone()).format('LL');
     },
 
-    formatDateTime(date: string) {
-        return dayjs
-            .utc(date)
-            .tz(getUserTimezone())
-            .format('D [de] MMM [de] YYYY [às] HH:mm');
+    /**
+     * Format a calendar date (expiry, due date, etc.) without shifting the day
+     * across timezones. Use for values stored as UTC midnight that represent a
+     * chosen calendar day rather than an exact instant.
+     */
+    formatDateOnly(date: string | null | undefined) {
+        if (!date) {
+            return '-';
+        }
+
+        return dayjs.utc(date).format('LL');
+    },
+
+    formatDateTime(date: string | null | undefined) {
+        if (!date) {
+            return '—';
+        }
+
+        return dayjs.utc(date).tz(getUserTimezone()).format('LLL');
+    },
+
+    /**
+     * Format a local (already timezone-converted) datetime string.
+     * Use for datetime-local values and other non-UTC inputs.
+     */
+    formatLocalDateTime(date: string | null | undefined) {
+        if (!date) {
+            return '—';
+        }
+
+        return dayjs(date).format('lll');
+    },
+
+    /**
+     * Format a local date-only value (YYYY-MM-DD or Date) with the active locale.
+     */
+    formatLocalDate(date: string | Date | null | undefined) {
+        if (!date) {
+            return '—';
+        }
+
+        return dayjs(date).format('LL');
+    },
+
+    /**
+     * Short day + month for chart axes (day-first so locales keep natural order).
+     */
+    formatMonthDay(date: string | Date) {
+        return dayjs(date).format('D MMM');
+    },
+
+    /**
+     * Short month + day + year for chart tooltips (locale-aware via L).
+     */
+    formatMonthDayYear(date: string | Date) {
+        return dayjs(date).format('L');
+    },
+
+    formatXPreview(postedAt?: string | null) {
+        return formatAbsolutePreviewPostedAt(postedAt);
+    },
+
+    formatBlueskyPreview(postedAt?: string | null) {
+        return formatAbsolutePreviewPostedAt(postedAt);
+    },
+
+    formatMastodonPreview(postedAt?: string | null) {
+        return resolvePreviewPostedAt(postedAt).format('lll');
+    },
+
+    /**
+     * @param justNowLabel Localized fallback when no schedule is set (e.g. common.just_now).
+     */
+    formatFacebookPreview(postedAt?: string | null, justNowLabel?: string) {
+        if (! postedAt && justNowLabel) {
+            return justNowLabel;
+        }
+
+        return resolvePreviewPostedAt(postedAt).fromNow();
+    },
+
+    /**
+     * @param todayLabel Localized same-day prefix (e.g. common.date_range_picker.today).
+     */
+    formatDiscordPreview(postedAt?: string | null, todayLabel?: string) {
+        const instant = resolvePreviewPostedAt(postedAt);
+
+        if (instant.isSame(dayjs(), 'day')) {
+            return todayLabel
+                ? `${todayLabel} · ${instant.format('LT')}`
+                : instant.format('LT');
+        }
+
+        return instant.format('lll');
     },
 
     formatTime(date: string | null | undefined) {
@@ -112,7 +220,7 @@ export default {
      * @returns String formatada (ex: "Fev/2025")
      */
     formatMonthYear(month: number, year: number): string {
-        return dayjs(new Date(year, month - 1, 1)).format('MMM/YYYY');
+        return dayjs(new Date(year, month - 1, 1)).format('MMM YYYY');
     },
 
     formatAge(birthDate: string): string {
@@ -145,7 +253,7 @@ export default {
      * @returns String formatada (ex: "31/12/2025 14:25")
      */
     formatBuildDate(date: string): string {
-        return dayjs.utc(date).tz(getUserTimezone()).format('DD/MM/YYYY HH:mm');
+        return dayjs.utc(date).tz(getUserTimezone()).format('L LT');
     },
 
     /**

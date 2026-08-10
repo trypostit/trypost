@@ -73,6 +73,7 @@ test('receiver assembles locally when multipart is not used', function () {
         0,
         strlen($bytes) - 1,
         strlen($bytes),
+        'attempt-1',
     );
 
     expect($receipt->done)->toBeTrue();
@@ -97,6 +98,7 @@ test('receiver reports progress for intermediate local chunks', function () {
         0,
         99,
         $total,
+        'attempt-1',
     );
 
     expect($receipt->done)->toBeFalse();
@@ -127,6 +129,7 @@ test('receiver completes multipart uploads through the cloud uploader', function
         0,
         11,
         12,
+        'attempt-1',
     );
 
     expect($receipt->done)->toBeTrue();
@@ -151,6 +154,7 @@ test('receiver returns in-progress when multipart chunk is not final', function 
         0,
         99,
         200,
+        'attempt-1',
     );
 
     expect($receipt->done)->toBeFalse();
@@ -183,6 +187,7 @@ test('receiver deletes the cloud object when media registration fails after mult
         0,
         13,
         14,
+        'attempt-1',
     ))->toThrow(InvalidArgumentException::class);
 
     Storage::assertMissing('medias/orphan.mp4');

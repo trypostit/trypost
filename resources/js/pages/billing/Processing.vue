@@ -4,12 +4,13 @@ import { IconLoader2 } from '@tabler/icons-vue';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 
 import { useTracking } from '@/composables/useTracking';
-import { accounts } from '@/routes/app';
+import { accounts, onboarding } from '@/routes/app';
 import type { Auth } from '@/types';
 
 const props = defineProps<{
     subscriptionActive: boolean;
     fromCheckout: boolean;
+    redirectToOnboarding: boolean;
     persona?: string | null;
     conversion?: { value: number; currency: string; transaction_id: string } | null;
 }>();
@@ -26,7 +27,7 @@ const page = usePage();
 // initial render that row doesn't exist yet, so the interval would default
 // to 'monthly' even for a yearly purchase.
 const { stop } = usePoll(2000, {
-    only: ['subscriptionActive', 'auth'],
+    only: ['subscriptionActive', 'redirectToOnboarding', 'auth'],
 });
 
 const { trackPurchase } = useTracking();
@@ -34,7 +35,11 @@ const { trackPurchase } = useTracking();
 const finishing = ref(false);
 let redirectTimer: ReturnType<typeof setTimeout> | null = null;
 
-const goToAccounts = () => router.visit(accounts.url());
+const goNext = (): void => {
+    router.visit(
+        props.redirectToOnboarding ? onboarding.url() : accounts.url(),
+    );
+};
 
 // Fires `checkout.completed` exactly once for a real checkout. A trial-with-card
 // subscription is already `subscribed()` (status `trialing`) by the time the
@@ -42,7 +47,7 @@ const goToAccounts = () => router.visit(accounts.url());
 // false → true poll transition never happens. We therefore complete the purchase
 // from whichever path runs first (immediate active state or poll transition),
 // gated on `fromCheckout` so back-button/refresh visits don't over-count.
-const completePurchase = () => {
+const completePurchase = (): void => {
     if (finishing.value) {
         return;
     }
@@ -61,7 +66,7 @@ const completePurchase = () => {
 
     // Always hold for the same window before navigating, so PostHog and the ad
     // pixels (Google/Meta via dataLayer → GTM) reliably flush.
-    redirectTimer = setTimeout(goToAccounts, REDIRECT_DELAY_MS);
+    redirectTimer = setTimeout(goNext, REDIRECT_DELAY_MS);
 };
 
 watch(

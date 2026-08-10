@@ -38,18 +38,9 @@ class SocialController extends Controller
 
         $this->authorize('manageAccounts', $workspace);
 
-        $platforms = collect(SocialPlatform::cases())
-            ->filter(fn ($platform) => $platform->isConnectable())
-            ->map(fn ($platform) => [
-                'value' => $platform->value,
-                'label' => $platform->label(),
-                'color' => $platform->color(),
-                'network' => $platform->network(),
-            ])->values();
-
         return Inertia::render('accounts/Index', [
             'workspace' => $workspace,
-            'platforms' => $platforms,
+            'platforms' => SocialPlatform::connectableOptions(),
             'connectedAccounts' => SocialAccountResource::collection(
                 $workspace->socialAccounts()->orderBy('id')->get(),
             )->resolve(),
@@ -177,6 +168,10 @@ class SocialController extends Controller
      * Render the Inertia page that notifies the opener and closes the connect
      * popup. Used by both the GET OAuth callbacks (a fresh popup page load) and
      * the XHR selection submits (an Inertia visit that swaps to this page).
+     *
+     * Always pass `onboardingProgress` as inline false so it overrides the shared
+     * deferred prop: after select the URL is still the select path, and a deferred
+     * reload would re-GET that route with a cleared session.
      */
     protected function popupCallback(bool $success, string $message, ?string $platform = null): Response
     {
@@ -186,6 +181,7 @@ class SocialController extends Controller
             'success' => $success,
             'message' => $message,
             'platform' => $platform,
+            'onboardingProgress' => false,
         ]);
     }
 }

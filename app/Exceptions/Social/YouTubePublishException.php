@@ -17,10 +17,18 @@ class YouTubePublishException extends SocialPublishException
         $rawResponse = $response->body();
 
         $reason = data_get($body, 'error.errors.0.reason');
+        $fallbackMessage = data_get($body, 'error.message', 'An unknown YouTube error occurred.');
+
+        if (self::isConfirmedDeadToken($response)) {
+            throw new TokenExpiredException(
+                message: $fallbackMessage,
+                platformErrorCode: $reason,
+            );
+        }
 
         [$message, $category] = self::mapReasonToMessageAndCategory(
             reason: $reason,
-            fallbackMessage: data_get($body, 'error.message', 'An unknown YouTube error occurred.'),
+            fallbackMessage: $fallbackMessage,
         );
 
         return new static(
@@ -60,6 +68,17 @@ class YouTubePublishException extends SocialPublishException
     public function platform(): string
     {
         return 'youtube';
+    }
+
+    /**
+     * Whether this response confirms the account's own access_token is dead
+     * (not merely a transient or content-specific failure). Shared with
+     * ConnectionVerifier so both the publish and verify paths agree on what
+     * a dead YouTube token looks like.
+     */
+    public static function isConfirmedDeadToken(Response $response): bool
+    {
+        return $response->status() === 401;
     }
 
     /**

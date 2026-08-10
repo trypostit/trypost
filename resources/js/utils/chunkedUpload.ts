@@ -5,6 +5,7 @@ interface ChunkedUploadOptions {
     modelId?: string;
     collection?: string;
     chunkSize?: number;
+    signal?: AbortSignal;
     onProgress?: (progress: number) => void;
     onComplete?: (response: any) => void;
     onError?: (error: any) => void;
@@ -30,6 +31,7 @@ export const uploadChunked = async (options: ChunkedUploadOptions): Promise<Chun
         modelId,
         collection = 'default',
         chunkSize = DEFAULT_CHUNK_SIZE,
+        signal,
         onProgress,
         onComplete,
         onError,
@@ -38,6 +40,7 @@ export const uploadChunked = async (options: ChunkedUploadOptions): Promise<Chun
     const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
     const totalSize = file.size;
     const totalChunks = Math.ceil(totalSize / chunkSize);
+    const uploadId = crypto.randomUUID();
     let uploadedBytes = 0;
 
     try {
@@ -50,6 +53,7 @@ export const uploadChunked = async (options: ChunkedUploadOptions): Promise<Chun
                 'Content-Type': 'application/octet-stream',
                 'Content-Range': `bytes ${start}-${end - 1}/${totalSize}`,
                 'X-File-Name': encodeURIComponent(file.name),
+                'X-Upload-Id': uploadId,
                 'X-CSRF-TOKEN': csrfToken,
                 'X-Requested-With': 'XMLHttpRequest',
                 Accept: 'application/json',
@@ -63,6 +67,7 @@ export const uploadChunked = async (options: ChunkedUploadOptions): Promise<Chun
                 method: 'POST',
                 headers,
                 body: chunk,
+                signal,
             });
 
             if (!response.ok) throw new Error(`Upload chunk failed: ${response.statusText}`);
@@ -81,6 +86,7 @@ export const uploadChunked = async (options: ChunkedUploadOptions): Promise<Chun
 
         throw new Error('Upload did not complete');
     } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') throw error;
         onError?.(error);
         throw error;
     }

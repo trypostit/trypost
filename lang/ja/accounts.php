@@ -21,7 +21,7 @@ return [
         'tiktok' => 'TikTok アカウントを接続',
         'youtube' => 'YouTube チャンネルを接続',
         'facebook' => 'Facebook ページを接続',
-        'instagram' => 'Instagram プロアカウントを接続',
+        'instagram' => 'Instagram Login または Facebook ページで接続',
         'instagram-facebook' => 'Facebook ページ経由で Instagram を接続',
         'threads' => 'Threads アカウントを接続',
         'pinterest' => 'Pinterest アカウントを接続',
@@ -94,6 +94,15 @@ return [
         'no_pages_description' => 'Instagram ビジネスアカウントが連携された Facebook ページが見つかりませんでした。',
         'view' => '表示',
         'choose' => '選択',
+    ],
+
+    'instagram_connect' => [
+        'title' => 'Instagram を接続',
+        'description' => 'Instagram アカウントの接続方法を選択してください',
+        'standalone_title' => 'Instagram Login',
+        'standalone_description' => 'Instagram のプロフェッショナルアカウントでサインイン',
+        'facebook_title' => 'Facebook ページ',
+        'facebook_description' => 'Facebook ページに連携された Instagram アカウントを接続',
     ],
 
     'linkedin' => [

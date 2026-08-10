@@ -15,4 +15,7 @@ return [
         'title' => 'Conta do :platform precisa ser reconectada',
         'body' => 'Sessão de :account expirou — reconecte pra continuar postando',
     ],
+    'post_at_risk' => [
+        'title' => '{1} :count post agendado está em risco|[2,*] :count posts agendados estão em risco',
+    ],
 ];

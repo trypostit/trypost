@@ -71,6 +71,8 @@ return [
         'page_title' => 'Entrar',
         'email' => 'Endereço de email',
         'password' => 'Senha',
+        'show_password' => 'Mostrar senha',
+        'hide_password' => 'Esconder senha',
         'forgot_password' => 'Esqueceu a senha?',
         'remember_me' => 'Lembrar de mim',
         'submit' => 'Entrar',

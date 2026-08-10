@@ -21,7 +21,6 @@ import {
 } from '@/composables/usePostCompliance';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import date from '@/date';
-import dayjs from '@/dayjs';
 import debounce from '@/debounce';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { destroy as destroyPost, update as updatePost } from '@/routes/app/posts';
@@ -34,6 +33,8 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
+    handle_label: string;
     avatar_url: string | null;
 }
 
@@ -152,13 +153,13 @@ const {
 
 // Schedule
 const scheduledDateTime = ref(date.formatUtcForDateTimeLocalInput(post.value.scheduled_at));
-const hasPickedTime = ref(post.value.status === PostStatus.Scheduled && !! post.value.scheduled_at);
+const hasPickedTime = ref(Boolean(post.value.scheduled_at));
 
 const pickTimeLabel = computed(() => {
     if (! hasPickedTime.value || ! scheduledDateTime.value) {
         return trans('posts.edit.pick_time');
     }
-    return dayjs(scheduledDateTime.value).format('MMM D, HH:mm');
+    return date.formatLocalDateTime(scheduledDateTime.value);
 });
 
 // Labels
@@ -465,6 +466,7 @@ usePostEcho(post.value.id, '.post.comment.created', (e: any) => {
                             :is-read-only="isLocked"
                             :auth-user-id="authUserId"
                             :initial-highlight-comment-id="initialHighlightCommentId"
+                            :posted-at="scheduledDateTime || null"
                             @toggle-platform="togglePlatform"
                             @toggle-label="toggleLabel"
                             @update:platform-meta="updatePlatformMeta"

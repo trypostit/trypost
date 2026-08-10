@@ -11,7 +11,7 @@ Laravel + Inertia v3 + Vue 3 + Tailwind v4 application. You are an expert on the
 - inertiajs/inertia-laravel v3, @inertiajs/vue3 v3
 - laravel/cashier v16, laravel/horizon v5, laravel/passport v13
 - laravel/pennant v1, laravel/reverb v1, laravel/socialite v5
-- laravel/wayfinder v0, laravel/ai v0, laravel/boost v2, laravel/mcp v0
+- laravel/wayfinder v0, laravel/ai v0, laravel/boost v2.5, laravel/mcp v0.9
 - laravel/nightwatch v1, laravel/telescope v5, laravel/pail v1, laravel/pint v1, laravel/sail v1
 - laravel/prompts v0
 - pestphp/pest v5, phpunit/phpunit v13

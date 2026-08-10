@@ -15,4 +15,7 @@ return [
         'title' => ':platform-Konto muss erneut verbunden werden',
         'body' => 'Sitzung von :account abgelaufen – bitte verbinde es erneut, um weiter zu posten',
     ],
+    'post_at_risk' => [
+        'title' => '{1} :count bevorstehender Beitrag ist gefährdet|[2,*] :count bevorstehende Beiträge sind gefährdet',
+    ],
 ];

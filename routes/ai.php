@@ -3,9 +3,13 @@
 declare(strict_types=1);
 
 use App\Mcp\Servers\TryPostServer;
+use Illuminate\Support\Facades\Route;
 use Laravel\Mcp\Facades\Mcp;
 
-Mcp::oauthRoutes();
+Route::middleware('throttle:mcp-oauth-registration')->group(function () {
+    Mcp::oauthRoutes();
+});
 
 Mcp::web('/mcp/trypost', TryPostServer::class)
-    ->middleware(['auth:api', 'workspace.token']);
+    ->middleware(['auth:api', 'workspace.token:mcp'])
+    ->name('mcp.trypost');

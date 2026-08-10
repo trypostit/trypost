@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Actions\Invite\RemoveMember;
+use App\Enums\UserWorkspace\Role;
+use App\Models\AccessToken;
 use App\Models\User;
 
 test('remove member clears current workspace when it was the removed membership', function () {
@@ -14,6 +16,9 @@ test('remove member clears current workspace when it was the removed membership'
         sharedWorkspaces: 2,
         setMemberCurrent: true,
     );
+    $result = $member->createToken('Removed Workspace');
+    $token = AccessToken::query()->findOrFail($result->token->id);
+    $token->forceFill(['workspace_id' => $workspace->id])->saveQuietly();
 
     RemoveMember::execute($workspace, $member->id);
 
@@ -22,6 +27,7 @@ test('remove member clears current workspace when it was the removed membership'
     expect($workspace->members()->where('user_id', $member->id)->exists())->toBeFalse();
     expect($member->current_workspace_id)->toBe($other->id);
     expect($member->account_id)->toBe($owner->account_id);
+    expect($token->fresh()->revoked)->toBeTrue();
 });
 
 test('remove member deletes a user who loses their last account workspace', function () {
@@ -55,4 +61,69 @@ test('remove member prefers another workspace on the same account', function () 
 
     expect($member->account_id)->toBe($owner->account_id);
     expect($member->current_workspace_id)->toBe($sharedB->id);
+});
+
+test('remove member keeps mcp oauth bound to another workspace', function () {
+    [
+        'member' => $member,
+        'shared_workspaces' => [$sharedA, $sharedB],
+    ] = strandedMemberOnSharedAccount(
+        sharedWorkspaces: 2,
+        setMemberCurrent: true,
+    );
+    $oauth = mcpAccessToken($member, mcpOauthClient(), $sharedB);
+
+    RemoveMember::execute($sharedA, $member->id);
+
+    expect($oauth->fresh()->revoked)->toBeFalse()
+        ->and($member->fresh()->can('createPost', $sharedB))->toBeTrue();
+});
+
+test('remove member keeps mcp oauth on another workspace when the member remains a viewer there', function () {
+    [
+        'member' => $member,
+        'shared_workspaces' => [$sharedA, $sharedB],
+    ] = strandedMemberOnSharedAccount(
+        sharedWorkspaces: 2,
+        setMemberCurrent: true,
+    );
+    $sharedB->members()->updateExistingPivot($member->id, [
+        'role' => Role::Viewer->value,
+    ]);
+    $oauth = mcpAccessToken($member, mcpOauthClient(), $sharedB);
+
+    RemoveMember::execute($sharedA, $member->id);
+
+    expect($oauth->fresh()->revoked)->toBeFalse()
+        ->and($member->fresh()->can('createPost', $sharedB))->toBeFalse()
+        ->and($member->fresh()->can('view', $sharedB))->toBeTrue();
+});
+
+test('remove member revokes workspace-scoped api keys and mcp oauth tokens', function () {
+    [
+        'member' => $member,
+        'shared_workspaces' => [$workspace, $other],
+    ] = strandedMemberOnSharedAccount(
+        sharedWorkspaces: 2,
+        setMemberCurrent: true,
+    );
+
+    $pat = $member->createToken('API Key');
+    $patToken = AccessToken::query()->findOrFail($pat->token->id);
+    $patToken->forceFill(['workspace_id' => $workspace->id])->saveQuietly();
+
+    $otherPat = $member->createToken('Other Key');
+    $otherPatToken = AccessToken::query()->findOrFail($otherPat->token->id);
+    $otherPatToken->forceFill(['workspace_id' => $other->id])->saveQuietly();
+
+    $oauth = mcpAccessToken($member, mcpOauthClient(), $workspace);
+    $otherOauth = mcpAccessToken($member, mcpOauthClient(), $other);
+
+    RemoveMember::execute($workspace, $member->id);
+
+    expect($patToken->fresh()->revoked)->toBeTrue()
+        ->and($oauth->fresh()->revoked)->toBeTrue()
+        ->and($otherPatToken->fresh()->revoked)->toBeFalse()
+        ->and($otherOauth->fresh()->revoked)->toBeFalse()
+        ->and(User::find($member->id))->not->toBeNull();
 });

@@ -21,7 +21,7 @@ return [
         'tiktok' => 'اربط حسابك على TikTok',
         'youtube' => 'اربط قناة على YouTube',
         'facebook' => 'اربط صفحة على Facebook',
-        'instagram' => 'اربط حساب Instagram احترافيًا',
+        'instagram' => 'اربط عبر Instagram Login أو صفحات Facebook',
         'instagram-facebook' => 'اربط Instagram عبر صفحة Facebook',
         'threads' => 'اربط حسابك على Threads',
         'pinterest' => 'اربط حسابك على Pinterest',
@@ -94,6 +94,15 @@ return [
         'no_pages_description' => 'لم يتم العثور على صفحات Facebook مرتبطة بحسابات Instagram للأعمال.',
         'view' => 'عرض',
         'choose' => 'اختيار',
+    ],
+
+    'instagram_connect' => [
+        'title' => 'ربط Instagram',
+        'description' => 'اختر طريقة ربط حساب Instagram',
+        'standalone_title' => 'Instagram Login',
+        'standalone_description' => 'سجّل الدخول بحساب Instagram الاحترافي',
+        'facebook_title' => 'صفحات Facebook',
+        'facebook_description' => 'اربط حساب Instagram مرتبطًا بصفحة Facebook',
     ],
 
     'linkedin' => [

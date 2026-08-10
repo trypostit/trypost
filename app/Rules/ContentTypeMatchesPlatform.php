@@ -40,7 +40,7 @@ class ContentTypeMatchesPlatform implements DataAwareRule, ValidationRule
         $parentKey = Str::beforeLast($attribute, '.');
         $accountId = data_get($this->data, $parentKey.'.social_account_id');
 
-        if (! $accountId) {
+        if (! $accountId || ! Str::isUuid((string) $accountId)) {
             return;
         }
 

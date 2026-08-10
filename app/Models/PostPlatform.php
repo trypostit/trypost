@@ -8,6 +8,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use Database\Factories\PostPlatformFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -35,6 +36,7 @@ class PostPlatform extends Model
         'error_context',
         'published_at',
         'meta',
+        'connection_warning_sent_at',
     ];
 
     protected function casts(): array
@@ -47,6 +49,7 @@ class PostPlatform extends Model
             'published_at' => 'datetime',
             'meta' => 'array',
             'error_context' => 'array',
+            'connection_warning_sent_at' => 'datetime',
         ];
     }
 
@@ -61,11 +64,21 @@ class PostPlatform extends Model
     }
 
     /**
+     * Only platforms still enabled for publishing — disabled ones are
+     * excluded from PublishPost, so anything else that mirrors publish
+     * eligibility (previews, validation, proactive checks) must too.
+     */
+    public function scopeEnabled(Builder $query): Builder
+    {
+        return $query->where('post_platforms.enabled', true);
+    }
+
+    /**
      * Get display name, falling back to snapshot if account was deleted.
      */
     public function getDisplayNameAttribute(): string
     {
-        return $this->socialAccount?->display_name ?? $this->platform_name ?? $this->platform->label();
+        return $this->socialAccount?->accountDisplayName() ?? $this->platform_name ?? $this->platform->label();
     }
 
     /**

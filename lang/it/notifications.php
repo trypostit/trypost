@@ -15,4 +15,7 @@ return [
         'title' => 'L\'account :platform deve essere ricollegato',
         'body' => 'Sessione di :account scaduta — ricollegalo per continuare a pubblicare',
     ],
+    'post_at_risk' => [
+        'title' => '{1} :count post imminente è a rischio|[2,*] :count post imminenti sono a rischio',
+    ],
 ];

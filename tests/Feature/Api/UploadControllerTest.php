@@ -53,6 +53,24 @@ test('valid signed POST stores Media with upload_token', function () {
         ]);
 });
 
+test('sanitizes an invalid UTF-8 byte in the client filename instead of crashing the insert (Nightwatch #24)', function () {
+    $token = (string) Str::uuid();
+    // 0x97 is a raw Windows-1252 em dash, not valid UTF-8 on its own — Postgres
+    // rejects it outright on insert unless the filename is sanitized first.
+    $file = UploadedFile::fake()->image("earnings \x97 report.png", 50, 50);
+
+    $response = $this->post(signedUploadUrl($this->workspace, $token), [
+        'media' => $file,
+    ]);
+
+    $response->assertCreated();
+
+    $media = Media::where('upload_token', $token)->first();
+    expect($media)->not->toBeNull();
+    expect(mb_check_encoding($media->original_filename, 'UTF-8'))->toBeTrue();
+    expect($media->original_filename)->toBe('earnings ? report.png');
+});
+
 test('rejects unsigned request', function () {
     $token = (string) Str::uuid();
     $file = UploadedFile::fake()->image('shot.png', 50, 50);

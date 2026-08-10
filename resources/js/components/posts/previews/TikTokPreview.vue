@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { IconPlus } from '@tabler/icons-vue';
-import { computed } from 'vue';
 
 import VerticalMediaCanvas from '@/components/posts/previews/VerticalMediaCanvas.vue';
+import { getInitials } from '@/composables/useInitials';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -10,6 +10,8 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
+    handle_label: string;
     avatar_url: string | null;
 }
 
@@ -19,7 +21,7 @@ interface Props {
     media: MediaItem[];
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 
 // Format engagement numbers like TikTok does
 const formatNumber = (num: number): string => {
@@ -31,8 +33,6 @@ const formatNumber = (num: number): string => {
     }
     return num.toString();
 };
-
-const username = computed(() => props.socialAccount.username || props.socialAccount.display_name);
 </script>
 
 <template>
@@ -90,10 +90,10 @@ const username = computed(() => props.socialAccount.username || props.socialAcco
             <div class="relative mb-1">
                 <div class="w-11 h-11 rounded-full border-[1.5px] border-white overflow-hidden">
                     <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url"
-                        :alt="socialAccount.display_name" class="w-full h-full object-cover" />
+                        :alt="socialAccount.display_label" class="w-full h-full object-cover" />
                     <div v-else
                         class="w-full h-full bg-[#2f2f2f] flex items-center justify-center text-white font-bold text-sm">
-                        {{ socialAccount.display_name?.charAt(0).toUpperCase() }}
+                        {{ getInitials(socialAccount.display_label) }}
                     </div>
                 </div>
                 <div
@@ -150,7 +150,7 @@ const username = computed(() => props.socialAccount.username || props.socialAcco
         <!-- Bottom info -->
         <div v-if="media.length > 0" class="absolute left-3 right-14 bottom-[72px] text-white z-10">
             <!-- Username -->
-            <p class="font-bold text-[14px] drop-shadow-lg mb-1">@{{ username }}</p>
+            <p class="font-bold text-[14px] drop-shadow-lg mb-1">@{{ socialAccount.handle_label }}</p>
 
             <!-- Caption -->
             <div v-if="content" class="text-[13px] text-white drop-shadow-lg line-clamp-2 leading-[18px] mb-2">
@@ -165,7 +165,7 @@ const username = computed(() => props.socialAccount.username || props.socialAcco
                 <div class="flex items-center overflow-hidden">
                     <p class="text-[12px] whitespace-nowrap">
                         <span class="inline-flex animate-marquee">
-                            Original sound - {{ socialAccount.display_name }} &nbsp;&nbsp;&nbsp;
+                            Original sound - {{ socialAccount.display_label }} &nbsp;&nbsp;&nbsp;
                         </span>
                     </p>
                 </div>

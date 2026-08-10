@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { toRef } from 'vue';
+import { computed, toRef } from 'vue';
 
 import LinkCard from "@/components/posts/previews/LinkCard.vue";
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
+import { getInitials } from '@/composables/useInitials';
 import { useLinkCard } from '@/composables/useLinkCard';
 import { isVideoMedia } from '@/composables/useMedia';
+import date from '@/date';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -12,6 +14,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -19,9 +22,12 @@ interface Props {
     socialAccount: SocialAccount;
     content: string;
     media: MediaItem[];
+    postedAt?: string | null;
 }
 
 const props = defineProps<Props>();
+
+const postedAtLabel = computed(() => date.formatBlueskyPreview(props.postedAt));
 
 const { card: linkCard, loading: linkCardLoading } = useLinkCard(
     toRef(props, 'content'),
@@ -63,16 +69,16 @@ const { card: linkCard, loading: linkCardLoading } = useLinkCard(
                 <div class="flex items-start gap-3">
                     <!-- Avatar -->
                     <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url"
-                        :alt="socialAccount.display_name" class="h-11 w-11 rounded-full object-cover shrink-0" />
+                        :alt="socialAccount.display_label" class="h-11 w-11 rounded-full object-cover shrink-0" />
                     <div v-else
                         class="h-11 w-11 rounded-full bg-gradient-to-br from-[#0085ff] to-[#00d4ff] flex items-center justify-center text-white font-semibold shrink-0">
-                        {{ socialAccount.display_name?.charAt(0) }}
+                        {{ getInitials(socialAccount.display_label) }}
                     </div>
 
                     <!-- Name and handle -->
                     <div class="flex-1 min-w-0">
                         <div class="font-semibold text-[15px] text-black dark:text-white">
-                            {{ socialAccount.display_name }}
+                            {{ socialAccount.display_label }}
                         </div>
                         <div class="text-[14px] text-neutral-500 dark:text-[#7b8d9e] truncate">
                             @{{ socialAccount.username || 'handle' }}.bsky.social
@@ -117,7 +123,7 @@ const { card: linkCard, loading: linkCardLoading } = useLinkCard(
 
                 <!-- Timestamp -->
                 <div class="mt-3 text-[13px] text-neutral-500 dark:text-[#7b8d9e]">
-                    4:18 PM · Jan 21, 2026
+                    {{ postedAtLabel }}
                 </div>
             </div>
 
@@ -184,11 +190,11 @@ const { card: linkCard, loading: linkCardLoading } = useLinkCard(
 
             <!-- Reply input -->
             <div class="px-4 py-3 border-t border-neutral-200 dark:border-[#1e3a5f] flex items-center gap-3">
-                <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url" :alt="socialAccount.display_name"
+                <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url" :alt="socialAccount.display_label"
                     class="h-8 w-8 rounded-full object-cover shrink-0" />
                 <div v-else
                     class="h-8 w-8 rounded-full bg-gradient-to-br from-[#0085ff] to-[#00d4ff] flex items-center justify-center text-white text-xs font-semibold shrink-0">
-                    {{ socialAccount.display_name?.charAt(0) }}
+                    {{ getInitials(socialAccount.display_label) }}
                 </div>
                 <div class="flex-1 text-[15px] text-neutral-400 dark:text-[#7b8d9e]">
                     Write your reply

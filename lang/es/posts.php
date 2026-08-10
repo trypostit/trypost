@@ -158,6 +158,13 @@ return [
             'search_board' => 'Buscar tableros...',
             'no_board_found' => 'Ningún tablero coincide con tu búsqueda.',
             'board_required' => 'Selecciona un tablero de Pinterest para publicar este post.',
+            'title' => 'Título',
+            'title_placeholder' => 'Título opcional del pin',
+            'link' => 'Enlace de destino',
+            'link_placeholder' => 'https://ejemplo.com',
+            'link_invalid' => 'Introduce un enlace de destino válido (http o https).',
+            'title_max' => 'El título no puede tener más de 100 caracteres.',
+            'link_max' => 'El enlace de destino no puede tener más de 2048 caracteres.',
         ],
         'discord' => [
             'settings' => 'Configuración de Discord',
@@ -568,6 +575,9 @@ return [
         'account_disconnected' => 'Cuenta social desconectada',
         'account_inactive' => 'Cuenta social desactivada',
         'account_token_expired' => 'Sesión de la cuenta social expirada — reconecta la cuenta',
+        'platform_unavailable' => 'La plataforma no está disponible temporalmente. Reintentaremos en breve.',
+        'platform_unavailable_exhausted' => 'La plataforma siguió sin estar disponible tras varios reintentos. Inténtalo de nuevo más tarde.',
+        'publishing_timed_out' => 'La publicación agotó el tiempo de espera. Inténtalo de nuevo.',
     ],
 
     'delete' => [

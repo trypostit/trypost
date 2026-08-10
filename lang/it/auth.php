@@ -71,6 +71,8 @@ return [
         'page_title' => 'Accedi',
         'email' => 'Indirizzo email',
         'password' => 'Password',
+        'show_password' => 'Mostra password',
+        'hide_password' => 'Nascondi password',
         'forgot_password' => 'Password dimenticata?',
         'remember_me' => 'Ricordami',
         'submit' => 'Accedi',

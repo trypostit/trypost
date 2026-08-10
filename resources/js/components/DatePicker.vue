@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { parseDate } from '@internationalized/date';
 import { IconCalendar } from '@tabler/icons-vue';
+import { trans } from 'laravel-vue-i18n';
 import { ref, watch, computed } from 'vue';
 
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useCalendarLocale } from '@/composables/useCalendarLocale';
 import dayjs from '@/dayjs';
 
 const props = defineProps({
@@ -50,6 +52,8 @@ const props = defineProps({
 const emit = defineEmits<{
     'update:modelValue': [value: string | null];
 }>();
+
+const calendarLocale = useCalendarLocale();
 
 // Parse input value into date
 const parseInput = (value: string) => {
@@ -156,7 +160,7 @@ watch(internalDate, (newDate) => {
     }
 });
 
-// Display string for the button
+// Display string for the button — LL/LLL follow the active dayjs locale.
 const displayText = computed(() => {
     if (!props.modelValue || !dayjs(props.modelValue).isValid()) {
         return null;
@@ -165,10 +169,10 @@ const displayText = computed(() => {
     const parsed = dayjs(props.modelValue);
 
     if (props.showTime) {
-        return parsed.format('MMM D, YYYY [at] HH:mm');
+        return parsed.format('LLL');
     }
 
-    return parsed.format('MMM D, YYYY');
+    return parsed.format('LL');
 });
 </script>
 
@@ -182,8 +186,14 @@ const displayText = computed(() => {
             </Button>
         </PopoverTrigger>
         <PopoverContent class="w-auto p-0" :align="align">
-            <Calendar v-model="internalDate as any" :placeholder="(internalDate as any)" layout="month-and-year" locale="en"
-                calendar-label="Date picker" initial-focus />
+            <Calendar
+                v-model="internalDate as any"
+                :placeholder="(internalDate as any)"
+                layout="month-and-year"
+                :locale="calendarLocale"
+                :calendar-label="trans('common.date_picker.label')"
+                initial-focus
+            />
             <!-- Time Picker -->
             <div v-if="showTime" class="border-t-2 border-foreground/10 p-3">
                 <div class="flex items-center gap-2">

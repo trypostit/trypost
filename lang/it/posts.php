@@ -158,6 +158,13 @@ return [
             'search_board' => 'Cerca bacheche...',
             'no_board_found' => 'Nessuna bacheca corrisponde alla ricerca.',
             'board_required' => 'Seleziona una bacheca Pinterest per pubblicare questo post.',
+            'title' => 'Titolo',
+            'title_placeholder' => 'Titolo opzionale del pin',
+            'link' => 'Link di destinazione',
+            'link_placeholder' => 'https://esempio.com',
+            'link_invalid' => 'Inserisci un link di destinazione valido (http o https).',
+            'title_max' => 'Il titolo non può superare i 100 caratteri.',
+            'link_max' => 'Il link di destinazione non può superare i 2048 caratteri.',
         ],
         'discord' => [
             'settings' => 'Impostazioni Discord',
@@ -568,6 +575,9 @@ return [
         'account_disconnected' => 'L\'account social è scollegato',
         'account_inactive' => 'L\'account social è disattivato',
         'account_token_expired' => 'Sessione dell\'account social scaduta — ricollegalo',
+        'platform_unavailable' => 'La piattaforma è temporaneamente non disponibile. Riproveremo a breve.',
+        'platform_unavailable_exhausted' => 'La piattaforma è rimasta non disponibile dopo diversi tentativi. Riprova più tardi.',
+        'publishing_timed_out' => 'Pubblicazione scaduta. Riprova.',
     ],
 
     'delete' => [

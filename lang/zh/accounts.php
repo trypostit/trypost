@@ -21,7 +21,7 @@ return [
         'tiktok' => '连接你的 TikTok 账号',
         'youtube' => '连接一个 YouTube 频道',
         'facebook' => '连接一个 Facebook 主页',
-        'instagram' => '连接一个 Instagram 专业账号',
+        'instagram' => '通过 Instagram Login 或 Facebook 主页连接',
         'instagram-facebook' => '通过 Facebook 主页连接 Instagram',
         'threads' => '连接你的 Threads 账号',
         'pinterest' => '连接你的 Pinterest 账号',
@@ -94,6 +94,15 @@ return [
         'no_pages_description' => '未找到关联了 Instagram 商业账号的 Facebook 主页。',
         'view' => '查看',
         'choose' => '选择',
+    ],
+
+    'instagram_connect' => [
+        'title' => '连接 Instagram',
+        'description' => '选择连接 Instagram 账号的方式',
+        'standalone_title' => 'Instagram Login',
+        'standalone_description' => '使用你的 Instagram 专业账号登录',
+        'facebook_title' => 'Facebook 主页',
+        'facebook_description' => '连接关联到 Facebook 主页的 Instagram 账号',
     ],
 
     'linkedin' => [

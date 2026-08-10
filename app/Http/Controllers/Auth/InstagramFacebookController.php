@@ -8,11 +8,14 @@ use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\Workspace;
+use App\Services\Social\Meta\GraphPaginator;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Uri;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Laravel\Socialite\Facades\Socialite;
@@ -118,22 +121,19 @@ class InstagramFacebookController extends SocialController
         }
     }
 
-    public function selectPage(Request $request)
+    public function selectPage(Request $request): InertiaResponse
     {
         $oauthData = session('instagram_facebook_oauth');
         $workspaceId = session('social_connect_workspace');
 
         if (! $oauthData || ! $workspaceId) {
-            session()->flash('flash.banner', 'Session expired. Please try again.');
-            session()->flash('flash.bannerStyle', 'danger');
-
-            return redirect()->route('app.accounts');
+            return $this->popupCallback(false, __('accounts.popup_callback.session_expired'), $this->platform->value);
         }
 
         $workspace = Workspace::find($workspaceId);
 
         if (! $workspace) {
-            return redirect()->route('app.accounts');
+            return $this->popupCallback(false, __('accounts.popup_callback.workspace_not_found'), $this->platform->value);
         }
 
         $pages = collect(data_get($oauthData, 'pages'))
@@ -234,63 +234,49 @@ class InstagramFacebookController extends SocialController
 
     private function fetchPagesWithInstagram(string $userToken): array
     {
-        try {
-            $graphApi = (string) config('trypost.platforms.instagram-facebook.graph_api');
+        $graphApi = (string) config('trypost.platforms.instagram-facebook.graph_api');
 
-            $response = Http::get($graphApi.'/me/accounts', [
-                'access_token' => $userToken,
-                'fields' => 'id,name,username,picture{url},access_token,instagram_business_account',
-            ]);
+        $pages = GraphPaginator::all("{$graphApi}/me/accounts", [
+            'access_token' => $userToken,
+            'fields' => 'id,name,username,picture{url},access_token,instagram_business_account',
+            'limit' => 100,
+        ]);
 
-            if ($response->failed()) {
-                Log::error('Instagram via Facebook pages fetch failed', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
+        return collect($pages)
+            ->filter(fn (array $page) => filled(data_get($page, 'instagram_business_account.id')))
+            ->map(function (array $page) use ($graphApi) {
+                $igId = data_get($page, 'instagram_business_account.id');
+                $token = data_get($page, 'access_token');
+                $igData = [];
 
-                return [];
-            }
+                try {
+                    $ig = Http::timeout(15)->connectTimeout(5)->get("{$graphApi}/{$igId}", [
+                        'access_token' => $token,
+                        'fields' => 'username,name,profile_picture_url',
+                    ]);
 
-            $pages = data_get($response->json(), 'data', []);
-            $results = [];
-
-            foreach ($pages as $page) {
-                $igAccountId = data_get($page, 'instagram_business_account.id');
-
-                if (! $igAccountId) {
-                    continue;
+                    $igData = $ig->successful() ? $ig->json() : [];
+                } catch (ConnectionException) {
+                    // Page listing still succeeds; username/avatar may be empty.
                 }
 
-                // Fetch IG account details
-                $igResponse = Http::get("{$graphApi}/{$igAccountId}", [
-                    'access_token' => data_get($page, 'access_token'),
-                    'fields' => 'username,name,profile_picture_url',
-                ]);
-
-                $igData = $igResponse->successful() ? $igResponse->json() : [];
-
-                $results[] = [
+                return [
                     'page_id' => data_get($page, 'id'),
                     'page_name' => data_get($page, 'name'),
                     'page_picture' => data_get($page, 'picture.data.url'),
-                    'page_access_token' => data_get($page, 'access_token'),
-                    'ig_id' => $igAccountId,
+                    'page_access_token' => $token,
+                    'ig_id' => $igId,
                     'ig_username' => data_get($igData, 'username'),
                     'ig_name' => data_get($igData, 'name'),
                     'ig_picture' => data_get($igData, 'profile_picture_url'),
                 ];
-            }
-
-            return $results;
-        } catch (\Exception $e) {
-            Log::error('Instagram via Facebook pages fetch error', ['error' => $e->getMessage()]);
-
-            return [];
-        }
+            })
+            ->values()
+            ->all();
     }
 
     private function graphVersion(): string
     {
-        return basename((string) parse_url((string) config('trypost.platforms.instagram-facebook.graph_api'), PHP_URL_PATH));
+        return Uri::of(config('trypost.platforms.instagram-facebook.graph_api'))->path();
     }
 }

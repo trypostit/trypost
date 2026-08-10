@@ -20,7 +20,7 @@ import {
     TableLoadMore,
     TableRow,
 } from '@/components/ui/table';
-import dayjs from '@/dayjs';
+import date from '@/date';
 import debounce from '@/debounce';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { destroy as labelsDestroy, index as labelsIndex } from '@/routes/app/labels';
@@ -73,7 +73,7 @@ const handleDelete = (label: Label) => {
     });
 };
 
-const formatDate = (date: string): string => dayjs.utc(date).local().format('D MMM YYYY');
+const formatDate = (value: string): string => date.formatDate(value);
 
 const hasActiveSearch = computed(() => Boolean(searchQuery.value?.trim()));
 </script>

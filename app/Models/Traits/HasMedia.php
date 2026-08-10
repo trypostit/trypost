@@ -98,7 +98,7 @@ trait HasMedia
             'collection' => $collection,
             'type' => $type,
             'path' => $path,
-            'original_filename' => $file->getClientOriginalName(),
+            'original_filename' => $this->sanitizeOriginalFilename($file->getClientOriginalName()),
             'mime_type' => $normalizedMime,
             'size' => strlen($normalizedBytes),
             'order' => 0,
@@ -137,7 +137,7 @@ trait HasMedia
             'collection' => $collection,
             'type' => $type,
             'path' => $stored['path'],
-            'original_filename' => $originalFilename,
+            'original_filename' => $this->sanitizeOriginalFilename($originalFilename),
             'mime_type' => $stored['mime_type'],
             'size' => $stored['size'],
             'order' => 0,
@@ -169,7 +169,7 @@ trait HasMedia
             'collection' => $collection,
             'type' => $type,
             'path' => $storagePath,
-            'original_filename' => $originalFilename,
+            'original_filename' => $this->sanitizeOriginalFilename($originalFilename),
             'mime_type' => $mimeType,
             'size' => $size,
             'order' => 0,
@@ -249,6 +249,16 @@ trait HasMedia
     {
         return (Type::classify($mimeType)
             ?? throw new InvalidArgumentException("Unsupported media MIME type: {$mimeType}"))->value;
+    }
+
+    /**
+     * Client-supplied filenames may contain byte sequences that aren't valid
+     * UTF-8 (e.g. a raw Windows-1252 byte for an em dash). Postgres rejects
+     * those outright on insert, so replace invalid sequences before storing.
+     */
+    private function sanitizeOriginalFilename(string $filename): string
+    {
+        return mb_scrub($filename, 'UTF-8');
     }
 
     private function getMediaMeta(UploadedFile $file, string $type): array

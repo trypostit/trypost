@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import VideoPreview from '@/components/posts/previews/VideoPreview.vue';
+import { getInitials } from '@/composables/useInitials';
 import { isVideoMedia } from '@/composables/useMedia';
 import type { MediaItem } from '@/types/media';
 
@@ -8,6 +9,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -38,20 +40,20 @@ const sampleReactions = [
             <img
                 v-if="socialAccount.avatar_url"
                 :src="socialAccount.avatar_url"
-                :alt="socialAccount.display_name"
+                :alt="socialAccount.display_label"
                 class="h-9 w-9 rounded-full object-cover"
             />
             <div
                 v-else
                 class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#2aabee] to-[#229ed9] font-semibold text-white"
             >
-                {{ socialAccount.display_name?.charAt(0) }}
+                {{ getInitials(socialAccount.display_label) }}
             </div>
             <div class="min-w-0 flex-1">
                 <div
                     class="truncate text-[15px] font-semibold text-[#1f232b] dark:text-white"
                 >
-                    {{ socialAccount.display_name || 'Channel' }}
+                    {{ socialAccount.display_label }}
                 </div>
                 <div class="text-[13px] text-[#707991] dark:text-[#708499]">
                     channel

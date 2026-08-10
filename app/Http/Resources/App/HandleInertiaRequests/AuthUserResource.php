@@ -16,6 +16,7 @@ class AuthUserResource
         return [
             'id' => $user->id,
             'name' => $user->name,
+            'first_name' => $user->firstName(),
             'email' => $user->email,
             'has_photo' => $user->has_photo,
             'photo_url' => $user->photo_url,

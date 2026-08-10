@@ -14,6 +14,8 @@ return [
         'formats' => 'JPEG, PNG, GIF, WebP, MP4, PDF',
         'uploading' => 'Import en cours...',
         'failed' => 'Impossible d\'importer :file. Veuillez réessayer.',
+        'file_too_large' => 'La taille du fichier dépasse le maximum autorisé (:max Mo).',
+        'cancelled' => 'Import annulé.',
     ],
 
     'empty' => [

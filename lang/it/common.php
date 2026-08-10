@@ -35,7 +35,10 @@ return [
         'empty' => 'Nessun fuso orario trovato',
     ],
 
+    'just_now' => 'Proprio ora',
+
     'date_picker' => [
+        'label' => 'Selettore data',
         'select' => 'Seleziona data',
     ],
 

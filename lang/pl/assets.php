@@ -14,6 +14,8 @@ return [
         'formats' => 'JPEG, PNG, GIF, WebP, MP4, PDF',
         'uploading' => 'Przesyłanie...',
         'failed' => 'Nie udało się przesłać :file. Spróbuj ponownie.',
+        'file_too_large' => 'Rozmiar pliku przekracza dozwolone maksimum (:max MB).',
+        'cancelled' => 'Przesyłanie anulowane.',
     ],
 
     'empty' => [

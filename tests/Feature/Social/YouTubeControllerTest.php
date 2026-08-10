@@ -283,7 +283,11 @@ test('youtube channel selection creates account', function () {
     ]);
 
     $response->assertOk();
-    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->component('accounts/PopupCallback')
+        ->where('success', true)
+        ->where('onboardingProgress', false)
+    );
 
     $this->assertDatabaseHas('social_accounts', [
         'workspace_id' => $this->workspace->id,
@@ -291,6 +295,30 @@ test('youtube channel selection creates account', function () {
         'platform_user_id' => 'UC_channel_123',
         'username' => 'mychannel',
     ]);
+
+    // After connect the session is cleared; PopupCallback sets onboardingProgress
+    // inline so Inertia does not deferred-reload this select URL into /accounts.
+    $this->actingAs($this->user)
+        ->get(route('app.social.youtube.select-channel'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('accounts/PopupCallback')
+            ->where('success', false)
+            ->where('message', __('accounts.popup_callback.session_expired'))
+            ->where('onboardingProgress', false)
+        );
+});
+
+test('youtube select channel returns popup callback when the session expired', function () {
+    $this->actingAs($this->user)
+        ->get(route('app.social.youtube.select-channel'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('accounts/PopupCallback')
+            ->where('success', false)
+            ->where('message', __('accounts.popup_callback.session_expired'))
+            ->where('onboardingProgress', false)
+        );
 });
 
 test('youtube channel selection fails with expired session', function () {

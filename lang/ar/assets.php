@@ -14,6 +14,8 @@ return [
         'formats' => 'JPEG، PNG، GIF، WebP، MP4، PDF',
         'uploading' => 'جارٍ الرفع...',
         'failed' => 'تعذر رفع :file. يرجى المحاولة مرة أخرى.',
+        'file_too_large' => 'حجم الملف يتجاوز الحد الأقصى المسموح به (:max ميجابايت).',
+        'cancelled' => 'تم إلغاء الرفع.',
     ],
 
     'empty' => [

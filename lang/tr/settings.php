@@ -131,6 +131,7 @@ return [
             'brand' => 'Marka',
             'users' => 'Üyeler',
             'api_keys' => 'API Anahtarları',
+            'mcp' => 'MCP',
         ],
         'title' => 'Çalışma alanı ayarları',
         'logo_heading' => 'Çalışma alanı logosu',

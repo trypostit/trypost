@@ -24,6 +24,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -306,13 +307,13 @@ const startGeneration = async () => {
                         <img
                             v-if="account.avatar_url"
                             :src="account.avatar_url"
-                            :alt="account.display_name"
+                            :alt="account.display_label"
                             class="size-full object-cover"
                         />
                         <img v-else :src="getPlatformLogo(account.platform)" :alt="account.platform" class="size-4" />
                     </span>
                     <div class="min-w-0 flex-1">
-                        <p class="truncate text-xs font-bold leading-tight text-foreground">{{ account.display_name }}</p>
+                        <p class="truncate text-xs font-bold leading-tight text-foreground">{{ account.display_label }}</p>
                         <p v-if="account.username" class="truncate text-xs font-medium text-foreground/60">@{{ account.username }}</p>
                     </div>
                     <IconCheck v-if="selectedAccountId === account.id" class="absolute right-2 top-2 size-3.5 text-foreground" stroke-width="3" />

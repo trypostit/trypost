@@ -208,7 +208,8 @@ test('youtube is in supported analytics platforms', function () {
     $youtubeAccount = collect($accounts)->firstWhere('platform', Platform::YouTube->value);
 
     expect($youtubeAccount)->not->toBeNull()
-        ->and($youtubeAccount['id'])->toBe($this->youtubeAccount->id);
+        ->and($youtubeAccount['id'])->toBe($this->youtubeAccount->id)
+        ->and($youtubeAccount)->toHaveKeys(['display_label']);
 });
 
 test('youtube analytics show endpoint returns metrics', function () {

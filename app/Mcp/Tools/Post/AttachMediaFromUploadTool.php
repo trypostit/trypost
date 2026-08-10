@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mcp\Tools\Post;
 
 use App\Http\Resources\Api\PostResource;
+use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\Workspace;
@@ -19,6 +20,8 @@ use Laravel\Mcp\Server\Tool;
 #[Description('Attach a Media uploaded via RequestMediaUploadTool to a post. The upload_token is the value returned by RequestMediaUploadTool; the Media is resolved by that token within the current workspace, then appended to the post.')]
 class AttachMediaFromUploadTool extends Tool
 {
+    use AuthorizesMcpTool;
+
     public function handle(Request $request): Response|ResponseFactory
     {
         $validated = $request->validate([
@@ -27,13 +30,18 @@ class AttachMediaFromUploadTool extends Tool
             'alt' => ['nullable', 'string', 'max:'.PostMediaRules::ALT_TEXT_MAX_LENGTH],
         ]);
 
-        $workspaceId = $request->user()->current_workspace_id;
+        $workspaceId = $request->user()?->current_workspace_id;
 
-        $post = Post::where('workspace_id', $workspaceId)
-            ->find(data_get($validated, 'post_id'));
+        $post = $workspaceId
+            ? Post::where('workspace_id', $workspaceId)->find(data_get($validated, 'post_id'))
+            : null;
 
         if (! $post) {
             return Response::error('Post not found.');
+        }
+
+        if ($denied = $this->denyUnlessCan($request, 'update', $post, 'Not authorized to update this post.')) {
+            return $denied;
         }
 
         $media = Media::query()

@@ -35,7 +35,10 @@ return [
         'empty' => 'Geen tijdzone gevonden',
     ],
 
+    'just_now' => 'Zojuist',
+
     'date_picker' => [
+        'label' => 'Datumperkiezer',
         'select' => 'Datum selecteren',
     ],
 

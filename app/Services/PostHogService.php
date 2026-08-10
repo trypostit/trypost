@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Jobs\PostHog\SendEvent;
 use App\Models\Account;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class PostHogService
 {
@@ -78,7 +79,7 @@ class PostHogService
     {
         try {
             SendEvent::dispatch($method, $payload);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::warning('PostHogService: failed to dispatch event', ['method' => $method, 'error' => $e->getMessage()]);
         }
     }

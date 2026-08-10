@@ -14,6 +14,8 @@ return [
         'formats' => 'JPEG, PNG, GIF, WebP, MP4, PDF',
         'uploading' => '업로드 중...',
         'failed' => ':file을(를) 업로드할 수 없습니다. 다시 시도해 주세요.',
+        'file_too_large' => '파일 크기가 허용된 최대값(:max MB)을 초과했습니다.',
+        'cancelled' => '업로드가 취소되었습니다.',
     ],
 
     'empty' => [

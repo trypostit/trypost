@@ -22,7 +22,7 @@ class XPublishException extends SocialPublishException
 
         $typeSuffix = $type !== '' ? basename((string) $type) : '';
 
-        if ($statusCode === 401 || str_contains((string) $type, 'unsupported-authentication')) {
+        if (self::isConfirmedDeadToken($response)) {
             throw new TokenExpiredException(
                 message: $detail ?: 'Access token has expired or been revoked',
                 platformErrorCode: $typeSuffix ?: (string) $statusCode,
@@ -112,5 +112,18 @@ class XPublishException extends SocialPublishException
     public function platform(): string
     {
         return 'x';
+    }
+
+    /**
+     * Whether this response confirms the account's own access_token is dead
+     * (not merely a transient or content-specific failure). Shared with
+     * ConnectionVerifier so both the publish and verify paths agree on what
+     * a dead X token looks like.
+     */
+    public static function isConfirmedDeadToken(Response $response): bool
+    {
+        $type = (string) data_get($response->json(), 'type', '');
+
+        return $response->status() === 401 || str_contains($type, 'unsupported-authentication');
     }
 }

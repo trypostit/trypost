@@ -8,6 +8,7 @@ use App\Actions\Post\UpdatePost;
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\Status;
 use App\Http\Resources\Api\PostResource;
+use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\Post;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Support\PostPlatformMetaRules;
@@ -24,22 +25,29 @@ use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 #[Description('Publish a draft post — either immediately or scheduled for a future time. The post must already have at least one enabled platform. Use update-post-tool first to set content/platforms.')]
 class PublishPostTool extends Tool
 {
+    use AuthorizesMcpTool;
+
     public function handle(Request $request): Response|ResponseFactory
     {
-        $workspace = $request->user()->currentWorkspace;
-
         $validated = $request->validate([
             'post_id' => ['required', 'uuid'],
             'scheduled_at' => ['nullable', 'date', 'after:now'],
         ]);
 
-        $post = Post::where('workspace_id', $workspace->id)->find(data_get($validated, 'post_id'));
+        $workspace = $request->user()?->currentWorkspace;
+        $post = $workspace
+            ? Post::where('workspace_id', $workspace->id)->find(data_get($validated, 'post_id'))
+            : null;
 
         if (! $post) {
             return Response::error('Post not found.');
         }
 
-        if (! $post->postPlatforms()->where('enabled', true)->exists()) {
+        if ($denied = $this->denyUnlessCan($request, 'update', $post, 'Not authorized to publish this post.')) {
+            return $denied;
+        }
+
+        if (! $post->postPlatforms()->enabled()->exists()) {
             return Response::error('Post has no enabled platforms. Use update-post-tool to enable at least one platform first.');
         }
 

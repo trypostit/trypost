@@ -37,12 +37,4 @@ class UpdateWorkspaceRequest extends FormRequest
             'logo_url' => ['nullable', 'url', 'max:1024'],
         ];
     }
-
-    public function messages(): array
-    {
-        return [
-            'name.required' => 'The workspace name is required.',
-            'name.max' => 'The workspace name must be at most 255 characters.',
-        ];
-    }
 }

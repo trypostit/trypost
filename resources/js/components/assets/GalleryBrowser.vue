@@ -161,6 +161,7 @@ const uploadsSentinel = useTemplateRef<HTMLDivElement>('uploadsSentinel');
 const isDragging = ref(false);
 const uploading = ref(false);
 let uploadsObserver: IntersectionObserver | null = null;
+let uploadAbortController: AbortController | null = null;
 
 const fetchUploads = async (page: number, term: string) => {
     const response = await fetch(
@@ -240,15 +241,22 @@ const handleDrop = (event: DragEvent) => {
 };
 
 const uploadFiles = async (files: File[]) => {
+    if (uploading.value) return;
     uploading.value = true;
+    uploadAbortController = new AbortController();
     for (const file of files) {
         try {
             await uploadChunked({
                 file,
                 url: assetsStoreChunked.url(),
                 collection: 'assets',
+                signal: uploadAbortController.signal,
             });
-        } catch {
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') {
+                toast.info(trans('assets.upload.cancelled'));
+                break;
+            }
             toast.error(trans('assets.upload.failed', { file: file.name }));
         }
     }
@@ -596,6 +604,7 @@ onUnmounted(() => {
     uploadsObserver?.disconnect();
     unsplashObserver?.disconnect();
     giphyObserver?.disconnect();
+    uploadAbortController?.abort();
 });
 </script>
 
@@ -612,7 +621,10 @@ onUnmounted(() => {
             <TabsContent value="uploads" class="mt-6">
                 <div
                     class="relative mb-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-8 text-center transition-colors"
-                    :class="isDragging ? 'border-foreground bg-violet-100' : 'border-foreground/25 bg-card hover:bg-foreground/5'"
+                    :class="[
+                        isDragging ? 'border-foreground bg-violet-100' : 'border-foreground/25 bg-card hover:bg-foreground/5',
+                        uploading ? 'pointer-events-none' : '',
+                    ]"
                     @click="triggerFileInput"
                     @dragover.prevent="isDragging = true"
                     @dragleave.prevent="isDragging = false"

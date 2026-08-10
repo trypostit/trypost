@@ -29,8 +29,10 @@ class SetLocale
 
         $response = $next($request);
 
+        // Passport OAuth errors return a raw Symfony Response (no withCookie()).
+        // Attach via headers so both Illuminate and Symfony responses work.
         if (! $isValid) {
-            $response->withCookie(
+            $response->headers->setCookie(
                 cookie()->forever('locale', config('languages.default'), '/', config('session.domain')),
             );
         }

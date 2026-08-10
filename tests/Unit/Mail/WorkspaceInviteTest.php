@@ -50,3 +50,12 @@ test('workspace invite mail is queueable', function () {
 
     expect($mail)->toBeInstanceOf(ShouldQueue::class);
 });
+
+test('footer has no manage-notifications or unsubscribe link — this is a transactional email, not preference-driven', function () {
+    $invite = Invite::factory()->create();
+
+    $mail = new WorkspaceInvite($invite);
+
+    $mail->assertDontSeeInHtml('Manage notifications');
+    $mail->assertDontSeeInHtml('Unsubscribe');
+});

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Traits\HasOnboarding;
 use App\Models\Traits\HasUsage;
 use Carbon\CarbonInterface;
 use Database\Factories\AccountFactory;
@@ -19,7 +20,7 @@ use Throwable;
 class Account extends Model
 {
     /** @use HasFactory<AccountFactory> */
-    use Billable, HasFactory, HasUsage, HasUuids;
+    use Billable, HasFactory, HasOnboarding, HasUsage, HasUuids;
 
     public const SUBSCRIPTION_NAME = 'default';
 
@@ -42,6 +43,9 @@ class Account extends Model
 
     protected $casts = [
         'trial_ends_at' => 'datetime',
+        'onboarding_completed_at' => 'datetime',
+        'onboarding_dismissed_at' => 'datetime',
+        'onboarding_skipped_steps' => 'array',
     ];
 
     public function owner(): BelongsTo
@@ -76,6 +80,22 @@ class Account extends Model
         }
 
         return $this->subscribed(self::SUBSCRIPTION_NAME);
+    }
+
+    /**
+     * Whether the account may use the app (active subscription, or a generic
+     * trial when REQUIRE_CARD_FOR_TRIAL is disabled).
+     */
+    public function hasAppAccess(): bool
+    {
+        if (config('trypost.self_hosted')) {
+            return true;
+        }
+
+        $requiresCardForTrial = (bool) config('trypost.billing.require_card_for_trial', true);
+
+        return $this->subscribed(self::SUBSCRIPTION_NAME)
+            || (! $requiresCardForTrial && $this->isOnTrial());
     }
 
     /**

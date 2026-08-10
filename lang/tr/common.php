@@ -35,7 +35,10 @@ return [
         'empty' => 'Saat dilimi bulunamadı',
     ],
 
+    'just_now' => 'Az önce',
+
     'date_picker' => [
+        'label' => 'Tarih seçici',
         'select' => 'Tarih seç',
     ],
 

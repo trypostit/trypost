@@ -17,6 +17,7 @@ namespace App\Enums\Workspace;
 enum ContentLanguage: string
 {
     case English = 'en';
+    case Ukrainian = 'uk';
     case PortugueseBrazil = 'pt-BR';
     case Spanish = 'es';
     case French = 'fr';
@@ -41,6 +42,7 @@ enum ContentLanguage: string
     {
         return match ($this) {
             self::English => 'English',
+            self::Ukrainian => 'Українська',
             self::PortugueseBrazil => 'Português (Brasil)',
             self::Spanish => 'Español',
             self::French => 'Français',
@@ -66,6 +68,7 @@ enum ContentLanguage: string
     {
         return match ($this) {
             self::English => 'English',
+            self::Ukrainian => 'Ukrainian',
             self::PortugueseBrazil => 'Brazilian Portuguese',
             self::Spanish => 'Spanish',
             self::French => 'French',

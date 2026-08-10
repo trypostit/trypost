@@ -8,11 +8,13 @@ use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\Workspace;
+use App\Services\Social\Meta\GraphPaginator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Uri;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Laravel\Socialite\Facades\Socialite;
@@ -139,25 +141,19 @@ class FacebookController extends SocialController
         }
     }
 
-    public function selectPage(Request $request)
+    public function selectPage(Request $request): InertiaResponse
     {
         $oauthData = session('facebook_oauth');
         $workspaceId = session('social_connect_workspace');
 
         if (! $oauthData || ! $workspaceId) {
-            session()->flash('flash.banner', __('accounts.flash.session_expired'));
-            session()->flash('flash.bannerStyle', 'danger');
-
-            return redirect()->route('app.accounts');
+            return $this->popupCallback(false, __('accounts.popup_callback.session_expired'), $this->platform->value);
         }
 
         $workspace = Workspace::find($workspaceId);
 
         if (! $workspace) {
-            session()->flash('flash.banner', __('accounts.flash.workspace_not_found'));
-            session()->flash('flash.bannerStyle', 'danger');
-
-            return redirect()->route('app.accounts');
+            return $this->popupCallback(false, __('accounts.popup_callback.workspace_not_found'), $this->platform->value);
         }
 
         $pages = collect(data_get($oauthData, 'pages'))
@@ -267,41 +263,26 @@ class FacebookController extends SocialController
 
     private function fetchPages(string $userToken): array
     {
-        try {
-            $response = Http::get(config('trypost.platforms.facebook.graph_api').'/me/accounts', [
+        $pages = GraphPaginator::all(
+            config('trypost.platforms.facebook.graph_api').'/me/accounts',
+            [
                 'access_token' => $userToken,
                 'fields' => 'id,name,username,picture{url},access_token',
-            ]);
+                'limit' => 100,
+            ],
+        );
 
-            if ($response->failed()) {
-                Log::error('Facebook pages fetch failed', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-
-                return [];
-            }
-
-            $data = $response->json();
-
-            return collect(data_get($data, 'data', []))->map(fn ($page) => [
-                'id' => data_get($page, 'id'),
-                'name' => data_get($page, 'name'),
-                'username' => data_get($page, 'username', null),
-                'picture' => data_get($page, 'picture.data.url'),
-                'access_token' => data_get($page, 'access_token'),
-            ])->toArray();
-        } catch (\Exception $e) {
-            Log::error('Facebook pages fetch error', [
-                'error' => $e->getMessage(),
-            ]);
-
-            return [];
-        }
+        return collect($pages)->map(fn (array $page) => [
+            'id' => data_get($page, 'id'),
+            'name' => data_get($page, 'name'),
+            'username' => data_get($page, 'username'),
+            'picture' => data_get($page, 'picture.data.url'),
+            'access_token' => data_get($page, 'access_token'),
+        ])->all();
     }
 
     private function graphVersion(): string
     {
-        return basename((string) parse_url((string) config('trypost.platforms.facebook.graph_api'), PHP_URL_PATH));
+        return Uri::of(config('trypost.platforms.facebook.graph_api'))->path();
     }
 }

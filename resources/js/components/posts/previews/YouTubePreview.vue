@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
+import { getInitials } from '@/composables/useInitials';
 import { isVideoMedia } from '@/composables/useMedia';
 import type { MediaItem } from '@/types/media';
 
@@ -10,6 +9,8 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
+    handle_label: string;
     avatar_url: string | null;
 }
 
@@ -19,7 +20,7 @@ interface Props {
     media: MediaItem[];
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 
 // Format engagement numbers like YouTube does
 const formatNumber = (num: number): string => {
@@ -31,8 +32,6 @@ const formatNumber = (num: number): string => {
     }
     return num.toString();
 };
-
-const username = computed(() => props.socialAccount.username || props.socialAccount.display_name);
 </script>
 
 <template>
@@ -152,13 +151,13 @@ const username = computed(() => props.socialAccount.username || props.socialAcco
             <div class="flex items-center gap-2 mb-2">
                 <div class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
                     <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url"
-                        :alt="socialAccount.display_name" class="w-full h-full object-cover" />
+                        :alt="socialAccount.display_label" class="w-full h-full object-cover" />
                     <div v-else
                         class="w-full h-full bg-[#ff0000] flex items-center justify-center text-white font-bold text-[10px]">
-                        {{ socialAccount.display_name?.charAt(0).toUpperCase() }}
+                        {{ getInitials(socialAccount.display_label) }}
                     </div>
                 </div>
-                <span class="text-[13px] font-medium">@{{ username }}</span>
+                <span class="text-[13px] font-medium">@{{ socialAccount.handle_label }}</span>
                 <button class="ml-auto bg-white text-black text-[12px] font-medium px-3 py-1 rounded-full">
                     Subscribe
                 </button>
@@ -174,7 +173,7 @@ const username = computed(() => props.socialAccount.username || props.socialAcco
                 <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
                 </svg>
-                <span class="text-[11px] text-white/80 truncate">{{ socialAccount.display_name }} - Original
+                <span class="text-[11px] text-white/80 truncate">{{ socialAccount.display_label }} - Original
                     audio</span>
             </div>
         </div>

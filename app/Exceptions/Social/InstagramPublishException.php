@@ -15,7 +15,6 @@ class InstagramPublishException extends SocialPublishException
         $body = $response->json();
         $rawResponse = $response->body();
 
-        $errorType = data_get($body, 'error.type');
         $errorCode = data_get($body, 'error.code');
         $errorSubcode = data_get($body, 'error.error_subcode');
         $errorUserMsg = data_get($body, 'error.error_user_msg');

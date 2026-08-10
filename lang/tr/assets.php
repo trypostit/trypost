@@ -16,6 +16,8 @@ return [
         'formats' => 'JPEG, PNG, GIF, WebP, MP4, PDF',
         'uploading' => 'Yükleniyor...',
         'failed' => ':file yüklenemedi. Lütfen tekrar deneyin.',
+        'file_too_large' => 'Dosya boyutu izin verilen maksimumu aşıyor (:max MB).',
+        'cancelled' => 'Yükleme iptal edildi.',
     ],
 
     'empty' => [

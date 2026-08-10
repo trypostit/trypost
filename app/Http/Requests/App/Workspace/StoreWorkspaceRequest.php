@@ -38,12 +38,4 @@ class StoreWorkspaceRequest extends FormRequest
             'logo_url' => ['nullable', 'url', 'max:1024'],
         ];
     }
-
-    public function messages(): array
-    {
-        return [
-            'name.required' => 'O nome do workspace é obrigatório.',
-            'name.max' => 'O nome do workspace deve ter no máximo 255 caracteres.',
-        ];
-    }
 }

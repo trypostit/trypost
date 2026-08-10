@@ -7,24 +7,25 @@ namespace App\Models;
 use App\Enums\Notification\Type as NotificationType;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
+use App\Models\Traits\HasAccount;
 use App\Models\Traits\HasMedia;
 use App\Models\Traits\HasWorkspace;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Passport\Contracts\OAuthenticatable;
 use Laravel\Passport\HasApiTokens;
 
 class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, HasMedia, HasUuids, HasWorkspace, Notifiable;
+    use HasAccount, HasApiTokens, HasFactory, HasMedia, HasUuids, HasWorkspace, Notifiable;
 
     /**
      * @var list<string>
@@ -74,6 +75,14 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
         return $this->getFirstMediaUrl('avatar');
     }
 
+    /**
+     * First whitespace-delimited token of the display name (empty when unset).
+     */
+    public function firstName(): string
+    {
+        return (string) Str::of($this->name ?? '')->trim()->before(' ');
+    }
+
     protected function casts(): array
     {
         return [
@@ -96,27 +105,6 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
         return $this->hasOne(NotificationPreference::class);
     }
 
-    public function account(): BelongsTo
-    {
-        return $this->belongsTo(Account::class);
-    }
-
-    public function isAccountOwner(): bool
-    {
-        if (! $this->account_id) {
-            return false;
-        }
-
-        if ($this->relationLoaded('account')) {
-            return $this->id === $this->account?->owner_id;
-        }
-
-        return Account::query()
-            ->whereKey($this->account_id)
-            ->where('owner_id', $this->id)
-            ->exists();
-    }
-
     public function wantsEmailFor(NotificationType $type): bool
     {
         $preference = $this->notificationPreference;
@@ -128,7 +116,7 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
         return match ($type) {
             NotificationType::PostPublished => $preference->post_published,
             NotificationType::PostFailed, NotificationType::PostPartiallyPublished => $preference->post_failed,
-            NotificationType::AccountDisconnected => $preference->account_disconnected,
+            NotificationType::AccountDisconnected, NotificationType::PostAtRisk => $preference->account_disconnected,
             NotificationType::MentionedInComment => $preference->mentioned_in_comment ?? true,
             default => true,
         };

@@ -16,7 +16,7 @@ class PinterestPublishException extends SocialPublishException
         $body = $response->json();
         $rawResponse = $response->body();
 
-        if ($status === 401) {
+        if (self::isConfirmedDeadToken($response)) {
             throw new TokenExpiredException(
                 message: data_get($body, 'message', 'Access token has expired or been revoked'),
                 platformErrorCode: (string) $status,
@@ -89,5 +89,16 @@ class PinterestPublishException extends SocialPublishException
     public function platform(): string
     {
         return 'pinterest';
+    }
+
+    /**
+     * Whether this response confirms the account's own access_token is dead
+     * (not merely a transient or content-specific failure). Shared with
+     * ConnectionVerifier so both the publish and verify paths agree on what
+     * a dead Pinterest token looks like.
+     */
+    public static function isConfirmedDeadToken(Response $response): bool
+    {
+        return $response->status() === 401;
     }
 }

@@ -17,6 +17,7 @@ return [
 
     'available' => [
         'en' => 'English',
+        'uk' => 'Українська',
         'es' => 'Español',
         'pt-BR' => 'Português',
         'fr' => 'Français',

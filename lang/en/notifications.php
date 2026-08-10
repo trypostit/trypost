@@ -15,4 +15,7 @@ return [
         'title' => ':platform account needs to be reconnected',
         'body' => ':account session expired — please reconnect to keep posting',
     ],
+    'post_at_risk' => [
+        'title' => '{1} :count upcoming post is at risk|[2,*] :count upcoming posts are at risk',
+    ],
 ];

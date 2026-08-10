@@ -73,6 +73,8 @@ return [
         'page_title' => 'Giriş yap',
         'email' => 'E-posta adresi',
         'password' => 'Parola',
+        'show_password' => 'Parolayı göster',
+        'hide_password' => 'Parolayı gizle',
         'forgot_password' => 'Parolanızı mı unuttunuz?',
         'remember_me' => 'Beni hatırla',
         'submit' => 'Giriş yap',

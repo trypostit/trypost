@@ -21,7 +21,7 @@ return [
         'tiktok' => 'Połącz swoje konto TikTok',
         'youtube' => 'Połącz kanał YouTube',
         'facebook' => 'Połącz stronę na Facebooku',
-        'instagram' => 'Połącz profesjonalne konto Instagram',
+        'instagram' => 'Połącz przez Instagram Login lub strony na Facebooku',
         'instagram-facebook' => 'Połącz Instagram przez stronę na Facebooku',
         'threads' => 'Połącz swoje konto Threads',
         'pinterest' => 'Połącz swoje konto Pinterest',
@@ -94,6 +94,15 @@ return [
         'no_pages_description' => 'Nie znaleziono żadnej strony na Facebooku z powiązanym firmowym kontem Instagram.',
         'view' => 'Zobacz',
         'choose' => 'Wybierz',
+    ],
+
+    'instagram_connect' => [
+        'title' => 'Połącz Instagram',
+        'description' => 'Wybierz sposób połączenia konta Instagram',
+        'standalone_title' => 'Instagram Login',
+        'standalone_description' => 'Zaloguj się kontem profesjonalnym Instagram',
+        'facebook_title' => 'Strony na Facebooku',
+        'facebook_description' => 'Połącz konto Instagram powiązane ze stroną na Facebooku',
     ],
 
     'linkedin' => [

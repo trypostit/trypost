@@ -15,6 +15,7 @@ import { computed } from 'vue';
 
 import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
 import VerticalMediaCanvas from '@/components/posts/previews/VerticalMediaCanvas.vue';
+import { getInitials } from '@/composables/useInitials';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 
@@ -23,6 +24,8 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
+    handle_label: string;
     avatar_url: string | null;
 }
 
@@ -84,8 +87,6 @@ const truncatedCaption = computed(() => {
     if (props.content.length <= 80) return props.content;
     return props.content.substring(0, 80) + '...';
 });
-
-const username = computed(() => props.socialAccount.username || props.socialAccount.display_name);
 </script>
 
 <template>
@@ -111,15 +112,15 @@ const username = computed(() => props.socialAccount.username || props.socialAcco
                             style="background: conic-gradient(from 180deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5, #feda75)">
                             <div class="p-[1.5px] bg-white dark:bg-black rounded-full">
                                 <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url"
-                                    :alt="socialAccount.display_name" class="w-7 h-7 rounded-full object-cover" />
+                                    :alt="socialAccount.display_label" class="w-7 h-7 rounded-full object-cover" />
                                 <div v-else
                                     class="w-7 h-7 rounded-full bg-gradient-to-br from-[#833ab4] to-[#fd1d1d] flex items-center justify-center text-white font-semibold text-[10px]">
-                                    {{ socialAccount.display_name?.charAt(0).toUpperCase() }}
+                                    {{ getInitials(socialAccount.display_label) }}
                                 </div>
                             </div>
                         </div>
                         <div class="flex flex-col min-w-0">
-                            <span class="text-[12px] font-semibold leading-tight truncate">{{ username }}</span>
+                            <span class="text-[12px] font-semibold leading-tight truncate">{{ socialAccount.handle_label }}</span>
                         </div>
                     </div>
                     <IconDots class="w-4 h-4 flex-shrink-0" />
@@ -155,7 +156,7 @@ const username = computed(() => props.socialAccount.username || props.socialAcco
                 <!-- Caption -->
                 <div v-if="content" class="flex-shrink-0 px-2.5 py-0.5">
                     <p class="text-[12px] line-clamp-2">
-                        <span class="font-semibold">{{ username }}</span>
+                        <span class="font-semibold">{{ socialAccount.handle_label }}</span>
                         <span class="ml-1">{{ content }}</span>
                     </p>
                 </div>
@@ -206,9 +207,9 @@ const username = computed(() => props.socialAccount.username || props.socialAcco
                             class="w-7 h-7 rounded-full object-cover border border-white/30" />
                         <div v-else
                             class="w-7 h-7 rounded-full bg-gradient-to-br from-[#833ab4] to-[#fd1d1d] flex items-center justify-center text-white font-semibold text-[10px] border border-white/30">
-                            {{ socialAccount.display_name?.charAt(0).toUpperCase() }}
+                            {{ getInitials(socialAccount.display_label) }}
                         </div>
-                        <span class="text-white text-[12px] font-semibold drop-shadow-lg">{{ username }}</span>
+                        <span class="text-white text-[12px] font-semibold drop-shadow-lg">{{ socialAccount.handle_label }}</span>
                         <button class="px-2 py-0.5 border border-white/70 rounded text-white text-[10px] font-semibold">
                             Follow
                         </button>
@@ -257,13 +258,13 @@ const username = computed(() => props.socialAccount.username || props.socialAcco
                                     class="w-7 h-7 rounded-full object-cover" />
                                 <div v-else
                                     class="w-7 h-7 rounded-full bg-gradient-to-br from-[#833ab4] to-[#fd1d1d] flex items-center justify-center text-white font-semibold text-[10px]">
-                                    {{ socialAccount.display_name?.charAt(0).toUpperCase() }}
+                                    {{ getInitials(socialAccount.display_label) }}
                                 </div>
                             </div>
                         </div>
                         <span class="text-[12px] font-semibold"
                             :class="media.length > 0 ? 'text-white drop-shadow-lg' : 'text-[#262626] dark:text-white'">{{
-                                username
+                                socialAccount.handle_label
                             }}</span>
                         <span class="text-[10px]"
                             :class="media.length > 0 ? 'text-white/70 drop-shadow' : 'text-[#737373] dark:text-white/70'">2h</span>

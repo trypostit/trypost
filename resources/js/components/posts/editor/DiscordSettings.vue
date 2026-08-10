@@ -16,6 +16,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -194,7 +195,7 @@ const updateEmbed = (index: number, patch: Partial<EmbedDraft>) =>
                     <img :src="getPlatformLogo('discord')" alt="Discord" class="size-full object-cover" />
                 </span>
                 <span class="truncate font-bold text-foreground">{{ $t('posts.form.discord.settings') }}</span>
-                <span v-if="socialAccount?.display_name" class="truncate font-medium text-foreground/60">·&nbsp;{{ socialAccount.display_name }}</span>
+                <span v-if="socialAccount?.display_label" class="truncate font-medium text-foreground/60">·&nbsp;{{ socialAccount.display_label }}</span>
             </span>
             <IconChevronUp v-if="open" class="size-4 shrink-0 text-foreground/60" />
             <IconChevronDown v-else class="size-4 shrink-0 text-foreground/60" />
@@ -204,12 +205,12 @@ const updateEmbed = (index: number, patch: Partial<EmbedDraft>) =>
             <div v-if="socialAccount" class="flex items-center gap-3 rounded-lg bg-foreground/5 p-3">
                 <Avatar
                     :src="socialAccount.avatar_url"
-                    :name="socialAccount.display_name"
+                    :name="socialAccount.display_label"
                     class="size-9 shrink-0 rounded-full border-2 border-foreground shadow-2xs"
                 />
                 <div class="min-w-0 flex-1">
                     <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.discord.posting_to') }}</p>
-                    <p class="truncate text-sm font-bold text-foreground">{{ socialAccount.display_name }}</p>
+                    <p class="truncate text-sm font-bold text-foreground">{{ socialAccount.display_label }}</p>
                 </div>
             </div>
 

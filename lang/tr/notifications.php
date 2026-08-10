@@ -15,4 +15,7 @@ return [
         'title' => ':platform hesabının yeniden bağlanması gerekiyor',
         'body' => ':account oturumunun süresi doldu — paylaşıma devam etmek için lütfen yeniden bağlanın',
     ],
+    'post_at_risk' => [
+        'title' => '{1} :count planlanan gönderi risk altında|[2,*] :count planlanan gönderi risk altında',
+    ],
 ];

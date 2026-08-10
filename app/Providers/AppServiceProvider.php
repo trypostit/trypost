@@ -53,7 +53,6 @@ use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Events\WebhookReceived;
 use Laravel\Nightwatch\Facades\Nightwatch;
 use Laravel\Nightwatch\Records\CacheEvent;
-use Laravel\Passport\Passport;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\GoogleProvider;
 use PostHog\PostHog;
@@ -94,19 +93,6 @@ class AppServiceProvider extends ServiceProvider
         Cashier::useSubscriptionModel(Subscription::class);
         Cashier::useSubscriptionItemModel(SubscriptionItem::class);
         Cashier::keepPastDueSubscriptionsActive();
-
-        $this->configurePassport();
-    }
-
-    protected function configurePassport(): void
-    {
-        Passport::useTokenModel(AccessToken::class);
-
-        Passport::tokensCan([
-            'mcp:use' => 'Use MCP server',
-        ]);
-
-        Passport::authorizationView('mcp.authorize');
     }
 
     protected function configureMorphMap(): void
@@ -159,6 +145,11 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(60)->by($request->workspace?->id ?: $request->ip());
         });
+
+        RateLimiter::for(
+            'mcp-oauth-registration',
+            fn (Request $request): Limit => Limit::perMinute(30)->by($request->ip()),
+        );
 
         // Signed media uploads (api.uploads.store). MCP hosts share egress IPs
         // across tenants — key by workspace_id from the signed URL, with a high

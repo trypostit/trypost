@@ -19,7 +19,7 @@ class BlueskyPublishException extends SocialPublishException
         $error = data_get($body, 'error', '');
         $errorMessage = data_get($body, 'message', 'An unknown Bluesky error occurred.');
 
-        if (in_array($error, ['ExpiredToken', 'InvalidToken'], true)) {
+        if (self::isConfirmedDeadToken($response)) {
             throw new TokenExpiredException(
                 message: $errorMessage,
                 platformErrorCode: $error,
@@ -73,5 +73,18 @@ class BlueskyPublishException extends SocialPublishException
     public function platform(): string
     {
         return 'bluesky';
+    }
+
+    /**
+     * Whether this response confirms the account's own session token is dead
+     * (not merely a transient or content-specific failure). Shared with
+     * ConnectionVerifier so both the publish and verify paths agree on what
+     * a dead Bluesky session looks like.
+     */
+    public static function isConfirmedDeadToken(Response $response): bool
+    {
+        $error = data_get($response->json(), 'error', '');
+
+        return in_array($error, ['ExpiredToken', 'InvalidToken'], true);
     }
 }

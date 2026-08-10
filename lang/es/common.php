@@ -35,7 +35,10 @@ return [
         'empty' => 'No se encontró zona horaria',
     ],
 
+    'just_now' => 'Justo ahora',
+
     'date_picker' => [
+        'label' => 'Selector de fecha',
         'select' => 'Seleccionar fecha',
     ],
 

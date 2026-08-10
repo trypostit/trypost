@@ -1,0 +1,48 @@
+<tr>
+  <td align="center" class="text-center text-zinc-600 text-xs p-6">
+    <p class="m-0 mb-2">
+      Open-source social media scheduling tool
+    </p>
+
+    <p class="m-0 mt-2">
+      <a href="@{{ route('app.notifications.preferences') }}" target="_blank"
+        class="text-zinc-600 [text-decoration:none] hover:![text-decoration:underline]">
+        Manage notifications
+      </a>
+    </p>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="mx-auto mt-4">
+      <tr>
+        <td class="px-1">
+          <a href="https://github.com/trypostit/trypost" target="_blank">
+            <img src="@{{ asset('/images/emails/social/github.png') }}" width="20" height="20" alt="GitHub">
+          </a>
+        </td>
+        <td class="px-1">
+          <a href="https://x.com/trypostit" target="_blank">
+            <img src="@{{ asset('/images/emails/social/x.png') }}" width="20" height="20" alt="X">
+          </a>
+        </td>
+        <td class="px-1">
+          <a href="https://www.youtube.com/@trypostit" target="_blank">
+            <img src="@{{ asset('/images/emails/social/youtube.png') }}" width="20" height="20" alt="YouTube">
+          </a>
+        </td>
+        <td class="px-1">
+          <a href="https://trypost.it/discord" target="_blank">
+            <img src="@{{ asset('/images/emails/social/discord.png') }}" width="20" height="20" alt="Discord">
+          </a>
+        </td>
+        <td class="px-1">
+          <a href="https://www.instagram.com/trypost.it" target="_blank">
+            <img src="@{{ asset('/images/emails/social/instagram.png') }}" width="20" height="20" alt="Instagram">
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p class="m-0 mt-3">
+      &copy; @{{ date('Y') }} TryPost.it
+    </p>
+  </td>
+</tr>

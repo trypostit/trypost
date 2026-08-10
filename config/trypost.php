@@ -37,9 +37,10 @@ return [
     | Billing
     |--------------------------------------------------------------------------
     |
-    | Control trial behavior for SaaS billing:
-    | - true: require card at checkout to start trial (Stripe trialing)
-    | - false: grant generic trial at signup without card
+    | Control whether signup requires a card before app access:
+    | - true: no generic trial at signup; access only after Stripe Checkout
+    |   (trialDays and/or first-month coupon come from cashier.* env knobs)
+    | - false: grant generic trial at signup without a card
     |
     */
 

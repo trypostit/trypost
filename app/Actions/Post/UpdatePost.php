@@ -58,7 +58,10 @@ class UpdatePost
                         $postPlatform = $post->postPlatforms()->where('id', data_get($platformData, 'id'))->first();
 
                         if ($postPlatform) {
-                            $updateData['meta'] = array_merge($postPlatform->meta ?? [], data_get($platformData, 'meta'));
+                            $updateData['meta'] = array_filter(
+                                array_merge($postPlatform->meta ?? [], data_get($platformData, 'meta') ?? []),
+                                fn (mixed $value): bool => $value !== null,
+                            );
                         }
                     }
 

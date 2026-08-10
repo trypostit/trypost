@@ -43,6 +43,23 @@ test('accounts index shows platforms and connected accounts', function () {
     );
 });
 
+test('accounts index lists platforms alphabetically by label', function () {
+    $response = $this->actingAs($this->user)->get(route('app.accounts'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('accounts/Index', false)
+        ->where('platforms', function ($platforms): bool {
+            $labels = collect($platforms)->pluck('label')->all();
+
+            $sorted = $labels;
+            natcasesort($sorted);
+
+            return array_values($labels) === array_values($sorted);
+        })
+    );
+});
+
 test('accounts index offers a single linkedin card and no standalone linkedin page card', function () {
     $response = $this->actingAs($this->user)->get(route('app.accounts'));
 
@@ -93,6 +110,80 @@ test('a connected linkedin page account is still returned so it surfaces under t
         ->component('accounts/Index', false)
         ->where('connectedAccounts.0.platform', Platform::LinkedInPage->value)
         ->where('connectedAccounts.0.network', 'linkedin')
+    );
+});
+
+test('accounts index offers a single instagram card and no instagram-facebook card', function () {
+    $response = $this->actingAs($this->user)->get(route('app.accounts'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('accounts/Index', false)
+        ->where('platforms', fn ($platforms) => collect($platforms)->contains('value', Platform::Instagram->value)
+            && ! collect($platforms)->contains('value', Platform::InstagramFacebook->value)
+        )
+    );
+});
+
+test('the instagram card still shows when only facebook business is enabled', function () {
+    config(['trypost.platforms.instagram.enabled' => false]);
+    config(['trypost.platforms.instagram-facebook.enabled' => true]);
+
+    $response = $this->actingAs($this->user)->get(route('app.accounts'));
+
+    $response->assertInertia(fn ($page) => $page
+        ->component('accounts/Index', false)
+        ->where('platforms', function ($platforms): bool {
+            $instagram = collect($platforms)->firstWhere('value', Platform::Instagram->value);
+
+            return $instagram !== null
+                && data_get($instagram, 'connect_methods') === [Platform::InstagramFacebook->value];
+        })
+    );
+});
+
+test('instagram card connect methods omit disabled facebook business entry', function () {
+    config(['trypost.platforms.instagram.enabled' => true]);
+    config(['trypost.platforms.instagram-facebook.enabled' => false]);
+
+    $response = $this->actingAs($this->user)->get(route('app.accounts'));
+
+    $response->assertInertia(fn ($page) => $page
+        ->component('accounts/Index', false)
+        ->where('platforms', function ($platforms): bool {
+            $instagram = collect($platforms)->firstWhere('value', Platform::Instagram->value);
+
+            return data_get($instagram, 'connect_methods') === [Platform::Instagram->value];
+        })
+    );
+});
+
+test('the instagram card disappears only when both capabilities are disabled', function () {
+    config(['trypost.platforms.instagram.enabled' => false]);
+    config(['trypost.platforms.instagram-facebook.enabled' => false]);
+
+    $response = $this->actingAs($this->user)->get(route('app.accounts'));
+
+    $response->assertInertia(fn ($page) => $page
+        ->component('accounts/Index', false)
+        ->where('platforms', fn ($platforms) => ! collect($platforms)->contains('value', Platform::Instagram->value))
+    );
+});
+
+test('a connected instagram-facebook account is still returned so it surfaces under the instagram card', function () {
+    SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::InstagramFacebook,
+        'scopes' => Platform::InstagramFacebook->requiredPublishScopes(),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.accounts'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('accounts/Index', false)
+        ->where('connectedAccounts.0.platform', Platform::InstagramFacebook->value)
+        ->where('connectedAccounts.0.network', 'instagram')
     );
 });
 

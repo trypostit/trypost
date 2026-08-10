@@ -6,6 +6,9 @@ use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
+use Database\Seeders\PassportSeeder;
+use Illuminate\Support\Facades\DB;
+use Laravel\Passport\ClientRepository;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -39,6 +42,30 @@ it('shows api keys page', function () {
         );
 });
 
+it('excludes workspace-bound mcp oauth grants from the api keys page', function () {
+    makeWorkspaceToken($this->user, $this->workspace);
+    $oauth = mcpAccessToken($this->user, mcpOauthClient('Claude'), $this->workspace);
+
+    $this->actingAs($this->user)
+        ->get(route('app.api-keys.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('apiTokens', 1)
+            ->where('apiTokens', fn ($tokens): bool => collect($tokens)->every(
+                fn (array $token): bool => $token['id'] !== $oauth->id,
+            )));
+});
+
+it('cannot delete a workspace-bound mcp oauth grant through api keys', function () {
+    $oauth = mcpAccessToken($this->user, mcpOauthClient('Claude'), $this->workspace);
+
+    $this->actingAs($this->user)
+        ->delete(route('app.api-keys.destroy', $oauth->id))
+        ->assertNotFound();
+
+    expect($oauth->fresh()->revoked)->toBeFalse();
+});
+
 it('creates an api key', function () {
     $this->actingAs($this->user)
         ->post(route('app.api-keys.store'), ['name' => 'My API Key'])
@@ -51,13 +78,34 @@ it('creates an api key', function () {
     expect($tokens)->toHaveCount(1);
     expect($tokens->first()->name)->toBe('My API Key');
     expect($tokens->first()->revoked)->toBeFalse();
+    expect($tokens->first()->expires_at)->toBeNull();
+});
+
+it('bootstraps the personal access client idempotently', function () {
+    DB::table('oauth_clients')
+        ->whereJsonContains('grant_types', 'personal_access')
+        ->delete();
+
+    $seeder = app(PassportSeeder::class);
+    $clients = app(ClientRepository::class);
+
+    $seeder->run($clients);
+    $seeder->run($clients);
+
+    expect(DB::table('oauth_clients')
+        ->whereJsonContains('grant_types', 'personal_access')
+        ->count())->toBe(1);
+
+    expect($this->user->createToken('Self-hosted API Key')->accessToken)->toBeString();
 });
 
 it('creates an api key with expiration', function () {
+    $expiresAt = now()->addDays(30)->startOfDay();
+
     $this->actingAs($this->user)
         ->post(route('app.api-keys.store'), [
             'name' => 'Expiring Key',
-            'expires_at' => now()->addDays(30)->format('Y-m-d'),
+            'expires_at' => $expiresAt->format('Y-m-d'),
         ])
         ->assertRedirect();
 
@@ -65,13 +113,43 @@ it('creates an api key with expiration', function () {
         ->where('workspace_id', $this->workspace->id)
         ->first();
 
-    expect($token->expires_at)->not->toBeNull();
+    expect($token->expires_at)->not->toBeNull()
+        ->and($token->expires_at->toDateString())->toBe($expiresAt->toDateString())
+        ->and($token->expires_at->format('H:i:s'))->toBe('23:59:59');
 });
 
 it('validates name is required', function () {
     $this->actingAs($this->user)
         ->post(route('app.api-keys.store'), [])
         ->assertSessionHasErrors('name');
+});
+
+it('rejects an expiration in the past', function () {
+    $this->actingAs($this->user)
+        ->post(route('app.api-keys.store'), [
+            'name' => 'Past Key',
+            'expires_at' => now()->subDay()->toDateString(),
+        ])
+        ->assertSessionHasErrors('expires_at');
+});
+
+it('allows an expiration of today', function () {
+    $today = now()->toDateString();
+
+    $this->actingAs($this->user)
+        ->post(route('app.api-keys.store'), [
+            'name' => 'Expires Today',
+            'expires_at' => $today,
+        ])
+        ->assertRedirect();
+
+    $token = AccessToken::where('user_id', $this->user->id)
+        ->where('workspace_id', $this->workspace->id)
+        ->where('name', 'Expires Today')
+        ->firstOrFail();
+
+    expect($token->expires_at->toDateString())->toBe($today)
+        ->and($token->expires_at->format('H:i:s'))->toBe('23:59:59');
 });
 
 it('revokes an api key', function () {
@@ -98,7 +176,7 @@ it('cannot delete api key from another workspace', function () {
 });
 
 it('member cannot create api key', function () {
-    $member = User::factory()->create();
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
@@ -108,7 +186,7 @@ it('member cannot create api key', function () {
 });
 
 it('member cannot delete api key', function () {
-    $member = User::factory()->create();
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
     $member->update(['current_workspace_id' => $this->workspace->id]);
 

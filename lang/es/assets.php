@@ -16,6 +16,8 @@ return [
         'formats' => 'JPEG, PNG, GIF, WebP, MP4, PDF',
         'uploading' => 'Subiendo...',
         'failed' => 'No se pudo subir :file. Inténtalo de nuevo.',
+        'file_too_large' => 'El tamaño del archivo supera el máximo permitido (:max MB).',
+        'cancelled' => 'Subida cancelada.',
     ],
 
     'empty' => [

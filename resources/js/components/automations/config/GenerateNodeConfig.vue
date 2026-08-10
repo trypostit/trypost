@@ -24,6 +24,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -302,7 +303,7 @@ const channels = computed<Channel[]>(() =>
         return {
             id: account.id,
             platform: account.platform,
-            displayName: account.display_name,
+            displayName: account.display_label,
             username: account.username,
             avatarUrl: account.avatar_url,
             socialAccount: account,

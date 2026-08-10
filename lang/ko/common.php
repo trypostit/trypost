@@ -35,7 +35,10 @@ return [
         'empty' => '시간대를 찾을 수 없습니다',
     ],
 
+    'just_now' => '방금',
+
     'date_picker' => [
+        'label' => '날짜 선택기',
         'select' => '날짜 선택',
     ],
 

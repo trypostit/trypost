@@ -59,6 +59,8 @@ return [
         'page_title' => 'Iniciar sesión',
         'email' => 'Correo electrónico',
         'password' => 'Contraseña',
+        'show_password' => 'Mostrar contraseña',
+        'hide_password' => 'Ocultar contraseña',
         'forgot_password' => '¿Olvidaste tu contraseña?',
         'remember_me' => 'Recuérdame',
         'submit' => 'Iniciar sesión',

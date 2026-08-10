@@ -160,6 +160,13 @@ return [
             'search_board' => 'Pano ara...',
             'no_board_found' => 'Aramanızla eşleşen pano yok.',
             'board_required' => 'Bu gönderiyi yayınlamak için bir Pinterest panosu seçin.',
+            'title' => 'Başlık',
+            'title_placeholder' => 'İsteğe bağlı pin başlığı',
+            'link' => 'Hedef bağlantı',
+            'link_placeholder' => 'https://ornek.com',
+            'link_invalid' => 'Geçerli bir hedef bağlantısı girin (http veya https).',
+            'title_max' => 'Başlık en fazla 100 karakter olabilir.',
+            'link_max' => 'Hedef bağlantısı en fazla 2048 karakter olabilir.',
         ],
         'discord' => [
             'settings' => 'Discord Ayarları',
@@ -570,6 +577,9 @@ return [
         'account_disconnected' => 'Sosyal hesabın bağlantısı kesildi',
         'account_inactive' => 'Sosyal hesap devre dışı bırakıldı',
         'account_token_expired' => 'Sosyal hesap oturumunun süresi doldu — lütfen yeniden bağlanın',
+        'platform_unavailable' => 'Platform geçici olarak kullanılamıyor. Kısa süre içinde yeniden deneyeceğiz.',
+        'platform_unavailable_exhausted' => 'Platform birkaç denemeden sonra kullanılamaz kaldı. Lütfen daha sonra tekrar deneyin.',
+        'publishing_timed_out' => 'Yayınlama zaman aşımına uğradı. Lütfen tekrar deneyin.',
     ],
 
     'delete' => [

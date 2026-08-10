@@ -5,6 +5,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
+import { getInitials } from '@/composables/useInitials';
 import debounce from '@/debounce';
 import { search as searchMembers } from '@/routes/app/workspace/members';
 
@@ -294,7 +295,7 @@ onBeforeUnmount(() => closePopover());
                 >
                     <Avatar class="h-6 w-6 shrink-0">
                         <AvatarImage v-if="member.avatar_url" :src="member.avatar_url" :alt="member.name" />
-                        <AvatarFallback class="text-[10px]">{{ member.name.charAt(0).toUpperCase() }}</AvatarFallback>
+                        <AvatarFallback class="text-[10px]">{{ getInitials(member.name) }}</AvatarFallback>
                     </Avatar>
                     <div class="min-w-0 flex-1">
                         <p class="truncate text-sm font-medium">{{ member.name }}</p>

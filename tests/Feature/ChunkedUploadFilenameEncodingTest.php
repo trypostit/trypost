@@ -7,6 +7,7 @@ use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 
 beforeEach(function () {
@@ -43,6 +44,7 @@ function postEncodedChunkedUpload(string $fileName, string $content): TestRespon
         [
             'HTTP_CONTENT_RANGE' => 'bytes 0-'.($size - 1).'/'.$size,
             'HTTP_X_FILE_NAME' => rawurlencode($fileName),
+            'HTTP_X_UPLOAD_ID' => Str::uuid()->toString(),
             'HTTP_ACCEPT' => 'application/json',
             'CONTENT_TYPE' => 'application/octet-stream',
         ],
@@ -95,6 +97,7 @@ test('chunked upload still accepts plain ascii filename without encoding', funct
         [
             'HTTP_CONTENT_RANGE' => 'bytes 0-'.($size - 1).'/'.$size,
             'HTTP_X_FILE_NAME' => 'plain-ascii.png',
+            'HTTP_X_UPLOAD_ID' => Str::uuid()->toString(),
             'HTTP_ACCEPT' => 'application/json',
             'CONTENT_TYPE' => 'application/octet-stream',
         ],

@@ -3,8 +3,10 @@ import { computed, toRef } from 'vue';
 
 import LinkCard from "@/components/posts/previews/LinkCard.vue";
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
+import { getInitials } from '@/composables/useInitials';
 import { useLinkCard } from '@/composables/useLinkCard';
 import { isVideoMedia } from '@/composables/useMedia';
+import date from '@/date';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -12,6 +14,7 @@ interface SocialAccount {
     platform: string;
     display_name: string;
     username: string;
+    display_label: string;
     avatar_url: string | null;
 }
 
@@ -19,11 +22,13 @@ interface Props {
     socialAccount: SocialAccount;
     content: string;
     media: MediaItem[];
+    postedAt?: string | null;
 }
 
 const props = defineProps<Props>();
 
 const username = computed(() => props.socialAccount.username || 'username');
+const postedAtLabel = computed(() => date.formatXPreview(props.postedAt));
 
 const { card: linkCard, loading: linkCardLoading } = useLinkCard(
     toRef(props, 'content'),
@@ -62,17 +67,17 @@ const { card: linkCard, loading: linkCardLoading } = useLinkCard(
                 <div class="flex items-center gap-2.5">
                     <!-- Avatar -->
                     <img v-if="socialAccount.avatar_url" :src="socialAccount.avatar_url"
-                        :alt="socialAccount.display_name" class="h-10 w-10 rounded-full object-cover flex-shrink-0" />
+                        :alt="socialAccount.display_label" class="h-10 w-10 rounded-full object-cover flex-shrink-0" />
                     <div v-else
                         class="h-10 w-10 rounded-full bg-[#1d9bf0] flex items-center justify-center text-white font-bold flex-shrink-0">
-                        {{ socialAccount.display_name?.charAt(0).toUpperCase() }}
+                        {{ getInitials(socialAccount.display_label) }}
                     </div>
 
                     <!-- Name + Username column -->
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-1">
                             <span class="font-bold text-[15px] text-[#0f1419] dark:text-[#e7e9ea] truncate">
-                                {{ socialAccount.display_name }}
+                                {{ socialAccount.display_label }}
                             </span>
                             <!-- Verified Badge -->
                             <svg class="h-[18px] w-[18px] text-[#1d9bf0] flex-shrink-0" viewBox="0 0 22 22"
@@ -127,7 +132,7 @@ const { card: linkCard, loading: linkCardLoading } = useLinkCard(
 
                 <!-- Timestamp & Views -->
                 <div class="mt-3 text-[15px] text-[#536471] dark:text-[#71767b]">
-                    <span>4:21 PM · Jan 20, 2026</span>
+                    <span>{{ postedAtLabel }}</span>
                     <span class="mx-1">·</span>
                     <span class="text-[#0f1419] dark:text-[#e7e9ea] font-bold">3.5M</span>
                     <span> Views</span>
