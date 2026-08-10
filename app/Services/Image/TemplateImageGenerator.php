@@ -76,6 +76,8 @@ class TemplateImageGenerator
         $generatedNewBackground = false;
         $resolvedBackgroundPath = null;
         $imageData = null;
+        $imageProvider = null;
+        $imageModel = null;
 
         if (is_string($backgroundPath) && trim($backgroundPath) !== '' && Storage::exists($backgroundPath)) {
             $resolvedBackgroundPath = $backgroundPath;
@@ -83,7 +85,7 @@ class TemplateImageGenerator
         }
 
         if (! is_string($imageData) || $imageData === '') {
-            $imageData = $this->aiImage->generate(
+            $generated = $this->aiImage->generate(
                 keywords: $imageKeywords,
                 style: $imageStyle,
                 orientation: $orientation,
@@ -94,9 +96,13 @@ class TemplateImageGenerator
                 brandDescription: $brandDescription,
             );
 
-            if ($imageData === null) {
+            if ($generated === null) {
                 return null;
             }
+
+            $imageData = $generated['bytes'];
+            $imageProvider = $generated['provider'];
+            $imageModel = $generated['model'];
 
             $generatedNewBackground = true;
             $resolvedBackgroundPath = $this->storeBackgroundImage($imageData);
@@ -113,8 +119,8 @@ class TemplateImageGenerator
         if ($generatedNewBackground) {
             RecordAiUsage::recordImage(
                 workspace: $workspace,
-                provider: 'openai',
-                model: AiImageClient::MODEL,
+                provider: $imageProvider,
+                model: $imageModel,
                 metadata: [
                     'image_style' => $imageStyle->value,
                     'width' => $this->width,
@@ -138,7 +144,7 @@ class TemplateImageGenerator
                 'keywords' => array_values($imageKeywords),
                 'style' => $imageStyle->value,
                 'language' => $language,
-                'model' => AiImageClient::MODEL,
+                'model' => $imageModel,
                 'title' => $title,
                 'body' => $body,
                 'width' => $this->width,
@@ -639,7 +645,7 @@ class TemplateImageGenerator
             default => ImageStyle::DEFAULT,
         };
 
-        $imageData = $this->aiImage->generate(
+        $generated = $this->aiImage->generate(
             keywords: $imageKeywords,
             style: $imageStyle,
             orientation: 'portrait',
@@ -650,7 +656,7 @@ class TemplateImageGenerator
             brandDescription: $workspace->brand_description,
         );
 
-        if ($imageData === null) {
+        if ($generated === null) {
             $brandColor = $workspace->brand_color ?? '#1d9bf0';
             [$pr, $pg, $pb] = $this->hexToRgb($brandColor);
             $pageBg = imagecolorallocate($core, $pr, $pg, $pb);
@@ -661,8 +667,8 @@ class TemplateImageGenerator
 
         RecordAiUsage::recordImage(
             workspace: $workspace,
-            provider: 'openai',
-            model: AiImageClient::MODEL,
+            provider: $generated['provider'],
+            model: $generated['model'],
             metadata: [
                 'image_style' => $imageStyle->value,
                 'width' => $this->width,
@@ -670,7 +676,7 @@ class TemplateImageGenerator
             ],
         );
 
-        $photo = $manager->decodeBinary($imageData)->cover($this->width, $this->height);
+        $photo = $manager->decodeBinary($generated['bytes'])->cover($this->width, $this->height);
 
         // Apply Gaussian blur passes to soften the background photo.
         $photoCoreNative = $photo->core()->native();

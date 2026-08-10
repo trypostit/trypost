@@ -13,15 +13,15 @@ use Throwable;
 
 class AiImageClient
 {
-    public const MODEL = 'gpt-image-2';
-
     private const BRAND_DESCRIPTION_MAX = 200;
 
     /**
-     * Generate raw image bytes via OpenAI gpt-image-2. Returns null on any
-     * failure so the caller can fall back to a stock photo without throwing.
+     * Generate an image via the configured AI_IMAGE_PROVIDER (defaults to OpenAI).
+     * Returns null on any failure so the caller can fall back to a stock photo
+     * without throwing.
      *
      * @param  array<int, string>  $keywords
+     * @return array{bytes: string, provider: string, model: string}|null
      */
     public function generate(
         array $keywords,
@@ -34,7 +34,7 @@ class AiImageClient
         ?string $brandDescription = null,
         string $quality = 'low',
         int $timeout = 180,
-    ): ?string {
+    ): ?array {
         $clean = array_values(array_filter(array_map('trim', $keywords)));
         if ($clean === []) {
             return null;
@@ -72,7 +72,7 @@ class AiImageClient
                 default => $builder->square(),
             };
 
-            $image = $builder->generate(model: self::MODEL);
+            $response = $builder->generate();
         } catch (Throwable $e) {
             Log::warning('AiImageClient: generation failed', [
                 'style' => $style->value,
@@ -83,9 +83,17 @@ class AiImageClient
             return null;
         }
 
-        $bytes = (string) $image;
+        $bytes = (string) $response;
 
-        return $bytes !== '' ? $bytes : null;
+        if ($bytes === '') {
+            return null;
+        }
+
+        return [
+            'bytes' => $bytes,
+            'provider' => (string) $response->meta->provider,
+            'model' => (string) $response->meta->model,
+        ];
     }
 
     private function languageName(string $code): string

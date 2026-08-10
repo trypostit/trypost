@@ -16,14 +16,32 @@ test('generate returns null when keywords are empty', function () {
     Image::assertNothingGenerated();
 });
 
-test('generate returns raw bytes when AI succeeds', function () {
+test('generate returns bytes plus the resolved provider and model when AI succeeds', function () {
     $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
     Image::fake([base64_encode($bytes)]);
 
     $client = new AiImageClient;
 
-    expect($client->generate(['kitchen', 'morning'], ImageStyle::Illustration))
-        ->toBe($bytes);
+    $result = $client->generate(['kitchen', 'morning'], ImageStyle::Illustration);
+
+    expect($result)
+        ->not->toBeNull()
+        ->and($result['bytes'])->toBe($bytes)
+        ->and($result['provider'])->toBe('openai')
+        ->and($result['model'])->toBe('gpt-image-2');
+});
+
+test('generate honours AI_IMAGE_PROVIDER instead of always using OpenAI', function () {
+    config()->set('ai.default_for_images', 'gemini');
+    Image::fake();
+
+    $client = new AiImageClient;
+
+    $result = $client->generate(['kitchen'], ImageStyle::Illustration);
+
+    expect($result)
+        ->not->toBeNull()
+        ->and($result['provider'])->toBe('gemini');
 });
 
 test('generate uses style-specific prompt prefix', function () {

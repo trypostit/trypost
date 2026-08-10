@@ -118,7 +118,7 @@ test('forTweetCardCarousel accepts slide arrays with image_keywords', function (
 
     $aiImageMock = Mockery::mock(AiImageClient::class);
     $minimalPng = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
-    $aiImageMock->shouldReceive('generate')->andReturn($minimalPng);
+    $aiImageMock->shouldReceive('generate')->andReturn(['bytes' => $minimalPng, 'provider' => 'openai', 'model' => 'gpt-image-2']);
     $this->app->instance(AiImageClient::class, $aiImageMock);
 
     $slides = [
