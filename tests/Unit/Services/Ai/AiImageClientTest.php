@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 use App\Enums\Workspace\ImageStyle;
 use App\Services\Ai\AiImageClient;
+use Illuminate\Support\Collection;
 use Laravel\Ai\Image;
 use Laravel\Ai\Prompts\ImagePrompt;
+use Laravel\Ai\Responses\Data\Meta;
+use Laravel\Ai\Responses\Data\Usage;
+use Laravel\Ai\Responses\ImageResponse;
 
 test('generate returns null when keywords are empty', function () {
     Image::fake();
@@ -188,6 +192,18 @@ test('generate omits brand context when brandDescription is empty or whitespace'
 
 test('generate returns null when SDK throws', function () {
     Image::fake(fn () => throw new RuntimeException('boom'));
+
+    $client = new AiImageClient;
+
+    expect($client->generate(['x'], ImageStyle::Cinematic))->toBeNull();
+});
+
+test('generate returns null instead of throwing when the provider responds with no images', function () {
+    Image::fake(fn () => new ImageResponse(
+        new Collection,
+        new Usage,
+        new Meta('openai', 'gpt-image-2'),
+    ));
 
     $client = new AiImageClient;
 

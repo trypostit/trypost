@@ -9,6 +9,7 @@ use App\Enums\Workspace\ImageStyle;
 use App\Support\HexColorName;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Image;
+use Laravel\Ai\Responses\ImageResponse;
 use Throwable;
 
 class AiImageClient
@@ -35,33 +36,13 @@ class AiImageClient
         string $quality = 'low',
         int $timeout = 180,
     ): ?array {
-        $clean = array_values(array_filter(array_map('trim', $keywords)));
-        if ($clean === []) {
+        $keywords = $this->cleanKeywords($keywords);
+
+        if ($keywords === []) {
             return null;
         }
 
-        $palette = $this->buildPaletteContext($brandColor, $backgroundColor, $textColor);
-
-        $brandContext = null;
-        if ($brandDescription !== null) {
-            $trimmed = trim($brandDescription);
-            if ($trimmed !== '') {
-                $brandContext = mb_strlen($trimmed) > self::BRAND_DESCRIPTION_MAX
-                    ? mb_substr($trimmed, 0, self::BRAND_DESCRIPTION_MAX).'…'
-                    : $trimmed;
-            }
-        }
-
-        $prompt = view('prompts.post_image.generator', [
-            'style' => $style->value,
-            'scene' => implode(', ', $clean),
-            'language_name' => $this->languageName($language),
-            'has_brand_palette' => data_get($palette, 'is_defined', false),
-            'brand_color_name' => data_get($palette, 'brand_color_name'),
-            'background_color_name' => data_get($palette, 'background_color_name'),
-            'text_color_name' => data_get($palette, 'text_color_name'),
-            'brand_context' => $brandContext,
-        ])->render();
+        $prompt = $this->buildPrompt($keywords, $style, $language, $brandColor, $backgroundColor, $textColor, $brandDescription);
 
         try {
             $builder = Image::of($prompt)->quality($quality)->timeout($timeout);
@@ -72,7 +53,7 @@ class AiImageClient
                 default => $builder->square(),
             };
 
-            $response = $builder->generate();
+            return $this->toResult($builder->generate());
         } catch (Throwable $e) {
             Log::warning('AiImageClient: generation failed', [
                 'style' => $style->value,
@@ -82,7 +63,69 @@ class AiImageClient
 
             return null;
         }
+    }
 
+    /**
+     * @param  array<int, string>  $keywords
+     * @return array<int, string>
+     */
+    private function cleanKeywords(array $keywords): array
+    {
+        return collect($keywords)
+            ->map(fn (string $keyword) => trim($keyword))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, string>  $keywords
+     */
+    private function buildPrompt(
+        array $keywords,
+        ImageStyle $style,
+        string $language,
+        ?string $brandColor,
+        ?string $backgroundColor,
+        ?string $textColor,
+        ?string $brandDescription,
+    ): string {
+        $palette = $this->buildPaletteContext($brandColor, $backgroundColor, $textColor);
+
+        return view('prompts.post_image.generator', [
+            'style' => $style->value,
+            'scene' => implode(', ', $keywords),
+            'language_name' => $this->languageName($language),
+            'has_brand_palette' => data_get($palette, 'is_defined', false),
+            'brand_color_name' => data_get($palette, 'brand_color_name'),
+            'background_color_name' => data_get($palette, 'background_color_name'),
+            'text_color_name' => data_get($palette, 'text_color_name'),
+            'brand_context' => $this->resolveBrandContext($brandDescription),
+        ])->render();
+    }
+
+    private function resolveBrandContext(?string $brandDescription): ?string
+    {
+        $trimmed = trim((string) $brandDescription);
+
+        if ($trimmed === '') {
+            return null;
+        }
+
+        return mb_strlen($trimmed) > self::BRAND_DESCRIPTION_MAX
+            ? mb_substr($trimmed, 0, self::BRAND_DESCRIPTION_MAX).'…'
+            : $trimmed;
+    }
+
+    /**
+     * Extract the raw image bytes and the provider/model that produced them.
+     * Called from inside generate()'s try block so a malformed response
+     * (e.g. no images) is treated as a failure, not an uncaught exception.
+     *
+     * @return array{bytes: string, provider: string, model: string}|null
+     */
+    private function toResult(ImageResponse $response): ?array
+    {
         $bytes = (string) $response;
 
         if ($bytes === '') {
