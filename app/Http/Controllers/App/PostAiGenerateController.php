@@ -34,10 +34,6 @@ class PostAiGenerateController extends Controller
             currentContent: $request->input('current_content'),
         );
 
-        // Same format as StreamPostContent::handle()'s PrivateChannel and the
-        // frontend's aiGenerationChannel() (resources/js/composables/echo/useAiStream.ts)
-        // — the frontend now builds this itself to subscribe before this request
-        // is sent, so `channel` here is informational, not the source of truth.
         return response()->json([
             'generation_id' => $generationId,
             'channel' => "user.{$request->user()->id}.ai-gen.{$generationId}",

@@ -15,10 +15,6 @@ class GeneratePostContentRequest extends FormRequest
     }
 
     /**
-     * `generation_id` is minted client-side (not server-side) so the frontend
-     * can subscribe to the broadcast channel before this request is even
-     * sent — see StreamPostContent and useAiStream's `aiGenerationChannel()`.
-     *
      * @return array<string, array<int, string>>
      */
     public function rules(): array

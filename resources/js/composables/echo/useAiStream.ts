@@ -14,7 +14,6 @@ interface ErrorEvent {
 
 export type AiStreamStatus = 'idle' | 'streaming' | 'completed' | 'failed';
 
-/** Matches PostAiGenerateController/StreamPostContent's channel format — grep `ai-gen.` if it changes. */
 export const aiGenerationChannel = (userId: string, generationId: string): string => `user.${userId}.ai-gen.${generationId}`;
 
 /**
@@ -41,12 +40,6 @@ export const useAiStream = () => {
         subscribedName = null;
     };
 
-    /**
-     * Await this before dispatching whatever broadcasts onto the channel —
-     * events sent before the subscribe handshake completes are lost with no
-     * replay. Resolves `true` once confirmed (or on timeout — ambiguous, so
-     * we proceed optimistically), `false` only on a definitive subscribe error.
-     */
     const subscribe = (channelName: string): Promise<boolean> => {
         unsubscribe();
         reset();

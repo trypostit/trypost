@@ -38,8 +38,6 @@ class StreamPostContent implements ShouldQueue
             currentContent: $this->currentContent,
         );
 
-        // Same format as PostAiGenerateController's response and the frontend's
-        // aiGenerationChannel() (resources/js/composables/echo/useAiStream.ts).
         $channel = new PrivateChannel("user.{$this->userId}.ai-gen.{$this->generationId}");
 
         try {

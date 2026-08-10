@@ -33,9 +33,6 @@ const httpGenerate = useHttp<{ prompt: string; current_content: string | null; g
     generation_id: '',
 });
 
-// Subscribe to the channel BEFORE the job that broadcasts on it is dispatched —
-// otherwise events sent before our subscription handshake completes are lost
-// with no replay, and the dialog hangs on 'streaming' forever (issue #218).
 const startGeneration = async () => {
     if (! prompt.value.trim()) return;
     dispatching.value = true;
@@ -45,15 +42,11 @@ const startGeneration = async () => {
     try {
         const subscribed = await subscribe(channel);
 
-        // The dialog was closed while we were waiting on the subscribe
-        // handshake — don't dispatch (and bill) a generation nobody will see.
         if (! open.value) {
             unsubscribe();
             return;
         }
 
-        // Subscription definitively failed (e.g. broadcasting auth rejected) —
-        // dispatching now would only produce another silent 'streaming' hang.
         if (! subscribed) {
             throw new Error('Channel subscription failed');
         }
