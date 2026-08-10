@@ -10,7 +10,9 @@ export const subscribePrivateChannel = (
     configure(channel);
 
     return new Promise((resolve) => {
-        setTimeout(() => resolve(true), timeoutMs);
-        channel.subscribed(() => resolve(true)).error(() => resolve(false));
+        const timeout = setTimeout(() => resolve(true), timeoutMs);
+        channel
+            .subscribed(() => { clearTimeout(timeout); resolve(true); })
+            .error(() => { clearTimeout(timeout); resolve(false); });
     });
 };

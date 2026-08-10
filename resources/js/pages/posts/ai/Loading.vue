@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { subscribePrivateChannel } from '@/composables/echo/subscribePrivateChannel';
 import dateFormat from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { extractErrorMessage } from '@/lib/httpError';
 import { calendar as calendarRoute } from '@/routes/app';
 import { create as createPostRoute, edit as editPostRoute } from '@/routes/app/posts';
 
@@ -28,9 +29,12 @@ const props = defineProps<{
 const status = ref<'loading' | 'error'>('loading');
 const errorMessage = ref('');
 let subscribed = false;
+let unmounted = false;
+let generationTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const TEXT_BASELINE_SECONDS = 30;
 const PER_IMAGE_SECONDS = 35;
+const GENERATION_TIMEOUT_MS = 960_000;
 
 const estimatedSeconds = computed(() => TEXT_BASELINE_SECONDS + props.imageCount * PER_IMAGE_SECONDS);
 
@@ -71,6 +75,10 @@ const unsubscribe = () => {
         echo().leave(`private-${props.channel}`);
         subscribed = false;
     }
+    if (generationTimeout) {
+        clearTimeout(generationTimeout);
+        generationTimeout = null;
+    }
 };
 
 const httpStart = useHttp<{
@@ -97,6 +105,7 @@ const startGeneration = async () => {
     const confirmed = await subscribePrivateChannel(props.channel, (channel) => {
         subscribed = true;
         channel.listen('.ai.creation.completed', (e: { post_id?: string; error?: string }) => {
+            unsubscribe();
             if (e.error || !e.post_id) {
                 status.value = 'error';
                 errorMessage.value = e.error ?? trans('posts.create.steps.preview_error');
@@ -106,6 +115,11 @@ const startGeneration = async () => {
         });
     });
 
+    if (unmounted) {
+        unsubscribe();
+        return;
+    }
+
     if (!confirmed) {
         unsubscribe();
         status.value = 'error';
@@ -113,12 +127,24 @@ const startGeneration = async () => {
         return;
     }
 
-    try {
-        await httpStart.post(startPostCreation.url());
-    } catch {
+    generationTimeout = setTimeout(() => {
         unsubscribe();
         status.value = 'error';
         errorMessage.value = trans('posts.create.steps.preview_error');
+    }, GENERATION_TIMEOUT_MS);
+
+    try {
+        await httpStart.post(startPostCreation.url());
+
+        if (httpStart.hasErrors) {
+            unsubscribe();
+            status.value = 'error';
+            errorMessage.value = httpStart.errors.social_account_id ?? Object.values(httpStart.errors)[0] ?? trans('posts.create.steps.preview_error');
+        }
+    } catch (error: unknown) {
+        unsubscribe();
+        status.value = 'error';
+        errorMessage.value = extractErrorMessage(error) ?? trans('posts.create.steps.preview_error');
     }
 };
 
@@ -141,6 +167,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+    unmounted = true;
     unsubscribe();
     if (tipTimer) clearInterval(tipTimer);
     if (elapsedTimer) clearInterval(elapsedTimer);
@@ -199,7 +226,10 @@ onBeforeUnmount(() => {
                         {{ errorMessage || $t('posts.create.steps.preview_error') }}
                     </p>
                 </div>
-                <Button @click="leave">{{ $t('posts.create.steps.loading_leave_cta') }}</Button>
+                <div class="flex flex-wrap items-center justify-center gap-2">
+                    <Button @click="createAnother">{{ $t('posts.create.steps.loading_create_another_cta') }}</Button>
+                    <Button variant="outline" @click="leave">{{ $t('posts.create.steps.loading_leave_cta') }}</Button>
+                </div>
             </div>
         </div>
     </AppLayout>

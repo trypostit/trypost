@@ -127,7 +127,8 @@ test('regenerate media rejects non ai media items', function () {
             'instruction' => 'Change the title text',
             'regeneration_id' => Str::uuid()->toString(),
         ])
-        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
+        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
+        ->assertJsonStructure(['errors' => ['instruction']]);
 
     Bus::assertNotDispatched(RegeneratePostMediaImage::class);
 });
@@ -161,7 +162,8 @@ test('regenerate media rejects finalized posts', function () {
             'instruction' => 'Fix typo',
             'regeneration_id' => Str::uuid()->toString(),
         ])
-        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
+        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
+        ->assertJsonStructure(['errors' => ['instruction']]);
 
     Bus::assertNotDispatched(RegeneratePostMediaImage::class);
 });

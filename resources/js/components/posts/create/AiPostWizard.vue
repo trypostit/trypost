@@ -6,6 +6,7 @@ import {
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
+import { toast } from 'vue-sonner';
 
 import ContentStylePicker from '@/components/ai/ContentStylePicker.vue';
 import { Button } from '@/components/ui/button';
@@ -199,20 +200,26 @@ const startGeneration = () => {
 
     submitting.value = true;
 
-    router.visit(loadingRoute(
-        { creationId: crypto.randomUUID() },
-        {
-            query: {
-                images: String(submittedImageCount.value),
-                format: selectedFormat.value ?? '',
-                prompt: promptText.value.trim(),
-                social_account_id: selectedAccountId.value ?? '',
-                date: props.date ?? '',
-                template: resolvedTemplate.value,
-                apply_brand_visuals: useBrandColors.value ? '1' : '0',
+    router.visit(
+        loadingRoute(
+            { creationId: crypto.randomUUID() },
+            {
+                query: {
+                    images: String(submittedImageCount.value),
+                    format: selectedFormat.value ?? '',
+                    prompt: promptText.value.trim(),
+                    social_account_id: selectedAccountId.value ?? '',
+                    date: props.date ?? '',
+                    template: resolvedTemplate.value,
+                    apply_brand_visuals: useBrandColors.value ? '1' : '0',
+                },
             },
+        ).url,
+        {
+            onError: () => toast.error(trans('posts.create.steps.preview_error')),
+            onFinish: () => { submitting.value = false; },
         },
-    ).url);
+    );
 };
 
 </script>

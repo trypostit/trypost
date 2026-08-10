@@ -198,6 +198,49 @@ test('start dispatches StreamPostCreation using the client-supplied creation id'
     });
 });
 
+test('start does not dispatch StreamPostCreation twice for the same creation_id', function () {
+    Bus::fake();
+
+    $creationId = Str::uuid()->toString();
+    $payload = [
+        'prompt' => 'Write a post about productivity',
+        'format' => 'x_post',
+        'creation_id' => $creationId,
+    ];
+
+    $this->actingAs($this->user)->postJson(route('app.posts.ai.create'), $payload)
+        ->assertStatus(Response::HTTP_ACCEPTED);
+
+    $this->actingAs($this->user)->postJson(route('app.posts.ai.create'), $payload)
+        ->assertStatus(Response::HTTP_ACCEPTED);
+
+    Bus::assertDispatchedTimes(StreamPostCreation::class, 1);
+});
+
+test('start dispatches for two different users sharing the same creation_id', function () {
+    Bus::fake();
+
+    $otherUser = User::factory()->create();
+    $otherWorkspace = Workspace::factory()->create(['user_id' => $otherUser->id]);
+    $otherWorkspace->members()->attach($otherUser->id, ['role' => Role::Member->value]);
+    $otherUser->update(['current_workspace_id' => $otherWorkspace->id]);
+
+    $creationId = Str::uuid()->toString();
+    $payload = [
+        'prompt' => 'Write a post about productivity',
+        'format' => 'x_post',
+        'creation_id' => $creationId,
+    ];
+
+    $this->actingAs($this->user)->postJson(route('app.posts.ai.create'), $payload)
+        ->assertStatus(Response::HTTP_ACCEPTED);
+
+    $this->actingAs($otherUser)->postJson(route('app.posts.ai.create'), $payload)
+        ->assertStatus(Response::HTTP_ACCEPTED);
+
+    Bus::assertDispatchedTimes(StreamPostCreation::class, 2);
+});
+
 test('start works without social_account_id', function () {
     Bus::fake();
 

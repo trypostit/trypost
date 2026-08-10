@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { useHttp, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import { computed, ref, watch } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
 
+import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -25,6 +26,7 @@ const page = usePage();
 
 const prompt = ref('');
 const dispatching = ref(false);
+const promptError = ref<string | undefined>(undefined);
 const { text, status, errorMessage, subscribe, unsubscribe, reset } = useAiStream();
 
 const httpGenerate = useHttp<{ prompt: string; current_content: string | null; generation_id: string }>({
@@ -33,16 +35,22 @@ const httpGenerate = useHttp<{ prompt: string; current_content: string | null; g
     generation_id: '',
 });
 
+let unmounted = false;
+onUnmounted(() => {
+    unmounted = true;
+});
+
 const startGeneration = async () => {
     if (! prompt.value.trim()) return;
     dispatching.value = true;
+    promptError.value = undefined;
     const generationId = crypto.randomUUID();
     const channel = aiGenerationChannel(String(page.props.auth.user.id), generationId);
 
     try {
         const subscribed = await subscribe(channel);
 
-        if (! open.value) {
+        if (unmounted || ! open.value) {
             unsubscribe();
             return;
         }
@@ -55,6 +63,13 @@ const startGeneration = async () => {
         httpGenerate.current_content = props.currentContent || null;
         httpGenerate.generation_id = generationId;
         await httpGenerate.post(generatePostAi.url(props.postId));
+
+        if (httpGenerate.hasErrors) {
+            unsubscribe();
+            reset();
+            promptError.value = httpGenerate.errors.prompt ?? trans('posts.ai.generate.errors.start_failed');
+            return;
+        }
     } catch {
         unsubscribe();
         status.value = 'failed';
@@ -98,6 +113,7 @@ watch(open, () => {
     unsubscribe();
     reset();
     prompt.value = '';
+    promptError.value = undefined;
 });
 </script>
 
@@ -119,6 +135,7 @@ watch(open, () => {
                         :disabled="status === 'streaming'"
                         rows="3"
                     />
+                    <InputError :message="promptError" />
                 </div>
 
                 <div v-if="status !== 'idle'" class="grid gap-2">

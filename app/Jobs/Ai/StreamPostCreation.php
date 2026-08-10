@@ -24,15 +24,18 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Ai\RecordAiUsage;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class StreamPostCreation implements ShouldQueue
+class StreamPostCreation implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $uniqueFor = 990;
 
     public function __construct(
         public string $userId,
@@ -47,6 +50,11 @@ class StreamPostCreation implements ShouldQueue
         public bool $applyBrandVisuals = true,
     ) {
         $this->onQueue('ai');
+    }
+
+    public function uniqueId(): string
+    {
+        return "{$this->userId}:{$this->creationId}";
     }
 
     public function handle(): void

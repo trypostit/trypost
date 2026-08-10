@@ -5,6 +5,7 @@ import { computed, onUnmounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 import { subscribePrivateChannel } from '@/composables/echo/subscribePrivateChannel';
+import { extractErrorMessage } from '@/lib/httpError';
 import { regenerateMedia as regeneratePostAiMedia } from '@/routes/app/posts/ai';
 import type { MediaItem } from '@/types/media';
 
@@ -35,6 +36,7 @@ export const useAiMediaRegeneration = (options: UseAiMediaRegenerationOptions) =
     const page = usePage();
     const instruction = ref('');
     const errorMessage = ref<string | null>(null);
+    const instructionError = ref<string | undefined>(undefined);
     const status = ref<RegenerationStatus>('idle');
 
     const httpRegenerate = useHttp<{ instruction: string; regeneration_id: string }>({
@@ -73,6 +75,7 @@ export const useAiMediaRegeneration = (options: UseAiMediaRegenerationOptions) =
     const resetState = () => {
         instruction.value = '';
         errorMessage.value = null;
+        instructionError.value = undefined;
         status.value = 'idle';
         clearRegenerationTimeout();
         unsubscribe();
@@ -129,11 +132,13 @@ export const useAiMediaRegeneration = (options: UseAiMediaRegenerationOptions) =
         }
 
         if (!instructionValue) {
-            setIdleWithError(trans('posts.ai.image_regenerate.errors.required'));
+            errorMessage.value = null;
+            instructionError.value = trans('posts.ai.image_regenerate.errors.required');
             return;
         }
 
         errorMessage.value = null;
+        instructionError.value = undefined;
         status.value = 'starting';
 
         const regenerationId = crypto.randomUUID();
@@ -154,11 +159,18 @@ export const useAiMediaRegeneration = (options: UseAiMediaRegenerationOptions) =
             httpRegenerate.instruction = instructionValue;
             httpRegenerate.regeneration_id = regenerationId;
             await httpRegenerate.post(regeneratePostAiMedia.url({ post: options.postId, mediaId: mediaItem.id }));
+
+            if (httpRegenerate.hasErrors) {
+                clearRegenerationTimeout();
+                unsubscribe();
+                status.value = 'idle';
+                instructionError.value = httpRegenerate.errors.instruction ?? trans('posts.ai.image_regenerate.errors.start_failed');
+                return;
+            }
         } catch (error: unknown) {
             clearRegenerationTimeout();
             unsubscribe();
-            const responseMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-            setIdleWithError(responseMessage ?? trans('posts.ai.image_regenerate.errors.start_failed'));
+            setIdleWithError(extractErrorMessage(error) ?? trans('posts.ai.image_regenerate.errors.start_failed'));
         }
     };
 
@@ -171,6 +183,7 @@ export const useAiMediaRegeneration = (options: UseAiMediaRegenerationOptions) =
     return {
         instruction,
         errorMessage,
+        instructionError,
         status,
         isBusy,
         isProcessing,

@@ -24,6 +24,7 @@ class PostAiRegenerateMediaController extends Controller
         if (PostStatusRules::blocksEditing($post)) {
             return response()->json([
                 'message' => PostStatusRules::editBlockedMessage(),
+                'errors' => ['instruction' => [PostStatusRules::editBlockedMessage()]],
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -44,6 +45,7 @@ class PostAiRegenerateMediaController extends Controller
         if (data_get($mediaItem, 'source') !== Source::Ai->value) {
             return response()->json([
                 'message' => __('posts.ai.image_regenerate.errors.not_ai_media'),
+                'errors' => ['instruction' => [__('posts.ai.image_regenerate.errors.not_ai_media')]],
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
