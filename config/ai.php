@@ -155,5 +155,4 @@ return [
             'key' => env('XAI_API_KEY'),
         ],
     ],
-
 ];
