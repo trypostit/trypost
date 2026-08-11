@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, router, usePoll } from '@inertiajs/vue3';
 import { IconLoader2 } from '@tabler/icons-vue';
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 
 import { accounts, onboarding } from '@/routes/app';
 
@@ -9,8 +9,6 @@ const props = defineProps<{
     subscriptionActive: boolean;
     redirectToOnboarding: boolean;
 }>();
-
-const REDIRECT_DELAY_MS = 5000;
 
 // Polls `auth` alongside so `auth.plan.interval` is fresh once the Stripe
 // webhook creates the local Subscription row — at /billing/processing's
@@ -21,7 +19,6 @@ const { stop } = usePoll(2000, {
 });
 
 const finishing = ref(false);
-let redirectTimer: ReturnType<typeof setTimeout> | null = null;
 
 const goNext = (): void => {
     router.visit(
@@ -32,17 +29,15 @@ const goNext = (): void => {
 // A trial-with-card subscription is already `subscribed()` (status
 // `trialing`) by the time the webhook lands, so the user frequently reaches
 // this page already active — the false → true poll transition never
-// happens. We hold briefly either way before navigating on, so the backend
-// webhook (which fires `checkout.completed` to PostHog) has had a moment to
-// land.
+// happens. `checkout.completed` fires from the Stripe webhook server-side,
+// independent of this page, so there's nothing to wait for once active.
 const completePurchase = (): void => {
     if (finishing.value) {
         return;
     }
     finishing.value = true;
     stop();
-
-    redirectTimer = setTimeout(goNext, REDIRECT_DELAY_MS);
+    goNext();
 };
 
 watch(
@@ -57,12 +52,6 @@ watch(
 onMounted(() => {
     if (props.subscriptionActive) {
         completePurchase();
-    }
-});
-
-onUnmounted(() => {
-    if (redirectTimer) {
-        clearTimeout(redirectTimer);
     }
 });
 </script>
