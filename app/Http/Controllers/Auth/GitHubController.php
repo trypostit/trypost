@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Actions\User\CreateUser;
+use App\Http\Controllers\Auth\Concerns\PreservesClickIds;
 use App\Http\Controllers\Auth\Concerns\PreservesUtmParameters;
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -16,11 +17,12 @@ use Laravel\Socialite\Facades\Socialite;
 
 class GitHubController extends Controller
 {
-    use PreservesUtmParameters;
+    use PreservesClickIds, PreservesUtmParameters;
 
     public function redirect(Request $request): RedirectResponse
     {
         $this->storeUtmParameters($request);
+        $this->storeClickIds($request);
 
         return Socialite::driver('github')
             ->scopes(['read:user', 'user:email'])
@@ -91,13 +93,14 @@ class GitHubController extends Controller
         Auth::login($user, remember: true);
 
         $this->retrieveUtmParameters();
+        $this->retrieveClickIds();
 
         return redirect()->route('app.home');
     }
 
     private function registerNewUser(\Laravel\Socialite\Contracts\User $githubUser): RedirectResponse
     {
-        $utmParameters = $this->retrieveUtmParameters();
+        $attributionParameters = [...$this->retrieveUtmParameters(), ...$this->retrieveClickIds()];
 
         $user = CreateUser::execute([
             'name' => $githubUser->getName() ?? $githubUser->getNickname() ?? explode('@', $githubUser->getEmail())[0],
@@ -105,7 +108,7 @@ class GitHubController extends Controller
             'github_id' => (string) $githubUser->getId(),
             'email_verified_at' => now(),
             'registration_ip' => request()->ip(),
-        ], $utmParameters);
+        ], $attributionParameters);
 
         event(new Registered($user));
 
@@ -113,6 +116,6 @@ class GitHubController extends Controller
 
         session()->flash('auth_provider', 'github');
 
-        return redirect()->route('register.success', $utmParameters);
+        return redirect()->route('register.success', $attributionParameters);
     }
 }

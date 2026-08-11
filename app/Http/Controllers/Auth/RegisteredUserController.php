@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Actions\User\CreateUser;
+use App\Http\Controllers\Auth\Concerns\PreservesClickIds;
 use App\Http\Controllers\Auth\Concerns\PreservesUtmParameters;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Auth\RegisterRequest;
@@ -17,11 +18,12 @@ use Inertia\Response;
 
 class RegisteredUserController extends Controller
 {
-    use PreservesUtmParameters;
+    use PreservesClickIds, PreservesUtmParameters;
 
     public function create(Request $request): Response
     {
         $this->storeUtmParameters($request);
+        $this->storeClickIds($request);
 
         return Inertia::render('auth/Register', [
             'email' => $request->query('email'),
@@ -32,7 +34,7 @@ class RegisteredUserController extends Controller
 
     public function store(RegisterRequest $request): RedirectResponse
     {
-        $utmParameters = $this->retrieveUtmParameters();
+        $attributionParameters = [...$this->retrieveUtmParameters(), ...$this->retrieveClickIds()];
 
         $user = CreateUser::execute([
             'name' => $request->validated('name'),
@@ -40,7 +42,7 @@ class RegisteredUserController extends Controller
             'password' => $request->validated('password'),
             'is_invite' => $request->isInviteRegistration(),
             'registration_ip' => $request->ip(),
-        ], $utmParameters);
+        ], $attributionParameters);
 
         event(new Registered($user));
 
@@ -56,6 +58,6 @@ class RegisteredUserController extends Controller
 
         session()->flash('auth_provider', 'email');
 
-        return redirect()->route('register.success', $utmParameters);
+        return redirect()->route('register.success', $attributionParameters);
     }
 }

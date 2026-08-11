@@ -37,10 +37,22 @@ class SyncUser implements ShouldQueue
             return;
         }
 
+        $clickIds = array_filter([
+            'gclid' => $user->gclid,
+            'fbclid' => $user->fbclid,
+            'li_fat_id' => $user->li_fat_id,
+            'ttclid' => $user->ttclid,
+            'rdt_cid' => $user->rdt_cid,
+            'epik' => $user->epik,
+        ]);
+
         $postHog->identify($user->id, [
             '$email' => $user->email,
             '$name' => $user->name,
-            '$set_once' => ['signed_up_at' => $user->created_at?->toIso8601String()],
+            '$set_once' => [
+                'signed_up_at' => $user->created_at?->toIso8601String(),
+                ...$clickIds,
+            ],
         ]);
 
         if ($user->account_id) {
