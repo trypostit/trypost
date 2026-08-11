@@ -36,7 +36,7 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        if ($invite = Invite::fromId((string) $request->input('invite', ''))) {
+        if ($invite = Invite::fromId($request->string('invite')->toString())) {
             return redirect()->route('app.invites.show', $invite);
         }
 

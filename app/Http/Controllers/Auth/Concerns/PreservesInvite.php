@@ -7,26 +7,17 @@ namespace App\Http\Controllers\Auth\Concerns;
 use Illuminate\Http\Request;
 
 /**
- * Mirrors PreservesAttributionParameters, but for the invite id that the
- * email/password flow already threads through a hidden form field (see
- * AcceptInvite.vue -> Register.vue/Login.vue). The OAuth round-trip has no
- * form to carry it in, so it rides the session instead — same problem
- * PreservesAttributionParameters solves, different (non-marketing) data, so
- * it stays a separate trait/session key rather than overloading that one.
- *
- * Only the id is preserved — never a redirect URL. The return-to-invite URL
- * is always derived server-side from a DB-validated Invite (see
- * Invite::fromId()), so there is nothing here for a client to redirect to
- * an arbitrary destination with.
+ * Carries the invite id across the OAuth round-trip via session, mirroring
+ * PreservesAttributionParameters.
  */
 trait PreservesInvite
 {
     private function storeInvite(Request $request): void
     {
-        $inviteId = $request->query('invite');
+        $inviteId = $request->string('invite');
 
-        if (is_string($inviteId) && $inviteId !== '') {
-            $request->session()->put('oauth_invite_id', $inviteId);
+        if ($inviteId->isNotEmpty()) {
+            $request->session()->put('oauth_invite_id', $inviteId->toString());
         }
     }
 

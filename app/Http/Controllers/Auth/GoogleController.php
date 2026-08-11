@@ -37,9 +37,7 @@ class GoogleController extends Controller
             return redirect()->route('login');
         }
 
-        // The signup/login redirect is gated by the `guest` middleware and
-        // the connect-from-settings redirect by `auth`, so this is a safe
-        // signal for which flow we came from.
+        // `guest` middleware gates login/signup; `auth` gates the settings connect flow.
         if (Auth::check()) {
             return $this->connectToCurrentUser(Auth::user(), $googleUser->getId());
         }
@@ -100,11 +98,7 @@ class GoogleController extends Controller
         $attributionParameters = $this->retrieveAttributionParameters();
         $inviteId = $this->retrieveInvite();
 
-        // Same soft gate as the `registration.enabled` middleware on
-        // /register: self-hosted requires *some* invite param to reach
-        // registration at all. The OAuth redirect route is shared with
-        // login (we can't tell them apart before the callback resolves an
-        // identity), so this is the earliest point we can enforce it.
+        // Mirrors the registration.enabled middleware: self-hosted requires an invite to register.
         if ((bool) config('trypost.self_hosted') && ! $inviteId) {
             throw new NotFoundHttpException;
         }

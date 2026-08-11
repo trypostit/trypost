@@ -35,14 +35,9 @@ class RegisterRequest extends FormRequest
         ];
     }
 
-    /**
-     * A valid invite binds registration to the invited email — never a
-     * different one. Non-UUID invite params are self-hosted gate placeholders
-     * and are ignored.
-     */
     public function invite(): ?Invite
     {
-        return Invite::fromId((string) $this->input('invite', ''));
+        return Invite::fromId($this->string('invite')->toString());
     }
 
     public function isInviteRegistration(): bool
