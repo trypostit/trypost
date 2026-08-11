@@ -66,8 +66,10 @@ class AuthenticationController extends Controller
 
     public function connectProvider(string $provider): RedirectResponse
     {
-        abort_unless(in_array($provider, self::PROVIDERS, true), 404);
-        abort_unless((bool) config("trypost.{$provider}_auth_enabled"), 404);
+        abort_unless(
+            in_array($provider, self::PROVIDERS, true) && (bool) config("trypost.{$provider}_auth_enabled"),
+            404,
+        );
 
         return match ($provider) {
             'google' => Socialite::driver('google-auth')->redirect(),
