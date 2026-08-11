@@ -40,7 +40,7 @@ class TrackCheckoutCompleted implements ShouldQueue
 
         $account = Account::with(['plan', 'owner'])->find($this->accountId);
 
-        if (! $account || ! $account->owner_id || ! $account->plan) {
+        if (! $account?->owner_id || ! $account->plan) {
             return;
         }
 
