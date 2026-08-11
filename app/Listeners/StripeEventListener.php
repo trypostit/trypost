@@ -176,10 +176,8 @@ class StripeEventListener
             return;
         }
 
-        $wasTrialing = data_get($payload, 'data.previous_attributes.status') === 'trialing';
-        $isNowActive = data_get($payload, 'data.object.status') === 'active';
-
-        if ($wasTrialing && $isNowActive) {
+        if (data_get($payload, 'data.previous_attributes.status') === 'trialing'
+            && data_get($payload, 'data.object.status') === 'active') {
             TrackTrialConverted::dispatch((string) $account->id, $payload);
         }
     }

@@ -9,26 +9,37 @@ use App\Models\Account;
 final class StripeSubscriptionConversion
 {
     /**
-     * Shared plan/interval/persona/conversion_* properties for a PostHog
-     * capture backed by a Stripe subscription webhook payload. Used by both
-     * TrackCheckoutCompleted (immediate charge at signup) and
-     * TrackTrialConverted (trial's first successful charge) — same shape,
-     * different moment in the billing lifecycle.
+     * plan_name/interval/persona shared by every PostHog capture backed by a
+     * Stripe subscription webhook payload — trial.started, checkout.completed,
+     * and trial.converted all start from this shape.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public static function baseProperties(Account $account, array $payload): array
+    {
+        $priceId = data_get($payload, 'data.object.items.data.0.price.id');
+
+        return [
+            'plan_name' => $account->plan->name,
+            'interval' => $priceId === $account->plan->stripe_yearly_price_id ? 'yearly' : 'monthly',
+            'persona' => $account->owner?->persona?->value,
+        ];
+    }
+
+    /**
+     * baseProperties() plus conversion_* fields, for the two events backed by
+     * an actual charge: TrackCheckoutCompleted and TrackTrialConverted.
      *
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
     public static function propertiesFor(Account $account, array $payload): array
     {
+        $properties = self::baseProperties($account, $payload);
+
         $unitAmount = data_get($payload, 'data.object.items.data.0.price.unit_amount');
         $currency = data_get($payload, 'data.object.items.data.0.price.currency');
-        $priceId = data_get($payload, 'data.object.items.data.0.price.id');
-
-        $properties = [
-            'plan_name' => $account->plan->name,
-            'interval' => $priceId === $account->plan->stripe_yearly_price_id ? 'yearly' : 'monthly',
-            'persona' => $account->owner?->persona?->value,
-        ];
 
         if (is_int($unitAmount) && is_string($currency)) {
             $properties['conversion_value'] = (float) ($unitAmount / 100);

@@ -20,6 +20,22 @@ beforeEach(function () {
     $this->account->load(['plan', 'owner']);
 });
 
+test('baseProperties includes plan name, interval and persona but no conversion data', function () {
+    $payload = [
+        'data' => ['object' => [
+            'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+        ]],
+    ];
+
+    $properties = StripeSubscriptionConversion::baseProperties($this->account, $payload);
+
+    expect($properties)->toBe([
+        'plan_name' => $this->plan->name,
+        'interval' => 'monthly',
+        'persona' => null,
+    ]);
+});
+
 test('propertiesFor includes plan name, interval and conversion data', function () {
     $payload = [
         'data' => ['object' => [
