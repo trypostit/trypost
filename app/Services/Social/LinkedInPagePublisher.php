@@ -31,15 +31,4 @@ class LinkedInPagePublisher extends AbstractLinkedInPublisher
 
         return "urn:li:organization:{$organizationId}";
     }
-
-    protected function postUrl(?string $postId): ?string
-    {
-        if (! $postId) {
-            return null;
-        }
-
-        return $this->account->username
-            ? "https://www.linkedin.com/company/{$this->account->username}/posts/"
-            : "https://www.linkedin.com/feed/update/{$postId}";
-    }
 }
