@@ -38,8 +38,10 @@ type Session = {
     is_current: boolean;
 };
 
+type SocialProvider = 'google' | 'github';
+
 type ConnectedAccount = {
-    provider: 'google' | 'github';
+    provider: SocialProvider;
     label: string;
     connected: boolean;
     can_disconnect: boolean;
@@ -73,7 +75,7 @@ const passwordDescription = computed(() =>
 const logoutDialogOpen = ref(false);
 
 const page = usePage();
-const providerEnabled = (provider: 'google' | 'github'): boolean =>
+const providerEnabled = (provider: SocialProvider): boolean =>
     Boolean(page.props[provider === 'google' ? 'googleAuthEnabled' : 'githubAuthEnabled']);
 </script>
 
