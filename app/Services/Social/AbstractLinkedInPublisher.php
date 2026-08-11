@@ -47,8 +47,10 @@ abstract class AbstractLinkedInPublisher
     abstract protected function authorUrn(): string;
 
     /**
-     * Public URL of the created post. Defaults to the member feed update;
-     * company pages override it.
+     * Public URL of the created post. Per LinkedIn's Posts API docs, the
+     * feed/update permalink applies to any published post regardless of
+     * whether the author is a member or an organization, so subclasses
+     * (member vs. company page) share this implementation.
      */
     protected function postUrl(?string $postId): ?string
     {

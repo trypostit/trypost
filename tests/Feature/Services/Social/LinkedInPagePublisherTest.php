@@ -203,20 +203,8 @@ test('linkedin page publisher handles empty content', function () {
     });
 });
 
-test('linkedin page publisher builds feed url with post id when username present', function () {
-    Http::fake([
-        config('trypost.platforms.linkedin-page.api').'/rest/posts' => Http::response(null, 201, [
-            'x-restli-id' => 'urn:li:share:1234567890',
-        ]),
-    ]);
-
-    $result = $this->publisher->publish($this->postPlatform);
-
-    expect($result['url'])->toBe('https://www.linkedin.com/feed/update/urn:li:share:1234567890');
-});
-
-test('linkedin page publisher builds feed url when username missing', function () {
-    $this->socialAccount->update(['username' => null]);
+test('linkedin page publisher builds feed url from the post id regardless of username', function (?string $username) {
+    $this->socialAccount->update(['username' => $username]);
 
     Http::fake([
         config('trypost.platforms.linkedin-page.api').'/rest/posts' => Http::response(null, 201, [
@@ -227,6 +215,19 @@ test('linkedin page publisher builds feed url when username missing', function (
     $result = $this->publisher->publish($this->postPlatform);
 
     expect($result['url'])->toBe('https://www.linkedin.com/feed/update/urn:li:share:1234567890');
+})->with([
+    'username present' => ['testcompany'],
+    'username missing' => [null],
+]);
+
+test('linkedin page publisher returns a null url when the response has no post id', function () {
+    Http::fake([
+        config('trypost.platforms.linkedin-page.api').'/rest/posts' => Http::response(null, 201),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['url'])->toBeNull();
 });
 
 test('linkedin page publisher can publish post with image using organization urn', function () {
@@ -271,6 +272,7 @@ test('linkedin page publisher can publish post with image using organization urn
     $result = $this->publisher->publish($this->postPlatform);
 
     expect($result['id'])->toBe('urn:li:share:9999999999');
+    expect($result['url'])->toBe('https://www.linkedin.com/feed/update/urn:li:share:9999999999');
 
     Http::assertSent(fn ($request) => str_contains($request->url(), '/rest/images'));
 
@@ -319,6 +321,7 @@ test('linkedin page publisher publishes a multi-image carousel with image ids un
     $result = $this->publisher->publish($this->postPlatform);
 
     expect($result['id'])->toBe('urn:li:share:orgcarousel');
+    expect($result['url'])->toBe('https://www.linkedin.com/feed/update/urn:li:share:orgcarousel');
 
     // Org carousel must author as the organization and send image URNs under `id` (not `media`).
     Http::assertSent(function ($request) {
