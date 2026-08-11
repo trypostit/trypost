@@ -8,17 +8,20 @@ use Illuminate\Http\Request;
 
 trait PreservesAttributionParameters
 {
-    /**
-     * UTM parameters plus per-platform ad click IDs (Google, Meta, LinkedIn,
-     * TikTok, Reddit, Pinterest). Adding a new ad network's click ID is just
-     * one more key here.
-     */
-    private const array ATTRIBUTION_KEYS = [
+    private const array UTM_KEYS = [
         'utm_source',
         'utm_medium',
         'utm_campaign',
         'utm_term',
         'utm_content',
+    ];
+
+    /**
+     * Per-platform ad click IDs (Google, Meta, LinkedIn, TikTok, Reddit,
+     * Pinterest). Adding a new ad network's click ID is just one more key
+     * here.
+     */
+    private const array CLICK_ID_KEYS = [
         'gclid',
         'fbclid',
         'li_fat_id',
@@ -35,7 +38,7 @@ trait PreservesAttributionParameters
         return array_filter(
             array_map(
                 fn (string $value) => mb_substr($value, 0, 255),
-                array_filter($request->only(self::ATTRIBUTION_KEYS), 'is_string'),
+                array_filter($request->only([...self::UTM_KEYS, ...self::CLICK_ID_KEYS]), 'is_string'),
             ),
         );
     }
