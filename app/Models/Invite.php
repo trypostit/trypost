@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class Invite extends Model
 {
@@ -42,5 +43,20 @@ class Invite extends Model
     public function invitedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'invited_by');
+    }
+
+    /**
+     * Safe lookup from a raw, untrusted string (query param, session value):
+     * non-UUID input is rejected before it ever reaches the database, since
+     * the `id` column is a native uuid type and a malformed value would
+     * otherwise raise a Postgres type-cast error instead of a clean null.
+     */
+    public static function fromId(?string $id): ?self
+    {
+        if (! is_string($id) || ! Str::isUuid($id)) {
+            return null;
+        }
+
+        return self::find($id);
     }
 }

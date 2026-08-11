@@ -2,12 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Models\Account;
+use App\Models\Invite;
 use App\Models\User;
+use App\Models\Workspace;
+use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
 beforeEach(function () {
     config([
+        'trypost.self_hosted' => false,
         'services.google-auth.client_id' => 'test-client-id',
         'services.google-auth.client_secret' => 'test-client-secret',
         'services.google-auth.redirect' => 'https://app.trypost.test/auth/google/callback',
@@ -96,6 +101,162 @@ test('github callback creates new user with a default workspace', function () {
     expect($user->workspaces()->count())->toBe(1);
     expect($user->workspaces()->first()->name)->toBe("New Dev's Workspace");
     expect($user->current_workspace_id)->toBe($user->workspaces()->first()->id);
+    $this->assertAuthenticatedAs($user);
+});
+
+// ========================================
+// Invite acceptance via OAuth
+// ========================================
+
+test('google registration with an invite param completes it instead of creating a default workspace', function () {
+    $inviterAccount = Account::factory()->create();
+    $inviter = User::factory()->create(['account_id' => $inviterAccount->id]);
+    $inviterAccount->update(['owner_id' => $inviter->id]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $inviterAccount->id,
+        'user_id' => $inviter->id,
+    ]);
+    $invite = Invite::factory()->create([
+        'account_id' => $inviterAccount->id,
+        'invited_by' => $inviter->id,
+        'email' => 'invited@example.com',
+        'workspaces' => [$workspace->id],
+    ]);
+
+    $this->get(route('auth.google.redirect', [
+        'invite' => $invite->id,
+        'redirect' => route('app.invites.show', $invite, absolute: false),
+    ]));
+
+    $socialiteUser = new SocialiteUser;
+    $socialiteUser->map([
+        'id' => 'g-invited',
+        'name' => 'Invited User',
+        'email' => 'invited@example.com',
+    ]);
+
+    Socialite::shouldReceive('driver')
+        ->with('google-auth')
+        ->andReturn($driver = Mockery::mock());
+    $driver->shouldReceive('user')->andReturn($socialiteUser);
+
+    $response = $this->get(route('auth.google.callback'));
+
+    $response->assertRedirect(route('app.invites.show', $invite, absolute: false));
+
+    $user = User::where('email', 'invited@example.com')->first();
+    expect($user)->not->toBeNull();
+    // is_invite skipped default workspace creation — CreateUser's own account
+    // shell exists, but no personal workspace was spun up under it.
+    expect($user->workspaces()->count())->toBe(0);
+});
+
+test('google login with a pending redirect sends an existing user there instead of app.home', function () {
+    $inviterAccount = Account::factory()->create();
+    $inviter = User::factory()->create(['account_id' => $inviterAccount->id]);
+    $inviterAccount->update(['owner_id' => $inviter->id]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $inviterAccount->id,
+        'user_id' => $inviter->id,
+    ]);
+    $invite = Invite::factory()->create([
+        'account_id' => $inviterAccount->id,
+        'invited_by' => $inviter->id,
+        'email' => 'existing-invited@example.com',
+        'workspaces' => [$workspace->id],
+    ]);
+
+    $existingUser = User::factory()->create(['email' => 'existing-invited@example.com']);
+
+    $this->get(route('auth.google.redirect', [
+        'redirect' => route('app.invites.show', $invite, absolute: false),
+    ]));
+
+    $socialiteUser = new SocialiteUser;
+    $socialiteUser->map([
+        'id' => 'g-existing-invited',
+        'name' => 'Existing Invited',
+        'email' => 'existing-invited@example.com',
+    ]);
+
+    Socialite::shouldReceive('driver')
+        ->with('google-auth')
+        ->andReturn($driver = Mockery::mock());
+    $driver->shouldReceive('user')->andReturn($socialiteUser);
+
+    $response = $this->get(route('auth.google.callback'));
+
+    $response->assertRedirect(route('app.invites.show', $invite, absolute: false));
+    $this->assertAuthenticatedAs($existingUser);
+});
+
+// ========================================
+// Self-hosted registration gate
+// ========================================
+
+test('google registration 404s in self-hosted mode without an invite param', function () {
+    config()->set('trypost.self_hosted', true);
+
+    $socialiteUser = new SocialiteUser;
+    $socialiteUser->map([
+        'id' => 'g-no-invite',
+        'name' => 'No Invite',
+        'email' => 'no-invite@example.com',
+    ]);
+
+    Socialite::shouldReceive('driver')
+        ->with('google-auth')
+        ->andReturn($driver = Mockery::mock());
+    $driver->shouldReceive('user')->andReturn($socialiteUser);
+
+    $this->get(route('auth.google.callback'))->assertNotFound();
+
+    expect(User::where('email', 'no-invite@example.com')->exists())->toBeFalse();
+});
+
+test('google registration succeeds in self-hosted mode with an invite param', function () {
+    config()->set('trypost.self_hosted', true);
+
+    $this->get(route('auth.google.redirect', ['invite' => (string) Str::uuid()]));
+
+    $socialiteUser = new SocialiteUser;
+    $socialiteUser->map([
+        'id' => 'g-self-hosted-invite',
+        'name' => 'Self Hosted Invite',
+        'email' => 'self-hosted-invite@example.com',
+    ]);
+
+    Socialite::shouldReceive('driver')
+        ->with('google-auth')
+        ->andReturn($driver = Mockery::mock());
+    $driver->shouldReceive('user')->andReturn($socialiteUser);
+
+    $this->get(route('auth.google.callback'))
+        ->assertRedirect(route('register.success'));
+
+    expect(User::where('email', 'self-hosted-invite@example.com')->exists())->toBeTrue();
+});
+
+test('google login for an existing user is never blocked by the self-hosted gate', function () {
+    config()->set('trypost.self_hosted', true);
+
+    $user = User::factory()->create(['email' => 'existing-self-hosted@example.com']);
+
+    $socialiteUser = new SocialiteUser;
+    $socialiteUser->map([
+        'id' => 'g-existing-self-hosted',
+        'name' => 'Existing Self Hosted',
+        'email' => 'existing-self-hosted@example.com',
+    ]);
+
+    Socialite::shouldReceive('driver')
+        ->with('google-auth')
+        ->andReturn($driver = Mockery::mock());
+    $driver->shouldReceive('user')->andReturn($socialiteUser);
+
+    $response = $this->get(route('auth.google.callback'));
+
+    $response->assertRedirect(route('app.home'));
     $this->assertAuthenticatedAs($user);
 });
 

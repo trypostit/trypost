@@ -8,7 +8,6 @@ use App\Models\Invite;
 use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\Validator;
 
@@ -43,13 +42,7 @@ class RegisterRequest extends FormRequest
      */
     public function invite(): ?Invite
     {
-        $inviteId = (string) $this->input('invite', '');
-
-        if ($inviteId === '' || ! Str::isUuid($inviteId)) {
-            return null;
-        }
-
-        return Invite::query()->find($inviteId);
+        return Invite::fromId((string) $this->input('invite', ''));
     }
 
     public function isInviteRegistration(): bool

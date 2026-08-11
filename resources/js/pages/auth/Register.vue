@@ -51,7 +51,7 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
 
         <div class="flex flex-col gap-6">
             <div v-if="hasSocial" class="flex flex-col gap-2">
-                <SocialLogin mode="signup" hide-divider />
+                <SocialLogin mode="signup" hide-divider :redirect="redirect" :invite="invite" />
 
                 <Button
                     v-if="!showEmailForm"

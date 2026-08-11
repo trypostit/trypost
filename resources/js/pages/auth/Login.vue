@@ -49,7 +49,7 @@ const isSelfHosted = computed(() => Boolean(page.props.selfHosted));
         </div>
 
         <div class="flex flex-col gap-6">
-            <SocialLogin mode="login" />
+            <SocialLogin mode="login" :redirect="redirect" />
 
             <Form
                 v-bind="store.form()"

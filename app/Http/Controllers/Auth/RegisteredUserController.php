@@ -8,6 +8,7 @@ use App\Actions\User\CreateUser;
 use App\Http\Controllers\Auth\Concerns\PreservesAttributionParameters;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Auth\RegisterRequest;
+use App\Support\SafeInternalRedirect;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -48,10 +49,8 @@ class RegisteredUserController extends Controller
 
         $request->session()->forget('pending_invite_id');
 
-        if ($redirect = $request->input('redirect')) {
-            if (str_starts_with($redirect, '/') && ! str_starts_with($redirect, '//')) {
-                return redirect($redirect);
-            }
+        if ($safeRedirect = SafeInternalRedirect::resolve($request->input('redirect'))) {
+            return redirect($safeRedirect);
         }
 
         session()->flash('auth_provider', 'email');
