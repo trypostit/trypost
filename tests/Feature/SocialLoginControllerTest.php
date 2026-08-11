@@ -189,6 +189,85 @@ test('google login with a pending invite sends an existing user there instead of
     $this->assertAuthenticatedAs($existingUser);
 });
 
+test('github registration with an invite param completes it instead of creating a default workspace', function () {
+    $inviterAccount = Account::factory()->create();
+    $inviter = User::factory()->create(['account_id' => $inviterAccount->id]);
+    $inviterAccount->update(['owner_id' => $inviter->id]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $inviterAccount->id,
+        'user_id' => $inviter->id,
+    ]);
+    $invite = Invite::factory()->create([
+        'account_id' => $inviterAccount->id,
+        'invited_by' => $inviter->id,
+        'email' => 'gh-invited@example.com',
+        'workspaces' => [$workspace->id],
+    ]);
+
+    $this->get(route('auth.github.redirect', [
+        'invite' => $invite->id,
+    ]));
+
+    $socialiteUser = new SocialiteUser;
+    $socialiteUser->map([
+        'id' => 'gh-invited',
+        'name' => 'Invited User',
+        'email' => 'gh-invited@example.com',
+    ]);
+
+    Socialite::shouldReceive('driver')
+        ->with('github')
+        ->andReturn($driver = Mockery::mock());
+    $driver->shouldReceive('user')->andReturn($socialiteUser);
+
+    $response = $this->get(route('auth.github.callback'));
+
+    $response->assertRedirect(route('app.invites.show', $invite, absolute: false));
+
+    $user = User::where('email', 'gh-invited@example.com')->first();
+    expect($user)->not->toBeNull();
+    expect($user->workspaces()->count())->toBe(0);
+});
+
+test('github login with a pending invite sends an existing user there instead of app.home', function () {
+    $inviterAccount = Account::factory()->create();
+    $inviter = User::factory()->create(['account_id' => $inviterAccount->id]);
+    $inviterAccount->update(['owner_id' => $inviter->id]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $inviterAccount->id,
+        'user_id' => $inviter->id,
+    ]);
+    $invite = Invite::factory()->create([
+        'account_id' => $inviterAccount->id,
+        'invited_by' => $inviter->id,
+        'email' => 'gh-existing-invited@example.com',
+        'workspaces' => [$workspace->id],
+    ]);
+
+    $existingUser = User::factory()->create(['email' => 'gh-existing-invited@example.com']);
+
+    $this->get(route('auth.github.redirect', [
+        'invite' => $invite->id,
+    ]));
+
+    $socialiteUser = new SocialiteUser;
+    $socialiteUser->map([
+        'id' => 'gh-existing-invited',
+        'name' => 'Existing Invited',
+        'email' => 'gh-existing-invited@example.com',
+    ]);
+
+    Socialite::shouldReceive('driver')
+        ->with('github')
+        ->andReturn($driver = Mockery::mock());
+    $driver->shouldReceive('user')->andReturn($socialiteUser);
+
+    $response = $this->get(route('auth.github.callback'));
+
+    $response->assertRedirect(route('app.invites.show', $invite, absolute: false));
+    $this->assertAuthenticatedAs($existingUser);
+});
+
 // ========================================
 // Self-hosted registration gate
 // ========================================
@@ -254,6 +333,72 @@ test('google login for an existing user is never blocked by the self-hosted gate
     $driver->shouldReceive('user')->andReturn($socialiteUser);
 
     $response = $this->get(route('auth.google.callback'));
+
+    $response->assertRedirect(route('app.home'));
+    $this->assertAuthenticatedAs($user);
+});
+
+test('github registration 404s in self-hosted mode without an invite param', function () {
+    config()->set('trypost.self_hosted', true);
+
+    $socialiteUser = new SocialiteUser;
+    $socialiteUser->map([
+        'id' => 'gh-no-invite',
+        'name' => 'No Invite',
+        'email' => 'gh-no-invite@example.com',
+    ]);
+
+    Socialite::shouldReceive('driver')
+        ->with('github')
+        ->andReturn($driver = Mockery::mock());
+    $driver->shouldReceive('user')->andReturn($socialiteUser);
+
+    $this->get(route('auth.github.callback'))->assertNotFound();
+
+    expect(User::where('email', 'gh-no-invite@example.com')->exists())->toBeFalse();
+});
+
+test('github registration succeeds in self-hosted mode with an invite param', function () {
+    config()->set('trypost.self_hosted', true);
+
+    $this->get(route('auth.github.redirect', ['invite' => (string) Str::uuid()]));
+
+    $socialiteUser = new SocialiteUser;
+    $socialiteUser->map([
+        'id' => 'gh-self-hosted-invite',
+        'name' => 'Self Hosted Invite',
+        'email' => 'gh-self-hosted-invite@example.com',
+    ]);
+
+    Socialite::shouldReceive('driver')
+        ->with('github')
+        ->andReturn($driver = Mockery::mock());
+    $driver->shouldReceive('user')->andReturn($socialiteUser);
+
+    $this->get(route('auth.github.callback'))
+        ->assertRedirect(route('register.success'));
+
+    expect(User::where('email', 'gh-self-hosted-invite@example.com')->exists())->toBeTrue();
+});
+
+test('github login for an existing user is never blocked by the self-hosted gate', function () {
+    config()->set('trypost.self_hosted', true);
+
+    $user = User::factory()->create(['email' => 'gh-existing-self-hosted@example.com']);
+
+    $socialiteUser = new SocialiteUser;
+    $socialiteUser->map([
+        'id' => 'gh-existing-self-hosted',
+        'name' => 'Existing Self Hosted',
+        'email' => 'gh-existing-self-hosted@example.com',
+    ]);
+
+    Socialite::shouldReceive('driver')
+        ->with('github')
+        ->andReturn($driver = Mockery::mock());
+    $driver->shouldReceive('user')->andReturn($socialiteUser);
+
+    $response = $this->get(route('auth.github.callback'));
 
     $response->assertRedirect(route('app.home'));
     $this->assertAuthenticatedAs($user);
