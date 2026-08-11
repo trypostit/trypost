@@ -6,13 +6,14 @@ use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
 beforeEach(function () {
     config([
         'trypost.self_hosted' => false,
+        'trypost.google_auth_enabled' => true,
+        'trypost.github_auth_enabled' => true,
         'services.google-auth.client_id' => 'test-client-id',
         'services.google-auth.client_secret' => 'test-client-secret',
         'services.google-auth.redirect' => 'https://app.trypost.test/auth/google/callback',
@@ -413,7 +414,21 @@ test('google registration 404s in self-hosted mode without an invite param', fun
 test('google registration succeeds in self-hosted mode with an invite param', function () {
     config()->set('trypost.self_hosted', true);
 
-    $this->get(route('auth.google.redirect', ['invite' => (string) Str::uuid()]));
+    $inviterAccount = Account::factory()->create();
+    $inviter = User::factory()->create(['account_id' => $inviterAccount->id]);
+    $inviterAccount->update(['owner_id' => $inviter->id]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $inviterAccount->id,
+        'user_id' => $inviter->id,
+    ]);
+    $invite = Invite::factory()->create([
+        'account_id' => $inviterAccount->id,
+        'invited_by' => $inviter->id,
+        'email' => 'self-hosted-invite@example.com',
+        'workspaces' => [$workspace->id],
+    ]);
+
+    $this->get(route('auth.google.redirect', ['invite' => $invite->id]));
 
     $socialiteUser = new SocialiteUser;
     $socialiteUser->map([
@@ -428,7 +443,7 @@ test('google registration succeeds in self-hosted mode with an invite param', fu
     $driver->shouldReceive('user')->andReturn($socialiteUser);
 
     $this->get(route('auth.google.callback'))
-        ->assertRedirect(route('app.welcome'));
+        ->assertRedirect(route('app.invites.show', $invite, absolute: false));
 
     expect(User::where('email', 'self-hosted-invite@example.com')->exists())->toBeTrue();
 });
@@ -479,7 +494,21 @@ test('github registration 404s in self-hosted mode without an invite param', fun
 test('github registration succeeds in self-hosted mode with an invite param', function () {
     config()->set('trypost.self_hosted', true);
 
-    $this->get(route('auth.github.redirect', ['invite' => (string) Str::uuid()]));
+    $inviterAccount = Account::factory()->create();
+    $inviter = User::factory()->create(['account_id' => $inviterAccount->id]);
+    $inviterAccount->update(['owner_id' => $inviter->id]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $inviterAccount->id,
+        'user_id' => $inviter->id,
+    ]);
+    $invite = Invite::factory()->create([
+        'account_id' => $inviterAccount->id,
+        'invited_by' => $inviter->id,
+        'email' => 'gh-self-hosted-invite@example.com',
+        'workspaces' => [$workspace->id],
+    ]);
+
+    $this->get(route('auth.github.redirect', ['invite' => $invite->id]));
 
     $socialiteUser = new SocialiteUser;
     $socialiteUser->map([
@@ -494,7 +523,7 @@ test('github registration succeeds in self-hosted mode with an invite param', fu
     $driver->shouldReceive('user')->andReturn($socialiteUser);
 
     $this->get(route('auth.github.callback'))
-        ->assertRedirect(route('app.welcome'));
+        ->assertRedirect(route('app.invites.show', $invite, absolute: false));
 
     expect(User::where('email', 'gh-self-hosted-invite@example.com')->exists())->toBeTrue();
 });

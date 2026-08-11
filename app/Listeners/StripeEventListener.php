@@ -161,8 +161,7 @@ class StripeEventListener
     }
 
     /**
-     * Fires only on the specific `trialing` -> `active` transition (the
-     * trial's first successful charge), using Stripe's own
+     * Fires on the trial's first successful charge, using Stripe's own
      * `previous_attributes` rather than trusting local DB state — Cashier's
      * WebhookController dispatches WebhookReceived before it updates the
      * local subscription row, so relying on our own `stripe_status` here
@@ -176,7 +175,7 @@ class StripeEventListener
             return;
         }
 
-        if ($this->wasTrialing($payload) && $this->isNowActive($payload)) {
+        if ($this->convertedFromTrial($payload) && $this->isNowActive($payload)) {
             TrackTrialConverted::dispatch((string) $account->id, $payload);
         }
     }
@@ -190,11 +189,24 @@ class StripeEventListener
     }
 
     /**
+     * True for a transition originating from a trial: either the immediate
+     * `trialing` -> `active` charge, or a `past_due` -> `active` recovery
+     * after the trial's first charge attempt failed. `trial_end` (which
+     * Stripe never clears once set) guards the `past_due` case so a
+     * long-time paying customer's unrelated payment-method recovery is
+     * never mistaken for a trial conversion.
+     *
      * @param  array<string, mixed>  $payload
      */
-    private function wasTrialing(array $payload): bool
+    private function convertedFromTrial(array $payload): bool
     {
-        return data_get($payload, 'data.previous_attributes.status') === 'trialing';
+        $previousStatus = data_get($payload, 'data.previous_attributes.status');
+
+        if ($previousStatus === 'trialing') {
+            return true;
+        }
+
+        return $previousStatus === 'past_due' && data_get($payload, 'data.object.trial_end') !== null;
     }
 
     /**

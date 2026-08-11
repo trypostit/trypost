@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head } from '@inertiajs/vue3';
+import { Form, Head, usePage } from '@inertiajs/vue3';
 import { IconDeviceDesktop, IconDeviceMobile } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
@@ -71,6 +71,10 @@ const passwordDescription = computed(() =>
 );
 
 const logoutDialogOpen = ref(false);
+
+const page = usePage();
+const providerEnabled = (provider: 'google' | 'github'): boolean =>
+    Boolean(page.props[provider === 'google' ? 'googleAuthEnabled' : 'githubAuthEnabled']);
 </script>
 
 <template>
@@ -321,7 +325,7 @@ const logoutDialogOpen = ref(false);
                                 </Button>
                             </Form>
                             <Button
-                                v-else-if="!account.connected"
+                                v-else-if="!account.connected && providerEnabled(account.provider)"
                                 variant="outline"
                                 size="sm"
                                 as="a"

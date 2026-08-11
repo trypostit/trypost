@@ -23,6 +23,8 @@ class GitHubController extends Controller
 
     public function redirect(Request $request): RedirectResponse
     {
+        abort_unless((bool) config('trypost.github_auth_enabled'), 404);
+
         $this->storeAttributionParameters($request);
         $this->storeInvite($request);
 
@@ -103,14 +105,12 @@ class GitHubController extends Controller
 
     private function registerNewUser(\Laravel\Socialite\Contracts\User $githubUser): RedirectResponse
     {
-        $inviteId = $this->retrieveInvite();
+        $invite = Invite::fromId($this->retrieveInvite());
 
-        // Mirrors the registration.enabled middleware: self-hosted requires an invite to register.
-        if ((bool) config('trypost.self_hosted') && ! $inviteId) {
+        // Mirrors the registration.enabled middleware: self-hosted requires a real invite to register.
+        if ((bool) config('trypost.self_hosted') && ! $invite) {
             throw new NotFoundHttpException;
         }
-
-        $invite = Invite::fromId($inviteId);
 
         if ($invite && $invite->email !== $githubUser->getEmail()) {
             return redirect()->route('login')->withErrors([

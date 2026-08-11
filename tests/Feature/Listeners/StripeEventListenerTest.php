@@ -511,7 +511,30 @@ test('subscription updated dispatches TrackTrialConverted when trialing transiti
     );
 });
 
-test('subscription updated does not dispatch TrackTrialConverted when the previous status was not trialing', function () {
+test('subscription updated dispatches TrackTrialConverted when a trial recovers from a failed first charge', function () {
+    Bus::fake([TrackTrialConverted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'id' => 'sub_123',
+                'status' => 'active',
+                'trial_end' => now()->subDay()->timestamp,
+                'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+            ],
+            'previous_attributes' => ['status' => 'past_due'],
+        ],
+    ]));
+
+    Bus::assertDispatched(
+        TrackTrialConverted::class,
+        fn ($job) => $job->accountId === (string) $this->account->id,
+    );
+});
+
+test('subscription updated does not dispatch TrackTrialConverted for a past_due recovery on a subscription that never had a trial', function () {
     Bus::fake([TrackTrialConverted::class]);
 
     $this->listener->handle(new WebhookReceived([

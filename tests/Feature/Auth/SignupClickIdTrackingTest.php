@@ -6,7 +6,11 @@ use App\Models\User;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
-beforeEach(fn () => config()->set('trypost.self_hosted', false));
+beforeEach(fn () => config([
+    'trypost.self_hosted' => false,
+    'trypost.google_auth_enabled' => true,
+    'trypost.github_auth_enabled' => true,
+]));
 
 test('email registration saves ad click ids from the register page query string', function () {
     $clickIds = [

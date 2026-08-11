@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Models\Account;
+use App\Models\Invite;
+use App\Models\User;
+use App\Models\Workspace;
+
 beforeEach(fn () => config()->set('trypost.self_hosted', false));
 
 test('login page shares github auth enabled prop as false when disabled', function () {
@@ -38,6 +43,7 @@ test('register page shares github auth enabled prop', function () {
 });
 
 test('github auth redirect route exists', function () {
+    config(['trypost.github_auth_enabled' => true]);
     config(['services.github.client_id' => 'test-id']);
     config(['services.github.client_secret' => 'test-secret']);
     config(['services.github.redirect' => 'https://app.trypost.test/auth/github/callback']);
@@ -46,6 +52,12 @@ test('github auth redirect route exists', function () {
 
     // Should redirect to GitHub OAuth, not 404
     $response->assertRedirect();
+});
+
+test('github auth redirect route 404s when github auth is disabled', function () {
+    config(['trypost.github_auth_enabled' => false]);
+
+    $this->get(route('auth.github.redirect'))->assertNotFound();
 });
 
 test('github auth callback route exists', function () {
@@ -59,8 +71,21 @@ test('register page still shares github auth enabled prop when self_hosted (via 
     config()->set('trypost.self_hosted', true);
     config()->set('trypost.github_auth_enabled', true);
 
+    $account = Account::factory()->create();
+    $owner = User::factory()->create(['account_id' => $account->id]);
+    $account->update(['owner_id' => $owner->id]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $account->id,
+        'user_id' => $owner->id,
+    ]);
+    $invite = Invite::factory()->create([
+        'account_id' => $account->id,
+        'invited_by' => $owner->id,
+        'workspaces' => [$workspace->id],
+    ]);
+
     $response = $this
-        ->withSession(['pending_invite_id' => 'invite-abc'])
+        ->withSession(['pending_invite_id' => $invite->id])
         ->get(route('register'));
 
     $response->assertOk();
