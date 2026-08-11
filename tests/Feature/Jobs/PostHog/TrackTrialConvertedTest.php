@@ -83,7 +83,7 @@ test('handle resolves the yearly interval from the price id', function () {
     );
 });
 
-test('handle forwards the owner persona as an event property', function () {
+test('handle does not forward persona — it is already an identified person property', function () {
     $this->user->update(['persona' => Persona::Agency->value]);
     Queue::fake();
 
@@ -92,7 +92,7 @@ test('handle forwards the owner persona as an event property', function () {
 
     Queue::assertPushed(
         SendEvent::class,
-        fn (SendEvent $job) => $job->payload['properties']['persona'] === Persona::Agency->value,
+        fn (SendEvent $job) => ! array_key_exists('persona', $job->payload['properties']),
     );
 });
 

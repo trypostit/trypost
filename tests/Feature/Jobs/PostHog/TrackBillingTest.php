@@ -51,7 +51,7 @@ test('handle captures event on the owner profile with account group attached', f
     });
 });
 
-test('handle forwards the owner persona as an event property', function () {
+test('handle does not forward persona — it is already an identified person property', function () {
     $this->user->update(['persona' => Persona::Agency->value]);
     Queue::fake();
 
@@ -60,7 +60,7 @@ test('handle forwards the owner persona as an event property', function () {
 
     Queue::assertPushed(
         SendEvent::class,
-        fn ($job) => ($job->payload['properties']['persona'] ?? null) === Persona::Agency->value,
+        fn ($job) => ! array_key_exists('persona', $job->payload['properties']),
     );
 });
 

@@ -20,7 +20,7 @@ beforeEach(function () {
     $this->account->load(['plan', 'owner']);
 });
 
-test('baseProperties includes plan name, interval and persona but no conversion data', function () {
+test('baseProperties includes plan name and interval but no persona or conversion data', function () {
     $payload = [
         'data' => ['object' => [
             'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
@@ -32,7 +32,6 @@ test('baseProperties includes plan name, interval and persona but no conversion 
     expect($properties)->toBe([
         'plan_name' => $this->plan->name,
         'interval' => 'monthly',
-        'persona' => null,
     ]);
 });
 
@@ -55,7 +54,6 @@ test('propertiesFor includes plan name, interval and conversion data', function 
     expect($properties)->toBe([
         'plan_name' => $this->plan->name,
         'interval' => 'monthly',
-        'persona' => null,
         'conversion_value' => 29.0,
         'conversion_currency' => 'USD',
         'conversion_transaction_id' => 'sub_123',

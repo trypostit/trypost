@@ -9,9 +9,11 @@ use App\Models\Account;
 final class StripeSubscriptionConversion
 {
     /**
-     * plan_name/interval/persona shared by every PostHog capture backed by a
-     * Stripe subscription webhook payload — trial.started, checkout.completed,
-     * and trial.converted all start from this shape.
+     * plan_name/interval shared by every PostHog capture backed by a Stripe
+     * subscription webhook payload — trial.started, checkout.completed, and
+     * trial.converted all start from this shape. Persona is not included
+     * here: it is already set as a person property via identify() during
+     * onboarding, so it is joinable on every event without repeating it.
      *
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
@@ -23,7 +25,6 @@ final class StripeSubscriptionConversion
         return [
             'plan_name' => $account->plan->name,
             'interval' => $priceId === $account->plan->stripe_yearly_price_id ? 'yearly' : 'monthly',
-            'persona' => $account->owner?->persona?->value,
         ];
     }
 

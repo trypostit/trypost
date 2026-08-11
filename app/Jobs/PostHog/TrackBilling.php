@@ -53,7 +53,6 @@ class TrackBilling implements ShouldQueue
                 'plan' => $account->plan?->name,
                 'plan_slug' => $account->plan?->slug->value,
                 'previous_plan' => $this->previousPlan,
-                'persona' => $account->owner?->persona?->value,
             ],
             $account,
         );
