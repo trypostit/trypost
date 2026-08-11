@@ -7,6 +7,8 @@ namespace App\Listeners;
 use App\Enums\PostHog\BillingEvent;
 use App\Jobs\PostHog\TrackBilling;
 use App\Jobs\PostHog\TrackCheckoutCompleted;
+use App\Jobs\PostHog\TrackTrialConverted;
+use App\Jobs\PostHog\TrackTrialStarted;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Services\PostHogService;
@@ -60,7 +62,7 @@ class StripeEventListener
         }
 
         $this->trackPlanChange($account, BillingEvent::Created, $previousPlan, $payload);
-        $this->trackCheckoutCompleted($account, $payload);
+        $this->trackSubscriptionStart($account, $payload);
     }
 
     /**
@@ -75,6 +77,7 @@ class StripeEventListener
         }
 
         $this->trackPlanChange($account, BillingEvent::Updated, $previousPlan, $payload);
+        $this->trackTrialConversion($account, $payload);
     }
 
     /**
@@ -137,14 +140,47 @@ class StripeEventListener
     }
 
     /**
+     * A subscription is born either `trialing` (card-required trial, no
+     * charge yet) or `active` (first-month coupon or no trial — charged
+     * immediately). These are different business events, not the same
+     * "checkout completed" moment — see App\Support\StripeSubscriptionConversion.
+     *
      * @param  array<string, mixed>  $payload
      */
-    private function trackCheckoutCompleted(Account $account, array $payload): void
+    private function trackSubscriptionStart(Account $account, array $payload): void
     {
         if (! PostHogService::isEnabled()) {
             return;
         }
 
-        TrackCheckoutCompleted::dispatch((string) $account->id, $payload);
+        match (data_get($payload, 'data.object.status')) {
+            'trialing' => TrackTrialStarted::dispatch((string) $account->id, $payload),
+            'active' => TrackCheckoutCompleted::dispatch((string) $account->id, $payload),
+            default => null,
+        };
+    }
+
+    /**
+     * Fires only on the specific `trialing` -> `active` transition (the
+     * trial's first successful charge), using Stripe's own
+     * `previous_attributes` rather than trusting local DB state — Cashier's
+     * WebhookController dispatches WebhookReceived before it updates the
+     * local subscription row, so relying on our own `stripe_status` here
+     * would be fragile if that internal ordering ever changes.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function trackTrialConversion(Account $account, array $payload): void
+    {
+        if (! PostHogService::isEnabled()) {
+            return;
+        }
+
+        $wasTrialing = data_get($payload, 'data.previous_attributes.status') === 'trialing';
+        $isNowActive = data_get($payload, 'data.object.status') === 'active';
+
+        if ($wasTrialing && $isNowActive) {
+            TrackTrialConverted::dispatch((string) $account->id, $payload);
+        }
     }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\PostHog;
 
-use App\Enums\PostHog\CheckoutEvent;
+use App\Enums\PostHog\TrialEvent;
 use App\Models\Account;
 use App\Services\PostHogService;
 use App\Support\StripeSubscriptionConversion;
@@ -14,7 +14,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class TrackCheckoutCompleted implements ShouldQueue
+class TrackTrialConverted implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -46,7 +46,7 @@ class TrackCheckoutCompleted implements ShouldQueue
 
         $postHog->capture(
             (string) $account->owner_id,
-            CheckoutEvent::Completed->value,
+            TrialEvent::Converted->value,
             StripeSubscriptionConversion::propertiesFor($account, $this->payload),
             $account,
         );
