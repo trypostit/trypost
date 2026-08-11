@@ -30,13 +30,9 @@ createInertiaApp({
         dayjs.locale(locale.toLowerCase());
 
         const auth = props.initialPage.props.auth as Auth | undefined;
-        const flash = props.initialPage.props.flash as
-            | { conversion_event?: string; [key: string]: unknown }
-            | undefined;
 
         initializeDataLayer(
             auth,
-            flash,
             props.initialPage.props.applicationUrl as string,
             props.initialPage.props.env as string,
         );
