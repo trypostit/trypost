@@ -145,7 +145,7 @@ test('existing google user login consumes the click id session so it does not le
     $this->get(route('auth.google.callback'))
         ->assertRedirect(route('app.home'));
 
-    expect(session()->get('click_ids'))->toBeNull();
+    expect(session()->get('attribution_parameters'))->toBeNull();
 });
 
 test('click ids and utm parameters are both saved when present together', function () {

@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Actions\User\CreateUser;
-use App\Http\Controllers\Auth\Concerns\PreservesClickIds;
-use App\Http\Controllers\Auth\Concerns\PreservesUtmParameters;
+use App\Http\Controllers\Auth\Concerns\PreservesAttributionParameters;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
@@ -17,12 +16,11 @@ use Laravel\Socialite\Facades\Socialite;
 
 class GoogleController extends Controller
 {
-    use PreservesClickIds, PreservesUtmParameters;
+    use PreservesAttributionParameters;
 
     public function redirect(Request $request): RedirectResponse
     {
-        $this->storeUtmParameters($request);
-        $this->storeClickIds($request);
+        $this->storeAttributionParameters($request);
 
         return Socialite::driver('google-auth')->redirect();
     }
@@ -84,15 +82,14 @@ class GoogleController extends Controller
 
         Auth::login($user, remember: true);
 
-        $this->retrieveUtmParameters();
-        $this->retrieveClickIds();
+        $this->retrieveAttributionParameters();
 
         return redirect()->route('app.home');
     }
 
     private function registerNewUser(\Laravel\Socialite\Contracts\User $googleUser): RedirectResponse
     {
-        $attributionParameters = [...$this->retrieveUtmParameters(), ...$this->retrieveClickIds()];
+        $attributionParameters = $this->retrieveAttributionParameters();
 
         $user = CreateUser::execute([
             'name' => $googleUser->getName(),

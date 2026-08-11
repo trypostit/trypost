@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Actions\User\CreateUser;
-use App\Http\Controllers\Auth\Concerns\PreservesClickIds;
-use App\Http\Controllers\Auth\Concerns\PreservesUtmParameters;
+use App\Http\Controllers\Auth\Concerns\PreservesAttributionParameters;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Auth\RegisterRequest;
 use Illuminate\Auth\Events\Registered;
@@ -18,12 +17,11 @@ use Inertia\Response;
 
 class RegisteredUserController extends Controller
 {
-    use PreservesClickIds, PreservesUtmParameters;
+    use PreservesAttributionParameters;
 
     public function create(Request $request): Response
     {
-        $this->storeUtmParameters($request);
-        $this->storeClickIds($request);
+        $this->storeAttributionParameters($request);
 
         return Inertia::render('auth/Register', [
             'email' => $request->query('email'),
@@ -34,7 +32,7 @@ class RegisteredUserController extends Controller
 
     public function store(RegisterRequest $request): RedirectResponse
     {
-        $attributionParameters = [...$this->retrieveUtmParameters(), ...$this->retrieveClickIds()];
+        $attributionParameters = $this->retrieveAttributionParameters();
 
         $user = CreateUser::execute([
             'name' => $request->validated('name'),
