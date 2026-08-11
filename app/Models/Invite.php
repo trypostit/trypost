@@ -46,14 +46,12 @@ class Invite extends Model
     }
 
     /**
-     * Safe lookup from a raw, untrusted string (query param, session value):
-     * non-UUID input is rejected before it ever reaches the database, since
-     * the `id` column is a native uuid type and a malformed value would
-     * otherwise raise a Postgres type-cast error instead of a clean null.
+     * `id` is a native Postgres uuid column — find() on a non-UUID string
+     * raises a type-cast error rather than returning null.
      */
     public static function fromId(?string $id): ?self
     {
-        if (! is_string($id) || ! Str::isUuid($id)) {
+        if (! $id || ! Str::isUuid($id)) {
             return null;
         }
 
