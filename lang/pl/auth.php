@@ -59,12 +59,6 @@ return [
     'github_signup' => 'Zarejestruj się przez GitHub',
     'github_email_unavailable' => 'Nie udało się pobrać Twojego adresu e-mail z GitHuba. Ustaw swój adres e-mail w GitHubie jako publiczny lub przyznaj uprawnienie do e-maila, a następnie spróbuj ponownie.',
 
-    'signup_success' => [
-        'page_title' => 'Witamy',
-        'title' => 'Konfigurowanie Twojego konta',
-        'description' => 'Zwykle zajmuje to tylko kilka sekund...',
-    ],
-
     'login' => [
         'title' => 'Zaloguj się na swoje konto',
         'description' => 'Wprowadź poniżej swój e-mail i hasło, aby się zalogować',

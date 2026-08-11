@@ -9,8 +9,6 @@ const props = defineProps<{
     subscriptionActive: boolean;
     fromCheckout: boolean;
     redirectToOnboarding: boolean;
-    persona?: string | null;
-    conversion?: { value: number; currency: string; transaction_id: string } | null;
 }>();
 
 const REDIRECT_DELAY_MS = 5000;

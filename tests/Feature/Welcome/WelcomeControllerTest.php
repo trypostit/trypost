@@ -420,6 +420,8 @@ test('welcome sends members with app access to the calendar', function () {
 });
 
 test('referral source store fails loudly when the monthly price is not configured', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Bus::fake();
     $this->user->update([
         'persona' => Persona::Agency->value,
         'goals' => [Goal::SaveTime->value],
@@ -433,4 +435,9 @@ test('referral source store fails loudly when the monthly price is not configure
             'referral_source' => ReferralSource::Google->value,
         ])
         ->assertServerError();
+
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === CheckoutEvent::Started->value,
+    );
 });

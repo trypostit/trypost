@@ -47,12 +47,6 @@ return [
     'github_signup' => 'Registrarse con GitHub',
     'github_email_unavailable' => 'No fue posible obtener tu correo de GitHub. Haz tu correo público en GitHub o concede el permiso de correo y vuelve a intentar.',
 
-    'signup_success' => [
-        'page_title' => 'Bienvenido',
-        'title' => 'Configurando tu cuenta',
-        'description' => 'Esto suele tardar solo unos segundos...',
-    ],
-
     'login' => [
         'title' => 'Inicia sesión en tu cuenta',
         'description' => 'Introduce tu correo y contraseña para iniciar sesión',

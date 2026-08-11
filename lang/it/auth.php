@@ -59,12 +59,6 @@ return [
     'github_signup' => 'Registrati con GitHub',
     'github_email_unavailable' => 'Impossibile recuperare la tua email da GitHub. Rendi pubblica la tua email GitHub o concedi l\'ambito email, poi riprova.',
 
-    'signup_success' => [
-        'page_title' => 'Benvenuto',
-        'title' => 'Configurazione del tuo account',
-        'description' => 'Di solito ci vogliono solo pochi secondi...',
-    ],
-
     'login' => [
         'title' => 'Accedi al tuo account',
         'description' => 'Inserisci la tua email e la password qui sotto per accedere',

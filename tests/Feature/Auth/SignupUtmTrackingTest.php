@@ -27,7 +27,7 @@ test('email registration saves utm parameters from the register page query strin
         'email' => 'utm@example.com',
         'password' => 'Password123!',
     ])
-        ->assertRedirect(route('register.success', $utms, absolute: false));
+        ->assertRedirect(route('app.welcome', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'utm@example.com',
@@ -35,13 +35,13 @@ test('email registration saves utm parameters from the register page query strin
     ]);
 });
 
-test('email registration without utm parameters saves null utm columns and redirects without query string', function () {
+test('email registration without utm parameters saves null utm columns', function () {
     $this->post(route('register.store'), [
         'name' => 'No UTM User',
         'email' => 'no-utm@example.com',
         'password' => 'Password123!',
     ])
-        ->assertRedirect(route('register.success', absolute: false));
+        ->assertRedirect(route('app.welcome', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'no-utm@example.com',
@@ -53,7 +53,7 @@ test('email registration without utm parameters saves null utm columns and redir
     ]);
 });
 
-test('email registration strips non-utm query params from the success redirect', function () {
+test('email registration ignores non-utm query params', function () {
     $this->get(route('register', [
         'utm_source' => 'peerlist',
         'foo' => 'bar',
@@ -64,8 +64,12 @@ test('email registration strips non-utm query params from the success redirect',
         'name' => 'Strip Test',
         'email' => 'strip@example.com',
         'password' => 'Password123!',
-    ])
-        ->assertRedirect(route('register.success', ['utm_source' => 'peerlist'], absolute: false));
+    ]);
+
+    $this->assertDatabaseHas('users', [
+        'email' => 'strip@example.com',
+        'utm_source' => 'peerlist',
+    ]);
 });
 
 test('google registration saves utm parameters captured before the oauth round-trip', function () {
@@ -90,7 +94,7 @@ test('google registration saves utm parameters captured before the oauth round-t
         ->andReturn($socialiteUser);
 
     $this->get(route('auth.google.callback'))
-        ->assertRedirect(route('register.success', $utms, absolute: false));
+        ->assertRedirect(route('app.welcome', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'google-utm@example.com',
@@ -118,7 +122,7 @@ test('utm parameters captured on the register page survive a google oauth round-
         ->andReturn($socialiteUser);
 
     $this->get(route('auth.google.callback'))
-        ->assertRedirect(route('register.success', $utms, absolute: false));
+        ->assertRedirect(route('app.welcome', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'cross-flow@example.com',
@@ -152,7 +156,7 @@ test('existing google user login consumes the utm session so utms do not leak to
     expect(session()->get('attribution_parameters'))->toBeNull();
 });
 
-test('invitation registration redirects to the invite page instead of the utm-tagged success page', function () {
+test('invitation registration redirects to the invite page instead of app.welcome', function () {
     $account = Account::factory()->create();
     $owner = User::factory()->create(['account_id' => $account->id]);
     $account->update(['owner_id' => $owner->id]);
@@ -251,7 +255,7 @@ test('github registration saves utm parameters captured before the oauth round-t
         ->andReturn($socialiteUser);
 
     $this->get(route('auth.github.callback'))
-        ->assertRedirect(route('register.success', $utms, absolute: false));
+        ->assertRedirect(route('app.welcome', absolute: false));
 
     $this->assertDatabaseHas('users', [
         'email' => 'github-utm@example.com',

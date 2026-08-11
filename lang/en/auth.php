@@ -59,12 +59,6 @@ return [
     'github_signup' => 'Sign up with GitHub',
     'github_email_unavailable' => 'Unable to retrieve your email from GitHub. Make your GitHub email public or grant the email scope, then try again.',
 
-    'signup_success' => [
-        'page_title' => 'Welcome',
-        'title' => 'Setting up your account',
-        'description' => 'This usually takes just a few seconds...',
-    ],
-
     'login' => [
         'title' => 'Log in to your account',
         'description' => 'Enter your email and password below to log in',

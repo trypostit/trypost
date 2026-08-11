@@ -61,12 +61,6 @@ return [
     'github_signup' => 'GitHub ile kayıt ol',
     'github_email_unavailable' => 'GitHub\'dan e-postanız alınamadı. GitHub e-postanızı herkese açık yapın veya e-posta iznini verin, ardından tekrar deneyin.',
 
-    'signup_success' => [
-        'page_title' => 'Hoş geldiniz',
-        'title' => 'Hesabınız ayarlanıyor',
-        'description' => 'Bu genellikle yalnızca birkaç saniye sürer...',
-    ],
-
     'login' => [
         'title' => 'Hesabınıza giriş yapın',
         'description' => 'Giriş yapmak için e-posta ve parolanızı aşağıya girin',

@@ -52,8 +52,6 @@ class RegisteredUserController extends Controller
             return redirect()->route('app.invites.show', $invite);
         }
 
-        session()->flash('auth_provider', 'email');
-
-        return redirect()->route('register.success', $attributionParameters);
+        return redirect()->route('app.welcome');
     }
 }

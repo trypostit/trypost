@@ -59,12 +59,6 @@ return [
     'github_signup' => 'Cadastrar com GitHub',
     'github_email_unavailable' => 'Não foi possível obter seu e-mail do GitHub. Torne seu e-mail público ou conceda a permissão de e-mail e tente novamente.',
 
-    'signup_success' => [
-        'page_title' => 'Bem-vindo',
-        'title' => 'Configurando sua conta',
-        'description' => 'Isso geralmente leva apenas alguns segundos...',
-    ],
-
     'login' => [
         'title' => 'Entrar na sua conta',
         'description' => 'Digite seu email e senha abaixo para entrar',

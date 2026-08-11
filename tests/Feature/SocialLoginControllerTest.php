@@ -64,7 +64,7 @@ test('google callback creates new user when email does not exist', function () {
 
     $response = $this->get(route('auth.google.callback'));
 
-    $response->assertRedirect(route('register.success'));
+    $response->assertRedirect(route('app.welcome'));
 
     $user = User::where('email', 'new@example.com')->first();
     expect($user)->not->toBeNull();
@@ -92,7 +92,7 @@ test('github callback creates new user with a default workspace', function () {
 
     $response = $this->get(route('auth.github.callback'));
 
-    $response->assertRedirect(route('register.success'));
+    $response->assertRedirect(route('app.welcome'));
 
     $user = User::where('email', 'newdev@example.com')->first();
     expect($user)->not->toBeNull();
@@ -310,7 +310,7 @@ test('google registration succeeds in self-hosted mode with an invite param', fu
     $driver->shouldReceive('user')->andReturn($socialiteUser);
 
     $this->get(route('auth.google.callback'))
-        ->assertRedirect(route('register.success'));
+        ->assertRedirect(route('app.welcome'));
 
     expect(User::where('email', 'self-hosted-invite@example.com')->exists())->toBeTrue();
 });
@@ -376,7 +376,7 @@ test('github registration succeeds in self-hosted mode with an invite param', fu
     $driver->shouldReceive('user')->andReturn($socialiteUser);
 
     $this->get(route('auth.github.callback'))
-        ->assertRedirect(route('register.success'));
+        ->assertRedirect(route('app.welcome'));
 
     expect(User::where('email', 'gh-self-hosted-invite@example.com')->exists())->toBeTrue();
 });

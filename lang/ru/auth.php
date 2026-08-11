@@ -59,12 +59,6 @@ return [
     'github_signup' => 'Зарегистрироваться через GitHub',
     'github_email_unavailable' => 'Не удалось получить ваш email из GitHub. Сделайте email в GitHub публичным или предоставьте доступ к email, затем попробуйте снова.',
 
-    'signup_success' => [
-        'page_title' => 'Добро пожаловать',
-        'title' => 'Настраиваем ваш аккаунт',
-        'description' => 'Обычно это занимает всего несколько секунд...',
-    ],
-
     'login' => [
         'title' => 'Войдите в свой аккаунт',
         'description' => 'Введите email и пароль, чтобы войти',

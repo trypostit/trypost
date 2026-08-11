@@ -40,11 +40,6 @@ class RegisterRequest extends FormRequest
         return Invite::fromId($this->string('invite')->toString());
     }
 
-    public function isInviteRegistration(): bool
-    {
-        return $this->invite() !== null;
-    }
-
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {

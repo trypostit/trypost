@@ -59,12 +59,6 @@ return [
     'github_signup' => 'GitHub で登録',
     'github_email_unavailable' => 'GitHub からメールアドレスを取得できませんでした。GitHub のメールアドレスを公開するか、email スコープを許可してから、もう一度お試しください。',
 
-    'signup_success' => [
-        'page_title' => 'ようこそ',
-        'title' => 'アカウントを設定しています',
-        'description' => '通常は数秒で完了します...',
-    ],
-
     'login' => [
         'title' => 'アカウントにログイン',
         'description' => 'ログインするにはメールアドレスとパスワードを入力してください',

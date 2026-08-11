@@ -146,6 +146,9 @@ class WelcomeController extends Controller
         );
 
         $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
+        $priceId = $plan->stripe_monthly_price_id;
+
+        abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Monthly price is not configured.');
 
         $postHog->capture(
             $user->id,
@@ -153,19 +156,6 @@ class WelcomeController extends Controller
             ['plan_name' => $plan->name, 'interval' => 'monthly'],
             $user->account,
         );
-
-        return $this->startCheckout($request, $checkout);
-    }
-
-    private function startCheckout(
-        Request $request,
-        StartSubscriptionCheckout $checkout,
-    ): Response|RedirectResponse {
-        $user = $request->user();
-        $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
-        $priceId = $plan->stripe_monthly_price_id;
-
-        abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Monthly price is not configured.');
 
         return $checkout->redirect(
             $user->account,

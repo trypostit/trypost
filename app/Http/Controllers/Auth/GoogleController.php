@@ -95,7 +95,6 @@ class GoogleController extends Controller
 
     private function registerNewUser(\Laravel\Socialite\Contracts\User $googleUser): RedirectResponse
     {
-        $attributionParameters = $this->retrieveAttributionParameters();
         $inviteId = $this->retrieveInvite();
 
         // Mirrors the registration.enabled middleware: self-hosted requires an invite to register.
@@ -103,6 +102,7 @@ class GoogleController extends Controller
             throw new NotFoundHttpException;
         }
 
+        $attributionParameters = $this->retrieveAttributionParameters();
         $invite = Invite::fromId($inviteId);
 
         $user = CreateUser::execute([
@@ -118,12 +118,10 @@ class GoogleController extends Controller
 
         Auth::login($user, remember: true);
 
-        session()->flash('auth_provider', 'google');
-
         if ($invite) {
             return redirect()->route('app.invites.show', $invite);
         }
 
-        return redirect()->route('register.success', $attributionParameters);
+        return redirect()->route('app.welcome');
     }
 }

@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
-use Throwable;
 
 class BillingController extends Controller
 {
@@ -46,44 +45,7 @@ class BillingController extends Controller
             'subscriptionActive' => $subscriptionActive,
             'fromCheckout' => $fromCheckout,
             'redirectToOnboarding' => $redirectToOnboarding,
-            'persona' => $user->persona?->value,
-            'conversion' => $fromCheckout && $account->stripe_id
-                ? fn () => $this->buildConversionData($account, $sessionId)
-                : null,
         ]);
-    }
-
-    /**
-     * @return array{value: float, currency: string, transaction_id: string}|null
-     */
-    private function buildConversionData(Account $account, string $sessionId): ?array
-    {
-        try {
-            $session = $account->stripe()->checkout->sessions->retrieve(
-                $sessionId,
-                ['expand' => ['line_items.data.price']],
-            );
-        } catch (Throwable) {
-            return null;
-        }
-
-        if (data_get($session, 'customer') !== $account->stripe_id) {
-            return null;
-        }
-
-        $unitAmount = data_get($session, 'line_items.data.0.price.unit_amount');
-        $currency = data_get($session, 'line_items.data.0.price.currency');
-        $transactionId = data_get($session, 'id');
-
-        if (! is_int($unitAmount) || ! is_string($currency) || ! is_string($transactionId)) {
-            return null;
-        }
-
-        return [
-            'value' => $unitAmount / 100,
-            'currency' => strtoupper($currency),
-            'transaction_id' => $transactionId,
-        ];
     }
 
     public function index(Request $request): Response|RedirectResponse

@@ -90,17 +90,4 @@ export const capturePageview = (): void => {
     posthog.capture('$pageview', { $current_url: window.location.href });
 };
 
-/**
- * Gated wrapper around `posthog.capture` for arbitrary domain events. Use
- * this from composables/components instead of calling `posthog.capture`
- * directly so self-hosted (or otherwise disabled) installs never queue
- * events into the SDK buffer.
- */
-export const captureEvent = (event: string, properties?: Record<string, unknown>): void => {
-    if (!enabled) {
-        return;
-    }
-    posthog.capture(event, properties);
-};
-
 export default posthog;

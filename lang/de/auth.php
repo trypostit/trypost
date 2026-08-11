@@ -61,12 +61,6 @@ return [
     'github_signup' => 'Mit GitHub registrieren',
     'github_email_unavailable' => 'Deine E-Mail-Adresse konnte nicht von GitHub abgerufen werden. Mache deine GitHub-E-Mail-Adresse öffentlich oder erteile die Berechtigung für den E-Mail-Zugriff und versuche es dann erneut.',
 
-    'signup_success' => [
-        'page_title' => 'Willkommen',
-        'title' => 'Dein Konto wird eingerichtet',
-        'description' => 'Das dauert normalerweise nur wenige Sekunden...',
-    ],
-
     'login' => [
         'title' => 'Melde dich bei deinem Konto an',
         'description' => 'Gib unten deine E-Mail-Adresse und dein Passwort ein, um dich anzumelden',

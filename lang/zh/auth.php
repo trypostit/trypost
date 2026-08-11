@@ -59,12 +59,6 @@ return [
     'github_signup' => '使用 GitHub 注册',
     'github_email_unavailable' => '无法从 GitHub 获取你的邮箱。请将你的 GitHub 邮箱设为公开，或授予邮箱权限后重试。',
 
-    'signup_success' => [
-        'page_title' => '欢迎',
-        'title' => '正在设置你的账户',
-        'description' => '这通常只需几秒钟…',
-    ],
-
     'login' => [
         'title' => '登录你的账户',
         'description' => '请在下方输入你的邮箱和密码以登录',

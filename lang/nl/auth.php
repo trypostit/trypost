@@ -59,12 +59,6 @@ return [
     'github_signup' => 'Aanmelden met GitHub',
     'github_email_unavailable' => 'Kan je e-mailadres niet ophalen van GitHub. Maak je GitHub-e-mailadres openbaar of verleen de e-mailscope en probeer het opnieuw.',
 
-    'signup_success' => [
-        'page_title' => 'Welkom',
-        'title' => 'Je account wordt ingesteld',
-        'description' => 'Dit duurt meestal maar een paar seconden...',
-    ],
-
     'login' => [
         'title' => 'Log in op je account',
         'description' => 'Voer hieronder je e-mailadres en wachtwoord in om in te loggen',

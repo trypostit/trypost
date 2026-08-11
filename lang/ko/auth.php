@@ -59,12 +59,6 @@ return [
     'github_signup' => 'GitHub으로 가입하기',
     'github_email_unavailable' => 'GitHub에서 이메일을 가져올 수 없습니다. GitHub 이메일을 공개로 설정하거나 이메일 권한을 부여한 후 다시 시도하세요.',
 
-    'signup_success' => [
-        'page_title' => '환영합니다',
-        'title' => '계정을 설정하는 중',
-        'description' => '보통 몇 초면 완료됩니다...',
-    ],
-
     'login' => [
         'title' => '계정에 로그인',
         'description' => '로그인하려면 아래에 이메일과 비밀번호를 입력하세요',
