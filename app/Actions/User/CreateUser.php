@@ -63,8 +63,8 @@ class CreateUser
 
             if (! $isInviteRegistration) {
                 $authProvider = match (true) {
-                    (bool) data_get($data, 'google_id') => 'google',
-                    (bool) data_get($data, 'github_id') => 'github',
+                    (bool) $user->google_id => 'google',
+                    (bool) $user->github_id => 'github',
                     default => 'email',
                 };
 
