@@ -153,7 +153,7 @@ class StripeEventListener
             return;
         }
 
-        match (data_get($payload, 'data.object.status')) {
+        match ($this->currentStatus($payload)) {
             'trialing' => TrackTrialStarted::dispatch((string) $account->id, $payload),
             'active' => TrackCheckoutCompleted::dispatch((string) $account->id, $payload),
             default => null,
@@ -176,9 +176,32 @@ class StripeEventListener
             return;
         }
 
-        if (data_get($payload, 'data.previous_attributes.status') === 'trialing'
-            && data_get($payload, 'data.object.status') === 'active') {
+        if ($this->wasTrialing($payload) && $this->isNowActive($payload)) {
             TrackTrialConverted::dispatch((string) $account->id, $payload);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function currentStatus(array $payload): mixed
+    {
+        return data_get($payload, 'data.object.status');
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function wasTrialing(array $payload): bool
+    {
+        return data_get($payload, 'data.previous_attributes.status') === 'trialing';
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function isNowActive(array $payload): bool
+    {
+        return $this->currentStatus($payload) === 'active';
     }
 }
