@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App\Settings;
 
+use App\Enums\Auth\SocialAuthProvider;
 use App\Http\Controllers\App\Controller;
 use App\Http\Requests\App\Settings\AuthenticationPasswordRequest;
 use App\Models\User;
@@ -18,8 +19,6 @@ use Laravel\Socialite\Facades\Socialite;
 
 class AuthenticationController extends Controller
 {
-    private const array PROVIDERS = ['google', 'github'];
-
     public function edit(Request $request): Response
     {
         $user = $request->user();
@@ -66,20 +65,19 @@ class AuthenticationController extends Controller
 
     public function connectProvider(string $provider): RedirectResponse
     {
-        abort_unless(
-            in_array($provider, self::PROVIDERS, true) && (bool) config("trypost.{$provider}_auth_enabled"),
-            404,
-        );
+        $socialProvider = SocialAuthProvider::tryFrom($provider);
 
-        return match ($provider) {
-            'google' => Socialite::driver('google-auth')->redirect(),
-            'github' => Socialite::driver('github')->scopes(['read:user', 'user:email'])->redirect(),
+        abort_unless($socialProvider?->isEnabled(), 404);
+
+        return match ($socialProvider) {
+            SocialAuthProvider::Google => Socialite::driver('google-auth')->redirect(),
+            SocialAuthProvider::GitHub => Socialite::driver('github')->scopes(['read:user', 'user:email'])->redirect(),
         };
     }
 
     public function disconnectProvider(Request $request, string $provider): RedirectResponse
     {
-        abort_unless(in_array($provider, self::PROVIDERS, true), 404);
+        abort_unless(SocialAuthProvider::tryFrom($provider) !== null, 404);
 
         $user = $request->user();
         $column = "{$provider}_id";
@@ -127,16 +125,11 @@ class AuthenticationController extends Controller
      */
     private function getConnectedAccounts(User $user): array
     {
-        $labels = [
-            'google' => 'Google',
-            'github' => 'GitHub',
-        ];
-
-        return collect(self::PROVIDERS)->map(fn (string $provider) => [
-            'provider' => $provider,
-            'label' => $labels[$provider],
-            'connected' => (bool) $user->{"{$provider}_id"},
-            'can_disconnect' => $user->{"{$provider}_id"} && $this->canDisconnect($user, $provider),
+        return collect(SocialAuthProvider::cases())->map(fn (SocialAuthProvider $provider) => [
+            'provider' => $provider->value,
+            'label' => $provider->label(),
+            'connected' => (bool) $user->{"{$provider->value}_id"},
+            'can_disconnect' => $user->{"{$provider->value}_id"} && $this->canDisconnect($user, $provider->value),
         ])->values()->all();
     }
 
@@ -148,12 +141,12 @@ class AuthenticationController extends Controller
             $remainingMethods++;
         }
 
-        foreach (self::PROVIDERS as $other) {
-            if ($other === $provider) {
+        foreach (SocialAuthProvider::cases() as $other) {
+            if ($other->value === $provider) {
                 continue;
             }
 
-            if ($user->{"{$other}_id"}) {
+            if ($user->{"{$other->value}_id"}) {
                 $remainingMethods++;
             }
         }

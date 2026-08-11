@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Actions\User\CreateUser;
+use App\Enums\Auth\SocialAuthProvider;
 use App\Http\Controllers\Auth\Concerns\PreservesAttributionParameters;
 use App\Http\Controllers\Auth\Concerns\PreservesInvite;
 use App\Http\Controllers\Controller;
@@ -23,7 +24,7 @@ class GoogleController extends Controller
 
     public function redirect(Request $request): RedirectResponse
     {
-        abort_unless((bool) config('trypost.google_auth_enabled'), 404);
+        abort_unless(SocialAuthProvider::Google->isEnabled(), 404);
 
         $this->storeAttributionParameters($request);
         $this->storeInvite($request);
