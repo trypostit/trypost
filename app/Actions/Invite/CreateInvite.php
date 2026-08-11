@@ -9,6 +9,7 @@ use App\Mail\WorkspaceInvite as WorkspaceInviteMail;
 use App\Models\Invite;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class CreateInvite
 {
@@ -17,7 +18,7 @@ class CreateInvite
         $invite = Invite::create([
             'account_id' => $workspace->account_id,
             'invited_by' => auth()->id(),
-            'email' => data_get($data, 'email'),
+            'email' => Str::lower(data_get($data, 'email')),
             'role' => WorkspaceRole::from(data_get($data, 'role')),
             'workspaces' => [$workspace->id],
         ]);

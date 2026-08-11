@@ -68,7 +68,7 @@ class CreateUser
                     default => 'email',
                 };
 
-                (new PostHogService)->capture(
+                app(PostHogService::class)->capture(
                     (string) $user->id,
                     UserEvent::SignedUp->value,
                     ['auth_provider' => $authProvider],
