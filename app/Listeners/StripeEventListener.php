@@ -6,6 +6,7 @@ namespace App\Listeners;
 
 use App\Enums\PostHog\BillingEvent;
 use App\Jobs\PostHog\TrackBilling;
+use App\Jobs\PostHog\TrackCheckoutCompleted;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Services\PostHogService;
@@ -59,6 +60,7 @@ class StripeEventListener
         }
 
         $this->trackPlanChange($account, BillingEvent::Created, $previousPlan, $payload);
+        $this->trackCheckoutCompleted($account, $payload);
     }
 
     /**
@@ -132,5 +134,17 @@ class StripeEventListener
         }
 
         TrackBilling::dispatch((string) $account->id, $event, $payload, $previousPlan);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function trackCheckoutCompleted(Account $account, array $payload): void
+    {
+        if (! PostHogService::isEnabled()) {
+            return;
+        }
+
+        TrackCheckoutCompleted::dispatch((string) $account->id, $payload);
     }
 }

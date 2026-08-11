@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Plan\Slug;
+use App\Enums\PostHog\CheckoutEvent;
 use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
@@ -226,6 +227,33 @@ test('referral source store saves the source and starts Stripe checkout without 
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
         && data_get($event->payload, 'event') === WelcomeEvent::Referral->value
         && data_get($event->payload, 'properties.referral_source') === ReferralSource::ProductHunt->value);
+});
+
+test('referral source store captures checkout.started with the plan name and interval', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Bus::fake();
+    $this->user->update([
+        'persona' => Persona::Agency->value,
+        'goals' => [Goal::SaveTime->value],
+    ]);
+
+    $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
+    $plan->update(['stripe_monthly_price_id' => 'price_monthly_test']);
+
+    $this->mock(StartSubscriptionCheckout::class)
+        ->shouldReceive('redirect')
+        ->once()
+        ->andReturn(redirect('https://checkout.stripe.test/session'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.referral-source.store'), [
+            'referral_source' => ReferralSource::ProductHunt->value,
+        ]);
+
+    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
+        && data_get($event->payload, 'event') === CheckoutEvent::Started->value
+        && data_get($event->payload, 'properties.plan_name') === $plan->name
+        && data_get($event->payload, 'properties.interval') === 'monthly');
 });
 
 test('welcome steps redirect to calendar for subscribed accounts', function (string $routeName, string $method, array $payload = []) {

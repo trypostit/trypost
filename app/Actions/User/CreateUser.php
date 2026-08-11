@@ -6,6 +6,7 @@ namespace App\Actions\User;
 
 use App\Actions\Workspace\CreateWorkspace;
 use App\Enums\Plan\Slug;
+use App\Enums\PostHog\UserEvent;
 use App\Jobs\PostHog\SyncUser;
 use App\Models\Account;
 use App\Models\Plan;
@@ -21,8 +22,9 @@ class CreateUser
      */
     public static function execute(array $data, array $attributionParameters = []): User
     {
-        $user = DB::transaction(function () use ($data, $attributionParameters): User {
-            $isInviteRegistration = data_get($data, 'is_invite', false);
+        $isInviteRegistration = (bool) data_get($data, 'is_invite', false);
+
+        $user = DB::transaction(function () use ($data, $attributionParameters, $isInviteRegistration): User {
             $requiresCardForTrial = (bool) config('trypost.billing.require_card_for_trial', true);
             $accountAttributes = [
                 'name' => data_get($data, 'name')."'s Account",
@@ -58,6 +60,21 @@ class CreateUser
 
         if (PostHogService::isEnabled()) {
             SyncUser::dispatch((string) $user->id);
+
+            if (! $isInviteRegistration) {
+                $authProvider = match (true) {
+                    (bool) data_get($data, 'google_id') => 'google',
+                    (bool) data_get($data, 'github_id') => 'github',
+                    default => 'email',
+                };
+
+                (new PostHogService)->capture(
+                    (string) $user->id,
+                    UserEvent::SignedUp->value,
+                    ['auth_provider' => $authProvider],
+                    $user->account,
+                );
+            }
         }
 
         return $user;

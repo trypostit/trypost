@@ -6,6 +6,7 @@ namespace App\Http\Controllers\App;
 
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Plan\Slug;
+use App\Enums\PostHog\CheckoutEvent;
 use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
@@ -141,6 +142,15 @@ class WelcomeController extends Controller
             $user->id,
             WelcomeEvent::Referral->value,
             ['referral_source' => $referralSource],
+            $user->account,
+        );
+
+        $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
+
+        $postHog->capture(
+            $user->id,
+            CheckoutEvent::Started->value,
+            ['plan_name' => $plan->name, 'interval' => 'monthly'],
             $user->account,
         );
 

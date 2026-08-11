@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Plan\Slug;
 use App\Enums\PostHog\BillingEvent;
 use App\Jobs\PostHog\TrackBilling;
+use App\Jobs\PostHog\TrackCheckoutCompleted;
 use App\Listeners\StripeEventListener;
 use App\Models\Account;
 use App\Models\Plan;
@@ -386,4 +387,56 @@ test('subscription created forwards a null previous plan when account had none',
         TrackBilling::class,
         fn ($job) => $job->event === BillingEvent::Created && $job->previousPlan === null,
     );
+});
+
+// ========================================
+// checkout.completed tracking
+// ========================================
+
+test('subscription created dispatches TrackCheckoutCompleted', function () {
+    Bus::fake([TrackCheckoutCompleted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertDispatched(
+        TrackCheckoutCompleted::class,
+        fn ($job) => $job->accountId === (string) $this->account->id,
+    );
+});
+
+test('subscription updated and deleted do not dispatch TrackCheckoutCompleted', function (string $type) {
+    Bus::fake([TrackCheckoutCompleted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => $type,
+        'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_123']],
+    ]));
+
+    Bus::assertNotDispatched(TrackCheckoutCompleted::class);
+})->with([
+    'updated' => 'customer.subscription.updated',
+    'deleted' => 'customer.subscription.deleted',
+]);
+
+test('TrackCheckoutCompleted is not dispatched when PostHog is disabled', function () {
+    config(['services.posthog.enabled' => false]);
+    Bus::fake([TrackCheckoutCompleted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertNotDispatched(TrackCheckoutCompleted::class);
 });
