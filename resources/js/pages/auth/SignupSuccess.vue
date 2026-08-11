@@ -3,19 +3,10 @@ import { Head, router } from '@inertiajs/vue3';
 import { IconLoader2 } from '@tabler/icons-vue';
 import { onMounted } from 'vue';
 
-import { useTracking } from '@/composables/useTracking';
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { home } from '@/routes/app';
 
-const props = defineProps<{
-    authProvider: string;
-}>();
-
-const { trackSignUp } = useTracking();
-
 onMounted(() => {
-    trackSignUp(props.authProvider);
-
     setTimeout(() => {
         router.visit(home.url());
     }, 5000);

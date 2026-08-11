@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { Head, router, usePage, usePoll } from '@inertiajs/vue3';
+import { Head, router, usePoll } from '@inertiajs/vue3';
 import { IconLoader2 } from '@tabler/icons-vue';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 
-import { useTracking } from '@/composables/useTracking';
 import { accounts, onboarding } from '@/routes/app';
-import type { Auth } from '@/types';
 
 const props = defineProps<{
     subscriptionActive: boolean;
@@ -15,12 +13,7 @@ const props = defineProps<{
     conversion?: { value: number; currency: string; transaction_id: string } | null;
 }>();
 
-// Hold on the processing screen after firing the purchase event so PostHog and
-// the ad pixels (Google/Meta via dataLayer → GTM) have time to send before we
-// navigate away — an immediate redirect can cut those requests off.
 const REDIRECT_DELAY_MS = 5000;
-
-const page = usePage();
 
 // Polls `auth` alongside so `auth.plan.interval` is fresh once the Stripe
 // webhook creates the local Subscription row — at /billing/processing's
@@ -29,8 +22,6 @@ const page = usePage();
 const { stop } = usePoll(2000, {
     only: ['subscriptionActive', 'redirectToOnboarding', 'auth'],
 });
-
-const { trackPurchase } = useTracking();
 
 const finishing = ref(false);
 let redirectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -41,12 +32,12 @@ const goNext = (): void => {
     );
 };
 
-// Fires `checkout.completed` exactly once for a real checkout. A trial-with-card
-// subscription is already `subscribed()` (status `trialing`) by the time the
-// webhook lands, so the user frequently reaches this page already active — the
-// false → true poll transition never happens. We therefore complete the purchase
-// from whichever path runs first (immediate active state or poll transition),
-// gated on `fromCheckout` so back-button/refresh visits don't over-count.
+// A trial-with-card subscription is already `subscribed()` (status
+// `trialing`) by the time the webhook lands, so the user frequently reaches
+// this page already active — the false → true poll transition never
+// happens. We hold briefly either way before navigating on, so the backend
+// webhook (which fires `checkout.completed` to PostHog) has had a moment to
+// land.
 const completePurchase = (): void => {
     if (finishing.value) {
         return;
@@ -54,18 +45,6 @@ const completePurchase = (): void => {
     finishing.value = true;
     stop();
 
-    const plan = (page.props.auth as Auth | undefined)?.plan;
-
-    if (props.fromCheckout && plan) {
-        trackPurchase(
-            { name: plan.name, interval: plan.interval },
-            props.conversion ?? null,
-            props.persona ?? null,
-        );
-    }
-
-    // Always hold for the same window before navigating, so PostHog and the ad
-    // pixels (Google/Meta via dataLayer → GTM) reliably flush.
     redirectTimer = setTimeout(goNext, REDIRECT_DELAY_MS);
 };
 

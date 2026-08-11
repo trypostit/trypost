@@ -24,7 +24,6 @@ import type { FunctionalComponent } from 'vue';
 
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
-import { useTracking } from '@/composables/useTracking';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
 import { store } from '@/routes/app/welcome/referral-source';
 
@@ -37,8 +36,6 @@ const props = defineProps<{
 const form = useForm<{ referral_source: string }>({
     referral_source: props.selected ?? '',
 });
-
-const { trackBeginCheckout } = useTracking();
 
 type SourceMeta = {
     icon?: FunctionalComponent;
@@ -156,31 +153,7 @@ const submit = (): void => {
         return;
     }
 
-    let shouldTrackCheckout = false;
-
-    form.submit(store(), {
-        onStart: () => {
-            shouldTrackCheckout = true;
-        },
-        onError: () => {
-            shouldTrackCheckout = false;
-        },
-        onHttpException: () => {
-            shouldTrackCheckout = false;
-        },
-        onFinish: () => {
-            if (!shouldTrackCheckout) {
-                return;
-            }
-
-            // Inertia::location navigates away before onSuccess; onFinish still
-            // runs and dataLayer can accept the event before unload.
-            trackBeginCheckout({
-                name: props.plan.name,
-                interval: props.plan.interval,
-            });
-        },
-    });
+    form.submit(store());
 };
 </script>
 
