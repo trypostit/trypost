@@ -10,7 +10,6 @@ const props = withDefaults(
     defineProps<{
         mode: 'login' | 'signup';
         hideDivider?: boolean;
-        redirect?: string | null;
         invite?: string | null;
     }>(),
     { hideDivider: false },
@@ -21,12 +20,13 @@ const googleEnabled = computed(() => Boolean(page.props.googleAuthEnabled));
 const githubEnabled = computed(() => Boolean(page.props.githubAuthEnabled));
 const hasSocial = computed(() => googleEnabled.value || githubEnabled.value);
 
-// The OAuth round-trip has no form to carry these in like the email flow
-// does (hidden inputs), so they ride as query params instead — the
-// controller stashes them in session before redirecting to the provider.
+// The OAuth round-trip has no form to carry this in like the email flow
+// does (a hidden input), so it rides as a query param instead — the
+// controller stashes it in session before redirecting to the provider, and
+// resolves the actual return URL itself from the invite id (never trusts a
+// client-supplied redirect URL).
 const query = computed(() => {
     const params: Record<string, string> = {};
-    if (props.redirect) params.redirect = props.redirect;
     if (props.invite) params.invite = props.invite;
     return params;
 });

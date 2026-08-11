@@ -125,7 +125,6 @@ test('google registration with an invite param completes it instead of creating 
 
     $this->get(route('auth.google.redirect', [
         'invite' => $invite->id,
-        'redirect' => route('app.invites.show', $invite, absolute: false),
     ]));
 
     $socialiteUser = new SocialiteUser;
@@ -151,7 +150,7 @@ test('google registration with an invite param completes it instead of creating 
     expect($user->workspaces()->count())->toBe(0);
 });
 
-test('google login with a pending redirect sends an existing user there instead of app.home', function () {
+test('google login with a pending invite sends an existing user there instead of app.home', function () {
     $inviterAccount = Account::factory()->create();
     $inviter = User::factory()->create(['account_id' => $inviterAccount->id]);
     $inviterAccount->update(['owner_id' => $inviter->id]);
@@ -169,7 +168,7 @@ test('google login with a pending redirect sends an existing user there instead 
     $existingUser = User::factory()->create(['email' => 'existing-invited@example.com']);
 
     $this->get(route('auth.google.redirect', [
-        'redirect' => route('app.invites.show', $invite, absolute: false),
+        'invite' => $invite->id,
     ]));
 
     $socialiteUser = new SocialiteUser;

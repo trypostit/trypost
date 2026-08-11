@@ -25,7 +25,7 @@ import { request } from '@/routes/password';
 defineProps<{
     status?: string;
     email?: string | null;
-    redirect?: string | null;
+    invite?: string | null;
 }>();
 
 const showPassword = ref(false);
@@ -49,7 +49,7 @@ const isSelfHosted = computed(() => Boolean(page.props.selfHosted));
         </div>
 
         <div class="flex flex-col gap-6">
-            <SocialLogin mode="login" :redirect="redirect" />
+            <SocialLogin mode="login" :invite="invite" />
 
             <Form
                 v-bind="store.form()"
@@ -58,10 +58,10 @@ const isSelfHosted = computed(() => Boolean(page.props.selfHosted));
                 class="flex flex-col gap-6"
             >
                 <input
-                    v-if="redirect"
+                    v-if="invite"
                     type="hidden"
-                    name="redirect"
-                    :value="redirect"
+                    name="invite"
+                    :value="invite"
                 />
                 <div class="grid gap-6">
                     <div class="grid gap-2">

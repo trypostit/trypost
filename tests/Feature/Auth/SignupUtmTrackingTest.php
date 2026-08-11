@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Models\Account;
+use App\Models\Invite;
 use App\Models\User;
+use App\Models\Workspace;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
@@ -149,16 +152,30 @@ test('existing google user login consumes the utm session so utms do not leak to
     expect(session()->get('attribution_parameters'))->toBeNull();
 });
 
-test('invitation registration does not include utm parameters in its redirect', function () {
-    $this->get(route('register', ['utm_source' => 'email']));
+test('invitation registration redirects to the invite page instead of the utm-tagged success page', function () {
+    $account = Account::factory()->create();
+    $owner = User::factory()->create(['account_id' => $account->id]);
+    $account->update(['owner_id' => $owner->id]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $account->id,
+        'user_id' => $owner->id,
+    ]);
+    $invite = Invite::factory()->create([
+        'account_id' => $account->id,
+        'invited_by' => $owner->id,
+        'email' => 'invited@example.com',
+        'workspaces' => [$workspace->id],
+    ]);
+
+    $this->get(route('register', ['utm_source' => 'email', 'invite' => $invite->id]));
 
     $this->post(route('register.store'), [
         'name' => 'Invited User',
         'email' => 'invited@example.com',
         'password' => 'Password123!',
-        'redirect' => '/invites/some-token',
+        'invite' => $invite->id,
     ])
-        ->assertRedirect('/invites/some-token');
+        ->assertRedirect(route('app.invites.show', $invite));
 });
 
 test('utm values longer than 255 characters are truncated before being stored', function () {

@@ -22,7 +22,6 @@ import { store } from '@/routes/register';
 
 defineProps<{
     email?: string | null;
-    redirect?: string | null;
     invite?: string | null;
 }>();
 
@@ -51,7 +50,7 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
 
         <div class="flex flex-col gap-6">
             <div v-if="hasSocial" class="flex flex-col gap-2">
-                <SocialLogin mode="signup" hide-divider :redirect="redirect" :invite="invite" />
+                <SocialLogin mode="signup" hide-divider :invite="invite" />
 
                 <Button
                     v-if="!showEmailForm"
@@ -72,7 +71,6 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
                 v-slot="{ errors, processing }"
                 class="flex flex-col gap-6"
             >
-                <input v-if="redirect" type="hidden" name="redirect" :value="redirect" />
                 <input v-if="invite" type="hidden" name="invite" :value="invite" />
 
                 <div

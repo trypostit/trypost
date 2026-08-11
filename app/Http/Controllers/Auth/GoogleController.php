@@ -6,11 +6,10 @@ namespace App\Http\Controllers\Auth;
 
 use App\Actions\User\CreateUser;
 use App\Http\Controllers\Auth\Concerns\PreservesAttributionParameters;
-use App\Http\Controllers\Auth\Concerns\PreservesInviteRedirect;
+use App\Http\Controllers\Auth\Concerns\PreservesInvite;
 use App\Http\Controllers\Controller;
 use App\Models\Invite;
 use App\Models\User;
-use App\Support\SafeInternalRedirect;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,12 +19,12 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class GoogleController extends Controller
 {
-    use PreservesAttributionParameters, PreservesInviteRedirect;
+    use PreservesAttributionParameters, PreservesInvite;
 
     public function redirect(Request $request): RedirectResponse
     {
         $this->storeAttributionParameters($request);
-        $this->storeInviteRedirect($request);
+        $this->storeInvite($request);
 
         return Socialite::driver('google-auth')->redirect();
     }
@@ -88,10 +87,9 @@ class GoogleController extends Controller
         Auth::login($user, remember: true);
 
         $this->retrieveAttributionParameters();
-        $inviteRedirect = $this->retrieveInviteRedirect();
 
-        if ($safeRedirect = SafeInternalRedirect::resolve($inviteRedirect['redirect'] ?? null)) {
-            return redirect($safeRedirect);
+        if ($invite = Invite::fromId($this->retrieveInvite())) {
+            return redirect()->route('app.invites.show', $invite);
         }
 
         return redirect()->route('app.home');
@@ -100,18 +98,18 @@ class GoogleController extends Controller
     private function registerNewUser(\Laravel\Socialite\Contracts\User $googleUser): RedirectResponse
     {
         $attributionParameters = $this->retrieveAttributionParameters();
-        $inviteRedirect = $this->retrieveInviteRedirect();
+        $inviteId = $this->retrieveInvite();
 
         // Same soft gate as the `registration.enabled` middleware on
         // /register: self-hosted requires *some* invite param to reach
         // registration at all. The OAuth redirect route is shared with
         // login (we can't tell them apart before the callback resolves an
         // identity), so this is the earliest point we can enforce it.
-        if ((bool) config('trypost.self_hosted') && ! ($inviteRedirect['invite'] ?? null)) {
+        if ((bool) config('trypost.self_hosted') && ! $inviteId) {
             throw new NotFoundHttpException;
         }
 
-        $invite = Invite::fromId($inviteRedirect['invite'] ?? null);
+        $invite = Invite::fromId($inviteId);
 
         $user = CreateUser::execute([
             'name' => $googleUser->getName(),
@@ -128,8 +126,8 @@ class GoogleController extends Controller
 
         session()->flash('auth_provider', 'google');
 
-        if ($safeRedirect = SafeInternalRedirect::resolve($inviteRedirect['redirect'] ?? null)) {
-            return redirect($safeRedirect);
+        if ($invite) {
+            return redirect()->route('app.invites.show', $invite);
         }
 
         return redirect()->route('register.success', $attributionParameters);

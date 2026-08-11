@@ -75,7 +75,6 @@ test('new users registering via invite have verified email automatically', funct
         'email' => 'test@example.com',
         'password' => 'Password123!',
         'invite' => $invite->id,
-        'redirect' => route('app.invites.show', $invite),
     ]);
 
     $user = User::where('email', 'test@example.com')->first();

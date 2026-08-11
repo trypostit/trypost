@@ -29,7 +29,6 @@ test('register page receives the invite id', function () {
     $this->get(route('register', [
         'email' => 'invitee@example.com',
         'invite' => $this->invite->id,
-        'redirect' => route('app.invites.show', $this->invite),
     ]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
@@ -45,7 +44,6 @@ test('invite registration rejects a different email than the invite', function (
         'password' => 'password',
         'password_confirmation' => 'password',
         'invite' => $this->invite->id,
-        'redirect' => route('app.invites.show', $this->invite),
     ])->assertSessionHasErrors('email');
 
     expect(User::where('email', 'other@example.com')->exists())->toBeFalse();
@@ -58,8 +56,7 @@ test('invite registration allows the invited email', function () {
         'password' => 'password',
         'password_confirmation' => 'password',
         'invite' => $this->invite->id,
-        'redirect' => route('app.invites.show', $this->invite),
-    ])->assertRedirect();
+    ])->assertRedirect(route('app.invites.show', $this->invite));
 
     expect(User::where('email', 'invitee@example.com')->exists())->toBeTrue();
 });

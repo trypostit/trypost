@@ -8,7 +8,6 @@ use App\Actions\User\CreateUser;
 use App\Http\Controllers\Auth\Concerns\PreservesAttributionParameters;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Auth\RegisterRequest;
-use App\Support\SafeInternalRedirect;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,7 +25,6 @@ class RegisteredUserController extends Controller
 
         return Inertia::render('auth/Register', [
             'email' => $request->query('email'),
-            'redirect' => $request->query('redirect'),
             'invite' => $request->query('invite'),
         ]);
     }
@@ -34,12 +32,13 @@ class RegisteredUserController extends Controller
     public function store(RegisterRequest $request): RedirectResponse
     {
         $attributionParameters = $this->retrieveAttributionParameters();
+        $invite = $request->invite();
 
         $user = CreateUser::execute([
             'name' => $request->validated('name'),
             'email' => $request->validated('email'),
             'password' => $request->validated('password'),
-            'is_invite' => $request->isInviteRegistration(),
+            'is_invite' => $invite !== null,
             'registration_ip' => $request->ip(),
         ], $attributionParameters);
 
@@ -49,8 +48,8 @@ class RegisteredUserController extends Controller
 
         $request->session()->forget('pending_invite_id');
 
-        if ($safeRedirect = SafeInternalRedirect::resolve($request->input('redirect'))) {
-            return redirect($safeRedirect);
+        if ($invite) {
+            return redirect()->route('app.invites.show', $invite);
         }
 
         session()->flash('auth_provider', 'email');

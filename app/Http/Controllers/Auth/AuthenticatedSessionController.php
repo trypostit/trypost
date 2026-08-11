@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Auth\LoginRequest;
-use App\Support\SafeInternalRedirect;
+use App\Models\Invite;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,7 +23,7 @@ class AuthenticatedSessionController extends Controller
         return Inertia::render('auth/Login', [
             'status' => session('status'),
             'email' => $request->query('email'),
-            'redirect' => $request->query('redirect'),
+            'invite' => $request->query('invite'),
         ]);
     }
 
@@ -36,8 +36,8 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        if ($safeRedirect = SafeInternalRedirect::resolve($request->input('redirect'))) {
-            return redirect($safeRedirect);
+        if ($invite = Invite::fromId((string) $request->input('invite', ''))) {
+            return redirect()->route('app.invites.show', $invite);
         }
 
         return redirect()->intended(route('app.calendar'));
