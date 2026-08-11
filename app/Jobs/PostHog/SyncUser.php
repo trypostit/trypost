@@ -37,7 +37,12 @@ class SyncUser implements ShouldQueue
             return;
         }
 
-        $clickIds = array_filter([
+        $attribution = array_filter([
+            'utm_source' => $user->utm_source,
+            'utm_medium' => $user->utm_medium,
+            'utm_campaign' => $user->utm_campaign,
+            'utm_term' => $user->utm_term,
+            'utm_content' => $user->utm_content,
             'gclid' => $user->gclid,
             'fbclid' => $user->fbclid,
             'li_fat_id' => $user->li_fat_id,
@@ -51,7 +56,7 @@ class SyncUser implements ShouldQueue
             '$name' => $user->name,
             '$set_once' => [
                 'signed_up_at' => $user->created_at?->toIso8601String(),
-                ...$clickIds,
+                ...$attribution,
             ],
         ]);
 

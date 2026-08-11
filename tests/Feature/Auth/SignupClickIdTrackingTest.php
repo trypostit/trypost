@@ -148,6 +148,35 @@ test('existing google user login consumes the click id session so it does not le
     expect(session()->get('attribution_parameters'))->toBeNull();
 });
 
+test('existing github user login consumes the click id session so it does not leak to a later signup', function () {
+    User::factory()->create([
+        'email' => 'existing-gh-click@example.com',
+        'github_id' => 'gh-existing-click',
+    ]);
+
+    $this->get(route('auth.github.redirect', ['gclid' => 'stale-gh-click']));
+
+    $socialiteUser = new SocialiteUser;
+    $socialiteUser->id = 'gh-existing-click';
+    $socialiteUser->name = 'Existing GitHub Click User';
+    $socialiteUser->email = 'existing-gh-click@example.com';
+
+    Socialite::shouldReceive('driver')
+        ->with('github')
+        ->andReturn($driver = Mockery::mock());
+
+    $driver->shouldReceive('scopes')
+        ->andReturnSelf();
+
+    $driver->shouldReceive('user')
+        ->andReturn($socialiteUser);
+
+    $this->get(route('auth.github.callback'))
+        ->assertRedirect(route('app.home'));
+
+    expect(session()->get('attribution_parameters'))->toBeNull();
+});
+
 test('click ids and utm parameters are both saved when present together', function () {
     $this->get(route('register', [
         'utm_source' => 'google',

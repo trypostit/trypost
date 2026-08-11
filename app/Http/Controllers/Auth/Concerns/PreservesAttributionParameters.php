@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth\Concerns;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 trait PreservesAttributionParameters
 {
@@ -41,25 +42,19 @@ trait PreservesAttributionParameters
      */
     private function extractAttributionParameters(Request $request): array
     {
-        $utm = array_filter(
-            array_map(
-                fn (string $value) => mb_substr($value, 0, 255),
-                array_filter($request->only(self::UTM_KEYS), 'is_string'),
-            ),
-        );
+        $utm = collect($request->only(self::UTM_KEYS))
+            ->filter(fn ($value) => is_string($value))
+            ->map(fn (string $value) => Str::limit($value, 255, ''));
 
-        $clickIds = array_filter($request->only(self::CLICK_ID_KEYS), 'is_string');
+        $clickIds = collect($request->only(self::CLICK_ID_KEYS))
+            ->filter(fn ($value) => is_string($value));
 
-        return [...$utm, ...$clickIds];
+        return $utm->merge($clickIds)->all();
     }
 
     private function storeAttributionParameters(Request $request): void
     {
-        $parameters = $this->extractAttributionParameters($request);
-
-        if ($parameters !== []) {
-            $request->session()->put('attribution_parameters', $parameters);
-        }
+        $request->session()->put('attribution_parameters', $this->extractAttributionParameters($request));
     }
 
     /**

@@ -66,7 +66,20 @@ test('handle forwards ad click ids as first-touch person properties when present
     });
 });
 
-test('handle omits ad click id properties when none are set', function () {
+test('handle forwards utm parameters as first-touch person properties when present', function () {
+    $this->user->update(['utm_source' => 'google', 'utm_medium' => 'cpc', 'utm_campaign' => 'spring-launch']);
+    Queue::fake();
+
+    (new SyncUser((string) $this->user->id))->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, function ($job) {
+        return $job->payload['properties']['$set_once']['utm_source'] === 'google'
+            && $job->payload['properties']['$set_once']['utm_medium'] === 'cpc'
+            && $job->payload['properties']['$set_once']['utm_campaign'] === 'spring-launch';
+    });
+});
+
+test('handle omits attribution properties when none are set', function () {
     Queue::fake();
 
     (new SyncUser((string) $this->user->id))->handle(app(PostHogService::class));
@@ -74,7 +87,12 @@ test('handle omits ad click id properties when none are set', function () {
     Queue::assertPushed(SendEvent::class, function ($job) {
         $setOnce = $job->payload['properties']['$set_once'];
 
-        return ! array_key_exists('gclid', $setOnce)
+        return ! array_key_exists('utm_source', $setOnce)
+            && ! array_key_exists('utm_medium', $setOnce)
+            && ! array_key_exists('utm_campaign', $setOnce)
+            && ! array_key_exists('utm_term', $setOnce)
+            && ! array_key_exists('utm_content', $setOnce)
+            && ! array_key_exists('gclid', $setOnce)
             && ! array_key_exists('fbclid', $setOnce)
             && ! array_key_exists('li_fat_id', $setOnce)
             && ! array_key_exists('ttclid', $setOnce)
