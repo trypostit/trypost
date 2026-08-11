@@ -10,13 +10,18 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Ad platforms explicitly warn against assuming a fixed max length for
+        // click IDs (Google: gclid has already grown from 26 to 100+ chars and
+        // says never truncate/validate against a fixed length) — text avoids
+        // ever silently corrupting one via truncation, unlike our own UTM
+        // params where we control the length.
         Schema::table('users', function (Blueprint $table): void {
-            $table->string('gclid')->nullable()->after('utm_content');
-            $table->string('fbclid')->nullable()->after('gclid');
-            $table->string('li_fat_id')->nullable()->after('fbclid');
-            $table->string('ttclid')->nullable()->after('li_fat_id');
-            $table->string('rdt_cid')->nullable()->after('ttclid');
-            $table->string('epik')->nullable()->after('rdt_cid');
+            $table->text('gclid')->nullable()->after('utm_content');
+            $table->text('fbclid')->nullable()->after('gclid');
+            $table->text('li_fat_id')->nullable()->after('fbclid');
+            $table->text('ttclid')->nullable()->after('li_fat_id');
+            $table->text('rdt_cid')->nullable()->after('ttclid');
+            $table->text('epik')->nullable()->after('rdt_cid');
         });
     }
 

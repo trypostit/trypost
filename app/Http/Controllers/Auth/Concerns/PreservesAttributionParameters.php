@@ -31,16 +31,26 @@ trait PreservesAttributionParameters
     ];
 
     /**
+     * UTM values are ours (our own campaign URLs), so truncating them to a
+     * safe length is fine. Click IDs are opaque tokens assigned by the ad
+     * platform — Google explicitly warns never to truncate or assume a
+     * fixed max length for gclid, since it has already grown over time. The
+     * `gclid`/etc. columns are `text`, so there's no need to cap them here.
+     *
      * @return array<string, string>
      */
     private function extractAttributionParameters(Request $request): array
     {
-        return array_filter(
+        $utm = array_filter(
             array_map(
                 fn (string $value) => mb_substr($value, 0, 255),
-                array_filter($request->only([...self::UTM_KEYS, ...self::CLICK_ID_KEYS]), 'is_string'),
+                array_filter($request->only(self::UTM_KEYS), 'is_string'),
             ),
         );
+
+        $clickIds = array_filter($request->only(self::CLICK_ID_KEYS), 'is_string');
+
+        return [...$utm, ...$clickIds];
     }
 
     private function storeAttributionParameters(Request $request): void

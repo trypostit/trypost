@@ -51,7 +51,7 @@ test('email registration without click ids saves null columns', function () {
     ]);
 });
 
-test('click id values longer than 255 characters are truncated before being stored', function () {
+test('click id values longer than 255 characters are stored in full, unlike utm parameters', function () {
     $longValue = str_repeat('a', 300);
 
     $this->get(route('register', ['gclid' => $longValue]));
@@ -64,7 +64,7 @@ test('click id values longer than 255 characters are truncated before being stor
 
     $user = User::where('email', 'long-click@example.com')->first();
 
-    expect(mb_strlen($user->gclid))->toBe(255);
+    expect($user->gclid)->toBe($longValue);
 });
 
 test('google registration saves ad click ids captured before the oauth round-trip', function () {
