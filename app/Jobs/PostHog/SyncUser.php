@@ -6,6 +6,7 @@ namespace App\Jobs\PostHog;
 
 use App\Models\User;
 use App\Services\PostHogService;
+use App\Support\AttributionKeys;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -37,19 +38,10 @@ class SyncUser implements ShouldQueue
             return;
         }
 
-        $attribution = array_filter([
-            'utm_source' => $user->utm_source,
-            'utm_medium' => $user->utm_medium,
-            'utm_campaign' => $user->utm_campaign,
-            'utm_term' => $user->utm_term,
-            'utm_content' => $user->utm_content,
-            'gclid' => $user->gclid,
-            'fbclid' => $user->fbclid,
-            'li_fat_id' => $user->li_fat_id,
-            'ttclid' => $user->ttclid,
-            'rdt_cid' => $user->rdt_cid,
-            'epik' => $user->epik,
-        ]);
+        $attribution = collect(AttributionKeys::all())
+            ->mapWithKeys(fn (string $key) => [$key => $user->{$key}])
+            ->filter()
+            ->all();
 
         $postHog->identify($user->id, [
             '$email' => $user->email,

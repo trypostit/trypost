@@ -177,6 +177,24 @@ test('existing github user login consumes the click id session so it does not le
     expect(session()->get('attribution_parameters'))->toBeNull();
 });
 
+test('an empty query string value is treated the same as an absent one, not stored as an empty string', function () {
+    // Some ad/email templates always append every tracking key, leaving
+    // unfilled slots blank (?utm_source=&gclid=) instead of omitting them.
+    $this->get(route('register', ['utm_source' => '', 'gclid' => '']));
+
+    $this->post(route('register.store'), [
+        'name' => 'Empty Param User',
+        'email' => 'empty-param@example.com',
+        'password' => 'Password123!',
+    ]);
+
+    $this->assertDatabaseHas('users', [
+        'email' => 'empty-param@example.com',
+        'utm_source' => null,
+        'gclid' => null,
+    ]);
+});
+
 test('click ids and utm parameters are both saved when present together', function () {
     $this->get(route('register', [
         'utm_source' => 'google',
