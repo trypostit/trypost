@@ -22,10 +22,6 @@ class PostHogService
      */
     public function capture(string $distinctId, string $event, array $properties = [], ?Account $account = null): void
     {
-        if (! self::isEnabled()) {
-            return;
-        }
-
         $payload = [
             'distinctId' => $distinctId,
             'event' => $event,
@@ -38,7 +34,11 @@ class PostHogService
             $payload['properties']['plan'] = $account->plan?->name;
         }
 
-        $this->dispatch('capture', $payload);
+        $this->logLocally('capture', $payload);
+
+        if (self::isEnabled()) {
+            $this->dispatch('capture', $payload);
+        }
     }
 
     /**
@@ -46,14 +46,16 @@ class PostHogService
      */
     public function identify(string $distinctId, array $properties = []): void
     {
-        if (! self::isEnabled()) {
-            return;
-        }
-
-        $this->dispatch('identify', [
+        $payload = [
             'distinctId' => $distinctId,
             'properties' => $properties,
-        ]);
+        ];
+
+        $this->logLocally('identify', $payload);
+
+        if (self::isEnabled()) {
+            $this->dispatch('identify', $payload);
+        }
     }
 
     /**
@@ -61,15 +63,32 @@ class PostHogService
      */
     public function groupIdentify(string $groupType, string $groupKey, array $properties = []): void
     {
-        if (! self::isEnabled()) {
-            return;
-        }
-
-        $this->dispatch('groupIdentify', [
+        $payload = [
             'groupType' => $groupType,
             'groupKey' => $groupKey,
             'properties' => $properties,
-        ]);
+        ];
+
+        $this->logLocally('groupIdentify', $payload);
+
+        if (self::isEnabled()) {
+            $this->dispatch('groupIdentify', $payload);
+        }
+    }
+
+    /**
+     * Local-only visibility into what would be sent to PostHog, so events can
+     * be verified from laravel.log without a real API key configured.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function logLocally(string $method, array $payload): void
+    {
+        if (! app()->environment('local')) {
+            return;
+        }
+
+        Log::info("PostHogService: {$method}", $payload);
     }
 
     /**

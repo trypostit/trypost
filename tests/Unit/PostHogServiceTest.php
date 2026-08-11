@@ -7,6 +7,7 @@ use App\Models\Account;
 use App\Models\Plan;
 use App\Services\PostHogService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
@@ -155,6 +156,59 @@ test('groupIdentify is a no-op when enabled is false even with an api key set', 
     $service->groupIdentify('account', 'acc-123', ['name' => 'Test']);
 
     Queue::assertNothingPushed();
+});
+
+// ========================================
+// Local debug logging
+// ========================================
+
+test('capture logs to laravel.log in the local environment even when disabled', function () {
+    app()->detectEnvironment(fn () => 'local');
+    config(['services.posthog.api_key' => null]);
+    Queue::fake();
+
+    Log::shouldReceive('info')->once()->withArgs(function ($message, $payload) {
+        return $message === 'PostHogService: capture'
+            && $payload['event'] === 'test_event'
+            && $payload['distinctId'] === 'user-123';
+    });
+
+    (new PostHogService)->capture('user-123', 'test_event', ['foo' => 'bar']);
+
+    Queue::assertNothingPushed();
+});
+
+test('identify logs to laravel.log in the local environment even when disabled', function () {
+    app()->detectEnvironment(fn () => 'local');
+    config(['services.posthog.api_key' => null]);
+
+    Log::shouldReceive('info')->once()->withArgs(function ($message, $payload) {
+        return $message === 'PostHogService: identify'
+            && $payload['distinctId'] === 'user-123';
+    });
+
+    (new PostHogService)->identify('user-123', ['$email' => 'test@example.com']);
+});
+
+test('groupIdentify logs to laravel.log in the local environment even when disabled', function () {
+    app()->detectEnvironment(fn () => 'local');
+    config(['services.posthog.api_key' => null]);
+
+    Log::shouldReceive('info')->once()->withArgs(function ($message, $payload) {
+        return $message === 'PostHogService: groupIdentify'
+            && $payload['groupType'] === 'workspace';
+    });
+
+    (new PostHogService)->groupIdentify('workspace', 'ws-123', ['name' => 'Test']);
+});
+
+test('capture does not log outside the local environment', function () {
+    app()->detectEnvironment(fn () => 'testing');
+    config(['services.posthog.api_key' => null]);
+
+    Log::shouldReceive('info')->never();
+
+    (new PostHogService)->capture('user-123', 'test_event');
 });
 
 test('isEnabled requires both enabled and api key', function () {
