@@ -8,6 +8,7 @@ use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
+use App\Jobs\Gtm\SendServerEvent;
 use App\Jobs\PostHog\SendEvent;
 use App\Models\Account;
 use App\Models\Plan;
@@ -226,6 +227,61 @@ test('referral source store saves the source and starts Stripe checkout without 
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
         && data_get($event->payload, 'event') === WelcomeEvent::Referral->value
         && data_get($event->payload, 'properties.referral_source') === ReferralSource::ProductHunt->value);
+});
+
+test('referral source store fires a begin_checkout GTM event when the backend container is enabled', function () {
+    config(['services.gtm.backend.enabled' => true, 'services.gtm.backend.endpoint' => 'https://sgtm.test/collect']);
+    Bus::fake();
+    $this->user->update([
+        'persona' => Persona::Agency->value,
+        'goals' => [Goal::SaveTime->value],
+    ]);
+
+    $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
+    $plan->update(['stripe_monthly_price_id' => 'price_monthly_test']);
+
+    $this->mock(StartSubscriptionCheckout::class)
+        ->shouldReceive('redirect')
+        ->once()
+        ->andReturn(redirect('https://checkout.stripe.test/session'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.referral-source.store'), [
+            'referral_source' => ReferralSource::ProductHunt->value,
+        ]);
+
+    Bus::assertDispatched(
+        SendServerEvent::class,
+        fn (SendServerEvent $job) => $job->event === 'begin_checkout'
+            && $job->distinctId === (string) $this->user->id
+            && $job->properties['plan_name'] === $plan->name
+            && $job->properties['plan_interval'] === 'monthly',
+    );
+});
+
+test('referral source store does not fire a GTM event when the backend container is disabled', function () {
+    config(['services.gtm.backend.enabled' => false]);
+    Bus::fake();
+    $this->user->update([
+        'persona' => Persona::Agency->value,
+        'goals' => [Goal::SaveTime->value],
+    ]);
+
+    Plan::where('slug', Slug::Workspace)->firstOrFail()->update([
+        'stripe_monthly_price_id' => 'price_monthly_test',
+    ]);
+
+    $this->mock(StartSubscriptionCheckout::class)
+        ->shouldReceive('redirect')
+        ->once()
+        ->andReturn(redirect('https://checkout.stripe.test/session'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.referral-source.store'), [
+            'referral_source' => ReferralSource::ProductHunt->value,
+        ]);
+
+    Bus::assertNotDispatched(SendServerEvent::class);
 });
 
 test('welcome steps redirect to calendar for subscribed accounts', function (string $routeName, string $method, array $payload = []) {

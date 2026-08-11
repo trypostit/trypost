@@ -15,6 +15,7 @@ use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeReferralSourceRequest;
 use App\Models\Plan;
 use App\Models\User;
+use App\Services\GtmServerService;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -121,6 +122,7 @@ class WelcomeController extends Controller
         StoreWelcomeReferralSourceRequest $request,
         StartSubscriptionCheckout $checkout,
         PostHogService $postHog,
+        GtmServerService $gtm,
     ): Response|RedirectResponse {
         if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true)) {
             return $redirect;
@@ -143,6 +145,15 @@ class WelcomeController extends Controller
             ['referral_source' => $referralSource],
             $user->account,
         );
+
+        if (GtmServerService::isEnabled()) {
+            $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
+
+            $gtm->capture('begin_checkout', [
+                'plan_name' => $plan->name,
+                'plan_interval' => 'monthly',
+            ], (string) $user->id);
+        }
 
         return $this->startCheckout($request, $checkout);
     }

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Listeners;
 
 use App\Enums\PostHog\BillingEvent;
+use App\Jobs\Gtm\TrackPurchase;
 use App\Jobs\PostHog\TrackBilling;
 use App\Models\Account;
 use App\Models\Plan;
+use App\Services\GtmServerService;
 use App\Services\PostHogService;
 use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Events\WebhookReceived;
@@ -59,6 +61,7 @@ class StripeEventListener
         }
 
         $this->trackPlanChange($account, BillingEvent::Created, $previousPlan, $payload);
+        $this->trackPurchase($account, $payload);
     }
 
     /**
@@ -132,5 +135,17 @@ class StripeEventListener
         }
 
         TrackBilling::dispatch((string) $account->id, $event, $payload, $previousPlan);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function trackPurchase(Account $account, array $payload): void
+    {
+        if (! GtmServerService::isEnabled()) {
+            return;
+        }
+
+        TrackPurchase::dispatch((string) $account->id, $payload);
     }
 }

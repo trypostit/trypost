@@ -118,7 +118,12 @@ return [
     ],
 
     'gtm' => [
-        'id' => env('GTM_ID'),
+        'frontend_id' => env('GTM_FRONTEND_ID'),
+        'backend' => [
+            'enabled' => (bool) env('GTM_BACKEND_ENABLED', false),
+            'endpoint' => env('GTM_BACKEND_ENDPOINT'),
+            'api_secret' => env('GTM_BACKEND_API_SECRET'),
+        ],
     ],
 
     'posthog' => [

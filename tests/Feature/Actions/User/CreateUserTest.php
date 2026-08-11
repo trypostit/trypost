@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\User\CreateUser;
+use App\Jobs\Gtm\SendServerEvent;
 use App\Jobs\PostHog\SyncUser;
 use App\Models\Account;
 use App\Models\Workspace;
@@ -76,4 +77,66 @@ test('CreateUser does not dispatch SyncUser when PostHog is disabled', function 
     ]);
 
     Bus::assertNotDispatched(SyncUser::class);
+});
+
+test('CreateUser dispatches a sign_up GTM event with the auth provider when the backend container is enabled', function () {
+    config(['services.gtm.backend.enabled' => true, 'services.gtm.backend.endpoint' => 'https://sgtm.test/collect']);
+    Bus::fake([SendServerEvent::class]);
+
+    $user = CreateUser::execute([
+        'name' => 'Jane Doe',
+        'email' => 'jane.gtm@example.com',
+        'password' => 'secret123',
+        'google_id' => 'google-123',
+    ]);
+
+    Bus::assertDispatched(
+        SendServerEvent::class,
+        fn (SendServerEvent $job) => $job->event === 'sign_up'
+            && $job->distinctId === (string) $user->id
+            && $job->properties['auth_provider'] === 'google',
+    );
+});
+
+test('CreateUser defaults the GTM auth provider to email when no OAuth id is present', function () {
+    config(['services.gtm.backend.enabled' => true, 'services.gtm.backend.endpoint' => 'https://sgtm.test/collect']);
+    Bus::fake([SendServerEvent::class]);
+
+    CreateUser::execute([
+        'name' => 'Jane Doe',
+        'email' => 'jane.gtm.email@example.com',
+        'password' => 'secret123',
+    ]);
+
+    Bus::assertDispatched(
+        SendServerEvent::class,
+        fn (SendServerEvent $job) => $job->properties['auth_provider'] === 'email',
+    );
+});
+
+test('CreateUser does not dispatch a GTM event for invite registrations', function () {
+    config(['services.gtm.backend.enabled' => true, 'services.gtm.backend.endpoint' => 'https://sgtm.test/collect']);
+    Bus::fake([SendServerEvent::class]);
+
+    CreateUser::execute([
+        'name' => 'Invited',
+        'email' => 'invited.gtm@example.com',
+        'password' => 'secret123',
+        'is_invite' => true,
+    ]);
+
+    Bus::assertNotDispatched(SendServerEvent::class);
+});
+
+test('CreateUser does not dispatch a GTM event when the backend container is disabled', function () {
+    config(['services.gtm.backend.enabled' => false]);
+    Bus::fake([SendServerEvent::class]);
+
+    CreateUser::execute([
+        'name' => 'Jane Doe',
+        'email' => 'jane.gtm.disabled@example.com',
+        'password' => 'secret123',
+    ]);
+
+    Bus::assertNotDispatched(SendServerEvent::class);
 });

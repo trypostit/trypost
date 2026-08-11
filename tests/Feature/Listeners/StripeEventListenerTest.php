@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
 use App\Enums\PostHog\BillingEvent;
+use App\Jobs\Gtm\TrackPurchase;
 use App\Jobs\PostHog\TrackBilling;
 use App\Listeners\StripeEventListener;
 use App\Models\Account;
@@ -386,4 +387,58 @@ test('subscription created forwards a null previous plan when account had none',
         TrackBilling::class,
         fn ($job) => $job->event === BillingEvent::Created && $job->previousPlan === null,
     );
+});
+
+// ========================================
+// GTM server-side purchase tracking
+// ========================================
+
+test('subscription created dispatches TrackPurchase when the GTM backend container is enabled', function () {
+    config(['services.gtm.backend.enabled' => true, 'services.gtm.backend.endpoint' => 'https://sgtm.test/collect']);
+    Bus::fake([TrackPurchase::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertDispatched(
+        TrackPurchase::class,
+        fn ($job) => $job->accountId === (string) $this->account->id,
+    );
+});
+
+test('subscription updated and deleted do not dispatch TrackPurchase', function (string $type) {
+    config(['services.gtm.backend.enabled' => true, 'services.gtm.backend.endpoint' => 'https://sgtm.test/collect']);
+    Bus::fake([TrackPurchase::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => $type,
+        'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_123']],
+    ]));
+
+    Bus::assertNotDispatched(TrackPurchase::class);
+})->with([
+    'updated' => 'customer.subscription.updated',
+    'deleted' => 'customer.subscription.deleted',
+]);
+
+test('TrackPurchase is not dispatched when the GTM backend container is disabled', function () {
+    config(['services.gtm.backend.enabled' => false]);
+    Bus::fake([TrackPurchase::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertNotDispatched(TrackPurchase::class);
 });

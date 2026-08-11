@@ -7,7 +7,7 @@ import type { Auth } from './types';
  * incur zero error noise.
  *
  * Billing is account-scoped (not workspace-scoped) in trypost, so the
- * plan field is emitted under `account_plan`.
+ * plan/subscription fields are emitted under `account_*` keys.
  */
 export const initializeDataLayer = (
     auth: Auth | undefined,
@@ -28,18 +28,27 @@ export const initializeDataLayer = (
 
     window.dataLayer.push({
         user_id: auth.user.id,
+        user_email: auth.user.email,
+        user_name: auth.user.name,
+        user_created_at: auth.user.created_at,
     });
 
     if (auth.account) {
         window.dataLayer.push({
             account_id: auth.account.id,
+            account_name: auth.account.name,
+            account_created_at: auth.account.created_at,
             account_plan: auth.plan?.name ?? null,
+            account_plan_slug: auth.plan?.slug ?? null,
+            account_subscribed: Boolean(auth.hasActiveSubscription),
         });
     }
 
     if (auth.currentWorkspace) {
         window.dataLayer.push({
             workspace_id: auth.currentWorkspace.id,
+            workspace_name: auth.currentWorkspace.name,
+            workspace_count: auth.workspaces?.length ?? 0,
         });
     }
 };

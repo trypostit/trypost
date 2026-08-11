@@ -10,6 +10,7 @@ use App\Jobs\PostHog\SyncUser;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
+use App\Services\GtmServerService;
 use App\Services\PostHogService;
 use Illuminate\Support\Facades\DB;
 
@@ -21,8 +22,9 @@ class CreateUser
      */
     public static function execute(array $data, array $utmParameters = []): User
     {
-        $user = DB::transaction(function () use ($data, $utmParameters): User {
-            $isInviteRegistration = data_get($data, 'is_invite', false);
+        $isInviteRegistration = (bool) data_get($data, 'is_invite', false);
+
+        $user = DB::transaction(function () use ($data, $utmParameters, $isInviteRegistration): User {
             $requiresCardForTrial = (bool) config('trypost.billing.require_card_for_trial', true);
             $accountAttributes = [
                 'name' => data_get($data, 'name')."'s Account",
@@ -58,6 +60,16 @@ class CreateUser
 
         if (PostHogService::isEnabled()) {
             SyncUser::dispatch((string) $user->id);
+        }
+
+        if (! $isInviteRegistration && GtmServerService::isEnabled()) {
+            $authProvider = match (true) {
+                (bool) data_get($data, 'google_id') => 'google',
+                (bool) data_get($data, 'github_id') => 'github',
+                default => 'email',
+            };
+
+            (new GtmServerService)->capture('sign_up', ['auth_provider' => $authProvider], (string) $user->id);
         }
 
         return $user;
