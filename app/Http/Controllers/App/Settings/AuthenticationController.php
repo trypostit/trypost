@@ -77,23 +77,24 @@ class AuthenticationController extends Controller
 
     public function disconnectProvider(Request $request, string $provider): RedirectResponse
     {
-        abort_unless(SocialAuthProvider::tryFrom($provider) !== null, 404);
+        $socialProvider = SocialAuthProvider::tryFrom($provider);
+
+        abort_unless($socialProvider !== null, 404);
 
         $user = $request->user();
-        $column = "{$provider}_id";
 
-        if (! $user->{$column}) {
+        if (! $user->isConnectedTo($socialProvider)) {
             return back();
         }
 
-        if (! $this->canDisconnect($user, $provider)) {
+        if (! $this->canDisconnect($user, $socialProvider)) {
             return back()->with('flash.error', __('settings.authentication.providers.flash_cannot_disconnect'));
         }
 
-        $user->update([$column => null]);
+        $user->update(["{$socialProvider->value}_id" => null]);
 
         return back()->with('flash.success', __('settings.authentication.providers.flash_disconnected', [
-            'provider' => ucfirst($provider),
+            'provider' => $socialProvider->label(),
         ]));
     }
 
@@ -128,29 +129,19 @@ class AuthenticationController extends Controller
         return collect(SocialAuthProvider::cases())->map(fn (SocialAuthProvider $provider) => [
             'provider' => $provider->value,
             'label' => $provider->label(),
-            'connected' => (bool) $user->{"{$provider->value}_id"},
-            'can_disconnect' => $user->{"{$provider->value}_id"} && $this->canDisconnect($user, $provider->value),
+            'connected' => $user->isConnectedTo($provider),
+            'can_disconnect' => $user->isConnectedTo($provider) && $this->canDisconnect($user, $provider),
         ])->values()->all();
     }
 
-    private function canDisconnect(User $user, string $provider): bool
+    private function canDisconnect(User $user, SocialAuthProvider $provider): bool
     {
-        $remainingMethods = 0;
-
         if ($user->password) {
-            $remainingMethods++;
+            return true;
         }
 
-        foreach (SocialAuthProvider::cases() as $other) {
-            if ($other->value === $provider) {
-                continue;
-            }
-
-            if ($user->{"{$other->value}_id"}) {
-                $remainingMethods++;
-            }
-        }
-
-        return $remainingMethods > 0;
+        return collect(SocialAuthProvider::cases())
+            ->filter(fn (SocialAuthProvider $other) => $other !== $provider)
+            ->contains(fn (SocialAuthProvider $other) => $user->isConnectedTo($other));
     }
 }
