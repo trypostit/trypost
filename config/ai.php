@@ -56,6 +56,9 @@ return [
             'driver' => 'anthropic',
             'key' => env('ANTHROPIC_API_KEY'),
             'url' => env('ANTHROPIC_URL', 'https://api.anthropic.com/v1'),
+            'models' => [
+                'text' => ['default' => env('ANTHROPIC_TEXT_MODEL')],
+            ],
         ],
 
         'azure' => [
@@ -83,48 +86,87 @@ return [
                 'duration_seconds' => env('AWS_BEDROCK_ASSUME_ROLE_DURATION_SECONDS'),
                 'external_id' => env('AWS_BEDROCK_ASSUME_ROLE_EXTERNAL_ID'),
             ],
+            'models' => [
+                'text' => ['default' => env('AWS_BEDROCK_TEXT_MODEL')],
+                'image' => ['default' => env('AWS_BEDROCK_IMAGE_MODEL')],
+                'embeddings' => ['default' => env('AWS_BEDROCK_EMBEDDINGS_MODEL')],
+            ],
         ],
 
         'cohere' => [
             'driver' => 'cohere',
             'key' => env('COHERE_API_KEY'),
+            'models' => [
+                'embeddings' => ['default' => env('COHERE_EMBEDDINGS_MODEL')],
+                'reranking' => ['default' => env('COHERE_RERANKING_MODEL')],
+            ],
         ],
 
         'deepseek' => [
             'driver' => 'deepseek',
             'key' => env('DEEPSEEK_API_KEY'),
+            'models' => [
+                'text' => ['default' => env('DEEPSEEK_TEXT_MODEL')],
+            ],
         ],
 
         'eleven' => [
             'driver' => 'eleven',
             'key' => env('ELEVENLABS_API_KEY'),
+            'models' => [
+                'audio' => ['default' => env('ELEVENLABS_AUDIO_MODEL')],
+                'transcription' => ['default' => env('ELEVENLABS_TRANSCRIPTION_MODEL')],
+            ],
         ],
 
         'gemini' => [
             'driver' => 'gemini',
             'key' => env('GEMINI_API_KEY'),
             'url' => env('GEMINI_URL', 'https://generativelanguage.googleapis.com/v1beta/'),
+            'models' => [
+                'text' => ['default' => env('GEMINI_TEXT_MODEL')],
+                'image' => ['default' => env('GEMINI_IMAGE_MODEL')],
+                'audio' => ['default' => env('GEMINI_AUDIO_MODEL')],
+                'transcription' => ['default' => env('GEMINI_TRANSCRIPTION_MODEL')],
+                'embeddings' => ['default' => env('GEMINI_EMBEDDINGS_MODEL')],
+            ],
         ],
 
         'groq' => [
             'driver' => 'groq',
             'key' => env('GROQ_API_KEY'),
+            'models' => [
+                'text' => ['default' => env('GROQ_TEXT_MODEL')],
+            ],
         ],
 
         'jina' => [
             'driver' => 'jina',
             'key' => env('JINA_API_KEY'),
+            'models' => [
+                'embeddings' => ['default' => env('JINA_EMBEDDINGS_MODEL')],
+                'reranking' => ['default' => env('JINA_RERANKING_MODEL')],
+            ],
         ],
 
         'mistral' => [
             'driver' => 'mistral',
             'key' => env('MISTRAL_API_KEY'),
+            'models' => [
+                'text' => ['default' => env('MISTRAL_TEXT_MODEL')],
+                'transcription' => ['default' => env('MISTRAL_TRANSCRIPTION_MODEL')],
+                'embeddings' => ['default' => env('MISTRAL_EMBEDDINGS_MODEL')],
+            ],
         ],
 
         'ollama' => [
             'driver' => 'ollama',
             'key' => env('OLLAMA_API_KEY', ''),
             'url' => env('OLLAMA_URL', 'http://localhost:11434'),
+            'models' => [
+                'text' => ['default' => env('OLLAMA_TEXT_MODEL')],
+                'embeddings' => ['default' => env('OLLAMA_EMBEDDINGS_MODEL')],
+            ],
         ],
 
         'openai' => [
@@ -132,27 +174,53 @@ return [
             'key' => env('OPENAI_API_KEY'),
             'url' => env('OPENAI_URL', 'https://api.openai.com/v1'),
             'store' => env('OPENAI_STORE', true),
+            'models' => [
+                'text' => ['default' => env('OPENAI_TEXT_MODEL')],
+                'image' => ['default' => env('OPENAI_IMAGE_MODEL')],
+                'audio' => ['default' => env('OPENAI_AUDIO_MODEL')],
+                'transcription' => ['default' => env('OPENAI_TRANSCRIPTION_MODEL')],
+                'embeddings' => ['default' => env('OPENAI_EMBEDDINGS_MODEL')],
+            ],
         ],
 
         'openai-compatible' => [
             'driver' => 'openai-compatible',
             'url' => env('OPENAI_COMPATIBLE_URL'),
             'key' => env('OPENAI_COMPATIBLE_API_KEY'),
+            'models' => [
+                'text' => ['default' => env('OPENAI_COMPATIBLE_TEXT_MODEL')],
+                'embeddings' => ['default' => env('OPENAI_COMPATIBLE_EMBEDDINGS_MODEL')],
+            ],
         ],
 
         'openrouter' => [
             'driver' => 'openrouter',
             'key' => env('OPENROUTER_API_KEY'),
+            'models' => [
+                'text' => ['default' => env('OPENROUTER_TEXT_MODEL')],
+                'image' => ['default' => env('OPENROUTER_IMAGE_MODEL')],
+                'audio' => ['default' => env('OPENROUTER_AUDIO_MODEL')],
+                'transcription' => ['default' => env('OPENROUTER_TRANSCRIPTION_MODEL')],
+                'embeddings' => ['default' => env('OPENROUTER_EMBEDDINGS_MODEL')],
+            ],
         ],
 
         'voyageai' => [
             'driver' => 'voyageai',
             'key' => env('VOYAGEAI_API_KEY'),
+            'models' => [
+                'embeddings' => ['default' => env('VOYAGEAI_EMBEDDINGS_MODEL')],
+                'reranking' => ['default' => env('VOYAGEAI_RERANKING_MODEL')],
+            ],
         ],
 
         'xai' => [
             'driver' => 'xai',
             'key' => env('XAI_API_KEY'),
+            'models' => [
+                'text' => ['default' => env('XAI_TEXT_MODEL')],
+                'image' => ['default' => env('XAI_IMAGE_MODEL')],
+            ],
         ],
     ],
 ];
