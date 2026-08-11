@@ -7,7 +7,6 @@ import { accounts, onboarding } from '@/routes/app';
 
 const props = defineProps<{
     subscriptionActive: boolean;
-    fromCheckout: boolean;
     redirectToOnboarding: boolean;
 }>();
 

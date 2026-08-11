@@ -21,10 +21,12 @@ final class StripeSubscriptionConversion
     public static function baseProperties(Account $account, array $payload): array
     {
         $priceId = data_get($payload, 'data.object.items.data.0.price.id');
+        $yearlyPriceId = $account->plan->stripe_yearly_price_id;
+        $isYearly = $yearlyPriceId !== null && $priceId === $yearlyPriceId;
 
         return [
             'plan_name' => $account->plan->name,
-            'interval' => $priceId === $account->plan->stripe_yearly_price_id ? 'yearly' : 'monthly',
+            'interval' => $isYearly ? 'yearly' : 'monthly',
         ];
     }
 

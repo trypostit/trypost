@@ -35,6 +35,19 @@ test('baseProperties includes plan name and interval but no persona or conversio
     ]);
 });
 
+test('baseProperties defaults to monthly, not yearly, when neither the payload price id nor the plan yearly price id is set', function () {
+    $this->plan->update(['stripe_yearly_price_id' => null]);
+    $payload = [
+        'data' => ['object' => [
+            'items' => ['data' => [['price' => []]]],
+        ]],
+    ];
+
+    $properties = StripeSubscriptionConversion::baseProperties($this->account->fresh(['plan']), $payload);
+
+    expect($properties['interval'])->toBe('monthly');
+});
+
 test('propertiesFor includes plan name, interval and conversion data', function () {
     $payload = [
         'data' => ['object' => [

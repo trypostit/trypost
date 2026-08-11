@@ -14,11 +14,7 @@ trait PreservesInvite
 {
     private function storeInvite(Request $request): void
     {
-        $inviteId = $request->string('invite');
-
-        if ($inviteId->isNotEmpty()) {
-            $request->session()->put('oauth_invite_id', $inviteId->toString());
-        }
+        $request->session()->put('oauth_invite_id', $request->string('invite')->toString());
     }
 
     private function retrieveInvite(): ?string

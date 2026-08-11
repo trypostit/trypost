@@ -40,7 +40,7 @@ abstract class AbstractTrackStripeSubscriptionEvent implements ShouldQueue
             return;
         }
 
-        $account = Account::with(['plan', 'owner'])->find($this->accountId);
+        $account = Account::with('plan')->find($this->accountId);
 
         if (! $account?->owner_id || ! $account->plan) {
             return;

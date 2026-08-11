@@ -268,6 +268,124 @@ test('github login with a pending invite sends an existing user there instead of
     $this->assertAuthenticatedAs($existingUser);
 });
 
+test('google registration rejects an invite issued to a different email and creates no account', function () {
+    $inviterAccount = Account::factory()->create();
+    $inviter = User::factory()->create(['account_id' => $inviterAccount->id]);
+    $inviterAccount->update(['owner_id' => $inviter->id]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $inviterAccount->id,
+        'user_id' => $inviter->id,
+    ]);
+    $invite = Invite::factory()->create([
+        'account_id' => $inviterAccount->id,
+        'invited_by' => $inviter->id,
+        'email' => 'intended-recipient@example.com',
+        'workspaces' => [$workspace->id],
+    ]);
+
+    $this->get(route('auth.google.redirect', ['invite' => $invite->id]));
+
+    $socialiteUser = new SocialiteUser;
+    $socialiteUser->map([
+        'id' => 'g-wrong-email',
+        'name' => 'Someone Else',
+        'email' => 'someone-else@example.com',
+    ]);
+
+    Socialite::shouldReceive('driver')
+        ->with('google-auth')
+        ->andReturn($driver = Mockery::mock());
+    $driver->shouldReceive('user')->andReturn($socialiteUser);
+
+    $response = $this->get(route('auth.google.callback'));
+
+    $response->assertRedirect(route('login'));
+    $response->assertSessionHasErrors('email');
+    expect(User::where('email', 'someone-else@example.com')->exists())->toBeFalse();
+    $this->assertGuest();
+});
+
+test('github registration rejects an invite issued to a different email and creates no account', function () {
+    $inviterAccount = Account::factory()->create();
+    $inviter = User::factory()->create(['account_id' => $inviterAccount->id]);
+    $inviterAccount->update(['owner_id' => $inviter->id]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $inviterAccount->id,
+        'user_id' => $inviter->id,
+    ]);
+    $invite = Invite::factory()->create([
+        'account_id' => $inviterAccount->id,
+        'invited_by' => $inviter->id,
+        'email' => 'gh-intended-recipient@example.com',
+        'workspaces' => [$workspace->id],
+    ]);
+
+    $this->get(route('auth.github.redirect', ['invite' => $invite->id]));
+
+    $socialiteUser = new SocialiteUser;
+    $socialiteUser->map([
+        'id' => 'gh-wrong-email',
+        'name' => 'Someone Else',
+        'email' => 'gh-someone-else@example.com',
+    ]);
+
+    Socialite::shouldReceive('driver')
+        ->with('github')
+        ->andReturn($driver = Mockery::mock());
+    $driver->shouldReceive('user')->andReturn($socialiteUser);
+
+    $response = $this->get(route('auth.github.callback'));
+
+    $response->assertRedirect(route('login'));
+    $response->assertSessionHasErrors('email');
+    expect(User::where('email', 'gh-someone-else@example.com')->exists())->toBeFalse();
+    $this->assertGuest();
+});
+
+test('a stale invite id from an aborted oauth attempt does not leak into a later invite-less signup', function () {
+    $inviterAccount = Account::factory()->create();
+    $inviter = User::factory()->create(['account_id' => $inviterAccount->id]);
+    $inviterAccount->update(['owner_id' => $inviter->id]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $inviterAccount->id,
+        'user_id' => $inviter->id,
+    ]);
+    $invite = Invite::factory()->create([
+        'account_id' => $inviterAccount->id,
+        'invited_by' => $inviter->id,
+        'email' => 'stale-invite-target@example.com',
+        'workspaces' => [$workspace->id],
+    ]);
+
+    // First attempt starts with an invite param, but the round-trip is
+    // abandoned before the callback ever runs — the invite id is already in
+    // session at this point.
+    $this->get(route('auth.google.redirect', ['invite' => $invite->id]));
+
+    // A later, unrelated "Sign in with Google" attempt carries no invite param.
+    $this->get(route('auth.google.redirect'));
+
+    $socialiteUser = new SocialiteUser;
+    $socialiteUser->map([
+        'id' => 'g-unrelated',
+        'name' => 'Unrelated Signup',
+        'email' => 'unrelated@example.com',
+    ]);
+
+    Socialite::shouldReceive('driver')
+        ->with('google-auth')
+        ->andReturn($driver = Mockery::mock());
+    $driver->shouldReceive('user')->andReturn($socialiteUser);
+
+    $response = $this->get(route('auth.google.callback'));
+
+    $response->assertRedirect(route('app.welcome'));
+
+    $user = User::where('email', 'unrelated@example.com')->first();
+    expect($user)->not->toBeNull();
+    expect($user->workspaces()->count())->toBe(1);
+});
+
 // ========================================
 // Self-hosted registration gate
 // ========================================

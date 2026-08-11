@@ -110,8 +110,15 @@ class GitHubController extends Controller
             throw new NotFoundHttpException;
         }
 
-        $attributionParameters = $this->retrieveAttributionParameters();
         $invite = Invite::fromId($inviteId);
+
+        if ($invite && $invite->email !== $githubUser->getEmail()) {
+            return redirect()->route('login')->withErrors([
+                'email' => __('settings.members.flash.wrong_email'),
+            ]);
+        }
+
+        $attributionParameters = $this->retrieveAttributionParameters();
 
         $user = CreateUser::execute([
             'name' => $githubUser->getName() ?? $githubUser->getNickname() ?? explode('@', $githubUser->getEmail())[0],
