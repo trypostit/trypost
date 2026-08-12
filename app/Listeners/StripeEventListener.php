@@ -132,7 +132,7 @@ class StripeEventListener
      */
     private function trackPlanChange(Account $account, BillingEvent $event, ?string $previousPlan, array $payload): void
     {
-        if (! PostHogService::isEnabled()) {
+        if (! PostHogService::shouldTrack()) {
             return;
         }
 
@@ -149,7 +149,7 @@ class StripeEventListener
      */
     private function trackSubscriptionStart(Account $account, array $payload): void
     {
-        if (! PostHogService::isEnabled()) {
+        if (! PostHogService::shouldTrack()) {
             return;
         }
 
@@ -171,7 +171,7 @@ class StripeEventListener
      */
     private function trackTrialConversion(Account $account, array $payload): void
     {
-        if (! PostHogService::isEnabled()) {
+        if (! PostHogService::shouldTrack()) {
             return;
         }
 

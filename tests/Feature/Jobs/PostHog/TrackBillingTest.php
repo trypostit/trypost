@@ -12,6 +12,7 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Services\PostHogService;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
@@ -120,4 +121,34 @@ test('handle does not push a PostHog network call when api key is unset', functi
     // The contract of this job is: when PostHog is disabled, handle short-
     // circuits before any DB query and no SendEvent reaches the queue.
     Queue::assertNotPushed(SendEvent::class);
+});
+
+test('handle does not push a PostHog network call when disabled in production', function () {
+    app()->detectEnvironment(fn () => 'production');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Queue::fake();
+    Bus::fake([SyncUser::class]);
+
+    (new TrackBilling((string) $this->account->id, BillingEvent::Created, $this->payload))
+        ->handle(app(PostHogService::class));
+
+    Queue::assertNotPushed(SendEvent::class);
+    Bus::assertNotDispatched(SyncUser::class);
+});
+
+test('handle logs locally but still does not push a PostHog network call in the local environment when disabled', function () {
+    app()->detectEnvironment(fn () => 'local');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Queue::fake();
+    Bus::fake([SyncUser::class]);
+
+    Log::shouldReceive('info')->once()->withArgs(
+        fn ($message) => $message === 'PostHogService: capture',
+    );
+
+    (new TrackBilling((string) $this->account->id, BillingEvent::Created, $this->payload))
+        ->handle(app(PostHogService::class));
+
+    Queue::assertNotPushed(SendEvent::class);
+    Bus::assertDispatched(SyncUser::class);
 });

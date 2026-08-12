@@ -221,3 +221,51 @@ test('isEnabled requires both enabled and api key', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_x']);
     expect(PostHogService::isEnabled())->toBeTrue();
 });
+
+// ========================================
+// shouldTrack: the gate used by call sites that pre-check before ever
+// reaching capture()/identify() (CreateUser, StripeEventListener, and the
+// individual PostHog job handle() methods). Must never let a disabled,
+// non-local (i.e. production) install actually track — that's the exact
+// self-hosted/production contract isEnabled() already guarantees. It only
+// adds an escape hatch for the local environment, so local dev can see what
+// would be sent without a real API key.
+// ========================================
+
+test('shouldTrack is false when disabled outside the local environment (production contract)', function () {
+    app()->detectEnvironment(fn () => 'production');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+
+    expect(PostHogService::shouldTrack())->toBeFalse();
+});
+
+test('shouldTrack is false when disabled with an inherited api key outside the local environment', function () {
+    app()->detectEnvironment(fn () => 'production');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => 'phc_inherited_key']);
+
+    expect(PostHogService::shouldTrack())->toBeFalse();
+});
+
+test('shouldTrack is false when disabled in the testing environment (the default test env)', function () {
+    app()->detectEnvironment(fn () => 'testing');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+
+    expect(PostHogService::shouldTrack())->toBeFalse();
+});
+
+test('shouldTrack is true when enabled, regardless of environment', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_x']);
+
+    app()->detectEnvironment(fn () => 'production');
+    expect(PostHogService::shouldTrack())->toBeTrue();
+
+    app()->detectEnvironment(fn () => 'local');
+    expect(PostHogService::shouldTrack())->toBeTrue();
+});
+
+test('shouldTrack is true in the local environment even when disabled', function () {
+    app()->detectEnvironment(fn () => 'local');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+
+    expect(PostHogService::shouldTrack())->toBeTrue();
+});

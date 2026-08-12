@@ -28,7 +28,7 @@ class SyncUser implements ShouldQueue
 
     public function handle(PostHogService $postHog): void
     {
-        if (! PostHogService::isEnabled()) {
+        if (! PostHogService::shouldTrack()) {
             return;
         }
 

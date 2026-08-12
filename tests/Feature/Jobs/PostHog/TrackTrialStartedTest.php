@@ -10,6 +10,7 @@ use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\PostHogService;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
@@ -141,5 +142,34 @@ test('handle does not push a PostHog network call when api key is unset', functi
     (new TrackTrialStarted((string) $this->account->id, $this->payload))
         ->handle(app(PostHogService::class));
 
+    Queue::assertNotPushed(SendEvent::class);
+});
+
+test('handle does not push a PostHog network call when disabled in production', function () {
+    app()->detectEnvironment(fn () => 'production');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Queue::fake();
+    Log::shouldReceive('info')->never();
+
+    (new TrackTrialStarted((string) $this->account->id, $this->payload))
+        ->handle(app(PostHogService::class));
+
+    Queue::assertNotPushed(SendEvent::class);
+});
+
+test('handle logs locally but still does not push a PostHog network call in the local environment when disabled', function () {
+    app()->detectEnvironment(fn () => 'local');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Queue::fake();
+
+    Log::shouldReceive('info')->once()->withArgs(
+        fn ($message) => $message === 'PostHogService: capture',
+    );
+
+    (new TrackTrialStarted((string) $this->account->id, $this->payload))
+        ->handle(app(PostHogService::class));
+
+    // shouldTrack() lets handle() run (and capture() logs locally, asserted
+    // above), but the real PostHog dispatch stays gated on isEnabled() alone.
     Queue::assertNotPushed(SendEvent::class);
 });

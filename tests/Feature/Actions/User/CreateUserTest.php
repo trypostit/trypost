@@ -80,6 +80,34 @@ test('CreateUser does not dispatch SyncUser when PostHog is disabled', function 
     Bus::assertNotDispatched(SyncUser::class);
 });
 
+test('CreateUser does not dispatch SyncUser when PostHog is disabled in production', function () {
+    app()->detectEnvironment(fn () => 'production');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Bus::fake([SyncUser::class]);
+
+    CreateUser::execute([
+        'name' => 'Jane Doe',
+        'email' => 'jane.posthog.disabled.production@example.com',
+        'password' => 'secret123',
+    ]);
+
+    Bus::assertNotDispatched(SyncUser::class);
+});
+
+test('CreateUser dispatches SyncUser in the local environment even when PostHog is disabled', function () {
+    app()->detectEnvironment(fn () => 'local');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Bus::fake([SyncUser::class]);
+
+    $user = CreateUser::execute([
+        'name' => 'Jane Doe',
+        'email' => 'jane.posthog.local@example.com',
+        'password' => 'secret123',
+    ]);
+
+    Bus::assertDispatched(SyncUser::class, fn (SyncUser $job) => $job->userId === (string) $user->id);
+});
+
 test('CreateUser captures user.signed_up with the auth provider when PostHog is enabled', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
     Bus::fake([SendEvent::class]);
@@ -145,4 +173,19 @@ test('CreateUser does not capture user.signed_up when PostHog is disabled', func
     ]);
 
     Bus::assertNotDispatched(SendEvent::class);
+});
+
+test('CreateUser does not capture user.signed_up when PostHog is disabled in production', function () {
+    app()->detectEnvironment(fn () => 'production');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Bus::fake([SendEvent::class, SyncUser::class]);
+
+    CreateUser::execute([
+        'name' => 'Jane Doe',
+        'email' => 'jane.signup.disabled.production@example.com',
+        'password' => 'secret123',
+    ]);
+
+    Bus::assertNotDispatched(SendEvent::class);
+    Bus::assertNotDispatched(SyncUser::class);
 });

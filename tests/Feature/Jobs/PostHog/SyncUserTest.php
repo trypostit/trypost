@@ -32,6 +32,29 @@ test('handle is a no-op when api key is unset', function () {
     Queue::assertNothingPushed();
 });
 
+test('handle is a no-op when PostHog is disabled in production', function () {
+    app()->detectEnvironment(fn () => 'production');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Queue::fake();
+
+    (new SyncUser((string) $this->user->id))->handle(app(PostHogService::class));
+
+    Queue::assertNothingPushed();
+});
+
+test('handle still identifies the user in the local environment even when PostHog is disabled', function () {
+    app()->detectEnvironment(fn () => 'local');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Queue::fake();
+
+    (new SyncUser((string) $this->user->id))->handle(app(PostHogService::class));
+
+    // The identify() call still runs (and logs locally), but since PostHog
+    // remains disabled, it must not queue an actual SendEvent to it.
+    Queue::assertPushed(SyncAccountUsage::class);
+    Queue::assertNotPushed(SendEvent::class);
+});
+
 test('handle returns silently when user does not exist', function () {
     Queue::fake();
 

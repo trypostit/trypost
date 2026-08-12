@@ -18,6 +18,17 @@ class PostHogService
     }
 
     /**
+     * Gate for call sites that pre-check before ever reaching capture()/
+     * identify() — e.g. to skip dispatching a job at all when disabled.
+     * Also true in the local environment so that path still logs locally
+     * (via capture()'s own logLocally()) even without a real API key.
+     */
+    public static function shouldTrack(): bool
+    {
+        return self::isEnabled() || app()->environment('local');
+    }
+
+    /**
      * @param  array<string, mixed>  $properties
      */
     public function capture(string $distinctId, string $event, array $properties = [], ?Account $account = null): void

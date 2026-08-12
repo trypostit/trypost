@@ -58,7 +58,7 @@ class CreateUser
             return $user;
         });
 
-        if (PostHogService::isEnabled()) {
+        if (PostHogService::shouldTrack()) {
             SyncUser::dispatch((string) $user->id);
 
             if (! $isInviteRegistration) {

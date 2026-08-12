@@ -219,6 +219,32 @@ test('TrackBilling is not dispatched when PostHog is disabled', function () {
     Bus::assertNotDispatched(TrackBilling::class);
 });
 
+test('TrackBilling is not dispatched when PostHog is disabled in production', function () {
+    app()->detectEnvironment(fn () => 'production');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Bus::fake([TrackBilling::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_123']],
+    ]));
+
+    Bus::assertNotDispatched(TrackBilling::class);
+});
+
+test('TrackBilling is dispatched in the local environment even when PostHog is disabled', function () {
+    app()->detectEnvironment(fn () => 'local');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Bus::fake([TrackBilling::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_123']],
+    ]));
+
+    Bus::assertDispatched(TrackBilling::class);
+});
+
 test('TrackBilling is not dispatched when api key is missing', function () {
     config(['services.posthog.api_key' => null]);
     Bus::fake([TrackBilling::class]);
@@ -485,6 +511,43 @@ test('TrackCheckoutCompleted is not dispatched when PostHog is disabled', functi
     Bus::assertNotDispatched(TrackCheckoutCompleted::class);
 });
 
+test('TrackCheckoutCompleted and TrackTrialStarted are not dispatched when PostHog is disabled in production', function () {
+    app()->detectEnvironment(fn () => 'production');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Bus::fake([TrackCheckoutCompleted::class, TrackTrialStarted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertNotDispatched(TrackCheckoutCompleted::class);
+    Bus::assertNotDispatched(TrackTrialStarted::class);
+});
+
+test('TrackCheckoutCompleted is dispatched in the local environment even when PostHog is disabled', function () {
+    app()->detectEnvironment(fn () => 'local');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Bus::fake([TrackCheckoutCompleted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertDispatched(TrackCheckoutCompleted::class);
+});
+
 // ========================================
 // trial.converted tracking
 // ========================================
@@ -575,4 +638,36 @@ test('TrackTrialConverted is not dispatched when PostHog is disabled', function 
     ]));
 
     Bus::assertNotDispatched(TrackTrialConverted::class);
+});
+
+test('TrackTrialConverted is not dispatched when PostHog is disabled in production', function () {
+    app()->detectEnvironment(fn () => 'production');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Bus::fake([TrackTrialConverted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ]));
+
+    Bus::assertNotDispatched(TrackTrialConverted::class);
+});
+
+test('TrackTrialConverted is dispatched in the local environment even when PostHog is disabled', function () {
+    app()->detectEnvironment(fn () => 'local');
+    config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
+    Bus::fake([TrackTrialConverted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ]));
+
+    Bus::assertDispatched(TrackTrialConverted::class);
 });
