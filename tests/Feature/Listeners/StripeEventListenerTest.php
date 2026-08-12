@@ -704,3 +704,62 @@ test('TrackTrialConverted is dispatched in the local environment even when PostH
 
     Bus::assertDispatched(TrackTrialConverted::class);
 });
+
+// ========================================
+// Idempotency (Stripe webhook redelivery)
+// ========================================
+
+test('redelivering the same stripe event id only processes it once', function () {
+    Bus::fake([TrackTrialConverted::class]);
+
+    $payload = [
+        'id' => 'evt_test_redelivered',
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ];
+
+    $this->listener->handle(new WebhookReceived($payload));
+    $this->listener->handle(new WebhookReceived($payload));
+
+    Bus::assertDispatchedTimes(TrackTrialConverted::class, 1);
+});
+
+test('two different stripe event ids are both processed', function () {
+    Bus::fake([TrackTrialConverted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'id' => 'evt_test_first',
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ]));
+    $this->listener->handle(new WebhookReceived([
+        'id' => 'evt_test_second',
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ]));
+
+    Bus::assertDispatchedTimes(TrackTrialConverted::class, 2);
+});
+
+test('an event without an id is still processed (no idempotency key available)', function () {
+    Bus::fake([TrackTrialConverted::class]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ]));
+
+    Bus::assertDispatchedTimes(TrackTrialConverted::class, 1);
+});

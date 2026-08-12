@@ -150,6 +150,12 @@ class WelcomeController extends Controller
 
         abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Monthly price is not configured.');
 
+        $response = $checkout->redirect(
+            $user->account,
+            $priceId,
+            route('app.welcome.referral-source'),
+        );
+
         $postHog->capture(
             $user->id,
             CheckoutEvent::Started->value,
@@ -157,11 +163,7 @@ class WelcomeController extends Controller
             $user->account,
         );
 
-        return $checkout->redirect(
-            $user->account,
-            $priceId,
-            route('app.welcome.referral-source'),
-        );
+        return $response;
     }
 
     public function subscriptionRequired(Request $request): InertiaResponse|RedirectResponse

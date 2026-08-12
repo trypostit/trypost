@@ -12,6 +12,7 @@ use App\Jobs\PostHog\TrackTrialStarted;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Services\PostHogService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Events\WebhookReceived;
 
@@ -20,6 +21,10 @@ class StripeEventListener
     public function handle(WebhookReceived $event): void
     {
         try {
+            if ($this->alreadyProcessed(data_get($event->payload, 'id'))) {
+                return;
+            }
+
             $type = data_get($event->payload, 'type');
             $stripeCustomerId = data_get($event->payload, 'data.object.customer');
 
@@ -97,6 +102,22 @@ class StripeEventListener
     }
 
     /**
+     * Stripe redelivers the same event id on a timeout/non-2xx response (and
+     * it can otherwise reach us more than once, e.g. a duplicated local
+     * forwarding setup). Cache::add is atomic, so only the first delivery of
+     * a given event id returns false here — every side effect further down
+     * (plan_id updates, PostHog dispatches) only ever runs once per event.
+     */
+    private function alreadyProcessed(?string $eventId): bool
+    {
+        if (! $eventId) {
+            return false;
+        }
+
+        return ! Cache::add("stripe_webhook_event:{$eventId}", true, now()->addDay());
+    }
+
+    /**
      * @param  array<string, mixed>  $payload
      */
     private function resolvePlanFromSubscriptionItems(array $payload, Account $account): ?Plan
@@ -171,25 +192,11 @@ class StripeEventListener
      */
     private function trackTrialConversion(Account $account, array $payload): void
     {
-        $converted = $this->convertedFromTrial($payload);
-        $nowActive = $this->isNowActive($payload);
-
-        Log::info('StripeEventListener: trial conversion check', [
-            'account_id' => (string) $account->id,
-            'previous_status' => data_get($payload, 'data.previous_attributes.status'),
-            'current_status' => $this->currentStatus($payload),
-            'trial_end' => data_get($payload, 'data.object.trial_end'),
-            'current_period_start' => data_get($payload, 'data.object.items.data.0.current_period_start'),
-            'converted_from_trial' => $converted,
-            'is_now_active' => $nowActive,
-            'will_dispatch_trial_converted' => $converted && $nowActive,
-        ]);
-
         if (! PostHogService::shouldTrack()) {
             return;
         }
 
-        if ($converted && $nowActive) {
+        if ($this->convertedFromTrial($payload) && $this->isNowActive($payload)) {
             TrackTrialConverted::dispatch((string) $account->id, $payload);
         }
     }

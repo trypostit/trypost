@@ -256,6 +256,34 @@ test('referral source store captures checkout.started with the plan name and int
         && data_get($event->payload, 'properties.interval') === 'monthly');
 });
 
+test('referral source store does not capture checkout.started when Stripe checkout creation fails', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Bus::fake();
+    $this->user->update([
+        'persona' => Persona::Agency->value,
+        'goals' => [Goal::SaveTime->value],
+    ]);
+
+    Plan::where('slug', Slug::Workspace)->firstOrFail()->update([
+        'stripe_monthly_price_id' => 'price_monthly_test',
+    ]);
+
+    $this->mock(StartSubscriptionCheckout::class)
+        ->shouldReceive('redirect')
+        ->once()
+        ->andThrow(new RuntimeException('Stripe checkout could not be created.'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.referral-source.store'), [
+            'referral_source' => ReferralSource::ProductHunt->value,
+        ]);
+
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === CheckoutEvent::Started->value,
+    );
+});
+
 test('welcome steps redirect to calendar for subscribed accounts', function (string $routeName, string $method, array $payload = []) {
     subscribeAccount($this->user->account);
 
