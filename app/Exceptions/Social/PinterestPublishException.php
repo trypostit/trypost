@@ -41,6 +41,20 @@ class PinterestPublishException extends SocialPublishException
             );
         }
 
+        // Documented for /pins, /media, and /boards alike (Pinterest's public
+        // OpenAPI spec: github.com/pinterest/api-description). In our flows
+        // this means the board (or, when polling media status, the media
+        // upload) referenced by the request no longer exists or isn't
+        // accessible to this account.
+        if ($status === 404) {
+            return new static(
+                userMessage: 'Pinterest could not find the selected board. It may have been deleted or you no longer have access to it.',
+                category: ErrorCategory::ContentPolicy,
+                platformErrorCode: (string) $status,
+                rawResponse: $rawResponse,
+            );
+        }
+
         // Pinterest's own JSON error code 1 ("Sorry! This site doesn't allow
         // you to save Pins.") is a content-policy rejection reused from their
         // legacy "nopin" crawler-block message, not an HTTP/technical error.

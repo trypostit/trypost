@@ -34,6 +34,16 @@ test('HTTP 403 maps to Permission category', function () {
         ->and($exception->userMessage)->toBe('Not authorized to create pins on this board.');
 });
 
+test('HTTP 404 maps to ContentPolicy category', function () {
+    $response = Http::response(['code' => 2, 'message' => 'Board not found.'], 404);
+    $fakeResponse = Http::fake(['*' => $response])->post('https://api.pinterest.com/test');
+
+    $exception = PinterestPublishException::fromApiResponse($fakeResponse);
+
+    expect($exception->category)->toBe(ErrorCategory::ContentPolicy)
+        ->and($exception->userMessage)->toBe('Pinterest could not find the selected board. It may have been deleted or you no longer have access to it.');
+});
+
 test('HTTP 400 with Pinterest error code 1 maps to ContentPolicy category', function () {
     $response = Http::response(['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], 400);
     $fakeResponse = Http::fake(['*' => $response])->post('https://api.pinterest.com/test');
