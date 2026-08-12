@@ -34,6 +34,16 @@ test('HTTP 403 maps to Permission category', function () {
         ->and($exception->userMessage)->toBe('Not authorized to create pins on this board.');
 });
 
+test('HTTP 400 with Pinterest error code 1 maps to ContentPolicy category', function () {
+    $response = Http::response(['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], 400);
+    $fakeResponse = Http::fake(['*' => $response])->post('https://api.pinterest.com/test');
+
+    $exception = PinterestPublishException::fromApiResponse($fakeResponse);
+
+    expect($exception->category)->toBe(ErrorCategory::ContentPolicy)
+        ->and($exception->userMessage)->toBe("Pinterest rejected this pin. This usually means the content violates Pinterest's content policies (e.g. adult or sexual content).");
+});
+
 test('HTTP 400 with board in body maps to ContentPolicy category', function () {
     $response = Http::response(['message' => 'Invalid board_id provided.'], 400);
     $fakeResponse = Http::fake(['*' => $response])->post('https://api.pinterest.com/test');

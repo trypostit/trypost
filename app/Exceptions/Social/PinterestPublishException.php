@@ -41,6 +41,18 @@ class PinterestPublishException extends SocialPublishException
             );
         }
 
+        // Pinterest's own JSON error code 1 ("Sorry! This site doesn't allow
+        // you to save Pins.") is a content-policy rejection reused from their
+        // legacy "nopin" crawler-block message, not an HTTP/technical error.
+        if ($status === 400 && (int) data_get($body, 'code') === 1) {
+            return new static(
+                userMessage: "Pinterest rejected this pin. This usually means the content violates Pinterest's content policies (e.g. adult or sexual content).",
+                category: ErrorCategory::ContentPolicy,
+                platformErrorCode: (string) $status,
+                rawResponse: $rawResponse,
+            );
+        }
+
         if ($status === 400 && str_contains(strtolower($rawResponse), 'board')) {
             return new static(
                 userMessage: 'Invalid board. Please select a valid board.',
