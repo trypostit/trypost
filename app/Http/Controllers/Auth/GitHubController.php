@@ -16,7 +16,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class GitHubController extends Controller
 {
@@ -106,17 +105,10 @@ class GitHubController extends Controller
 
     private function registerNewUser(\Laravel\Socialite\Contracts\User $githubUser): RedirectResponse
     {
-        $invite = Invite::fromId($this->retrieveInvite());
+        $invite = $this->resolveInviteForRegistration();
 
-        // Mirrors the registration.enabled middleware: self-hosted requires a real invite to register.
-        if ((bool) config('trypost.self_hosted') && ! $invite) {
-            throw new NotFoundHttpException;
-        }
-
-        if ($invite && $invite->email !== $githubUser->getEmail()) {
-            return redirect()->route('login')->withErrors([
-                'email' => __('settings.members.flash.wrong_email'),
-            ]);
+        if ($redirect = $this->inviteEmailMismatchRedirect($invite, $githubUser->getEmail())) {
+            return $redirect;
         }
 
         $attributionParameters = $this->retrieveAttributionParameters();
