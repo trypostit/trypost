@@ -171,11 +171,25 @@ class StripeEventListener
      */
     private function trackTrialConversion(Account $account, array $payload): void
     {
+        $converted = $this->convertedFromTrial($payload);
+        $nowActive = $this->isNowActive($payload);
+
+        Log::info('StripeEventListener: trial conversion check', [
+            'account_id' => (string) $account->id,
+            'previous_status' => data_get($payload, 'data.previous_attributes.status'),
+            'current_status' => $this->currentStatus($payload),
+            'trial_end' => data_get($payload, 'data.object.trial_end'),
+            'current_period_start' => data_get($payload, 'data.object.items.data.0.current_period_start'),
+            'converted_from_trial' => $converted,
+            'is_now_active' => $nowActive,
+            'will_dispatch_trial_converted' => $converted && $nowActive,
+        ]);
+
         if (! PostHogService::shouldTrack()) {
             return;
         }
 
-        if ($this->convertedFromTrial($payload) && $this->isNowActive($payload)) {
+        if ($converted && $nowActive) {
             TrackTrialConverted::dispatch((string) $account->id, $payload);
         }
     }
@@ -191,10 +205,13 @@ class StripeEventListener
     /**
      * True for a transition originating from a trial: either the immediate
      * `trialing` -> `active` charge, or a `past_due` -> `active` recovery
-     * after the trial's first charge attempt failed. `trial_end` (which
-     * Stripe never clears once set) guards the `past_due` case so a
-     * long-time paying customer's unrelated payment-method recovery is
-     * never mistaken for a trial conversion.
+     * after the trial's first charge attempt failed. `trial_end` is never
+     * cleared by Stripe once set, so it can't by itself distinguish that
+     * recovery from an unrelated `past_due` -> `active` recovery on a much
+     * later billing cycle (e.g. a long-time paying customer's card getting
+     * declined and then updated). The item's `current_period_start` is what
+     * actually pins this to the trial's own first billing period — it only
+     * equals `trial_end` for that first period, never for a later one.
      *
      * @param  array<string, mixed>  $payload
      */
@@ -206,7 +223,14 @@ class StripeEventListener
             return true;
         }
 
-        return $previousStatus === 'past_due' && data_get($payload, 'data.object.trial_end') !== null;
+        if ($previousStatus !== 'past_due') {
+            return false;
+        }
+
+        $trialEnd = data_get($payload, 'data.object.trial_end');
+        $currentPeriodStart = data_get($payload, 'data.object.items.data.0.current_period_start');
+
+        return $trialEnd !== null && $currentPeriodStart === $trialEnd;
     }
 
     /**

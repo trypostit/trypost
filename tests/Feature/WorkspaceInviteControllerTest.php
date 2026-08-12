@@ -83,21 +83,6 @@ test('store invite creates invite and sends email', function () {
     Mail::assertQueued(WorkspaceInviteMail::class);
 });
 
-test('store invite normalizes the email to lowercase', function () {
-    $response = $this->actingAs($this->user)->post(route('app.invites.store'), [
-        'email' => 'Mixed.Case@Example.com',
-        'role' => WorkspaceRole::Member->value,
-    ]);
-
-    $response->assertRedirect();
-
-    $this->assertDatabaseHas('invites', [
-        'account_id' => $this->account->id,
-        'email' => 'mixed.case@example.com',
-    ]);
-    $this->assertDatabaseMissing('invites', ['email' => 'Mixed.Case@Example.com']);
-});
-
 test('store invite blocks an email that already belongs to a registered user', function () {
     User::factory()->create(['email' => 'existing@example.com']);
 

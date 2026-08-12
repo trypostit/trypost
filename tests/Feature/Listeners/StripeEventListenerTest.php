@@ -576,6 +576,7 @@ test('subscription updated dispatches TrackTrialConverted when trialing transiti
 
 test('subscription updated dispatches TrackTrialConverted when a trial recovers from a failed first charge', function () {
     Bus::fake([TrackTrialConverted::class]);
+    $trialEnd = now()->subDay()->timestamp;
 
     $this->listener->handle(new WebhookReceived([
         'type' => 'customer.subscription.updated',
@@ -584,8 +585,11 @@ test('subscription updated dispatches TrackTrialConverted when a trial recovers 
                 'customer' => 'cus_test123',
                 'id' => 'sub_123',
                 'status' => 'active',
-                'trial_end' => now()->subDay()->timestamp,
-                'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+                'trial_end' => $trialEnd,
+                'items' => ['data' => [[
+                    'price' => ['id' => 'price_workspace_monthly'],
+                    'current_period_start' => $trialEnd,
+                ]]],
             ],
             'previous_attributes' => ['status' => 'past_due'],
         ],
@@ -604,6 +608,35 @@ test('subscription updated does not dispatch TrackTrialConverted for a past_due 
         'type' => 'customer.subscription.updated',
         'data' => [
             'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
+            'previous_attributes' => ['status' => 'past_due'],
+        ],
+    ]));
+
+    Bus::assertNotDispatched(TrackTrialConverted::class);
+});
+
+test('subscription updated does not dispatch TrackTrialConverted for a later, unrelated past_due recovery on a long-converted subscription', function () {
+    Bus::fake([TrackTrialConverted::class]);
+
+    // trial_end is set (Stripe never clears it), but current_period_start is
+    // months ahead of it — this is a routine card-decline-then-recovery on an
+    // already-converted subscription, not the trial's own first charge retry.
+    $trialEnd = now()->subMonths(6)->timestamp;
+    $currentPeriodStart = now()->subDays(3)->timestamp;
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'id' => 'sub_123',
+                'status' => 'active',
+                'trial_end' => $trialEnd,
+                'items' => ['data' => [[
+                    'price' => ['id' => 'price_workspace_monthly'],
+                    'current_period_start' => $currentPeriodStart,
+                ]]],
+            ],
             'previous_attributes' => ['status' => 'past_due'],
         ],
     ]));
