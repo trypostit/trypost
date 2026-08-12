@@ -17,6 +17,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { usePageErrors } from '@/composables/usePageErrors';
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
@@ -32,6 +33,7 @@ const showPassword = ref(false);
 
 const page = usePage();
 const isSelfHosted = computed(() => Boolean(page.props.selfHosted));
+const pageErrors = usePageErrors();
 </script>
 
 <template>
@@ -76,7 +78,7 @@ const isSelfHosted = computed(() => Boolean(page.props.selfHosted));
                             placeholder="email@example.com"
                             :default-value="email ?? ''"
                         />
-                        <InputError :message="errors.email" />
+                        <InputError :message="errors.email || pageErrors.email" />
                     </div>
 
                     <div class="grid gap-2">
