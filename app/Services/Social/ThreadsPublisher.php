@@ -11,10 +11,17 @@ use App\Models\PostPlatform;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 
 class ThreadsPublisher
 {
     use HasSocialHttpClient;
+
+    private const int MEDIA_PUBLICATION_MAX_ATTEMPTS = 3;
+
+    private const int MEDIA_PROCESSING_POLL_SECONDS = 3;
+
+    private const int MEDIA_READY_GRACE_SECONDS = 2;
 
     private string $baseUrl;
 
@@ -58,14 +65,20 @@ class ThreadsPublisher
         // Single media
         if ($media->count() === 1) {
             if ($isVideo) {
-                return $this->publishVideoPost($userId, $accessToken, $content, $firstMedia);
+                return $this->publishMediaWithRetry(
+                    fn (): array => $this->publishVideoPost($userId, $accessToken, $content, $firstMedia),
+                );
             }
 
-            return $this->publishImagePost($userId, $accessToken, $content, $firstMedia);
+            return $this->publishMediaWithRetry(
+                fn (): array => $this->publishImagePost($userId, $accessToken, $content, $firstMedia),
+            );
         }
 
         // Multiple media - carousel
-        return $this->publishCarousel($userId, $accessToken, $content, $media);
+        return $this->publishMediaWithRetry(
+            fn (): array => $this->publishCarousel($userId, $accessToken, $content, $media),
+        );
     }
 
     private function publishTextPost(string $userId, string $accessToken, string $content): array
@@ -256,8 +269,38 @@ class ThreadsPublisher
             );
         }
 
+        $this->waitForMediaProcessing($carouselId, $accessToken);
+
         // Step 3: Publish carousel
         return $this->publishContainer($userId, $accessToken, $carouselId);
+    }
+
+    /**
+     * @param  callable(): array{id: string, url: ?string}  $publish
+     * @return array{id: string, url: ?string}
+     */
+    private function publishMediaWithRetry(callable $publish): array
+    {
+        for ($attempt = 1; $attempt <= self::MEDIA_PUBLICATION_MAX_ATTEMPTS; $attempt++) {
+            try {
+                return $publish();
+            } catch (ThreadsPublishException $exception) {
+                if (! $exception->isMissingMediaContainer() || $attempt === self::MEDIA_PUBLICATION_MAX_ATTEMPTS) {
+                    throw $exception;
+                }
+
+                Log::warning('Threads media container was not found; recreating publication flow', [
+                    'attempt' => $attempt,
+                    'max_attempts' => self::MEDIA_PUBLICATION_MAX_ATTEMPTS,
+                    ...$exception->context(),
+                ]);
+            }
+        }
+
+        throw new ThreadsPublishException(
+            userMessage: 'Threads did not accept the post. Please publish again.',
+            category: ErrorCategory::ServerError,
+        );
     }
 
     private function publishContainer(string $userId, string $accessToken, string $containerId): array
@@ -312,7 +355,7 @@ class ThreadsPublisher
                     'attempt' => $i,
                     'body' => $this->redactResponseBody($statusResponse->body()),
                 ]);
-                sleep(3);
+                Sleep::for(self::MEDIA_PROCESSING_POLL_SECONDS)->seconds();
 
                 continue;
             }
@@ -321,6 +364,8 @@ class ThreadsPublisher
             $status = data_get($data, 'status', 'UNKNOWN');
 
             if ($status === 'FINISHED') {
+                Sleep::for(self::MEDIA_READY_GRACE_SECONDS)->seconds();
+
                 return;
             }
 
@@ -332,7 +377,7 @@ class ThreadsPublisher
                 );
             }
 
-            sleep(3);
+            Sleep::for(self::MEDIA_PROCESSING_POLL_SECONDS)->seconds();
         }
 
         Log::warning('Threads media processing timeout', ['container_id' => $containerId]);
