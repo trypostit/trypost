@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Social\ThreadsMediaContainerNotFoundException;
 use App\Exceptions\Social\ThreadsPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
@@ -246,7 +247,7 @@ test('threads publisher stops after three missing media containers', function ()
         $this->publisher->publish($this->postPlatform);
         $this->fail('Expected ThreadsPublishException was not thrown.');
     } catch (ThreadsPublishException $exception) {
-        expect($exception->isMissingMediaContainer())->toBeTrue();
+        expect($exception)->toBeInstanceOf(ThreadsMediaContainerNotFoundException::class);
     }
 
     expect($containerCreations)->toBe(3)

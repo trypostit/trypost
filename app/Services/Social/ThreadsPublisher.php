@@ -312,10 +312,8 @@ class ThreadsPublisher
         ]);
 
         if ($publishResponse->failed()) {
-            $exception = ThreadsPublishException::fromApiResponse($publishResponse);
-
-            if ($exception->isMissingMediaContainer()) {
-                throw ThreadsMediaContainerNotFoundException::from($exception);
+            if (ThreadsMediaContainerNotFoundException::matches($publishResponse)) {
+                throw ThreadsMediaContainerNotFoundException::fromApiResponse($publishResponse);
             }
 
             Log::error('Threads publish failed', [
@@ -323,7 +321,7 @@ class ThreadsPublisher
                 'body' => $this->redactResponseBody($publishResponse->body()),
             ]);
 
-            throw $exception;
+            $this->handleApiError($publishResponse);
         }
 
         $mediaId = $publishResponse->json()['id'] ?? null;

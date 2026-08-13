@@ -9,10 +9,6 @@ use Illuminate\Http\Client\Response;
 
 class ThreadsPublishException extends SocialPublishException
 {
-    private const int MISSING_MEDIA_ERROR_CODE = 24;
-
-    private const int MISSING_MEDIA_ERROR_SUBCODE = 4279009;
-
     public static function fromApiResponse(mixed $response): static
     {
         /** @var Response $response */
@@ -21,22 +17,12 @@ class ThreadsPublishException extends SocialPublishException
         $statusCode = $response->status();
 
         $errorCode = data_get($body, 'error.code');
-        $errorSubcode = data_get($body, 'error.error_subcode');
         $errorMessage = data_get($body, 'error.message', 'An unknown Threads error occurred.');
 
         if ($errorCode === 190) {
             throw new TokenExpiredException(
                 message: $errorMessage,
                 platformErrorCode: $errorCode !== null ? (string) $errorCode : null,
-            );
-        }
-
-        if ($errorCode === self::MISSING_MEDIA_ERROR_CODE && $errorSubcode === self::MISSING_MEDIA_ERROR_SUBCODE) {
-            return new static(
-                userMessage: 'Threads could not find the processed media. Please try again.',
-                category: ErrorCategory::ServerError,
-                platformErrorCode: (string) $errorCode,
-                rawResponse: $rawResponse,
             );
         }
 
@@ -78,13 +64,5 @@ class ThreadsPublishException extends SocialPublishException
     public function platform(): string
     {
         return 'threads';
-    }
-
-    public function isMissingMediaContainer(): bool
-    {
-        $body = json_decode($this->rawResponse ?? '', true);
-
-        return data_get($body, 'error.code') === self::MISSING_MEDIA_ERROR_CODE
-            && data_get($body, 'error.error_subcode') === self::MISSING_MEDIA_ERROR_SUBCODE;
     }
 }
