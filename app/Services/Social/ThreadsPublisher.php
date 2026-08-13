@@ -6,6 +6,7 @@ namespace App\Services\Social;
 
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
+use App\Exceptions\Social\ThreadsMediaContainerNotFoundException;
 use App\Exceptions\Social\ThreadsPublishException;
 use App\Models\PostPlatform;
 use App\Services\Social\Concerns\HasSocialHttpClient;
@@ -284,8 +285,8 @@ class ThreadsPublisher
         for ($attempt = 1; $attempt <= self::MEDIA_PUBLICATION_MAX_ATTEMPTS; $attempt++) {
             try {
                 return $publish();
-            } catch (ThreadsPublishException $exception) {
-                if (! $exception->isMissingMediaContainer() || $attempt === self::MEDIA_PUBLICATION_MAX_ATTEMPTS) {
+            } catch (ThreadsMediaContainerNotFoundException $exception) {
+                if ($attempt === self::MEDIA_PUBLICATION_MAX_ATTEMPTS) {
                     throw $exception;
                 }
 
@@ -311,11 +312,18 @@ class ThreadsPublisher
         ]);
 
         if ($publishResponse->failed()) {
+            $exception = ThreadsPublishException::fromApiResponse($publishResponse);
+
+            if ($exception->isMissingMediaContainer()) {
+                throw ThreadsMediaContainerNotFoundException::from($exception);
+            }
+
             Log::error('Threads publish failed', [
                 'status' => $publishResponse->status(),
                 'body' => $this->redactResponseBody($publishResponse->body()),
             ]);
-            $this->handleApiError($publishResponse);
+
+            throw $exception;
         }
 
         $mediaId = $publishResponse->json()['id'] ?? null;

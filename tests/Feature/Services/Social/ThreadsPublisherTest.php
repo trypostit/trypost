@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ThreadsPublisher;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
 
 beforeEach(function () {
@@ -108,6 +109,8 @@ test('threads publisher can publish image post', function () {
 });
 
 test('threads publisher recreates a missing image container before retrying publication', function () {
+    Log::spy();
+
     $this->post->update([
         'media' => [[
             'id' => 'test-media-id',
@@ -163,6 +166,40 @@ test('threads publisher recreates a missing image container before retrying publ
         Sleep::for(2)->seconds(),
         Sleep::for(2)->seconds(),
     ]);
+
+    Log::shouldHaveReceived('warning')->once();
+    Log::shouldNotHaveReceived('error');
+});
+
+test('threads publisher does not retry a missing media response from container creation', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+
+    $containerCreations = 0;
+
+    Http::fake(function ($request) use (&$containerCreations) {
+        $containerCreations++;
+
+        return Http::response([
+            'error' => [
+                'message' => 'The requested resource does not exist',
+                'code' => 24,
+                'error_subcode' => 4279009,
+            ],
+        ], 400);
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(ThreadsPublishException::class);
+
+    expect($containerCreations)->toBe(1);
 });
 
 test('threads publisher stops after three missing media containers', function () {
@@ -394,8 +431,84 @@ test('threads publisher waits for the final carousel container before publishing
 
     $this->publisher->publish($this->postPlatform);
 
-    expect(array_search('status:carousel-final', $requestOrder, true))
-        ->toBeLessThan(array_search('publish', $requestOrder, true));
+    expect($requestOrder)
+        ->toContain('status:carousel-final')
+        ->toContain('publish');
+
+    $finalStatusIndex = array_search('status:carousel-final', $requestOrder, true);
+    $publishIndex = array_search('publish', $requestOrder, true);
+
+    expect($finalStatusIndex)->toBeInt()
+        ->and($publishIndex)->toBeInt()
+        ->and($finalStatusIndex)->toBeLessThan($publishIndex);
+});
+
+test('threads publisher recreates the complete carousel after a missing final container', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-1',
+                'path' => 'media/2026-01/test-image-1.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image-1.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test-1.jpg',
+            ],
+            [
+                'id' => 'test-media-2',
+                'path' => 'media/2026-01/test-image-2.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image-2.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test-2.jpg',
+            ],
+        ],
+    ]);
+
+    $childCreations = 0;
+    $carouselCreations = 0;
+    $publicationAttempts = 0;
+
+    Http::fake(function ($request) use (&$childCreations, &$carouselCreations, &$publicationAttempts) {
+        if (str_ends_with($request->url(), '/123456789/threads')) {
+            if ($request['media_type'] === 'CAROUSEL') {
+                $carouselCreations++;
+
+                return Http::response(['id' => "carousel-{$carouselCreations}"], 200);
+            }
+
+            $childCreations++;
+
+            return Http::response(['id' => "child-{$childCreations}"], 200);
+        }
+
+        if (str_contains($request->url(), '/child-') || str_contains($request->url(), '/carousel-')) {
+            return Http::response(['status' => 'FINISHED'], 200);
+        }
+
+        if (str_ends_with($request->url(), '/123456789/threads_publish')) {
+            $publicationAttempts++;
+
+            if ($publicationAttempts === 1) {
+                return Http::response([
+                    'error' => [
+                        'message' => 'The requested resource does not exist',
+                        'code' => 24,
+                        'error_subcode' => 4279009,
+                    ],
+                ], 400);
+            }
+
+            return Http::response(['id' => 'carousel-post'], 200);
+        }
+
+        return Http::response(['permalink' => 'https://www.threads.net/carousel'], 200);
+    });
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('carousel-post')
+        ->and($childCreations)->toBe(4)
+        ->and($carouselCreations)->toBe(2)
+        ->and($publicationAttempts)->toBe(2);
 });
 
 test('threads publisher throws exception on api error', function () {
