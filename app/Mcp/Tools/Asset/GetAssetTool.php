@@ -18,7 +18,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('Get a single Asset Library item from the current workspace.')]
+#[Description('Get one Asset Library item by id from the current workspace (the workspace bound to this MCP token). The id must belong to the workspace "assets" collection — logos, avatars, and other workspaces return "Asset not found." Returns id, original_filename, type (image|video|document), mime_type, size, url, meta, and created_at. Does not include the storage path. url is the stored public file URL, not a short-lived signed preview. Requires permission to create posts (viewers cannot). Use list-assets-tool to discover ids. To attach this item to a draft or scheduled post, call attach-existing-asset-tool with the same asset_id.')]
 class GetAssetTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -49,7 +49,7 @@ class GetAssetTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'asset_id' => $schema->string()->required()->description('UUID of the Asset Library media item.'),
+            'asset_id' => $schema->string()->required()->description('Required UUID of an Asset Library media item in the current workspace. Same id returned by list-assets-tool. Wrong workspace, missing id, or a non-library collection (logo/avatar) fails with "Asset not found."'),
         ];
     }
 }

@@ -18,7 +18,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('List media from the current workspace Asset Library. Filter by filename search and type (image, video, document).')]
+#[Description('List Asset Library media for the current workspace (the workspace bound to this MCP token). Returns only the workspace "assets" collection — not logos or avatars. Newest first. Each item includes id, original_filename, type (image|video|document), mime_type, size, url, meta, and created_at. Does not include the storage path. Use search to match original_filename (case-insensitive substring, max 255 characters) and type to keep a single media type. limit is 1–100 (default 50). Requires permission to create posts (viewers cannot list). Use get-asset-tool for one item by id, or attach-existing-asset-tool to reuse an item on a draft/scheduled post. To add new files, use request-media-upload-tool or attach-media-from-url-tool instead.')]
 class ListAssetsTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -51,9 +51,9 @@ class ListAssetsTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'search' => $schema->string()->description('Case-insensitive filename substring, maximum 255 characters.'),
-            'type' => $schema->string()->enum(['image', 'video', 'document'])->description('Media type filter.'),
-            'limit' => $schema->integer()->description('Max results (1-100, default 50).'),
+            'search' => $schema->string()->description('Optional. Case-insensitive substring matched only against original_filename (not tags or captions). Maximum 255 characters. Omit to return all types (still subject to type and limit).'),
+            'type' => $schema->string()->enum(['image', 'video', 'document'])->description('Optional. Keep only this media type. Omit to include image, video, and document. Rejects unknown values such as audio.'),
+            'limit' => $schema->integer()->description('Optional. Maximum number of items to return. Integer from 1 to 100. Defaults to 50 when omitted.'),
         ];
     }
 }
