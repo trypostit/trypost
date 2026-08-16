@@ -6,10 +6,10 @@ namespace App\Mcp\Tools\Asset;
 
 use App\Actions\Media\FindWorkspaceAsset;
 use App\Actions\Post\AttachExistingAsset;
+use App\Http\Requests\Mcp\Asset\AttachExistingAssetRequest;
 use App\Http\Resources\Api\PostResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\Post;
-use App\Support\PostMediaRules;
 use App\Support\PostStatusRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -25,11 +25,7 @@ class AttachExistingAssetTool extends Tool
 
     public function handle(Request $request): Response|ResponseFactory
     {
-        $validated = $request->validate([
-            'post_id' => ['required', 'uuid'],
-            'asset_id' => ['required', 'uuid'],
-            'alt' => ['nullable', 'string', 'max:'.PostMediaRules::ALT_TEXT_MAX_LENGTH],
-        ]);
+        $validated = $request->validate((new AttachExistingAssetRequest)->rules());
 
         $post = Post::where('workspace_id', $request->user()?->current_workspace_id)
             ->find(data_get($validated, 'post_id'));

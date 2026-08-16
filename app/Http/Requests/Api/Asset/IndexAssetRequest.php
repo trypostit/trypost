@@ -18,11 +18,19 @@ class IndexAssetRequest extends FormRequest
     /**
      * @return array<string, mixed>
      */
-    public function rules(): array
+    public static function filterRules(): array
     {
         return [
             'search' => ['sometimes', 'string', 'max:255'],
             'type' => ['sometimes', 'string', Rule::enum(MediaType::class)],
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        return self::filterRules();
     }
 }

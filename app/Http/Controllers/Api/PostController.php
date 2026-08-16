@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Actions\Media\FindWorkspaceAsset;
 use App\Actions\Post\AttachExistingAsset;
 use App\Actions\Post\CreatePost;
 use App\Actions\Post\DeletePost;
@@ -160,26 +159,9 @@ class PostController extends Controller
             );
         }
 
-        $asset = FindWorkspaceAsset::execute(
-            $request->user()->currentWorkspace,
-            $request->validated('asset_id'),
-        );
-
-        if ($asset === null) {
-            throw ValidationException::withMessages([
-                'asset_id' => 'Asset not found.',
-            ]);
-        }
-
-        if (! in_array($asset->type, $post->allowedMediaTypes(), true)) {
-            throw ValidationException::withMessages([
-                'asset_id' => 'This file type is not supported by the platforms enabled on the post.',
-            ]);
-        }
-
         AttachExistingAsset::execute(
             $post,
-            $asset,
+            $request->asset(),
             $request->validated('alt'),
         );
 

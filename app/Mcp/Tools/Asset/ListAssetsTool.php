@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace App\Mcp\Tools\Asset;
 
 use App\Actions\Media\ListWorkspaceAssets;
-use App\Enums\Media\Type as MediaType;
+use App\Http\Requests\Mcp\Asset\ListAssetsRequest;
 use App\Http\Resources\Api\AssetResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\Workspace;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Illuminate\Validation\Rule;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
@@ -36,11 +35,7 @@ class ListAssetsTool extends Tool
             return $workspace;
         }
 
-        $validated = $request->validate([
-            'search' => ['sometimes', 'string', 'max:255'],
-            'type' => ['sometimes', 'string', Rule::enum(MediaType::class)],
-            'limit' => ['sometimes', 'integer', 'min:1', 'max:100'],
-        ]);
+        $validated = $request->validate((new ListAssetsRequest)->rules());
 
         $assets = ListWorkspaceAssets::query(
             $workspace,

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mcp\Tools\Asset;
 
 use App\Actions\Media\FindWorkspaceAsset;
+use App\Http\Requests\Mcp\Asset\GetAssetRequest;
 use App\Http\Resources\Api\AssetResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\Workspace;
@@ -34,9 +35,7 @@ class GetAssetTool extends Tool
             return $workspace;
         }
 
-        $validated = $request->validate([
-            'asset_id' => ['required', 'uuid'],
-        ]);
+        $validated = $request->validate((new GetAssetRequest)->rules());
 
         $asset = FindWorkspaceAsset::execute($workspace, data_get($validated, 'asset_id'));
 
