@@ -96,6 +96,11 @@ test('filters and limits listed assets', function () {
                 $item->where('original_filename', 'reel.mp4')->etc();
             })->where('has_more', false);
         });
+
+    TryPostServer::actingAs($this->user)
+        ->tool(ListAssetsTool::class, ['type' => 'image', 'limit' => 2])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json->has('assets', 2)->where('has_more', false));
 });
 
 test('rejects out of range list limits', function (int $limit) {
@@ -161,7 +166,12 @@ test('attaches an existing workspace asset once', function () {
         'mediable_type' => (new Workspace)->getMorphClass(),
         'mediable_id' => $this->workspace->id,
         'size' => 12345,
-        'meta' => ['width' => 1920, 'height' => 1080],
+        'meta' => [
+            'width' => 1920,
+            'height' => 1080,
+            'duration' => 12.5,
+            'color_space' => 'srgb',
+        ],
     ]);
 
     TryPostServer::actingAs($this->user)
@@ -188,11 +198,58 @@ test('attaches an existing workspace asset once', function () {
 
     expect($this->post->fresh()->media)->toHaveCount(1)
         ->and(data_get($this->post->fresh()->media, '0.size'))->toBe(12345)
-        ->and(data_get($this->post->fresh()->media, '0.meta'))->toMatchArray([
+        ->and(data_get($this->post->fresh()->media, '0.meta'))->toBe([
             'width' => 1920,
             'height' => 1080,
+            'duration' => 12.5,
+            'color_space' => 'srgb',
             'alt_text' => 'Hero image',
         ]);
+});
+
+test('preserves library alt text when attach omits alt', function () {
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+        'meta' => [
+            'width' => 800,
+            'height' => 600,
+            'alt_text' => 'From library',
+        ],
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachExistingAssetTool::class, [
+            'post_id' => $this->post->id,
+            'asset_id' => $asset->id,
+        ])
+        ->assertOk();
+
+    expect(data_get($this->post->fresh()->media, '0.meta'))->toBe([
+        'width' => 800,
+        'height' => 600,
+        'alt_text' => 'From library',
+    ]);
+});
+
+test('attaches an existing document asset without inventing meta', function () {
+    $asset = Media::factory()->assets()->document()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+        'meta' => [],
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachExistingAssetTool::class, [
+            'post_id' => $this->post->id,
+            'asset_id' => $asset->id,
+            'alt' => 'ignored for pdf',
+        ])
+        ->assertOk();
+
+    expect($this->post->fresh()->media)->toHaveCount(1)
+        ->and(data_get($this->post->fresh()->media, '0.type'))->toBe('document')
+        ->and(data_get($this->post->fresh()->media, '0.meta'))->toBeNull();
 });
 
 test('does not store alt text for existing non-image assets', function () {

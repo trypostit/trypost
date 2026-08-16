@@ -643,7 +643,12 @@ it('attaches an existing workspace asset to a post', function () {
         'mediable_id' => $this->workspace->id,
         'original_filename' => 'library.jpg',
         'size' => 12345,
-        'meta' => ['width' => 1920, 'height' => 1080],
+        'meta' => [
+            'width' => 1920,
+            'height' => 1080,
+            'duration' => 12.5,
+            'color_space' => 'srgb',
+        ],
     ]);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
@@ -657,11 +662,58 @@ it('attaches an existing workspace asset to a post', function () {
     expect($this->post->fresh()->media)->toHaveCount(1)
         ->and(data_get($this->post->fresh()->media, '0.id'))->toBe($asset->id)
         ->and(data_get($this->post->fresh()->media, '0.size'))->toBe(12345)
-        ->and(data_get($this->post->fresh()->media, '0.meta'))->toMatchArray([
+        ->and(data_get($this->post->fresh()->media, '0.meta'))->toBe([
             'width' => 1920,
             'height' => 1080,
+            'duration' => 12.5,
+            'color_space' => 'srgb',
             'alt_text' => 'Library hero',
         ]);
+});
+
+it('preserves library alt text when attach omits alt', function () {
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+        'meta' => [
+            'width' => 800,
+            'height' => 600,
+            'alt_text' => 'From library',
+        ],
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
+            'asset_id' => $asset->id,
+        ])
+        ->assertOk();
+
+    expect(data_get($this->post->fresh()->media, '0.meta'))->toBe([
+        'width' => 800,
+        'height' => 600,
+        'alt_text' => 'From library',
+    ]);
+});
+
+it('attaches an existing document asset without inventing meta', function () {
+    $asset = Media::factory()->assets()->document()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+        'original_filename' => 'brief.pdf',
+        'meta' => [],
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
+            'asset_id' => $asset->id,
+            'alt' => 'ignored for pdf',
+        ])
+        ->assertOk();
+
+    expect($this->post->fresh()->media)->toHaveCount(1)
+        ->and(data_get($this->post->fresh()->media, '0.id'))->toBe($asset->id)
+        ->and(data_get($this->post->fresh()->media, '0.type'))->toBe('document')
+        ->and(data_get($this->post->fresh()->media, '0.meta'))->toBeNull();
 });
 
 it('does not duplicate an already attached asset', function () {
@@ -853,6 +905,20 @@ it('rejects attaching via the action when the post cannot be edited', function (
     ]);
 
     expect(fn () => AttachExistingAsset::execute($this->post, $asset))
+        ->toThrow(ValidationException::class);
+
+    expect($this->post->fresh()->media)->toHaveCount(0);
+});
+
+it('rejects attaching via the action when the library asset was deleted', function () {
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+    $stale = $asset->fresh();
+    $asset->delete();
+
+    expect(fn () => AttachExistingAsset::execute($this->post, $stale))
         ->toThrow(ValidationException::class);
 
     expect($this->post->fresh()->media)->toHaveCount(0);

@@ -45,13 +45,13 @@ class AttachExistingAssetTool extends Tool
         $workspace = $request->user()?->currentWorkspace;
 
         if ($workspace === null) {
-            return Response::error('Asset not found.');
+            return Response::error(AttachExistingAsset::ASSET_NOT_FOUND_MESSAGE);
         }
 
         $asset = FindWorkspaceAsset::execute($workspace, data_get($validated, 'asset_id'));
 
         if (! $asset) {
-            return Response::error('Asset not found.');
+            return Response::error(AttachExistingAsset::ASSET_NOT_FOUND_MESSAGE);
         }
 
         if (! in_array($asset->type, $post->allowedMediaTypes(), true)) {

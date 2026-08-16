@@ -44,7 +44,7 @@ class AttachExistingAssetRequest extends FormRequest
             $workspace = $this->user()?->currentWorkspace;
 
             if (! $post instanceof Post || $workspace === null) {
-                $validator->errors()->add('asset_id', 'Asset not found.');
+                $validator->errors()->add('asset_id', AttachExistingAsset::ASSET_NOT_FOUND_MESSAGE);
 
                 return;
             }
@@ -58,7 +58,7 @@ class AttachExistingAssetRequest extends FormRequest
             $asset = FindWorkspaceAsset::execute($workspace, (string) $this->input('asset_id'));
 
             if ($asset === null) {
-                $validator->errors()->add('asset_id', 'Asset not found.');
+                $validator->errors()->add('asset_id', AttachExistingAsset::ASSET_NOT_FOUND_MESSAGE);
 
                 return;
             }
