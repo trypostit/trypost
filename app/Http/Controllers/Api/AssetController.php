@@ -21,13 +21,11 @@ class AssetController extends Controller
 
         $this->authorize('createPost', $workspace);
 
-        $assets = ListWorkspaceAssets::execute(
+        return AssetResource::collection(ListWorkspaceAssets::execute(
             $workspace,
             data_get($request->validated(), 'search'),
             data_get($request->validated(), 'type'),
-        )->paginate(15);
-
-        return AssetResource::collection($assets);
+        ));
     }
 
     public function show(Request $request, Media $media): AssetResource

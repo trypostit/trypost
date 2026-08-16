@@ -6,15 +6,22 @@ namespace App\Actions\Media;
 
 use App\Models\Media;
 use App\Models\Workspace;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 
 class ListWorkspaceAssets
 {
+    public static function execute(Workspace $workspace, ?string $search = null, ?string $type = null): LengthAwarePaginator
+    {
+        return self::query($workspace, $search, $type)
+            ->paginate((int) config('app.pagination.default'));
+    }
+
     /**
      * @return Builder<Media>
      */
-    public static function execute(Workspace $workspace, ?string $search = null, ?string $type = null): Builder
+    public static function query(Workspace $workspace, ?string $search = null, ?string $type = null): Builder
     {
         return Media::query()
             ->where('mediable_type', Relation::getMorphAlias(Workspace::class))

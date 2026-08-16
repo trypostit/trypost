@@ -42,7 +42,7 @@ class ListAssetsTool extends Tool
             'limit' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $assets = ListWorkspaceAssets::execute(
+        $assets = ListWorkspaceAssets::query(
             $workspace,
             data_get($validated, 'search'),
             data_get($validated, 'type'),

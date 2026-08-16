@@ -66,8 +66,10 @@ test('filters assets by filename search and type', function () {
         ->assertJsonPath('data.0.original_filename', 'campaign-hero.jpg');
 });
 
-test('paginates assets with the public api page size', function () {
-    Media::factory()->assets()->count(16)->create([
+test('paginates assets with the application page size', function () {
+    $perPage = (int) config('app.pagination.default');
+
+    Media::factory()->assets()->count($perPage + 1)->create([
         'mediable_type' => (new Workspace)->getMorphClass(),
         'mediable_id' => $this->workspace->id,
     ]);
@@ -75,9 +77,9 @@ test('paginates assets with the public api page size', function () {
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->getJson(route('api.assets.index'))
         ->assertOk()
-        ->assertJsonCount(15, 'data')
-        ->assertJsonPath('meta.per_page', 15)
-        ->assertJsonPath('meta.total', 16);
+        ->assertJsonCount($perPage, 'data')
+        ->assertJsonPath('meta.per_page', $perPage)
+        ->assertJsonPath('meta.total', $perPage + 1);
 });
 
 test('rejects unknown type filters', function () {
