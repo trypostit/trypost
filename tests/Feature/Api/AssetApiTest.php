@@ -79,7 +79,33 @@ test('paginates assets with the application page size', function () {
         ->assertOk()
         ->assertJsonCount($perPage, 'data')
         ->assertJsonPath('meta.per_page', $perPage)
-        ->assertJsonPath('meta.total', $perPage + 1);
+        ->assertJsonPath('meta.total', $perPage + 1)
+        ->assertJsonPath('meta.current_page', 1);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->getJson(route('api.assets.index', ['page' => 2]))
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('meta.current_page', 2);
+});
+
+test('filters assets by document type', function () {
+    Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+    $document = Media::factory()->assets()->document()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+        'original_filename' => 'brief.pdf',
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->getJson(route('api.assets.index', ['type' => 'document']))
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', $document->id)
+        ->assertJsonPath('data.0.type', MediaType::Document->value);
 });
 
 test('rejects unknown type filters', function () {
@@ -101,6 +127,25 @@ test('shows an asset', function () {
         ->assertJsonPath('id', $asset->id)
         ->assertJsonPath('url', $asset->url)
         ->assertJsonMissingPath('path');
+});
+
+test('does not show a logo or avatar as an asset', function () {
+    $logo = Media::factory()->logo()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+    $avatar = Media::factory()->avatar()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->getJson(route('api.assets.show', $logo))
+        ->assertNotFound();
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->getJson(route('api.assets.show', $avatar))
+        ->assertNotFound();
 });
 
 test('does not reveal another workspace asset', function () {

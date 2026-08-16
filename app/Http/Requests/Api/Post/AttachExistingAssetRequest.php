@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\Post;
 
 use App\Actions\Media\FindWorkspaceAsset;
+use App\Actions\Post\AttachExistingAsset;
 use App\Models\Media;
 use App\Models\Post;
 use App\Support\PostMediaRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
+use Symfony\Component\HttpFoundation\Response;
 
 class AttachExistingAssetRequest extends FormRequest
 {
@@ -47,6 +49,12 @@ class AttachExistingAssetRequest extends FormRequest
                 return;
             }
 
+            // Cross-tenant posts must 404 from PostPolicy, not 422 from a
+            // type check against the foreign post's platforms.
+            if ($post->workspace_id !== $this->user()?->current_workspace_id) {
+                return;
+            }
+
             $asset = FindWorkspaceAsset::execute($workspace, (string) $this->input('asset_id'));
 
             if ($asset === null) {
@@ -58,7 +66,7 @@ class AttachExistingAssetRequest extends FormRequest
             if (! in_array($asset->type, $post->allowedMediaTypes(), true)) {
                 $validator->errors()->add(
                     'asset_id',
-                    'This file type is not supported by the platforms enabled on the post.',
+                    AttachExistingAsset::UNSUPPORTED_TYPE_MESSAGE,
                 );
 
                 return;
@@ -70,6 +78,8 @@ class AttachExistingAssetRequest extends FormRequest
 
     public function asset(): Media
     {
+        abort_if($this->resolvedAsset === null, Response::HTTP_NOT_FOUND);
+
         return $this->resolvedAsset;
     }
 }

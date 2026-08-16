@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Post\AttachExistingAsset;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
@@ -61,7 +62,7 @@ test('lists current workspace assets with the asset resource shape', function ()
                     ->where('type', MediaType::Image->value)
                     ->hasAll(['mime_type', 'size', 'url', 'meta', 'created_at'])
                     ->missing('path');
-            });
+            })->where('has_more', false);
         });
 });
 
@@ -85,8 +86,23 @@ test('filters and limits listed assets', function () {
     TryPostServer::actingAs($this->user)
         ->tool(ListAssetsTool::class, ['type' => 'image', 'limit' => 1])
         ->assertOk()
-        ->assertStructuredContent(fn (AssertableJson $json) => $json->has('assets', 1)->etc());
+        ->assertStructuredContent(fn (AssertableJson $json) => $json->has('assets', 1)->where('has_more', true));
+
+    TryPostServer::actingAs($this->user)
+        ->tool(ListAssetsTool::class, ['search' => 'reel', 'type' => 'video'])
+        ->assertOk()
+        ->assertStructuredContent(function (AssertableJson $json) {
+            $json->has('assets', 1, function (AssertableJson $item) {
+                $item->where('original_filename', 'reel.mp4')->etc();
+            })->where('has_more', false);
+        });
 });
+
+test('rejects out of range list limits', function (int $limit) {
+    TryPostServer::actingAs($this->user)
+        ->tool(ListAssetsTool::class, ['limit' => $limit])
+        ->assertHasErrors();
+})->with([0, 101]);
 
 test('returns a workspace asset', function () {
     $asset = Media::factory()->assets()->create([
@@ -103,6 +119,25 @@ test('returns a workspace asset', function () {
                 ->hasAll(['original_filename', 'type', 'mime_type', 'size', 'meta', 'created_at'])
                 ->missing('path');
         });
+});
+
+test('does not return a logo or avatar from the asset library', function () {
+    $logo = Media::factory()->logo()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+    $avatar = Media::factory()->avatar()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(GetAssetTool::class, ['asset_id' => $logo->id])
+        ->assertHasErrors(['Asset not found.']);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(GetAssetTool::class, ['asset_id' => $avatar->id])
+        ->assertHasErrors(['Asset not found.']);
 });
 
 test('missing and cross workspace assets do not reveal metadata', function () {
@@ -125,6 +160,8 @@ test('attaches an existing workspace asset once', function () {
     $asset = Media::factory()->assets()->create([
         'mediable_type' => (new Workspace)->getMorphClass(),
         'mediable_id' => $this->workspace->id,
+        'size' => 12345,
+        'meta' => ['width' => 1920, 'height' => 1080],
     ]);
 
     TryPostServer::actingAs($this->user)
@@ -142,6 +179,7 @@ test('attaches an existing workspace asset once', function () {
         ->tool(AttachExistingAssetTool::class, [
             'post_id' => $this->post->id,
             'asset_id' => $asset->id,
+            'alt' => 'Replacement alt',
         ])
         ->assertOk()
         ->assertStructuredContent(function (AssertableJson $json) {
@@ -149,7 +187,12 @@ test('attaches an existing workspace asset once', function () {
         });
 
     expect($this->post->fresh()->media)->toHaveCount(1)
-        ->and(data_get($this->post->fresh()->media, '0.meta.alt_text'))->toBe('Hero image');
+        ->and(data_get($this->post->fresh()->media, '0.size'))->toBe(12345)
+        ->and(data_get($this->post->fresh()->media, '0.meta'))->toMatchArray([
+            'width' => 1920,
+            'height' => 1080,
+            'alt_text' => 'Hero image',
+        ]);
 });
 
 test('does not store alt text for existing non-image assets', function () {
@@ -166,7 +209,28 @@ test('does not store alt text for existing non-image assets', function () {
         ])
         ->assertOk();
 
-    expect(data_get($this->post->fresh()->media, '0.meta'))->toBeNull();
+    expect(data_get($this->post->fresh()->media, '0.meta.alt_text'))->toBeNull()
+        ->and(data_get($this->post->fresh()->media, '0.meta.duration'))->not->toBeNull();
+});
+
+test('attaches an existing asset to a scheduled post', function () {
+    $this->post->update([
+        'status' => PostStatus::Scheduled,
+        'scheduled_at' => now()->addDay(),
+    ]);
+    $asset = Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachExistingAssetTool::class, [
+            'post_id' => $this->post->id,
+            'asset_id' => $asset->id,
+        ])
+        ->assertOk();
+
+    expect($this->post->fresh()->media)->toHaveCount(1);
 });
 
 test('rejects cross-workspace assets and posts without mutating the post', function () {
@@ -202,8 +266,8 @@ test('rejects cross-workspace assets and posts without mutating the post', funct
     expect($this->post->fresh()->media)->toHaveCount(0);
 });
 
-test('rejects posts in non-editable states', function () {
-    $this->post->update(['status' => PostStatus::Published]);
+test('rejects posts in non-editable states', function (PostStatus $status) {
+    $this->post->update(['status' => $status]);
     $asset = Media::factory()->assets()->create([
         'mediable_type' => (new Workspace)->getMorphClass(),
         'mediable_id' => $this->workspace->id,
@@ -215,7 +279,12 @@ test('rejects posts in non-editable states', function () {
             'asset_id' => $asset->id,
         ])
         ->assertHasErrors([PostStatusRules::editBlockedMessage()]);
-});
+})->with([
+    PostStatus::Published,
+    PostStatus::PartiallyPublished,
+    PostStatus::Failed,
+    PostStatus::Publishing,
+]);
 
 test('rejects assets that enabled post platforms cannot publish', function () {
     $account = SocialAccount::factory()->create([
@@ -238,5 +307,5 @@ test('rejects assets that enabled post platforms cannot publish', function () {
             'post_id' => $this->post->id,
             'asset_id' => $asset->id,
         ])
-        ->assertHasErrors(['No enabled platform on this post accepts this media type.']);
+        ->assertHasErrors([AttachExistingAsset::UNSUPPORTED_TYPE_MESSAGE]);
 });

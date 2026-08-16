@@ -55,7 +55,7 @@ class AttachExistingAssetTool extends Tool
         }
 
         if (! in_array($asset->type, $post->allowedMediaTypes(), true)) {
-            return Response::error('No enabled platform on this post accepts this media type.');
+            return Response::error(AttachExistingAsset::UNSUPPORTED_TYPE_MESSAGE);
         }
 
         AttachExistingAsset::execute(

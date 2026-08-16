@@ -29,6 +29,7 @@ class ListWorkspaceAssets
             ->where('collection', 'assets')
             ->when(filled($search), fn (Builder $query) => $query->where('original_filename', 'ilike', '%'.trim($search).'%'))
             ->when(filled($type), fn (Builder $query) => $query->where('type', $type))
-            ->latest();
+            ->latest()
+            ->orderByDesc('id');
     }
 }
