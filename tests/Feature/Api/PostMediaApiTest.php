@@ -645,9 +645,7 @@ it('attaches an existing workspace asset to a post', function () {
             'alt' => 'Library hero',
         ])
         ->assertOk()
-        ->assertJsonPath('attached', true)
-        ->assertJsonPath('already_attached', false)
-        ->assertJsonPath('post.id', $this->post->id);
+        ->assertJsonPath('id', $this->post->id);
 
     expect($this->post->fresh()->media)->toHaveCount(1)
         ->and(data_get($this->post->fresh()->media, '0.id'))->toBe($asset->id)
@@ -665,15 +663,14 @@ it('does not duplicate an already attached asset', function () {
             'asset_id' => $asset->id,
         ])
         ->assertOk()
-        ->assertJsonPath('attached', true);
+        ->assertJsonPath('id', $this->post->id);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.attach-existing-asset', $this->post), [
             'asset_id' => $asset->id,
         ])
         ->assertOk()
-        ->assertJsonPath('attached', false)
-        ->assertJsonPath('already_attached', true);
+        ->assertJsonPath('id', $this->post->id);
 
     expect($this->post->fresh()->media)->toHaveCount(1);
 });

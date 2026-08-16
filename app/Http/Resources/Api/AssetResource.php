@@ -10,21 +10,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class AssetResource extends JsonResource
 {
     /**
-     * @var array{preview_url: string, expires_at: string, preview_mode: string}|null
-     */
-    private ?array $preview = null;
-
-    /**
-     * @param  array{preview_url: string, expires_at: string, preview_mode: string}  $preview
-     */
-    public function withPreview(array $preview): static
-    {
-        $this->preview = $preview;
-
-        return $this;
-    }
-
-    /**
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
@@ -35,9 +20,9 @@ class AssetResource extends JsonResource
             'type' => $this->type->value,
             'mime_type' => $this->mime_type,
             'size' => $this->size,
+            'url' => $this->url,
             'meta' => $this->meta,
-            'created_at' => $this->created_at?->toISOString(),
-            ...($this->preview ?? []),
+            'created_at' => $this->created_at->format('Y-m-d H:i:s'),
         ];
     }
 }

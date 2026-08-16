@@ -62,7 +62,7 @@ class AttachExistingAssetTool extends Tool
             return Response::error('No enabled platform on this post accepts this media type.');
         }
 
-        $attached = AttachExistingAsset::execute(
+        AttachExistingAsset::execute(
             $post,
             $asset,
             data_get($validated, 'alt'),
@@ -71,8 +71,6 @@ class AttachExistingAssetTool extends Tool
         $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
 
         return Response::structured([
-            'attached' => $attached,
-            'already_attached' => ! $attached,
             'post' => (new PostResource($post))->resolve(),
         ]);
     }

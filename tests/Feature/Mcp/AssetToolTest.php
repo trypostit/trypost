@@ -8,7 +8,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Asset\AttachExistingAssetTool;
-use App\Mcp\Tools\Asset\GetAssetPreviewTool;
+use App\Mcp\Tools\Asset\GetAssetTool;
 use App\Mcp\Tools\Asset\ListAssetsTool;
 use App\Models\Media;
 use App\Models\Post;
@@ -59,9 +59,8 @@ test('lists current workspace assets with the asset resource shape', function ()
                 $item->where('id', $asset->id)
                     ->where('original_filename', 'hero.jpg')
                     ->where('type', MediaType::Image->value)
-                    ->hasAll(['mime_type', 'size', 'meta', 'created_at'])
-                    ->missing('path')
-                    ->missing('preview_url');
+                    ->hasAll(['mime_type', 'size', 'url', 'meta', 'created_at'])
+                    ->missing('path');
             });
         });
 });
@@ -89,21 +88,18 @@ test('filters and limits listed assets', function () {
         ->assertStructuredContent(fn (AssertableJson $json) => $json->has('assets', 1)->etc());
 });
 
-test('returns a short-lived preview for a workspace asset', function () {
+test('returns a workspace asset', function () {
     $asset = Media::factory()->assets()->create([
         'mediable_type' => (new Workspace)->getMorphClass(),
         'mediable_id' => $this->workspace->id,
     ]);
-    Storage::put($asset->path, 'preview-bytes');
 
     TryPostServer::actingAs($this->user)
-        ->tool(GetAssetPreviewTool::class, ['asset_id' => $asset->id])
+        ->tool(GetAssetTool::class, ['asset_id' => $asset->id])
         ->assertOk()
         ->assertStructuredContent(function (AssertableJson $json) use ($asset) {
             $json->where('id', $asset->id)
-                ->where('preview_mode', 'signed_route')
-                ->has('preview_url')
-                ->has('expires_at')
+                ->where('url', $asset->url)
                 ->hasAll(['original_filename', 'type', 'mime_type', 'size', 'meta', 'created_at'])
                 ->missing('path');
         });
@@ -115,29 +111,17 @@ test('missing and cross workspace assets do not reveal metadata', function () {
         'mediable_type' => (new Workspace)->getMorphClass(),
         'mediable_id' => $other->id,
     ]);
-    Storage::put($foreign->path, 'secret');
 
     TryPostServer::actingAs($this->user)
-        ->tool(GetAssetPreviewTool::class, ['asset_id' => $foreign->id])
+        ->tool(GetAssetTool::class, ['asset_id' => $foreign->id])
         ->assertHasErrors(['Asset not found.']);
 
     TryPostServer::actingAs($this->user)
-        ->tool(GetAssetPreviewTool::class, ['asset_id' => (string) Str::uuid()])
+        ->tool(GetAssetTool::class, ['asset_id' => (string) Str::uuid()])
         ->assertHasErrors(['Asset not found.']);
 });
 
-test('missing storage object returns preview unavailable', function () {
-    $asset = Media::factory()->assets()->create([
-        'mediable_type' => (new Workspace)->getMorphClass(),
-        'mediable_id' => $this->workspace->id,
-    ]);
-
-    TryPostServer::actingAs($this->user)
-        ->tool(GetAssetPreviewTool::class, ['asset_id' => $asset->id])
-        ->assertHasErrors(['Asset preview is unavailable.']);
-});
-
-test('attaches an existing workspace asset once and reports idempotent repeats', function () {
+test('attaches an existing workspace asset once', function () {
     $asset = Media::factory()->assets()->create([
         'mediable_type' => (new Workspace)->getMorphClass(),
         'mediable_id' => $this->workspace->id,
@@ -151,9 +135,7 @@ test('attaches an existing workspace asset once and reports idempotent repeats',
         ])
         ->assertOk()
         ->assertStructuredContent(function (AssertableJson $json) {
-            $json->where('attached', true)
-                ->where('already_attached', false)
-                ->has('post.id');
+            $json->has('post.id');
         });
 
     TryPostServer::actingAs($this->user)
@@ -163,9 +145,7 @@ test('attaches an existing workspace asset once and reports idempotent repeats',
         ])
         ->assertOk()
         ->assertStructuredContent(function (AssertableJson $json) {
-            $json->where('attached', false)
-                ->where('already_attached', true)
-                ->etc();
+            $json->has('post.id')->etc();
         });
 
     expect($this->post->fresh()->media)->toHaveCount(1)

@@ -149,7 +149,7 @@ class PostController extends Controller
         return new PostResource($post);
     }
 
-    public function attachExistingAsset(AttachExistingAssetRequest $request, Post $post): JsonResponse
+    public function attachExistingAsset(AttachExistingAssetRequest $request, Post $post): PostResource|JsonResponse
     {
         $this->authorize('update', $post);
 
@@ -177,7 +177,7 @@ class PostController extends Controller
             ]);
         }
 
-        $attached = AttachExistingAsset::execute(
+        AttachExistingAsset::execute(
             $post,
             $asset,
             $request->validated('alt'),
@@ -185,11 +185,7 @@ class PostController extends Controller
 
         $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
 
-        return response()->json([
-            'attached' => $attached,
-            'already_attached' => ! $attached,
-            'post' => (new PostResource($post))->resolve(),
-        ]);
+        return new PostResource($post);
     }
 
     public function attachMediaFromUrl(AttachMediaFromUrlRequest $request, Post $post): PostMediaAttachResource

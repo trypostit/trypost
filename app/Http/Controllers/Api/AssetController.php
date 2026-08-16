@@ -9,11 +9,8 @@ use App\Actions\Media\ListWorkspaceAssets;
 use App\Http\Requests\Api\Asset\IndexAssetRequest;
 use App\Http\Resources\Api\AssetResource;
 use App\Models\Media;
-use App\Services\Media\AssetPreviewUrlFactory;
-use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 
 class AssetController extends Controller
@@ -33,7 +30,7 @@ class AssetController extends Controller
         return AssetResource::collection($assets);
     }
 
-    public function show(Request $request, Media $media, AssetPreviewUrlFactory $previewUrls): AssetResource
+    public function show(Request $request, Media $media): AssetResource
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -43,17 +40,6 @@ class AssetController extends Controller
 
         abort_if($asset === null, Response::HTTP_NOT_FOUND);
 
-        try {
-            $previewUrls->ensureAvailable($asset);
-            $preview = $previewUrls->temporaryUrl(
-                $asset,
-                $workspace,
-                CarbonImmutable::now('UTC')->addMinutes((int) config('trypost.media.signed_preview_url_ttl_minutes')),
-            );
-        } catch (RuntimeException) {
-            abort(Response::HTTP_NOT_FOUND);
-        }
-
-        return AssetResource::make($asset)->withPreview($preview);
+        return new AssetResource($asset);
     }
 }

@@ -6,7 +6,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Asset\AttachExistingAssetTool;
-use App\Mcp\Tools\Asset\GetAssetPreviewTool;
+use App\Mcp\Tools\Asset\GetAssetTool;
 use App\Mcp\Tools\Asset\ListAssetsTool;
 use App\Mcp\Tools\Label\CreateLabelTool;
 use App\Mcp\Tools\Label\DeleteLabelTool;
@@ -114,7 +114,7 @@ test('viewers cannot publish attach media or request uploads via mcp', function 
         ->assertHasErrors(['Not authorized to view assets.']);
 
     TryPostServer::actingAs($this->viewer)
-        ->tool(GetAssetPreviewTool::class, ['asset_id' => (string) Str::uuid()])
+        ->tool(GetAssetTool::class, ['asset_id' => (string) Str::uuid()])
         ->assertHasErrors(['Not authorized to view assets.']);
 
     TryPostServer::actingAs($this->viewer)

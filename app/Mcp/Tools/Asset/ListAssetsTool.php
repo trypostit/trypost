@@ -19,7 +19,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('List media from the current workspace Asset Library. Filter by filename search and type (image, video, document). Does not include storage paths or preview URLs — use get-asset-preview-tool for a short-lived file URL.')]
+#[Description('List media from the current workspace Asset Library. Filter by filename search and type (image, video, document).')]
 class ListAssetsTool extends Tool
 {
     use AuthorizesMcpTool;

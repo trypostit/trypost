@@ -43,8 +43,8 @@ test('lists current workspace asset library media', function () {
         ->assertJsonPath('data.0.id', $asset->id)
         ->assertJsonPath('data.0.original_filename', 'hero.jpg')
         ->assertJsonPath('data.0.type', MediaType::Image->value)
-        ->assertJsonMissingPath('data.0.path')
-        ->assertJsonMissingPath('data.0.preview_url');
+        ->assertJsonPath('data.0.url', $asset->url)
+        ->assertJsonMissingPath('data.0.path');
 });
 
 test('filters assets by filename search and type', function () {
@@ -87,23 +87,18 @@ test('rejects unknown type filters', function () {
         ->assertJsonValidationErrors(['type']);
 });
 
-test('shows an asset with a short-lived preview url', function () {
+test('shows an asset', function () {
     $asset = Media::factory()->assets()->create([
         'mediable_type' => (new Workspace)->getMorphClass(),
         'mediable_id' => $this->workspace->id,
     ]);
-    Storage::put($asset->path, 'preview-bytes');
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->getJson(route('api.assets.show', $asset))
         ->assertOk()
         ->assertJsonPath('id', $asset->id)
-        ->assertJsonPath('preview_mode', 'signed_route')
-        ->assertJsonMissingPath('path')
-        ->assertJson(fn ($json) => $json
-            ->has('preview_url')
-            ->has('expires_at')
-            ->etc());
+        ->assertJsonPath('url', $asset->url)
+        ->assertJsonMissingPath('path');
 });
 
 test('does not reveal another workspace asset', function () {
@@ -112,25 +107,12 @@ test('does not reveal another workspace asset', function () {
         'mediable_type' => (new Workspace)->getMorphClass(),
         'mediable_id' => $other->id,
     ]);
-    Storage::put($asset->path, 'secret');
-
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->getJson(route('api.assets.show', $asset))
         ->assertNotFound();
 });
 
-test('returns not found when the stored file is missing', function () {
-    $asset = Media::factory()->assets()->create([
-        'mediable_type' => (new Workspace)->getMorphClass(),
-        'mediable_id' => $this->workspace->id,
-    ]);
-
-    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
-        ->getJson(route('api.assets.show', $asset))
-        ->assertNotFound();
-});
-
-test('viewers cannot list or preview assets', function () {
+test('viewers cannot list or show assets', function () {
     $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
     $viewer->update(['current_workspace_id' => $this->workspace->id]);
@@ -139,7 +121,6 @@ test('viewers cannot list or preview assets', function () {
         'mediable_type' => (new Workspace)->getMorphClass(),
         'mediable_id' => $this->workspace->id,
     ]);
-    Storage::put($asset->path, 'preview-bytes');
 
     $token = passportToken($viewer, $this->workspace);
 
