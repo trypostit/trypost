@@ -67,6 +67,10 @@ return [
     | workspace bucket first (tenants isolated on shared MCP egress), then a
     | high IP backstop.
     |
+    | signed_preview_url_ttl_minutes is the lifetime of Asset Library preview
+    | URLs returned by the public API and MCP (S3 temporaryUrl or a signed
+    | local route).
+    |
     */
 
     'media' => [
@@ -79,6 +83,7 @@ return [
         'signed_upload_url_ttl_minutes' => (int) (env('MEDIA_SIGNED_UPLOAD_URL_TTL_MINUTES') ?? env('MCP_UPLOAD_URL_TTL_MINUTES', 15)),
         'signed_upload_per_workspace_per_minute' => (int) env('MEDIA_SIGNED_UPLOAD_PER_WORKSPACE_PER_MINUTE', 60),
         'signed_upload_per_ip_per_minute' => (int) env('MEDIA_SIGNED_UPLOAD_PER_IP_PER_MINUTE', 1200),
+        'signed_preview_url_ttl_minutes' => (int) env('MEDIA_SIGNED_PREVIEW_URL_TTL_MINUTES', 5),
     ],
 
     /*

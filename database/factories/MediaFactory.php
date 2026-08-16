@@ -50,6 +50,24 @@ class MediaFactory extends Factory
         ]);
     }
 
+    public function assets(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'collection' => 'assets',
+        ]);
+    }
+
+    public function document(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => MediaType::Document,
+            'path' => 'media/'.now()->format('Y-m').'/'.$this->faker->uuid().'.pdf',
+            'original_filename' => $this->faker->word().'.pdf',
+            'mime_type' => 'application/pdf',
+            'meta' => [],
+        ]);
+    }
+
     public function logo(): static
     {
         return $this->state(fn (array $attributes) => [

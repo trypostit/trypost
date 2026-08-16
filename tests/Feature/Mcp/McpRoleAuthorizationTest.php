@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Mcp\Servers\TryPostServer;
+use App\Mcp\Tools\Asset\AttachExistingAssetTool;
+use App\Mcp\Tools\Asset\GetAssetPreviewTool;
+use App\Mcp\Tools\Asset\ListAssetsTool;
 use App\Mcp\Tools\Label\CreateLabelTool;
 use App\Mcp\Tools\Label\DeleteLabelTool;
 use App\Mcp\Tools\Label\ListLabelsTool;
@@ -105,6 +108,21 @@ test('viewers cannot publish attach media or request uploads via mcp', function 
     TryPostServer::actingAs($this->viewer)
         ->tool(RequestMediaUploadTool::class, [])
         ->assertHasErrors(['Not authorized to upload media.']);
+
+    TryPostServer::actingAs($this->viewer)
+        ->tool(ListAssetsTool::class, [])
+        ->assertHasErrors(['Not authorized to view assets.']);
+
+    TryPostServer::actingAs($this->viewer)
+        ->tool(GetAssetPreviewTool::class, ['asset_id' => (string) Str::uuid()])
+        ->assertHasErrors(['Not authorized to view assets.']);
+
+    TryPostServer::actingAs($this->viewer)
+        ->tool(AttachExistingAssetTool::class, [
+            'post_id' => $this->post->id,
+            'asset_id' => (string) Str::uuid(),
+        ])
+        ->assertHasErrors(['Not authorized to update this post.']);
 });
 
 test('viewers cannot manage labels or signatures via mcp', function () {

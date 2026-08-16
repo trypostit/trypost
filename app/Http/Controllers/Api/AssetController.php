@@ -1,0 +1,59 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Api;
+
+use App\Actions\Media\FindWorkspaceAsset;
+use App\Actions\Media\ListWorkspaceAssets;
+use App\Http\Requests\Api\Asset\IndexAssetRequest;
+use App\Http\Resources\Api\AssetResource;
+use App\Models\Media;
+use App\Services\Media\AssetPreviewUrlFactory;
+use Carbon\CarbonImmutable;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use RuntimeException;
+use Symfony\Component\HttpFoundation\Response;
+
+class AssetController extends Controller
+{
+    public function index(IndexAssetRequest $request): AnonymousResourceCollection
+    {
+        $workspace = $request->user()->currentWorkspace;
+
+        $this->authorize('createPost', $workspace);
+
+        $assets = ListWorkspaceAssets::execute(
+            $workspace,
+            data_get($request->validated(), 'search'),
+            data_get($request->validated(), 'type'),
+        )->paginate(15);
+
+        return AssetResource::collection($assets);
+    }
+
+    public function show(Request $request, Media $media, AssetPreviewUrlFactory $previewUrls): AssetResource
+    {
+        $workspace = $request->user()->currentWorkspace;
+
+        $this->authorize('createPost', $workspace);
+
+        $asset = FindWorkspaceAsset::execute($workspace, $media->id);
+
+        abort_if($asset === null, Response::HTTP_NOT_FOUND);
+
+        try {
+            $previewUrls->ensureAvailable($asset);
+            $preview = $previewUrls->temporaryUrl(
+                $asset,
+                $workspace,
+                CarbonImmutable::now('UTC')->addMinutes((int) config('trypost.media.signed_preview_url_ttl_minutes')),
+            );
+        } catch (RuntimeException) {
+            abort(Response::HTTP_NOT_FOUND);
+        }
+
+        return AssetResource::make($asset)->withPreview($preview);
+    }
+}

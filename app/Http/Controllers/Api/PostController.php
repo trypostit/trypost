@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Media\FindWorkspaceAsset;
+use App\Actions\Post\AttachExistingAsset;
 use App\Actions\Post\CreatePost;
 use App\Actions\Post\DeletePost;
 use App\Actions\Post\HostInlineMedia;
@@ -11,6 +13,7 @@ use App\Actions\Post\UpdatePost;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\CreatedVia;
+use App\Http\Requests\Api\Post\AttachExistingAssetRequest;
 use App\Http\Requests\Api\Post\AttachMediaFromUrlRequest;
 use App\Http\Requests\Api\Post\StoreMediaRequest;
 use App\Http\Requests\Api\Post\StorePostRequest;
@@ -144,6 +147,49 @@ class PostController extends Controller
         $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
 
         return new PostResource($post);
+    }
+
+    public function attachExistingAsset(AttachExistingAssetRequest $request, Post $post): JsonResponse
+    {
+        $this->authorize('update', $post);
+
+        if (PostStatusRules::blocksEditing($post)) {
+            return response()->json(
+                ['message' => PostStatusRules::editBlockedMessage()],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        $asset = FindWorkspaceAsset::execute(
+            $request->user()->currentWorkspace,
+            $request->validated('asset_id'),
+        );
+
+        if ($asset === null) {
+            throw ValidationException::withMessages([
+                'asset_id' => 'Asset not found.',
+            ]);
+        }
+
+        if (! in_array($asset->type, $post->allowedMediaTypes(), true)) {
+            throw ValidationException::withMessages([
+                'asset_id' => 'This file type is not supported by the platforms enabled on the post.',
+            ]);
+        }
+
+        $attached = AttachExistingAsset::execute(
+            $post,
+            $asset,
+            $request->validated('alt'),
+        );
+
+        $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
+
+        return response()->json([
+            'attached' => $attached,
+            'already_attached' => ! $attached,
+            'post' => (new PostResource($post))->resolve(),
+        ]);
     }
 
     public function attachMediaFromUrl(AttachMediaFromUrlRequest $request, Post $post): PostMediaAttachResource
