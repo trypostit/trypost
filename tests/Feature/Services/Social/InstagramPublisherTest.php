@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\InstagramPublisher;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -817,6 +818,115 @@ test('instagram publisher retries a transient Graph failure on media_publish', f
                     ],
                 ]);
         });
+});
+
+test('instagram publisher retries a dropped connection on media_publish', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'container-123']),
+        'https://graph.instagram.com/v25.0/container-123*' => Http::response(['status_code' => 'FINISHED']),
+        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => fn () => throw new ConnectionException('cURL error 28: Operation timed out'),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->context)->toBe([
+                'instagram_workflow' => [
+                    'stage' => 'final_container',
+                    'container_id' => 'container-123',
+                ],
+            ]);
+        });
+});
+
+test('instagram publisher retries a dropped connection on container status', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'container-123']),
+        'https://graph.instagram.com/v25.0/container-123*' => fn () => throw new ConnectionException('cURL error 28: Operation timed out'),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->context)->toBe([
+                'instagram_workflow' => [
+                    'stage' => 'final_container',
+                    'container_id' => 'container-123',
+                ],
+            ]);
+        });
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/media_publish'));
+});
+
+test('instagram publisher retries a dropped connection on container create', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => fn () => throw new ConnectionException('cURL error 28: Operation timed out'),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->getMessage())->toContain('Instagram API unreachable')
+                ->and($exception->context)->toBe([]);
+        });
+});
+
+test('instagram publisher keeps a published media id when the permalink request drops', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'container-123']),
+        'https://graph.instagram.com/v25.0/container-123*' => Http::response(['status_code' => 'FINISHED']),
+        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response(['id' => 'media-123456789']),
+        'https://graph.instagram.com/v25.0/media-123456789*' => fn () => throw new ConnectionException('cURL error 28: Operation timed out'),
+    ]);
+
+    expect($this->publisher->publish($this->postPlatform))->toBe([
+        'id' => 'media-123456789',
+        'url' => null,
+    ]);
+
+    expect($this->postPlatform->fresh()->error_context['instagram_workflow'] ?? null)->toBe([
+        'stage' => 'final_container',
+        'container_id' => 'container-123',
+        'media_id' => 'media-123456789',
+    ]);
 });
 
 test('instagram publisher does not publish again when a transient media_publish already landed', function () {

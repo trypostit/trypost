@@ -16,6 +16,8 @@ use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Meta\GraphError;
 use App\Support\Social\PublishCheckpoint;
+use Closure;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
 
@@ -299,10 +301,19 @@ class InstagramPublisher
 
     private function publishContainer(string $instagramId, string $accessToken, string $containerId): array
     {
-        $publishResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media_publish", [
-            'creation_id' => $containerId,
-            'access_token' => $accessToken,
-        ]);
+        $workflow = [
+            'stage' => self::WORKFLOW_FINAL_CONTAINER,
+            'container_id' => $containerId,
+        ];
+
+        $publishResponse = $this->sendGraphRequest(
+            fn (): Response => $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media_publish", [
+                'creation_id' => $containerId,
+                'access_token' => $accessToken,
+            ]),
+            $containerId,
+            $workflow,
+        );
 
         if ($publishResponse->failed()) {
             Log::error('Instagram publish failed', [
@@ -311,10 +322,7 @@ class InstagramPublisher
             ]);
 
             if (GraphError::isTransientFailure($publishResponse)) {
-                throw $this->pendingContainerException($containerId, [
-                    'stage' => self::WORKFLOW_FINAL_CONTAINER,
-                    'container_id' => $containerId,
-                ], $publishResponse->status());
+                throw $this->pendingContainerException($containerId, $workflow, $publishResponse->status());
             }
 
             $this->handleApiError($publishResponse);
@@ -343,10 +351,14 @@ class InstagramPublisher
      */
     private function waitForMediaProcessing(string $containerId, string $accessToken, array $workflow): ContainerStatus
     {
-        $statusResponse = $this->socialHttp()->get("{$this->baseUrl}/{$containerId}", [
-            'fields' => 'status_code',
-            'access_token' => $accessToken,
-        ]);
+        $statusResponse = $this->sendGraphRequest(
+            fn (): Response => $this->socialHttp()->get("{$this->baseUrl}/{$containerId}", [
+                'fields' => 'status_code',
+                'access_token' => $accessToken,
+            ]),
+            $containerId,
+            $workflow,
+        );
 
         if ($statusResponse->failed()) {
             if (! GraphError::isTransientFailure($statusResponse)) {
@@ -395,10 +407,17 @@ class InstagramPublisher
      */
     private function publishedMedia(string $mediaId, string $accessToken): array
     {
-        $permalinkResponse = $this->socialHttp()->get("{$this->baseUrl}/{$mediaId}", [
-            'fields' => 'permalink',
-            'access_token' => $accessToken,
-        ]);
+        try {
+            $permalinkResponse = $this->socialHttp()->get("{$this->baseUrl}/{$mediaId}", [
+                'fields' => 'permalink',
+                'access_token' => $accessToken,
+            ]);
+        } catch (ConnectionException) {
+            return [
+                'id' => $mediaId,
+                'url' => null,
+            ];
+        }
 
         $permalink = data_get($permalinkResponse->json(), 'permalink');
 
@@ -424,6 +443,27 @@ class InstagramPublisher
     }
 
     /**
+     * @param  Closure(): Response  $request
+     * @param  array<string, mixed>|null  $workflow
+     */
+    private function sendGraphRequest(Closure $request, ?string $containerId = null, ?array $workflow = null): Response
+    {
+        try {
+            return $request();
+        } catch (ConnectionException $e) {
+            if ($containerId !== null && $workflow !== null) {
+                throw $this->pendingContainerException($containerId, $workflow);
+            }
+
+            throw new PlatformUnavailableException(
+                message: "Instagram API unreachable: {$e->getMessage()}",
+                retryDelaySeconds: self::STATUS_RETRY_DELAY_SECONDS,
+                maxRetries: self::STATUS_MAX_RETRIES,
+            );
+        }
+    }
+
+    /**
      * @param  array<string, mixed>  $workflow
      */
     private function pendingContainerException(string $containerId, array $workflow, ?int $httpStatus = null): PlatformUnavailableException
@@ -442,7 +482,9 @@ class InstagramPublisher
      */
     private function createContainer(string $instagramId, array $parameters, string $label): string
     {
-        $response = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", $parameters);
+        $response = $this->sendGraphRequest(
+            fn (): Response => $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", $parameters),
+        );
 
         if ($response->failed()) {
             Log::error("Instagram {$label} creation failed", [
