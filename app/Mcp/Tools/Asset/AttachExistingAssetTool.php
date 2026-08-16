@@ -18,7 +18,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Reuse an existing Asset Library item on a post in the current workspace (the workspace bound to this MCP token). Does not upload a new file — for new media use request-media-upload-tool then attach-media-from-upload-tool, or attach-media-from-url-tool. Discover ids with list-assets-tool or get-asset-tool. The post must be draft or scheduled; published, partially published, failed, and publishing posts are rejected. The asset must already be in this workspace library. The asset type must be accepted by every enabled platform on the post (e.g. TikTok-only posts reject images). Repeating the same post_id and asset_id does not duplicate the media. Optional alt is stored as image alt text only (ignored for video/document), maximum 2000 characters. Requires permission to update the post. Returns the updated post (same shape as other post tools).')]
+#[Description('Reuse an existing Asset Library item on a post in the current workspace (the workspace bound to this MCP token). Does not upload a new file — for new media use request-media-upload-tool then attach-media-from-upload-tool, or attach-media-from-url-tool. Discover ids with list-assets-tool or get-asset-tool. The post must be draft or scheduled; published, partially published, failed, and publishing posts are rejected. The asset must already be in this workspace library. The asset type must be accepted by every enabled platform on the post (e.g. TikTok-only posts reject images). Repeating the same post_id and asset_id does not duplicate the media or change alt. Optional alt overrides image alt text only (ignored for video/document), maximum 2000 characters; omit to keep the library item\'s existing alt_text. Requires permission to update the post. Returns the updated post (same shape as other post tools).')]
 class AttachExistingAssetTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -76,7 +76,7 @@ class AttachExistingAssetTool extends Tool
         return [
             'post_id' => $schema->string()->required()->description('Required UUID of the post to update. Must belong to the current workspace and be draft or scheduled. Other workspaces return "Post not found." Published, partially published, failed, or publishing posts are rejected.'),
             'asset_id' => $schema->string()->required()->description('Required UUID of an Asset Library item in the current workspace (from list-assets-tool or get-asset-tool). Missing, other-workspace, or non-library media returns "Asset not found." Type must be allowed by the post\'s enabled platforms.'),
-            'alt' => $schema->string()->description('Optional accessibility alt text, stored only when the asset is an image (ignored for video and document). Maximum 2000 characters. Omit to attach the image without alt text.'),
+            'alt' => $schema->string()->description('Optional accessibility alt text for images (ignored for video and document). Maximum 2000 characters. When set, replaces any alt_text already on the library item. Omit to keep the library item\'s existing alt_text.'),
         ];
     }
 }
