@@ -783,6 +783,64 @@ test('instagram publisher retries a transient Graph rate-limit on container stat
     'instagram buc' => [80002],
 ]);
 
+test('instagram publisher retries a transient Graph failure on media_publish', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'container-123']),
+        'https://graph.instagram.com/v25.0/container-123*' => Http::response(['status_code' => 'FINISHED']),
+        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response([
+            'error' => [
+                'message' => 'An unexpected error has occurred. Please retry your request later.',
+                'type' => 'OAuthException',
+                'is_transient' => true,
+                'code' => 2,
+            ],
+        ], 500),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->httpStatus)->toBe(500)
+                ->and($exception->context)->toBe([
+                    'instagram_workflow' => [
+                        'stage' => 'final_container',
+                        'container_id' => 'container-123',
+                    ],
+                ]);
+        });
+});
+
+test('instagram publisher does not publish again when a transient media_publish already landed', function () {
+    $this->postPlatform->update([
+        'error_context' => [
+            'instagram_workflow' => [
+                'stage' => 'final_container',
+                'container_id' => 'container-123',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/container-123*' => Http::response(['status_code' => 'PUBLISHED']),
+    ]);
+
+    expect($this->publisher->publish($this->postPlatform->fresh()))->toBe([
+        'id' => 'container-123',
+        'url' => null,
+    ]);
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/media_publish'));
+});
+
 test('instagram publisher fails a confirmed container status rejection', function () {
     $this->post->update([
         'media' => [[

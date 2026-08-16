@@ -309,6 +309,14 @@ class InstagramPublisher
                 'status' => $publishResponse->status(),
                 'body' => $this->redactResponseBody($publishResponse->body()),
             ]);
+
+            if (GraphError::isTransientFailure($publishResponse)) {
+                throw $this->pendingContainerException($containerId, [
+                    'stage' => self::WORKFLOW_FINAL_CONTAINER,
+                    'container_id' => $containerId,
+                ], $publishResponse->status());
+            }
+
             $this->handleApiError($publishResponse);
         }
 
@@ -441,6 +449,16 @@ class InstagramPublisher
                 'status' => $response->status(),
                 'body' => $this->redactResponseBody($response->body()),
             ]);
+
+            if (GraphError::isTransientFailure($response)) {
+                throw new PlatformUnavailableException(
+                    message: "Instagram {$label} creation failed transiently",
+                    httpStatus: $response->status(),
+                    retryDelaySeconds: self::STATUS_RETRY_DELAY_SECONDS,
+                    maxRetries: self::STATUS_MAX_RETRIES,
+                );
+            }
+
             $this->handleApiError($response);
         }
 
