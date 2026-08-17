@@ -18,6 +18,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | OAuth broker (Storia fork only)
+    |--------------------------------------------------------------------------
+    |
+    | When set, each platform's connect() redirects through a shared broker
+    | service instead of building its own Socialite authorize URL - the broker
+    | originates the OAuth request itself and hands a short-lived signed token
+    | back to this instance's own /accounts/{platform}/broker-resume route.
+    | Lets many Post instances share one platform-registered redirect URI
+    | instead of each needing its own added manually. Leave OAUTH_BROKER_URL
+    | unset to keep the original direct-OAuth behavior unchanged.
+    |
+    */
+
+    'oauth_broker_url' => env('OAUTH_BROKER_URL'),
+    'oauth_broker_handoff_secret' => env('OAUTH_BROKER_HANDOFF_SECRET'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Security
     |--------------------------------------------------------------------------
     |

@@ -97,12 +97,73 @@ class SocialController extends Controller
 
         session(['social_connect_workspace' => $workspace->id]);
 
+        if ($brokerUrl = $this->brokerUrl()) {
+            return Inertia::location($this->brokerStartUrl($brokerUrl, $driver, $workspace->id));
+        }
+
         return Inertia::location(
             Socialite::driver($driver)
                 ->scopes($scopes)
                 ->redirect()
                 ->getTargetUrl()
         );
+    }
+
+    protected function brokerUrl(): ?string
+    {
+        return config('trypost.oauth_broker_url') ?: null;
+    }
+
+    /**
+     * `$platform` matches the broker's own PLATFORMS key (app/oauth_broker.py
+     * in storia-hosted-apps), not necessarily this app's driver/platform enum
+     * name - callers pass whichever key the broker expects.
+     */
+    protected function brokerStartUrl(string $brokerUrl, string $platform, string $workspaceId): string
+    {
+        return rtrim($brokerUrl, '/')."/oauth/start/{$platform}?".http_build_query([
+            'client' => request()->getHost(),
+            'workspace' => $workspaceId,
+        ]);
+    }
+
+    /**
+     * Verifies and decodes the signed handoff payload the broker redirects
+     * back with after it completes the token exchange server-side. Returns
+     * null on any failure (bad signature, expired, malformed) - callers treat
+     * that identically to "no payload" and fall back to popupCallback(false).
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function resolveBrokerPayload(Request $request): ?array
+    {
+        $secret = config('trypost.oauth_broker_handoff_secret');
+        $raw = $request->query('payload');
+
+        if (! $secret || ! is_string($raw) || ! str_contains($raw, '.')) {
+            return null;
+        }
+
+        [$payloadB64, $signature] = explode('.', $raw, 2);
+        $expected = hash_hmac('sha256', $payloadB64, $secret);
+
+        if (! hash_equals($expected, $signature)) {
+            Log::warning('OAuth broker handoff signature mismatch');
+
+            return null;
+        }
+
+        // The broker (Python) strips base64url padding before signing; PHP's
+        // decoder requires it back to accept the string in strict mode.
+        $padded = $payloadB64.str_repeat('=', (4 - strlen($payloadB64) % 4) % 4);
+        $decoded = base64_decode(strtr($padded, '-_', '+/'), true);
+        $payload = $decoded ? json_decode($decoded, true) : null;
+
+        if (! is_array($payload) || ($payload['exp'] ?? 0) < time()) {
+            return null;
+        }
+
+        return $payload;
     }
 
     protected function handleCallback(
