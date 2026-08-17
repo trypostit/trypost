@@ -118,6 +118,7 @@ test('goals store saves choices mirrors them to PostHog and advances to referral
 });
 
 test('completed welcome steps remain reachable when going back', function () {
+    attachCurrentWorkspace($this->user);
     $this->user->update([
         'persona' => Persona::Agency->value,
         'goals' => [Goal::SaveTime->value],
@@ -212,6 +213,51 @@ test('referral source requires a valid selection', function (array $payload) {
     'invalid' => [['referral_source' => 'not-a-source']],
 ]);
 
+test('welcome funnel captures connect between referral and checkout.started', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Bus::fake();
+    $workspace = attachCurrentWorkspace($this->user);
+    SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+
+    Plan::where('slug', Slug::Workspace)->firstOrFail()->update([
+        'stripe_monthly_price_id' => 'price_monthly_test',
+    ]);
+
+    $this->mock(StartSubscriptionCheckout::class)
+        ->shouldReceive('redirect')
+        ->once()
+        ->andReturn(redirect('https://checkout.stripe.test/session'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.persona.store'), ['persona' => Persona::Agency->value])
+        ->assertRedirect(route('app.welcome.goals'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.goals.store'), ['goals' => [Goal::SaveTime->value]])
+        ->assertRedirect(route('app.welcome.referral-source'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.referral-source.store'), [
+            'referral_source' => ReferralSource::ProductHunt->value,
+        ])
+        ->assertRedirect(route('app.welcome.connect'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.connect.store'))
+        ->assertRedirect('https://checkout.stripe.test/session');
+
+    $funnel = WelcomeEvent::dashboardFunnel();
+
+    $captured = collect(Bus::dispatched(SendEvent::class))
+        ->filter(fn (SendEvent $event): bool => $event->method === 'capture')
+        ->map(fn (SendEvent $event): string => (string) data_get($event->payload, 'event'))
+        ->filter(fn (string $event): bool => in_array($event, $funnel, true))
+        ->values()
+        ->all();
+
+    expect($captured)->toBe($funnel);
+});
+
 test('referral source store saves the source mirrors it to PostHog and advances to connect', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
@@ -291,19 +337,6 @@ test('connect redirects through incomplete prior steps', function (array $attrib
     ],
 ]);
 
-test('connect hides the network grid when the user has no workspace', function () {
-    completeWelcomeThroughReferral($this->user);
-
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome.connect'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('welcome/Connect', false)
-            ->where('platforms', [])
-            ->where('accounts', [])
-        );
-});
-
 test('connect renders the network grid when the workspace has no accounts', function () {
     completeWelcomeThroughReferral($this->user);
     attachCurrentWorkspace($this->user);
@@ -346,6 +379,7 @@ test('connect store requires a connected social account', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
     completeWelcomeThroughReferral($this->user);
+    attachCurrentWorkspace($this->user);
 
     $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
 

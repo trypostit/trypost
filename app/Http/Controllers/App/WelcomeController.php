@@ -9,16 +9,15 @@ use App\Enums\Plan\Slug;
 use App\Enums\PostHog\CheckoutEvent;
 use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
-use App\Enums\SocialAccount\Status;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
+use App\Http\Requests\App\Welcome\StoreWelcomeConnectRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeGoalsRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeReferralSourceRequest;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Plan;
-use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
@@ -152,17 +151,15 @@ class WelcomeController extends Controller
         $workspace = $request->user()->currentWorkspace;
 
         return Inertia::render('welcome/Connect', [
-            'platforms' => $workspace ? SocialPlatform::connectableOptions() : [],
-            'accounts' => $workspace
-                ? SocialAccountResource::collection(
-                    $workspace->socialAccounts()->orderBy('id')->get(),
-                )->resolve()
-                : [],
+            'platforms' => SocialPlatform::connectableOptions(),
+            'accounts' => SocialAccountResource::collection(
+                $workspace->socialAccounts()->orderBy('id')->get(),
+            )->resolve(),
         ]);
     }
 
     public function storeConnect(
-        Request $request,
+        StoreWelcomeConnectRequest $request,
         StartSubscriptionCheckout $checkout,
         PostHogService $postHog,
     ): Response|RedirectResponse {
@@ -171,23 +168,7 @@ class WelcomeController extends Controller
         }
 
         $user = $request->user();
-
-        $platforms = $user->currentWorkspace
-            ? $user->currentWorkspace->socialAccounts()
-                ->where('status', Status::Connected)
-                ->orderBy('id')
-                ->get()
-                ->map(fn (SocialAccount $account): string => $account->platform->value)
-                ->unique()
-                ->values()
-                ->all()
-            : [];
-
-        if ($platforms === []) {
-            return back()->withErrors([
-                'connect' => __('welcome.connect.required'),
-            ]);
-        }
+        $platforms = $request->connectedPlatforms();
 
         $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
         $priceId = $plan->stripe_monthly_price_id;

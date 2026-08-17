@@ -49,19 +49,24 @@ const submit = (): void => {
             :connected-accounts="accounts"
             grid-class="grid-cols-2 sm:grid-cols-3 xl:grid-cols-6"
             data-testid="welcome-connect-grid"
+            dusk="welcome-connect-grid"
         />
 
         <div class="mx-auto flex w-full max-w-sm flex-col items-center gap-3">
-            <InputError :message="form.errors.connect" />
-            <Button
-                type="button"
-                size="lg"
-                class="w-full rounded-full"
-                :disabled="form.processing || !hasConnectedAccount"
-                data-testid="welcome-start-checkout"
-                @click="submit"
-            >
-                {{ $t('welcome.continue') }}
+            <InputError
+                :message="form.errors.connect"
+                dusk="welcome-connect-error"
+            />
+            <Button as-child size="lg" class="w-full rounded-full">
+                <button
+                    type="button"
+                    data-testid="welcome-start-checkout"
+                    dusk="welcome-start-checkout"
+                    :disabled="form.processing || !hasConnectedAccount"
+                    @click="submit"
+                >
+                    {{ $t('welcome.continue') }}
+                </button>
             </Button>
         </div>
     </WelcomeLayout>

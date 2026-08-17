@@ -95,6 +95,7 @@ const canNavigateTo = (stepNumber: number): boolean =>
                                     })
                                 "
                                 :data-testid="`welcome-step-${stepNumber}`"
+                                :dusk="`welcome-step-${stepNumber}`"
                             >
                                 <span
                                     class="h-2 w-full rounded-full bg-primary transition-opacity hover:opacity-70 motion-reduce:transition-none"
@@ -102,12 +103,9 @@ const canNavigateTo = (stepNumber: number): boolean =>
                             </Link>
                             <div
                                 v-else
-                                :class="[
-                                    'h-2 w-8 rounded-full transition-colors',
-                                    stepNumber <= step
-                                        ? 'bg-primary'
-                                        : 'bg-muted',
-                                ]"
+                                class="flex h-6 w-8 items-center"
+                                :data-testid="`welcome-step-${stepNumber}`"
+                                :dusk="`welcome-step-${stepNumber}`"
                                 :aria-current="
                                     stepNumber === step ? 'step' : undefined
                                 "
@@ -118,7 +116,16 @@ const canNavigateTo = (stepNumber: number): boolean =>
                                           })
                                         : undefined
                                 "
-                            />
+                            >
+                                <span
+                                    :class="[
+                                        'h-2 w-full rounded-full transition-colors',
+                                        stepNumber <= step
+                                            ? 'bg-primary'
+                                            : 'bg-muted',
+                                    ]"
+                                />
+                            </div>
                         </template>
                     </nav>
 
