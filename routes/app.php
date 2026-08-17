@@ -65,10 +65,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('welcome/goals', [WelcomeController::class, 'goals'])->name('app.welcome.goals');
     Route::post('welcome/goals', [WelcomeController::class, 'storeGoals'])->name('app.welcome.goals.store');
     Route::get('welcome/referral-source', [WelcomeController::class, 'referralSource'])->name('app.welcome.referral-source');
-    Route::get('welcome/subscription-required', [WelcomeController::class, 'subscriptionRequired'])->name('app.welcome.subscription-required');
     Route::post('welcome/referral-source', [WelcomeController::class, 'storeReferralSource'])
         ->middleware('throttle:6,1')
         ->name('app.welcome.referral-source.store');
+    Route::get('welcome/connect', [WelcomeController::class, 'connect'])->name('app.welcome.connect');
+    Route::post('welcome/connect', [WelcomeController::class, 'storeConnect'])
+        ->middleware('throttle:6,1')
+        ->name('app.welcome.connect.store');
+    Route::get('welcome/subscription-required', [WelcomeController::class, 'subscriptionRequired'])->name('app.welcome.subscription-required');
     Route::get('billing/processing', [BillingController::class, 'processing'])->name('app.billing.processing');
 
     Route::get('workspaces/create', [WorkspaceController::class, 'create'])->name('app.workspaces.create');

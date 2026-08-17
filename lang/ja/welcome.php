@@ -59,4 +59,6 @@ return [
         'blog' => 'Blog / newsletter',
         'other' => 'その他',
     ],
+    'connect_title' => 'SNSアカウントを接続',
+    'connect_description' => 'TryPostが投稿できるネットワークを少なくとも1つ選んでください。今は進めて、あとから接続することもできます。',
 ];

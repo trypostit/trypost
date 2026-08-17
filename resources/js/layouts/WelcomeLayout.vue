@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 import {
+    connect as connectRoute,
     goals as goalsRoute,
     persona as personaRoute,
     referralSource as referralSourceRoute,
@@ -20,7 +21,7 @@ const props = withDefaults(
         title: undefined,
         description: undefined,
         step: undefined,
-        totalSteps: 3,
+        totalSteps: 4,
         wide: false,
     },
 );
@@ -29,6 +30,7 @@ const stepRoutes = computed(() => [
     personaRoute(),
     goalsRoute(),
     referralSourceRoute(),
+    connectRoute(),
 ]);
 
 const canNavigateTo = (stepNumber: number): boolean =>

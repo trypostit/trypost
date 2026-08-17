@@ -59,4 +59,6 @@ return [
         'blog' => 'Blog / newsletter',
         'other' => '기타',
     ],
+    'connect_title' => '소셜 계정을 연결하세요',
+    'connect_description' => 'TryPost가 콘텐츠를 게시할 네트워크를 하나 이상 선택하세요. 지금은 계속하고 나중에 연결해도 됩니다.',
 ];

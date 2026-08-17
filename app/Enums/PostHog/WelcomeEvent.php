@@ -9,4 +9,5 @@ enum WelcomeEvent: string
     case Persona = 'welcome.persona';
     case Goals = 'welcome.goals';
     case Referral = 'welcome.referral';
+    case Connect = 'welcome.connect';
 }

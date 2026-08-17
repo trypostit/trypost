@@ -222,7 +222,7 @@ const submit = (): void => {
                 size="lg"
                 class="w-full rounded-full"
                 :disabled="form.referral_source === '' || form.processing"
-                data-testid="welcome-start-checkout"
+                data-testid="welcome-referral-continue"
                 @click="submit"
             >
                 {{ $t('welcome.continue') }}

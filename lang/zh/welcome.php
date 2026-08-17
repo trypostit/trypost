@@ -59,4 +59,6 @@ return [
         'blog' => 'Blog / newsletter',
         'other' => '其他',
     ],
+    'connect_title' => '连接社交账号',
+    'connect_description' => '选择至少一个 TryPost 可以发布内容的平台。你也可以先继续，稍后再连接。',
 ];

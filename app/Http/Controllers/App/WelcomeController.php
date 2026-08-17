@@ -8,13 +8,17 @@ use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Plan\Slug;
 use App\Enums\PostHog\CheckoutEvent;
 use App\Enums\PostHog\WelcomeEvent;
+use App\Enums\SocialAccount\Platform as SocialPlatform;
+use App\Enums\SocialAccount\Status;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
 use App\Http\Requests\App\Welcome\StoreWelcomeGoalsRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeReferralSourceRequest;
+use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Plan;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
@@ -120,9 +124,8 @@ class WelcomeController extends Controller
 
     public function storeReferralSource(
         StoreWelcomeReferralSourceRequest $request,
-        StartSubscriptionCheckout $checkout,
         PostHogService $postHog,
-    ): Response|RedirectResponse {
+    ): RedirectResponse {
         if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true)) {
             return $redirect;
         }
@@ -145,25 +148,56 @@ class WelcomeController extends Controller
             $user->account,
         );
 
-        $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
-        $priceId = $plan->stripe_monthly_price_id;
+        return redirect()->route('app.welcome.connect');
+    }
 
-        abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Monthly price is not configured.');
+    public function connect(Request $request): InertiaResponse|RedirectResponse
+    {
+        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireReferral: true)) {
+            return $redirect;
+        }
 
-        $response = $checkout->redirect(
-            $user->account,
-            $priceId,
-            route('app.welcome.referral-source'),
-        );
+        $workspace = $request->user()->currentWorkspace;
 
+        return Inertia::render('welcome/Connect', [
+            'platforms' => SocialPlatform::connectableOptions(),
+            'accounts' => $workspace
+                ? SocialAccountResource::collection(
+                    $workspace->socialAccounts()->orderBy('id')->get(),
+                )->resolve()
+                : [],
+        ]);
+    }
+
+    public function storeConnect(
+        Request $request,
+        StartSubscriptionCheckout $checkout,
+        PostHogService $postHog,
+    ): Response|RedirectResponse {
+        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireReferral: true)) {
+            return $redirect;
+        }
+
+        $user = $request->user();
+
+        abort_unless($user->isAccountOwner(), Response::HTTP_FORBIDDEN);
+
+        $platforms = $this->connectedPlatforms($user);
+
+        $postHog->identify($user->id, [
+            'connected_platforms' => $platforms,
+        ]);
         $postHog->capture(
             $user->id,
-            CheckoutEvent::Started->value,
-            ['plan_name' => $plan->name, 'interval' => 'monthly'],
+            WelcomeEvent::Connect->value,
+            [
+                'connected' => $platforms !== [],
+                'platforms' => $platforms,
+            ],
             $user->account,
         );
 
-        return $response;
+        return $this->startCheckout($user, $checkout, $postHog);
     }
 
     public function subscriptionRequired(Request $request): InertiaResponse|RedirectResponse
@@ -183,8 +217,11 @@ class WelcomeController extends Controller
         ]);
     }
 
-    private function redirectIfStepIncomplete(Request $request, bool $requireGoals = false): ?RedirectResponse
-    {
+    private function redirectIfStepIncomplete(
+        Request $request,
+        bool $requireGoals = false,
+        bool $requireReferral = false,
+    ): ?RedirectResponse {
         if ($redirect = $this->redirectIfUnavailable($request)) {
             return $redirect;
         }
@@ -197,6 +234,10 @@ class WelcomeController extends Controller
 
         if ($requireGoals && ! $this->hasCurrentGoals($user)) {
             return redirect()->route('app.welcome.goals');
+        }
+
+        if ($requireReferral && ! $user->referral_source) {
+            return redirect()->route('app.welcome.referral-source');
         }
 
         return null;
@@ -218,6 +259,49 @@ class WelcomeController extends Controller
         $allowed = array_map(fn (Goal $goal): string => $goal->value, Goal::cases());
 
         return array_intersect($goals, $allowed) !== [];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function connectedPlatforms(User $user): array
+    {
+        $workspace = $user->currentWorkspace;
+
+        if ($workspace === null) {
+            return [];
+        }
+
+        return $workspace->socialAccounts()
+            ->where('status', Status::Connected)
+            ->orderBy('id')
+            ->get()
+            ->map(fn (SocialAccount $account): string => $account->platform->value)
+            ->values()
+            ->all();
+    }
+
+    private function startCheckout(User $user, StartSubscriptionCheckout $checkout, PostHogService $postHog): Response
+    {
+        $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
+        $priceId = $plan->stripe_monthly_price_id;
+
+        abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Monthly price is not configured.');
+
+        $response = $checkout->redirect(
+            $user->account,
+            $priceId,
+            route('app.welcome.connect'),
+        );
+
+        $postHog->capture(
+            $user->id,
+            CheckoutEvent::Started->value,
+            ['plan_name' => $plan->name, 'interval' => 'monthly'],
+            $user->account,
+        );
+
+        return $response;
     }
 
     private function redirectIfUnavailable(Request $request): ?RedirectResponse

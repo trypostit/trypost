@@ -59,4 +59,6 @@ return [
         'blog' => 'Blog / newsletter',
         'other' => 'Something else',
     ],
+    'connect_title' => 'Connect a social account',
+    'connect_description' => 'Choose at least one network where TryPost can publish your content. You can continue and do this later.',
 ];
