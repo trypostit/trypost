@@ -26,11 +26,11 @@ const submit = (): void => {
 </script>
 
 <template>
-    <Head :title="$t('welcome.connect_title')" />
+    <Head :title="$t('welcome.connect.title')" />
 
     <WelcomeLayout
-        :title="$t('welcome.connect_title')"
-        :description="$t('welcome.connect_description')"
+        :title="$t('welcome.connect.title')"
+        :description="$t('welcome.connect.description')"
         :step="4"
         wide
     >

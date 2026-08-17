@@ -59,6 +59,8 @@ return [
         'blog' => 'Blog / newsletter',
         'other' => 'Otra cosa',
     ],
-    'connect_title' => 'Conecta una red social',
-    'connect_description' => 'Elige al menos una red donde TryPost pueda publicar tu contenido. Puedes continuar y hacerlo más tarde.',
+    'connect' => [
+        'title' => 'Conecta una red social',
+        'description' => 'Elige al menos una red donde TryPost pueda publicar tu contenido. Puedes continuar y hacerlo más tarde.',
+    ],
 ];

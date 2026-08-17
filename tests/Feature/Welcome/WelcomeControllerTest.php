@@ -270,8 +270,8 @@ test('connect renders after prior steps are complete', function () {
 });
 
 test('connect copy exists in every locale', function (string $locale) {
-    expect(__('welcome.connect_title', [], $locale))->not->toBe('welcome.connect_title')
-        ->and(__('welcome.connect_description', [], $locale))->not->toBe('welcome.connect_description');
+    expect(__('welcome.connect.title', [], $locale))->not->toBe('welcome.connect.title')
+        ->and(__('welcome.connect.description', [], $locale))->not->toBe('welcome.connect.description');
 })->with(ContentLanguage::values());
 
 test('connect store starts Stripe checkout without a social account', function () {

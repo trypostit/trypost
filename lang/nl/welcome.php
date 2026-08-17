@@ -59,6 +59,8 @@ return [
         'blog' => 'Blog / newsletter',
         'other' => 'Iets anders',
     ],
-    'connect_title' => 'Verbind een social account',
-    'connect_description' => 'Kies minstens één netwerk waarop TryPost je content kan plaatsen. Je kunt ook doorgaan en dit later doen.',
+    'connect' => [
+        'title' => 'Verbind een social account',
+        'description' => 'Kies minstens één netwerk waarop TryPost je content kan plaatsen. Je kunt ook doorgaan en dit later doen.',
+    ],
 ];

@@ -59,6 +59,8 @@ return [
         'blog' => 'Blog / newsletter',
         'other' => 'Etwas anderes',
     ],
-    'connect_title' => 'Verbinde ein soziales Konto',
-    'connect_description' => 'Wähle mindestens ein Netzwerk, auf dem TryPost deine Inhalte veröffentlichen kann. Du kannst auch fortfahren und das später erledigen.',
+    'connect' => [
+        'title' => 'Verbinde ein soziales Konto',
+        'description' => 'Wähle mindestens ein Netzwerk, auf dem TryPost deine Inhalte veröffentlichen kann. Du kannst auch fortfahren und das später erledigen.',
+    ],
 ];
