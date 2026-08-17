@@ -18,13 +18,13 @@ use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeReferralSourceRequest;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Plan;
-use App\Models\User;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class WelcomeController extends Controller
 {
@@ -185,18 +185,22 @@ class WelcomeController extends Controller
             route('app.welcome.connect'),
         );
 
-        $postHog->capture(
-            $user->id,
-            WelcomeEvent::Connect->value,
-            ['platforms' => $platforms],
-            $user->account,
-        );
-        $postHog->capture(
-            $user->id,
-            CheckoutEvent::Started->value,
-            ['plan_name' => $plan->name, 'interval' => 'monthly'],
-            $user->account,
-        );
+        try {
+            $postHog->capture(
+                $user->id,
+                WelcomeEvent::Connect->value,
+                ['platforms' => $platforms],
+                $user->account,
+            );
+            $postHog->capture(
+                $user->id,
+                CheckoutEvent::Started->value,
+                ['plan_name' => $plan->name, 'interval' => 'monthly'],
+                $user->account,
+            );
+        } catch (Throwable $e) {
+            report($e);
+        }
 
         return $response;
     }
@@ -233,7 +237,7 @@ class WelcomeController extends Controller
             return redirect()->route('app.welcome.persona');
         }
 
-        if ($requireGoals && ! $this->hasCurrentGoals($user)) {
+        if ($requireGoals && ! $user->hasCurrentGoals()) {
             return redirect()->route('app.welcome.goals');
         }
 
@@ -242,24 +246,6 @@ class WelcomeController extends Controller
         }
 
         return null;
-    }
-
-    /**
-     * True when the user has at least one goal that still exists in Goal.
-     * Dropped enum values must not satisfy the gate or users mid-funnel can
-     * skip re-selecting after we slim the list.
-     */
-    private function hasCurrentGoals(User $user): bool
-    {
-        $goals = $user->goals;
-
-        if (! is_array($goals) || $goals === []) {
-            return false;
-        }
-
-        $allowed = array_map(fn (Goal $goal): string => $goal->value, Goal::cases());
-
-        return array_intersect($goals, $allowed) !== [];
     }
 
     private function redirectIfUnavailable(Request $request): ?RedirectResponse

@@ -19,7 +19,9 @@ use App\Models\Plan;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\PostHogService;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Route;
 
 beforeEach(function () {
@@ -528,6 +530,32 @@ test('connect store does not capture checkout.started when Stripe checkout creat
         SendEvent::class,
         fn (SendEvent $event): bool => data_get($event->payload, 'event') === CheckoutEvent::Started->value,
     );
+});
+
+test('connect store still redirects to stripe when posthog capture fails', function () {
+    Exceptions::fake();
+    completeWelcomeThroughReferral($this->user);
+    $workspace = attachCurrentWorkspace($this->user);
+    SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+
+    Plan::where('slug', Slug::Workspace)->firstOrFail()->update([
+        'stripe_monthly_price_id' => 'price_monthly_test',
+    ]);
+
+    $this->mock(StartSubscriptionCheckout::class)
+        ->shouldReceive('redirect')
+        ->once()
+        ->andReturn(redirect('https://checkout.stripe.test/session'));
+
+    $this->mock(PostHogService::class)
+        ->shouldReceive('capture')
+        ->andThrow(new RuntimeException('PostHog is down.'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.connect.store'))
+        ->assertRedirect('https://checkout.stripe.test/session');
+
+    Exceptions::assertReported(RuntimeException::class);
 });
 
 test('welcome steps redirect to calendar for subscribed accounts', function (string $routeName, string $method, array $payload = []) {

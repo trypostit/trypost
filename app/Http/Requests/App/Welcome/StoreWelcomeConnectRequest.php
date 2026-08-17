@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\App\Welcome;
 
 use App\Enums\SocialAccount\Status;
-use App\Enums\User\Goal;
 use App\Models\SocialAccount;
-use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -55,7 +53,7 @@ class StoreWelcomeConnectRequest extends FormRequest
                 return;
             }
 
-            if (! $user->persona || ! $this->hasCurrentGoals($user) || ! $user->referral_source) {
+            if (! $user->persona || ! $user->hasCurrentGoals() || ! $user->referral_source) {
                 return;
             }
 
@@ -63,22 +61,5 @@ class StoreWelcomeConnectRequest extends FormRequest
                 $validator->errors()->add('connect', __('welcome.connect.required'));
             }
         });
-    }
-
-    /**
-     * Mirrors WelcomeController::hasCurrentGoals — dropped enum values
-     * must not count as a completed goals step.
-     */
-    private function hasCurrentGoals(User $user): bool
-    {
-        $goals = $user->goals;
-
-        if (! is_array($goals) || $goals === []) {
-            return false;
-        }
-
-        $allowed = array_map(fn (Goal $goal): string => $goal->value, Goal::cases());
-
-        return array_intersect($goals, $allowed) !== [];
     }
 }

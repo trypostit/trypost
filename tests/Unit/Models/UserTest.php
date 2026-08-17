@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Auth\SocialAuthProvider;
+use App\Enums\User\Goal;
 use App\Models\User;
 
 test('isConnectedTo reflects whether the provider id column is set', function () {
@@ -20,4 +21,14 @@ test('firstName returns the first token of the display name', function (string $
     ['  Marie  Curie  ', 'Marie'],
     ['', ''],
     ['   ', ''],
+]);
+
+test('hasCurrentGoals is true only when at least one stored goal still exists', function (?array $goals, bool $expected) {
+    expect(User::factory()->make(['goals' => $goals])->hasCurrentGoals())->toBe($expected);
+})->with([
+    'null' => [null, false],
+    'empty' => [[], false],
+    'current' => [[Goal::SaveTime->value], true],
+    'removed only' => [['team_collaboration', 'automate_api'], false],
+    'mixed' => [['team_collaboration', Goal::SaveTime->value], true],
 ]);
