@@ -14,6 +14,8 @@ use App\Services\PostHogService;
 
 class SocialAccountObserver
 {
+    public function __construct(private readonly PostHogService $postHog) {}
+
     /**
      * Enforce one connected account per social network per workspace. Variants
      * of the same network (LinkedIn profile/page, Instagram standalone/Facebook)
@@ -57,6 +59,7 @@ class SocialAccountObserver
         $isConnected = $socialAccount->status === Status::Connected;
 
         if ($wasConnected !== $isConnected) {
+            $this->identifyConnectedPlatforms($socialAccount);
             $this->notifyOnboarding($socialAccount);
         }
     }
@@ -64,10 +67,39 @@ class SocialAccountObserver
     private function syncUsageAndOnboarding(SocialAccount $socialAccount): void
     {
         $this->syncUsage($socialAccount);
+        $this->identifyConnectedPlatforms($socialAccount);
 
         if ($socialAccount->status === Status::Connected) {
             $this->notifyOnboarding($socialAccount);
         }
+    }
+
+    private function identifyConnectedPlatforms(SocialAccount $socialAccount): void
+    {
+        if (! PostHogService::isEnabled()) {
+            return;
+        }
+
+        $socialAccount->loadMissing('workspace.account.owner');
+
+        $owner = $socialAccount->workspace?->account?->owner;
+
+        if ($owner === null) {
+            return;
+        }
+
+        $platforms = $socialAccount->workspace->socialAccounts()
+            ->where('status', Status::Connected)
+            ->orderBy('id')
+            ->get()
+            ->map(fn (SocialAccount $account): string => $account->platform->value)
+            ->unique()
+            ->values()
+            ->all();
+
+        $this->postHog->identify($owner->id, [
+            'connected_platforms' => $platforms,
+        ]);
     }
 
     /**

@@ -450,9 +450,6 @@ test('connect store starts Stripe checkout when a social account is connected', 
         ->post(route('app.welcome.connect.store'))
         ->assertRedirect('https://checkout.stripe.test/session');
 
-    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'identify'
-        && data_get($event->payload, 'distinctId') === $this->user->id
-        && data_get($event->payload, 'properties.connected_platforms') === [SocialPlatform::LinkedIn->value]);
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
         && data_get($event->payload, 'event') === WelcomeEvent::Connect->value
         && data_get($event->payload, 'properties.platforms') === [SocialPlatform::LinkedIn->value]);
@@ -501,10 +498,6 @@ test('connect store does not capture checkout.started when Stripe checkout creat
     $this->actingAs($this->user->fresh())
         ->post(route('app.welcome.connect.store'));
 
-    Bus::assertNotDispatched(
-        SendEvent::class,
-        fn (SendEvent $event): bool => $event->method === 'identify',
-    );
     Bus::assertNotDispatched(
         SendEvent::class,
         fn (SendEvent $event): bool => data_get($event->payload, 'event') === WelcomeEvent::Connect->value,

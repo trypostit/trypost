@@ -181,9 +181,6 @@ class WelcomeController extends Controller
             route('app.welcome.connect'),
         );
 
-        $postHog->identify($user->id, [
-            'connected_platforms' => $platforms,
-        ]);
         $postHog->capture(
             $user->id,
             WelcomeEvent::Connect->value,
