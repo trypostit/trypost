@@ -271,6 +271,24 @@ test('connect redirects through incomplete prior steps', function (array $attrib
         'app.welcome.referral-source',
         'post',
     ],
+    'get only removed goals' => [
+        [
+            'persona' => Persona::Agency->value,
+            'goals' => ['team_collaboration', 'automate_api', 'track_performance'],
+            'referral_source' => ReferralSource::Google->value,
+        ],
+        'app.welcome.goals',
+        'get',
+    ],
+    'post only removed goals' => [
+        [
+            'persona' => Persona::Agency->value,
+            'goals' => ['team_collaboration', 'automate_api', 'track_performance'],
+            'referral_source' => ReferralSource::Google->value,
+        ],
+        'app.welcome.goals',
+        'post',
+    ],
 ]);
 
 test('connect hides the network grid when the user has no workspace', function () {
@@ -282,6 +300,20 @@ test('connect hides the network grid when the user has no workspace', function (
         ->assertInertia(fn ($page) => $page
             ->component('welcome/Connect', false)
             ->where('platforms', [])
+            ->where('accounts', [])
+        );
+});
+
+test('connect renders the network grid when the workspace has no accounts', function () {
+    completeWelcomeThroughReferral($this->user);
+    attachCurrentWorkspace($this->user);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.connect'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('welcome/Connect', false)
+            ->has('platforms', count(SocialPlatform::connectableOptions()))
             ->where('accounts', [])
         );
 });
@@ -336,6 +368,23 @@ test('connect store rejects disconnected or expired social accounts', function (
     $workspace = attachCurrentWorkspace($this->user);
     SocialAccount::factory()->linkedin()->disconnected()->create(['workspace_id' => $workspace->id]);
     SocialAccount::factory()->x()->tokenExpired()->create(['workspace_id' => $workspace->id]);
+
+    $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.connect.store'))
+        ->assertSessionHasErrors('connect');
+});
+
+test('connect store ignores social accounts on another workspace', function () {
+    completeWelcomeThroughReferral($this->user);
+    attachCurrentWorkspace($this->user);
+
+    $otherWorkspace = Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+    SocialAccount::factory()->linkedin()->create(['workspace_id' => $otherWorkspace->id]);
 
     $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
 
@@ -418,6 +467,10 @@ test('connect store does not capture checkout.started when Stripe checkout creat
     $this->actingAs($this->user->fresh())
         ->post(route('app.welcome.connect.store'));
 
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => $event->method === 'identify',
+    );
     Bus::assertNotDispatched(
         SendEvent::class,
         fn (SendEvent $event): bool => data_get($event->payload, 'event') === WelcomeEvent::Connect->value,
