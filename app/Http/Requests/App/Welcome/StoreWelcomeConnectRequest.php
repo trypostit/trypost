@@ -79,8 +79,7 @@ class StoreWelcomeConnectRequest extends FormRequest
 
     private function hasConnectedSocialAccount(): bool
     {
-        $user = $this->user();
-        $workspace = $user?->currentWorkspace ?? $user?->accountWorkspaces()->orderBy('workspaces.id')->first();
+        $workspace = $this->user()?->currentWorkspace;
 
         if ($workspace === null) {
             return false;

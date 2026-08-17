@@ -304,22 +304,6 @@ test('connect renders connected accounts for the current workspace', function ()
         );
 });
 
-test('connect restores a missing current workspace before offering networks', function () {
-    completeWelcomeThroughReferral($this->user);
-    $workspace = attachCurrentWorkspace($this->user);
-    $this->user->update(['current_workspace_id' => null]);
-
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome.connect'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('welcome/Connect', false)
-            ->has('platforms', count(SocialPlatform::connectableOptions()))
-        );
-
-    expect($this->user->fresh()->current_workspace_id)->toBe($workspace->id);
-});
-
 test('connect copy exists in every locale', function (string $locale) {
     expect(__('welcome.connect.title', [], $locale))->not->toBe('welcome.connect.title')
         ->and(__('welcome.connect.description', [], $locale))->not->toBe('welcome.connect.description')

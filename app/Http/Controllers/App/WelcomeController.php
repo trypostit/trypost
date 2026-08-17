@@ -21,7 +21,6 @@ use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Plan;
 use App\Models\SocialAccount;
 use App\Models\User;
-use App\Models\Workspace;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -154,7 +153,7 @@ class WelcomeController extends Controller
             return $redirect;
         }
 
-        $workspace = $this->resolveCurrentWorkspace($request->user());
+        $workspace = $request->user()->currentWorkspace;
 
         return Inertia::render('welcome/Connect', [
             'platforms' => $workspace ? SocialPlatform::connectableOptions() : [],
@@ -248,7 +247,7 @@ class WelcomeController extends Controller
      */
     private function connectedPlatforms(User $user): array
     {
-        $workspace = $this->resolveCurrentWorkspace($user);
+        $workspace = $user->currentWorkspace;
 
         if ($workspace === null) {
             return [];
@@ -262,23 +261,6 @@ class WelcomeController extends Controller
             ->unique()
             ->values()
             ->all();
-    }
-
-    private function resolveCurrentWorkspace(User $user): ?Workspace
-    {
-        if ($user->currentWorkspace) {
-            return $user->currentWorkspace;
-        }
-
-        $workspace = $user->accountWorkspaces()->orderBy('workspaces.id')->first();
-
-        if ($workspace === null) {
-            return null;
-        }
-
-        $user->switchWorkspace($workspace);
-
-        return $workspace;
     }
 
     private function startCheckout(User $user, StartSubscriptionCheckout $checkout, PostHogService $postHog): Response
