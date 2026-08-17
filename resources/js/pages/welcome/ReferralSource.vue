@@ -30,7 +30,6 @@ import { store } from '@/routes/app/welcome/referral-source';
 const props = defineProps<{
     sources: string[];
     selected?: string | null;
-    plan: { name: string; interval: string };
 }>();
 
 const form = useForm<{ referral_source: string }>({

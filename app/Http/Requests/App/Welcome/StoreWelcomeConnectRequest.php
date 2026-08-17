@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Requests\App\Welcome;
 
 use App\Enums\SocialAccount\Status;
+use App\Enums\User\Goal;
+use App\Models\User;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -36,6 +38,10 @@ class StoreWelcomeConnectRequest extends FormRequest
                     return;
                 }
 
+                if (! $this->hasCompletedPriorWelcomeSteps($user)) {
+                    return;
+                }
+
                 if ($this->hasConnectedSocialAccount()) {
                     return;
                 }
@@ -45,9 +51,36 @@ class StoreWelcomeConnectRequest extends FormRequest
         ];
     }
 
+    private function hasCompletedPriorWelcomeSteps(User $user): bool
+    {
+        if (! $user->persona) {
+            return false;
+        }
+
+        if (! $this->hasCurrentGoals($user)) {
+            return false;
+        }
+
+        return $user->referral_source !== null;
+    }
+
+    private function hasCurrentGoals(User $user): bool
+    {
+        $goals = $user->goals;
+
+        if (! is_array($goals) || $goals === []) {
+            return false;
+        }
+
+        $allowed = array_map(fn (Goal $goal): string => $goal->value, Goal::cases());
+
+        return array_intersect($goals, $allowed) !== [];
+    }
+
     private function hasConnectedSocialAccount(): bool
     {
-        $workspace = $this->user()?->currentWorkspace;
+        $user = $this->user();
+        $workspace = $user?->currentWorkspace ?? $user?->accountWorkspaces()->orderBy('workspaces.id')->first();
 
         if ($workspace === null) {
             return false;

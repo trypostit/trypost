@@ -7,9 +7,11 @@ use App\Enums\Plan\Slug;
 use App\Enums\PostHog\CheckoutEvent;
 use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
+use App\Enums\SocialAccount\Status;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
+use App\Enums\UserWorkspace\Role;
 use App\Enums\Workspace\ContentLanguage;
 use App\Jobs\PostHog\SendEvent;
 use App\Models\Account;
@@ -178,7 +180,6 @@ test('referral source renders after prior steps are complete', function () {
         'persona' => Persona::Agency->value,
         'goals' => [Goal::SaveTime->value],
     ]);
-    $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.welcome.referral-source'))
@@ -191,8 +192,7 @@ test('referral source renders after prior steps are complete', function () {
                 && collect($sources)->contains(ReferralSource::HackerNews->value)
                 && collect($sources)->contains(ReferralSource::Directories->value)
                 && collect($sources)->contains(ReferralSource::Founder->value))
-            ->where('plan.name', $plan->name)
-            ->where('plan.interval', 'monthly')
+            ->missing('plan')
         );
 });
 
@@ -238,25 +238,42 @@ test('referral source store saves the source mirrors it to PostHog and advances 
     );
 });
 
-test('connect redirects through incomplete prior steps', function (array $attributes, string $routeName) {
+test('connect redirects through incomplete prior steps', function (array $attributes, string $routeName, string $method) {
     $this->user->update($attributes);
 
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome.connect'))
-        ->assertRedirect(route($routeName));
+    $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
+
+    $this->actingAs($this->user->fresh());
+
+    $response = $method === 'get'
+        ? $this->get(route('app.welcome.connect'))
+        : $this->post(route('app.welcome.connect.store'));
+
+    $response->assertRedirect(route($routeName));
 })->with([
-    'missing persona' => [[], 'app.welcome.persona'],
-    'missing goals' => [['persona' => Persona::Agency->value], 'app.welcome.goals'],
-    'missing referral' => [
+    'get missing persona' => [[], 'app.welcome.persona', 'get'],
+    'get missing goals' => [['persona' => Persona::Agency->value], 'app.welcome.goals', 'get'],
+    'get missing referral' => [
         [
             'persona' => Persona::Agency->value,
             'goals' => [Goal::SaveTime->value],
         ],
         'app.welcome.referral-source',
+        'get',
+    ],
+    'post missing persona' => [[], 'app.welcome.persona', 'post'],
+    'post missing goals' => [['persona' => Persona::Agency->value], 'app.welcome.goals', 'post'],
+    'post missing referral' => [
+        [
+            'persona' => Persona::Agency->value,
+            'goals' => [Goal::SaveTime->value],
+        ],
+        'app.welcome.referral-source',
+        'post',
     ],
 ]);
 
-test('connect renders after prior steps are complete', function () {
+test('connect hides the network grid when the user has no workspace', function () {
     completeWelcomeThroughReferral($this->user);
 
     $this->actingAs($this->user->fresh())
@@ -264,9 +281,43 @@ test('connect renders after prior steps are complete', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('welcome/Connect', false)
-            ->has('platforms', count(SocialPlatform::connectableOptions()))
-            ->has('accounts')
+            ->where('platforms', [])
+            ->where('accounts', [])
         );
+});
+
+test('connect renders connected accounts for the current workspace', function () {
+    completeWelcomeThroughReferral($this->user);
+    $workspace = attachCurrentWorkspace($this->user);
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.connect'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('welcome/Connect', false)
+            ->has('platforms', count(SocialPlatform::connectableOptions()))
+            ->has('accounts', 1)
+            ->where('accounts.0.id', $account->id)
+            ->where('accounts.0.platform', SocialPlatform::LinkedIn->value)
+            ->where('accounts.0.status', Status::Connected->value)
+        );
+});
+
+test('connect restores a missing current workspace before offering networks', function () {
+    completeWelcomeThroughReferral($this->user);
+    $workspace = attachCurrentWorkspace($this->user);
+    $this->user->update(['current_workspace_id' => null]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.connect'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('welcome/Connect', false)
+            ->has('platforms', count(SocialPlatform::connectableOptions()))
+        );
+
+    expect($this->user->fresh()->current_workspace_id)->toBe($workspace->id);
 });
 
 test('connect copy exists in every locale', function (string $locale) {
@@ -332,6 +383,9 @@ test('connect store starts Stripe checkout when a social account is connected', 
         ->post(route('app.welcome.connect.store'))
         ->assertRedirect('https://checkout.stripe.test/session');
 
+    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'identify'
+        && data_get($event->payload, 'distinctId') === $this->user->id
+        && data_get($event->payload, 'properties.connected_platforms') === [SocialPlatform::LinkedIn->value]);
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
         && data_get($event->payload, 'event') === WelcomeEvent::Connect->value
         && data_get($event->payload, 'properties.connected') === true
@@ -381,6 +435,10 @@ test('connect store does not capture checkout.started when Stripe checkout creat
     $this->actingAs($this->user->fresh())
         ->post(route('app.welcome.connect.store'));
 
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === WelcomeEvent::Connect->value,
+    );
     Bus::assertNotDispatched(
         SendEvent::class,
         fn (SendEvent $event): bool => data_get($event->payload, 'event') === CheckoutEvent::Started->value,
@@ -567,6 +625,10 @@ test('connect store fails loudly when the monthly price is not configured', func
 
     Bus::assertNotDispatched(
         SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === WelcomeEvent::Connect->value,
+    );
+    Bus::assertNotDispatched(
+        SendEvent::class,
         fn (SendEvent $event): bool => data_get($event->payload, 'event') === CheckoutEvent::Started->value,
     );
 });
@@ -586,6 +648,7 @@ function attachCurrentWorkspace(User $user): Workspace
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
     $user->update(['current_workspace_id' => $workspace->id]);
 
     return $workspace;

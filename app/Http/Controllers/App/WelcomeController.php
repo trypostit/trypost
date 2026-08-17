@@ -21,6 +21,7 @@ use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Plan;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -111,15 +112,10 @@ class WelcomeController extends Controller
         }
 
         $user = $request->user();
-        $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
 
         return Inertia::render('welcome/ReferralSource', [
             'sources' => array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases()),
             'selected' => $user->referral_source?->value,
-            'plan' => [
-                'name' => $plan->name,
-                'interval' => 'monthly',
-            ],
         ]);
     }
 
@@ -158,10 +154,10 @@ class WelcomeController extends Controller
             return $redirect;
         }
 
-        $workspace = $request->user()->currentWorkspace;
+        $workspace = $this->resolveCurrentWorkspace($request->user());
 
         return Inertia::render('welcome/Connect', [
-            'platforms' => SocialPlatform::connectableOptions(),
+            'platforms' => $workspace ? SocialPlatform::connectableOptions() : [],
             'accounts' => $workspace
                 ? SocialAccountResource::collection(
                     $workspace->socialAccounts()->orderBy('id')->get(),
@@ -182,21 +178,6 @@ class WelcomeController extends Controller
         $user = $request->user();
 
         abort_unless($user->isAccountOwner(), Response::HTTP_FORBIDDEN);
-
-        $platforms = $this->connectedPlatforms($user);
-
-        $postHog->identify($user->id, [
-            'connected_platforms' => $platforms,
-        ]);
-        $postHog->capture(
-            $user->id,
-            WelcomeEvent::Connect->value,
-            [
-                'connected' => $platforms !== [],
-                'platforms' => $platforms,
-            ],
-            $user->account,
-        );
 
         return $this->startCheckout($user, $checkout, $postHog);
     }
@@ -267,7 +248,7 @@ class WelcomeController extends Controller
      */
     private function connectedPlatforms(User $user): array
     {
-        $workspace = $user->currentWorkspace;
+        $workspace = $this->resolveCurrentWorkspace($user);
 
         if ($workspace === null) {
             return [];
@@ -278,8 +259,26 @@ class WelcomeController extends Controller
             ->orderBy('id')
             ->get()
             ->map(fn (SocialAccount $account): string => $account->platform->value)
+            ->unique()
             ->values()
             ->all();
+    }
+
+    private function resolveCurrentWorkspace(User $user): ?Workspace
+    {
+        if ($user->currentWorkspace) {
+            return $user->currentWorkspace;
+        }
+
+        $workspace = $user->accountWorkspaces()->orderBy('workspaces.id')->first();
+
+        if ($workspace === null) {
+            return null;
+        }
+
+        $user->switchWorkspace($workspace);
+
+        return $workspace;
     }
 
     private function startCheckout(User $user, StartSubscriptionCheckout $checkout, PostHogService $postHog): Response
@@ -295,6 +294,20 @@ class WelcomeController extends Controller
             route('app.welcome.connect'),
         );
 
+        $platforms = $this->connectedPlatforms($user);
+
+        $postHog->identify($user->id, [
+            'connected_platforms' => $platforms,
+        ]);
+        $postHog->capture(
+            $user->id,
+            WelcomeEvent::Connect->value,
+            [
+                'connected' => $platforms !== [],
+                'platforms' => $platforms,
+            ],
+            $user->account,
+        );
         $postHog->capture(
             $user->id,
             CheckoutEvent::Started->value,

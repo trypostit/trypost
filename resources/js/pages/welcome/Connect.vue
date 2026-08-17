@@ -41,6 +41,7 @@ const submit = (): void => {
         size="7xl"
     >
         <NetworkConnectGrid
+            v-if="platforms.length > 0"
             :platforms="platforms"
             :connected-accounts="accounts"
             grid-class="grid-cols-2 sm:grid-cols-3 xl:grid-cols-6"
