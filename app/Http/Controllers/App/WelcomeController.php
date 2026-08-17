@@ -237,7 +237,7 @@ class WelcomeController extends Controller
             return redirect()->route('app.welcome.persona');
         }
 
-        if ($requireGoals && ! $user->hasCurrentGoals()) {
+        if ($requireGoals && ! Goal::containsCurrent($user->goals)) {
             return redirect()->route('app.welcome.goals');
         }
 

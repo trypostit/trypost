@@ -6,7 +6,6 @@ namespace App\Models;
 
 use App\Enums\Auth\SocialAuthProvider;
 use App\Enums\Notification\Type as NotificationType;
-use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
 use App\Models\Traits\HasAccount;
@@ -133,23 +132,5 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
     public function isConnectedTo(SocialAuthProvider $provider): bool
     {
         return (bool) $this->{"{$provider->value}_id"};
-    }
-
-    /**
-     * True when the user has at least one goal that still exists in Goal.
-     * Dropped enum values must not satisfy the welcome gate or users
-     * mid-funnel can skip re-selecting after we slim the list.
-     */
-    public function hasCurrentGoals(): bool
-    {
-        $goals = $this->goals;
-
-        if (! is_array($goals) || $goals === []) {
-            return false;
-        }
-
-        $allowed = array_map(fn (Goal $goal): string => $goal->value, Goal::cases());
-
-        return array_intersect($goals, $allowed) !== [];
     }
 }
