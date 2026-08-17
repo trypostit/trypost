@@ -53,6 +53,10 @@ class StoreWelcomeConnectRequest extends FormRequest
                 return;
             }
 
+            if ($user->account?->hasAppAccess() || ! $user->isAccountOwner()) {
+                return;
+            }
+
             if (! $user->persona || ! $user->hasCurrentGoals() || ! $user->referral_source) {
                 return;
             }

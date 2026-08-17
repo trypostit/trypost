@@ -628,13 +628,13 @@ test('old onboarding icp routes are not registered', function (string $routeName
     'checkout' => 'app.onboarding.checkout',
 ]);
 
-test('members cannot start Stripe checkout from welcome', function () {
+test('members cannot start Stripe checkout from welcome', function (bool $withWorkspace) {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
-    $member->update([
-        'persona' => Persona::Agency->value,
-        'goals' => [Goal::SaveTime->value],
-        'referral_source' => ReferralSource::Google->value,
-    ]);
+    completeWelcomeThroughReferral($member);
+
+    if ($withWorkspace) {
+        attachCurrentWorkspace($member);
+    }
 
     $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
 
@@ -645,6 +645,21 @@ test('members cannot start Stripe checkout from welcome', function () {
     $this->actingAs($member->fresh())
         ->post(route('app.welcome.connect.store'))
         ->assertRedirect(route('app.welcome.subscription-required'));
+})->with([
+    'without workspace' => [false],
+    'with empty workspace' => [true],
+]);
+
+test('subscribed owners skip connect validation and go to calendar', function () {
+    subscribeAccount($this->user->account);
+    completeWelcomeThroughReferral($this->user);
+    attachCurrentWorkspace($this->user);
+
+    $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.connect.store'))
+        ->assertRedirect(route('app.calendar'));
 });
 
 test('members without app access are held on the subscription required screen', function (string $routeName, string $method, array $payload = []) {
