@@ -242,27 +242,6 @@ class WelcomeController extends Controller
         return array_intersect($goals, $allowed) !== [];
     }
 
-    /**
-     * @return list<string>
-     */
-    private function connectedPlatforms(User $user): array
-    {
-        $workspace = $user->currentWorkspace;
-
-        if ($workspace === null) {
-            return [];
-        }
-
-        return $workspace->socialAccounts()
-            ->where('status', Status::Connected)
-            ->orderBy('id')
-            ->get()
-            ->map(fn (SocialAccount $account): string => $account->platform->value)
-            ->unique()
-            ->values()
-            ->all();
-    }
-
     private function startCheckout(User $user, StartSubscriptionCheckout $checkout, PostHogService $postHog): Response
     {
         $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
@@ -276,7 +255,16 @@ class WelcomeController extends Controller
             route('app.welcome.connect'),
         );
 
-        $platforms = $this->connectedPlatforms($user);
+        $platforms = $user->currentWorkspace
+            ? $user->currentWorkspace->socialAccounts()
+                ->where('status', Status::Connected)
+                ->orderBy('id')
+                ->get()
+                ->map(fn (SocialAccount $account): string => $account->platform->value)
+                ->unique()
+                ->values()
+                ->all()
+            : [];
 
         $postHog->identify($user->id, [
             'connected_platforms' => $platforms,
