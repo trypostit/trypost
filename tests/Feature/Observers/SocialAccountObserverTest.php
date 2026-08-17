@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
+use App\Jobs\PostHog\IdentifyConnectedPlatforms;
 use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\Account;
@@ -24,43 +24,37 @@ beforeEach(function () {
     ]);
 });
 
-test('creating a social account identifies the owner with connected platforms', function () {
+test('creating a social account dispatches IdentifyConnectedPlatforms', function () {
     Bus::fake();
 
     SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
 
-    Bus::assertDispatched(SendEvent::class, function (SendEvent $event): bool {
-        return $event->method === 'identify'
-            && data_get($event->payload, 'distinctId') === $this->user->id
-            && data_get($event->payload, 'properties.connected_platforms') === [Platform::LinkedIn->value];
+    Bus::assertDispatched(IdentifyConnectedPlatforms::class, function (IdentifyConnectedPlatforms $job): bool {
+        return $job->workspaceId === (string) $this->workspace->id;
     });
 });
 
-test('deleting a social account identifies the owner without that platform', function () {
+test('deleting a social account dispatches IdentifyConnectedPlatforms', function () {
     $socialAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
 
     Bus::fake();
 
     $socialAccount->delete();
 
-    Bus::assertDispatched(SendEvent::class, function (SendEvent $event): bool {
-        return $event->method === 'identify'
-            && data_get($event->payload, 'distinctId') === $this->user->id
-            && data_get($event->payload, 'properties.connected_platforms') === [];
+    Bus::assertDispatched(IdentifyConnectedPlatforms::class, function (IdentifyConnectedPlatforms $job): bool {
+        return $job->workspaceId === (string) $this->workspace->id;
     });
 });
 
-test('disconnecting a social account identifies the owner without that platform', function () {
+test('disconnecting a social account dispatches IdentifyConnectedPlatforms', function () {
     $socialAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
 
     Bus::fake();
 
     $socialAccount->update(['status' => Status::Disconnected]);
 
-    Bus::assertDispatched(SendEvent::class, function (SendEvent $event): bool {
-        return $event->method === 'identify'
-            && data_get($event->payload, 'distinctId') === $this->user->id
-            && data_get($event->payload, 'properties.connected_platforms') === [];
+    Bus::assertDispatched(IdentifyConnectedPlatforms::class, function (IdentifyConnectedPlatforms $job): bool {
+        return $job->workspaceId === (string) $this->workspace->id;
     });
 });
 
@@ -96,6 +90,7 @@ test('updating a social account does not dispatch SyncAccountUsage', function ()
     $socialAccount->update(['is_active' => false]);
 
     Bus::assertNotDispatched(SyncAccountUsage::class);
+    Bus::assertNotDispatched(IdentifyConnectedPlatforms::class);
     Bus::assertNotDispatched(SendEvent::class);
 });
 
@@ -107,6 +102,7 @@ test('does not dispatch when PostHog is disabled', function () {
     SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 
     Bus::assertNotDispatched(SyncAccountUsage::class);
+    Bus::assertNotDispatched(IdentifyConnectedPlatforms::class);
     Bus::assertNotDispatched(SendEvent::class);
 });
 
@@ -125,6 +121,7 @@ test('does not identify connected platforms when self-hosted without PostHog', f
 
     $this->assertModelExists($socialAccount);
     Bus::assertNotDispatched(SyncAccountUsage::class);
+    Bus::assertNotDispatched(IdentifyConnectedPlatforms::class);
     Bus::assertNotDispatched(SendEvent::class);
 });
 

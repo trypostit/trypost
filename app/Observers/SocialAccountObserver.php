@@ -8,14 +8,13 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Events\OnboardingStatusUpdated;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
+use App\Jobs\PostHog\IdentifyConnectedPlatforms;
 use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\SocialAccount;
 use App\Services\PostHogService;
 
 class SocialAccountObserver
 {
-    public function __construct(private readonly PostHogService $postHog) {}
-
     /**
      * Enforce one connected account per social network per workspace. Variants
      * of the same network (LinkedIn profile/page, Instagram standalone/Facebook)
@@ -80,26 +79,7 @@ class SocialAccountObserver
             return;
         }
 
-        $socialAccount->loadMissing('workspace.account.owner');
-
-        $owner = $socialAccount->workspace?->account?->owner;
-
-        if ($owner === null) {
-            return;
-        }
-
-        $platforms = $socialAccount->workspace->socialAccounts()
-            ->where('status', Status::Connected)
-            ->orderBy('id')
-            ->get()
-            ->map(fn (SocialAccount $account): string => $account->platform->value)
-            ->unique()
-            ->values()
-            ->all();
-
-        $this->postHog->identify($owner->id, [
-            'connected_platforms' => $platforms,
-        ]);
+        IdentifyConnectedPlatforms::dispatch((string) $socialAccount->workspace_id);
     }
 
     /**
