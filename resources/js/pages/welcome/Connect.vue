@@ -10,6 +10,7 @@ import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
 import { store } from '@/routes/app/welcome/connect';
+import { SocialAccountStatus } from '@/types/social-account-status';
 
 const props = defineProps<{
     platforms: AvailablePlatform[];
@@ -19,7 +20,9 @@ const props = defineProps<{
 const form = useForm({});
 
 const hasConnectedAccount = computed((): boolean =>
-    props.accounts.some((account) => account.status === 'connected'),
+    props.accounts.some(
+        (account) => account.status === SocialAccountStatus.Connected,
+    ),
 );
 
 const submit = (): void => {

@@ -23,6 +23,10 @@ import { getInitials } from '@/composables/useInitials';
 import { useOAuthPopup } from '@/composables/useOAuthPopup';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { toggle as toggleAccount } from '@/routes/app/accounts';
+import {
+    SocialAccountStatus,
+    type SocialAccountStatusValue,
+} from '@/types/social-account-status';
 
 export interface SocialAccount {
     id: string;
@@ -33,7 +37,7 @@ export interface SocialAccount {
     display_label: string;
     handle_label: string;
     avatar_url: string;
-    status: 'connected' | 'disconnected' | 'token_expired' | null;
+    status: SocialAccountStatusValue | null;
     is_active: boolean;
     error_message: string | null;
 }
@@ -120,7 +124,8 @@ const getProfileUrl = (
 const isDisconnected = (account: SocialAccount | null): boolean => {
     if (!account) return false;
     return (
-        account.status === 'disconnected' || account.status === 'token_expired'
+        account.status === SocialAccountStatus.Disconnected ||
+        account.status === SocialAccountStatus.TokenExpired
     );
 };
 </script>
