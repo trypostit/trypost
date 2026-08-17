@@ -61,6 +61,7 @@ return [
     ],
     'connect' => [
         'title' => 'Connect a social account',
-        'description' => 'Choose at least one network where TryPost can publish your content. You can continue and do this later.',
+        'description' => 'Choose at least one network where TryPost can publish your content.',
+        'required' => 'Connect at least one social account to continue.',
     ],
 ];

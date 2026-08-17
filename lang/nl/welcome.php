@@ -61,6 +61,7 @@ return [
     ],
     'connect' => [
         'title' => 'Verbind een social account',
-        'description' => 'Kies minstens één netwerk waarop TryPost je content kan plaatsen. Je kunt ook doorgaan en dit later doen.',
+        'description' => 'Kies minstens één netwerk waarop TryPost je content kan plaatsen.',
+        'required' => 'Verbind minstens één social account om door te gaan.',
     ],
 ];

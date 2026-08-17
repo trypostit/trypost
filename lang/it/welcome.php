@@ -61,6 +61,7 @@ return [
     ],
     'connect' => [
         'title' => 'Collega un account social',
-        'description' => 'Scegli almeno una rete su cui TryPost può pubblicare i tuoi contenuti. Puoi continuare e farlo più tardi.',
+        'description' => 'Scegli almeno una rete su cui TryPost può pubblicare i tuoi contenuti.',
+        'required' => 'Collega almeno un account social per continuare.',
     ],
 ];

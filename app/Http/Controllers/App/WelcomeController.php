@@ -13,6 +13,7 @@ use App\Enums\SocialAccount\Status;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
+use App\Http\Requests\App\Welcome\StoreWelcomeConnectRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeGoalsRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeReferralSourceRequest;
@@ -170,7 +171,7 @@ class WelcomeController extends Controller
     }
 
     public function storeConnect(
-        Request $request,
+        StoreWelcomeConnectRequest $request,
         StartSubscriptionCheckout $checkout,
         PostHogService $postHog,
     ): Response|RedirectResponse {

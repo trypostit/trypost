@@ -164,7 +164,7 @@ const submit = (): void => {
         :title="$t('welcome.referral_source_title')"
         :description="$t('welcome.referral_source_description')"
         :step="3"
-        wide
+        size="4xl"
     >
         <div class="flex flex-wrap justify-center gap-2.5">
             <button

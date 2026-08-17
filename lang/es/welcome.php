@@ -61,6 +61,7 @@ return [
     ],
     'connect' => [
         'title' => 'Conecta una red social',
-        'description' => 'Elige al menos una red donde TryPost pueda publicar tu contenido. Puedes continuar y hacerlo más tarde.',
+        'description' => 'Elige al menos una red donde TryPost pueda publicar tu contenido.',
+        'required' => 'Conecta al menos una red social para continuar.',
     ],
 ];

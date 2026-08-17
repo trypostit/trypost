@@ -61,6 +61,7 @@ return [
     ],
     'connect' => [
         'title' => 'Połącz konto społecznościowe',
-        'description' => 'Wybierz co najmniej jedną sieć, na której TryPost może publikować Twoje treści. Możesz kontynuować i zrobić to później.',
+        'description' => 'Wybierz co najmniej jedną sieć, na której TryPost może publikować Twoje treści.',
+        'required' => 'Połącz co najmniej jedno konto społecznościowe, aby kontynuować.',
     ],
 ];

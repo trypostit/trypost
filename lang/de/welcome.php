@@ -61,6 +61,7 @@ return [
     ],
     'connect' => [
         'title' => 'Verbinde ein soziales Konto',
-        'description' => 'Wähle mindestens ein Netzwerk, auf dem TryPost deine Inhalte veröffentlichen kann. Du kannst auch fortfahren und das später erledigen.',
+        'description' => 'Wähle mindestens ein Netzwerk, auf dem TryPost deine Inhalte veröffentlichen kann.',
+        'required' => 'Verbinde mindestens ein soziales Konto, um fortzufahren.',
     ],
 ];

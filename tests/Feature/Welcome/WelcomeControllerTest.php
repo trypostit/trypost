@@ -271,13 +271,50 @@ test('connect renders after prior steps are complete', function () {
 
 test('connect copy exists in every locale', function (string $locale) {
     expect(__('welcome.connect.title', [], $locale))->not->toBe('welcome.connect.title')
-        ->and(__('welcome.connect.description', [], $locale))->not->toBe('welcome.connect.description');
+        ->and(__('welcome.connect.description', [], $locale))->not->toBe('welcome.connect.description')
+        ->and(__('welcome.connect.required', [], $locale))->not->toBe('welcome.connect.required');
 })->with(ContentLanguage::values());
 
-test('connect store starts Stripe checkout without a social account', function () {
+test('connect store requires a connected social account', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
     completeWelcomeThroughReferral($this->user);
+
+    $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.connect.store'))
+        ->assertSessionHasErrors('connect');
+
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === WelcomeEvent::Connect->value,
+    );
+    Bus::assertNotDispatched(
+        SendEvent::class,
+        fn (SendEvent $event): bool => data_get($event->payload, 'event') === CheckoutEvent::Started->value,
+    );
+});
+
+test('connect store rejects disconnected or expired social accounts', function () {
+    completeWelcomeThroughReferral($this->user);
+    $workspace = attachCurrentWorkspace($this->user);
+    SocialAccount::factory()->linkedin()->disconnected()->create(['workspace_id' => $workspace->id]);
+    SocialAccount::factory()->x()->tokenExpired()->create(['workspace_id' => $workspace->id]);
+
+    $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.connect.store'))
+        ->assertSessionHasErrors('connect');
+});
+
+test('connect store starts Stripe checkout when a social account is connected', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Bus::fake();
+    completeWelcomeThroughReferral($this->user);
+    $workspace = attachCurrentWorkspace($this->user);
+    SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
 
     Plan::where('slug', Slug::Workspace)->firstOrFail()->update([
         'stripe_monthly_price_id' => 'price_monthly_test',
@@ -297,37 +334,6 @@ test('connect store starts Stripe checkout without a social account', function (
 
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
         && data_get($event->payload, 'event') === WelcomeEvent::Connect->value
-        && data_get($event->payload, 'properties.connected') === false
-        && data_get($event->payload, 'properties.platforms') === []);
-});
-
-test('connect store captures connected platforms when a social account exists', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
-    Bus::fake();
-    completeWelcomeThroughReferral($this->user);
-
-    $workspace = Workspace::factory()->create([
-        'account_id' => $this->user->account_id,
-        'user_id' => $this->user->id,
-    ]);
-    $this->user->update(['current_workspace_id' => $workspace->id]);
-    SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
-
-    Plan::where('slug', Slug::Workspace)->firstOrFail()->update([
-        'stripe_monthly_price_id' => 'price_monthly_test',
-    ]);
-
-    $this->mock(StartSubscriptionCheckout::class)
-        ->shouldReceive('redirect')
-        ->once()
-        ->andReturn(redirect('https://checkout.stripe.test/session'));
-
-    $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.connect.store'))
-        ->assertRedirect('https://checkout.stripe.test/session');
-
-    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
-        && data_get($event->payload, 'event') === WelcomeEvent::Connect->value
         && data_get($event->payload, 'properties.connected') === true
         && data_get($event->payload, 'properties.platforms') === [SocialPlatform::LinkedIn->value]);
 });
@@ -336,6 +342,8 @@ test('connect store captures checkout.started with the plan name and interval', 
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
     completeWelcomeThroughReferral($this->user);
+    $workspace = attachCurrentWorkspace($this->user);
+    SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
 
     $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
     $plan->update(['stripe_monthly_price_id' => 'price_monthly_test']);
@@ -358,6 +366,8 @@ test('connect store does not capture checkout.started when Stripe checkout creat
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
     completeWelcomeThroughReferral($this->user);
+    $workspace = attachCurrentWorkspace($this->user);
+    SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
 
     Plan::where('slug', Slug::Workspace)->firstOrFail()->update([
         'stripe_monthly_price_id' => 'price_monthly_test',
@@ -545,6 +555,8 @@ test('connect store fails loudly when the monthly price is not configured', func
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
     completeWelcomeThroughReferral($this->user);
+    $workspace = attachCurrentWorkspace($this->user);
+    SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
     Plan::where('slug', Slug::Workspace)->update(['stripe_monthly_price_id' => null]);
 
     $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
@@ -566,4 +578,15 @@ function completeWelcomeThroughReferral(User $user): void
         'goals' => [Goal::SaveTime->value],
         'referral_source' => ReferralSource::ProductHunt->value,
     ]);
+}
+
+function attachCurrentWorkspace(User $user): Workspace
+{
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    return $workspace;
 }

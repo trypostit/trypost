@@ -133,7 +133,7 @@ const submit = (): void => {
         :title="$t('welcome.goals_title')"
         :description="$t('welcome.goals_description')"
         :step="2"
-        wide
+        size="4xl"
     >
         <div class="flex flex-wrap justify-center gap-2.5">
             <button

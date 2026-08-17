@@ -61,6 +61,7 @@ return [
     ],
     'connect' => [
         'title' => 'Bir sosyal hesap bağla',
-        'description' => 'TryPost’un içeriğini yayınlayabileceği en az bir ağ seç. Şimdi devam edip bunu daha sonra da yapabilirsin.',
+        'description' => 'TryPost’un içeriğini yayınlayabileceği en az bir ağ seç.',
+        'required' => 'Devam etmek için en az bir sosyal hesap bağla.',
     ],
 ];
