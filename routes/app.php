@@ -118,6 +118,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('accounts/linkedin/callback', [LinkedInController::class, 'callback'])->name('app.social.linkedin.callback');
     Route::get('accounts/linkedin/select', [LinkedInController::class, 'selectIdentity'])->name('app.social.linkedin.select-identity');
     Route::post('accounts/linkedin/select', [LinkedInController::class, 'select'])->name('app.social.linkedin.select');
+    // Storia fork only - see SocialController::resolveBrokerPayload().
+    Route::get('accounts/linkedin/broker-resume', [LinkedInController::class, 'resumeFromBroker'])->name('app.social.linkedin.broker-resume');
 
     Route::get('accounts/x/callback', [XController::class, 'callback'])->name('app.social.x.callback');
 

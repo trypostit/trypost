@@ -48,12 +48,86 @@ class LinkedInController extends SocialController
 
         session(['social_connect_workspace' => $workspace->id]);
 
+        if ($brokerUrl = $this->brokerUrl()) {
+            return Inertia::location($this->brokerStartUrl($brokerUrl, 'linkedin', $workspace->id));
+        }
+
         return Inertia::location(
             Socialite::driver($this->driver)
                 ->scopes($this->connectScopes())
                 ->redirect()
                 ->getTargetUrl()
         );
+    }
+
+    /**
+     * Reached via a browser redirect from the OAuth broker (storia-hosted-apps'
+     * app/oauth_broker.py), which already exchanged the authorization code for
+     * a token server-side - this picks up exactly where callback() would have,
+     * just sourcing the token from the broker's signed payload instead of a
+     * fresh Socialite exchange, then falls into the same identity-selection
+     * flow (select-identity) as the direct-OAuth path.
+     */
+    public function resumeFromBroker(Request $request): InertiaResponse|RedirectResponse
+    {
+        $workspaceId = session('social_connect_workspace');
+
+        if (! $workspaceId) {
+            return $this->popupCallback(false, __('accounts.popup_callback.session_expired'), $this->platform->value);
+        }
+
+        $workspace = Workspace::find($workspaceId);
+
+        if (! $workspace || ! $request->user()->can('manageAccounts', $workspace)) {
+            return $this->popupCallback(false, __('accounts.popup_callback.workspace_not_found'), $this->platform->value);
+        }
+
+        $payload = $this->resolveBrokerPayload($request);
+
+        if (! $payload
+            || ($payload['platform'] ?? null) !== 'linkedin'
+            || ($payload['workspace_id'] ?? null) !== $workspace->id) {
+            return $this->popupCallback(false, __('accounts.popup_callback.error_connecting'), $this->platform->value);
+        }
+
+        try {
+            $token = $payload['access_token'];
+            $userInfo = $this->fetchUserInfo($token);
+
+            if (! $token || ! $userInfo) {
+                return $this->popupCallback(false, __('accounts.popup_callback.error_connecting'), $this->platform->value);
+            }
+
+            session([
+                'linkedin_pending' => [
+                    'workspace_id' => $workspace->id,
+                    'token' => $token,
+                    'refresh_token' => $payload['refresh_token'] ?? null,
+                    'expires_in' => $payload['expires_in'] ?? null,
+                    // The broker always requests the full personal+organization
+                    // scope superset (see its PLATFORMS config) rather than the
+                    // per-client-configured subset connectScopes() would build -
+                    // normalizeScopes() below has nothing meaningful to trim
+                    // this against, so it's left empty rather than asserted.
+                    'approved_scopes' => [],
+                    'person' => [
+                        'id' => data_get($userInfo, 'sub'),
+                        'name' => data_get($userInfo, 'name'),
+                        'avatar' => data_get($userInfo, 'picture'),
+                        'vanity_name' => $this->personEnabled() ? $this->fetchVanityName($token) : null,
+                    ],
+                    'organizations' => $this->organizationEnabled() ? $this->fetchOrganizations($token) : [],
+                ],
+            ]);
+
+            return redirect()->route('app.social.linkedin.select-identity');
+        } catch (\Exception $e) {
+            Log::error('LinkedIn broker resume error', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->popupCallback(false, __('accounts.popup_callback.error_connecting'), $this->platform->value);
+        }
     }
 
     public function callback(Request $request): InertiaResponse|RedirectResponse
@@ -301,6 +375,31 @@ class LinkedInController extends SocialController
     private function normalizeScopes(array $approvedScopes): array
     {
         return array_values(array_filter(explode(',', implode(',', $approvedScopes))));
+    }
+
+    /**
+     * Only needed on the broker path - the direct-OAuth path gets id/name/
+     * avatar for free from Socialite's own OpenID Connect exchange, but the
+     * broker only hands back raw tokens, not a decoded Socialite user object.
+     *
+     * @return array{sub: string, name: ?string, picture: ?string}|null
+     */
+    private function fetchUserInfo(string $accessToken): ?array
+    {
+        try {
+            $response = Http::withToken($accessToken)
+                ->get(config('trypost.platforms.linkedin.api').'/v2/userinfo');
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to fetch LinkedIn userinfo', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return null;
     }
 
     private function fetchVanityName(string $accessToken): ?string
