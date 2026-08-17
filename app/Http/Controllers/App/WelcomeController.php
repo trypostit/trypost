@@ -178,7 +178,48 @@ class WelcomeController extends Controller
 
         abort_unless($user->isAccountOwner(), Response::HTTP_FORBIDDEN);
 
-        return $this->startCheckout($user, $checkout, $postHog);
+        $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
+        $priceId = $plan->stripe_monthly_price_id;
+
+        abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Monthly price is not configured.');
+
+        $response = $checkout->redirect(
+            $user->account,
+            $priceId,
+            route('app.welcome.connect'),
+        );
+
+        $platforms = $user->currentWorkspace
+            ? $user->currentWorkspace->socialAccounts()
+                ->where('status', Status::Connected)
+                ->orderBy('id')
+                ->get()
+                ->map(fn (SocialAccount $account): string => $account->platform->value)
+                ->unique()
+                ->values()
+                ->all()
+            : [];
+
+        $postHog->identify($user->id, [
+            'connected_platforms' => $platforms,
+        ]);
+        $postHog->capture(
+            $user->id,
+            WelcomeEvent::Connect->value,
+            [
+                'connected' => $platforms !== [],
+                'platforms' => $platforms,
+            ],
+            $user->account,
+        );
+        $postHog->capture(
+            $user->id,
+            CheckoutEvent::Started->value,
+            ['plan_name' => $plan->name, 'interval' => 'monthly'],
+            $user->account,
+        );
+
+        return $response;
     }
 
     public function subscriptionRequired(Request $request): InertiaResponse|RedirectResponse
@@ -240,52 +281,6 @@ class WelcomeController extends Controller
         $allowed = array_map(fn (Goal $goal): string => $goal->value, Goal::cases());
 
         return array_intersect($goals, $allowed) !== [];
-    }
-
-    private function startCheckout(User $user, StartSubscriptionCheckout $checkout, PostHogService $postHog): Response
-    {
-        $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
-        $priceId = $plan->stripe_monthly_price_id;
-
-        abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Monthly price is not configured.');
-
-        $response = $checkout->redirect(
-            $user->account,
-            $priceId,
-            route('app.welcome.connect'),
-        );
-
-        $platforms = $user->currentWorkspace
-            ? $user->currentWorkspace->socialAccounts()
-                ->where('status', Status::Connected)
-                ->orderBy('id')
-                ->get()
-                ->map(fn (SocialAccount $account): string => $account->platform->value)
-                ->unique()
-                ->values()
-                ->all()
-            : [];
-
-        $postHog->identify($user->id, [
-            'connected_platforms' => $platforms,
-        ]);
-        $postHog->capture(
-            $user->id,
-            WelcomeEvent::Connect->value,
-            [
-                'connected' => $platforms !== [],
-                'platforms' => $platforms,
-            ],
-            $user->account,
-        );
-        $postHog->capture(
-            $user->id,
-            CheckoutEvent::Started->value,
-            ['plan_name' => $plan->name, 'interval' => 'monthly'],
-            $user->account,
-        );
-
-        return $response;
     }
 
     private function redirectIfUnavailable(Request $request): ?RedirectResponse
