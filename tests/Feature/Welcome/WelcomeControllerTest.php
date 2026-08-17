@@ -246,7 +246,7 @@ test('welcome funnel captures connect between referral and checkout.started', fu
         ->post(route('app.welcome.connect.store'))
         ->assertRedirect('https://checkout.stripe.test/session');
 
-    $funnel = WelcomeEvent::dashboardFunnel();
+    $funnel = WelcomeEvent::funnel();
 
     $captured = collect(Bus::dispatched(SendEvent::class))
         ->filter(fn (SendEvent $event): bool => $event->method === 'capture')

@@ -12,12 +12,11 @@ enum WelcomeEvent: string
     case Connect = 'welcome.connect';
 
     /**
-     * Capture events in dashboard funnel order. Connect sits between
-     * Referral and checkout.started — do not jump those two steps.
+     * Welcome capture order through Stripe Checkout.
      *
      * @return list<string>
      */
-    public static function dashboardFunnel(): array
+    public static function funnel(): array
     {
         return [
             self::Persona->value,
