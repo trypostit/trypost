@@ -284,8 +284,12 @@ test('referral source store saves the source mirrors it to PostHog and advances 
     );
 });
 
-test('connect redirects through incomplete prior steps', function (array $attributes, string $routeName, string $method) {
+test('connect redirects through incomplete prior steps', function (array $attributes, string $routeName, string $method, bool $withWorkspace) {
     $this->user->update($attributes);
+
+    if ($withWorkspace) {
+        attachCurrentWorkspace($this->user);
+    }
 
     $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
 
@@ -335,7 +339,25 @@ test('connect redirects through incomplete prior steps', function (array $attrib
         'app.welcome.goals',
         'post',
     ],
+])->with([
+    'without workspace' => [false],
+    'with empty workspace' => [true],
 ]);
+
+test('connect returns 404 when prior steps are complete but the user has no workspace', function () {
+    completeWelcomeThroughReferral($this->user);
+
+    $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.connect'))
+        ->assertNotFound();
+
+    $this->actingAs($this->user->fresh())
+        ->from(route('app.welcome.connect'))
+        ->post(route('app.welcome.connect.store'))
+        ->assertNotFound();
+});
 
 test('connect renders the network grid when the workspace has no accounts', function () {
     completeWelcomeThroughReferral($this->user);

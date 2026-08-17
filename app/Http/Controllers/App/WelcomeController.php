@@ -150,6 +150,8 @@ class WelcomeController extends Controller
 
         $workspace = $request->user()->currentWorkspace;
 
+        abort_unless($workspace !== null, Response::HTTP_NOT_FOUND);
+
         return Inertia::render('welcome/Connect', [
             'platforms' => SocialPlatform::connectableOptions(),
             'accounts' => SocialAccountResource::collection(
@@ -166,6 +168,8 @@ class WelcomeController extends Controller
         if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireReferral: true)) {
             return $redirect;
         }
+
+        abort_unless($request->user()->currentWorkspace !== null, Response::HTTP_NOT_FOUND);
 
         $user = $request->user();
         $platforms = $request->connectedPlatforms();
