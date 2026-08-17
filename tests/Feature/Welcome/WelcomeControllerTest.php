@@ -372,7 +372,6 @@ test('connect store starts Stripe checkout when a social account is connected', 
         && data_get($event->payload, 'properties.connected_platforms') === [SocialPlatform::LinkedIn->value]);
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
         && data_get($event->payload, 'event') === WelcomeEvent::Connect->value
-        && data_get($event->payload, 'properties.connected') === true
         && data_get($event->payload, 'properties.platforms') === [SocialPlatform::LinkedIn->value]);
 });
 

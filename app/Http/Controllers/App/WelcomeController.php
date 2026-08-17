@@ -13,7 +13,6 @@ use App\Enums\SocialAccount\Status;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
-use App\Http\Requests\App\Welcome\StoreWelcomeConnectRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeGoalsRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeReferralSourceRequest;
@@ -127,9 +126,6 @@ class WelcomeController extends Controller
         }
 
         $user = $request->user();
-
-        abort_unless($user->isAccountOwner(), Response::HTTP_FORBIDDEN);
-
         $referralSource = (string) $request->validated('referral_source');
 
         $user->update(['referral_source' => $referralSource]);
@@ -166,7 +162,7 @@ class WelcomeController extends Controller
     }
 
     public function storeConnect(
-        StoreWelcomeConnectRequest $request,
+        Request $request,
         StartSubscriptionCheckout $checkout,
         PostHogService $postHog,
     ): Response|RedirectResponse {
@@ -175,19 +171,6 @@ class WelcomeController extends Controller
         }
 
         $user = $request->user();
-
-        abort_unless($user->isAccountOwner(), Response::HTTP_FORBIDDEN);
-
-        $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
-        $priceId = $plan->stripe_monthly_price_id;
-
-        abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Monthly price is not configured.');
-
-        $response = $checkout->redirect(
-            $user->account,
-            $priceId,
-            route('app.welcome.connect'),
-        );
 
         $platforms = $user->currentWorkspace
             ? $user->currentWorkspace->socialAccounts()
@@ -200,16 +183,30 @@ class WelcomeController extends Controller
                 ->all()
             : [];
 
+        if ($platforms === []) {
+            return back()->withErrors([
+                'connect' => __('welcome.connect.required'),
+            ]);
+        }
+
+        $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
+        $priceId = $plan->stripe_monthly_price_id;
+
+        abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Monthly price is not configured.');
+
+        $response = $checkout->redirect(
+            $user->account,
+            $priceId,
+            route('app.welcome.connect'),
+        );
+
         $postHog->identify($user->id, [
             'connected_platforms' => $platforms,
         ]);
         $postHog->capture(
             $user->id,
             WelcomeEvent::Connect->value,
-            [
-                'connected' => $platforms !== [],
-                'platforms' => $platforms,
-            ],
+            ['platforms' => $platforms],
             $user->account,
         );
         $postHog->capture(
