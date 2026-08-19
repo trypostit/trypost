@@ -7,6 +7,7 @@ namespace App\Actions\AccessToken;
 use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
 class ListConnectedMcpClients
@@ -16,7 +17,7 @@ class ListConnectedMcpClients
      * OAuth client. Matches API keys: each person only sees what they connected
      * for the workspace they are viewing.
      *
-     * @return list<array{client_id: string, name: string, can_disconnect: bool, last_used_at: mixed}>
+     * @return list<array{client_id: string, name: string, can_disconnect: bool, last_used_at: ?CarbonInterface}>
      */
     public static function forUser(User $user, Workspace $workspace): array
     {
@@ -41,7 +42,8 @@ class ListConnectedMcpClients
                     'last_used_at' => $group->max('last_used_at'),
                 ];
             })
-            ->sortByDesc(fn (array $client): mixed => $client['last_used_at'] ?? 0)
+            // Timestamp, not the date object: never-used clients are null.
+            ->sortByDesc(fn (array $client): int => $client['last_used_at']?->getTimestamp() ?? 0)
             ->values()
             ->all();
     }
