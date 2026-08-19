@@ -600,8 +600,6 @@ return [
         'ai_description' => 'Descrivi ciò che vuoi e l\'IA genera il contenuto per te.',
         'ai_configure_description' => 'Scegli un formato e descrivi il post che vuoi creare.',
         'ai_pick_template_description' => 'Scegli uno stile per il tuo post generato dall\'IA.',
-        'template_title' => 'Usa un modello',
-        'template_description' => 'Scegli tra i nostri modelli curati e personalizza.',
         'coming_soon' => 'Prossimamente',
 
         'preview' => [
@@ -667,31 +665,6 @@ return [
                 'instagram_story' => 'Storia Instagram',
                 'facebook_story' => 'Storia Facebook',
             ],
-        ],
-    ],
-
-    'templates' => [
-        'browser_title' => 'Scegli un modello',
-        'browser_description' => 'Parti da un modello curato e adattalo.',
-        'search_placeholder' => 'Cerca modelli…',
-        'no_search_results' => 'Nessun modello corrisponde alla ricerca',
-        'try_different_search' => 'Prova con un\'altra parola chiave o cancella la ricerca.',
-        'slides_count' => '{count} slide|{count} slide',
-        'all_platforms' => 'Tutte le piattaforme',
-        'platform_search_placeholder' => 'Cerca piattaforma…',
-        'no_platform_match' => 'Nessuna piattaforma corrisponde.',
-        'use_this' => 'Usa questo modello',
-        'no_templates' => 'Nessun modello disponibile.',
-        'applying' => 'Applicazione del modello…',
-        'category' => [
-            'product_launch' => 'Lancio prodotto',
-            'promotion' => 'Promozione',
-            'educational' => 'Educativo',
-            'behind_the_scenes' => 'Dietro le quinte',
-            'testimonial' => 'Testimonianza',
-            'industry_tip' => 'Consiglio di settore',
-            'event' => 'Evento',
-            'engagement' => 'Coinvolgimento',
         ],
     ],
 ];

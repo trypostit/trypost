@@ -600,8 +600,6 @@ return [
         'ai_description' => 'Opisz, czego chcesz, a AI wygeneruje treść za Ciebie.',
         'ai_configure_description' => 'Wybierz format i opisz post, który chcesz utworzyć.',
         'ai_pick_template_description' => 'Wybierz styl dla swojego posta wygenerowanego przez AI.',
-        'template_title' => 'Użyj szablonu',
-        'template_description' => 'Wybierz jeden z naszych wyselekcjonowanych szablonów i dostosuj go.',
         'coming_soon' => 'Wkrótce',
 
         'preview' => [
@@ -667,31 +665,6 @@ return [
                 'instagram_story' => 'Relacja na Instagramie',
                 'facebook_story' => 'Relacja na Facebooku',
             ],
-        ],
-    ],
-
-    'templates' => [
-        'browser_title' => 'Wybierz szablon',
-        'browser_description' => 'Zacznij od wyselekcjonowanego szablonu i dostosuj go.',
-        'search_placeholder' => 'Szukaj szablonów…',
-        'no_search_results' => 'Brak szablonów pasujących do wyszukiwania',
-        'try_different_search' => 'Spróbuj innego słowa kluczowego lub wyczyść wyszukiwanie.',
-        'slides_count' => '{count} slajd|{count} slajdy|{count} slajdów',
-        'all_platforms' => 'Wszystkie platformy',
-        'platform_search_placeholder' => 'Szukaj platformy…',
-        'no_platform_match' => 'Brak pasujących platform.',
-        'use_this' => 'Użyj tego szablonu',
-        'no_templates' => 'Brak dostępnych szablonów.',
-        'applying' => 'Stosowanie szablonu…',
-        'category' => [
-            'product_launch' => 'Premiera produktu',
-            'promotion' => 'Promocja',
-            'educational' => 'Edukacyjny',
-            'behind_the_scenes' => 'Za kulisami',
-            'testimonial' => 'Opinia klienta',
-            'industry_tip' => 'Wskazówka branżowa',
-            'event' => 'Wydarzenie',
-            'engagement' => 'Zaangażowanie',
         ],
     ],
 ];

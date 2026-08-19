@@ -600,8 +600,6 @@ return [
         'ai_description' => 'Décrivez ce que vous voulez et l\'IA génère le contenu pour vous.',
         'ai_configure_description' => 'Choisissez un format et décrivez la publication que vous souhaitez créer.',
         'ai_pick_template_description' => 'Choisissez un style pour votre publication générée par l\'IA.',
-        'template_title' => 'Utiliser un modèle',
-        'template_description' => 'Choisissez parmi nos modèles sélectionnés et personnalisez.',
         'coming_soon' => 'Bientôt disponible',
 
         'preview' => [
@@ -667,31 +665,6 @@ return [
                 'instagram_story' => 'Story Instagram',
                 'facebook_story' => 'Story Facebook',
             ],
-        ],
-    ],
-
-    'templates' => [
-        'browser_title' => 'Choisissez un modèle',
-        'browser_description' => 'Partez d\'un modèle sélectionné et adaptez-le.',
-        'search_placeholder' => 'Rechercher des modèles…',
-        'no_search_results' => 'Aucun modèle ne correspond à votre recherche',
-        'try_different_search' => 'Essayez un autre mot-clé ou effacez la recherche.',
-        'slides_count' => '{count} diapositive|{count} diapositives',
-        'all_platforms' => 'Toutes les plateformes',
-        'platform_search_placeholder' => 'Rechercher une plateforme…',
-        'no_platform_match' => 'Aucune plateforme ne correspond.',
-        'use_this' => 'Utiliser ce modèle',
-        'no_templates' => 'Aucun modèle disponible.',
-        'applying' => 'Application du modèle…',
-        'category' => [
-            'product_launch' => 'Lancement de produit',
-            'promotion' => 'Promotion',
-            'educational' => 'Éducatif',
-            'behind_the_scenes' => 'Coulisses',
-            'testimonial' => 'Témoignage',
-            'industry_tip' => 'Astuce du secteur',
-            'event' => 'Événement',
-            'engagement' => 'Engagement',
         ],
     ],
 ];

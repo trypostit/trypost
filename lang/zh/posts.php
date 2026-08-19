@@ -600,8 +600,6 @@ return [
         'ai_description' => '描述你想要的内容，由 AI 为你生成。',
         'ai_configure_description' => '选择一种格式，并描述你想创建的帖子。',
         'ai_pick_template_description' => '为你的 AI 生成帖子选择一种风格。',
-        'template_title' => '使用模板',
-        'template_description' => '从我们精选的模板中挑选并自定义。',
         'coming_soon' => '敬请期待',
 
         'preview' => [
@@ -667,31 +665,6 @@ return [
                 'instagram_story' => 'Instagram 快拍',
                 'facebook_story' => 'Facebook 快拍',
             ],
-        ],
-    ],
-
-    'templates' => [
-        'browser_title' => '选择一个模板',
-        'browser_description' => '从精选模板开始，并进行调整。',
-        'search_placeholder' => '搜索模板…',
-        'no_search_results' => '没有与搜索匹配的模板',
-        'try_different_search' => '换一个关键词，或清除搜索。',
-        'slides_count' => '{count} 张幻灯片|{count} 张幻灯片',
-        'all_platforms' => '所有平台',
-        'platform_search_placeholder' => '搜索平台…',
-        'no_platform_match' => '没有匹配的平台。',
-        'use_this' => '使用此模板',
-        'no_templates' => '暂无可用模板。',
-        'applying' => '正在应用模板…',
-        'category' => [
-            'product_launch' => '产品发布',
-            'promotion' => '促销',
-            'educational' => '知识科普',
-            'behind_the_scenes' => '幕后花絮',
-            'testimonial' => '用户好评',
-            'industry_tip' => '行业贴士',
-            'event' => '活动',
-            'engagement' => '互动',
         ],
     ],
 ];

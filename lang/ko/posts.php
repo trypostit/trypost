@@ -600,8 +600,6 @@ return [
         'ai_description' => '원하는 것을 설명하면 AI가 콘텐츠를 생성해 드립니다.',
         'ai_configure_description' => '형식을 선택하고 만들고 싶은 게시물을 설명하세요.',
         'ai_pick_template_description' => 'AI가 생성할 게시물의 스타일을 선택하세요.',
-        'template_title' => '템플릿 사용',
-        'template_description' => '엄선된 템플릿에서 선택하고 맞춤 설정하세요.',
         'coming_soon' => '곧 제공 예정',
 
         'preview' => [
@@ -667,31 +665,6 @@ return [
                 'instagram_story' => 'Instagram 스토리',
                 'facebook_story' => 'Facebook 스토리',
             ],
-        ],
-    ],
-
-    'templates' => [
-        'browser_title' => '템플릿 선택',
-        'browser_description' => '엄선된 템플릿에서 시작하여 맞춤 설정하세요.',
-        'search_placeholder' => '템플릿 검색…',
-        'no_search_results' => '검색과 일치하는 템플릿이 없습니다',
-        'try_different_search' => '다른 키워드로 시도하거나 검색을 지우세요.',
-        'slides_count' => '슬라이드 {count}장|슬라이드 {count}장',
-        'all_platforms' => '모든 플랫폼',
-        'platform_search_placeholder' => '플랫폼 검색…',
-        'no_platform_match' => '일치하는 플랫폼이 없습니다.',
-        'use_this' => '이 템플릿 사용',
-        'no_templates' => '사용 가능한 템플릿이 없습니다.',
-        'applying' => '템플릿을 적용하는 중…',
-        'category' => [
-            'product_launch' => '제품 출시',
-            'promotion' => '프로모션',
-            'educational' => '교육',
-            'behind_the_scenes' => '비하인드',
-            'testimonial' => '고객 후기',
-            'industry_tip' => '업계 팁',
-            'event' => '이벤트',
-            'engagement' => '참여',
         ],
     ],
 ];

@@ -602,8 +602,6 @@ return [
         'ai_description' => 'İstediğinizi açıklayın, AI içeriği sizin için oluştursun.',
         'ai_configure_description' => 'Bir format seçin ve oluşturmak istediğiniz gönderiyi açıklayın.',
         'ai_pick_template_description' => 'AI ile oluşturulan gönderiniz için bir stil seçin.',
-        'template_title' => 'Bir şablon kullan',
-        'template_description' => 'Özenle seçilmiş şablonlarımızdan birini seçin ve özelleştirin.',
         'coming_soon' => 'Yakında',
 
         'preview' => [
@@ -669,31 +667,6 @@ return [
                 'instagram_story' => 'Instagram Hikayesi',
                 'facebook_story' => 'Facebook Hikayesi',
             ],
-        ],
-    ],
-
-    'templates' => [
-        'browser_title' => 'Bir şablon seçin',
-        'browser_description' => 'Özenle seçilmiş bir şablondan başlayın ve uyarlayın.',
-        'search_placeholder' => 'Şablon ara…',
-        'no_search_results' => 'Aramanızla eşleşen şablon yok',
-        'try_different_search' => 'Farklı bir anahtar kelime deneyin veya aramayı temizleyin.',
-        'slides_count' => '{count} slayt|{count} slayt',
-        'all_platforms' => 'Tüm platformlar',
-        'platform_search_placeholder' => 'Platform ara…',
-        'no_platform_match' => 'Eşleşen platform yok.',
-        'use_this' => 'Bu şablonu kullan',
-        'no_templates' => 'Kullanılabilir şablon yok.',
-        'applying' => 'Şablon uygulanıyor…',
-        'category' => [
-            'product_launch' => 'Ürün lansmanı',
-            'promotion' => 'Promosyon',
-            'educational' => 'Eğitici',
-            'behind_the_scenes' => 'Kamera arkası',
-            'testimonial' => 'Müşteri görüşü',
-            'industry_tip' => 'Sektör ipucu',
-            'event' => 'Etkinlik',
-            'engagement' => 'Etkileşim',
         ],
     ],
 ];

@@ -19,7 +19,6 @@ use App\Http\Controllers\App\PostAiRegenerateMediaController;
 use App\Http\Controllers\App\PostAiReviewController;
 use App\Http\Controllers\App\PostCommentController;
 use App\Http\Controllers\App\PostController;
-use App\Http\Controllers\App\PostTemplateController;
 use App\Http\Controllers\App\PresenceController;
 use App\Http\Controllers\App\Settings\AccountController;
 use App\Http\Controllers\App\Settings\AuthenticationController;
@@ -205,10 +204,6 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::post('posts/link-preview', LinkPreviewController::class)
         ->middleware('throttle:30,1')
         ->name('app.posts.link-preview');
-
-    // Post Templates
-    Route::get('post-templates', [PostTemplateController::class, 'index'])->name('app.post-templates.index');
-    Route::post('post-templates/{slug}/apply', [PostTemplateController::class, 'apply'])->name('app.post-templates.apply');
 
     // Post AI
     Route::post('posts/{post}/ai/generate', [PostAiGenerateController::class, 'generate'])->name('app.posts.ai.generate');

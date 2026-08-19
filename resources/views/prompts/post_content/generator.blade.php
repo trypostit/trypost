@@ -35,25 +35,6 @@ CRITICAL — length for {{ $platform_label ?? 'the target platform' }}:
 @endif
 @endif
 
-@if(!empty($examples))
-
-Here are example posts from our curated library that match this platform — use them as inspiration for tone and structure (do NOT copy verbatim):
-
-@foreach($examples as $i => $example)
-Example {{ $i + 1 }} — {{ $example['name'] }}
-{{ $example['content'] }}
-@if(!empty($example['slides']))
-Slides:
-@foreach($example['slides'] as $j => $slide)
-  Slide {{ $j + 1 }}: {{ $slide['title'] ?? '' }} | {{ $slide['body'] ?? '' }}
-@endforeach
-@endif
-
-@endforeach
-
-Use these as a stylistic reference. Generate something different (about the user's actual topic) but with similar structural quality.
-@endif
-
 @if(($format ?? 'single') === 'carousel')
 Output format: a JSON object with `caption` (the Instagram caption text) and a `slides` array.
 

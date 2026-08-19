@@ -600,8 +600,6 @@ return [
         'ai_description' => 'Beschrijf wat je wilt en AI genereert de inhoud voor je.',
         'ai_configure_description' => 'Kies een formaat en beschrijf de post die je wilt maken.',
         'ai_pick_template_description' => 'Kies een stijl voor je AI-gegenereerde post.',
-        'template_title' => 'Een sjabloon gebruiken',
-        'template_description' => 'Kies uit onze samengestelde sjablonen en pas ze aan.',
         'coming_soon' => 'Binnenkort beschikbaar',
 
         'preview' => [
@@ -667,31 +665,6 @@ return [
                 'instagram_story' => 'Instagram-story',
                 'facebook_story' => 'Facebook-story',
             ],
-        ],
-    ],
-
-    'templates' => [
-        'browser_title' => 'Kies een sjabloon',
-        'browser_description' => 'Begin met een samengesteld sjabloon en pas het aan.',
-        'search_placeholder' => 'Sjablonen zoeken…',
-        'no_search_results' => 'Geen sjablonen komen overeen met je zoekopdracht',
-        'try_different_search' => 'Probeer een ander zoekwoord of wis de zoekopdracht.',
-        'slides_count' => '{count} slide|{count} slides',
-        'all_platforms' => 'Alle platforms',
-        'platform_search_placeholder' => 'Platform zoeken…',
-        'no_platform_match' => 'Geen platform komt overeen.',
-        'use_this' => 'Gebruik dit sjabloon',
-        'no_templates' => 'Geen sjablonen beschikbaar.',
-        'applying' => 'Sjabloon toepassen…',
-        'category' => [
-            'product_launch' => 'Productlancering',
-            'promotion' => 'Promotie',
-            'educational' => 'Educatief',
-            'behind_the_scenes' => 'Achter de schermen',
-            'testimonial' => 'Getuigenis',
-            'industry_tip' => 'Brancheadvies',
-            'event' => 'Evenement',
-            'engagement' => 'Betrokkenheid',
         ],
     ],
 ];
