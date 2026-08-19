@@ -278,7 +278,7 @@ Standing constraints:
 ## Backend Validation
 
 - Validation rules always live in a dedicated `Illuminate\Foundation\Http\FormRequest` subclass under `app/Http/Requests/App/<Group>/`. Controller actions must type-hint the FormRequest as the parameter — NEVER call `$request->validate([...])` inline in the controller.
-- Naming: `<Verb><Resource>Request.php` (e.g. `StorePostRequest`, `ApplyPostTemplateRequest`, `IndexPostTemplateRequest`).
+- Naming: `<Verb><Resource>Request.php` (e.g. `StorePostRequest`, `UpdatePostRequest`, `LinkPreviewRequest`).
 
 ## Per-Platform Post Meta (`PostPlatform.meta`)
 
