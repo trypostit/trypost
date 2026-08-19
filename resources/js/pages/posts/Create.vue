@@ -8,6 +8,7 @@ import PageHeader from '@/components/PageHeader.vue';
 import AiPostWizard from '@/components/posts/create/AiPostWizard.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { store as storePost } from '@/routes/app/posts';
+import type { AiTemplate } from '@/types';
 
 interface SocialAccount {
     id: string;
@@ -16,15 +17,6 @@ interface SocialAccount {
     username: string;
     display_label: string;
     avatar_url: string | null;
-}
-
-interface AiTemplate {
-    key: string;
-    name: string;
-    description: string;
-    preview: string;
-    needs_account: boolean;
-    supported_formats: string[];
 }
 
 interface Props {

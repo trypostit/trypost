@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { loading as loadingRoute } from '@/routes/app/posts/ai';
+import type { AiTemplate } from '@/types';
 import { ContentType, type ContentTypeValue } from '@/types/content-type';
 
 interface SocialAccount {
@@ -24,16 +25,6 @@ interface SocialAccount {
     username: string;
     display_label: string;
     avatar_url: string | null;
-}
-
-interface AiTemplate {
-    key: string;
-    name: string;
-    description: string;
-    preview: string;
-    needs_account: boolean;
-    supported_formats: string[];
-    applies_brand_visuals: boolean;
 }
 
 interface Props {
