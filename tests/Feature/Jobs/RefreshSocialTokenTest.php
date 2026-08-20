@@ -532,3 +532,43 @@ test('refreshToken reports false for a platform with nothing to refresh', functi
 
     expect(app(ConnectionVerifier::class)->refreshToken($account))->toBeFalse();
 });
+
+test('every platform that claims a refresh flow has one implemented', function () {
+    Http::fake(['*' => Http::response([
+        'access_token' => 'at', 'refresh_token' => 'rt', 'expires_in' => 3600,
+        'accessJwt' => 'j', 'refreshJwt' => 'r', 'id' => '1', 'data' => ['id' => '1'],
+    ], 200)]);
+
+    $verifier = app(ConnectionVerifier::class);
+    $checked = 0;
+
+    foreach (Platform::cases() as $platform) {
+        if (! $platform->hasTokenRefreshFlow()) {
+            continue;
+        }
+
+        $checked++;
+
+        $account = SocialAccount::factory()->create([
+            'workspace_id' => Workspace::factory()->create()->id,
+            'platform' => $platform,
+            'status' => Status::Connected,
+            'refresh_token' => 'rt-seed',
+            'meta' => ['service' => 'https://bsky.social', 'identifier' => 'a.bsky.social'],
+        ]);
+
+        try {
+            $verifier->refreshToken($account);
+        } catch (UnhandledMatchError $e) {
+            // refreshToken()'s match has no default arm, so a platform added to
+            // hasTokenRefreshFlow() without one blows up in production instead
+            // of falling through quietly.
+            $this->fail("{$platform->value} claims a refresh flow but refreshToken() has no arm for it");
+        } catch (Throwable) {
+            // Provider-specific failures are irrelevant here; only the missing
+            // arm is what this guards.
+        }
+    }
+
+    expect($checked)->toBeGreaterThan(0);
+});
