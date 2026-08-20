@@ -43,6 +43,10 @@ class RefreshSocialToken implements ShouldQueue
                 'error' => $e->getMessage(),
             ]);
         } catch (TokenExpiredException $e) {
+            if ($this->accessTokenStillWorks($verifier)) {
+                return;
+            }
+
             $this->account->markAsTokenExpired($e->getMessage());
         } catch (Throwable $e) {
             Log::warning('Proactive token refresh failed', [
@@ -50,6 +54,37 @@ class RefreshSocialToken implements ShouldQueue
                 'platform' => $this->account->platform->value,
                 'error' => $e->getMessage(),
             ]);
+        }
+    }
+
+    /**
+     * A rejected refresh does not on its own mean the connection is dead.
+     * Providers that single-use their refresh_token (X, LinkedIn) reject one a
+     * concurrent refresh already consumed while the current access_token keeps
+     * working, and an account with no refresh_token at all fails here without
+     * any call being made. PublishToSocialPlatform hard-fails every post for a
+     * TokenExpired account, so disconnecting on a refresh rejection alone kills
+     * posts the access_token would still have published.
+     *
+     * This is the only place the (often billed) verify endpoint is reached from
+     * this job, and only after a refresh has already been rejected. A failure
+     * we can't attribute to the token — the platform being down, a network
+     * blip — leaves the account alone rather than disconnecting it on noise.
+     */
+    private function accessTokenStillWorks(ConnectionVerifier $verifier): bool
+    {
+        try {
+            return $verifier->verify($this->account);
+        } catch (TokenExpiredException) {
+            return false;
+        } catch (Throwable $e) {
+            Log::warning('Access token fallback check failed after a rejected refresh', [
+                'account_id' => $this->account->id,
+                'platform' => $this->account->platform->value,
+                'error' => $e->getMessage(),
+            ]);
+
+            return true;
         }
     }
 }

@@ -12,6 +12,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
@@ -135,6 +136,10 @@ test('refresh job marks account as TokenExpired when refresh_token is rejected',
     $verifier->shouldReceive('refreshToken')->once()->andThrow(
         new TokenExpiredException('refresh_token revoked')
     );
+    // The access_token is dead too, so there is nothing left to fall back to.
+    $verifier->shouldReceive('verify')->once()->andThrow(
+        new TokenExpiredException('X access token is invalid or expired')
+    );
     app()->instance(ConnectionVerifier::class, $verifier);
 
     (new RefreshSocialToken($this->account))->handle($verifier);
@@ -226,4 +231,99 @@ test('a successful refresh stamps last_verified_at so other jobs can skip verify
     (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
 
     expect($this->account->fresh()->last_verified_at)->not->toBeNull();
+});
+
+test('a rejected refresh does not disconnect an account whose access token still works', function () {
+    Queue::fake();
+
+    Http::fake([
+        // X single-uses the refresh_token; a concurrent refresh already burned
+        // this one, so the provider rejects it — but the access_token is alive.
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+            'error' => 'invalid_grant',
+            'error_description' => 'Value passed for the token was invalid.',
+        ], 400),
+        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+    ]);
+
+    $this->account->update([
+        'access_token' => 'still-valid-access-token',
+        'refresh_token' => 'already-consumed-by-a-race',
+        'token_expires_at' => now()->addMinutes(20),
+    ]);
+
+    (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
+
+    // PublishToSocialPlatform hard-fails posts for a TokenExpired account, so
+    // disconnecting here would kill posts the access_token could still publish.
+    expect($this->account->fresh()->status)->toBe(Status::Connected);
+    Queue::assertNotPushed(SendNotification::class);
+});
+
+test('an account with no refresh token stays connected while its access token works', function () {
+    Queue::fake();
+
+    Http::fake([
+        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+    ]);
+
+    $this->account->update([
+        'access_token' => 'still-valid-access-token',
+        'refresh_token' => null,
+        'token_expires_at' => now()->addMinutes(20),
+    ]);
+
+    (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
+
+    expect($this->account->fresh()->status)->toBe(Status::Connected);
+    Queue::assertNotPushed(SendNotification::class);
+});
+
+test('a rejected refresh DOES disconnect once the access token is dead too', function () {
+    Queue::fake();
+
+    Http::fake([
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+            'error' => 'invalid_grant',
+            'error_description' => 'refresh_token revoked',
+        ], 400),
+        config('trypost.platforms.x.api').'/users/me' => Http::response([
+            'title' => 'Unauthorized',
+            'status' => 401,
+        ], 401),
+    ]);
+
+    $this->account->update([
+        'access_token' => 'dead-access-token',
+        'refresh_token' => 'revoked-refresh-token',
+        'token_expires_at' => now()->addMinutes(20),
+    ]);
+
+    (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
+
+    expect($this->account->fresh()->status)->toBe(Status::TokenExpired);
+});
+
+test('lock skipped by a concurrent refresh does not record a verification', function () {
+    Cache::lock("token_refresh:{$this->account->id}", 30)->get();
+
+    $this->account->update(['last_verified_at' => null]);
+
+    app(ConnectionVerifier::class)->refreshToken($this->account);
+
+    // Nothing was refreshed here, so nothing was proven — stamping would let
+    // the daily sweep skip an account no one actually checked.
+    expect($this->account->fresh()->last_verified_at)->toBeNull();
+});
+
+test('a platform with nothing to refresh is never recorded as verified', function () {
+    $account = SocialAccount::factory()->mastodon()->create([
+        'workspace_id' => $this->workspace->id,
+        'status' => Status::Connected,
+        'last_verified_at' => null,
+    ]);
+
+    app(ConnectionVerifier::class)->refreshToken($account);
+
+    expect($account->fresh()->last_verified_at)->toBeNull();
 });
