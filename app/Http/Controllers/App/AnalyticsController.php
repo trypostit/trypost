@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\App;
 
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\PlatformUnavailableException;
 use App\Http\Controllers\Controller;
 use App\Models\SocialAccount;
 use App\Services\Social\FacebookAnalytics;
@@ -16,6 +17,7 @@ use App\Services\Social\ThreadsAnalytics;
 use App\Services\Social\TikTokAnalytics;
 use App\Services\Social\XAnalytics;
 use App\Services\Social\YouTubeAnalytics;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -72,22 +74,41 @@ class AnalyticsController extends Controller
         $since = $request->has('since') ? Carbon::parse($request->input('since')) : null;
         $until = $request->has('until') ? Carbon::parse($request->input('until')) : null;
 
-        // A transient platform failure — the provider being down, or a token
-        // refresh this request collided with — is not a server error. Empty
-        // numbers beat a 500 on a page the user just opened.
-        $metrics = rescue(fn () => match ($account->platform) {
-            Platform::TikTok => app(TikTokAnalytics::class)->getMetrics($account),
-            Platform::Instagram, Platform::InstagramFacebook => app(InstagramAnalytics::class)->getMetrics($account, $since, $until),
-            Platform::Threads => app(ThreadsAnalytics::class)->getMetrics($account, $since, $until),
-            Platform::Facebook => app(FacebookAnalytics::class)->getMetrics($account, $since, $until),
-            Platform::X => app(XAnalytics::class)->getMetrics($account, $since, $until),
-            Platform::LinkedInPage => app(LinkedInPageAnalytics::class)->getMetrics($account, $since, $until),
-            Platform::Pinterest => app(PinterestAnalytics::class)->getMetrics($account, $since, $until),
-            Platform::YouTube => app(YouTubeAnalytics::class)->getMetrics($account, $since, $until),
-            Platform::Telegram => app(TelegramAnalytics::class)->getMetrics($account),
-            default => [],
-        }, [], report: true);
+        $metrics = $this->metricsFor($account, $since, $until);
 
         return response()->json(['metrics' => $metrics]);
+    }
+
+    /**
+     * A platform being unreachable is not a server error: empty numbers beat a
+     * 500 on a page the user just opened, and a token refresh this request
+     * collided with resolves itself within seconds.
+     *
+     * Narrow on purpose. rescue() would have caught Throwable, so a defect in
+     * any metrics service would render as "this account has no activity" with
+     * nothing but a log line to say otherwise.
+     *
+     * @return array<int, array{label: string, value: int|string}>
+     */
+    private function metricsFor(SocialAccount $account, ?Carbon $since, ?Carbon $until): array
+    {
+        try {
+            return match ($account->platform) {
+                Platform::TikTok => app(TikTokAnalytics::class)->getMetrics($account),
+                Platform::Instagram, Platform::InstagramFacebook => app(InstagramAnalytics::class)->getMetrics($account, $since, $until),
+                Platform::Threads => app(ThreadsAnalytics::class)->getMetrics($account, $since, $until),
+                Platform::Facebook => app(FacebookAnalytics::class)->getMetrics($account, $since, $until),
+                Platform::X => app(XAnalytics::class)->getMetrics($account, $since, $until),
+                Platform::LinkedInPage => app(LinkedInPageAnalytics::class)->getMetrics($account, $since, $until),
+                Platform::Pinterest => app(PinterestAnalytics::class)->getMetrics($account, $since, $until),
+                Platform::YouTube => app(YouTubeAnalytics::class)->getMetrics($account, $since, $until),
+                Platform::Telegram => app(TelegramAnalytics::class)->getMetrics($account),
+                default => [],
+            };
+        } catch (PlatformUnavailableException|ConnectionException $e) {
+            report($e);
+
+            return [];
+        }
     }
 }
