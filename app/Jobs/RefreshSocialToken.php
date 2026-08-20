@@ -10,7 +10,9 @@ use App\Models\SocialAccount;
 use App\Services\Social\ConnectionVerifier;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -57,6 +59,15 @@ class RefreshSocialToken implements ShouldBeUnique, ShouldQueue
                 'platform' => $this->account->platform->value,
                 'error' => $e->getMessage(),
             ]);
+
+            // Transient failures are retried on the next tick, but only while
+            // there is still a live token to fall back on. Once it has expired
+            // and we still cannot renew it, the connection is dead in practice
+            // — say so, rather than retrying in silence until the owner finds
+            // out from a failed post.
+            if ($this->account->is_token_expired) {
+                $this->account->markAsTokenExpired($e->getMessage());
+            }
         } catch (TokenExpiredException $e) {
             if ($this->shouldTrustAWorkingAccessToken() && $this->accessTokenStillWorks($verifier)) {
                 return;
@@ -103,7 +114,14 @@ class RefreshSocialToken implements ShouldBeUnique, ShouldQueue
             return $verifier->verifyAccessToken($this->account);
         } catch (TokenExpiredException) {
             return false;
-        } catch (Throwable $e) {
+        } catch (PlatformUnavailableException|ConnectionException|ModelNotFoundException $e) {
+            // Only genuinely transient outcomes get the benefit of the doubt:
+            // the platform being down, the network dropping, or the account
+            // being deleted out from under a job that has tries = 1. Anything
+            // else — a decrypt failure after an APP_KEY rotation, an
+            // UnhandledMatchError from a newly added platform — would otherwise
+            // read as "the token is healthy" and leave the account Connected
+            // forever while every publish hard-fails.
             Log::warning('Access token fallback check failed after a rejected refresh', [
                 'account_id' => $this->account->id,
                 'platform' => $this->account->platform->value,

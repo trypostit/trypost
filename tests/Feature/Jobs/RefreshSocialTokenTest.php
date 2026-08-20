@@ -432,14 +432,19 @@ test('a refresh lost to a concurrent one falls back to the token that won', func
     ]);
 
     // The winner persisted its new pair while ours was in flight; this
-    // instance still holds the rotated-away one.
-    DB::table('social_accounts')->where('id', $this->account->id)->update([
+    // instance still holds the rotated-away one. Written through a separate
+    // model so the encrypted casts apply — a raw DB write stores plaintext,
+    // and reading it back throws DecryptException instead of exercising this.
+    SocialAccount::find($this->account->id)->update([
         'access_token' => 'winner-access-token',
         'refresh_token' => 'winner-refresh-token',
     ]);
 
     (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
 
+    // The recovery is the point: reload, find the winner's token, verify with
+    // it. Asserting the call proves we got that far rather than bailing early.
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/users/me'));
     expect($this->account->fresh()->status)->toBe(Status::Connected);
     Queue::assertNotPushed(SendNotification::class);
 });
@@ -630,4 +635,60 @@ test('no platform lets a tokenless 200 destroy the credential it already had', f
 
     Queue::assertNotPushed(SendNotification::class);
     expect($checked)->toBeGreaterThan(0);
+});
+
+test('a platform outage on an already-dead token stops being silent', function () {
+    Queue::fake();
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('refreshToken')->once()->andThrow(
+        new PlatformUnavailableException('X API returned 503 during token refresh', 503)
+    );
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    // Already expired: there is no live token left to retry behind.
+    $this->account->update(['token_expires_at' => now()->subMinutes(5)]);
+
+    (new RefreshSocialToken($this->account))->handle($verifier);
+
+    expect($this->account->fresh()->status)->toBe(Status::TokenExpired);
+    Queue::assertPushed(SendNotification::class);
+});
+
+test('a platform outage on a live token stays quiet and retries', function () {
+    Queue::fake();
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('refreshToken')->once()->andThrow(
+        new PlatformUnavailableException('X API returned 503 during token refresh', 503)
+    );
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    $this->account->update(['token_expires_at' => now()->addMinutes(20)]);
+
+    (new RefreshSocialToken($this->account))->handle($verifier);
+
+    expect($this->account->fresh()->status)->toBe(Status::Connected);
+    Queue::assertNotPushed(SendNotification::class);
+});
+
+test('a failure the fallback cannot attribute to the token surfaces instead of passing as healthy', function () {
+    Queue::fake();
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('refreshToken')->once()->andThrow(new TokenExpiredException('rejected'));
+    // e.g. a decrypt failure after an APP_KEY rotation, or an unhandled match
+    // for a platform someone just added.
+    $verifier->shouldReceive('verifyAccessToken')->once()->andThrow(new RuntimeException('cannot decrypt'));
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    // Swallowing this would leave the account Connected forever while every
+    // publish hard-fails. It has to reach failed_jobs where someone sees it —
+    // and it must not disconnect users, since an APP_KEY rotation breaks all
+    // of them at once.
+    expect(fn () => (new RefreshSocialToken($this->account))->handle($verifier))
+        ->toThrow(RuntimeException::class);
+
+    expect($this->account->fresh()->status)->toBe(Status::Connected);
+    Queue::assertNotPushed(SendNotification::class);
 });

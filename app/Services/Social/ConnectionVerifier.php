@@ -29,12 +29,15 @@ class ConnectionVerifier
     /**
      * Read and connect timeouts for a token refresh.
      *
-     * Deliberately generous. refreshHttp() is shared with the ~24 publish and
-     * analytics call sites, and for X, Bluesky and TikTok the refresh_token is
-     * single-use: giving up on a request the provider has already processed
-     * loses the rotated pair for good and costs the user a manual reconnect.
-     * A token endpoint answers in milliseconds, so a long ceiling is nearly
-     * free, while a tight one turns provider slowness into dead accounts.
+     * These match the HTTP client's own defaults, and are stated here so a
+     * future change to those defaults cannot silently break the lock invariant
+     * below. They are deliberately generous: refreshToken() is reached from
+     * ~24 publish and analytics call sites as well as the scheduled job, and
+     * for X, Bluesky and TikTok the refresh_token is single-use, so abandoning
+     * a request the provider has already processed loses the rotated pair for
+     * good and costs the user a manual reconnect. A token endpoint answers in
+     * milliseconds, so a long ceiling is nearly free while a tight one turns
+     * provider slowness into dead accounts.
      */
     public const REFRESH_TIMEOUT_SECONDS = 30;
 
