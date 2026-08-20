@@ -446,10 +446,89 @@ test('a refresh lost to a concurrent one falls back to the token that won', func
 
 test('the refresh lock outlives the slowest refresh a provider can make us wait', function () {
     // Bluesky refreshes with two sequential calls (refreshSession, then the
-    // createSession re-auth), each bounded by the framework's connect + read
-    // timeouts. If the lock expires first, a second process refreshes with the
-    // same single-use refresh_token and one of the two is rejected.
-    $worstCaseSeconds = 2 * (30 + 10);
+    // createSession re-auth). If the lock expires first, a second process
+    // refreshes with the same single-use refresh_token and one of the two is
+    // rejected. Bounding the calls ourselves keeps that under the lock without
+    // holding the lock longer, which the publish path also waits on.
+    $worstCaseSeconds = 2 * (ConnectionVerifier::REFRESH_TIMEOUT_SECONDS + ConnectionVerifier::REFRESH_CONNECT_TIMEOUT_SECONDS);
 
     expect(ConnectionVerifier::REFRESH_LOCK_SECONDS)->toBeGreaterThan($worstCaseSeconds);
+});
+
+test('a rejected Instagram extension disconnects loudly instead of waiting for the token to die', function () {
+    Queue::fake();
+
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Instagram,
+        'status' => Status::Connected,
+        'access_token' => 'still-valid-but-unextendable',
+        'token_expires_at' => now()->addHours(20),
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.instagram.auth_api').'/refresh_access_token*' => Http::response([
+            'error' => ['message' => 'Invalid OAuth access token', 'type' => 'OAuthException', 'code' => 190],
+        ], 400),
+        config('trypost.platforms.instagram.graph_api').'/me*' => Http::response(['id' => '1', 'username' => 'u'], 200),
+    ]);
+
+    (new RefreshSocialToken($account))->handle(app(ConnectionVerifier::class));
+
+    // Instagram/Threads tokens cannot be refreshed once expired. Staying
+    // Connected because the token still reads means the owner is told only
+    // after it dies — by which point reconnecting is the only option left.
+    expect($account->fresh()->status)->toBe(Status::TokenExpired);
+    Queue::assertPushed(SendNotification::class);
+});
+
+test('the job survives the account being deleted while it is in flight', function () {
+    Http::fake([
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
+    ]);
+
+    $account = $this->account;
+    $account->update(['token_expires_at' => now()->addMinutes(20)]);
+
+    SocialAccount::whereKey($account->id)->delete();
+
+    // Guard the repro itself: a delete that silently did nothing would make
+    // this test pass without ever exercising the path it claims to cover.
+    expect(SocialAccount::find($account->id))->toBeNull();
+
+    // tries = 1, so an escaping exception lands the job straight in failed_jobs.
+    (new RefreshSocialToken($account))->handle(app(ConnectionVerifier::class));
+
+    // Reaching this line is the point: the refresh ran and the vanished row
+    // did not escape as a ModelNotFoundException.
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/oauth2/token'));
+});
+
+test('a refresh that returns an empty access token disconnects instead of looking healthy', function () {
+    Queue::fake();
+
+    Http::fake([
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+            'access_token' => '',
+            'refresh_token' => 'rt-new',
+            'expires_in' => 7200,
+        ], 200),
+    ]);
+
+    $this->account->update(['token_expires_at' => now()->addMinutes(20)]);
+
+    (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
+
+    // token_expires_at was just pushed 2h out, so the account would otherwise
+    // leave the refresh window looking healthy while every publish 401s.
+    expect($this->account->fresh()->status)->toBe(Status::TokenExpired);
+});
+
+test('refreshToken reports false for a platform with nothing to refresh', function () {
+    $account = SocialAccount::factory()->mastodon()->create([
+        'workspace_id' => $this->workspace->id,
+        'status' => Status::Connected,
+    ]);
+
+    expect(app(ConnectionVerifier::class)->refreshToken($account))->toBeFalse();
 });

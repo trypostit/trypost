@@ -49,6 +49,16 @@ class RefreshSocialToken implements ShouldBeUnique, ShouldQueue
     {
         try {
             if ($verifier->refreshToken($this->account)) {
+                if (blank($this->account->access_token)) {
+                    // The refresh method stored whatever came back and pushed
+                    // token_expires_at forward, so the account would otherwise
+                    // leave the refresh window looking healthy while every
+                    // publish 401s on an empty token.
+                    $this->account->markAsTokenExpired('Token refresh returned an empty access token');
+
+                    return;
+                }
+
                 $this->recordVerification();
             }
         } catch (PlatformUnavailableException $e) {
@@ -58,7 +68,7 @@ class RefreshSocialToken implements ShouldBeUnique, ShouldQueue
                 'error' => $e->getMessage(),
             ]);
         } catch (TokenExpiredException $e) {
-            if ($this->accessTokenStillWorks($verifier)) {
+            if ($this->shouldTrustAWorkingAccessToken() && $this->accessTokenStillWorks($verifier)) {
                 return;
             }
 
@@ -95,9 +105,11 @@ class RefreshSocialToken implements ShouldBeUnique, ShouldQueue
         // flight, which is why ours was rejected. This instance still holds the
         // token that was rotated away, so reload before judging it — otherwise
         // the winner's healthy account gets disconnected.
-        $this->account->refresh();
-
         try {
+            // Inside the try: the account can be deleted mid-run, and this job
+            // has tries = 1, so an escaping ModelNotFoundException fails it.
+            $this->account->refresh();
+
             return $verifier->verifyAccessToken($this->account);
         } catch (TokenExpiredException) {
             return false;
@@ -113,12 +125,28 @@ class RefreshSocialToken implements ShouldBeUnique, ShouldQueue
     }
 
     /**
+     * Whether a working access token is reason enough to stay connected after a
+     * refresh was rejected.
+     *
+     * It is for platforms that rotate a refresh_token, where a rejection often
+     * just means we lost a race and the current token is fine. It is not for
+     * Instagram and Threads: their long-lived token is extended in place and
+     * cannot be renewed once it expires, so a permanently rejected extension
+     * means the connection is already doomed. Staying connected because the
+     * token still reads would tell the owner only after it dies, when
+     * reconnecting is the only option left, and would keep retrying the
+     * rejected extension every 15 minutes across the whole 24-hour lead.
+     */
+    private function shouldTrustAWorkingAccessToken(): bool
+    {
+        return ! $this->account->platform->extendsAccessTokenOnRefresh();
+    }
+
+    /**
      * Record the refresh as a verification, so the daily sweep and the
      * pre-publish check can skip their own (often billed) verify call.
      *
-     * Only a refresh that came back with a usable token proves anything: TokenRefreshClient classifies on HTTP
-     * status alone and never inspects the body, so a 200 carrying an empty
-     * token would otherwise be recorded as healthy. This is deliberately not
+     * Deliberately not
      * done inside ConnectionVerifier::refreshToken() — refreshThenVerify()
      * calls it and can still fail on the verify that follows, and a stamp
      * written there would vouch for a credential nothing ever confirmed.
@@ -126,10 +154,6 @@ class RefreshSocialToken implements ShouldBeUnique, ShouldQueue
     private function recordVerification(): void
     {
         if (! $this->account->platform->hasTokenRefreshFlow()) {
-            return;
-        }
-
-        if (blank($this->account->access_token)) {
             return;
         }
 
