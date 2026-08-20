@@ -97,6 +97,23 @@ class ConnectionVerifier
     }
 
     /**
+     * Check the stored access token exactly as it is, skipping the
+     * refresh-and-retry ladder verify() runs.
+     *
+     * Callers that have just had a refresh rejected need this: routing through
+     * verify() would re-send the refresh_token the provider only just rejected,
+     * and on Bluesky re-run the password re-auth AT Proto rate-limits per
+     * account.
+     *
+     * @throws TokenExpiredException if the access token itself is rejected
+     * @throws PlatformUnavailableException if the platform is unreachable
+     */
+    public function verifyAccessToken(SocialAccount $account): bool
+    {
+        return $this->callVerifyEndpoint($account);
+    }
+
+    /**
      * @throws TokenExpiredException
      */
     private function callVerifyEndpoint(SocialAccount $account): bool
@@ -152,14 +169,6 @@ class ConnectionVerifier
                 // Mastodon tokens don't expire either.
                 default => null,
             };
-
-            // A provider that hands back a fresh token has just confirmed the
-            // credential, so record it as a verification: jobs that would
-            // otherwise call the (often billed) verify endpoint can trust this
-            // instead. Platforms with nothing to refresh prove nothing here.
-            if ($account->platform->hasTokenRefreshFlow()) {
-                $account->update(['last_verified_at' => now()]);
-            }
         } finally {
             $lock->release();
         }

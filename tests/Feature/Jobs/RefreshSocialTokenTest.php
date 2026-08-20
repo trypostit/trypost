@@ -137,7 +137,7 @@ test('refresh job marks account as TokenExpired when refresh_token is rejected',
         new TokenExpiredException('refresh_token revoked')
     );
     // The access_token is dead too, so there is nothing left to fall back to.
-    $verifier->shouldReceive('verify')->once()->andThrow(
+    $verifier->shouldReceive('verifyAccessToken')->once()->andThrow(
         new TokenExpiredException('X access token is invalid or expired')
     );
     app()->instance(ConnectionVerifier::class, $verifier);
@@ -326,4 +326,78 @@ test('a platform with nothing to refresh is never recorded as verified', functio
     app(ConnectionVerifier::class)->refreshToken($account);
 
     expect($account->fresh()->last_verified_at)->toBeNull();
+});
+
+test('a refresh whose follow-up verify fails is not recorded as a verification', function () {
+    Http::fake([
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+            'access_token' => 'fresh-but-rejected',
+            'refresh_token' => 'rt-new',
+            'expires_in' => 7200,
+        ], 200),
+        config('trypost.platforms.x.api').'/users/me' => Http::response(['title' => 'Unauthorized'], 401),
+    ]);
+
+    $this->account->update([
+        'token_expires_at' => now()->subMinute(),
+        'last_verified_at' => null,
+    ]);
+
+    try {
+        app(ConnectionVerifier::class)->verify($this->account);
+    } catch (TokenExpiredException) {
+        // expected — the refreshed token is rejected too
+    }
+
+    // The refresh succeeded but the credential was never proven good. Stamping
+    // here lets both skip-windows wave through an account nobody verified.
+    expect($this->account->fresh()->last_verified_at)->toBeNull();
+});
+
+test('a refresh that returns an empty access token is not recorded as a verification', function () {
+    // TokenRefreshClient classifies on HTTP status alone and never inspects the
+    // body, so a 200 carrying an empty token is stored as-is.
+    Http::fake([
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+            'access_token' => '',
+            'refresh_token' => 'rt-new',
+            'expires_in' => 7200,
+        ], 200),
+    ]);
+
+    $this->account->update([
+        'token_expires_at' => now()->addMinutes(20),
+        'last_verified_at' => null,
+    ]);
+
+    (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
+
+    expect($this->account->fresh()->last_verified_at)->toBeNull();
+});
+
+test('a rejected refresh is not re-sent before the access token is checked', function () {
+    Queue::fake();
+
+    Http::fake([
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+            'error' => 'invalid_grant',
+        ], 400),
+        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+    ]);
+
+    $this->account->update([
+        'access_token' => 'still-valid-access-token',
+        'refresh_token' => 'already-consumed-by-a-race',
+        'token_expires_at' => now()->subMinute(),
+    ]);
+
+    (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
+
+    // Going through verify() would re-send the refresh_token the provider just
+    // rejected — and on Bluesky re-run the rate-limited password re-auth.
+    $refreshCalls = collect(Http::recorded())
+        ->filter(fn ($pair) => str_contains($pair[0]->url(), '/oauth2/token'))
+        ->count();
+
+    expect($refreshCalls)->toBe(1);
 });

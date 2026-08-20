@@ -86,6 +86,7 @@ class VerifyWorkspaceConnections implements ShouldQueue
     {
         try {
             $verifier->verify($account);
+            $account->update(['last_verified_at' => now()]);
 
             return true;
         } catch (PlatformUnavailableException $e) {

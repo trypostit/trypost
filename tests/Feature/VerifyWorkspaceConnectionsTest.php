@@ -216,3 +216,23 @@ test('daily sweep still verifies a TokenExpired account despite a fresh last_ver
     Http::assertSent(fn ($request) => str_contains($request->url(), '/users/me'));
     expect($account->fresh()->status)->toBe(Status::Connected);
 });
+
+test('daily sweep records its own successful verification', function () {
+    Mail::fake();
+    Http::fake([
+        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+    ]);
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->x()->create([
+        'workspace_id' => $workspace->id,
+        'status' => Status::Connected,
+        'last_verified_at' => null,
+    ]);
+
+    VerifyWorkspaceConnections::dispatch($workspace);
+
+    // Otherwise VerifyUpcomingPostConnections burns a fresh call minutes later
+    // on an account this sweep just confirmed healthy.
+    expect($account->fresh()->last_verified_at)->not->toBeNull();
+});

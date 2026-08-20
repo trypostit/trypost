@@ -18,10 +18,10 @@ class RefreshExpiringTokens extends Command
     protected $description = 'Proactively refresh social tokens before they expire';
 
     /**
-     * Rotating refresh_token platforms only need a short lead: verify() won't
-     * rotate a still-valid token, so we catch them right before or after expiry.
-     * Extension-model platforms (Instagram/Threads) can't be refreshed once
-     * expired, so they get a much wider lead to survive queue backlog.
+     * Rotating refresh_token platforms get a short lead: RefreshSocialToken
+     * rotates on every run, so a wider window would only rotate more often for
+     * no gain. Extension-model platforms (Instagram/Threads) can't be refreshed
+     * once expired, so they get a much wider lead to survive queue backlog.
      */
     public function handle(): void
     {
