@@ -533,12 +533,7 @@ test('refreshToken reports false for a platform with nothing to refresh', functi
     expect(app(ConnectionVerifier::class)->refreshToken($account))->toBeFalse();
 });
 
-test('every platform that claims a refresh flow has one implemented', function () {
-    Http::fake(['*' => Http::response([
-        'access_token' => 'at', 'refresh_token' => 'rt', 'expires_in' => 3600,
-        'accessJwt' => 'j', 'refreshJwt' => 'r', 'id' => '1', 'data' => ['id' => '1'],
-    ], 200)]);
-
+test('every platform that claims a refresh flow actually performs one', function () {
     $verifier = app(ConnectionVerifier::class);
     $checked = 0;
 
@@ -557,6 +552,11 @@ test('every platform that claims a refresh flow has one implemented', function (
             'meta' => ['service' => 'https://bsky.social', 'identifier' => 'a.bsky.social'],
         ]);
 
+        Http::fake(['*' => Http::response([
+            'access_token' => 'at', 'refresh_token' => 'rt', 'expires_in' => 3600,
+            'accessJwt' => 'j', 'refreshJwt' => 'r', 'id' => '1', 'data' => ['id' => '1'],
+        ], 200)]);
+
         try {
             $verifier->refreshToken($account);
         } catch (UnhandledMatchError $e) {
@@ -564,10 +564,15 @@ test('every platform that claims a refresh flow has one implemented', function (
             // hasTokenRefreshFlow() without one blows up in production instead
             // of falling through quietly.
             $this->fail("{$platform->value} claims a refresh flow but refreshToken() has no arm for it");
-        } catch (Throwable) {
-            // Provider-specific failures are irrelevant here; only the missing
-            // arm is what this guards.
+        } catch (Throwable $e) {
+            $this->fail("{$platform->value} refresh threw ".$e::class.': '.$e->getMessage());
         }
+
+        // A broken client chain (a renamed helper, a method that no longer
+        // exists on PendingRequest) raises before anything leaves the process,
+        // so "no request sent" is the signal that catches it.
+        expect(Http::recorded())
+            ->not->toBeEmpty("{$platform->value} refresh sent no HTTP request at all");
     }
 
     expect($checked)->toBeGreaterThan(0);
