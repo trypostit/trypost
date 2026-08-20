@@ -443,3 +443,13 @@ test('a refresh lost to a concurrent one falls back to the token that won', func
     expect($this->account->fresh()->status)->toBe(Status::Connected);
     Queue::assertNotPushed(SendNotification::class);
 });
+
+test('the refresh lock outlives the slowest refresh a provider can make us wait', function () {
+    // Bluesky refreshes with two sequential calls (refreshSession, then the
+    // createSession re-auth), each bounded by the framework's connect + read
+    // timeouts. If the lock expires first, a second process refreshes with the
+    // same single-use refresh_token and one of the two is rejected.
+    $worstCaseSeconds = 2 * (30 + 10);
+
+    expect(ConnectionVerifier::REFRESH_LOCK_SECONDS)->toBeGreaterThan($worstCaseSeconds);
+});

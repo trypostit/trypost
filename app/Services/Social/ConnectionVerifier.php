@@ -26,6 +26,22 @@ use Illuminate\Support\Facades\Http;
 class ConnectionVerifier
 {
     /**
+     * How long the per-account refresh lock survives without being released.
+     *
+     * It has to outlast the slowest refresh a provider can make us wait for,
+     * or the lock lapses mid-flight and a second process refreshes with the
+     * same single-use refresh_token — leaving one of the two rejected. The
+     * ceiling is Bluesky, which refreshes with two sequential calls
+     * (refreshSession, then the createSession re-auth), each bounded by the
+     * HTTP client's connect and read timeouts.
+     *
+     * The lock is released in a finally block, so this only governs how long a
+     * worker that died mid-refresh blocks the next attempt — and the next
+     * scheduler tick is 15 minutes out either way.
+     */
+    public const REFRESH_LOCK_SECONDS = 120;
+
+    /**
      * Verify that a social account connection is still valid.
      *
      * @throws TokenExpiredException if the connection is invalid
@@ -150,7 +166,7 @@ class ConnectionVerifier
      */
     public function refreshToken(SocialAccount $account): bool
     {
-        $lock = Cache::lock("token_refresh:{$account->id}", 30);
+        $lock = Cache::lock("token_refresh:{$account->id}", self::REFRESH_LOCK_SECONDS);
 
         if (! $lock->get()) {
             // Another process is already refreshing this token

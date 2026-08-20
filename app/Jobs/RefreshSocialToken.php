@@ -8,18 +8,31 @@ use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\SocialAccount;
 use App\Services\Social\ConnectionVerifier;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-class RefreshSocialToken implements ShouldQueue
+class RefreshSocialToken implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
     public int $tries = 1;
 
+    // Covers the full schedule cadence. RefreshExpiringTokens re-selects an
+    // account until its token_expires_at moves, which only happens once this
+    // job runs — so a backlogged queue would otherwise stack a job per tick,
+    // each rotating a single-use refresh_token again for nothing and widening
+    // the window where a worker death loses the pair.
+    public int $uniqueFor = 900;
+
     public function __construct(public SocialAccount $account) {}
+
+    public function uniqueId(): string
+    {
+        return $this->account->id;
+    }
 
     /**
      * Refresh the token outright rather than verifying it first.
