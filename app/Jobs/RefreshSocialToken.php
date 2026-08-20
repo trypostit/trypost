@@ -74,10 +74,13 @@ class RefreshSocialToken implements ShouldBeUnique, ShouldQueue
 
     /**
      * A rejected refresh does not on its own mean the connection is dead.
-     * Providers that single-use their refresh_token (X, LinkedIn) reject one a
-     * concurrent refresh already consumed while the current access_token keeps
-     * working, and an account with no refresh_token at all fails here without
-     * any call being made. PublishToSocialPlatform hard-fails every post for a
+     * X and Bluesky single-use their refresh_token — X issues a new one and
+     * invalidates the previous on every refresh, and refreshSession returns a
+     * mandatory new refreshJwt — so one a concurrent refresh already consumed
+     * is rejected while the current access_token keeps working. X is also
+     * documented by its own developer community to invalidate refresh_tokens
+     * spuriously. An account with no refresh_token at all fails here without
+     * any call being made at all. PublishToSocialPlatform hard-fails every post for a
      * TokenExpired account, so disconnecting on a refresh rejection alone kills
      * posts the access_token would still have published.
      *

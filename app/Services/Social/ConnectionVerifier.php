@@ -52,10 +52,11 @@ class ConnectionVerifier
         // Hard-expired tokens cannot make API calls — refresh is mandatory.
         // For tokens that are still valid OR only "expiring soon", try the
         // verify endpoint FIRST with the current access_token. This avoids
-        // rotating refresh_tokens unnecessarily — many providers (X v2,
-        // LinkedIn, etc.) invalidate the previous refresh_token on each
-        // refresh, so proactive refreshes during races cause false-positive
-        // disconnects even though the access_token still works fine.
+        // rotating refresh_tokens unnecessarily — X and Bluesky invalidate the
+        // previous refresh_token on each refresh, so refreshing during races
+        // causes false-positive disconnects even though the access_token still
+        // works fine. (LinkedIn does not: it returns the same refresh_token,
+        // keeping the TTL from the original authorization.)
         if ($account->is_token_expired) {
             return $this->refreshThenVerify($account);
         }
