@@ -27,17 +27,11 @@ use Illuminate\Support\Facades\Http;
 class ConnectionVerifier
 {
     /**
-     * Read and connect timeouts for a token refresh.
-     *
-     * These match the HTTP client's own defaults, and are stated here so a
-     * future change to those defaults cannot silently break the lock invariant
-     * below. They are deliberately generous: refreshToken() is reached from
-     * ~24 publish and analytics call sites as well as the scheduled job, and
-     * for X, Bluesky and TikTok the refresh_token is single-use, so abandoning
-     * a request the provider has already processed loses the rotated pair for
-     * good and costs the user a manual reconnect. A token endpoint answers in
-     * milliseconds, so a long ceiling is nearly free while a tight one turns
-     * provider slowness into dead accounts.
+     * Read and connect timeouts for a token refresh. Stated explicitly, even
+     * though they match the client's defaults, so a change to those cannot
+     * silently break the lock invariant below. Generous on purpose: giving up
+     * on a request the provider already processed loses a single-use
+     * refresh_token for good.
      */
     public const REFRESH_TIMEOUT_SECONDS = 30;
 
@@ -46,12 +40,7 @@ class ConnectionVerifier
     /**
      * Must exceed the slowest refresh the timeouts above allow — Bluesky's two
      * sequential calls — or the lock lapses mid-flight and a second process
-     * refreshes with the same single-use refresh_token. Pinned by a test.
-     *
-     * The cost of erring long is that a worker dying mid-refresh leaves the
-     * lock held for this many seconds, during which a publish falls through to
-     * an expired token and retries. That is recoverable; an abandoned rotation
-     * is not.
+     * reuses the same single-use refresh_token. Pinned by a test.
      */
     public const REFRESH_LOCK_SECONDS = 120;
 
@@ -66,11 +55,9 @@ class ConnectionVerifier
         // Hard-expired tokens cannot make API calls — refresh is mandatory.
         // For tokens that are still valid OR only "expiring soon", try the
         // verify endpoint FIRST with the current access_token. This avoids
-        // rotating refresh_tokens unnecessarily — X and Bluesky invalidate the
-        // previous refresh_token on each refresh, so refreshing during races
-        // causes false-positive disconnects even though the access_token still
-        // works fine. (LinkedIn does not: it returns the same refresh_token,
-        // keeping the TTL from the original authorization.)
+        // rotating refresh_tokens unnecessarily — X and Bluesky single-use
+        // theirs, so refreshing during a race disconnects an account whose
+        // access_token still works. (LinkedIn returns the same token.)
         if ($account->is_token_expired) {
             return $this->refreshThenVerify($account);
         }
@@ -130,12 +117,8 @@ class ConnectionVerifier
     /**
      * Pull a token out of a refresh response, refusing to persist a blank one.
      *
-     * TokenRefreshClient classifies on HTTP status alone and never inspects the
-     * body, so a 200 carrying no token would otherwise be written straight over
-     * a credential that still works — and on Instagram and Threads, where the
-     * refresh_token is set to the same value, both halves go at once. Treat it
-     * as the platform misbehaving: the stored pair stays put and the next tick
-     * retries, instead of the account needing a manual reconnect.
+     * TokenRefreshClient classifies on HTTP status alone, so a 200 carrying no
+     * token would otherwise overwrite a credential that still works.
      *
      * @param  array<string, mixed>|null  $data
      *
@@ -145,10 +128,8 @@ class ConnectionVerifier
     {
         $token = data_get($data, $key);
 
-        // Blank, not just missing: data_get()'s own default would let an
-        // explicit null through and overwrite. A provider that omits the field
-        // means "keep using the one you have", and so does one that sends it
-        // empty.
+        // Blank, not just missing: data_get()'s own default lets an explicit
+        // null through and overwrite.
         return blank($token) ? $current : (string) $token;
     }
 
@@ -172,13 +153,9 @@ class ConnectionVerifier
     }
 
     /**
-     * Check the stored access token exactly as it is, skipping the
-     * refresh-and-retry ladder verify() runs.
-     *
-     * Callers that have just had a refresh rejected need this: routing through
-     * verify() would re-send the refresh_token the provider only just rejected,
-     * and on Bluesky re-run the password re-auth AT Proto rate-limits per
-     * account.
+     * Check the stored access token as it is, skipping the refresh-and-retry
+     * ladder verify() runs — which would re-send a refresh_token the provider
+     * just rejected, and on Bluesky re-run a rate-limited password re-auth.
      *
      * @throws TokenExpiredException if the access token itself is rejected
      * @throws PlatformUnavailableException if the platform is unreachable
@@ -216,9 +193,8 @@ class ConnectionVerifier
      * use verify() instead. This method always attempts a refresh under
      * the per-account lock.
      *
-     * @return bool whether a refresh actually ran. False means another process
-     *              already held the lock and this call did nothing, so callers
-     *              must not treat it as having proven anything.
+     * @return bool whether a refresh actually ran — false means another
+     *              process held the lock and this call proved nothing.
      *
      * @throws TokenExpiredException if refresh is rejected by the provider (4xx)
      * @throws PlatformUnavailableException if the platform is unreachable (5xx / network)
@@ -232,11 +208,9 @@ class ConnectionVerifier
             $account->refresh();
 
             if ($account->is_token_expired) {
-                // Reporting "nothing refreshed" would hand the caller a token
-                // it already knows is dead. A publisher posts with it, takes a
-                // 401, and PublishToSocialPlatform finalises the post as failed
-                // and disconnects the account — over a lock a dying worker left
-                // behind. Transient is the truth here: try again shortly.
+                // Returning false would hand the caller a token it knows is
+                // dead; a publisher then posts with it, fails the post and
+                // disconnects the account. Transient is the truth here.
                 throw new PlatformUnavailableException(
                     "A {$account->platform->label()} token refresh is already in progress."
                 );
@@ -247,9 +221,8 @@ class ConnectionVerifier
 
         try {
             if (! $account->platform->hasTokenRefreshFlow()) {
-                // Facebook / InstagramFacebook use Page tokens that don't
-                // expire, Mastodon's don't either, and Telegram and Discord
-                // share one bot token with nothing per-account to refresh.
+                // Page tokens, Mastodon and the shared bot tokens have
+                // nothing per-account to refresh.
                 return false;
             }
 

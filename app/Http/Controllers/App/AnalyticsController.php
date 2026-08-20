@@ -80,13 +80,9 @@ class AnalyticsController extends Controller
     }
 
     /**
-     * A platform being unreachable is not a server error: empty numbers beat a
-     * 500 on a page the user just opened, and a token refresh this request
-     * collided with resolves itself within seconds.
-     *
-     * Narrow on purpose. rescue() would have caught Throwable, so a defect in
-     * any metrics service would render as "this account has no activity" with
-     * nothing but a log line to say otherwise.
+     * An unreachable platform is not a server error — empty numbers beat a 500
+     * on a page the user just opened. Narrow on purpose: catching Throwable
+     * would render a defect as "this account has no activity".
      *
      * @return array<int, array{label: string, value: int|string}>
      */

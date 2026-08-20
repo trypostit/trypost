@@ -26,19 +26,10 @@ class VerifyWorkspaceConnections implements ShouldQueue
 
     public int $timeout = 120;
 
-    // How long a recorded verification (SocialAccount::last_verified_at) is
-    // trusted before this sweep re-checks the account. RefreshSocialToken
-    // stamps that field on every successful token refresh, and a refresh does
-    // more than the verify endpoint does: it replaces the access token rather
-    // than inspecting it, so there is nothing left for a billed read to
-    // confirm.
-    //
-    // For short-TTL platforms this means the sweep never calls verify() again
-    // — X and Bluesky tokens live 2h and are refreshed ~90 minutes apart, so
-    // the stamp is never stale at the daily tick. That is intended, not an
-    // oversight: the refresh detects a revoked or dead credential 16× more
-    // often than this sweep did, for free. What it cannot see (a suspended
-    // account whose refresh still succeeds) surfaces at publish time.
+    // A refresh stamps last_verified_at and replaces the access token, so
+    // there is nothing left for a billed read to confirm. On short-TTL
+    // platforms the stamp is never stale here and this sweep stops calling
+    // verify() entirely — intended, not an oversight.
     private const VERIFIED_WITHIN_HOURS = 12;
 
     public function __construct(public Workspace $workspace) {}
@@ -74,9 +65,8 @@ class VerifyWorkspaceConnections implements ShouldQueue
     }
 
     /**
-     * Only a Connected account can be skipped. A TokenExpired one still needs
-     * the call: verifying it is how it gets promoted back to Connected, so
-     * trusting a stale stamp would strand a recovered account forever.
+     * Connected only: verifying a TokenExpired account is how it gets promoted
+     * back, so a stale stamp would strand one that has recovered.
      */
     private function recentlyProvenValid(SocialAccount $account): bool
     {
@@ -91,10 +81,8 @@ class VerifyWorkspaceConnections implements ShouldQueue
             $verifier->verify($account);
             $account->update(['last_verified_at' => now()]);
 
-            // Promote here, not on this method's return value: it also returns
-            // true for "could not check, don't disconnect", and reviving an
-            // account on an outage tells the owner a reconnect worked when
-            // nothing was verified at all.
+            // Here, not on this method's return value — that is also true
+            // for "could not check, don't disconnect".
             if ($account->status === Status::TokenExpired) {
                 $account->markAsConnected();
             }

@@ -16,10 +16,7 @@ class XAnalytics
 {
     use HasSocialHttpClient;
 
-    /**
-     * Each page is billed per Post returned, so this bounds what one analytics
-     * load can cost as much as it bounds how long it takes.
-     */
+    /** Each page is billed per Post returned, so this bounds cost as well as time. */
     private const MAX_TIMELINE_PAGES = 5;
 
     private string $baseUrl;
@@ -75,14 +72,11 @@ class XAnalytics
     }
 
     /**
-     * Walk the account's timeline, summing each Post's public_metrics as the
-     * pages come back.
+     * Walk the timeline, summing public_metrics as the pages come back.
      *
-     * The metrics are requested from the timeline itself rather than looked up
-     * afterwards from /2/tweets. Both endpoints bill per Post returned, so
-     * re-reading the same ids only bought a second round-trip and a second
-     * claim on the same rate limit — the ids were already in hand, and their
-     * metrics come along for free on the request that fetched them.
+     * Asked for on the timeline request rather than looked up afterwards from
+     * /2/tweets: both bill per Post returned, so re-reading the same ids only
+     * bought a second round-trip.
      *
      * @return array{0: array<string, int>, 1: int} totals, and how many Posts fed them
      */
