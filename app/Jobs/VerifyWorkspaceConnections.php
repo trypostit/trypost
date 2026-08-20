@@ -26,6 +26,13 @@ class VerifyWorkspaceConnections implements ShouldQueue
 
     public int $timeout = 120;
 
+    // How long a recorded verification (SocialAccount::last_verified_at) is
+    // trusted before this sweep re-checks the account. RefreshSocialToken
+    // stamps that field on every successful token refresh, and a refresh
+    // proves the credential just as well as the verify endpoint does — without
+    // the per-call charge providers like X bill for reading a profile.
+    private const VERIFIED_WITHIN_HOURS = 12;
+
     public function __construct(public Workspace $workspace) {}
 
     public function handle(ConnectionVerifier $verifier): void
@@ -42,6 +49,10 @@ class VerifyWorkspaceConnections implements ShouldQueue
         $disconnectedAccounts = collect();
 
         foreach ($accounts as $account) {
+            if ($this->recentlyProvenValid($account)) {
+                continue;
+            }
+
             if ($this->verifyAccount($verifier, $account)) {
                 // If was TokenExpired but now verified OK, mark as connected again
                 if ($account->status === Status::TokenExpired) {
@@ -57,6 +68,18 @@ class VerifyWorkspaceConnections implements ShouldQueue
         if ($disconnectedAccounts->isNotEmpty()) {
             $this->notifyOwner($disconnectedAccounts);
         }
+    }
+
+    /**
+     * Only a Connected account can be skipped. A TokenExpired one still needs
+     * the call: verifying it is how it gets promoted back to Connected, so
+     * trusting a stale stamp would strand a recovered account forever.
+     */
+    private function recentlyProvenValid(SocialAccount $account): bool
+    {
+        return $account->status === Status::Connected
+            && $account->last_verified_at !== null
+            && $account->last_verified_at->isAfter(now()->subHours(self::VERIFIED_WITHIN_HOURS));
     }
 
     private function verifyAccount(ConnectionVerifier $verifier, SocialAccount $account): bool

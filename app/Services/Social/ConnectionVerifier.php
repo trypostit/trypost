@@ -152,6 +152,14 @@ class ConnectionVerifier
                 // Mastodon tokens don't expire either.
                 default => null,
             };
+
+            // A provider that hands back a fresh token has just confirmed the
+            // credential, so record it as a verification: jobs that would
+            // otherwise call the (often billed) verify endpoint can trust this
+            // instead. Platforms with nothing to refresh prove nothing here.
+            if ($account->platform->hasTokenRefreshFlow()) {
+                $account->update(['last_verified_at' => now()]);
+            }
         } finally {
             $lock->release();
         }

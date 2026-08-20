@@ -21,17 +21,21 @@ class RefreshSocialToken implements ShouldQueue
 
     public function __construct(public SocialAccount $account) {}
 
+    /**
+     * Refresh the token outright rather than verifying it first.
+     *
+     * A successful refresh already proves the credential is alive — the
+     * provider rejects a revoked one with a 4xx — so the verify endpoint adds
+     * nothing but cost. On X that endpoint is `GET /2/users/me`, billed as a
+     * "User: Read", and verifying a still-valid token left `token_expires_at`
+     * untouched: the account stayed inside RefreshExpiringTokens' window and
+     * was re-read every 15 minutes until the token actually died, which also
+     * left it expired for the stretch between expiry and the next tick.
+     */
     public function handle(ConnectionVerifier $verifier): void
     {
         try {
-            if ($this->account->platform->extendsAccessTokenOnRefresh()) {
-                // Instagram/Threads extend the long-lived token itself and
-                // can't be refreshed once expired, so extend it while it's
-                // still valid instead of waiting for it to fail.
-                $verifier->refreshToken($this->account);
-            } else {
-                $verifier->verify($this->account);
-            }
+            $verifier->refreshToken($this->account);
         } catch (PlatformUnavailableException $e) {
             Log::warning('Token refresh skipped: platform unavailable', [
                 'account_id' => $this->account->id,

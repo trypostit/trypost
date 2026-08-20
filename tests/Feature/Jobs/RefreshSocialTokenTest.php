@@ -26,23 +26,22 @@ beforeEach(function () {
     ]);
 });
 
-test('refresh job routes through verify (access-token-first) not refreshToken', function () {
+test('refresh job routes through refreshToken, never the billed verify endpoint', function () {
     $verifier = mock(ConnectionVerifier::class);
-    $verifier->shouldReceive('verify')->once()->with(
+    $verifier->shouldReceive('refreshToken')->once()->with(
         Mockery::on(fn ($account) => $account->id === $this->account->id)
     );
-    $verifier->shouldNotReceive('refreshToken');
+    $verifier->shouldNotReceive('verify');
     app()->instance(ConnectionVerifier::class, $verifier);
 
     (new RefreshSocialToken($this->account))->handle($verifier);
 });
 
-test('proactive refresh does NOT rotate the X refresh token while the access token still works', function () {
+test('proactive refresh rotates the X refresh token without disconnecting the account', function () {
     Http::fake([
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
         config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
-            'access_token' => 'should-not-be-used',
-            'refresh_token' => 'should-not-be-used',
+            'access_token' => 'rotated-access-token',
+            'refresh_token' => 'rotated-refresh-token',
             'expires_in' => 7200,
         ], 200),
     ]);
@@ -55,9 +54,9 @@ test('proactive refresh does NOT rotate the X refresh token while the access tok
 
     (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
 
-    Http::assertSent(fn ($request) => str_contains($request->url(), '/users/me'));
-    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/oauth2/token'));
-    expect($this->account->fresh()->refresh_token)->toBe('original-refresh-token');
+    // X single-uses the refresh_token, so rotating one proactively has to leave
+    // the account healthy instead of tripping a false-positive disconnect.
+    expect($this->account->fresh()->refresh_token)->toBe('rotated-refresh-token');
     expect($this->account->fresh()->status)->toBe(Status::Connected);
 });
 
@@ -133,7 +132,7 @@ test('refresh job marks account as TokenExpired when refresh_token is rejected',
     Queue::fake();
 
     $verifier = mock(ConnectionVerifier::class);
-    $verifier->shouldReceive('verify')->once()->andThrow(
+    $verifier->shouldReceive('refreshToken')->once()->andThrow(
         new TokenExpiredException('refresh_token revoked')
     );
     app()->instance(ConnectionVerifier::class, $verifier);
@@ -155,7 +154,7 @@ test('refresh job logs warning on non-token errors and leaves status alone', fun
     });
 
     $verifier = mock(ConnectionVerifier::class);
-    $verifier->shouldReceive('verify')->once()->andThrow(new RuntimeException('network blip'));
+    $verifier->shouldReceive('refreshToken')->once()->andThrow(new RuntimeException('network blip'));
     app()->instance(ConnectionVerifier::class, $verifier);
 
     (new RefreshSocialToken($this->account))->handle($verifier);
@@ -173,7 +172,7 @@ test('refresh job does NOT mark account expired when platform is unavailable', f
     });
 
     $verifier = mock(ConnectionVerifier::class);
-    $verifier->shouldReceive('verify')->once()->andThrow(
+    $verifier->shouldReceive('refreshToken')->once()->andThrow(
         new PlatformUnavailableException('X API returned 503 during token refresh', 503)
     );
     app()->instance(ConnectionVerifier::class, $verifier);
@@ -182,4 +181,49 @@ test('refresh job does NOT mark account expired when platform is unavailable', f
 
     expect($this->account->fresh()->status)->toBe(Status::Connected);
     Queue::assertNotPushed(SendNotification::class);
+});
+
+test('proactive refresh renews a still-valid X token without spending a billed user read', function () {
+    Http::fake([
+        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+            'access_token' => 'rotated-access-token',
+            'refresh_token' => 'rotated-refresh-token',
+            'expires_in' => 7200,
+        ], 200),
+    ]);
+
+    $this->account->update([
+        'access_token' => 'original-access-token',
+        'token_expires_at' => now()->addMinutes(20),
+    ]);
+
+    (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
+
+    // GET /2/users/me is a billed "User: Read" ($0.010). A successful token
+    // refresh already proves the credential works, so it must not be called.
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/users/me'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/oauth2/token'));
+
+    expect($this->account->fresh()->access_token)->toBe('rotated-access-token');
+    expect($this->account->fresh()->token_expires_at->isAfter(now()->addHour()))->toBeTrue();
+});
+
+test('a successful refresh stamps last_verified_at so other jobs can skip verifying', function () {
+    Http::fake([
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+            'access_token' => 'rotated-access-token',
+            'refresh_token' => 'rotated-refresh-token',
+            'expires_in' => 7200,
+        ], 200),
+    ]);
+
+    $this->account->update([
+        'token_expires_at' => now()->addMinutes(20),
+        'last_verified_at' => null,
+    ]);
+
+    (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
+
+    expect($this->account->fresh()->last_verified_at)->not->toBeNull();
 });
