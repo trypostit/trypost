@@ -102,7 +102,16 @@ class RefreshSocialToken implements ShouldBeUnique, ShouldQueue
             // has tries = 1, so an escaping ModelNotFoundException fails it.
             $this->account->refresh();
 
-            return $verifier->verifyAccessToken($this->account);
+            if (! $verifier->verifyAccessToken($this->account)) {
+                return false;
+            }
+
+            // This call is billed on X, and it proved the token alive just as
+            // well as a refresh would have. Record it so the pre-publish check
+            // does not pay to ask the same question minutes later.
+            $this->recordVerification();
+
+            return true;
         } catch (TokenExpiredException) {
             return false;
         } catch (PlatformUnavailableException|ConnectionException|ModelNotFoundException $e) {

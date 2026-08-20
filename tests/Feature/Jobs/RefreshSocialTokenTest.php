@@ -730,3 +730,22 @@ test('a refresh already in flight on a dead token is transient, not something to
     expect(fn () => app(ConnectionVerifier::class)->refreshToken($this->account))
         ->toThrow(PlatformUnavailableException::class);
 });
+
+test('a billed fallback check counts as a verification like any other', function () {
+    Http::fake([
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
+        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+    ]);
+
+    $this->account->update([
+        'access_token' => 'still-valid-access-token',
+        'token_expires_at' => now()->addMinutes(20),
+        'last_verified_at' => null,
+    ]);
+
+    (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
+
+    // GET /2/users/me is billed and it just proved the token alive. Throwing
+    // that away means the pre-publish check pays to ask again minutes later.
+    expect($this->account->fresh()->last_verified_at)->not->toBeNull();
+});

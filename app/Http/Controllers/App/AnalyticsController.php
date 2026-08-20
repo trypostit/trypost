@@ -72,7 +72,10 @@ class AnalyticsController extends Controller
         $since = $request->has('since') ? Carbon::parse($request->input('since')) : null;
         $until = $request->has('until') ? Carbon::parse($request->input('until')) : null;
 
-        $metrics = match ($account->platform) {
+        // A transient platform failure — the provider being down, or a token
+        // refresh this request collided with — is not a server error. Empty
+        // numbers beat a 500 on a page the user just opened.
+        $metrics = rescue(fn () => match ($account->platform) {
             Platform::TikTok => app(TikTokAnalytics::class)->getMetrics($account),
             Platform::Instagram, Platform::InstagramFacebook => app(InstagramAnalytics::class)->getMetrics($account, $since, $until),
             Platform::Threads => app(ThreadsAnalytics::class)->getMetrics($account, $since, $until),
@@ -83,7 +86,7 @@ class AnalyticsController extends Controller
             Platform::YouTube => app(YouTubeAnalytics::class)->getMetrics($account, $since, $until),
             Platform::Telegram => app(TelegramAnalytics::class)->getMetrics($account),
             default => [],
-        };
+        }, [], report: true);
 
         return response()->json(['metrics' => $metrics]);
     }

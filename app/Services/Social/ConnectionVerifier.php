@@ -145,9 +145,10 @@ class ConnectionVerifier
     {
         $token = data_get($data, $key);
 
-        // data_get() only falls back when the key is absent, so an explicit
-        // null overwrites. Providers that omit the field mean "keep using the
-        // one you have", and so does one that answers with nothing.
+        // Blank, not just missing: data_get()'s own default would let an
+        // explicit null through and overwrite. A provider that omits the field
+        // means "keep using the one you have", and so does one that sends it
+        // empty.
         return blank($token) ? $current : (string) $token;
     }
 
