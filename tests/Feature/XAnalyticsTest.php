@@ -66,3 +66,44 @@ test('metrics accumulate across paginated timeline pages', function () {
     expect(collect($metrics)->firstWhere('label', __('analytics.metrics.impressions'))['value'])->toBe(150);
     expect(collect($metrics)->firstWhere('label', __('analytics.metrics.likes'))['value'])->toBe(3);
 });
+
+test('a page that fails mid-pagination keeps the totals collected so far', function () {
+    Http::fake([
+        $this->api.'/users/4242/tweets*' => Http::sequence()
+            ->push([
+                'data' => [['id' => '1', 'public_metrics' => ['impression_count' => 100, 'like_count' => 5, 'retweet_count' => 0, 'reply_count' => 0, 'quote_count' => 0, 'bookmark_count' => 0]]],
+                'meta' => ['next_token' => 'page2'],
+            ], 200)
+            ->push(['title' => 'Internal Error'], 500),
+    ]);
+
+    $metrics = app(XAnalytics::class)->getMetrics($this->account);
+
+    // Partial data beats an exception on a dashboard the user is looking at.
+    expect(collect($metrics)->firstWhere('label', __('analytics.metrics.impressions'))['value'])->toBe(100);
+    expect(collect($metrics)->firstWhere('label', __('analytics.metrics.likes'))['value'])->toBe(5);
+});
+
+test('a post returned without public_metrics counts as zero rather than erroring', function () {
+    Http::fake([
+        $this->api.'/users/4242/tweets*' => Http::response([
+            'data' => [
+                ['id' => '1'],
+                ['id' => '2', 'public_metrics' => ['impression_count' => 7, 'like_count' => 1, 'retweet_count' => 0, 'reply_count' => 0, 'quote_count' => 0, 'bookmark_count' => 0]],
+            ],
+            'meta' => [],
+        ], 200),
+    ]);
+
+    $metrics = app(XAnalytics::class)->getMetrics($this->account);
+
+    expect(collect($metrics)->firstWhere('label', __('analytics.metrics.impressions'))['value'])->toBe(7);
+});
+
+test('an account that posted nothing in the range returns no metrics at all', function () {
+    Http::fake([
+        $this->api.'/users/4242/tweets*' => Http::response(['data' => [], 'meta' => []], 200),
+    ]);
+
+    expect(app(XAnalytics::class)->getMetrics($this->account))->toBe([]);
+});

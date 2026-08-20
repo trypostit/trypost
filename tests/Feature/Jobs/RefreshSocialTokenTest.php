@@ -32,7 +32,7 @@ test('refresh job routes through refreshToken, never the billed verify endpoint'
     $verifier = mock(ConnectionVerifier::class);
     $verifier->shouldReceive('refreshToken')->once()->with(
         Mockery::on(fn ($account) => $account->id === $this->account->id)
-    );
+    )->andReturnTrue();
     $verifier->shouldNotReceive('verify');
     app()->instance(ConnectionVerifier::class, $verifier);
 
