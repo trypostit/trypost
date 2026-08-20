@@ -306,14 +306,20 @@ test('a rejected refresh DOES disconnect once the access token is dead too', fun
 });
 
 test('lock skipped by a concurrent refresh does not record a verification', function () {
+    Http::fake([config('trypost.platforms.x.api').'/*' => Http::response([], 200)]);
+
+    $this->account->update([
+        'last_verified_at' => null,
+        'token_expires_at' => now()->addMinutes(20),
+    ]);
+
     Cache::lock("token_refresh:{$this->account->id}", 30)->get();
 
-    $this->account->update(['last_verified_at' => null]);
-
-    app(ConnectionVerifier::class)->refreshToken($this->account);
+    (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
 
     // Nothing was refreshed here, so nothing was proven — stamping would let
     // the daily sweep skip an account no one actually checked.
+    Http::assertNothingSent();
     expect($this->account->fresh()->last_verified_at)->toBeNull();
 });
 

@@ -35,8 +35,9 @@ class RefreshSocialToken implements ShouldQueue
     public function handle(ConnectionVerifier $verifier): void
     {
         try {
-            $verifier->refreshToken($this->account);
-            $this->recordVerification();
+            if ($verifier->refreshToken($this->account)) {
+                $this->recordVerification();
+            }
         } catch (PlatformUnavailableException $e) {
             Log::warning('Token refresh skipped: platform unavailable', [
                 'account_id' => $this->account->id,
@@ -99,8 +100,7 @@ class RefreshSocialToken implements ShouldQueue
      * Record the refresh as a verification, so the daily sweep and the
      * pre-publish check can skip their own (often billed) verify call.
      *
-     * Only a refresh that actually happened proves anything, and only one that
-     * came back with a usable token: TokenRefreshClient classifies on HTTP
+     * Only a refresh that came back with a usable token proves anything: TokenRefreshClient classifies on HTTP
      * status alone and never inspects the body, so a 200 carrying an empty
      * token would otherwise be recorded as healthy. This is deliberately not
      * done inside ConnectionVerifier::refreshToken() — refreshThenVerify()

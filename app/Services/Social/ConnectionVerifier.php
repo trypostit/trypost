@@ -141,10 +141,14 @@ class ConnectionVerifier
      * use verify() instead. This method always attempts a refresh under
      * the per-account lock.
      *
+     * @return bool whether a refresh actually ran. False means another process
+     *              already held the lock and this call did nothing, so callers
+     *              must not treat it as having proven anything.
+     *
      * @throws TokenExpiredException if refresh is rejected by the provider (4xx)
      * @throws PlatformUnavailableException if the platform is unreachable (5xx / network)
      */
-    public function refreshToken(SocialAccount $account): void
+    public function refreshToken(SocialAccount $account): bool
     {
         $lock = Cache::lock("token_refresh:{$account->id}", 30);
 
@@ -152,7 +156,7 @@ class ConnectionVerifier
             // Another process is already refreshing this token
             $account->refresh();
 
-            return;
+            return false;
         }
 
         try {
@@ -169,6 +173,8 @@ class ConnectionVerifier
                 // Mastodon tokens don't expire either.
                 default => null,
             };
+
+            return true;
         } finally {
             $lock->release();
         }
