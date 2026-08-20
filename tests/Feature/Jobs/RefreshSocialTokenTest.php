@@ -504,7 +504,7 @@ test('the job survives the account being deleted while it is in flight', functio
     Http::assertSent(fn ($request) => str_contains($request->url(), '/oauth2/token'));
 });
 
-test('a refresh that returns an empty access token disconnects instead of looking healthy', function () {
+test('a 200 without a token leaves the working credential intact', function () {
     Queue::fake();
 
     Http::fake([
@@ -515,13 +515,21 @@ test('a refresh that returns an empty access token disconnects instead of lookin
         ], 200),
     ]);
 
-    $this->account->update(['token_expires_at' => now()->addMinutes(20)]);
+    $this->account->update([
+        'access_token' => 'the-token-that-still-works',
+        'token_expires_at' => now()->addMinutes(20),
+    ]);
 
     (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
 
-    // token_expires_at was just pushed 2h out, so the account would otherwise
-    // leave the refresh window looking healthy while every publish 401s.
-    expect($this->account->fresh()->status)->toBe(Status::TokenExpired);
+    // Persisting the empty token would destroy a credential that still works,
+    // and no amount of after-the-fact detection gets it back.
+    expect($this->account->fresh()->access_token)->toBe('the-token-that-still-works');
+
+    // And it must not disconnect: the refresh_token is probably fine, so the
+    // next tick should retry rather than emailing the owner to reconnect.
+    expect($this->account->fresh()->status)->toBe(Status::Connected);
+    Queue::assertNotPushed(SendNotification::class);
 });
 
 test('refreshToken reports false for a platform with nothing to refresh', function () {

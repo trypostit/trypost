@@ -29,26 +29,28 @@ class ConnectionVerifier
     /**
      * Read and connect timeouts for a token refresh.
      *
-     * Bounding the call ourselves is what keeps a refresh under the lock that
-     * protects it. The HTTP client's defaults (30s read, 10s connect) let a
-     * single Bluesky refresh — two sequential calls — run for ~80 seconds under
-     * a 30-second lock, so the lock could lapse mid-flight and let a second
-     * process refresh with the same single-use refresh_token.
-     *
-     * Fixing that by holding the lock longer would have been worse: publishers
-     * wait on the same lock, and a lock left behind by a worker that died
-     * mid-refresh makes them fall through and publish with an expired token.
-     * A token endpoint answers in milliseconds, so bounding the call is free.
+     * Deliberately generous. refreshHttp() is shared with the ~24 publish and
+     * analytics call sites, and for X, Bluesky and TikTok the refresh_token is
+     * single-use: giving up on a request the provider has already processed
+     * loses the rotated pair for good and costs the user a manual reconnect.
+     * A token endpoint answers in milliseconds, so a long ceiling is nearly
+     * free, while a tight one turns provider slowness into dead accounts.
      */
-    public const REFRESH_TIMEOUT_SECONDS = 8;
+    public const REFRESH_TIMEOUT_SECONDS = 30;
 
-    public const REFRESH_CONNECT_TIMEOUT_SECONDS = 4;
+    public const REFRESH_CONNECT_TIMEOUT_SECONDS = 10;
 
     /**
      * Must exceed the slowest refresh the timeouts above allow — Bluesky's two
-     * sequential calls. Pinned by a test so the two can't drift apart.
+     * sequential calls — or the lock lapses mid-flight and a second process
+     * refreshes with the same single-use refresh_token. Pinned by a test.
+     *
+     * The cost of erring long is that a worker dying mid-refresh leaves the
+     * lock held for this many seconds, during which a publish falls through to
+     * an expired token and retries. That is recoverable; an abandoned rotation
+     * is not.
      */
-    public const REFRESH_LOCK_SECONDS = 30;
+    public const REFRESH_LOCK_SECONDS = 120;
 
     /**
      * Verify that a social account connection is still valid.
@@ -120,6 +122,33 @@ class ConnectionVerifier
 
             throw $original ?? $e;
         }
+    }
+
+    /**
+     * Pull a token out of a refresh response, refusing to persist a blank one.
+     *
+     * TokenRefreshClient classifies on HTTP status alone and never inspects the
+     * body, so a 200 carrying no token would otherwise be written straight over
+     * a credential that still works — and on Instagram and Threads, where the
+     * refresh_token is set to the same value, both halves go at once. Treat it
+     * as the platform misbehaving: the stored pair stays put and the next tick
+     * retries, instead of the account needing a manual reconnect.
+     *
+     * @param  array<string, mixed>|null  $data
+     *
+     * @throws PlatformUnavailableException
+     */
+    private function tokenFrom(?array $data, Platform $platform, string $key = 'access_token'): string
+    {
+        $token = data_get($data, $key);
+
+        if (blank($token)) {
+            throw new PlatformUnavailableException(
+                "{$platform->label()} returned a successful refresh with no {$key}."
+            );
+        }
+
+        return (string) $token;
     }
 
     private function refreshHttp(): PendingRequest
@@ -233,7 +262,7 @@ class ConnectionVerifier
         $data = $response->json();
 
         $account->update([
-            'access_token' => data_get($data, 'access_token'),
+            'access_token' => $this->tokenFrom($data, $account->platform),
             'refresh_token' => data_get($data, 'refresh_token', $account->refresh_token),
             'token_expires_at' => data_get($data, 'expires_in') ? now()->addSeconds(data_get($data, 'expires_in')) : null,
         ]);
@@ -257,7 +286,7 @@ class ConnectionVerifier
         $data = $response->json();
 
         $account->update([
-            'access_token' => data_get($data, 'access_token'),
+            'access_token' => $this->tokenFrom($data, $account->platform),
             'refresh_token' => data_get($data, 'refresh_token', $account->refresh_token),
             'token_expires_at' => now()->addSeconds(data_get($data, 'expires_in', $account->platform->defaultTokenTtlSeconds())),
         ]);
@@ -276,8 +305,8 @@ class ConnectionVerifier
 
             $data = $response->json();
             $account->update([
-                'access_token' => data_get($data, 'accessJwt'),
-                'refresh_token' => data_get($data, 'refreshJwt'),
+                'access_token' => $this->tokenFrom($data, $account->platform, 'accessJwt'),
+                'refresh_token' => $this->tokenFrom($data, $account->platform, 'refreshJwt'),
                 'token_expires_at' => now()->addHours(2),
             ]);
 
@@ -297,8 +326,8 @@ class ConnectionVerifier
 
                 $data = $reauth->json();
                 $account->update([
-                    'access_token' => data_get($data, 'accessJwt'),
-                    'refresh_token' => data_get($data, 'refreshJwt'),
+                    'access_token' => $this->tokenFrom($data, $account->platform, 'accessJwt'),
+                    'refresh_token' => $this->tokenFrom($data, $account->platform, 'refreshJwt'),
                     'token_expires_at' => now()->addHours(2),
                 ]);
 
@@ -330,7 +359,7 @@ class ConnectionVerifier
         $data = $response->json();
 
         $account->update([
-            'access_token' => data_get($data, 'access_token'),
+            'access_token' => $this->tokenFrom($data, $account->platform),
             'token_expires_at' => data_get($data, 'expires_in') ? now()->addSeconds(data_get($data, 'expires_in')) : null,
         ]);
 
@@ -354,7 +383,7 @@ class ConnectionVerifier
         $data = $response->json();
 
         $account->update([
-            'access_token' => data_get($data, 'access_token'),
+            'access_token' => $this->tokenFrom($data, $account->platform),
             'refresh_token' => data_get($data, 'refresh_token', $account->refresh_token),
             'token_expires_at' => data_get($data, 'expires_in') ? now()->addSeconds(data_get($data, 'expires_in')) : null,
         ]);
@@ -381,7 +410,7 @@ class ConnectionVerifier
         $data = $response->json();
 
         $account->update([
-            'access_token' => data_get($data, 'access_token'),
+            'access_token' => $this->tokenFrom($data, $account->platform),
             'refresh_token' => data_get($data, 'refresh_token', $account->refresh_token),
             'token_expires_at' => data_get($data, 'expires_in') ? now()->addSeconds(data_get($data, 'expires_in')) : null,
         ]);
@@ -401,7 +430,7 @@ class ConnectionVerifier
         );
 
         $data = $response->json();
-        $newToken = data_get($data, 'access_token');
+        $newToken = $this->tokenFrom($data, $account->platform);
 
         $account->update([
             'access_token' => $newToken,
@@ -423,7 +452,7 @@ class ConnectionVerifier
         );
 
         $data = $response->json();
-        $newToken = data_get($data, 'access_token');
+        $newToken = $this->tokenFrom($data, $account->platform);
 
         $account->update([
             'access_token' => $newToken,

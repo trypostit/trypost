@@ -46,6 +46,10 @@ class RefreshExpiringTokens extends Command
                 }
             });
 
-        $this->info("Dispatched {$count} token refresh jobs.");
+        // Accounts in the window, not jobs queued: RefreshSocialToken is unique
+        // per account, so a dispatch is discarded while another is still in
+        // flight — and a dispatched count would overstate itself during exactly
+        // the backlog an operator reads this line to diagnose.
+        $this->info("{$count} accounts due for a token refresh.");
     }
 }

@@ -49,16 +49,6 @@ class RefreshSocialToken implements ShouldBeUnique, ShouldQueue
     {
         try {
             if ($verifier->refreshToken($this->account)) {
-                if (blank($this->account->access_token)) {
-                    // The refresh method stored whatever came back and pushed
-                    // token_expires_at forward, so the account would otherwise
-                    // leave the refresh window looking healthy while every
-                    // publish 401s on an empty token.
-                    $this->account->markAsTokenExpired('Token refresh returned an empty access token');
-
-                    return;
-                }
-
                 $this->recordVerification();
             }
         } catch (PlatformUnavailableException $e) {
@@ -146,17 +136,14 @@ class RefreshSocialToken implements ShouldBeUnique, ShouldQueue
      * Record the refresh as a verification, so the daily sweep and the
      * pre-publish check can skip their own (often billed) verify call.
      *
-     * Deliberately not
+     * refreshToken() reports whether one actually ran, so a lock skipped by a
+     * concurrent refresh never reaches here. Deliberately not
      * done inside ConnectionVerifier::refreshToken() — refreshThenVerify()
      * calls it and can still fail on the verify that follows, and a stamp
      * written there would vouch for a credential nothing ever confirmed.
      */
     private function recordVerification(): void
     {
-        if (! $this->account->platform->hasTokenRefreshFlow()) {
-            return;
-        }
-
         $this->account->update(['last_verified_at' => now()]);
     }
 }
