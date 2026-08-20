@@ -62,11 +62,6 @@ class VerifyWorkspaceConnections implements ShouldQueue
             }
 
             if ($this->verifyAccount($verifier, $account)) {
-                // If was TokenExpired but now verified OK, mark as connected again
-                if ($account->status === Status::TokenExpired) {
-                    $account->markAsConnected();
-                }
-
                 continue;
             }
 
@@ -95,6 +90,14 @@ class VerifyWorkspaceConnections implements ShouldQueue
         try {
             $verifier->verify($account);
             $account->update(['last_verified_at' => now()]);
+
+            // Promote here, not on this method's return value: it also returns
+            // true for "could not check, don't disconnect", and reviving an
+            // account on an outage tells the owner a reconnect worked when
+            // nothing was verified at all.
+            if ($account->status === Status::TokenExpired) {
+                $account->markAsConnected();
+            }
 
             return true;
         } catch (PlatformUnavailableException $e) {

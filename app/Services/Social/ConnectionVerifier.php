@@ -141,6 +141,16 @@ class ConnectionVerifier
      *
      * @throws PlatformUnavailableException
      */
+    private function rotatedTokenFrom(?array $data, string $key, string $current): string
+    {
+        $token = data_get($data, $key);
+
+        // data_get() only falls back when the key is absent, so an explicit
+        // null overwrites. Providers that omit the field mean "keep using the
+        // one you have", and so does one that answers with nothing.
+        return blank($token) ? $current : (string) $token;
+    }
+
     private function tokenFrom(?array $data, Platform $platform, string $key = 'access_token'): string
     {
         $token = data_get($data, $key);
@@ -217,8 +227,19 @@ class ConnectionVerifier
         $lock = Cache::lock("token_refresh:{$account->id}", self::REFRESH_LOCK_SECONDS);
 
         if (! $lock->get()) {
-            // Another process is already refreshing this token
+            // Another process is already refreshing this token.
             $account->refresh();
+
+            if ($account->is_token_expired) {
+                // Reporting "nothing refreshed" would hand the caller a token
+                // it already knows is dead. A publisher posts with it, takes a
+                // 401, and PublishToSocialPlatform finalises the post as failed
+                // and disconnects the account — over a lock a dying worker left
+                // behind. Transient is the truth here: try again shortly.
+                throw new PlatformUnavailableException(
+                    "A {$account->platform->label()} token refresh is already in progress."
+                );
+            }
 
             return false;
         }
@@ -266,7 +287,7 @@ class ConnectionVerifier
 
         $account->update([
             'access_token' => $this->tokenFrom($data, $account->platform),
-            'refresh_token' => data_get($data, 'refresh_token', $account->refresh_token),
+            'refresh_token' => $this->rotatedTokenFrom($data, 'refresh_token', $account->refresh_token),
             'token_expires_at' => data_get($data, 'expires_in') ? now()->addSeconds(data_get($data, 'expires_in')) : null,
         ]);
 
@@ -290,7 +311,7 @@ class ConnectionVerifier
 
         $account->update([
             'access_token' => $this->tokenFrom($data, $account->platform),
-            'refresh_token' => data_get($data, 'refresh_token', $account->refresh_token),
+            'refresh_token' => $this->rotatedTokenFrom($data, 'refresh_token', $account->refresh_token),
             'token_expires_at' => now()->addSeconds(data_get($data, 'expires_in', $account->platform->defaultTokenTtlSeconds())),
         ]);
 
@@ -387,7 +408,7 @@ class ConnectionVerifier
 
         $account->update([
             'access_token' => $this->tokenFrom($data, $account->platform),
-            'refresh_token' => data_get($data, 'refresh_token', $account->refresh_token),
+            'refresh_token' => $this->rotatedTokenFrom($data, 'refresh_token', $account->refresh_token),
             'token_expires_at' => data_get($data, 'expires_in') ? now()->addSeconds(data_get($data, 'expires_in')) : null,
         ]);
 
@@ -414,7 +435,7 @@ class ConnectionVerifier
 
         $account->update([
             'access_token' => $this->tokenFrom($data, $account->platform),
-            'refresh_token' => data_get($data, 'refresh_token', $account->refresh_token),
+            'refresh_token' => $this->rotatedTokenFrom($data, 'refresh_token', $account->refresh_token),
             'token_expires_at' => data_get($data, 'expires_in') ? now()->addSeconds(data_get($data, 'expires_in')) : null,
         ]);
 

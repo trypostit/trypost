@@ -637,22 +637,25 @@ test('no platform lets a tokenless 200 destroy the credential it already had', f
     expect($checked)->toBeGreaterThan(0);
 });
 
-test('a platform outage on an already-dead token stops being silent', function () {
+test('a platform outage never disconnects, not even once the token has expired', function () {
     Queue::fake();
 
     $verifier = mock(ConnectionVerifier::class);
     $verifier->shouldReceive('refreshToken')->once()->andThrow(
-        new PlatformUnavailableException('X API returned 503 during token refresh', 503)
+        // TokenRefreshClient raises this for 5xx, 429 and connection timeouts.
+        new PlatformUnavailableException('X API returned 429 during token refresh', 429)
     );
     app()->instance(ConnectionVerifier::class, $verifier);
 
-    // Already expired: there is no live token left to retry behind.
     $this->account->update(['token_expires_at' => now()->subMinutes(5)]);
 
     (new RefreshSocialToken($this->account))->handle($verifier);
 
-    expect($this->account->fresh()->status)->toBe(Status::TokenExpired);
-    Queue::assertPushed(SendNotification::class);
+    // A rate limit around expiry is not evidence of anything. Disconnecting
+    // here emails the owner and hard-fails every scheduled post, and only the
+    // daily sweep would undo it.
+    expect($this->account->fresh()->status)->toBe(Status::Connected);
+    Queue::assertNotPushed(SendNotification::class);
 });
 
 test('a platform outage on a live token stays quiet and retries', function () {
@@ -691,4 +694,39 @@ test('a failure the fallback cannot attribute to the token surfaces instead of p
 
     expect($this->account->fresh()->status)->toBe(Status::Connected);
     Queue::assertNotPushed(SendNotification::class);
+});
+
+test('a null refresh_token in a 200 does not wipe the one we already had', function () {
+    Http::fake([
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+            'access_token' => 'fresh-access-token',
+            'refresh_token' => null,
+            'expires_in' => 7200,
+        ], 200),
+    ]);
+
+    $this->account->update([
+        'refresh_token' => 'the-refresh-token-that-still-works',
+        'token_expires_at' => now()->addMinutes(20),
+    ]);
+
+    (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
+
+    // data_get() only falls back when the key is absent, so an explicit null
+    // overwrites. Losing it means the next tick throws "no refresh token"
+    // without a single call, and the account dies with the access token.
+    expect($this->account->fresh()->refresh_token)->toBe('the-refresh-token-that-still-works');
+});
+
+test('a refresh already in flight on a dead token is transient, not something to publish through', function () {
+    $this->account->update(['token_expires_at' => now()->subMinutes(5)]);
+
+    Cache::lock("token_refresh:{$this->account->id}", 120)->get();
+
+    // Returning false here hands the caller a token it already knows is dead.
+    // A publisher then posts with it, gets a 401, and PublishToSocialPlatform
+    // finalises the post as failed and disconnects the account — for a lock
+    // that a worker death left behind.
+    expect(fn () => app(ConnectionVerifier::class)->refreshToken($this->account))
+        ->toThrow(PlatformUnavailableException::class);
 });

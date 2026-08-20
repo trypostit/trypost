@@ -59,15 +59,6 @@ class RefreshSocialToken implements ShouldBeUnique, ShouldQueue
                 'platform' => $this->account->platform->value,
                 'error' => $e->getMessage(),
             ]);
-
-            // Transient failures are retried on the next tick, but only while
-            // there is still a live token to fall back on. Once it has expired
-            // and we still cannot renew it, the connection is dead in practice
-            // — say so, rather than retrying in silence until the owner finds
-            // out from a failed post.
-            if ($this->account->is_token_expired) {
-                $this->account->markAsTokenExpired($e->getMessage());
-            }
         } catch (TokenExpiredException $e) {
             if ($this->shouldTrustAWorkingAccessToken() && $this->accessTokenStillWorks($verifier)) {
                 return;

@@ -236,3 +236,23 @@ test('daily sweep records its own successful verification', function () {
     // on an account this sweep just confirmed healthy.
     expect($account->fresh()->last_verified_at)->not->toBeNull();
 });
+
+test('an unreachable platform does not revive an account nobody verified', function () {
+    Mail::fake();
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->x()->create([
+        'workspace_id' => $workspace->id,
+        'status' => Status::TokenExpired,
+    ]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')->andThrow(new PlatformUnavailableException('X API returned 503', 503));
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyWorkspaceConnections::dispatch($workspace);
+
+    // "Don't disconnect" is not the same as "verified". Promoting on an
+    // outage tells the owner their reconnect worked when nothing was checked.
+    expect($account->fresh()->status)->toBe(Status::TokenExpired);
+});
