@@ -585,3 +585,49 @@ test('every platform that claims a refresh flow actually performs one', function
 
     expect($checked)->toBeGreaterThan(0);
 });
+
+test('no platform lets a tokenless 200 destroy the credential it already had', function () {
+    Queue::fake();
+
+    $verifier = app(ConnectionVerifier::class);
+    $checked = 0;
+
+    foreach (Platform::cases() as $platform) {
+        if (! $platform->hasTokenRefreshFlow()) {
+            continue;
+        }
+
+        $checked++;
+
+        $account = SocialAccount::factory()->create([
+            'workspace_id' => Workspace::factory()->create()->id,
+            'platform' => $platform,
+            'status' => Status::Connected,
+            'access_token' => 'the-token-that-still-works',
+            'refresh_token' => 'rt-seed',
+            'meta' => ['service' => 'https://bsky.social', 'identifier' => 'a.bsky.social'],
+        ]);
+
+        // A 200 carrying no token at all. Every provider reads a different
+        // field name, so this is the shape none of them can parse.
+        Http::fake(['*' => Http::response(['expires_in' => 3600], 200)]);
+
+        try {
+            $verifier->refreshToken($account);
+            $this->fail("{$platform->value} accepted a 200 with no token in it");
+        } catch (PlatformUnavailableException) {
+            // Correct: nothing is provably dead, so refuse and let the next
+            // tick retry rather than disconnecting anyone.
+        } catch (Throwable $e) {
+            // Without the guard the write reaches the database and trips the
+            // NOT NULL column, which also poisons the surrounding transaction.
+            $this->fail("{$platform->value} should refuse a tokenless 200 cleanly, got ".$e::class.': '.$e->getMessage());
+        }
+
+        expect($account->fresh()->access_token)
+            ->toBe('the-token-that-still-works', "{$platform->value} overwrote a working token with nothing");
+    }
+
+    Queue::assertNotPushed(SendNotification::class);
+    expect($checked)->toBeGreaterThan(0);
+});
