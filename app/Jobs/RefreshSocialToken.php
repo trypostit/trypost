@@ -74,6 +74,12 @@ class RefreshSocialToken implements ShouldQueue
      */
     private function accessTokenStillWorks(ConnectionVerifier $verifier): bool
     {
+        // A concurrent refresh may have persisted a new pair while ours was in
+        // flight, which is why ours was rejected. This instance still holds the
+        // token that was rotated away, so reload before judging it — otherwise
+        // the winner's healthy account gets disconnected.
+        $this->account->refresh();
+
         try {
             return $verifier->verifyAccessToken($this->account);
         } catch (TokenExpiredException) {

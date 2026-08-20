@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
@@ -400,4 +401,39 @@ test('a rejected refresh is not re-sent before the access token is checked', fun
         ->count();
 
     expect($refreshCalls)->toBe(1);
+});
+
+test('a refresh lost to a concurrent one falls back to the token that won', function () {
+    Queue::fake();
+
+    $api = config('trypost.platforms.x.api');
+    Http::fake([
+        // Our refresh_token was already consumed by the process that won.
+        $api.'/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
+        $api.'/users/me' => function ($request) {
+            $auth = $request->header('Authorization')[0] ?? '';
+
+            return str_contains($auth, 'winner-access-token')
+                ? Http::response(['data' => ['id' => '123']], 200)
+                : Http::response(['title' => 'Unauthorized', 'status' => 401], 401);
+        },
+    ]);
+
+    $this->account->update([
+        'access_token' => 'stale-access-token',
+        'refresh_token' => 'stale-refresh-token',
+        'token_expires_at' => now()->addMinutes(20),
+    ]);
+
+    // The winner persisted its new pair while ours was in flight; this
+    // instance still holds the rotated-away one.
+    DB::table('social_accounts')->where('id', $this->account->id)->update([
+        'access_token' => 'winner-access-token',
+        'refresh_token' => 'winner-refresh-token',
+    ]);
+
+    (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
+
+    expect($this->account->fresh()->status)->toBe(Status::Connected);
+    Queue::assertNotPushed(SendNotification::class);
 });
