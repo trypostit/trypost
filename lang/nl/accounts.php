@@ -155,6 +155,7 @@ return [
         'failed_to_get_profile' => 'Kon profiel niet ophalen.',
         'page_not_found' => 'Pagina niet gevonden.',
         'channel_not_found' => 'Kanaal niet gevonden.',
+        'pages_missing_permission' => 'We hebben je pagina’s gevonden, maar niet de rechten om erop te posten. Maak opnieuw verbinding en accepteer alle rechten.',
         'no_facebook_pages' => 'Geen Facebook-pagina\'s gevonden. Je moet beheerder zijn van ten minste één pagina.',
         'no_facebook_instagram_pages' => 'Geen Facebook-pagina\'s met gekoppelde Instagram-accounts gevonden.',
         'no_youtube_channels' => 'Geen YouTube-kanalen gevonden. Maak eerst een kanaal aan.',

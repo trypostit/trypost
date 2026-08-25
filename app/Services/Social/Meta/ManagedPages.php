@@ -57,8 +57,24 @@ class ManagedPages
         }
 
         return $pages
-            ->filter(fn (array $page) => filled(data_get($page, 'access_token')))
             ->unique(fn (array $page) => (string) data_get($page, 'id'))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The Pages this login can actually post to. A Page Meta lists without an
+     * `access_token` — the shape of a login that declined `pages_read_engagement`
+     * on Meta's per-permission toggles — would connect into an account that
+     * cannot publish, so callers separate it from a Page they never had.
+     *
+     * @param  array<int, array<string, mixed>>  $pages
+     * @return list<array<string, mixed>>
+     */
+    public static function publishable(array $pages): array
+    {
+        return collect($pages)
+            ->filter(fn (array $page) => filled(data_get($page, 'access_token')))
             ->values()
             ->all();
     }

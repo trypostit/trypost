@@ -155,6 +155,7 @@ return [
         'failed_to_get_profile' => 'Falló al obtener el perfil.',
         'page_not_found' => 'Página no encontrada.',
         'channel_not_found' => 'Canal no encontrado.',
+        'pages_missing_permission' => 'Encontramos tus páginas, pero no el permiso para publicar en ellas. Vuelve a conectar y acepta todos los permisos.',
         'no_facebook_pages' => 'No se encontraron páginas de Facebook. Debes ser administrador de al menos una página.',
         'no_facebook_instagram_pages' => 'No se encontraron páginas de Facebook con cuentas de Instagram vinculadas.',
         'no_youtube_channels' => 'No se encontraron canales de YouTube. Crea un canal primero.',

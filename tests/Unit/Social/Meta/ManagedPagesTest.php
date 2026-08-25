@@ -59,7 +59,7 @@ test('a page listed in both me/accounts and a portfolio is returned once, keepin
         ->and(data_get($pages, '0.access_token'))->toBe('role-token');
 });
 
-test('portfolio pages the login cannot get a token for are dropped', function () {
+test('every page meta lists is returned, token or not', function () {
     $graphApi = managedPagesGraphApi();
 
     Http::fake([
@@ -76,8 +76,17 @@ test('portfolio pages the login cannot get a token for are dropped', function ()
 
     $pages = ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS);
 
-    expect($pages)->toHaveCount(1)
-        ->and(data_get($pages, '0.id'))->toBe('page_2');
+    expect(collect($pages)->pluck('id')->all())->toBe(['page_1', 'page_2']);
+});
+
+test('only the pages carrying a token are publishable', function () {
+    $publishable = ManagedPages::publishable([
+        ['id' => 'page_1', 'name' => 'No Access'],
+        ['id' => 'page_2', 'name' => 'Usable', 'access_token' => 'page-token'],
+        ['id' => 'page_3', 'name' => 'Empty Token', 'access_token' => ''],
+    ]);
+
+    expect(collect($publishable)->pluck('id')->all())->toBe(['page_2']);
 });
 
 test('a login without business_management keeps the pages me/accounts returned', function () {

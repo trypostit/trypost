@@ -45,6 +45,7 @@ test('instagram-facebook callback follows accounts pagination and shows picker',
     $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
@@ -92,7 +93,7 @@ test('instagram-facebook callback follows accounts pagination and shows picker',
         ->and(data_get(session('instagram_facebook_oauth.pages'), '0.ig_id'))->toBe('ig_1')
         ->and(data_get(session('instagram_facebook_oauth.pages'), '1.ig_id'))->toBe('ig_2');
 
-    Http::assertSentCount(6); // /me + 2 accounts pages + /me/businesses + 2 IG lookups
+    Http::assertSentCount(7); // /me + /me/permissions + 2 accounts pages + /me/businesses + 2 IG lookups
 });
 
 test('instagram-facebook callback connects page when first accounts response is empty', function () {
@@ -117,6 +118,7 @@ test('instagram-facebook callback connects page when first accounts response is 
     $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
@@ -178,6 +180,7 @@ test('instagram-facebook callback still connects when the instagram profile look
     $graphApi = config('trypost.platforms.instagram-facebook.graph_api');
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::response([
@@ -230,6 +233,7 @@ test('instagram-facebook callback skips pages without instagram across paginated
     $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
@@ -299,6 +303,7 @@ test('instagram-facebook callback fails without connecting when accounts paginat
     $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
@@ -498,6 +503,7 @@ test('instagram-facebook callback hides an instagram already connected standalon
         ->andReturn(Mockery::mock(['user' => $socialiteUser]));
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         'https://graph.facebook.com/*/me/accounts*' => Http::response([
@@ -548,6 +554,7 @@ test('instagram via facebook connects a page reached through a business portfoli
     $graphApi = config('trypost.platforms.instagram-facebook.graph_api');
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
         "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
@@ -580,4 +587,84 @@ test('instagram via facebook connects a page reached through a business portfoli
         'username' => 'portfolio_ig',
         'status' => Status::Connected->value,
     ]);
+});
+
+test('instagram via facebook describes every page in rounds without serialising them', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('facebook_user_123');
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()
+            ->shouldReceive('usingGraphVersion')->andReturnSelf()
+            ->shouldReceive('redirectUrl')->andReturnSelf()
+            ->shouldReceive('user')->andReturn($socialiteUser)
+            ->getMock());
+
+    $graphApi = config('trypost.platforms.instagram-facebook.graph_api');
+    $pages = collect(range(1, 45))->map(fn (int $n) => [
+        'id' => "page_{$n}",
+        'name' => "Page {$n}",
+        'picture' => ['data' => ['url' => null]],
+        'access_token' => "page-token-{$n}",
+        'instagram_business_account' => ['id' => "ig_{$n}"],
+    ])->all();
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/permissions*" => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
+        "{$graphApi}/me/accounts*" => Http::response(['data' => $pages], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
+        "{$graphApi}/ig_*" => Http::response(['username' => 'an_account'], 200),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.instagram-facebook.callback'));
+
+    $response->assertRedirect(route('app.social.instagram-facebook.select-page'));
+    expect(session('instagram_facebook_oauth.pages'))->toHaveCount(45);
+
+    Http::assertSentCount(4 + 45);
+});
+
+test('instagram via facebook says the permission is missing when meta lists a page without a token', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('facebook_user_123');
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()
+            ->shouldReceive('usingGraphVersion')->andReturnSelf()
+            ->shouldReceive('redirectUrl')->andReturnSelf()
+            ->shouldReceive('user')->andReturn($socialiteUser)
+            ->getMock());
+
+    $graphApi = config('trypost.platforms.instagram-facebook.graph_api');
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/permissions*" => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
+        "{$graphApi}/me/accounts*" => Http::response(['data' => [[
+            'id' => 'page_1',
+            'name' => 'Page',
+            'picture' => ['data' => ['url' => null]],
+            'instagram_business_account' => ['id' => 'ig_1'],
+        ]]], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.instagram-facebook.callback'));
+
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('success', false)
+        ->where('message', __('accounts.popup_callback.pages_missing_permission')));
 });

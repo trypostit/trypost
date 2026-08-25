@@ -9,6 +9,7 @@ use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\ConnectPopupException;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\SocialAccount;
+use App\Services\Social\Meta\GrantedPermissions;
 use App\Services\Social\Meta\ManagedPages;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -71,10 +72,15 @@ class FacebookController extends SocialController
                 'access_token' => $socialUser->token,
             ]);
 
-            $pages = $this->fetchPages($socialUser->token);
+            $granted = GrantedPermissions::for($this->graphApi(), $socialUser->token, $this->scopes);
+
+            $listed = $this->fetchPages($socialUser->token);
+            $pages = ManagedPages::publishable($listed);
 
             if (empty($pages)) {
-                return $this->popupCallback(false, __('accounts.popup_callback.no_facebook_pages'), $this->platform->value);
+                return $this->popupCallback(false, __(empty($listed)
+                    ? 'accounts.popup_callback.no_facebook_pages'
+                    : 'accounts.popup_callback.pages_missing_permission'), $this->platform->value);
             }
 
             $pages = $this->filterConnectableIdentities($workspace, $pages, 'id', $reconnect);
@@ -99,7 +105,7 @@ class FacebookController extends SocialController
                         'access_token' => data_get($page, 'access_token'),
                         'refresh_token' => null,
                         'token_expires_at' => null,
-                        'scopes' => $this->scopes,
+                        'scopes' => $granted,
                         'status' => Status::Connected,
                         'error_message' => null,
                         'disconnected_at' => null,
@@ -120,6 +126,7 @@ class FacebookController extends SocialController
                 'facebook_oauth' => [
                     'user_token' => $socialUser->token,
                     'user_id' => $socialUser->getId(),
+                    'scopes' => $granted,
                     'pages' => $pages,
                     'reconnect_id' => $reconnect?->id,
                 ],
@@ -193,7 +200,7 @@ class FacebookController extends SocialController
                     'access_token' => data_get($selectedPage, 'access_token'),
                     'refresh_token' => null,
                     'token_expires_at' => null,
-                    'scopes' => $this->scopes,
+                    'scopes' => data_get($oauthData, 'scopes', $this->scopes),
                     'status' => Status::Connected,
                     'error_message' => null,
                     'disconnected_at' => null,
@@ -223,7 +230,7 @@ class FacebookController extends SocialController
     private function fetchPages(string $userToken): array
     {
         $pages = ManagedPages::forUser(
-            (string) config('trypost.platforms.facebook.graph_api'),
+            $this->graphApi(),
             $userToken,
             'id,name,username,picture{url},access_token',
         );
@@ -235,6 +242,11 @@ class FacebookController extends SocialController
             'picture' => data_get($page, 'picture.data.url'),
             'access_token' => data_get($page, 'access_token'),
         ])->all();
+    }
+
+    private function graphApi(): string
+    {
+        return (string) config('trypost.platforms.facebook.graph_api');
     }
 
     private function graphVersion(): string

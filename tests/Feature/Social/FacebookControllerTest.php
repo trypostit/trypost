@@ -59,6 +59,7 @@ test('facebook oauth callback creates account with single page', function () {
         ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         'https://graph.facebook.com/*/me/accounts*' => Http::response([
@@ -110,6 +111,7 @@ test('facebook callback shows network_taken when the network is already connecte
         ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         'https://graph.facebook.com/*/me/accounts*' => Http::response([
@@ -150,6 +152,7 @@ test('facebook callback redirects to page selection when multiple pages', functi
         ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         'https://graph.facebook.com/*/me/accounts*' => Http::response([
@@ -192,6 +195,7 @@ test('facebook callback fails when no pages found', function () {
         ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         'https://graph.facebook.com/*/me/accounts*' => Http::response([
@@ -222,6 +226,7 @@ test('facebook callback fails with error connecting when the first accounts requ
     $graphApi = config('trypost.platforms.facebook.graph_api');
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::response(['error' => ['message' => 'fail']], 400),
@@ -255,6 +260,7 @@ test('facebook callback follows accounts pagination and shows picker for pages a
     $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
@@ -312,6 +318,7 @@ test('facebook callback connects authorized page when first accounts page is emp
     $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
@@ -364,6 +371,7 @@ test('facebook callback fails without connecting when accounts pagination is inc
     $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
@@ -424,6 +432,7 @@ test('user can connect multiple facebook accounts when multiple social accounts 
         ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         'https://graph.facebook.com/*/me/accounts*' => Http::response([
@@ -720,6 +729,7 @@ test('facebook reconnect keeps the original card when multiple pages are returne
         ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         'https://graph.facebook.com/*/me/accounts*' => Http::response([
@@ -781,6 +791,7 @@ test('facebook reconnect shows page_not_found when the page is missing from grap
         ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         'https://graph.facebook.com/*/me/accounts*' => Http::response([
@@ -887,6 +898,7 @@ test('facebook says every page is connected instead of network_taken in multi-ac
         ->andReturn($driverMock);
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         'https://graph.facebook.com/*/me/accounts*' => Http::response([
@@ -922,6 +934,7 @@ test('facebook callback connects a page the user only administers through a busi
     $graphApi = config('trypost.platforms.facebook.graph_api');
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
         "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
@@ -968,6 +981,7 @@ test('facebook callback still reports no pages when the portfolio has none eithe
     $graphApi = config('trypost.platforms.facebook.graph_api');
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
         "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
@@ -996,6 +1010,7 @@ test('facebook callback offers every portfolio page when the portfolio holds mor
     $graphApi = config('trypost.platforms.facebook.graph_api');
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
         "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
@@ -1064,6 +1079,7 @@ test('facebook callback merges a portfolio page with the one me/accounts already
     $graphApi = config('trypost.platforms.facebook.graph_api');
 
     Http::fake([
+        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::response([
             'data' => [
@@ -1096,4 +1112,114 @@ test('facebook callback merges a portfolio page with the one me/accounts already
     $response->assertRedirect(route('app.social.facebook.select-page'));
     expect(collect(session('facebook_oauth.pages'))->pluck('id')->all())
         ->toBe(['page_role', 'page_portfolio']);
+});
+
+test('facebook callback says the permission is missing when meta lists a page without a token', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('facebook_user_123');
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
+
+    $graphApi = config('trypost.platforms.facebook.graph_api');
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/permissions*" => Http::response(['data' => [
+            ['permission' => 'pages_show_list', 'status' => 'granted'],
+            ['permission' => 'pages_read_engagement', 'status' => 'declined'],
+        ]], 200),
+        "{$graphApi}/me/accounts*" => Http::response([
+            'data' => [['id' => 'page_123', 'name' => 'My Page', 'picture' => ['data' => ['url' => null]]]],
+        ], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
+
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('success', false)
+        ->where('message', __('accounts.popup_callback.pages_missing_permission')));
+
+    $this->assertDatabaseCount('social_accounts', 0);
+});
+
+test('facebook stores the permissions meta granted, not the ones asked for', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('facebook_user_123');
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
+
+    $graphApi = config('trypost.platforms.facebook.graph_api');
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/permissions*" => Http::response(['data' => [
+            ['permission' => 'pages_show_list', 'status' => 'granted'],
+            ['permission' => 'pages_manage_posts', 'status' => 'granted'],
+            ['permission' => 'business_management', 'status' => 'declined'],
+        ]], 200),
+        "{$graphApi}/me/accounts*" => Http::response([
+            'data' => [[
+                'id' => 'page_123',
+                'name' => 'My Page',
+                'picture' => ['data' => ['url' => null]],
+                'access_token' => 'page-token',
+            ]],
+        ], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
+    ]);
+
+    $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
+
+    expect(SocialAccount::where('platform_user_id', 'page_123')->sole()->scopes)
+        ->toBe(['pages_show_list', 'pages_manage_posts']);
+});
+
+test('facebook falls back to the requested scopes when meta will not list permissions', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('facebook_user_123');
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
+
+    $graphApi = config('trypost.platforms.facebook.graph_api');
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/permissions*" => Http::response(['error' => ['message' => 'nope']], 500),
+        "{$graphApi}/me/accounts*" => Http::response([
+            'data' => [[
+                'id' => 'page_123',
+                'name' => 'My Page',
+                'picture' => ['data' => ['url' => null]],
+                'access_token' => 'page-token',
+            ]],
+        ], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
+    ]);
+
+    $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
+
+    expect(SocialAccount::where('platform_user_id', 'page_123')->sole()->scopes)
+        ->toContain('business_management');
 });

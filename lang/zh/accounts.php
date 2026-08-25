@@ -155,6 +155,7 @@ return [
         'failed_to_get_profile' => '获取主页信息失败。',
         'page_not_found' => '未找到页面。',
         'channel_not_found' => '未找到频道。',
+        'pages_missing_permission' => '我们找到了你的主页，但没有发布权限。请重新连接并接受所有权限。',
         'no_facebook_pages' => '未找到 Facebook 主页。你至少需要是一个主页的管理员。',
         'no_facebook_instagram_pages' => '未找到关联了 Instagram 账号的 Facebook 主页。',
         'no_youtube_channels' => '未找到 YouTube 频道，请先创建一个频道。',

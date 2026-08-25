@@ -155,6 +155,7 @@ return [
         'failed_to_get_profile' => 'Impossible de récupérer le profil.',
         'page_not_found' => 'Page introuvable.',
         'channel_not_found' => 'Chaîne introuvable.',
+        'pages_missing_permission' => 'Nous avons trouvé vos Pages, mais pas l’autorisation d’y publier. Reconnectez-vous en acceptant toutes les autorisations.',
         'no_facebook_pages' => 'Aucune page Facebook trouvée. Vous devez être administrateur d\'au moins une page.',
         'no_facebook_instagram_pages' => 'Aucune page Facebook associée à un compte Instagram trouvée.',
         'no_youtube_channels' => 'Aucune chaîne YouTube trouvée. Veuillez d\'abord créer une chaîne.',

@@ -10,11 +10,14 @@ use App\Exceptions\SocialAccount\ConnectPopupException;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\Services\Social\Meta\GrantedPermissions;
 use App\Services\Social\Meta\ManagedPages;
-use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Pool;
+use Illuminate\Http\Client\Response as ClientResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Uri;
@@ -28,6 +31,14 @@ class InstagramFacebookController extends SocialController
     protected string $driver = 'facebook';
 
     protected SocialPlatform $platform = SocialPlatform::InstagramFacebook;
+
+    /**
+     * Instagram accounts described per pool round. Each Page carries its own
+     * access token, so the lookups cannot be batched into one `ids=` call —
+     * they run concurrently instead, in rounds, so a portfolio holding
+     * hundreds of Pages does not serialise the OAuth callback.
+     */
+    private const INSTAGRAM_LOOKUPS_PER_ROUND = 20;
 
     protected array $scopes = [
         'public_profile',
@@ -77,11 +88,18 @@ class InstagramFacebookController extends SocialController
                 'access_token' => $socialUser->token,
             ]);
 
-            $pages = $this->fetchPagesWithInstagram($socialUser->token);
+            $granted = GrantedPermissions::for($this->graphApi(), $socialUser->token, $this->scopes);
 
-            if (empty($pages)) {
-                return $this->popupCallback(false, __('accounts.popup_callback.no_facebook_instagram_pages'), $this->platform->value);
+            $listed = $this->fetchPagesWithInstagram($socialUser->token);
+            $publishable = ManagedPages::publishable($listed);
+
+            if (empty($publishable)) {
+                return $this->popupCallback(false, __(empty($listed)
+                    ? 'accounts.popup_callback.no_facebook_instagram_pages'
+                    : 'accounts.popup_callback.pages_missing_permission'), $this->platform->value);
             }
+
+            $pages = $this->describeInstagramAccounts($publishable);
 
             $pages = $this->filterConnectableIdentities($workspace, $pages, 'ig_id', $existingAccount);
 
@@ -90,13 +108,14 @@ class InstagramFacebookController extends SocialController
             }
 
             if (count($pages) === 1) {
-                return $this->connectInstagramAccount($workspace, $pages[0], $existingAccount);
+                return $this->connectInstagramAccount($workspace, $pages[0], $existingAccount, $granted);
             }
 
             // Multiple pages — show selection
             session([
                 'instagram_facebook_oauth' => [
                     'user_token' => $socialUser->token,
+                    'scopes' => $granted,
                     'pages' => $pages,
                     'reconnect_id' => $existingAccount?->id,
                 ],
@@ -158,7 +177,12 @@ class InstagramFacebookController extends SocialController
                 return $this->popupCallback(false, __('accounts.popup_callback.page_not_found'), $this->platform->value);
             }
 
-            $result = $this->connectInstagramAccount($workspace, $selectedPage, $existingAccount);
+            $result = $this->connectInstagramAccount(
+                $workspace,
+                $selectedPage,
+                $existingAccount,
+                data_get($oauthData, 'scopes', $this->scopes),
+            );
 
             session()->forget('instagram_facebook_oauth');
 
@@ -172,7 +196,11 @@ class InstagramFacebookController extends SocialController
         }
     }
 
-    private function connectInstagramAccount(Workspace $workspace, array $pageData, ?SocialAccount $existingAccount): InertiaResponse
+    /**
+     * @param  array<string, mixed>  $pageData
+     * @param  array<int, string>  $scopes
+     */
+    private function connectInstagramAccount(Workspace $workspace, array $pageData, ?SocialAccount $existingAccount, array $scopes): InertiaResponse
     {
         $avatarPath = data_get($pageData, 'ig_picture') ? uploadFromUrl(data_get($pageData, 'ig_picture')) : null;
 
@@ -187,7 +215,7 @@ class InstagramFacebookController extends SocialController
                 'access_token' => data_get($pageData, 'page_access_token'),
                 'refresh_token' => null,
                 'token_expires_at' => null,
-                'scopes' => $this->scopes,
+                'scopes' => $scopes,
                 'status' => Status::Connected,
                 'error_message' => null,
                 'disconnected_at' => null,
@@ -202,47 +230,77 @@ class InstagramFacebookController extends SocialController
         return $this->connectedCallback($existingAccount);
     }
 
+    /**
+     * The Pages this login lists that have an Instagram business account linked,
+     * in Meta's own shape — `access_token` still on each, so the caller can tell
+     * a Page it cannot post to from one it never had.
+     *
+     * @return list<array<string, mixed>>
+     */
     private function fetchPagesWithInstagram(string $userToken): array
     {
-        $graphApi = (string) config('trypost.platforms.instagram-facebook.graph_api');
-
-        $pages = ManagedPages::forUser(
-            $graphApi,
+        return collect(ManagedPages::forUser(
+            $this->graphApi(),
             $userToken,
             'id,name,username,picture{url},access_token,instagram_business_account',
-        );
-
-        return collect($pages)
+        ))
             ->filter(fn (array $page) => filled(data_get($page, 'instagram_business_account.id')))
-            ->map(function (array $page) use ($graphApi) {
-                $igId = data_get($page, 'instagram_business_account.id');
-                $token = data_get($page, 'access_token');
-                $igData = [];
-
-                try {
-                    $ig = Http::timeout(15)->connectTimeout(5)->get("{$graphApi}/{$igId}", [
-                        'access_token' => $token,
-                        'fields' => 'username,name,profile_picture_url',
-                    ]);
-
-                    $igData = $ig->successful() ? $ig->json() : [];
-                } catch (ConnectionException) {
-                    // Page listing still succeeds; username/avatar may be empty.
-                }
-
-                return [
-                    'page_id' => data_get($page, 'id'),
-                    'page_name' => data_get($page, 'name'),
-                    'page_picture' => data_get($page, 'picture.data.url'),
-                    'page_access_token' => $token,
-                    'ig_id' => $igId,
-                    'ig_username' => data_get($igData, 'username'),
-                    'ig_name' => data_get($igData, 'name'),
-                    'ig_picture' => data_get($igData, 'profile_picture_url'),
-                ];
-            })
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $pages
+     * @return list<array<string, mixed>>
+     */
+    private function describeInstagramAccounts(array $pages): array
+    {
+        return collect($pages)
+            ->chunk(self::INSTAGRAM_LOOKUPS_PER_ROUND)
+            ->flatMap($this->describeRound(...))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $pages
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function describeRound(Collection $pages): Collection
+    {
+        $pages = $pages->values();
+        $graphApi = $this->graphApi();
+
+        $responses = Http::pool(fn (Pool $pool) => $pages
+            ->map(fn (array $page) => $pool
+                ->timeout(15)
+                ->connectTimeout(5)
+                ->get("{$graphApi}/".data_get($page, 'instagram_business_account.id'), [
+                    'access_token' => data_get($page, 'access_token'),
+                    'fields' => 'username,name,profile_picture_url',
+                ]))
+            ->all());
+
+        return $pages->map(function (array $page, int $index) use ($responses) {
+            $response = data_get($responses, $index);
+            $igData = $response instanceof ClientResponse && $response->successful() ? $response->json() : [];
+
+            return [
+                'page_id' => data_get($page, 'id'),
+                'page_name' => data_get($page, 'name'),
+                'page_picture' => data_get($page, 'picture.data.url'),
+                'page_access_token' => data_get($page, 'access_token'),
+                'ig_id' => data_get($page, 'instagram_business_account.id'),
+                'ig_username' => data_get($igData, 'username'),
+                'ig_name' => data_get($igData, 'name'),
+                'ig_picture' => data_get($igData, 'profile_picture_url'),
+            ];
+        });
+    }
+
+    private function graphApi(): string
+    {
+        return (string) config('trypost.platforms.instagram-facebook.graph_api');
     }
 
     private function graphVersion(): string
