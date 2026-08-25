@@ -956,3 +956,121 @@ test('facebook callback still reports no pages when the portfolio has none eithe
         ->where('success', false)
         ->where('message', __('accounts.popup_callback.no_facebook_pages')));
 });
+
+test('facebook callback offers every portfolio page when the portfolio holds more than one', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('facebook_user_123');
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
+
+    $graphApi = config('trypost.platforms.facebook.graph_api');
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
+        "{$graphApi}/biz_1/owned_pages*" => Http::response([
+            'data' => [
+                [
+                    'id' => 'page_owned',
+                    'name' => 'Owned Page',
+                    'username' => 'owned',
+                    'picture' => ['data' => ['url' => null]],
+                    'access_token' => 'owned-token',
+                ],
+            ],
+        ], 200),
+        "{$graphApi}/biz_1/client_pages*" => Http::response([
+            'data' => [
+                [
+                    'id' => 'page_client',
+                    'name' => 'Client Page',
+                    'username' => 'client',
+                    'picture' => ['data' => ['url' => null]],
+                    'access_token' => 'client-token',
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
+
+    $response->assertRedirect(route('app.social.facebook.select-page'));
+    expect(session('facebook_oauth.pages'))->toHaveCount(2)
+        ->and(data_get(session('facebook_oauth.pages'), '0.id'))->toBe('page_owned')
+        ->and(data_get(session('facebook_oauth.pages'), '1.id'))->toBe('page_client');
+
+    $this->actingAs($this->user)
+        ->get(route('app.social.facebook.select-page'))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('accounts/FacebookPageSelect')
+            ->has('pages', 2));
+
+    $this->actingAs($this->user)
+        ->post(route('app.social.facebook.select'), ['page_id' => 'page_client'])
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
+
+    $account = SocialAccount::where('platform_user_id', 'page_client')->sole();
+
+    expect($account->workspace_id)->toBe($this->workspace->id)
+        ->and($account->platform)->toBe(Platform::Facebook)
+        ->and($account->display_name)->toBe('Client Page')
+        ->and($account->access_token)->toBe('client-token');
+});
+
+test('facebook callback merges a portfolio page with the one me/accounts already returned', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('facebook_user_123');
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
+
+    $graphApi = config('trypost.platforms.facebook.graph_api');
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/accounts*" => Http::response([
+            'data' => [
+                [
+                    'id' => 'page_role',
+                    'name' => 'Role Page',
+                    'username' => 'role',
+                    'picture' => ['data' => ['url' => null]],
+                    'access_token' => 'role-token',
+                ],
+            ],
+        ], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
+        "{$graphApi}/biz_1/owned_pages*" => Http::response([
+            'data' => [
+                [
+                    'id' => 'page_portfolio',
+                    'name' => 'Portfolio Page',
+                    'username' => 'portfolio',
+                    'picture' => ['data' => ['url' => null]],
+                    'access_token' => 'portfolio-token',
+                ],
+            ],
+        ], 200),
+        "{$graphApi}/biz_1/client_pages*" => Http::response(['data' => []], 200),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
+
+    $response->assertRedirect(route('app.social.facebook.select-page'));
+    expect(collect(session('facebook_oauth.pages'))->pluck('id')->all())
+        ->toBe(['page_role', 'page_portfolio']);
+});

@@ -120,3 +120,64 @@ test('a failing me/accounts still aborts instead of reporting no pages', functio
 
     ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS);
 })->throws(IncompleteMetaGraphPaginationException::class);
+
+test('pages spread across several portfolios are all collected', function () {
+    $graphApi = managedPagesGraphApi();
+
+    Http::fake([
+        "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/businesses*" => Http::response([
+            'data' => [['id' => 'biz_1'], ['id' => 'biz_2']],
+        ], 200),
+        "{$graphApi}/biz_1/owned_pages*" => Http::response([
+            'data' => [['id' => 'page_1', 'name' => 'One', 'access_token' => 'token-1']],
+        ], 200),
+        "{$graphApi}/biz_1/client_pages*" => Http::response(['data' => []], 200),
+        "{$graphApi}/biz_2/owned_pages*" => Http::response(['data' => []], 200),
+        "{$graphApi}/biz_2/client_pages*" => Http::response([
+            'data' => [['id' => 'page_2', 'name' => 'Two', 'access_token' => 'token-2']],
+        ], 200),
+    ]);
+
+    $pages = ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS);
+
+    expect(collect($pages)->pluck('id')->all())->toBe(['page_1', 'page_2']);
+});
+
+test('a paginated portfolio edge is followed to the end', function () {
+    $graphApi = managedPagesGraphApi();
+
+    Http::fake([
+        "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
+        "{$graphApi}/biz_1/owned_pages*" => Http::sequence()
+            ->push([
+                'data' => [['id' => 'page_1', 'name' => 'One', 'access_token' => 'token-1']],
+                'paging' => ['next' => "{$graphApi}/biz_1/owned_pages?access_token=user-token&after=cursor1"],
+            ], 200)
+            ->push([
+                'data' => [['id' => 'page_2', 'name' => 'Two', 'access_token' => 'token-2']],
+            ], 200),
+        "{$graphApi}/biz_1/client_pages*" => Http::response(['data' => []], 200),
+    ]);
+
+    $pages = ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS);
+
+    expect(collect($pages)->pluck('id')->all())->toBe(['page_1', 'page_2']);
+});
+
+test('a portfolio entry without an id is skipped', function () {
+    $graphApi = managedPagesGraphApi();
+
+    Http::fake([
+        "{$graphApi}/me/accounts*" => Http::response([
+            'data' => [['id' => 'page_1', 'name' => 'Page', 'access_token' => 'role-token']],
+        ], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => [['name' => 'No Id']]], 200),
+    ]);
+
+    $pages = ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS);
+
+    expect($pages)->toHaveCount(1);
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'owned_pages'));
+});
