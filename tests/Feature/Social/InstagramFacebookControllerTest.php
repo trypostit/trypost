@@ -14,6 +14,9 @@ use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
 beforeEach(function () {
+    Http::preventStrayRequests();
+    Http::allowStrayRequests(['*__inertia_ssr*']);
+
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
@@ -42,6 +45,7 @@ test('instagram-facebook callback follows accounts pagination and shows picker',
     $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
 
     Http::fake([
+        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
             ->push([
@@ -113,6 +117,7 @@ test('instagram-facebook callback connects page when first accounts response is 
     $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
 
     Http::fake([
+        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
             ->push([
@@ -173,6 +178,7 @@ test('instagram-facebook callback still connects when the instagram profile look
     $graphApi = config('trypost.platforms.instagram-facebook.graph_api');
 
     Http::fake([
+        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::response([
             'data' => [
@@ -224,6 +230,7 @@ test('instagram-facebook callback skips pages without instagram across paginated
     $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
 
     Http::fake([
+        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
             ->push([
@@ -292,6 +299,7 @@ test('instagram-facebook callback fails without connecting when accounts paginat
     $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
 
     Http::fake([
+        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
             ->push([
@@ -490,6 +498,8 @@ test('instagram-facebook callback hides an instagram already connected standalon
         ->andReturn(Mockery::mock(['user' => $socialiteUser]));
 
     Http::fake([
+        'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         'https://graph.facebook.com/*/me/accounts*' => Http::response([
             'data' => [
                 [

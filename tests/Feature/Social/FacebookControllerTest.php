@@ -15,6 +15,9 @@ use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
 beforeEach(function () {
+    Http::preventStrayRequests();
+    Http::allowStrayRequests(['*__inertia_ssr*']);
+
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
@@ -56,6 +59,8 @@ test('facebook oauth callback creates account with single page', function () {
         ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
 
     Http::fake([
+        'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         'https://graph.facebook.com/*/me/accounts*' => Http::response([
             'data' => [
                 [
@@ -105,6 +110,8 @@ test('facebook callback shows network_taken when the network is already connecte
         ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
 
     Http::fake([
+        'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         'https://graph.facebook.com/*/me/accounts*' => Http::response([
             'data' => [
                 [
@@ -143,6 +150,8 @@ test('facebook callback redirects to page selection when multiple pages', functi
         ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
 
     Http::fake([
+        'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         'https://graph.facebook.com/*/me/accounts*' => Http::response([
             'data' => [
                 [
@@ -183,6 +192,8 @@ test('facebook callback fails when no pages found', function () {
         ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
 
     Http::fake([
+        'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         'https://graph.facebook.com/*/me/accounts*' => Http::response([
             'data' => [],
         ], 200),
@@ -211,6 +222,7 @@ test('facebook callback fails with error connecting when the first accounts requ
     $graphApi = config('trypost.platforms.facebook.graph_api');
 
     Http::fake([
+        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::response(['error' => ['message' => 'fail']], 400),
     ]);
@@ -243,6 +255,7 @@ test('facebook callback follows accounts pagination and shows picker for pages a
     $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
 
     Http::fake([
+        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
             ->push([
@@ -299,6 +312,7 @@ test('facebook callback connects authorized page when first accounts page is emp
     $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
 
     Http::fake([
+        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
             ->push([
@@ -350,6 +364,7 @@ test('facebook callback fails without connecting when accounts pagination is inc
     $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
 
     Http::fake([
+        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
             ->push([
@@ -409,6 +424,8 @@ test('user can connect multiple facebook accounts when multiple social accounts 
         ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
 
     Http::fake([
+        'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         'https://graph.facebook.com/*/me/accounts*' => Http::response([
             'data' => [
                 [
@@ -703,6 +720,8 @@ test('facebook reconnect keeps the original card when multiple pages are returne
         ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
 
     Http::fake([
+        'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         'https://graph.facebook.com/*/me/accounts*' => Http::response([
             'data' => [
                 [
@@ -762,6 +781,8 @@ test('facebook reconnect shows page_not_found when the page is missing from grap
         ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
 
     Http::fake([
+        'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         'https://graph.facebook.com/*/me/accounts*' => Http::response([
             'data' => [
                 [
@@ -866,6 +887,8 @@ test('facebook says every page is connected instead of network_taken in multi-ac
         ->andReturn($driverMock);
 
     Http::fake([
+        'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
         'https://graph.facebook.com/*/me/accounts*' => Http::response([
             'data' => [
                 ['id' => 'page-1', 'name' => 'Only Page', 'access_token' => 'page-token'],
