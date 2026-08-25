@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Social\Meta;
 
 use App\Exceptions\Social\IncompleteMetaGraphPaginationException;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Every Facebook Page a login can publish to, gathered from all the edges Meta lists them under.
@@ -15,13 +16,22 @@ use App\Exceptions\Social\IncompleteMetaGraphPaginationException;
  * list there, so the portfolio's own `owned_pages` and `client_pages` edges are read
  * too and merged by Page id.
  *
- * Those edges need `business_management`, which a login may not grant, so every one
- * of them is best-effort: a rejection there never turns a usable `/me/accounts` list
- * into a failed connect.
+ * Those edges need `business_management`, which a login may not grant, so a rejection
+ * there reads as "this login reaches no portfolio pages" rather than failing the
+ * connect. A throttle or an upstream hiccup is not a rejection — it leaves the real
+ * list unknown, and is raised so no caller auto-connects a half-fetched list.
  */
 class ManagedPages
 {
     private const PER_PAGE = 100;
+
+    /**
+     * Hard ceiling on portfolios walked. Each one costs two more paginated
+     * edges inside a synchronous OAuth callback, so this plays the same role
+     * for the portfolio loop that GraphPaginator::MAX_PAGES plays for a single
+     * edge: far above any real membership, there only to bound a runaway.
+     */
+    public const MAX_PORTFOLIOS = 25;
 
     /**
      * @return list<array<string, mixed>>
@@ -58,26 +68,45 @@ class ManagedPages
      */
     private static function businessIds(string $graphApi, string $userToken): array
     {
-        return collect(self::optional("{$graphApi}/me/businesses", [
+        $ids = collect(self::optional("{$graphApi}/me/businesses", [
             'access_token' => $userToken,
             'limit' => self::PER_PAGE,
         ]))
             ->pluck('id')
             ->filter()
             ->map(strval(...))
-            ->values()
-            ->all();
+            ->values();
+
+        if ($ids->count() > self::MAX_PORTFOLIOS) {
+            Log::warning('Meta portfolio walk truncated', [
+                'found' => $ids->count(),
+                'walked' => self::MAX_PORTFOLIOS,
+            ]);
+        }
+
+        return $ids->take(self::MAX_PORTFOLIOS)->all();
     }
 
     /**
+     * An edge this login is simply not allowed to read answers with an empty
+     * list. A throttle, an upstream hiccup or a truncated walk leaves the real
+     * list unknown, and is raised so the caller never auto-connects whatever
+     * happened to arrive first.
+     *
      * @param  array<string, mixed>  $query
      * @return list<array<string, mixed>>
+     *
+     * @throws IncompleteMetaGraphPaginationException
      */
     private static function optional(string $url, array $query): array
     {
         try {
             return GraphPaginator::all($url, $query);
-        } catch (IncompleteMetaGraphPaginationException) {
+        } catch (IncompleteMetaGraphPaginationException $e) {
+            if ($e->transient) {
+                throw $e;
+            }
+
             return [];
         }
     }

@@ -101,6 +101,9 @@ class GraphPaginator
             'fetched' => $fetched > 0 ? $fetched : null,
         ]));
 
-        throw new IncompleteMetaGraphPaginationException($e);
+        throw new IncompleteMetaGraphPaginationException(
+            $e,
+            transient: $response === null || GraphError::isTransientFailure($response),
+        );
     }
 }

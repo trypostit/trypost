@@ -5,8 +5,13 @@ declare(strict_types=1);
 use App\Exceptions\Social\IncompleteMetaGraphPaginationException;
 use App\Services\Social\Meta\ManagedPages;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 const MANAGED_PAGES_FIELDS = 'id,name,access_token';
+
+beforeEach(function () {
+    Http::preventStrayRequests();
+});
 
 function managedPagesGraphApi(): string
 {
@@ -180,4 +185,75 @@ test('a portfolio entry without an id is skipped', function () {
 
     expect($pages)->toHaveCount(1);
     Http::assertNotSent(fn ($request) => str_contains($request->url(), 'owned_pages'));
+});
+
+test('a throttled portfolio edge is raised rather than read as no pages', function () {
+    $graphApi = managedPagesGraphApi();
+
+    Http::fake([
+        "{$graphApi}/me/accounts*" => Http::response([
+            'data' => [['id' => 'page_1', 'name' => 'Page', 'access_token' => 'role-token']],
+        ], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
+        "{$graphApi}/biz_1/owned_pages*" => Http::response([
+            'error' => ['message' => 'Application request limit reached', 'code' => 4],
+        ], 400),
+    ]);
+
+    ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS);
+})->throws(IncompleteMetaGraphPaginationException::class);
+
+test('an upstream failure listing portfolios is raised rather than read as no portfolios', function () {
+    $graphApi = managedPagesGraphApi();
+
+    Http::fake([
+        "{$graphApi}/me/accounts*" => Http::response([
+            'data' => [['id' => 'page_1', 'name' => 'Page', 'access_token' => 'role-token']],
+        ], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['error' => ['message' => 'oops']], 500),
+    ]);
+
+    ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS);
+})->throws(IncompleteMetaGraphPaginationException::class);
+
+test('a portfolio edge denied by permissions reads as no pages', function () {
+    $graphApi = managedPagesGraphApi();
+
+    Http::fake([
+        "{$graphApi}/me/accounts*" => Http::response([
+            'data' => [['id' => 'page_1', 'name' => 'Page', 'access_token' => 'role-token']],
+        ], 200),
+        "{$graphApi}/me/businesses*" => Http::response([
+            'error' => ['message' => 'Requires business_management permission', 'code' => 200],
+        ], 403),
+    ]);
+
+    $pages = ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS);
+
+    expect($pages)->toHaveCount(1)
+        ->and(data_get($pages, '0.id'))->toBe('page_1');
+});
+
+test('the portfolio walk stops at the ceiling and says so', function () {
+    $graphApi = managedPagesGraphApi();
+    $portfolios = collect(range(1, ManagedPages::MAX_PORTFOLIOS + 5))
+        ->map(fn (int $n) => ['id' => "biz_{$n}"])
+        ->all();
+
+    Log::shouldReceive('warning')
+        ->once()
+        ->with('Meta portfolio walk truncated', [
+            'found' => ManagedPages::MAX_PORTFOLIOS + 5,
+            'walked' => ManagedPages::MAX_PORTFOLIOS,
+        ]);
+
+    Http::fake([
+        "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => $portfolios], 200),
+        "{$graphApi}/*_pages*" => Http::response(['data' => []], 200),
+    ]);
+
+    ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS);
+
+    Http::assertSentCount(1 + 1 + (ManagedPages::MAX_PORTFOLIOS * 2));
 });
