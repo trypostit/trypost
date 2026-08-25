@@ -104,6 +104,7 @@ class GraphPaginator
         throw new IncompleteMetaGraphPaginationException(
             $e,
             transient: $response === null || GraphError::isTransientFailure($response),
+            fetched: $fetched,
         );
     }
 }

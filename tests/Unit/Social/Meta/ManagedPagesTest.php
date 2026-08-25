@@ -346,3 +346,53 @@ test('a portfolio edge paging off-host never gets the token', function () {
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), 'evil.example'));
 });
+
+test('a cursor that fails after the first page is raised, not read as the whole edge', function () {
+    $graphApi = managedPagesGraphApi();
+
+    Http::fake([
+        "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
+        "{$graphApi}/biz_1/owned_pages*" => Http::sequence()
+            ->push([
+                'data' => [['id' => 'page_1', 'name' => 'One', 'access_token' => 'token-1']],
+                'paging' => ['next' => "{$graphApi}/biz_1/owned_pages?access_token=user-token&after=cursor1"],
+            ], 200)
+            ->push(['error' => ['message' => 'Invalid cursor', 'code' => 100]], 400),
+        "{$graphApi}/biz_1/client_pages*" => Http::response(['data' => []], 200),
+    ]);
+
+    ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS);
+})->throws(IncompleteMetaGraphPaginationException::class);
+
+test('a portfolio list cut short mid-walk never silently drops the portfolios it did read', function () {
+    $graphApi = managedPagesGraphApi();
+
+    Http::fake([
+        "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/businesses*" => Http::sequence()
+            ->push([
+                'data' => [['id' => 'biz_1']],
+                'paging' => ['next' => "{$graphApi}/me/businesses?access_token=user-token&after=cursor1"],
+            ], 200)
+            ->push(['error' => ['message' => 'Invalid cursor', 'code' => 100]], 400),
+    ]);
+
+    ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS);
+})->throws(IncompleteMetaGraphPaginationException::class);
+
+test('a login meta reports as refusing business_management never touches the portfolio edges', function () {
+    $graphApi = managedPagesGraphApi();
+
+    Http::fake([
+        "{$graphApi}/me/accounts*" => Http::response([
+            'data' => [['id' => 'page_1', 'name' => 'Page', 'access_token' => 'role-token']],
+        ], 200),
+    ]);
+
+    $pages = ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS, ['pages_show_list']);
+
+    expect($pages)->toHaveCount(1);
+    Http::assertSentCount(1);
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/me/businesses'));
+});

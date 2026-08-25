@@ -18,11 +18,18 @@ use Throwable;
  * permission, where Meta has told us this login reaches nothing on that edge.
  * Only the latter is safe for a caller to read as an empty list; anything
  * unknown defaults to transient.
+ *
+ * `$fetched` counts the pages that did arrive. A rejection on the very first
+ * request means the edge was never readable; a rejection after that means a walk
+ * that had started got cut short, and what arrived is a fragment either way.
  */
 class IncompleteMetaGraphPaginationException extends RuntimeException
 {
-    public function __construct(?Throwable $previous = null, public readonly bool $transient = true)
-    {
+    public function __construct(
+        ?Throwable $previous = null,
+        public readonly bool $transient = true,
+        public readonly int $fetched = 0,
+    ) {
         parent::__construct('Meta Graph pagination did not complete.', previous: $previous);
     }
 }

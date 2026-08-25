@@ -726,3 +726,37 @@ test('instagram via facebook does not describe a page it is about to discard', f
 
     expect(SocialAccount::where('platform_user_id', 'ig_free')->sole()->username)->toBe('free_account');
 });
+
+test('instagram via facebook falls back to the username when meta returns a null name', function () {
+    session(['social_connect_workspace' => $this->workspace->id]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()
+            ->shouldReceive('usingGraphVersion')->andReturnSelf()
+            ->shouldReceive('redirectUrl')->andReturnSelf()
+            ->shouldReceive('user')->andReturn($socialiteUser)
+            ->getMock());
+
+    $graphApi = config('trypost.platforms.instagram-facebook.graph_api');
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/permissions*" => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/accounts*" => Http::response(['data' => [[
+            'id' => 'page_1',
+            'name' => 'Page',
+            'access_token' => 'page-token',
+            'instagram_business_account' => ['id' => 'ig_1'],
+        ]]], 200),
+        "{$graphApi}/ig_1*" => Http::response(['username' => 'only_a_handle', 'name' => null], 200),
+    ]);
+
+    $this->actingAs($this->user)->get(route('app.social.instagram-facebook.callback'));
+
+    expect(SocialAccount::where('platform_user_id', 'ig_1')->sole()->display_name)->toBe('only_a_handle');
+});

@@ -21,11 +21,15 @@ use Illuminate\Support\Uri;
  * list there, so the portfolio's own `owned_pages` and `client_pages` edges are read
  * too and merged by Page id.
  *
- * Those edges need `business_management`, which a login may not grant, so a rejection
- * there reads as "this login reaches no portfolio pages" rather than failing the
- * connect. A throttle or an upstream hiccup is not a rejection — it leaves the real
- * list unknown, and is raised so no caller auto-connects a half-fetched list. Running
- * out of ceiling is the same kind of unknown and is raised too.
+ * Those edges need `business_management`. A login Meta reports as having refused it
+ * skips them outright — walking anyway would spend a request on a certain 403 and
+ * log it at error level on every otherwise-successful connect. A refusal Meta does
+ * not report is not assumed: the walk runs, and a rejection there still reads as
+ * "this login reaches no portfolio pages" rather than failing the connect.
+ *
+ * A throttle or an upstream hiccup is not a rejection — it leaves the real list
+ * unknown, and is raised so no caller auto-connects a half-fetched list. Running out
+ * of ceiling is the same kind of unknown and is raised too.
  */
 class ManagedPages
 {
@@ -46,16 +50,24 @@ class ManagedPages
     public const MAX_PORTFOLIOS = 100;
 
     /**
+     * The permission Meta requires to read a portfolio's Page edges.
+     */
+    private const PORTFOLIO_SCOPE = 'business_management';
+
+    /**
+     * @param  array<int, string>  $grantedScopes
      * @return list<array<string, mixed>>
      *
      * @throws IncompleteMetaGraphPaginationException
      */
-    public static function forUser(string $graphApi, string $userToken, string $fields): array
+    public static function forUser(string $graphApi, string $userToken, string $fields, array $grantedScopes = [self::PORTFOLIO_SCOPE]): array
     {
         $query = ['access_token' => $userToken, 'fields' => $fields, 'limit' => self::PER_PAGE];
 
         return collect(GraphPaginator::all("{$graphApi}/me/accounts", $query))
-            ->concat(self::portfolioPages($graphApi, $userToken, $query))
+            ->concat(in_array(self::PORTFOLIO_SCOPE, $grantedScopes, true)
+                ? self::portfolioPages($graphApi, $userToken, $query)
+                : [])
             ->sortBy(fn (array $page) => filled(data_get($page, 'access_token')) ? 0 : 1)
             ->unique(fn (array $page) => (string) data_get($page, 'id'))
             ->values()
@@ -97,7 +109,8 @@ class ManagedPages
      * a failure, or a `paging.next` pointing off the host the edge was read from —
      * is handed to GraphPaginator, which owns the one place that logs a Graph
      * failure, guards the paging host, and decides whether the failure is a
-     * rejection or an unknown.
+     * rejection or an unknown. A cursor that fails after page one is a truncated
+     * walk, never a rejection, so it goes straight to GraphPaginator and raises.
      *
      * @param  Collection<int, string>  $urls
      * @return Collection<int, array<string, mixed>>
@@ -127,7 +140,7 @@ class ManagedPages
                 return self::optional($url);
             }
 
-            return $response->collect('data')->concat(self::optional($next));
+            return $response->collect('data')->concat(GraphPaginator::all($next));
         });
     }
 
@@ -161,9 +174,10 @@ class ManagedPages
 
     /**
      * An edge this login is simply not allowed to read answers with an empty
-     * list. A throttle, an upstream hiccup or a truncated walk leaves the real
-     * list unknown, and is raised so the caller never auto-connects whatever
-     * happened to arrive first.
+     * list. Only a rejection on the very first request qualifies: once a page
+     * has arrived, a later failure is a walk cut short, and handing back the
+     * fragment would be the truncation this whole module refuses. A throttle or
+     * an upstream hiccup is never a rejection.
      *
      * @param  array<string, mixed>  $query
      * @return list<array<string, mixed>>
@@ -175,7 +189,7 @@ class ManagedPages
         try {
             return GraphPaginator::all($url, $query);
         } catch (IncompleteMetaGraphPaginationException $e) {
-            if ($e->transient) {
+            if ($e->transient || $e->fetched > 0) {
                 throw $e;
             }
 

@@ -74,7 +74,7 @@ class FacebookController extends SocialController
 
             $granted = GrantedPermissions::for($this->graphApi(), $socialUser->token, $this->scopes);
 
-            $listed = $this->fetchPages($socialUser->token);
+            $listed = $this->fetchPages($socialUser->token, $granted);
             $pages = ManagedPages::publishable($listed);
 
             if (empty($pages)) {
@@ -227,12 +227,17 @@ class FacebookController extends SocialController
         }
     }
 
-    private function fetchPages(string $userToken): array
+    /**
+     * @param  array<int, string>  $grantedScopes
+     * @return list<array<string, mixed>>
+     */
+    private function fetchPages(string $userToken, array $grantedScopes): array
     {
         $pages = ManagedPages::forUser(
             $this->graphApi(),
             $userToken,
             'id,name,username,picture{url},access_token',
+            $grantedScopes,
         );
 
         return collect($pages)->map(fn (array $page) => [

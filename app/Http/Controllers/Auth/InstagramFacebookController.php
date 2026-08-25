@@ -90,7 +90,7 @@ class InstagramFacebookController extends SocialController
 
             $granted = GrantedPermissions::for($this->graphApi(), $socialUser->token, $this->scopes);
 
-            $listed = $this->fetchPagesWithInstagram($socialUser->token);
+            $listed = $this->fetchPagesWithInstagram($socialUser->token, $granted);
             $publishable = ManagedPages::publishable($listed);
 
             if (empty($publishable)) {
@@ -215,7 +215,7 @@ class InstagramFacebookController extends SocialController
             (string) data_get($pageData, 'ig_id'),
             [
                 'username' => data_get($pageData, 'ig_username'),
-                'display_name' => data_get($pageData, 'ig_name', data_get($pageData, 'ig_username')),
+                'display_name' => data_get($pageData, 'ig_name') ?? data_get($pageData, 'ig_username'),
                 'avatar_url' => $avatarPath,
                 'access_token' => data_get($pageData, 'page_access_token'),
                 'refresh_token' => null,
@@ -240,14 +240,16 @@ class InstagramFacebookController extends SocialController
      * in Meta's own shape — `access_token` still on each, so the caller can tell
      * a Page it cannot post to from one it never had.
      *
+     * @param  array<int, string>  $grantedScopes
      * @return list<array<string, mixed>>
      */
-    private function fetchPagesWithInstagram(string $userToken): array
+    private function fetchPagesWithInstagram(string $userToken, array $grantedScopes): array
     {
         return collect(ManagedPages::forUser(
             $this->graphApi(),
             $userToken,
             'id,name,username,picture{url},access_token,instagram_business_account',
+            $grantedScopes,
         ))
             ->filter(fn (array $page) => filled(data_get($page, 'instagram_business_account.id')))
             ->values()
