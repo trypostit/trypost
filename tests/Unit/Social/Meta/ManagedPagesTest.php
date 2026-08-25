@@ -13,20 +13,11 @@ function managedPagesGraphApi(): string
     return (string) config('trypost.platforms.facebook.graph_api');
 }
 
-function managedPagesPermissions(bool $businessManagement): array
-{
-    return ['data' => array_filter([
-        ['permission' => 'pages_show_list', 'status' => 'granted'],
-        $businessManagement ? ['permission' => 'business_management', 'status' => 'granted'] : null,
-    ])];
-}
-
 test('business portfolio pages are found when me/accounts is empty', function () {
     $graphApi = managedPagesGraphApi();
 
     Http::fake([
         "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
-        "{$graphApi}/me/permissions*" => Http::response(managedPagesPermissions(true), 200),
         "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
         "{$graphApi}/biz_1/owned_pages*" => Http::response([
             'data' => [['id' => 'page_1', 'name' => 'Owned Page', 'access_token' => 'owned-token']],
@@ -50,7 +41,6 @@ test('a page listed in both me/accounts and a portfolio is returned once, keepin
         "{$graphApi}/me/accounts*" => Http::response([
             'data' => [['id' => 'page_1', 'name' => 'Page', 'access_token' => 'role-token']],
         ], 200),
-        "{$graphApi}/me/permissions*" => Http::response(managedPagesPermissions(true), 200),
         "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
         "{$graphApi}/biz_1/owned_pages*" => Http::response([
             'data' => [['id' => 'page_1', 'name' => 'Page', 'access_token' => 'portfolio-token']],
@@ -69,7 +59,6 @@ test('portfolio pages the login cannot get a token for are dropped', function ()
 
     Http::fake([
         "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
-        "{$graphApi}/me/permissions*" => Http::response(managedPagesPermissions(true), 200),
         "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
         "{$graphApi}/biz_1/owned_pages*" => Http::response([
             'data' => [
@@ -86,20 +75,22 @@ test('portfolio pages the login cannot get a token for are dropped', function ()
         ->and(data_get($pages, '0.id'))->toBe('page_2');
 });
 
-test('portfolio edges are left alone when business_management was not granted', function () {
+test('a login without business_management keeps the pages me/accounts returned', function () {
     $graphApi = managedPagesGraphApi();
 
     Http::fake([
         "{$graphApi}/me/accounts*" => Http::response([
             'data' => [['id' => 'page_1', 'name' => 'Page', 'access_token' => 'role-token']],
         ], 200),
-        "{$graphApi}/me/permissions*" => Http::response(managedPagesPermissions(false), 200),
+        "{$graphApi}/me/businesses*" => Http::response([
+            'error' => ['message' => 'Requires business_management permission'],
+        ], 403),
     ]);
 
     $pages = ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS);
 
-    expect($pages)->toHaveCount(1);
-    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/me/businesses'));
+    expect($pages)->toHaveCount(1)
+        ->and(data_get($pages, '0.id'))->toBe('page_1');
 });
 
 test('a failing portfolio edge keeps the pages me/accounts already returned', function () {
@@ -109,7 +100,6 @@ test('a failing portfolio edge keeps the pages me/accounts already returned', fu
         "{$graphApi}/me/accounts*" => Http::response([
             'data' => [['id' => 'page_1', 'name' => 'Page', 'access_token' => 'role-token']],
         ], 200),
-        "{$graphApi}/me/permissions*" => Http::response(managedPagesPermissions(true), 200),
         "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
         "{$graphApi}/biz_1/owned_pages*" => Http::response(['error' => ['message' => 'nope']], 400),
         "{$graphApi}/biz_1/client_pages*" => Http::response(['error' => ['message' => 'nope']], 400),

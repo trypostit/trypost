@@ -88,7 +88,7 @@ test('instagram-facebook callback follows accounts pagination and shows picker',
         ->and(data_get(session('instagram_facebook_oauth.pages'), '0.ig_id'))->toBe('ig_1')
         ->and(data_get(session('instagram_facebook_oauth.pages'), '1.ig_id'))->toBe('ig_2');
 
-    Http::assertSentCount(6); // /me + 2 accounts pages + /me/permissions + 2 IG lookups
+    Http::assertSentCount(6); // /me + 2 accounts pages + /me/businesses + 2 IG lookups
 });
 
 test('instagram-facebook callback connects page when first accounts response is empty', function () {
@@ -540,9 +540,6 @@ test('instagram via facebook connects a page reached through a business portfoli
     Http::fake([
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
-        "{$graphApi}/me/permissions*" => Http::response([
-            'data' => [['permission' => 'business_management', 'status' => 'granted']],
-        ], 200),
         "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
         "{$graphApi}/biz_1/owned_pages*" => Http::response([
             'data' => [

@@ -901,9 +901,6 @@ test('facebook callback connects a page the user only administers through a busi
     Http::fake([
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
-        "{$graphApi}/me/permissions*" => Http::response([
-            'data' => [['permission' => 'business_management', 'status' => 'granted']],
-        ], 200),
         "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
         "{$graphApi}/biz_1/owned_pages*" => Http::response([
             'data' => [
@@ -950,9 +947,6 @@ test('facebook callback still reports no pages when the portfolio has none eithe
     Http::fake([
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
-        "{$graphApi}/me/permissions*" => Http::response([
-            'data' => [['permission' => 'business_management', 'status' => 'granted']],
-        ], 200),
         "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
     ]);
 

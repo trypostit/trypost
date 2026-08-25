@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Social\Meta;
 
 use App\Exceptions\Social\IncompleteMetaGraphPaginationException;
-use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Support\Facades\Http;
 
 /**
  * Every Facebook Page a login can publish to, gathered from all the edges Meta lists them under.
@@ -17,9 +15,9 @@ use Illuminate\Support\Facades\Http;
  * list there, so the portfolio's own `owned_pages` and `client_pages` edges are read
  * too and merged by Page id.
  *
- * Those edges need `business_management`, which a login may not grant, so they are
- * read only once the permission is confirmed and never turn a usable `/me/accounts`
- * list into a failure.
+ * Those edges need `business_management`, which a login may not grant, so every one
+ * of them is best-effort: a rejection there never turns a usable `/me/accounts` list
+ * into a failed connect.
  */
 class ManagedPages
 {
@@ -60,10 +58,6 @@ class ManagedPages
      */
     private static function businessIds(string $graphApi, string $userToken): array
     {
-        if (! self::grantsBusinessManagement($graphApi, $userToken)) {
-            return [];
-        }
-
         return collect(self::optional("{$graphApi}/me/businesses", [
             'access_token' => $userToken,
             'limit' => self::PER_PAGE,
@@ -73,26 +67,6 @@ class ManagedPages
             ->map(strval(...))
             ->values()
             ->all();
-    }
-
-    private static function grantsBusinessManagement(string $graphApi, string $userToken): bool
-    {
-        try {
-            $response = Http::timeout(15)->connectTimeout(5)->get("{$graphApi}/me/permissions", [
-                'access_token' => $userToken,
-            ]);
-        } catch (ConnectionException) {
-            return false;
-        }
-
-        if ($response->failed()) {
-            return false;
-        }
-
-        return $response->collect('data')->contains(
-            fn ($permission) => data_get($permission, 'permission') === 'business_management'
-                && data_get($permission, 'status') === 'granted',
-        );
     }
 
     /**
