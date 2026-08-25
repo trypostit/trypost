@@ -10,7 +10,7 @@ use App\Exceptions\SocialAccount\ConnectPopupException;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
-use App\Services\Social\Meta\GraphPaginator;
+use App\Services\Social\Meta\ManagedPages;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -205,21 +205,12 @@ class InstagramFacebookController extends SocialController
     private function fetchPagesWithInstagram(string $userToken): array
     {
         $graphApi = (string) config('trypost.platforms.instagram-facebook.graph_api');
-        $fields = 'id,name,username,picture{url},access_token,instagram_business_account';
 
-        $pages = GraphPaginator::all("{$graphApi}/me/accounts", [
-            'access_token' => $userToken,
-            'fields' => $fields,
-            'limit' => 100,
-        ]);
-
-        // /me/accounts silently omits Pages that live under Meta's newer "New
-        // Pages Experience" / Business Portfolio model (confirmed via Meta's own
-        // Access Token Debugger, 2026-08-16). Fall back through Business
-        // Manager's owned_pages/client_pages, same fix as FacebookController.
-        if (empty($pages)) {
-            $pages = $this->fetchPagesViaBusinessManager($userToken, $graphApi, $fields);
-        }
+        $pages = ManagedPages::forUser(
+            $graphApi,
+            $userToken,
+            'id,name,username,picture{url},access_token,instagram_business_account',
+        );
 
         return collect($pages)
             ->filter(fn (array $page) => filled(data_get($page, 'instagram_business_account.id')))
@@ -252,46 +243,6 @@ class InstagramFacebookController extends SocialController
             })
             ->values()
             ->all();
-    }
-
-    private function fetchPagesViaBusinessManager(string $userToken, string $graphApi, string $fields): array
-    {
-        $businesses = GraphPaginator::all("{$graphApi}/me/businesses", [
-            'access_token' => $userToken,
-            'fields' => 'id',
-            'limit' => 100,
-        ]);
-
-        $pages = collect();
-
-        foreach ($businesses as $business) {
-            $businessId = data_get($business, 'id');
-
-            if (! $businessId) {
-                continue;
-            }
-
-            foreach (['owned_pages', 'client_pages'] as $edge) {
-                try {
-                    $edgePages = GraphPaginator::all("{$graphApi}/{$businessId}/{$edge}", [
-                        'access_token' => $userToken,
-                        'fields' => $fields,
-                        'limit' => 100,
-                    ]);
-                } catch (\Throwable $e) {
-                    Log::warning("Instagram-via-Facebook Business Manager {$edge} lookup failed", [
-                        'business_id' => $businessId,
-                        'error' => $e->getMessage(),
-                    ]);
-
-                    continue;
-                }
-
-                $pages = $pages->concat($edgePages);
-            }
-        }
-
-        return $pages->unique(fn (array $page) => data_get($page, 'id'))->values()->all();
     }
 
     private function graphVersion(): string

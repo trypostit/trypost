@@ -9,7 +9,7 @@ use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\ConnectPopupException;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\SocialAccount;
-use App\Services\Social\Meta\GraphPaginator;
+use App\Services\Social\Meta\ManagedPages;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -33,9 +33,6 @@ class FacebookController extends SocialController
         'pages_read_engagement',
         'pages_manage_posts',
         'read_insights',
-        // Needed for the Business Manager fallback in fetchPages() - /me/accounts
-        // omits Pages under the New Pages Experience model, and reaching those
-        // via /me/businesses + owned_pages requires this scope.
         'business_management',
     ];
 
@@ -225,23 +222,11 @@ class FacebookController extends SocialController
 
     private function fetchPages(string $userToken): array
     {
-        $pages = GraphPaginator::all(
-            config('trypost.platforms.facebook.graph_api').'/me/accounts',
-            [
-                'access_token' => $userToken,
-                'fields' => 'id,name,username,picture{url},access_token',
-                'limit' => 100,
-            ],
+        $pages = ManagedPages::forUser(
+            (string) config('trypost.platforms.facebook.graph_api'),
+            $userToken,
+            'id,name,username,picture{url},access_token',
         );
-
-        // /me/accounts silently omits Pages that live under Meta's newer "New
-        // Pages Experience" / Business Portfolio model, even when the token's
-        // granular scopes show the Page was explicitly granted (confirmed via
-        // Meta's own Access Token Debugger, 2026-08-16). Falling back through
-        // Business Manager's owned_pages picks those up.
-        if (empty($pages)) {
-            $pages = $this->fetchPagesViaBusinessManager($userToken);
-        }
 
         return collect($pages)->map(fn (array $page) => [
             'id' => data_get($page, 'id'),
@@ -250,52 +235,6 @@ class FacebookController extends SocialController
             'picture' => data_get($page, 'picture.data.url'),
             'access_token' => data_get($page, 'access_token'),
         ])->all();
-    }
-
-    private function fetchPagesViaBusinessManager(string $userToken): array
-    {
-        $businesses = GraphPaginator::all(
-            config('trypost.platforms.facebook.graph_api').'/me/businesses',
-            [
-                'access_token' => $userToken,
-                'fields' => 'id',
-                'limit' => 100,
-            ],
-        );
-
-        $pages = collect();
-
-        foreach ($businesses as $business) {
-            $businessId = data_get($business, 'id');
-
-            if (! $businessId) {
-                continue;
-            }
-
-            foreach (['owned_pages', 'client_pages'] as $edge) {
-                try {
-                    $edgePages = GraphPaginator::all(
-                        config('trypost.platforms.facebook.graph_api')."/{$businessId}/{$edge}",
-                        [
-                            'access_token' => $userToken,
-                            'fields' => 'id,name,username,picture{url},access_token',
-                            'limit' => 100,
-                        ],
-                    );
-                } catch (\Throwable $e) {
-                    Log::warning("Facebook Business Manager {$edge} lookup failed", [
-                        'business_id' => $businessId,
-                        'error' => $e->getMessage(),
-                    ]);
-
-                    continue;
-                }
-
-                $pages = $pages->concat($edgePages);
-            }
-        }
-
-        return $pages->unique(fn (array $page) => data_get($page, 'id'))->values()->all();
     }
 
     private function graphVersion(): string
