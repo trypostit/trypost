@@ -76,7 +76,28 @@ test('every page meta lists is returned, token or not', function () {
 
     $pages = ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS);
 
-    expect(collect($pages)->pluck('id')->all())->toBe(['page_1', 'page_2']);
+    expect(collect($pages)->pluck('id')->sort()->values()->all())->toBe(['page_1', 'page_2']);
+});
+
+test('a page reached with a token wins over the same page reached without one', function () {
+    $graphApi = managedPagesGraphApi();
+
+    Http::fake([
+        "{$graphApi}/me/accounts*" => Http::response([
+            'data' => [['id' => 'page_1', 'name' => 'No Token Here']],
+        ], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
+        "{$graphApi}/biz_1/owned_pages*" => Http::response([
+            'data' => [['id' => 'page_1', 'name' => 'Same Page', 'access_token' => 'portfolio-token']],
+        ], 200),
+        "{$graphApi}/biz_1/client_pages*" => Http::response(['data' => []], 200),
+    ]);
+
+    $pages = ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS);
+
+    expect($pages)->toHaveCount(1)
+        ->and(data_get($pages, '0.access_token'))->toBe('portfolio-token')
+        ->and(ManagedPages::publishable($pages))->toHaveCount(1);
 });
 
 test('only the pages carrying a token are publishable', function () {
@@ -243,18 +264,30 @@ test('a portfolio edge denied by permissions reads as no pages', function () {
         ->and(data_get($pages, '0.id'))->toBe('page_1');
 });
 
-test('the portfolio walk stops at the ceiling and says so', function () {
+test('the portfolio walk refuses to hand back a list it could not finish', function () {
     $graphApi = managedPagesGraphApi();
-    $portfolios = collect(range(1, ManagedPages::MAX_PORTFOLIOS + 5))
+    $portfolios = collect(range(1, ManagedPages::MAX_PORTFOLIOS + 1))
         ->map(fn (int $n) => ['id' => "biz_{$n}"])
         ->all();
 
-    Log::shouldReceive('warning')
+    Log::shouldReceive('error')
         ->once()
-        ->with('Meta portfolio walk truncated', [
-            'found' => ManagedPages::MAX_PORTFOLIOS + 5,
-            'walked' => ManagedPages::MAX_PORTFOLIOS,
+        ->with('Meta portfolio walk stopped: ceiling reached', [
+            'found' => ManagedPages::MAX_PORTFOLIOS + 1,
+            'ceiling' => ManagedPages::MAX_PORTFOLIOS,
         ]);
+
+    Http::fake([
+        "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => $portfolios], 200),
+    ]);
+
+    ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS);
+})->throws(IncompleteMetaGraphPaginationException::class);
+
+test('portfolio edges are read concurrently rather than one after another', function () {
+    $graphApi = managedPagesGraphApi();
+    $portfolios = collect(range(1, 30))->map(fn (int $n) => ['id' => "biz_{$n}"])->all();
 
     Http::fake([
         "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
@@ -264,5 +297,5 @@ test('the portfolio walk stops at the ceiling and says so', function () {
 
     ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS);
 
-    Http::assertSentCount(1 + 1 + (ManagedPages::MAX_PORTFOLIOS * 2));
+    Http::assertSentCount(2 + (30 * 2));
 });

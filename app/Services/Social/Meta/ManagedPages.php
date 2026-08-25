@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace App\Services\Social\Meta;
 
 use App\Exceptions\Social\IncompleteMetaGraphPaginationException;
+use Illuminate\Http\Client\Pool;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Uri;
 
 /**
  * Every Facebook Page a login can publish to, gathered from all the edges Meta lists them under.
@@ -19,19 +24,26 @@ use Illuminate\Support\Facades\Log;
  * Those edges need `business_management`, which a login may not grant, so a rejection
  * there reads as "this login reaches no portfolio pages" rather than failing the
  * connect. A throttle or an upstream hiccup is not a rejection — it leaves the real
- * list unknown, and is raised so no caller auto-connects a half-fetched list.
+ * list unknown, and is raised so no caller auto-connects a half-fetched list. Running
+ * out of ceiling is the same kind of unknown and is raised too.
  */
 class ManagedPages
 {
     private const PER_PAGE = 100;
 
     /**
-     * Hard ceiling on portfolios walked. Each one costs two more paginated
-     * edges inside a synchronous OAuth callback, so this plays the same role
-     * for the portfolio loop that GraphPaginator::MAX_PAGES plays for a single
-     * edge: far above any real membership, there only to bound a runaway.
+     * Portfolio edges read concurrently per round. The walk sits inside a
+     * synchronous OAuth callback, where serial round trips are what break it.
      */
-    public const MAX_PORTFOLIOS = 25;
+    private const EDGES_PER_ROUND = 20;
+
+    /**
+     * Hard ceiling on portfolios walked, matching GraphPaginator::MAX_PAGES in
+     * spirit: far above any real membership, there only to bound a runaway.
+     * Passing it means the real list is unknown, so it raises rather than
+     * quietly handing back whatever fit.
+     */
+    public const MAX_PORTFOLIOS = 100;
 
     /**
      * @return list<array<string, mixed>>
@@ -40,23 +52,11 @@ class ManagedPages
      */
     public static function forUser(string $graphApi, string $userToken, string $fields): array
     {
-        $pages = collect(GraphPaginator::all("{$graphApi}/me/accounts", [
-            'access_token' => $userToken,
-            'fields' => $fields,
-            'limit' => self::PER_PAGE,
-        ]));
+        $query = ['access_token' => $userToken, 'fields' => $fields, 'limit' => self::PER_PAGE];
 
-        foreach (self::businessIds($graphApi, $userToken) as $businessId) {
-            foreach (['owned_pages', 'client_pages'] as $edge) {
-                $pages = $pages->concat(self::optional("{$graphApi}/{$businessId}/{$edge}", [
-                    'access_token' => $userToken,
-                    'fields' => $fields,
-                    'limit' => self::PER_PAGE,
-                ]));
-            }
-        }
-
-        return $pages
+        return collect(GraphPaginator::all("{$graphApi}/me/accounts", $query))
+            ->concat(self::portfolioPages($graphApi, $userToken, $query))
+            ->sortBy(fn (array $page) => filled(data_get($page, 'access_token')) ? 0 : 1)
             ->unique(fn (array $page) => (string) data_get($page, 'id'))
             ->values()
             ->all();
@@ -80,7 +80,53 @@ class ManagedPages
     }
 
     /**
+     * @param  array<string, mixed>  $query
+     * @return Collection<int, array<string, mixed>>
+     */
+    private static function portfolioPages(string $graphApi, string $userToken, array $query): Collection
+    {
+        return collect(self::businessIds($graphApi, $userToken))
+            ->crossJoin(['owned_pages', 'client_pages'])
+            ->map(fn (array $edge) => Uri::of("{$graphApi}/{$edge[0]}/{$edge[1]}")->withQuery($query)->value())
+            ->chunk(self::EDGES_PER_ROUND)
+            ->flatMap(self::readRound(...));
+    }
+
+    /**
+     * Reads a round of edges at once. A URL that does not come back cleanly is
+     * handed to GraphPaginator, which owns the one place that logs a Graph
+     * failure and decides whether it is a rejection or an unknown.
+     *
+     * @param  Collection<int, string>  $urls
+     * @return Collection<int, array<string, mixed>>
+     */
+    private static function readRound(Collection $urls): Collection
+    {
+        $urls = $urls->values();
+
+        $responses = Http::pool(fn (Pool $pool) => $urls
+            ->map(fn (string $url) => $pool->timeout(15)->connectTimeout(5)->get($url))
+            ->all());
+
+        return $urls->flatMap(function (string $url, int $index) use ($responses) {
+            $response = data_get($responses, $index);
+
+            if (! $response instanceof Response || $response->failed()) {
+                return self::optional($url);
+            }
+
+            $next = $response->json('paging.next');
+
+            return $response->collect('data')->concat(
+                is_string($next) && filled($next) ? self::optional($next) : [],
+            );
+        });
+    }
+
+    /**
      * @return list<string>
+     *
+     * @throws IncompleteMetaGraphPaginationException
      */
     private static function businessIds(string $graphApi, string $userToken): array
     {
@@ -94,13 +140,15 @@ class ManagedPages
             ->values();
 
         if ($ids->count() > self::MAX_PORTFOLIOS) {
-            Log::warning('Meta portfolio walk truncated', [
+            Log::error('Meta portfolio walk stopped: ceiling reached', [
                 'found' => $ids->count(),
-                'walked' => self::MAX_PORTFOLIOS,
+                'ceiling' => self::MAX_PORTFOLIOS,
             ]);
+
+            throw new IncompleteMetaGraphPaginationException;
         }
 
-        return $ids->take(self::MAX_PORTFOLIOS)->all();
+        return $ids->all();
     }
 
     /**
@@ -114,7 +162,7 @@ class ManagedPages
      *
      * @throws IncompleteMetaGraphPaginationException
      */
-    private static function optional(string $url, array $query): array
+    private static function optional(string $url, array $query = []): array
     {
         try {
             return GraphPaginator::all($url, $query);

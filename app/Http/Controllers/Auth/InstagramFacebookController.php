@@ -99,13 +99,18 @@ class InstagramFacebookController extends SocialController
                     : 'accounts.popup_callback.pages_missing_permission'), $this->platform->value);
             }
 
-            $pages = $this->describeInstagramAccounts($publishable);
+            $connectable = $this->filterConnectableIdentities(
+                $workspace,
+                $publishable,
+                'instagram_business_account.id',
+                $existingAccount,
+            );
 
-            $pages = $this->filterConnectableIdentities($workspace, $pages, 'ig_id', $existingAccount);
-
-            if (empty($pages)) {
+            if (empty($connectable)) {
                 return $this->noConnectableIdentities($existingAccount, 'page_not_found');
             }
+
+            $pages = $this->describeInstagramAccounts($connectable);
 
             if (count($pages) === 1) {
                 return $this->connectInstagramAccount($workspace, $pages[0], $existingAccount, $granted);

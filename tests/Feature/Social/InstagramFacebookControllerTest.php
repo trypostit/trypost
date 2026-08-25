@@ -500,7 +500,11 @@ test('instagram-facebook callback hides an instagram already connected standalon
 
     Socialite::shouldReceive('driver')
         ->with('facebook')
-        ->andReturn(Mockery::mock(['user' => $socialiteUser]));
+        ->andReturn(Mockery::mock()
+            ->shouldReceive('usingGraphVersion')->andReturnSelf()
+            ->shouldReceive('redirectUrl')->andReturnSelf()
+            ->shouldReceive('user')->andReturn($socialiteUser)
+            ->getMock());
 
     Http::fake([
         'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
@@ -526,7 +530,7 @@ test('instagram-facebook callback hides an instagram already connected standalon
     $this->actingAs($this->user)
         ->get(route('app.social.instagram-facebook.callback'))
         ->assertOk()
-        ->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('success', false)->where('message', __('accounts.popup_callback.all_connected')));
 
     expect($this->workspace->socialAccounts()
         ->where('platform', Platform::InstagramFacebook->value)
@@ -667,4 +671,58 @@ test('instagram via facebook says the permission is missing when meta lists a pa
     $response->assertInertia(fn (AssertableInertia $page) => $page
         ->where('success', false)
         ->where('message', __('accounts.popup_callback.pages_missing_permission')));
+});
+
+test('instagram via facebook does not describe a page it is about to discard', function () {
+    config()->set('trypost.allow_multiple_social_accounts', true);
+
+    SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Instagram,
+        'platform_user_id' => 'ig_taken',
+    ]);
+
+    session(['social_connect_workspace' => $this->workspace->id]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()
+            ->shouldReceive('usingGraphVersion')->andReturnSelf()
+            ->shouldReceive('redirectUrl')->andReturnSelf()
+            ->shouldReceive('user')->andReturn($socialiteUser)
+            ->getMock());
+
+    $graphApi = config('trypost.platforms.instagram-facebook.graph_api');
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/permissions*" => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/accounts*" => Http::response(['data' => [
+            [
+                'id' => 'page_taken',
+                'name' => 'Already Connected',
+                'access_token' => 'taken-token',
+                'instagram_business_account' => ['id' => 'ig_taken'],
+            ],
+            [
+                'id' => 'page_free',
+                'name' => 'Still Free',
+                'access_token' => 'free-token',
+                'instagram_business_account' => ['id' => 'ig_free'],
+            ],
+        ]], 200),
+        "{$graphApi}/ig_free*" => Http::response(['username' => 'free_account'], 200),
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.social.instagram-facebook.callback'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/ig_taken'));
+
+    expect(SocialAccount::where('platform_user_id', 'ig_free')->sole()->username)->toBe('free_account');
 });
