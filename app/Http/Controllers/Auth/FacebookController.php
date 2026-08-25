@@ -28,6 +28,8 @@ class FacebookController extends SocialController
 
     protected SocialPlatform $platform = SocialPlatform::Facebook;
 
+    private const PAGE_FIELDS = 'id,name,username,picture{url},access_token';
+
     protected array $scopes = [
         'public_profile',
         'pages_show_list',
@@ -74,7 +76,18 @@ class FacebookController extends SocialController
 
             $granted = GrantedPermissions::for($this->graphApi(), $socialUser->token, $this->scopes);
 
-            $listed = $this->fetchPages($socialUser->token, $granted);
+            if (array_diff($this->platform->requiredPublishScopes(), $granted) !== []) {
+                return $this->popupCallback(false, __('accounts.popup_callback.pages_missing_permission'), $this->platform->value);
+            }
+
+            $walk = ManagedPages::forUser(
+                $this->graphApi(),
+                $socialUser->token,
+                self::PAGE_FIELDS,
+                $granted,
+            );
+
+            $listed = $this->toPageCards($walk->pages);
             $pages = ManagedPages::publishable($listed);
 
             if (empty($pages)) {
@@ -89,8 +102,8 @@ class FacebookController extends SocialController
                 return $this->noConnectableIdentities($reconnect, 'page_not_found');
             }
 
-            // If only one page, connect directly
-            if (count($pages) === 1) {
+            // A lone page is only safe to take without asking when the walk saw everything
+            if (count($pages) === 1 && ($walk->complete || $reconnect !== null)) {
                 $page = $pages[0];
                 $avatarPath = uploadFromUrl(data_get($page, 'picture'));
 
@@ -228,18 +241,11 @@ class FacebookController extends SocialController
     }
 
     /**
-     * @param  array<int, string>  $grantedScopes
+     * @param  array<int, array<string, mixed>>  $pages
      * @return list<array<string, mixed>>
      */
-    private function fetchPages(string $userToken, array $grantedScopes): array
+    private function toPageCards(array $pages): array
     {
-        $pages = ManagedPages::forUser(
-            $this->graphApi(),
-            $userToken,
-            'id,name,username,picture{url},access_token',
-            $grantedScopes,
-        );
-
         return collect($pages)->map(fn (array $page) => [
             'id' => data_get($page, 'id'),
             'name' => data_get($page, 'name'),

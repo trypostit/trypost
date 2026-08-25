@@ -45,8 +45,8 @@ test('instagram-facebook callback follows accounts pagination and shows picker',
     $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
 
     Http::fake([
-        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
-        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
+        "{$graphApi}/me/permissions*" => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
             ->push([
@@ -118,8 +118,8 @@ test('instagram-facebook callback connects page when first accounts response is 
     $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
 
     Http::fake([
-        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
-        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
+        "{$graphApi}/me/permissions*" => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
             ->push([
@@ -180,8 +180,8 @@ test('instagram-facebook callback still connects when the instagram profile look
     $graphApi = config('trypost.platforms.instagram-facebook.graph_api');
 
     Http::fake([
-        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
-        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
+        "{$graphApi}/me/permissions*" => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::response([
             'data' => [
@@ -233,8 +233,8 @@ test('instagram-facebook callback skips pages without instagram across paginated
     $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
 
     Http::fake([
-        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
-        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
+        "{$graphApi}/me/permissions*" => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
             ->push([
@@ -303,8 +303,8 @@ test('instagram-facebook callback fails without connecting when accounts paginat
     $nextUrl = "{$graphApi}/me/accounts?access_token=test-user-token&after=cursor1&limit=100";
 
     Http::fake([
-        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
-        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
+        "{$graphApi}/me/permissions*" => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
             ->push([
@@ -506,11 +506,13 @@ test('instagram-facebook callback hides an instagram already connected standalon
             ->shouldReceive('user')->andReturn($socialiteUser)
             ->getMock());
 
+    $graphApi = config('trypost.platforms.instagram-facebook.graph_api');
+
     Http::fake([
-        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
-        'https://graph.facebook.com/*/me?*' => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
-        'https://graph.facebook.com/*/me/businesses*' => Http::response(['data' => []], 200),
-        'https://graph.facebook.com/*/me/accounts*' => Http::response([
+        "{$graphApi}/me/permissions*" => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/accounts*" => Http::response([
             'data' => [
                 [
                     'id' => 'page-1',
@@ -520,7 +522,7 @@ test('instagram-facebook callback hides an instagram already connected standalon
                 ],
             ],
         ], 200),
-        'https://graph.facebook.com/*' => Http::response([
+        "{$graphApi}/*" => Http::response([
             'id' => 'shared-ig',
             'username' => 'shared',
             'name' => 'Shared',
@@ -558,7 +560,7 @@ test('instagram via facebook connects a page reached through a business portfoli
     $graphApi = config('trypost.platforms.instagram-facebook.graph_api');
 
     Http::fake([
-        'https://graph.facebook.com/*/me/permissions*' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
+        "{$graphApi}/me/permissions*" => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
         "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),

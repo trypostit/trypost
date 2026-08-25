@@ -84,6 +84,16 @@ class GraphPaginator
     }
 
     /**
+     * Classify and log a single failed Graph response for a caller that read the
+     * page itself — a pooled first page — rather than walking it here. Keeps the
+     * one description of what a Graph failure means in this one place.
+     */
+    public static function failure(string $url, Response $response): IncompleteMetaGraphPaginationException
+    {
+        return self::describe($url, 0, response: $response);
+    }
+
+    /**
      * @throws IncompleteMetaGraphPaginationException
      */
     private static function abort(
@@ -93,18 +103,34 @@ class GraphPaginator
         ?Response $response = null,
         ?string $reason = null,
     ): never {
-        Log::error($reason ?? ($e ? 'Meta Graph pagination connection failed' : 'Meta Graph pagination request failed'), array_filter([
+        throw self::describe($url, $fetched, $e, $response, $reason);
+    }
+
+    /**
+     * A confirmed rejection is Meta answering the question, and callers that treat
+     * it as "this edge is not readable" log nothing further — so it is a warning.
+     * Anything unknown leaves a walk in the dark and stays at error level.
+     */
+    private static function describe(
+        string $url,
+        int $fetched,
+        ?Throwable $e = null,
+        ?Response $response = null,
+        ?string $reason = null,
+    ): IncompleteMetaGraphPaginationException {
+        $transient = $response === null || GraphError::isTransientFailure($response);
+
+        $message = $reason ?? ($e ? 'Meta Graph pagination connection failed' : 'Meta Graph pagination request failed');
+        $context = array_filter([
             'url' => TokenRedactor::redact($url),
             'error' => $e?->getMessage(),
             'status' => $response?->status(),
             'body' => $response ? TokenRedactor::redact($response->body()) : null,
             'fetched' => $fetched > 0 ? $fetched : null,
-        ]));
+        ]);
 
-        throw new IncompleteMetaGraphPaginationException(
-            $e,
-            transient: $response === null || GraphError::isTransientFailure($response),
-            fetched: $fetched,
-        );
+        $transient ? Log::error($message, $context) : Log::warning($message, $context);
+
+        return new IncompleteMetaGraphPaginationException($e, transient: $transient, fetched: $fetched);
     }
 }

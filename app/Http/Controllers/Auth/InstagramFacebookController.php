@@ -40,6 +40,8 @@ class InstagramFacebookController extends SocialController
      */
     private const INSTAGRAM_LOOKUPS_PER_ROUND = 20;
 
+    private const PAGE_FIELDS = 'id,name,username,picture{url},access_token,instagram_business_account';
+
     protected array $scopes = [
         'public_profile',
         'pages_show_list',
@@ -90,7 +92,22 @@ class InstagramFacebookController extends SocialController
 
             $granted = GrantedPermissions::for($this->graphApi(), $socialUser->token, $this->scopes);
 
-            $listed = $this->fetchPagesWithInstagram($socialUser->token, $granted);
+            if (array_diff($this->platform->requiredPublishScopes(), $granted) !== []) {
+                return $this->popupCallback(false, __('accounts.popup_callback.pages_missing_permission'), $this->platform->value);
+            }
+
+            $walk = ManagedPages::forUser(
+                $this->graphApi(),
+                $socialUser->token,
+                self::PAGE_FIELDS,
+                $granted,
+            );
+
+            $listed = collect($walk->pages)
+                ->filter(fn (array $page) => filled(data_get($page, 'instagram_business_account.id')))
+                ->values()
+                ->all();
+
             $publishable = ManagedPages::publishable($listed);
 
             if (empty($publishable)) {
@@ -112,7 +129,8 @@ class InstagramFacebookController extends SocialController
 
             $pages = $this->describeInstagramAccounts($connectable);
 
-            if (count($pages) === 1) {
+            // A lone page is only safe to take without asking when the walk saw everything
+            if (count($pages) === 1 && ($walk->complete || $existingAccount !== null)) {
                 return $this->connectInstagramAccount($workspace, $pages[0], $existingAccount, $granted);
             }
 
@@ -233,27 +251,6 @@ class InstagramFacebookController extends SocialController
         );
 
         return $this->connectedCallback($existingAccount);
-    }
-
-    /**
-     * The Pages this login lists that have an Instagram business account linked,
-     * in Meta's own shape — `access_token` still on each, so the caller can tell
-     * a Page it cannot post to from one it never had.
-     *
-     * @param  array<int, string>  $grantedScopes
-     * @return list<array<string, mixed>>
-     */
-    private function fetchPagesWithInstagram(string $userToken, array $grantedScopes): array
-    {
-        return collect(ManagedPages::forUser(
-            $this->graphApi(),
-            $userToken,
-            'id,name,username,picture{url},access_token,instagram_business_account',
-            $grantedScopes,
-        ))
-            ->filter(fn (array $page) => filled(data_get($page, 'instagram_business_account.id')))
-            ->values()
-            ->all();
     }
 
     /**
