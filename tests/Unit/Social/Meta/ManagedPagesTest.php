@@ -299,3 +299,28 @@ test('portfolio edges are read concurrently rather than one after another', func
 
     Http::assertSentCount(2 + (30 * 2));
 });
+
+test('pages from every round survive the merge, not just the first', function () {
+    $graphApi = managedPagesGraphApi();
+    $portfolios = collect(range(1, 26))->map(fn (int $n) => ['id' => "biz_{$n}"])->all();
+
+    $fakes = [
+        "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => $portfolios], 200),
+    ];
+
+    foreach (range(1, 26) as $n) {
+        $fakes["{$graphApi}/biz_{$n}/owned_pages*"] = Http::response([
+            'data' => [['id' => "page_{$n}", 'name' => "Page {$n}", 'access_token' => "token-{$n}"]],
+        ], 200);
+        $fakes["{$graphApi}/biz_{$n}/client_pages*"] = Http::response(['data' => []], 200);
+    }
+
+    Http::fake($fakes);
+
+    $pages = ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS);
+
+    expect($pages)->toHaveCount(26)
+        ->and(collect($pages)->pluck('id')->sort()->values()->all())
+        ->toBe(collect(range(1, 26))->map(fn (int $n) => "page_{$n}")->sort()->values()->all());
+});
