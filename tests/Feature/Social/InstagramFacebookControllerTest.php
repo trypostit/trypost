@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
+use App\Enums\SocialAccount\Status;
 use App\Enums\UserWorkspace\Role;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -87,7 +88,7 @@ test('instagram-facebook callback follows accounts pagination and shows picker',
         ->and(data_get(session('instagram_facebook_oauth.pages'), '0.ig_id'))->toBe('ig_1')
         ->and(data_get(session('instagram_facebook_oauth.pages'), '1.ig_id'))->toBe('ig_2');
 
-    Http::assertSentCount(5); // /me + 2 accounts pages + 2 IG lookups
+    Http::assertSentCount(6); // /me + 2 accounts pages + /me/permissions + 2 IG lookups
 });
 
 test('instagram-facebook callback connects page when first accounts response is empty', function () {
@@ -515,4 +516,61 @@ test('instagram-facebook callback hides an instagram already connected standalon
         ->where('platform', Platform::InstagramFacebook->value)
         ->exists())->toBeFalse()
         ->and($this->workspace->socialAccounts()->count())->toBe(1);
+});
+
+test('instagram via facebook connects a page reached through a business portfolio', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('facebook_user_123');
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()
+            ->shouldReceive('usingGraphVersion')->andReturnSelf()
+            ->shouldReceive('redirectUrl')->andReturnSelf()
+            ->shouldReceive('user')->andReturn($socialiteUser)
+            ->getMock());
+
+    $graphApi = config('trypost.platforms.instagram-facebook.graph_api');
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/permissions*" => Http::response([
+            'data' => [['permission' => 'business_management', 'status' => 'granted']],
+        ], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
+        "{$graphApi}/biz_1/owned_pages*" => Http::response([
+            'data' => [
+                [
+                    'id' => 'page_portfolio',
+                    'name' => 'Portfolio Page',
+                    'picture' => ['data' => ['url' => null]],
+                    'access_token' => 'portfolio-page-token',
+                    'instagram_business_account' => ['id' => 'ig_portfolio'],
+                ],
+            ],
+        ], 200),
+        "{$graphApi}/biz_1/client_pages*" => Http::response(['data' => []], 200),
+        "{$graphApi}/ig_portfolio*" => Http::response([
+            'username' => 'portfolio_ig',
+            'name' => 'Portfolio IG',
+        ], 200),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.instagram-facebook.callback'));
+
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
+
+    $this->assertDatabaseHas('social_accounts', [
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::InstagramFacebook->value,
+        'platform_user_id' => 'ig_portfolio',
+        'username' => 'portfolio_ig',
+        'status' => Status::Connected->value,
+    ]);
 });
