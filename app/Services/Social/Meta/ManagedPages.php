@@ -93,9 +93,11 @@ class ManagedPages
     }
 
     /**
-     * Reads a round of edges at once. A URL that does not come back cleanly is
-     * handed to GraphPaginator, which owns the one place that logs a Graph
-     * failure and decides whether it is a rejection or an unknown.
+     * Reads a round of edges at once. Anything that does not come back cleanly —
+     * a failure, or a `paging.next` pointing off the host the edge was read from —
+     * is handed to GraphPaginator, which owns the one place that logs a Graph
+     * failure, guards the paging host, and decides whether the failure is a
+     * rejection or an unknown.
      *
      * @param  Collection<int, string>  $urls
      * @return Collection<int, array<string, mixed>>
@@ -117,9 +119,15 @@ class ManagedPages
 
             $next = $response->json('paging.next');
 
-            return $response->collect('data')->concat(
-                is_string($next) && filled($next) ? self::optional($next) : [],
-            );
+            if (! is_string($next) || blank($next)) {
+                return $response->collect('data');
+            }
+
+            if (Uri::of($next)->host() !== Uri::of($url)->host()) {
+                return self::optional($url);
+            }
+
+            return $response->collect('data')->concat(self::optional($next));
         });
     }
 

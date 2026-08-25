@@ -324,3 +324,25 @@ test('pages from every round survive the merge, not just the first', function ()
         ->and(collect($pages)->pluck('id')->sort()->values()->all())
         ->toBe(collect(range(1, 26))->map(fn (int $n) => "page_{$n}")->sort()->values()->all());
 });
+
+test('a portfolio edge paging off-host never gets the token', function () {
+    $graphApi = managedPagesGraphApi();
+
+    Http::fake([
+        "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
+        "{$graphApi}/biz_1/owned_pages*" => Http::response([
+            'data' => [['id' => 'page_1', 'name' => 'One', 'access_token' => 'token-1']],
+            'paging' => ['next' => 'https://evil.example/owned_pages?access_token=user-token'],
+        ], 200),
+        "{$graphApi}/biz_1/client_pages*" => Http::response(['data' => []], 200),
+    ]);
+
+    try {
+        ManagedPages::forUser($graphApi, 'user-token', MANAGED_PAGES_FIELDS);
+    } catch (IncompleteMetaGraphPaginationException) {
+        // The off-host walk aborts; what matters is where the token did not go.
+    }
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'evil.example'));
+});
