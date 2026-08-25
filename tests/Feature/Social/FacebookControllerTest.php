@@ -1150,7 +1150,7 @@ test('facebook callback says the permission is missing when meta lists a page wi
     $this->assertDatabaseCount('social_accounts', 0);
 });
 
-test('facebook stores the permissions meta granted, not the ones asked for', function () {
+test('facebook drops a scope meta reports as declined', function () {
     session([
         'social_connect_workspace' => $this->workspace->id,
     ]);
@@ -1186,7 +1186,45 @@ test('facebook stores the permissions meta granted, not the ones asked for', fun
     $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
 
     expect(SocialAccount::where('platform_user_id', 'page_123')->sole()->scopes)
-        ->toBe(['pages_show_list', 'pages_manage_posts']);
+        ->toContain('pages_manage_posts')
+        ->not->toContain('business_management');
+});
+
+test('facebook keeps a scope meta never mentions rather than guessing it was refused', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('facebook_user_123');
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
+
+    $graphApi = config('trypost.platforms.facebook.graph_api');
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/permissions*" => Http::response(['data' => [
+            ['permission' => 'public_profile', 'status' => 'granted'],
+        ]], 200),
+        "{$graphApi}/me/accounts*" => Http::response([
+            'data' => [[
+                'id' => 'page_123',
+                'name' => 'My Page',
+                'picture' => ['data' => ['url' => null]],
+                'access_token' => 'page-token',
+            ]],
+        ], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
+    ]);
+
+    $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
+
+    expect(SocialAccount::where('platform_user_id', 'page_123')->sole()->scopes)
+        ->toContain('pages_manage_posts');
 });
 
 test('facebook falls back to the requested scopes when meta will not list permissions', function () {
