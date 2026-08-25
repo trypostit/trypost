@@ -1261,3 +1261,64 @@ test('facebook falls back to the requested scopes when meta will not list permis
     expect(SocialAccount::where('platform_user_id', 'page_123')->sole()->scopes)
         ->toContain('business_management');
 });
+
+test('facebook reconnects a card whose page is now only reachable through a portfolio', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Facebook,
+        'platform_user_id' => 'page_portfolio',
+        'access_token' => 'stale-token',
+        'status' => Status::Disconnected,
+    ]);
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'social_reconnect_id' => $account->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('facebook_user_123');
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
+
+    $graphApi = config('trypost.platforms.facebook.graph_api');
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/permissions*" => Http::response(['data' => [
+            ['permission' => 'business_management', 'status' => 'granted'],
+        ]], 200),
+        "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
+        "{$graphApi}/biz_1/owned_pages*" => Http::response(['data' => [
+            [
+                'id' => 'page_portfolio',
+                'name' => 'Reconnected Page',
+                'picture' => ['data' => ['url' => null]],
+                'access_token' => 'fresh-token',
+            ],
+            [
+                'id' => 'page_other',
+                'name' => 'Someone Else',
+                'picture' => ['data' => ['url' => null]],
+                'access_token' => 'other-token',
+            ],
+        ]], 200),
+        "{$graphApi}/biz_1/client_pages*" => Http::response(['data' => []], 200),
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.social.facebook.callback'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
+
+    expect($this->workspace->socialAccounts()->where('platform', Platform::Facebook->value)->count())->toBe(1);
+
+    $account->refresh();
+
+    expect($account->access_token)->toBe('fresh-token')
+        ->and($account->display_name)->toBe('Reconnected Page')
+        ->and($account->status)->toBe(Status::Connected);
+});
