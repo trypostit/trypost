@@ -600,8 +600,6 @@ return [
         'ai_description' => 'صِف ما تريده وينشئ الذكاء الاصطناعي المحتوى من أجلك.',
         'ai_configure_description' => 'اختر تنسيقًا وصِف المنشور الذي تريد إنشاءه.',
         'ai_pick_template_description' => 'اختر نمطًا لمنشورك المُنشأ بالذكاء الاصطناعي.',
-        'template_title' => 'استخدام قالب',
-        'template_description' => 'اختر من قوالبنا المنسّقة وخصّصها.',
         'coming_soon' => 'قريبًا',
 
         'preview' => [
@@ -667,31 +665,6 @@ return [
                 'instagram_story' => 'قصة Instagram',
                 'facebook_story' => 'قصة Facebook',
             ],
-        ],
-    ],
-
-    'templates' => [
-        'browser_title' => 'اختر قالبًا',
-        'browser_description' => 'ابدأ من قالب منسّق وكيّفه.',
-        'search_placeholder' => 'البحث في القوالب…',
-        'no_search_results' => 'لا توجد قوالب مطابقة لبحثك',
-        'try_different_search' => 'جرّب كلمة مختلفة أو امسح البحث.',
-        'slides_count' => '{count} شرائح|{count} شريحة|{count} شريحتان|{count} شرائح|{count} شريحة|{count} شريحة',
-        'all_platforms' => 'جميع المنصات',
-        'platform_search_placeholder' => 'البحث عن منصة…',
-        'no_platform_match' => 'لا توجد منصة مطابقة.',
-        'use_this' => 'استخدام هذا القالب',
-        'no_templates' => 'لا توجد قوالب متاحة.',
-        'applying' => 'جارٍ تطبيق القالب…',
-        'category' => [
-            'product_launch' => 'إطلاق منتج',
-            'promotion' => 'ترويج',
-            'educational' => 'تعليمي',
-            'behind_the_scenes' => 'خلف الكواليس',
-            'testimonial' => 'شهادة',
-            'industry_tip' => 'نصيحة في المجال',
-            'event' => 'فعالية',
-            'engagement' => 'تفاعل',
         ],
     ],
 ];

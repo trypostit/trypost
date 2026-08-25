@@ -125,13 +125,11 @@ const openDeleteModal = () => {
                                 id="name"
                                 name="name"
                                 :default-value="automation.name"
-                                dusk="automation-name-input"
                             />
                             <InputError :message="errors.name" class="mt-1" />
                         </div>
                         <Button
                             :disabled="processing"
-                            dusk="automation-name-save"
                             >{{ $t('automations.actions.save') }}</Button
                         >
                     </div>
@@ -171,7 +169,6 @@ const openDeleteModal = () => {
                                 ? $t('automations.actions.pause')
                                 : $t('automations.actions.activate')
                         "
-                        dusk="automation-toggle-active"
                         @update:model-value="toggleActive"
                     />
                 </div>
@@ -179,7 +176,6 @@ const openDeleteModal = () => {
                 <p
                     v-if="activationBlocked"
                     class="flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-500"
-                    dusk="automation-activation-blocked"
                 >
                     <IconAlertCircle class="size-4 flex-shrink-0" />
                     {{ configIssue }}
@@ -207,7 +203,6 @@ const openDeleteModal = () => {
                     </div>
                     <Button
                         variant="destructive"
-                        dusk="automation-delete"
                         @click="openDeleteModal"
                     >
                         <IconTrash class="size-4" />

@@ -5,6 +5,7 @@ return [
     'page_title' => 'Comptes sociaux',
     'description' => 'Vue d\'ensemble de tous vos comptes sociaux connectés',
     'connect_cta' => 'Connecter',
+    'connect_another' => 'Connecter un autre',
 
     'not_connected' => 'Non connecté',
     'connect' => 'Connecter',
@@ -75,6 +76,8 @@ return [
         'retry' => 'Réessayer',
         'error_generic' => 'Impossible de démarrer la connexion. Veuillez réessayer.',
         'network_taken' => 'Cet espace de travail a déjà un canal Telegram connecté. Déconnectez-le d\'abord.',
+        'wrong_chat' => 'Publiez la commande dans le canal que vous reconnectez.',
+        'busy' => 'Une autre connexion est en cours de finalisation. Publiez à nouveau la commande dans un instant.',
     ],
 
     'facebook' => [
@@ -140,6 +143,9 @@ return [
         'reconnected' => 'Compte reconnecté !',
         'error_connecting' => 'Erreur lors de la connexion du compte. Veuillez réessayer.',
         'network_taken' => 'Cet espace de travail a déjà un compte pour ce réseau. Déconnectez-le d\'abord.',
+        'wrong_account' => 'C\'est un autre compte. Autorisez celui que vous reconnectez.',
+        'all_connected' => 'Tous les comptes de cette connexion sont déjà connectés.',
+        'busy' => 'Une autre connexion est en cours de finalisation. Veuillez réessayer dans un instant.',
         'error_connecting_page' => 'Erreur lors de la connexion de la page. Veuillez réessayer.',
         'error_connecting_channel' => 'Erreur lors de la connexion de la chaîne. Veuillez réessayer.',
         'session_expired' => 'Session expirée. Veuillez réessayer.',

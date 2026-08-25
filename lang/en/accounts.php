@@ -5,6 +5,7 @@ return [
     'page_title' => 'Social Accounts',
     'description' => 'Overview of all your connected social accounts',
     'connect_cta' => 'Connect',
+    'connect_another' => 'Connect another',
 
     'not_connected' => 'Not connected',
     'connect' => 'Connect',
@@ -75,6 +76,8 @@ return [
         'retry' => 'Try again',
         'error_generic' => 'Could not start the connection. Please try again.',
         'network_taken' => 'This workspace already has a Telegram channel connected. Disconnect it first.',
+        'wrong_chat' => 'Post the command in the channel you are reconnecting.',
+        'busy' => 'Another connection is still finishing. Post the command again in a moment.',
     ],
 
     'facebook' => [
@@ -140,6 +143,9 @@ return [
         'reconnected' => 'Account reconnected!',
         'error_connecting' => 'Error connecting account. Please try again.',
         'network_taken' => 'This workspace already has an account for this network. Disconnect it first.',
+        'wrong_account' => 'That is a different account. Authorize the one you are reconnecting.',
+        'all_connected' => 'Every account on this login is already connected.',
+        'busy' => 'Another connection is still finishing. Please try again in a moment.',
         'error_connecting_page' => 'Error connecting page. Please try again.',
         'error_connecting_channel' => 'Error connecting channel. Please try again.',
         'session_expired' => 'Session expired. Please try again.',

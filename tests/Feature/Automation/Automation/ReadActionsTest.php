@@ -118,6 +118,7 @@ it('breaks down generated posts by platform', function () {
 });
 
 it('returns only active social accounts for the automation workspace', function () {
+    config()->set('trypost.allow_multiple_social_accounts', true);
     $this->mock(PinterestPublisher::class);
     $this->mock(TikTokCreatorInfo::class);
 

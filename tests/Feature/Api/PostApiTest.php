@@ -125,6 +125,7 @@ it('creates a post with content, media, and labels', function () {
 });
 
 it('rejects creating a post with an inactive social account', function () {
+    config()->set('trypost.allow_multiple_social_accounts', true);
     $inactive = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::LinkedIn,

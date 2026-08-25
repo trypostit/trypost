@@ -319,7 +319,7 @@ test('instagram-facebook callback fails without connecting when accounts paginat
     expect($this->workspace->socialAccounts()->where('platform', Platform::InstagramFacebook)->count())->toBe(0);
 });
 
-test('instagram-facebook select connects the page in self-hosted mode', function () {
+test('instagram-facebook select skips deferred onboarding progress in self-hosted mode', function () {
     config()->set('trypost.self_hosted', true);
 
     session([
@@ -372,6 +372,52 @@ test('instagram-facebook select connects the page in self-hosted mode', function
         );
 });
 
+test('instagram-facebook reconnect updates the original card via connectIdentity', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::InstagramFacebook,
+        'platform_user_id' => 'ig-old',
+        'username' => 'oldbiz',
+        'access_token' => 'expired-token',
+    ]);
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'instagram_facebook_oauth' => [
+            'user_token' => 'user-token',
+            'reconnect_id' => $account->id,
+            'pages' => [
+                [
+                    'page_id' => 'page-1',
+                    'page_name' => 'My Page',
+                    'page_access_token' => 'fresh-token',
+                    'ig_id' => 'ig-old',
+                    'ig_username' => 'mybiz',
+                    'ig_name' => 'My Biz',
+                    'ig_picture' => null,
+                ],
+            ],
+        ],
+    ]);
+
+    $response = $this->actingAs($this->user)->post(route('app.social.instagram-facebook.select'), [
+        'page_id' => 'page-1',
+    ]);
+
+    $response->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->component('accounts/PopupCallback')
+        ->where('success', true)
+        ->where('message', __('accounts.popup_callback.reconnected'))
+    );
+
+    $account->refresh();
+
+    expect($this->workspace->socialAccounts()->where('platform', Platform::InstagramFacebook)->count())->toBe(1)
+        ->and($account->username)->toBe('mybiz')
+        ->and($account->access_token)->toBe('fresh-token');
+});
+
 test('instagram-facebook select page returns popup callback when the session expired', function () {
     $this->actingAs($this->user)
         ->get(route('app.social.instagram-facebook.select-page'))
@@ -385,7 +431,7 @@ test('instagram-facebook select page returns popup callback when the session exp
 });
 
 test('instagram-facebook select shows network_taken when a standalone instagram is already connected', function () {
-    config()->set('trypost.self_hosted', false);
+    config()->set('trypost.allow_multiple_social_accounts', false);
 
     SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -422,4 +468,51 @@ test('instagram-facebook select shows network_taken when a standalone instagram 
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', __('accounts.popup_callback.network_taken')));
 
     expect($this->workspace->socialAccounts()->whereIn('platform', [Platform::Instagram->value, Platform::InstagramFacebook->value])->count())->toBe(1);
+});
+
+test('instagram-facebook callback hides an instagram already connected standalone in multi-account mode', function () {
+    config()->set('trypost.allow_multiple_social_accounts', true);
+
+    SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Instagram,
+        'platform_user_id' => 'shared-ig',
+    ]);
+
+    session(['social_connect_workspace' => $this->workspace->id]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock(['user' => $socialiteUser]));
+
+    Http::fake([
+        'https://graph.facebook.com/*/me/accounts*' => Http::response([
+            'data' => [
+                [
+                    'id' => 'page-1',
+                    'name' => 'Shared Page',
+                    'access_token' => 'page-token',
+                    'instagram_business_account' => ['id' => 'shared-ig'],
+                ],
+            ],
+        ], 200),
+        'https://graph.facebook.com/*' => Http::response([
+            'id' => 'shared-ig',
+            'username' => 'shared',
+            'name' => 'Shared',
+        ], 200),
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.social.instagram-facebook.callback'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+
+    expect($this->workspace->socialAccounts()
+        ->where('platform', Platform::InstagramFacebook->value)
+        ->exists())->toBeFalse()
+        ->and($this->workspace->socialAccounts()->count())->toBe(1);
 });

@@ -19,7 +19,6 @@ use App\Http\Controllers\App\PostAiRegenerateMediaController;
 use App\Http\Controllers\App\PostAiReviewController;
 use App\Http\Controllers\App\PostCommentController;
 use App\Http\Controllers\App\PostController;
-use App\Http\Controllers\App\PostTemplateController;
 use App\Http\Controllers\App\PresenceController;
 use App\Http\Controllers\App\Settings\AccountController;
 use App\Http\Controllers\App\Settings\AuthenticationController;
@@ -65,10 +64,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('welcome/goals', [WelcomeController::class, 'goals'])->name('app.welcome.goals');
     Route::post('welcome/goals', [WelcomeController::class, 'storeGoals'])->name('app.welcome.goals.store');
     Route::get('welcome/referral-source', [WelcomeController::class, 'referralSource'])->name('app.welcome.referral-source');
-    Route::get('welcome/subscription-required', [WelcomeController::class, 'subscriptionRequired'])->name('app.welcome.subscription-required');
     Route::post('welcome/referral-source', [WelcomeController::class, 'storeReferralSource'])
         ->middleware('throttle:6,1')
         ->name('app.welcome.referral-source.store');
+    Route::get('welcome/connect', [WelcomeController::class, 'connect'])->name('app.welcome.connect');
+    Route::post('welcome/connect', [WelcomeController::class, 'storeConnect'])
+        ->middleware('throttle:6,1')
+        ->name('app.welcome.connect.store');
+    Route::get('welcome/subscription-required', [WelcomeController::class, 'subscriptionRequired'])->name('app.welcome.subscription-required');
     Route::get('billing/processing', [BillingController::class, 'processing'])->name('app.billing.processing');
 
     Route::get('workspaces/create', [WorkspaceController::class, 'create'])->name('app.workspaces.create');
@@ -124,8 +127,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('accounts/tiktok/callback', [TikTokController::class, 'callback'])->name('app.social.tiktok.callback');
 
     Route::get('accounts/youtube/callback', [YouTubeController::class, 'callback'])->name('app.social.youtube.callback');
-    Route::get('accounts/youtube/select', [YouTubeController::class, 'selectChannel'])->name('app.social.youtube.select-channel');
-    Route::post('accounts/youtube/select', [YouTubeController::class, 'select'])->name('app.social.youtube.select');
 
     Route::get('accounts/facebook/callback', [FacebookController::class, 'callback'])->name('app.social.facebook.callback');
     Route::get('accounts/facebook/select', [FacebookController::class, 'selectPage'])->name('app.social.facebook.select-page');
@@ -201,10 +202,6 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::post('posts/link-preview', LinkPreviewController::class)
         ->middleware('throttle:30,1')
         ->name('app.posts.link-preview');
-
-    // Post Templates
-    Route::get('post-templates', [PostTemplateController::class, 'index'])->name('app.post-templates.index');
-    Route::post('post-templates/{slug}/apply', [PostTemplateController::class, 'apply'])->name('app.post-templates.apply');
 
     // Post AI
     Route::post('posts/{post}/ai/generate', [PostAiGenerateController::class, 'generate'])->name('app.posts.ai.generate');

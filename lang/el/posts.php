@@ -600,8 +600,6 @@ return [
         'ai_description' => 'Περιγράψτε τι θέλετε και το AI δημιουργεί το περιεχόμενο για εσάς.',
         'ai_configure_description' => 'Επιλέξτε μια μορφή και περιγράψτε τη δημοσίευση που θέλετε να δημιουργήσετε.',
         'ai_pick_template_description' => 'Επιλέξτε ένα στυλ για τη δημοσίευσή σας που δημιουργείται από AI.',
-        'template_title' => 'Χρήση προτύπου',
-        'template_description' => 'Επιλέξτε από τα επιμελημένα πρότυπά μας και προσαρμόστε.',
         'coming_soon' => 'Έρχεται σύντομα',
 
         'preview' => [
@@ -667,31 +665,6 @@ return [
                 'instagram_story' => 'Story Instagram',
                 'facebook_story' => 'Story Facebook',
             ],
-        ],
-    ],
-
-    'templates' => [
-        'browser_title' => 'Επιλέξτε ένα πρότυπο',
-        'browser_description' => 'Ξεκινήστε από ένα επιμελημένο πρότυπο και προσαρμόστε το.',
-        'search_placeholder' => 'Αναζήτηση προτύπων…',
-        'no_search_results' => 'Κανένα πρότυπο δεν ταιριάζει με την αναζήτησή σας',
-        'try_different_search' => 'Δοκιμάστε διαφορετική λέξη-κλειδί ή καθαρίστε την αναζήτηση.',
-        'slides_count' => '{count} slide|{count} slides',
-        'all_platforms' => 'Όλες οι πλατφόρμες',
-        'platform_search_placeholder' => 'Αναζήτηση πλατφόρμας…',
-        'no_platform_match' => 'Καμία πλατφόρμα δεν ταιριάζει.',
-        'use_this' => 'Χρήση αυτού του προτύπου',
-        'no_templates' => 'Δεν υπάρχουν διαθέσιμα πρότυπα.',
-        'applying' => 'Εφαρμογή προτύπου…',
-        'category' => [
-            'product_launch' => 'Κυκλοφορία προϊόντος',
-            'promotion' => 'Προώθηση',
-            'educational' => 'Εκπαιδευτικό',
-            'behind_the_scenes' => 'Παρασκήνια',
-            'testimonial' => 'Μαρτυρία',
-            'industry_tip' => 'Συμβουλή του κλάδου',
-            'event' => 'Εκδήλωση',
-            'engagement' => 'Αλληλεπίδραση',
         ],
     ],
 ];

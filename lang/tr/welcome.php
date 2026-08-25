@@ -59,4 +59,9 @@ return [
         'blog' => 'Blog / newsletter',
         'other' => 'Başka bir şey',
     ],
+    'connect' => [
+        'title' => 'Bir sosyal hesap bağla',
+        'description' => 'TryPost’un içeriğini yayınlayabileceği en az bir ağ seç.',
+        'required' => 'Devam etmek için en az bir sosyal hesap bağla.',
+    ],
 ];

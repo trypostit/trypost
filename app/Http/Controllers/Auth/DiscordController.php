@@ -28,6 +28,6 @@ class DiscordController extends SocialController
 
     public function callback(Request $request): InertiaResponse
     {
-        return $this->handleCallback($request, $this->platform, $this->driver);
+        return $this->handleCallback($request, $this->driver);
     }
 }

@@ -59,4 +59,9 @@ return [
         'blog' => 'Blog / newsletter',
         'other' => '기타',
     ],
+    'connect' => [
+        'title' => '소셜 계정을 연결하세요',
+        'description' => 'TryPost가 콘텐츠를 게시할 네트워크를 하나 이상 선택하세요.',
+        'required' => '계속하려면 소셜 계정을 하나 이상 연결하세요.',
+    ],
 ];

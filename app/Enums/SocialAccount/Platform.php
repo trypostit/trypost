@@ -431,7 +431,7 @@ enum Platform: string
      * Instagram includes `connect_methods` so the connect dialog only lists
      * OAuth entry points that are actually enabled (self-hosters may disable one).
      *
-     * @return list<array{value: string, label: string, color: string, network: string, connect_methods?: list<string>}>
+     * @return list<array{value: string, label: string, network: string, connect_methods?: list<string>}>
      */
     public static function connectableOptions(): array
     {
@@ -442,7 +442,6 @@ enum Platform: string
                 $option = [
                     'value' => $platform->value,
                     'label' => $platform->label(),
-                    'color' => $platform->color(),
                     'network' => $platform->network(),
                 ];
 

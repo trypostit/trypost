@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\Telegram\TelegramConnectCode;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -121,7 +122,10 @@ it('links a private channel that has no username', function () {
 });
 
 it('does not connect a second telegram channel when one is already connected', function () {
-    config(['trypost.self_hosted' => false]);
+    config([
+        'trypost.self_hosted' => false,
+        'trypost.allow_multiple_social_accounts' => false,
+    ]);
     Event::fake([TelegramConnectFailed::class]);
 
     SocialAccount::factory()->telegram()->create([
@@ -147,9 +151,9 @@ it('does not connect a second telegram channel when one is already connected', f
     );
 });
 
-it('connects a second telegram channel in self-hosted mode', function () {
+it('connects a second telegram channel when multiple social accounts are allowed', function () {
     Http::fake();
-    config(['trypost.self_hosted' => true]);
+    config(['trypost.allow_multiple_social_accounts' => true]);
 
     SocialAccount::factory()->telegram()->create([
         'workspace_id' => $this->workspace->id,
@@ -170,7 +174,7 @@ it('connects a second telegram channel in self-hosted mode', function () {
 
 it('reconnects an existing telegram channel', function () {
     Http::fake();
-    config(['trypost.self_hosted' => false]);
+    config(['trypost.allow_multiple_social_accounts' => false]);
 
     SocialAccount::factory()->telegram()->create([
         'workspace_id' => $this->workspace->id,
@@ -187,6 +191,90 @@ it('reconnects an existing telegram channel', function () {
     expect(
         SocialAccount::where('platform', Platform::Telegram)->where('platform_user_id', '-1001234567890')->count()
     )->toBe(1);
+});
+
+it('issues a connect code that carries the reconnect card', function () {
+    $account = SocialAccount::factory()->telegram()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => '-1009999999999',
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->postJson(route('app.social.telegram.connect', ['reconnect' => $account->id]))
+        ->assertOk();
+
+    expect(data_get(TelegramConnectCode::decode($response->json('code')), 'reconnect_id'))->toBe($account->id);
+});
+
+it('keeps the reconnect card on its own chat when a different channel posts the code', function () {
+    Http::fake();
+    Event::fake([TelegramConnectFailed::class]);
+    config(['trypost.allow_multiple_social_accounts' => false]);
+
+    $account = SocialAccount::factory()->telegram()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => '-1009999999999',
+    ]);
+
+    $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15), $account->id);
+
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
+        ->postJson(route('telegram.webhook'), telegramUpdate($code))
+        ->assertNoContent();
+
+    Event::assertDispatched(
+        TelegramConnectFailed::class,
+        fn (TelegramConnectFailed $event): bool => $event->reason === 'wrong_chat'
+    );
+
+    expect($this->workspace->socialAccounts()->count())->toBe(1)
+        ->and($account->fresh()->platform_user_id)->toBe('-1009999999999')
+        ->and(Cache::has("telegram:connect:{$code}"))->toBeFalse();
+});
+
+it('lets the user retry in the right chat with the same code', function () {
+    Http::fake();
+    config(['trypost.allow_multiple_social_accounts' => false]);
+
+    $account = SocialAccount::factory()->telegram()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => '-1001234567890',
+        'username' => 'stale',
+    ]);
+
+    $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15), $account->id);
+
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
+        ->postJson(route('telegram.webhook'), telegramUpdate($code, ['id' => -1009999999999]))
+        ->assertNoContent();
+
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
+        ->postJson(route('telegram.webhook'), telegramUpdate($code))
+        ->assertNoContent();
+
+    expect($account->fresh()->platform_user_id)->toBe('-1001234567890')
+        ->and($this->workspace->socialAccounts()->count())->toBe(1);
+});
+
+it('reconnects the card when its own chat posts the code', function () {
+    Http::fake();
+    config(['trypost.allow_multiple_social_accounts' => false]);
+
+    $account = SocialAccount::factory()->telegram()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => '-1001234567890',
+        'username' => 'stale',
+    ]);
+
+    $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15), $account->id);
+
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
+        ->postJson(route('telegram.webhook'), telegramUpdate($code))
+        ->assertNoContent();
+
+    expect($this->workspace->socialAccounts()->count())->toBe(1)
+        ->and($account->fresh()->platform_user_id)->toBe('-1001234567890')
+        ->and($account->fresh()->id)->toBe($account->id);
 });
 
 it('consumes the code once so it cannot be replayed for another chat', function () {
@@ -431,4 +519,29 @@ it('registers the webhook via the artisan command', function () {
             && $request['secret_token'] === 'shh-secret'
             && str_contains($request['url'], 'telegram/webhook');
     });
+});
+
+it('reports a busy connect instead of letting the webhook fail', function () {
+    Http::fake();
+    Event::fake([TelegramConnectFailed::class]);
+
+    $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15));
+    $lock = Cache::lock("social_connect:{$this->workspace->id}:telegram", 10);
+
+    expect($lock->get())->toBeTrue();
+
+    try {
+        $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
+            ->postJson(route('telegram.webhook'), telegramUpdate($code))
+            ->assertNoContent();
+    } finally {
+        $lock->release();
+    }
+
+    Event::assertDispatched(
+        TelegramConnectFailed::class,
+        fn (TelegramConnectFailed $event): bool => $event->reason === 'busy'
+    );
+
+    expect($this->workspace->socialAccounts()->count())->toBe(0);
 });

@@ -21,6 +21,7 @@ services:
       APP_KEY: ""                       # <- run key:generate (see header) and paste here
       APP_URL: http://localhost:8000    # <- your public URL, e.g. https://post.yourdomain.com
       SELF_HOSTED: "true"
+      ALLOW_MULTIPLE_SOCIAL_ACCOUNTS: "true"
       TRYPOST_TARGET: production
 
       # ===== Database (bundled postgres service below) =====

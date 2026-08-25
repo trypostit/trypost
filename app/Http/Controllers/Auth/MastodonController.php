@@ -6,7 +6,9 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
-use App\Models\Workspace;
+use App\Exceptions\SocialAccount\ConnectPopupException;
+use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
+use App\Models\SocialAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -30,6 +32,8 @@ class MastodonController extends SocialController
         $workspace = $request->user()->currentWorkspace;
 
         $this->authorize('manageAccounts', $workspace);
+
+        $this->rememberConnectSession($request, $workspace);
 
         return Inertia::render('accounts/MastodonConnect', [
             'errors' => session('errors')?->getBag('default')?->toArray() ?? [],
@@ -105,34 +109,29 @@ class MastodonController extends SocialController
     }
 
     /**
-     * Handle OAuth callback
+     * Handle the OAuth callback.
+     *
+     * Everything the flow needs is captured into locals before the session is
+     * cleared, so every exit below is free of cleanup.
      */
     public function callback(Request $request): InertiaResponse
     {
-        $workspaceId = session('social_connect_workspace');
         $savedState = session('mastodon_oauth_state');
         $instance = session('mastodon_instance');
         $clientId = session('mastodon_client_id');
         $clientSecret = session('mastodon_client_secret');
 
-        if (! $workspaceId || ! $instance) {
+        if (! $instance) {
             $this->clearMastodonSession();
 
-            return $this->popupCallback(false, __('accounts.popup_callback.session_expired'), $this->platform->value);
+            throw new ConnectPopupException('session_expired', $this->platform);
         }
+
+        $this->clearMastodonSession();
+        $workspace = $this->connectWorkspace($request);
 
         if ($request->state !== $savedState) {
-            $this->clearMastodonSession();
-
-            return $this->popupCallback(false, __('accounts.popup_callback.invalid_state'), $this->platform->value);
-        }
-
-        $workspace = Workspace::find($workspaceId);
-
-        if (! $workspace || ! $request->user()->can('manageAccounts', $workspace)) {
-            $this->clearMastodonSession();
-
-            return $this->popupCallback(false, __('accounts.popup_callback.workspace_not_found'), $this->platform->value);
+            throw new ConnectPopupException('invalid_state', $this->platform);
         }
 
         try {
@@ -177,12 +176,12 @@ class MastodonController extends SocialController
             // verify required scopes (write:statuses, write:media) before
             // attempting to post.
             $grantedScopes = array_values(array_filter(explode(' ', (string) data_get($tokenData, 'scope', self::SCOPES))));
+            $reconnect = $this->reconnectAccount($workspace);
 
-            $workspace->socialAccounts()->updateOrCreate(
-                [
-                    'platform' => $this->platform->value,
-                    'platform_user_id' => data_get($profile, 'id'),
-                ],
+            SocialAccount::connectIdentity(
+                $workspace,
+                $this->platform,
+                (string) data_get($profile, 'id'),
                 [
                     'username' => data_get($profile, 'acct'),
                     'display_name' => data_get($profile, 'display_name') ?: data_get($profile, 'username'),
@@ -200,22 +199,26 @@ class MastodonController extends SocialController
                         'client_secret' => $clientSecret,
                     ],
                 ],
+                $reconnect,
             );
 
-            $this->clearMastodonSession();
-
-            return $this->popupCallback(true, __('accounts.popup_callback.connected'), $this->platform->value);
+            return $this->connectedCallback($reconnect);
+        } catch (NetworkAlreadyConnectedException $e) {
+            return $this->popupCallback(false, __("accounts.popup_callback.{$e->messageKey}"), $this->platform->value);
         } catch (\Exception $e) {
             Log::error('Mastodon callback error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            $this->clearMastodonSession();
 
             return $this->popupCallback(false, __('accounts.popup_callback.error_connecting'), $this->platform->value);
         }
     }
 
+    /**
+     * Only the Mastodon-specific keys: the shared connect session is cleared by
+     * whatever closes the popup.
+     */
     private function clearMastodonSession(): void
     {
         session()->forget([
@@ -223,7 +226,6 @@ class MastodonController extends SocialController
             'mastodon_client_id',
             'mastodon_client_secret',
             'mastodon_oauth_state',
-            'social_connect_workspace',
         ]);
     }
 }

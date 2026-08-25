@@ -30,7 +30,7 @@ Validation rules always live in a dedicated `Illuminate\Foundation\Http\FormRequ
 
 NEVER call `$request->validate([...])` inline in the controller.
 
-Naming: `<Verb><Resource>Request.php` — `StorePostRequest`, `ApplyPostTemplateRequest`, `IndexPostTemplateRequest`.
+Naming: `<Verb><Resource>Request.php` — `StorePostRequest`, `UpdatePostRequest`, `LinkPreviewRequest`.
 
 ```php
 // BAD

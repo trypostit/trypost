@@ -30,7 +30,6 @@ import { store } from '@/routes/app/welcome/referral-source';
 const props = defineProps<{
     sources: string[];
     selected?: string | null;
-    plan: { name: string; interval: string };
 }>();
 
 const form = useForm<{ referral_source: string }>({
@@ -164,7 +163,7 @@ const submit = (): void => {
         :title="$t('welcome.referral_source_title')"
         :description="$t('welcome.referral_source_description')"
         :step="3"
-        wide
+        size="4xl"
     >
         <div class="flex flex-wrap justify-center gap-2.5">
             <button
@@ -222,7 +221,7 @@ const submit = (): void => {
                 size="lg"
                 class="w-full rounded-full"
                 :disabled="form.referral_source === '' || form.processing"
-                data-testid="welcome-start-checkout"
+                data-testid="welcome-referral-continue"
                 @click="submit"
             >
                 {{ $t('welcome.continue') }}

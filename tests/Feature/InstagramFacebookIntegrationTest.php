@@ -128,6 +128,7 @@ test('instagram facebook publisher uses graph.facebook.com', function () {
 });
 
 test('instagram standalone publisher uses graph.instagram.com', function () {
+    config()->set('trypost.allow_multiple_social_accounts', true);
     $standaloneAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::Instagram,

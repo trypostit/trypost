@@ -17,12 +17,13 @@ use Illuminate\Support\Str;
  */
 class TelegramConnectCode
 {
-    public static function issue(string $workspaceId, CarbonInterface $expiresAt): string
+    public static function issue(string $workspaceId, CarbonInterface $expiresAt, ?string $reconnectId = null): string
     {
         return Crypt::encryptString((string) json_encode([
             'workspace_id' => $workspaceId,
             'nonce' => Str::lower(Str::random(16)),
             'expires_at' => $expiresAt->getTimestamp(),
+            'reconnect_id' => $reconnectId,
         ]));
     }
 
@@ -30,7 +31,7 @@ class TelegramConnectCode
      * Decode and validate a code, returning its payload or null when the code is
      * missing, tampered with, malformed, or expired.
      *
-     * @return array{workspace_id: string, nonce: string, expires_at: int}|null
+     * @return array{workspace_id: string, nonce: string, expires_at: int, reconnect_id: string|null}|null
      */
     public static function decode(mixed $code): ?array
     {

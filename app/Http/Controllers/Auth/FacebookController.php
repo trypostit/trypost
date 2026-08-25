@@ -6,8 +6,9 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
+use App\Exceptions\SocialAccount\ConnectPopupException;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
-use App\Models\Workspace;
+use App\Models\SocialAccount;
 use App\Services\Social\Meta\GraphPaginator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -46,10 +47,7 @@ class FacebookController extends SocialController
 
         $this->authorize('manageAccounts', $workspace);
 
-        session([
-            'social_connect_workspace' => $workspace->id,
-            'social_reconnect_id' => null,
-        ]);
+        $this->rememberConnectSession($request, $workspace);
 
         return Inertia::location(
             Socialite::driver($this->driver)
@@ -62,17 +60,9 @@ class FacebookController extends SocialController
 
     public function callback(Request $request): InertiaResponse|RedirectResponse
     {
-        $workspaceId = session('social_connect_workspace');
+        $workspace = $this->connectWorkspace($request);
 
-        if (! $workspaceId) {
-            return $this->popupCallback(false, __('accounts.popup_callback.session_expired'), $this->platform->value);
-        }
-
-        $workspace = Workspace::find($workspaceId);
-
-        if (! $workspace || ! $request->user()->can('manageAccounts', $workspace)) {
-            return $this->popupCallback(false, __('accounts.popup_callback.workspace_not_found'), $this->platform->value);
-        }
+        $reconnect = $this->reconnectAccount($workspace);
 
         try {
             $socialUser = Socialite::driver($this->driver)->usingGraphVersion($this->graphVersion())->user();
@@ -84,11 +74,16 @@ class FacebookController extends SocialController
                 'access_token' => $socialUser->token,
             ]);
 
-            // Fetch pages the user manages
             $pages = $this->fetchPages($socialUser->token);
 
             if (empty($pages)) {
                 return $this->popupCallback(false, __('accounts.popup_callback.no_facebook_pages'), $this->platform->value);
+            }
+
+            $pages = $this->filterConnectableIdentities($workspace, $pages, 'id', $reconnect);
+
+            if (empty($pages)) {
+                return $this->noConnectableIdentities($reconnect, 'page_not_found');
             }
 
             // If only one page, connect directly
@@ -96,11 +91,10 @@ class FacebookController extends SocialController
                 $page = $pages[0];
                 $avatarPath = uploadFromUrl(data_get($page, 'picture'));
 
-                $workspace->socialAccounts()->updateOrCreate(
-                    [
-                        'platform' => $this->platform->value,
-                        'platform_user_id' => data_get($page, 'id'),
-                    ],
+                SocialAccount::connectIdentity(
+                    $workspace,
+                    $this->platform,
+                    (string) data_get($page, 'id'),
                     [
                         'username' => data_get($page, 'username', null),
                         'display_name' => data_get($page, 'name'),
@@ -118,9 +112,10 @@ class FacebookController extends SocialController
                             'user_token' => $socialUser->token,
                         ],
                     ],
+                    $reconnect,
                 );
 
-                return $this->popupCallback(true, __('accounts.popup_callback.connected'), $this->platform->value);
+                return $this->connectedCallback($reconnect);
             }
 
             // Multiple pages - store data and show selection
@@ -129,12 +124,13 @@ class FacebookController extends SocialController
                     'user_token' => $socialUser->token,
                     'user_id' => $socialUser->getId(),
                     'pages' => $pages,
+                    'reconnect_id' => $reconnect?->id,
                 ],
             ]);
 
             return redirect()->route('app.social.facebook.select-page');
-        } catch (NetworkAlreadyConnectedException) {
-            return $this->popupCallback(false, __('accounts.popup_callback.network_taken'), $this->platform->value);
+        } catch (NetworkAlreadyConnectedException $e) {
+            return $this->popupCallback(false, __("accounts.popup_callback.{$e->messageKey}"), $this->platform->value);
         } catch (\Exception $e) {
             Log::error('Facebook OAuth Error', [
                 'error' => $e->getMessage(),
@@ -148,17 +144,12 @@ class FacebookController extends SocialController
     public function selectPage(Request $request): InertiaResponse
     {
         $oauthData = session('facebook_oauth');
-        $workspaceId = session('social_connect_workspace');
 
-        if (! $oauthData || ! $workspaceId) {
-            return $this->popupCallback(false, __('accounts.popup_callback.session_expired'), $this->platform->value);
+        if (! $oauthData) {
+            throw new ConnectPopupException('session_expired', $this->platform);
         }
 
-        $workspace = Workspace::find($workspaceId);
-
-        if (! $workspace) {
-            return $this->popupCallback(false, __('accounts.popup_callback.workspace_not_found'), $this->platform->value);
-        }
+        $workspace = $this->connectWorkspace($request);
 
         $pages = collect(data_get($oauthData, 'pages'))
             ->map(fn ($page) => Arr::except($page, ['access_token']))
@@ -177,17 +168,12 @@ class FacebookController extends SocialController
         ]);
 
         $oauthData = session('facebook_oauth');
-        $workspaceId = session('social_connect_workspace');
 
-        if (! $oauthData || ! $workspaceId) {
-            return $this->popupCallback(false, __('accounts.popup_callback.session_expired'), $this->platform->value);
+        if (! $oauthData) {
+            throw new ConnectPopupException('session_expired', $this->platform);
         }
 
-        $workspace = Workspace::find($workspaceId);
-
-        if (! $workspace || ! $request->user()->can('manageAccounts', $workspace)) {
-            return $this->popupCallback(false, __('accounts.popup_callback.workspace_not_found'), $this->platform->value);
-        }
+        $workspace = $this->connectWorkspace($request);
 
         try {
             $selectedPage = collect(data_get($oauthData, 'pages'))->firstWhere('id', $request->page_id);
@@ -197,41 +183,12 @@ class FacebookController extends SocialController
             }
 
             $avatarPath = uploadFromUrl(data_get($selectedPage, 'picture'));
-            $reconnectId = data_get($oauthData, 'reconnect_id');
+            $reconnect = $this->reconnectAccount($workspace, data_get($oauthData, 'reconnect_id'));
 
-            if ($reconnectId) {
-                // Reconnect existing account
-                $existingAccount = $workspace->socialAccounts()->find($reconnectId);
-
-                if ($existingAccount) {
-                    $existingAccount->update([
-                        'platform_user_id' => data_get($selectedPage, 'id'),
-                        'username' => data_get($selectedPage, 'username') ?? null,
-                        'display_name' => data_get($selectedPage, 'name'),
-                        'avatar_url' => $avatarPath,
-                        'access_token' => data_get($selectedPage, 'access_token'),
-                        'refresh_token' => null,
-                        'token_expires_at' => null,
-                        'scopes' => $this->scopes,
-                        'meta' => [
-                            'page_id' => data_get($selectedPage, 'id'),
-                            'user_id' => data_get($oauthData, 'user_id'),
-                            'user_token' => data_get($oauthData, 'user_token'),
-                        ],
-                    ]);
-                    $existingAccount->markAsConnected();
-
-                    session()->forget(['facebook_oauth', 'social_reconnect_id']);
-
-                    return $this->popupCallback(true, __('accounts.popup_callback.reconnected'), $this->platform->value);
-                }
-            }
-
-            $workspace->socialAccounts()->updateOrCreate(
-                [
-                    'platform' => $this->platform->value,
-                    'platform_user_id' => data_get($selectedPage, 'id'),
-                ],
+            SocialAccount::connectIdentity(
+                $workspace,
+                $this->platform,
+                (string) data_get($selectedPage, 'id'),
                 [
                     'username' => data_get($selectedPage, 'username') ?? null,
                     'display_name' => data_get($selectedPage, 'name'),
@@ -249,13 +206,14 @@ class FacebookController extends SocialController
                         'user_token' => data_get($oauthData, 'user_token'),
                     ],
                 ],
+                $reconnect,
             );
 
-            session()->forget(['facebook_oauth', 'social_reconnect_id']);
+            session()->forget('facebook_oauth');
 
-            return $this->popupCallback(true, __('accounts.popup_callback.connected'), $this->platform->value);
-        } catch (NetworkAlreadyConnectedException) {
-            return $this->popupCallback(false, __('accounts.popup_callback.network_taken'), $this->platform->value);
+            return $this->connectedCallback($reconnect);
+        } catch (NetworkAlreadyConnectedException $e) {
+            return $this->popupCallback(false, __("accounts.popup_callback.{$e->messageKey}"), $this->platform->value);
         } catch (\Exception $e) {
             Log::error('Facebook page selection error', [
                 'error' => $e->getMessage(),

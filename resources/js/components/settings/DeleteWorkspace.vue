@@ -65,7 +65,7 @@ const openDeleteModal = () => {
 </script>
 
 <template>
-    <div class="space-y-6" dusk="workspace-danger-zone">
+    <div class="space-y-6">
         <HeadingSmall
             :title="$t('settings.workspace.delete_title')"
             :description="$t('settings.workspace.danger_description')"
@@ -83,7 +83,6 @@ const openDeleteModal = () => {
                 <Button
                     v-if="!isOnlyWorkspace"
                     variant="destructive"
-                    dusk="workspace-delete"
                     @click="openDeleteModal"
                 >
                     {{ $t('settings.workspace.delete_action') }}
@@ -92,7 +91,6 @@ const openDeleteModal = () => {
                     <Button
                         variant="outline"
                         as-child
-                        dusk="workspace-delete-billing-link"
                     >
                         <Link :href="billingIndex()">
                             {{ $t('settings.workspace.delete_go_to_billing') }}
@@ -101,7 +99,6 @@ const openDeleteModal = () => {
                     <Button
                         variant="destructive"
                         as-child
-                        dusk="workspace-delete-account-link"
                     >
                         <Link :href="editAuthentication()">
                             {{ $t('settings.workspace.delete_go_to_delete_account') }}

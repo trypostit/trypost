@@ -600,8 +600,6 @@ return [
         'ai_description' => 'Describe lo que quieres y la IA genera el contenido por ti.',
         'ai_configure_description' => 'Elige un formato y describe el post que quieres crear.',
         'ai_pick_template_description' => 'Elige un estilo para tu post generado por IA.',
-        'template_title' => 'Usar una plantilla',
-        'template_description' => 'Elige una de nuestras plantillas y personalízala.',
 
         'preview' => [
             'image_title' => 'Título de la imagen',
@@ -668,31 +666,6 @@ return [
                 'instagram_story' => 'Story de Instagram',
                 'facebook_story' => 'Story de Facebook',
             ],
-        ],
-    ],
-
-    'templates' => [
-        'browser_title' => 'Elige una plantilla',
-        'browser_description' => 'Comienza con una plantilla curada y adáptala.',
-        'search_placeholder' => 'Buscar plantillas…',
-        'no_search_results' => 'Ninguna plantilla coincide con tu búsqueda',
-        'try_different_search' => 'Prueba otra palabra clave o limpia la búsqueda.',
-        'slides_count' => '{count} slide|{count} slides',
-        'all_platforms' => 'Todas las plataformas',
-        'platform_search_placeholder' => 'Buscar plataforma…',
-        'no_platform_match' => 'Ninguna plataforma coincide.',
-        'use_this' => 'Usar esta plantilla',
-        'no_templates' => 'No hay plantillas disponibles.',
-        'applying' => 'Aplicando plantilla…',
-        'category' => [
-            'product_launch' => 'Lanzamiento de producto',
-            'promotion' => 'Promoción',
-            'educational' => 'Educativo',
-            'behind_the_scenes' => 'Detrás de cámaras',
-            'testimonial' => 'Testimonio',
-            'industry_tip' => 'Consejo del sector',
-            'event' => 'Evento',
-            'engagement' => 'Interacción',
         ],
     ],
 ];

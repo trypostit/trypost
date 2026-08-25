@@ -177,6 +177,7 @@ test('create post rejects scheduled_at in the past', function () {
 });
 
 test('create post rejects an inactive social account', function () {
+    config()->set('trypost.allow_multiple_social_accounts', true);
     $inactive = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::LinkedIn,

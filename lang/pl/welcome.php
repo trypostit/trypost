@@ -59,4 +59,9 @@ return [
         'blog' => 'Blog / newsletter',
         'other' => 'Coś innego',
     ],
+    'connect' => [
+        'title' => 'Połącz konto społecznościowe',
+        'description' => 'Wybierz co najmniej jedną sieć, na której TryPost może publikować Twoje treści.',
+        'required' => 'Połącz co najmniej jedno konto społecznościowe, aby kontynuować.',
+    ],
 ];

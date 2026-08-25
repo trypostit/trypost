@@ -59,4 +59,9 @@ return [
         'blog' => 'Blog / newsletter',
         'other' => 'Autre chose',
     ],
+    'connect' => [
+        'title' => 'Connectez un réseau social',
+        'description' => 'Choisissez au moins un réseau sur lequel TryPost peut publier votre contenu.',
+        'required' => 'Connectez au moins un réseau social pour continuer.',
+    ],
 ];

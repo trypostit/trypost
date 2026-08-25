@@ -6,12 +6,16 @@ namespace App\Models;
 
 use App\Enums\Notification\Channel;
 use App\Enums\Notification\Type;
+use App\Enums\PostPlatform\ContentType;
+use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
+use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Jobs\SendNotification;
 use App\Mail\AccountDisconnected;
 use App\Observers\SocialAccountObserver;
 use Database\Factories\SocialAccountFactory;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -20,7 +24,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 #[ObservedBy(SocialAccountObserver::class)]
@@ -79,6 +85,137 @@ class SocialAccount extends Model
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);
+    }
+
+    public static function occupiesNetwork(string $workspaceId, SocialPlatform $platform): bool
+    {
+        return ! config('trypost.allow_multiple_social_accounts')
+            && static::query()
+                ->where('workspace_id', $workspaceId)
+                ->whereIn('platform', $platform->networkPlatformValues())
+                ->exists();
+    }
+
+    /**
+     * Persist a freshly authorized identity.
+     *
+     * A reconnect only reuses its row when the provider returned the very same
+     * identity. Authorizing a different account is refused instead of repointing
+     * the card (and every post scheduled against it) at a stranger.
+     *
+     * @param  array<string, mixed>  $values
+     */
+    public static function connectIdentity(
+        Workspace $workspace,
+        SocialPlatform $platform,
+        string $platformUserId,
+        array $values,
+        ?self $reconnect = null,
+    ): self {
+        // The one-per-network rule is a config flag, so no database constraint
+        // can hold it and the observer's check-then-insert would let two popups
+        // finishing at once seat two different identities on one network.
+        try {
+            return Cache::lock("social_connect:{$workspace->id}:{$platform->network()}", 10)
+                ->block(5, fn (): self => static::persistIdentity(
+                    $workspace,
+                    $platform,
+                    $platformUserId,
+                    $values,
+                    $reconnect,
+                ));
+        } catch (LockTimeoutException) {
+            throw NetworkAlreadyConnectedException::connectInProgress($platform);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $values
+     */
+    private static function persistIdentity(
+        Workspace $workspace,
+        SocialPlatform $platform,
+        string $platformUserId,
+        array $values,
+        ?self $reconnect,
+    ): self {
+        $values['platform'] = $platform;
+        $values['platform_user_id'] = $platformUserId;
+
+        $identity = [
+            'platform' => $platform->value,
+            'platform_user_id' => $platformUserId,
+        ];
+
+        if (
+            $reconnect?->workspace_id === $workspace->id
+            && $reconnect->platform->network() === $platform->network()
+        ) {
+            if ((string) $reconnect->platform_user_id !== $platformUserId) {
+                throw NetworkAlreadyConnectedException::identityMismatch($platform);
+            }
+
+            $previousPlatform = $reconnect->platform;
+
+            try {
+                // The card and the targets that still have to publish through it
+                // move together or not at all.
+                DB::transaction(function () use ($reconnect, $values, $previousPlatform, $platform): void {
+                    $reconnect->update($values);
+
+                    static::realignUnpublishedTargets($reconnect, $previousPlatform, $platform);
+                });
+            } catch (UniqueConstraintViolationException) {
+                throw new NetworkAlreadyConnectedException($platform);
+            }
+
+            return $reconnect;
+        }
+
+        try {
+            return $workspace->socialAccounts()->updateOrCreate($identity, $values);
+        } catch (UniqueConstraintViolationException) {
+            $account = $workspace->socialAccounts()->where($identity)->firstOrFail();
+            $account->update($values);
+
+            return $account;
+        }
+    }
+
+    /**
+     * Reconnecting through the other variant of a network (Instagram directly
+     * after Facebook, a LinkedIn profile after its page) moves the card to the
+     * new platform. Post targets carry their own `platform` snapshot and that
+     * snapshot is what picks the publisher, the queue and the scopes checked
+     * before publishing, so a stale one fails the post on permissions it never
+     * needed.
+     *
+     * Only targets that still have a publish ahead of them move. Published rows
+     * record what really went out under a platform_post_id from that flavor of
+     * the API; failed ones are terminal; a publishing one has a job mid-flight
+     * that already read the snapshot it is working from.
+     */
+    private static function realignUnpublishedTargets(self $account, SocialPlatform $from, SocialPlatform $to): void
+    {
+        if ($from === $to) {
+            return;
+        }
+
+        $awaitingPublish = [PostPlatformStatus::Pending, PostPlatformStatus::Retrying];
+
+        $supported = array_values(array_map(
+            fn (ContentType $contentType): string => $contentType->value,
+            ContentType::forPlatform($to),
+        ));
+
+        $account->postPlatforms()
+            ->whereIn('status', $awaitingPublish)
+            ->whereNotIn('content_type', $supported)
+            ->update(['content_type' => ContentType::defaultFor($to)->value]);
+
+        $account->postPlatforms()
+            ->whereIn('status', $awaitingPublish)
+            ->update(['platform' => $to->value]);
     }
 
     public function postPlatforms(): HasMany

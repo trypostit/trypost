@@ -1280,6 +1280,7 @@ test('instagram publisher checkpoints the media id before fetching the permalink
 });
 
 test('instagram facebook publisher recovers a published container on graph.facebook.com', function () {
+    config()->set('trypost.allow_multiple_social_accounts', true);
     $account = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::InstagramFacebook,

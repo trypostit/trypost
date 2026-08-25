@@ -244,6 +244,16 @@ Standing constraints:
 - Coupon qualification stays: card required, exactly one workspace, no prior real subscription (`incomplete` / `incomplete_expired` still qualify).
 - Prefer documenting durable billing decisions here (and in `AGENTS.md`) — do **not** create a `.ai/` rules folder for this project.
 
+## Multiple social accounts per network
+
+One connected identity per social network per workspace is the Cloud default. This is **not** tied to `SELF_HOSTED` — Cloud cannot flip that flag, but it can flip this one.
+
+| Env | Config | Default | Effect |
+| --- | --- | --- | --- |
+| `ALLOW_MULTIPLE_SOCIAL_ACCOUNTS` | `trypost.allow_multiple_social_accounts` | `false` (falls back to `SELF_HOSTED` when unset) | `true`: a workspace may connect more than one account of the same network (two LinkedIns, two Instagrams, …). `false`: one per network (LinkedIn profile + page count as one; Instagram standalone + Instagram-via-Facebook count as one). Reconnecting the same `platform` + `platform_user_id` still updates the existing row. Shared to Inertia as `allowMultipleSocialAccounts`. |
+
+Self-hosted compose / `.env.example` set this `true`. When the env is unset, the config falls back to `SELF_HOSTED` so existing self-hosted installs keep multiple accounts. Do **not** use `selfHosted` for the occupancy check (observer, Telegram connect, `NetworkConnectGrid`).
+
 ## Icons (@tabler/icons-vue)
 
 - This project uses `@tabler/icons-vue` for all icons. NEVER use `lucide-vue-next`.
@@ -278,7 +288,7 @@ Standing constraints:
 ## Backend Validation
 
 - Validation rules always live in a dedicated `Illuminate\Foundation\Http\FormRequest` subclass under `app/Http/Requests/App/<Group>/`. Controller actions must type-hint the FormRequest as the parameter — NEVER call `$request->validate([...])` inline in the controller.
-- Naming: `<Verb><Resource>Request.php` (e.g. `StorePostRequest`, `ApplyPostTemplateRequest`, `IndexPostTemplateRequest`).
+- Naming: `<Verb><Resource>Request.php` (e.g. `StorePostRequest`, `UpdatePostRequest`, `LinkPreviewRequest`).
 
 ## Per-Platform Post Meta (`PostPlatform.meta`)
 
@@ -304,13 +314,19 @@ Standing constraints:
     - Example: `$this->postJson(route('app.posts.store'))` instead of `$this->postJson('/posts')`.
     - With params: `route('app.posts.ai.create.finalize', $creationId)`.
 
-## Dusk (Browser Tests)
+## Browser Tests (Pest + Playwright)
 
-- In Dusk tests, ALWAYS use named routes via `route()` helper. NEVER hardcode URLs like `'https://trypost.test/login'`.
-    - Example: `$browser->visit(route('login'))` instead of `$browser->visit('https://trypost.test/login')`.
-- ALWAYS use `dusk` selectors (`@selector-name`) for interacting with and asserting elements. NEVER use CSS classes (`.text-red-600`), tag names, or text strings.
-    - Add `dusk="my-element"` attributes to Vue components and use `$browser->click('@my-element')`, `$browser->waitFor('@my-element')`, etc.
-    - Example: `$browser->waitFor('@input-error')` instead of `$browser->waitFor('.text-red-600')`.
+Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` driving Playwright. **Laravel Dusk is not installed** — there is no `DuskTestCase`, no `$browser` object, and no `browse()`. Do not add `dusk="..."` attributes; they select nothing.
+
+- ALWAYS use named routes via `route()`. NEVER hardcode URLs like `'https://trypost.test/login'`.
+    - Example: `visit(route('login'))`.
+- ALWAYS target elements by `data-testid`. NEVER use CSS classes (`.text-red-600`), tag names, or text strings.
+    - `@my-element` resolves to `[data-testid="my-element"]`, so add `data-testid="my-element"` in the Vue component and use `$page->click('@my-element')`.
+    - Bind it for repeated elements: `:data-testid="`connect-${platform.value}`"`.
+- Assertions do NOT auto-wait on SPA paint. Wait for the element to mount and lay out first — see the `waitFor*TestId()` helper at the top of `tests/Browser/WelcomeConnectTest.php` and copy the pattern under a file-unique name (these helpers are global functions; a duplicated name collides across test files).
+- `BrowserTestCase` sets `$fakesVite = false` on purpose: these tests load real built assets, so faking Vite blanks the app.
+- End page assertions with `->assertNoJavaScriptErrors()`.
+- CI runs them un-parallelised (`php artisan test tests/Browser --compact`) against `npm run build` output, so keep them independent of a running dev server.
 
 ## Array Data Access
 

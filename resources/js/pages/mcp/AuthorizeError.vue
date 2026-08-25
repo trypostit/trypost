@@ -15,14 +15,12 @@ defineProps<{
     >
         <p
             class="text-sm text-muted-foreground"
-            dusk="mcp-authorize-error-description"
         >
             {{ errorDescription }}
         </p>
 
         <p
             class="rounded-lg border-2 border-foreground bg-muted px-3 py-2 font-mono text-xs text-foreground"
-            dusk="mcp-authorize-error-code"
         >
             {{ $t('mcp.authorize.error_code', { error }) }}
         </p>

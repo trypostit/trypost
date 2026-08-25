@@ -18,6 +18,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Multiple social accounts per network
+    |--------------------------------------------------------------------------
+    |
+    | When false (Cloud default), a workspace may connect only one account
+    | per social network. Variants of the same network (LinkedIn profile/page,
+    | Instagram standalone/Facebook) count as one. Reconnecting the same
+    | identity (platform + platform_user_id) still updates the existing row.
+    |
+    | Independent of SELF_HOSTED so Cloud can flip this later without becoming
+    | self-hosted. Self-hosted installs typically set this true.
+    |
+    */
+
+    'allow_multiple_social_accounts' => (bool) env(
+        'ALLOW_MULTIPLE_SOCIAL_ACCOUNTS',
+        env('SELF_HOSTED', true),
+    ),
+
+    /*
+    |--------------------------------------------------------------------------
     | Security
     |--------------------------------------------------------------------------
     |

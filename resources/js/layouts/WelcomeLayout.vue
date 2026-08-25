@@ -2,11 +2,28 @@
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
+import Toast from '@/components/Toast.vue';
 import {
+    connect as connectRoute,
     goals as goalsRoute,
     persona as personaRoute,
     referralSource as referralSourceRoute,
 } from '@/routes/app/welcome';
+
+const maxWidthClass = {
+    sm: 'max-w-sm',
+    md: 'max-w-md',
+    lg: 'max-w-lg',
+    xl: 'max-w-xl',
+    '2xl': 'max-w-2xl',
+    '3xl': 'max-w-3xl',
+    '4xl': 'max-w-4xl',
+    '5xl': 'max-w-5xl',
+    '6xl': 'max-w-6xl',
+    '7xl': 'max-w-7xl',
+} as const;
+
+type MaxWidthSize = keyof typeof maxWidthClass;
 
 const props = withDefaults(
     defineProps<{
@@ -14,14 +31,14 @@ const props = withDefaults(
         description?: string;
         step?: number;
         totalSteps?: number;
-        wide?: boolean;
+        size?: MaxWidthSize;
     }>(),
     {
         title: undefined,
         description: undefined,
         step: undefined,
-        totalSteps: 3,
-        wide: false,
+        totalSteps: 4,
+        size: 'xl',
     },
 );
 
@@ -29,6 +46,7 @@ const stepRoutes = computed(() => [
     personaRoute(),
     goalsRoute(),
     referralSourceRoute(),
+    connectRoute(),
 ]);
 
 const canNavigateTo = (stepNumber: number): boolean =>
@@ -39,7 +57,7 @@ const canNavigateTo = (stepNumber: number): boolean =>
     <div
         class="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10"
     >
-        <div class="w-full" :class="wide ? 'max-w-4xl' : 'max-w-xl'">
+        <div class="w-full" :class="maxWidthClass[size]">
             <div class="flex flex-col gap-8">
                 <div class="flex flex-col items-center gap-4">
                     <Link
@@ -84,12 +102,8 @@ const canNavigateTo = (stepNumber: number): boolean =>
                             </Link>
                             <div
                                 v-else
-                                :class="[
-                                    'h-2 w-8 rounded-full transition-colors',
-                                    stepNumber <= step
-                                        ? 'bg-primary'
-                                        : 'bg-muted',
-                                ]"
+                                class="flex h-6 w-8 items-center"
+                                :data-testid="`welcome-step-${stepNumber}`"
                                 :aria-current="
                                     stepNumber === step ? 'step' : undefined
                                 "
@@ -100,7 +114,16 @@ const canNavigateTo = (stepNumber: number): boolean =>
                                           })
                                         : undefined
                                 "
-                            />
+                            >
+                                <span
+                                    :class="[
+                                        'h-2 w-full rounded-full transition-colors',
+                                        stepNumber <= step
+                                            ? 'bg-primary'
+                                            : 'bg-muted',
+                                    ]"
+                                />
+                            </div>
                         </template>
                     </nav>
 
@@ -114,5 +137,6 @@ const canNavigateTo = (stepNumber: number): boolean =>
                 <slot />
             </div>
         </div>
+        <Toast />
     </div>
 </template>

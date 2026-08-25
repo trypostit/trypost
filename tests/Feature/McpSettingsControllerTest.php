@@ -313,6 +313,35 @@ it('orders connected mcp clients by last used descending', function (): void {
             ->where('connectedClients.1.name', 'Older Agent'));
 });
 
+it('orders a never-used client last instead of crashing', function (): void {
+    $used = mcpAccessToken($this->user, mcpOauthClient('Used Agent'), $this->workspace);
+    $neverUsed = mcpAccessToken($this->user, mcpOauthClient('Fresh Agent'), $this->workspace);
+
+    $used->forceFill(['last_used_at' => now()->subHour()])->saveQuietly();
+    $neverUsed->forceFill(['last_used_at' => null])->saveQuietly();
+
+    $this->actingAs($this->user)
+        ->get(route('app.mcp.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('connectedClients', 2)
+            ->where('connectedClients.0.name', 'Used Agent')
+            ->where('connectedClients.1.name', 'Fresh Agent'));
+});
+
+it('lists clients that have never been used', function (): void {
+    $first = mcpAccessToken($this->user, mcpOauthClient('First Agent'), $this->workspace);
+    $second = mcpAccessToken($this->user, mcpOauthClient('Second Agent'), $this->workspace);
+
+    $first->forceFill(['last_used_at' => null])->saveQuietly();
+    $second->forceFill(['last_used_at' => null])->saveQuietly();
+
+    $this->actingAs($this->user)
+        ->get(route('app.mcp.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->has('connectedClients', 2));
+});
+
 it('does not list unbound mcp grants', function (): void {
     mcpAccessToken($this->user, mcpOauthClient('Legacy Agent'), workspace: null);
 

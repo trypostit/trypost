@@ -30,7 +30,7 @@ class TelegramController extends SocialController
         $this->authorize('manageAccounts', $workspace);
 
         $expiresAt = now()->addMinutes(15);
-        $code = TelegramConnectCode::issue($workspace->id, $expiresAt);
+        $code = TelegramConnectCode::issue($workspace->id, $expiresAt, $this->validatedReconnectId($request, $workspace));
 
         return response()->json([
             'code' => $code,

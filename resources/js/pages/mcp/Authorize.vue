@@ -125,7 +125,7 @@ const onDenySubmit = (): void => {
                 <p class="text-sm text-muted-foreground">
                     {{ $t('mcp.authorize.logged_in_as') }}
                 </p>
-                <p class="font-medium" dusk="mcp-authorize-email">
+                <p class="font-medium">
                     {{ user.email }}
                 </p>
             </div>
@@ -145,7 +145,6 @@ const onDenySubmit = (): void => {
                             <button
                                 type="button"
                                 class="flex h-10 w-full items-center justify-between rounded-md border-2 border-foreground bg-card px-3 py-2 text-sm font-medium text-foreground shadow-2xs transition-colors hover:bg-muted/40"
-                                dusk="mcp-authorize-workspace"
                             >
                                 <span
                                     :class="
@@ -236,7 +235,6 @@ const onDenySubmit = (): void => {
                         'pointer-events-none opacity-25': !canApprove,
                     }"
                     :loading="approving"
-                    dusk="mcp-authorize-approve"
                 >
                     {{ $t('mcp.authorize.approve') }}
                 </Button>
@@ -257,7 +255,6 @@ const onDenySubmit = (): void => {
                     type="submit"
                     variant="outline"
                     class="w-full"
-                    dusk="mcp-authorize-cancel"
                 >
                     {{ $t('mcp.authorize.cancel') }}
                 </Button>

@@ -1001,6 +1001,7 @@ test('does not verify or warn about a post_platform on a paused account', functi
 });
 
 test('still verifies and warns about an active account when another account in the same workspace is paused', function () {
+    config()->set('trypost.allow_multiple_social_accounts', true);
     Mail::fake();
 
     $workspace = Workspace::factory()->create();

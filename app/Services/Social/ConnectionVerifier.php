@@ -20,11 +20,30 @@ use App\Models\SocialAccount;
 use App\Services\Social\Discord\DiscordClient;
 use App\Services\Social\Meta\GraphError;
 use App\Services\Social\Telegram\TelegramApi;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 class ConnectionVerifier
 {
+    /**
+     * Read and connect timeouts for a token refresh. Stated explicitly, even
+     * though they match the client's defaults, so a change to those cannot
+     * silently break the lock invariant below. Generous on purpose: giving up
+     * on a request the provider already processed loses a single-use
+     * refresh_token for good.
+     */
+    public const REFRESH_TIMEOUT_SECONDS = 30;
+
+    public const REFRESH_CONNECT_TIMEOUT_SECONDS = 10;
+
+    /**
+     * Must exceed the slowest refresh the timeouts above allow — Bluesky's two
+     * sequential calls — or the lock lapses mid-flight and a second process
+     * reuses the same single-use refresh_token. Pinned by a test.
+     */
+    public const REFRESH_LOCK_SECONDS = 120;
+
     /**
      * Verify that a social account connection is still valid.
      *
@@ -36,10 +55,9 @@ class ConnectionVerifier
         // Hard-expired tokens cannot make API calls — refresh is mandatory.
         // For tokens that are still valid OR only "expiring soon", try the
         // verify endpoint FIRST with the current access_token. This avoids
-        // rotating refresh_tokens unnecessarily — many providers (X v2,
-        // LinkedIn, etc.) invalidate the previous refresh_token on each
-        // refresh, so proactive refreshes during races cause false-positive
-        // disconnects even though the access_token still works fine.
+        // rotating refresh_tokens unnecessarily — X and Bluesky single-use
+        // theirs, so refreshing during a race disconnects an account whose
+        // access_token still works. (LinkedIn returns the same token.)
         if ($account->is_token_expired) {
             return $this->refreshThenVerify($account);
         }
@@ -97,6 +115,57 @@ class ConnectionVerifier
     }
 
     /**
+     * Pull a token out of a refresh response, refusing to persist a blank one.
+     *
+     * TokenRefreshClient classifies on HTTP status alone, so a 200 carrying no
+     * token would otherwise overwrite a credential that still works.
+     *
+     * @param  array<string, mixed>|null  $data
+     *
+     * @throws PlatformUnavailableException
+     */
+    private function rotatedTokenFrom(?array $data, string $key, string $current): string
+    {
+        $token = data_get($data, $key);
+
+        // Blank, not just missing: data_get()'s own default lets an explicit
+        // null through and overwrite.
+        return blank($token) ? $current : (string) $token;
+    }
+
+    private function tokenFrom(?array $data, Platform $platform, string $key = 'access_token'): string
+    {
+        $token = data_get($data, $key);
+
+        if (blank($token)) {
+            throw new PlatformUnavailableException(
+                "{$platform->label()} returned a successful refresh with no {$key}."
+            );
+        }
+
+        return (string) $token;
+    }
+
+    private function refreshHttp(): PendingRequest
+    {
+        return Http::timeout(self::REFRESH_TIMEOUT_SECONDS)
+            ->connectTimeout(self::REFRESH_CONNECT_TIMEOUT_SECONDS);
+    }
+
+    /**
+     * Check the stored access token as it is, skipping the refresh-and-retry
+     * ladder verify() runs — which would re-send a refresh_token the provider
+     * just rejected, and on Bluesky re-run a rate-limited password re-auth.
+     *
+     * @throws TokenExpiredException if the access token itself is rejected
+     * @throws PlatformUnavailableException if the platform is unreachable
+     */
+    public function verifyAccessToken(SocialAccount $account): bool
+    {
+        return $this->callVerifyEndpoint($account);
+    }
+
+    /**
      * @throws TokenExpiredException
      */
     private function callVerifyEndpoint(SocialAccount $account): bool
@@ -124,21 +193,39 @@ class ConnectionVerifier
      * use verify() instead. This method always attempts a refresh under
      * the per-account lock.
      *
+     * @return bool whether a refresh actually ran — false means another
+     *              process held the lock and this call proved nothing.
+     *
      * @throws TokenExpiredException if refresh is rejected by the provider (4xx)
      * @throws PlatformUnavailableException if the platform is unreachable (5xx / network)
      */
-    public function refreshToken(SocialAccount $account): void
+    public function refreshToken(SocialAccount $account): bool
     {
-        $lock = Cache::lock("token_refresh:{$account->id}", 30);
+        $lock = Cache::lock("token_refresh:{$account->id}", self::REFRESH_LOCK_SECONDS);
 
         if (! $lock->get()) {
-            // Another process is already refreshing this token
+            // Another process is already refreshing this token.
             $account->refresh();
 
-            return;
+            if ($account->is_token_expired) {
+                // Returning false would hand the caller a token it knows is
+                // dead; a publisher then posts with it, fails the post and
+                // disconnects the account. Transient is the truth here.
+                throw new PlatformUnavailableException(
+                    "A {$account->platform->label()} token refresh is already in progress."
+                );
+            }
+
+            return false;
         }
 
         try {
+            if (! $account->platform->hasTokenRefreshFlow()) {
+                // Page tokens, Mastodon and the shared bot tokens have
+                // nothing per-account to refresh.
+                return false;
+            }
+
             match ($account->platform) {
                 Platform::LinkedIn, Platform::LinkedInPage => $this->refreshLinkedInToken($account),
                 Platform::X => $this->refreshXToken($account),
@@ -148,10 +235,9 @@ class ConnectionVerifier
                 Platform::Pinterest => $this->refreshPinterestToken($account),
                 Platform::Threads => $this->refreshThreadsToken($account),
                 Platform::Instagram => $this->refreshInstagramToken($account),
-                // Facebook / InstagramFacebook use Page tokens that don't expire.
-                // Mastodon tokens don't expire either.
-                default => null,
             };
+
+            return true;
         } finally {
             $lock->release();
         }
@@ -163,7 +249,7 @@ class ConnectionVerifier
             throw new TokenExpiredException("No refresh token available for {$account->platform->label()} account");
         }
 
-        $response = TokenRefreshClient::for($account->platform)->send(fn () => Http::asForm()
+        $response = TokenRefreshClient::for($account->platform)->send(fn () => $this->refreshHttp()->asForm()
             ->post(config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken', [
                 'grant_type' => 'refresh_token',
                 'refresh_token' => $account->refresh_token,
@@ -174,8 +260,8 @@ class ConnectionVerifier
         $data = $response->json();
 
         $account->update([
-            'access_token' => data_get($data, 'access_token'),
-            'refresh_token' => data_get($data, 'refresh_token', $account->refresh_token),
+            'access_token' => $this->tokenFrom($data, $account->platform),
+            'refresh_token' => $this->rotatedTokenFrom($data, 'refresh_token', $account->refresh_token),
             'token_expires_at' => data_get($data, 'expires_in') ? now()->addSeconds(data_get($data, 'expires_in')) : null,
         ]);
 
@@ -188,7 +274,7 @@ class ConnectionVerifier
             throw new TokenExpiredException('No refresh token available for X account');
         }
 
-        $response = TokenRefreshClient::for(Platform::X)->send(fn () => Http::asForm()
+        $response = TokenRefreshClient::for(Platform::X)->send(fn () => $this->refreshHttp()->asForm()
             ->withBasicAuth(config('services.x.client_id'), config('services.x.client_secret'))
             ->post(config('trypost.platforms.x.api').'/oauth2/token', [
                 'grant_type' => 'refresh_token',
@@ -198,8 +284,8 @@ class ConnectionVerifier
         $data = $response->json();
 
         $account->update([
-            'access_token' => data_get($data, 'access_token'),
-            'refresh_token' => data_get($data, 'refresh_token', $account->refresh_token),
+            'access_token' => $this->tokenFrom($data, $account->platform),
+            'refresh_token' => $this->rotatedTokenFrom($data, 'refresh_token', $account->refresh_token),
             'token_expires_at' => now()->addSeconds(data_get($data, 'expires_in', $account->platform->defaultTokenTtlSeconds())),
         ]);
 
@@ -212,13 +298,13 @@ class ConnectionVerifier
         $client = TokenRefreshClient::for(Platform::Bluesky);
 
         try {
-            $response = $client->send(fn () => Http::withToken($account->refresh_token)
+            $response = $client->send(fn () => $this->refreshHttp()->withToken($account->refresh_token)
                 ->post("{$service}/xrpc/".BlueskyLexicon::REFRESH_SESSION));
 
             $data = $response->json();
             $account->update([
-                'access_token' => data_get($data, 'accessJwt'),
-                'refresh_token' => data_get($data, 'refreshJwt'),
+                'access_token' => $this->tokenFrom($data, $account->platform, 'accessJwt'),
+                'refresh_token' => $this->tokenFrom($data, $account->platform, 'refreshJwt'),
                 'token_expires_at' => now()->addHours(2),
             ]);
 
@@ -231,15 +317,15 @@ class ConnectionVerifier
 
         if (isset($account->meta['password'])) {
             try {
-                $reauth = $client->send(fn () => Http::post("{$service}/xrpc/".BlueskyLexicon::CREATE_SESSION, [
+                $reauth = $client->send(fn () => $this->refreshHttp()->post("{$service}/xrpc/".BlueskyLexicon::CREATE_SESSION, [
                     'identifier' => $account->meta['identifier'],
                     'password' => decrypt($account->meta['password']),
                 ]));
 
                 $data = $reauth->json();
                 $account->update([
-                    'access_token' => data_get($data, 'accessJwt'),
-                    'refresh_token' => data_get($data, 'refreshJwt'),
+                    'access_token' => $this->tokenFrom($data, $account->platform, 'accessJwt'),
+                    'refresh_token' => $this->tokenFrom($data, $account->platform, 'refreshJwt'),
                     'token_expires_at' => now()->addHours(2),
                 ]);
 
@@ -260,7 +346,7 @@ class ConnectionVerifier
             throw new TokenExpiredException('No refresh token available for YouTube account');
         }
 
-        $response = TokenRefreshClient::for(Platform::YouTube)->send(fn () => Http::asForm()
+        $response = TokenRefreshClient::for(Platform::YouTube)->send(fn () => $this->refreshHttp()->asForm()
             ->post(config('trypost.platforms.youtube.oauth_api').'/token', [
                 'grant_type' => 'refresh_token',
                 'refresh_token' => $account->refresh_token,
@@ -271,7 +357,7 @@ class ConnectionVerifier
         $data = $response->json();
 
         $account->update([
-            'access_token' => data_get($data, 'access_token'),
+            'access_token' => $this->tokenFrom($data, $account->platform),
             'token_expires_at' => data_get($data, 'expires_in') ? now()->addSeconds(data_get($data, 'expires_in')) : null,
         ]);
 
@@ -284,7 +370,7 @@ class ConnectionVerifier
             throw new TokenExpiredException('No refresh token available for TikTok account');
         }
 
-        $response = TokenRefreshClient::for(Platform::TikTok)->send(fn () => Http::asForm()
+        $response = TokenRefreshClient::for(Platform::TikTok)->send(fn () => $this->refreshHttp()->asForm()
             ->post(config('trypost.platforms.tiktok.api').'/oauth/token/', [
                 'grant_type' => 'refresh_token',
                 'refresh_token' => $account->refresh_token,
@@ -295,8 +381,8 @@ class ConnectionVerifier
         $data = $response->json();
 
         $account->update([
-            'access_token' => data_get($data, 'access_token'),
-            'refresh_token' => data_get($data, 'refresh_token', $account->refresh_token),
+            'access_token' => $this->tokenFrom($data, $account->platform),
+            'refresh_token' => $this->rotatedTokenFrom($data, 'refresh_token', $account->refresh_token),
             'token_expires_at' => data_get($data, 'expires_in') ? now()->addSeconds(data_get($data, 'expires_in')) : null,
         ]);
 
@@ -311,7 +397,7 @@ class ConnectionVerifier
 
         $credentials = base64_encode(config('services.pinterest.client_id').':'.config('services.pinterest.client_secret'));
 
-        $response = TokenRefreshClient::for(Platform::Pinterest)->send(fn () => Http::withHeaders([
+        $response = TokenRefreshClient::for(Platform::Pinterest)->send(fn () => $this->refreshHttp()->withHeaders([
             'Authorization' => "Basic {$credentials}",
             'Content-Type' => 'application/x-www-form-urlencoded',
         ])->asForm()->post(config('trypost.platforms.pinterest.api').'/oauth/token', [
@@ -322,8 +408,8 @@ class ConnectionVerifier
         $data = $response->json();
 
         $account->update([
-            'access_token' => data_get($data, 'access_token'),
-            'refresh_token' => data_get($data, 'refresh_token', $account->refresh_token),
+            'access_token' => $this->tokenFrom($data, $account->platform),
+            'refresh_token' => $this->rotatedTokenFrom($data, 'refresh_token', $account->refresh_token),
             'token_expires_at' => data_get($data, 'expires_in') ? now()->addSeconds(data_get($data, 'expires_in')) : null,
         ]);
 
@@ -334,7 +420,7 @@ class ConnectionVerifier
     {
         // Threads uses long-lived tokens that can be refreshed
         $response = TokenRefreshClient::for(Platform::Threads)->send(
-            fn () => Http::get(config('trypost.platforms.threads.auth_api').'/refresh_access_token', [
+            fn () => $this->refreshHttp()->get(config('trypost.platforms.threads.auth_api').'/refresh_access_token', [
                 'grant_type' => 'th_refresh_token',
                 'access_token' => $account->access_token,
             ]),
@@ -342,7 +428,7 @@ class ConnectionVerifier
         );
 
         $data = $response->json();
-        $newToken = data_get($data, 'access_token');
+        $newToken = $this->tokenFrom($data, $account->platform);
 
         $account->update([
             'access_token' => $newToken,
@@ -356,7 +442,7 @@ class ConnectionVerifier
     private function refreshInstagramToken(SocialAccount $account): void
     {
         $response = TokenRefreshClient::for(Platform::Instagram)->send(
-            fn () => Http::get(config('trypost.platforms.instagram.auth_api').'/refresh_access_token', [
+            fn () => $this->refreshHttp()->get(config('trypost.platforms.instagram.auth_api').'/refresh_access_token', [
                 'grant_type' => 'ig_refresh_token',
                 'access_token' => $account->access_token,
             ]),
@@ -364,7 +450,7 @@ class ConnectionVerifier
         );
 
         $data = $response->json();
-        $newToken = data_get($data, 'access_token');
+        $newToken = $this->tokenFrom($data, $account->platform);
 
         $account->update([
             'access_token' => $newToken,

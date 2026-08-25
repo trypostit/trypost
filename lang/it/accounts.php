@@ -5,6 +5,7 @@ return [
     'page_title' => 'Account social',
     'description' => 'Panoramica di tutti i tuoi account social collegati',
     'connect_cta' => 'Collega',
+    'connect_another' => 'Collega un altro',
 
     'not_connected' => 'Non collegato',
     'connect' => 'Collega',
@@ -75,6 +76,8 @@ return [
         'retry' => 'Riprova',
         'error_generic' => 'Impossibile avviare il collegamento. Riprova.',
         'network_taken' => 'Questo workspace ha già un canale Telegram collegato. Scollegalo prima.',
+        'wrong_chat' => 'Pubblica il comando nel canale che stai ricollegando.',
+        'busy' => 'Una connessione precedente è ancora in corso. Invia di nuovo il comando tra un istante.',
     ],
 
     'facebook' => [
@@ -140,6 +143,9 @@ return [
         'reconnected' => 'Account ricollegato!',
         'error_connecting' => 'Errore durante il collegamento dell\'account. Riprova.',
         'network_taken' => 'Questo workspace ha già un account per questa rete. Scollegalo prima.',
+        'wrong_account' => 'Questo è un account diverso. Autorizza quello che stai ricollegando.',
+        'all_connected' => 'Tutti gli account di questo accesso sono già collegati.',
+        'busy' => 'Una connessione precedente è ancora in corso. Riprova tra un istante.',
         'error_connecting_page' => 'Errore durante il collegamento della pagina. Riprova.',
         'error_connecting_channel' => 'Errore durante il collegamento del canale. Riprova.',
         'session_expired' => 'Sessione scaduta. Riprova.',

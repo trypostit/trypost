@@ -6,8 +6,9 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
+use App\Exceptions\SocialAccount\ConnectPopupException;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
-use App\Models\Workspace;
+use App\Models\SocialAccount;
 use App\Services\Social\TokenRedactor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -34,10 +35,7 @@ class ThreadsController extends SocialController
 
         $this->authorize('manageAccounts', $workspace);
 
-        session([
-            'social_connect_workspace' => $workspace->id,
-            'social_reconnect_id' => null,
-        ]);
+        $this->rememberConnectSession($request, $workspace);
 
         $state = bin2hex(random_bytes(16));
         session(['threads_oauth_state' => $state]);
@@ -55,27 +53,12 @@ class ThreadsController extends SocialController
 
     public function callback(Request $request): InertiaResponse
     {
-        $workspaceId = session('social_connect_workspace');
         $savedState = session('threads_oauth_state');
-
-        if (! $workspaceId) {
-            session()->forget(['threads_oauth_state', 'social_reconnect_id']);
-
-            return $this->popupCallback(false, __('accounts.popup_callback.session_expired'), $this->platform->value);
-        }
+        session()->forget('threads_oauth_state');
+        $workspace = $this->connectWorkspace($request);
 
         if ($request->state !== $savedState) {
-            session()->forget(['threads_oauth_state', 'social_reconnect_id']);
-
-            return $this->popupCallback(false, __('accounts.popup_callback.invalid_state'), $this->platform->value);
-        }
-
-        $workspace = Workspace::find($workspaceId);
-
-        if (! $workspace || ! $request->user()->can('manageAccounts', $workspace)) {
-            session()->forget(['threads_oauth_state', 'social_reconnect_id']);
-
-            return $this->popupCallback(false, __('accounts.popup_callback.workspace_not_found'), $this->platform->value);
+            throw new ConnectPopupException('invalid_state', $this->platform);
         }
 
         try {
@@ -134,12 +117,12 @@ class ThreadsController extends SocialController
 
             $profile = $profileResponse->json();
             $avatarPath = uploadFromUrl(data_get($profile, 'threads_profile_picture_url', null));
+            $reconnect = $this->reconnectAccount($workspace);
 
-            $workspace->socialAccounts()->updateOrCreate(
-                [
-                    'platform' => $this->platform->value,
-                    'platform_user_id' => data_get($profile, 'id'),
-                ],
+            SocialAccount::connectIdentity(
+                $workspace,
+                $this->platform,
+                (string) data_get($profile, 'id'),
                 [
                     'username' => data_get($profile, 'username'),
                     'display_name' => data_get($profile, 'name', data_get($profile, 'username')),
@@ -152,20 +135,17 @@ class ThreadsController extends SocialController
                     'error_message' => null,
                     'disconnected_at' => null,
                 ],
+                $reconnect,
             );
 
-            session()->forget(['threads_oauth_state', 'social_reconnect_id']);
-
-            return $this->popupCallback(true, __('accounts.popup_callback.connected'), $this->platform->value);
-        } catch (NetworkAlreadyConnectedException) {
-            return $this->popupCallback(false, __('accounts.popup_callback.network_taken'), $this->platform->value);
+            return $this->connectedCallback($reconnect);
+        } catch (NetworkAlreadyConnectedException $e) {
+            return $this->popupCallback(false, __("accounts.popup_callback.{$e->messageKey}"), $this->platform->value);
         } catch (\Exception $e) {
             Log::error('Threads OAuth Error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-
-            session()->forget(['threads_oauth_state', 'social_reconnect_id']);
 
             return $this->popupCallback(false, __('accounts.popup_callback.error_connecting'), $this->platform->value);
         }

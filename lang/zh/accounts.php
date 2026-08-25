@@ -5,6 +5,7 @@ return [
     'page_title' => '社交账号',
     'description' => '查看你所有已连接的社交账号',
     'connect_cta' => '连接',
+    'connect_another' => '连接另一个',
 
     'not_connected' => '未连接',
     'connect' => '连接',
@@ -75,6 +76,8 @@ return [
         'retry' => '重试',
         'error_generic' => '无法启动连接，请重试。',
         'network_taken' => '此工作区已连接了一个 Telegram 频道。请先断开该连接。',
+        'wrong_chat' => '请在你要重新连接的频道中发送该命令。',
+        'busy' => '另一个连接仍在完成中，请稍后重新发送该命令。',
     ],
 
     'facebook' => [
@@ -140,6 +143,9 @@ return [
         'reconnected' => '账号已重新连接！',
         'error_connecting' => '连接账号时出错，请重试。',
         'network_taken' => '此工作区已连接了该网络的账号。请先断开该连接。',
+        'wrong_account' => '这是另一个账号。请授权你正在重新连接的那个。',
+        'all_connected' => '此登录下的所有账号都已连接。',
+        'busy' => '另一个连接仍在完成中，请稍后重试。',
         'error_connecting_page' => '连接页面时出错，请重试。',
         'error_connecting_channel' => '连接频道时出错，请重试。',
         'session_expired' => '会话已过期，请重试。',

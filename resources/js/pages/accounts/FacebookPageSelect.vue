@@ -69,7 +69,6 @@ const pageUrl = (username: string | null): string | null =>
                     v-for="page in pages"
                     :key="page.id"
                     class="flex items-center gap-4 rounded-lg border bg-card p-4"
-                    dusk="facebook-page"
                 >
                     <Avatar class="h-12 w-12 shrink-0 rounded-lg">
                         <AvatarImage v-if="page.picture" :src="page.picture" class="object-cover" />
@@ -94,7 +93,7 @@ const pageUrl = (username: string | null): string | null =>
                             <IconExternalLink class="h-4 w-4" />
                             <span class="hidden sm:inline">{{ $t('accounts.facebook.view') }}</span>
                         </Button>
-                        <Button size="sm" dusk="choose-facebook-page" :disabled="form.processing" @click="handleSelectPage(page)">
+                        <Button size="sm" :disabled="form.processing" @click="handleSelectPage(page)">
                             {{ $t('accounts.facebook.choose') }}
                         </Button>
                     </div>

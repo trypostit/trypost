@@ -33,5 +33,6 @@
         <env name="FILESYSTEM_DISK" value="local"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="ALLOW_MULTIPLE_SOCIAL_ACCOUNTS" value="false" force="true"/>
     </php>
 </phpunit>

@@ -8,20 +8,23 @@ use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Plan\Slug;
 use App\Enums\PostHog\CheckoutEvent;
 use App\Enums\PostHog\WelcomeEvent;
+use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
+use App\Http\Requests\App\Welcome\StoreWelcomeConnectRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeGoalsRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeReferralSourceRequest;
+use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Plan;
-use App\Models\User;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class WelcomeController extends Controller
 {
@@ -106,31 +109,22 @@ class WelcomeController extends Controller
         }
 
         $user = $request->user();
-        $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
 
         return Inertia::render('welcome/ReferralSource', [
             'sources' => array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases()),
             'selected' => $user->referral_source?->value,
-            'plan' => [
-                'name' => $plan->name,
-                'interval' => 'monthly',
-            ],
         ]);
     }
 
     public function storeReferralSource(
         StoreWelcomeReferralSourceRequest $request,
-        StartSubscriptionCheckout $checkout,
         PostHogService $postHog,
-    ): Response|RedirectResponse {
+    ): RedirectResponse {
         if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true)) {
             return $redirect;
         }
 
         $user = $request->user();
-
-        abort_unless($user->isAccountOwner(), Response::HTTP_FORBIDDEN);
-
         $referralSource = (string) $request->validated('referral_source');
 
         $user->update(['referral_source' => $referralSource]);
@@ -145,6 +139,41 @@ class WelcomeController extends Controller
             $user->account,
         );
 
+        return redirect()->route('app.welcome.connect');
+    }
+
+    public function connect(Request $request): InertiaResponse|RedirectResponse
+    {
+        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireReferral: true)) {
+            return $redirect;
+        }
+
+        $workspace = $request->user()->currentWorkspace;
+
+        abort_unless($workspace !== null, Response::HTTP_NOT_FOUND);
+
+        return Inertia::render('welcome/Connect', [
+            'platforms' => SocialPlatform::connectableOptions(),
+            'accounts' => SocialAccountResource::collection(
+                $workspace->socialAccounts()->orderBy('id')->get(),
+            )->resolve(),
+        ]);
+    }
+
+    public function storeConnect(
+        StoreWelcomeConnectRequest $request,
+        StartSubscriptionCheckout $checkout,
+        PostHogService $postHog,
+    ): Response|RedirectResponse {
+        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireReferral: true)) {
+            return $redirect;
+        }
+
+        abort_unless($request->user()->currentWorkspace !== null, Response::HTTP_NOT_FOUND);
+
+        $user = $request->user();
+        $platforms = $request->connectedPlatforms();
+
         $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
         $priceId = $plan->stripe_monthly_price_id;
 
@@ -153,15 +182,25 @@ class WelcomeController extends Controller
         $response = $checkout->redirect(
             $user->account,
             $priceId,
-            route('app.welcome.referral-source'),
+            route('app.welcome.connect'),
         );
 
-        $postHog->capture(
-            $user->id,
-            CheckoutEvent::Started->value,
-            ['plan_name' => $plan->name, 'interval' => 'monthly'],
-            $user->account,
-        );
+        try {
+            $postHog->capture(
+                $user->id,
+                WelcomeEvent::Connect->value,
+                ['platforms' => $platforms],
+                $user->account,
+            );
+            $postHog->capture(
+                $user->id,
+                CheckoutEvent::Started->value,
+                ['plan_name' => $plan->name, 'interval' => 'monthly'],
+                $user->account,
+            );
+        } catch (Throwable $e) {
+            report($e);
+        }
 
         return $response;
     }
@@ -183,8 +222,11 @@ class WelcomeController extends Controller
         ]);
     }
 
-    private function redirectIfStepIncomplete(Request $request, bool $requireGoals = false): ?RedirectResponse
-    {
+    private function redirectIfStepIncomplete(
+        Request $request,
+        bool $requireGoals = false,
+        bool $requireReferral = false,
+    ): ?RedirectResponse {
         if ($redirect = $this->redirectIfUnavailable($request)) {
             return $redirect;
         }
@@ -195,29 +237,15 @@ class WelcomeController extends Controller
             return redirect()->route('app.welcome.persona');
         }
 
-        if ($requireGoals && ! $this->hasCurrentGoals($user)) {
+        if ($requireGoals && ! Goal::containsCurrent($user->goals)) {
             return redirect()->route('app.welcome.goals');
         }
 
-        return null;
-    }
-
-    /**
-     * True when the user has at least one goal that still exists in Goal.
-     * Dropped enum values must not satisfy the gate or users mid-funnel can
-     * skip re-selecting after we slim the list.
-     */
-    private function hasCurrentGoals(User $user): bool
-    {
-        $goals = $user->goals;
-
-        if (! is_array($goals) || $goals === []) {
-            return false;
+        if ($requireReferral && ! $user->referral_source) {
+            return redirect()->route('app.welcome.referral-source');
         }
 
-        $allowed = array_map(fn (Goal $goal): string => $goal->value, Goal::cases());
-
-        return array_intersect($goals, $allowed) !== [];
+        return null;
     }
 
     private function redirectIfUnavailable(Request $request): ?RedirectResponse

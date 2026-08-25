@@ -77,7 +77,7 @@ const organizationUrl = (vanity: string | null): string | null =>
                 </div>
             </div>
 
-            <div v-if="isEmpty" class="py-12 text-center" dusk="linkedin-identity-empty">
+            <div v-if="isEmpty" class="py-12 text-center">
                 <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-muted">
                     <IconBuilding class="h-7 w-7 text-muted-foreground" />
                 </div>
@@ -91,7 +91,6 @@ const organizationUrl = (vanity: string | null): string | null =>
                 <div
                     v-if="person"
                     class="flex items-center gap-4 rounded-lg border bg-card p-4"
-                    dusk="linkedin-identity-person"
                 >
                     <Avatar class="h-12 w-12 shrink-0 rounded-lg">
                         <AvatarImage v-if="person.avatar" :src="person.avatar" class="object-cover" />
@@ -123,7 +122,7 @@ const organizationUrl = (vanity: string | null): string | null =>
                             <IconExternalLink class="h-4 w-4" />
                             <span class="hidden sm:inline">{{ $t('accounts.linkedin.view') }}</span>
                         </Button>
-                        <Button size="sm" dusk="choose-person" :disabled="form.processing" @click="choosePerson">
+                        <Button size="sm" :disabled="form.processing" @click="choosePerson">
                             {{ $t('accounts.linkedin.choose') }}
                         </Button>
                     </div>
@@ -133,7 +132,6 @@ const organizationUrl = (vanity: string | null): string | null =>
                     v-for="org in organizations"
                     :key="org.id"
                     class="flex items-center gap-4 rounded-lg border bg-card p-4"
-                    dusk="linkedin-identity-organization"
                 >
                     <Avatar class="h-12 w-12 shrink-0 rounded-lg">
                         <AvatarImage v-if="org.logo" :src="org.logo" class="object-cover" />
@@ -165,7 +163,7 @@ const organizationUrl = (vanity: string | null): string | null =>
                             <IconExternalLink class="h-4 w-4" />
                             <span class="hidden sm:inline">{{ $t('accounts.linkedin.view') }}</span>
                         </Button>
-                        <Button size="sm" dusk="choose-organization" :disabled="form.processing" @click="chooseOrganization(org)">
+                        <Button size="sm" :disabled="form.processing" @click="chooseOrganization(org)">
                             {{ $t('accounts.linkedin.choose') }}
                         </Button>
                     </div>

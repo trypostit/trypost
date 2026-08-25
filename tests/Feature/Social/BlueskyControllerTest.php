@@ -80,8 +80,8 @@ test('user cannot connect bluesky with invalid credentials', function () {
     ]);
 });
 
-test('user can connect multiple bluesky accounts in self-hosted mode', function () {
-    config()->set('trypost.self_hosted', true);
+test('user can connect multiple bluesky accounts when multiple social accounts are allowed', function () {
+    config()->set('trypost.allow_multiple_social_accounts', true);
 
     SocialAccount::factory()->bluesky()->create([
         'workspace_id' => $this->workspace->id,
@@ -113,6 +113,40 @@ test('user can connect multiple bluesky accounts in self-hosted mode', function 
     expect($this->workspace->socialAccounts()->where('platform', Platform::Bluesky)->count())->toBe(2);
 });
 
+test('bluesky store shows network_taken when the network is already connected', function () {
+    config()->set('trypost.allow_multiple_social_accounts', false);
+
+    SocialAccount::factory()->bluesky()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => 'did:plc:existing123',
+    ]);
+
+    Http::fake([
+        'https://bsky.social/xrpc/com.atproto.server.createSession' => Http::response([
+            'did' => 'did:plc:newuser456',
+            'handle' => 'newuser.bsky.social',
+            'accessJwt' => 'test-access-token',
+            'refreshJwt' => 'test-refresh-token',
+        ], 200),
+        'https://bsky.social/xrpc/app.bsky.actor.getProfile*' => Http::response([
+            'did' => 'did:plc:newuser456',
+            'handle' => 'newuser.bsky.social',
+            'displayName' => 'New User',
+        ], 200),
+    ]);
+
+    $response = $this->actingAs($this->user)->post(route('app.social.bluesky.store'), [
+        'identifier' => 'newuser.bsky.social',
+        'password' => 'xxxx-xxxx-xxxx-xxxx',
+    ]);
+
+    $response->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
+    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', __('accounts.popup_callback.network_taken')));
+
+    expect($this->workspace->socialAccounts()->where('platform', Platform::Bluesky)->count())->toBe(1);
+});
+
 test('bluesky connection validates required fields', function () {
     $response = $this->actingAs($this->user)->post(route('app.social.bluesky.store'), [
         'identifier' => '',
@@ -120,4 +154,91 @@ test('bluesky connection validates required fields', function () {
     ]);
 
     $response->assertSessionHasErrors(['identifier', 'password']);
+});
+
+test('bluesky store reconnects the original card', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Bluesky,
+        'platform_user_id' => 'did:plc:testuser123',
+        'username' => 'old',
+        'access_token' => 'expired-token',
+        'status' => Status::TokenExpired,
+    ]);
+
+    session(['social_reconnect_id' => $account->id]);
+
+    $service = config('trypost.platforms.bluesky.default_service');
+
+    Http::fake([
+        "{$service}/xrpc/com.atproto.server.createSession" => Http::response([
+            'did' => 'did:plc:testuser123',
+            'handle' => 'testuser.bsky.social',
+            'accessJwt' => 'fresh-access-token',
+            'refreshJwt' => 'fresh-refresh-token',
+        ], 200),
+        "{$service}/xrpc/app.bsky.actor.getProfile*" => Http::response([
+            'did' => 'did:plc:testuser123',
+            'handle' => 'testuser.bsky.social',
+            'displayName' => 'Test User',
+            'avatar' => null,
+        ], 200),
+    ]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.social.bluesky.store'), [
+            'identifier' => 'testuser.bsky.social',
+            'password' => 'xxxx-xxxx-xxxx-xxxx',
+        ])
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('success', true)
+            ->where('message', __('accounts.popup_callback.reconnected'))
+        );
+
+    expect($this->workspace->socialAccounts()->count())->toBe(1)
+        ->and($account->fresh()->username)->toBe('testuser.bsky.social')
+        ->and($account->fresh()->status)->toBe(Status::Connected);
+});
+
+test('bluesky reconnect that authenticates another handle says so instead of connecting', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Bluesky,
+        'platform_user_id' => 'did:plc:testuser123',
+        'username' => 'old',
+    ]);
+
+    session(['social_reconnect_id' => $account->id]);
+
+    $service = config('trypost.platforms.bluesky.default_service');
+
+    Http::fake([
+        "{$service}/xrpc/com.atproto.server.createSession" => Http::response([
+            'did' => 'did:plc:someoneelse999',
+            'handle' => 'someone-else.bsky.social',
+            'accessJwt' => 'other-access-token',
+            'refreshJwt' => 'other-refresh-token',
+        ], 200),
+        "{$service}/xrpc/app.bsky.actor.getProfile*" => Http::response([
+            'did' => 'did:plc:someoneelse999',
+            'handle' => 'someone-else.bsky.social',
+            'displayName' => 'Someone Else',
+            'avatar' => null,
+        ], 200),
+    ]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.social.bluesky.store'), [
+            'identifier' => 'someone-else.bsky.social',
+            'password' => 'xxxx-xxxx-xxxx-xxxx',
+        ])
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('success', false)
+            ->where('message', __('accounts.popup_callback.wrong_account'))
+        );
+
+    expect($this->workspace->socialAccounts()->count())->toBe(1)
+        ->and($account->fresh()->platform_user_id)->toBe('did:plc:testuser123');
 });

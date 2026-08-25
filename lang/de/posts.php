@@ -602,8 +602,6 @@ return [
         'ai_description' => 'Beschreibe, was du möchtest, und die KI generiert den Inhalt für dich.',
         'ai_configure_description' => 'Wähle ein Format und beschreibe den Beitrag, den du erstellen möchtest.',
         'ai_pick_template_description' => 'Wähle einen Stil für deinen KI-generierten Beitrag.',
-        'template_title' => 'Vorlage verwenden',
-        'template_description' => 'Wähle aus unseren kuratierten Vorlagen und passe sie an.',
         'coming_soon' => 'Demnächst verfügbar',
 
         'preview' => [
@@ -669,31 +667,6 @@ return [
                 'instagram_story' => 'Instagram-Story',
                 'facebook_story' => 'Facebook-Story',
             ],
-        ],
-    ],
-
-    'templates' => [
-        'browser_title' => 'Wähle eine Vorlage',
-        'browser_description' => 'Beginne mit einer kuratierten Vorlage und passe sie an.',
-        'search_placeholder' => 'Vorlagen suchen…',
-        'no_search_results' => 'Keine Vorlagen passen zu deiner Suche',
-        'try_different_search' => 'Versuche ein anderes Stichwort oder setze die Suche zurück.',
-        'slides_count' => '{count} Slide|{count} Slides',
-        'all_platforms' => 'Alle Plattformen',
-        'platform_search_placeholder' => 'Plattform suchen…',
-        'no_platform_match' => 'Keine passende Plattform.',
-        'use_this' => 'Diese Vorlage verwenden',
-        'no_templates' => 'Keine Vorlagen verfügbar.',
-        'applying' => 'Vorlage wird angewendet…',
-        'category' => [
-            'product_launch' => 'Produkteinführung',
-            'promotion' => 'Aktion',
-            'educational' => 'Lehrreich',
-            'behind_the_scenes' => 'Hinter den Kulissen',
-            'testimonial' => 'Kundenstimme',
-            'industry_tip' => 'Branchentipp',
-            'event' => 'Event',
-            'engagement' => 'Engagement',
         ],
     ],
 ];

@@ -600,8 +600,6 @@ return [
         'ai_description' => '作りたい内容を説明すると、AI がコンテンツを生成します。',
         'ai_configure_description' => '形式を選んで、作成したい投稿を説明してください。',
         'ai_pick_template_description' => 'AI が生成する投稿のスタイルを選んでください。',
-        'template_title' => 'テンプレートを使用',
-        'template_description' => '厳選されたテンプレートから選んでカスタマイズします。',
         'coming_soon' => '近日公開',
 
         'preview' => [
@@ -667,31 +665,6 @@ return [
                 'instagram_story' => 'Instagram ストーリー',
                 'facebook_story' => 'Facebook ストーリー',
             ],
-        ],
-    ],
-
-    'templates' => [
-        'browser_title' => 'テンプレートを選択',
-        'browser_description' => '厳選されたテンプレートから始めてアレンジしましょう。',
-        'search_placeholder' => 'テンプレートを検索…',
-        'no_search_results' => '検索に一致するテンプレートがありません',
-        'try_different_search' => '別のキーワードを試すか、検索をクリアしてください。',
-        'slides_count' => '{count} 枚のスライド|{count} 枚のスライド',
-        'all_platforms' => 'すべてのプラットフォーム',
-        'platform_search_placeholder' => 'プラットフォームを検索…',
-        'no_platform_match' => '一致するプラットフォームがありません。',
-        'use_this' => 'このテンプレートを使用',
-        'no_templates' => '利用できるテンプレートがありません。',
-        'applying' => 'テンプレートを適用中…',
-        'category' => [
-            'product_launch' => '製品ローンチ',
-            'promotion' => 'プロモーション',
-            'educational' => '教育',
-            'behind_the_scenes' => '舞台裏',
-            'testimonial' => 'お客様の声',
-            'industry_tip' => '業界のヒント',
-            'event' => 'イベント',
-            'engagement' => 'エンゲージメント',
         ],
     ],
 ];

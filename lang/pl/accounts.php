@@ -5,6 +5,7 @@ return [
     'page_title' => 'Konta społecznościowe',
     'description' => 'Przegląd wszystkich Twoich połączonych kont społecznościowych',
     'connect_cta' => 'Połącz',
+    'connect_another' => 'Połącz kolejne',
 
     'not_connected' => 'Niepołączone',
     'connect' => 'Połącz',
@@ -75,6 +76,8 @@ return [
         'retry' => 'Spróbuj ponownie',
         'error_generic' => 'Nie udało się rozpocząć łączenia. Spróbuj ponownie.',
         'network_taken' => 'Ta przestrzeń robocza ma już połączony kanał Telegram. Najpierw go rozłącz.',
+        'wrong_chat' => 'Opublikuj polecenie w kanale, który ponownie łączysz.',
+        'busy' => 'Inne łączenie wciąż się kończy. Wyślij polecenie ponownie za chwilę.',
     ],
 
     'facebook' => [
@@ -140,6 +143,9 @@ return [
         'reconnected' => 'Konto połączone ponownie!',
         'error_connecting' => 'Błąd podczas łączenia konta. Spróbuj ponownie.',
         'network_taken' => 'Ta przestrzeń robocza ma już konto dla tej sieci. Najpierw je rozłącz.',
+        'wrong_account' => 'To inne konto. Autoryzuj to, które ponownie łączysz.',
+        'all_connected' => 'Wszystkie konta z tego logowania są już połączone.',
+        'busy' => 'Inne łączenie wciąż się kończy. Spróbuj ponownie za chwilę.',
         'error_connecting_page' => 'Błąd podczas łączenia strony. Spróbuj ponownie.',
         'error_connecting_channel' => 'Błąd podczas łączenia kanału. Spróbuj ponownie.',
         'session_expired' => 'Sesja wygasła. Spróbuj ponownie.',

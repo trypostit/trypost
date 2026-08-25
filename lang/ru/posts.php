@@ -600,8 +600,6 @@ return [
         'ai_description' => 'Опишите, что хотите, и ИИ сгенерирует контент за вас.',
         'ai_configure_description' => 'Выберите формат и опишите пост, который хотите создать.',
         'ai_pick_template_description' => 'Выберите стиль для вашего ИИ-поста.',
-        'template_title' => 'Использовать шаблон',
-        'template_description' => 'Выберите из наших готовых шаблонов и настройте.',
         'coming_soon' => 'Скоро',
 
         'preview' => [
@@ -667,31 +665,6 @@ return [
                 'instagram_story' => 'История Instagram',
                 'facebook_story' => 'История Facebook',
             ],
-        ],
-    ],
-
-    'templates' => [
-        'browser_title' => 'Выберите шаблон',
-        'browser_description' => 'Начните с готового шаблона и адаптируйте его.',
-        'search_placeholder' => 'Поиск шаблонов…',
-        'no_search_results' => 'Нет шаблонов по вашему запросу',
-        'try_different_search' => 'Попробуйте другое ключевое слово или очистите поиск.',
-        'slides_count' => '{count} слайд|{count} слайда|{count} слайдов',
-        'all_platforms' => 'Все платформы',
-        'platform_search_placeholder' => 'Поиск платформы…',
-        'no_platform_match' => 'Нет подходящих платформ.',
-        'use_this' => 'Использовать этот шаблон',
-        'no_templates' => 'Нет доступных шаблонов.',
-        'applying' => 'Применяем шаблон…',
-        'category' => [
-            'product_launch' => 'Запуск продукта',
-            'promotion' => 'Акция',
-            'educational' => 'Обучающее',
-            'behind_the_scenes' => 'За кулисами',
-            'testimonial' => 'Отзыв',
-            'industry_tip' => 'Отраслевой совет',
-            'event' => 'Событие',
-            'engagement' => 'Вовлечённость',
         ],
     ],
 ];

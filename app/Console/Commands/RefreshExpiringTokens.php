@@ -18,10 +18,9 @@ class RefreshExpiringTokens extends Command
     protected $description = 'Proactively refresh social tokens before they expire';
 
     /**
-     * Rotating refresh_token platforms only need a short lead: verify() won't
-     * rotate a still-valid token, so we catch them right before or after expiry.
-     * Extension-model platforms (Instagram/Threads) can't be refreshed once
-     * expired, so they get a much wider lead to survive queue backlog.
+     * Rotating platforms get a short lead — a wider window would only rotate
+     * more often. Instagram and Threads can't be refreshed once expired, so
+     * theirs is wide enough to survive queue backlog.
      */
     public function handle(): void
     {
@@ -46,6 +45,8 @@ class RefreshExpiringTokens extends Command
                 }
             });
 
-        $this->info("Dispatched {$count} token refresh jobs.");
+        // Accounts in the window, not jobs queued: the job is unique per
+        // account, so a dispatch during a backlog is silently discarded.
+        $this->info("{$count} accounts due for a token refresh.");
     }
 }

@@ -86,7 +86,7 @@ test('facebook oauth callback creates account with single page', function () {
 });
 
 test('facebook callback shows network_taken when the network is already connected', function () {
-    config()->set('trypost.self_hosted', false);
+    config()->set('trypost.allow_multiple_social_accounts', false);
 
     SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -388,8 +388,8 @@ test('facebook callback fails with expired session', function () {
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Session expired. Please try again.'));
 });
 
-test('user can connect multiple facebook accounts in self-hosted mode', function () {
-    config(['trypost.self_hosted' => true]);
+test('user can connect multiple facebook accounts when multiple social accounts are allowed', function () {
+    config(['trypost.allow_multiple_social_accounts' => true]);
 
     SocialAccount::factory()->facebook()->create([
         'workspace_id' => $this->workspace->id,
@@ -599,4 +599,286 @@ test('facebook page selection fails with invalid page id', function () {
     $response->assertOk();
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Page not found.'));
+});
+
+test('facebook connect remembers the reconnect account from the query string', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Facebook,
+        'platform_user_id' => 'page_1',
+    ]);
+
+    $driverMock = Mockery::mock();
+    $driverMock->shouldReceive('usingGraphVersion')->andReturnSelf();
+    $driverMock->shouldReceive('setScopes')->andReturnSelf();
+    $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
+        'getTargetUrl' => 'https://www.facebook.com/v25.0/dialog/oauth?test=1',
+    ]));
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn($driverMock);
+
+    $response = $this->actingAs($this->user)
+        ->withHeader('X-Inertia', 'true')
+        ->get(route('app.social.facebook.connect', ['reconnect' => $account->id]));
+
+    $response->assertStatus(409);
+
+    expect(session('social_connect_workspace'))->toBe($this->workspace->id)
+        ->and(session('social_reconnect_id'))->toBe($account->id);
+});
+
+test('facebook connect ignores a reconnect id from another workspace', function () {
+    $foreign = SocialAccount::factory()->create([
+        'platform' => Platform::Facebook,
+        'platform_user_id' => 'foreign-page',
+    ]);
+
+    $driverMock = Mockery::mock();
+    $driverMock->shouldReceive('usingGraphVersion')->andReturnSelf();
+    $driverMock->shouldReceive('setScopes')->andReturnSelf();
+    $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
+        'getTargetUrl' => 'https://www.facebook.com/v25.0/dialog/oauth?test=1',
+    ]));
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn($driverMock);
+
+    $this->actingAs($this->user)
+        ->withHeader('X-Inertia', 'true')
+        ->get(route('app.social.facebook.connect', ['reconnect' => $foreign->id]))
+        ->assertStatus(409);
+
+    expect(session('social_reconnect_id'))->toBeNull();
+});
+
+test('facebook connect ignores a reconnect id from another network', function () {
+    $linkedin = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+        'platform_user_id' => 'linkedin-member',
+    ]);
+
+    $driverMock = Mockery::mock();
+    $driverMock->shouldReceive('usingGraphVersion')->andReturnSelf();
+    $driverMock->shouldReceive('setScopes')->andReturnSelf();
+    $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
+        'getTargetUrl' => 'https://www.facebook.com/v25.0/dialog/oauth?test=1',
+    ]));
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn($driverMock);
+
+    $this->actingAs($this->user)
+        ->withHeader('X-Inertia', 'true')
+        ->get(route('app.social.facebook.connect', ['reconnect' => $linkedin->id]))
+        ->assertStatus(409);
+
+    expect(session('social_reconnect_id'))->toBeNull();
+});
+
+test('facebook reconnect keeps the original card when multiple pages are returned', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Facebook,
+        'platform_user_id' => 'page_1',
+        'username' => 'oldpage',
+        'access_token' => 'expired-token',
+    ]);
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'social_reconnect_id' => $account->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('facebook_user_123');
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
+
+    Http::fake([
+        'https://graph.facebook.com/*/me/accounts*' => Http::response([
+            'data' => [
+                [
+                    'id' => 'page_1',
+                    'name' => 'Page 1',
+                    'username' => 'page1',
+                    'picture' => ['data' => ['url' => null]],
+                    'access_token' => 'fresh-token',
+                ],
+                [
+                    'id' => 'page_2',
+                    'name' => 'Page 2',
+                    'username' => 'page2',
+                    'picture' => ['data' => ['url' => null]],
+                    'access_token' => 'other-token',
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
+
+    $response->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->component('accounts/PopupCallback')
+        ->where('success', true)
+        ->where('message', __('accounts.popup_callback.reconnected'))
+    );
+
+    expect($this->workspace->socialAccounts()->where('platform', Platform::Facebook)->count())->toBe(1);
+
+    $account->refresh();
+
+    expect($account->platform_user_id)->toBe('page_1')
+        ->and($account->access_token)->toBe('fresh-token')
+        ->and($account->username)->toBe('page1');
+});
+
+test('facebook reconnect shows page_not_found when the page is missing from graph', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Facebook,
+        'platform_user_id' => 'page_missing',
+    ]);
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'social_reconnect_id' => $account->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('facebook_user_123');
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
+
+    Http::fake([
+        'https://graph.facebook.com/*/me/accounts*' => Http::response([
+            'data' => [
+                [
+                    'id' => 'page_other',
+                    'name' => 'Other Page',
+                    'username' => 'other',
+                    'picture' => ['data' => ['url' => null]],
+                    'access_token' => 'other-token',
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.social.facebook.callback'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('success', false)
+            ->where('message', __('accounts.popup_callback.page_not_found'))
+        );
+});
+
+test('facebook select ignores a stored reconnect id from another network', function () {
+    $linkedin = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+        'platform_user_id' => 'linkedin-member',
+    ]);
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'facebook_oauth' => [
+            'user_token' => 'test-user-token',
+            'user_id' => 'facebook_user_123',
+            'reconnect_id' => $linkedin->id,
+            'pages' => [
+                [
+                    'id' => 'page_123',
+                    'name' => 'My Facebook Page',
+                    'username' => 'mypage',
+                    'picture' => null,
+                    'access_token' => 'page-access-token',
+                ],
+            ],
+        ],
+    ]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.social.facebook.select'), ['page_id' => 'page_123'])
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
+
+    expect($linkedin->fresh()->platform)->toBe(Platform::LinkedIn)
+        ->and($this->workspace->socialAccounts()->where('platform', Platform::Facebook)->count())->toBe(1);
+});
+
+test('facebook page picker refuses a user who can no longer manage accounts', function () {
+    $outsider = User::factory()->create();
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'facebook_oauth' => [
+            'user_token' => 'user-token',
+            'user_id' => 'fb-user',
+            'pages' => [
+                ['id' => 'page-1', 'name' => 'My Page', 'access_token' => 'page-token'],
+            ],
+        ],
+    ]);
+
+    $this->actingAs($outsider)
+        ->get(route('app.social.facebook.select-page'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('accounts/PopupCallback')
+            ->where('success', false)
+            ->where('message', __('accounts.popup_callback.workspace_not_found'))
+        );
+});
+
+test('facebook says every page is connected instead of network_taken in multi-account mode', function () {
+    config()->set('trypost.allow_multiple_social_accounts', true);
+
+    SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Facebook,
+        'platform_user_id' => 'page-1',
+    ]);
+
+    session(['social_connect_workspace' => $this->workspace->id]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('fb-user');
+    $socialiteUser->token = 'user-token';
+
+    $driverMock = Mockery::mock();
+    $driverMock->shouldReceive('usingGraphVersion')->andReturnSelf();
+    $driverMock->shouldReceive('user')->andReturn($socialiteUser);
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn($driverMock);
+
+    Http::fake([
+        'https://graph.facebook.com/*/me/accounts*' => Http::response([
+            'data' => [
+                ['id' => 'page-1', 'name' => 'Only Page', 'access_token' => 'page-token'],
+            ],
+        ], 200),
+        'https://graph.facebook.com/*' => Http::response(['id' => 'fb-user', 'name' => 'Me'], 200),
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.social.facebook.callback'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('success', false)
+            ->where('message', __('accounts.popup_callback.all_connected'))
+        );
 });

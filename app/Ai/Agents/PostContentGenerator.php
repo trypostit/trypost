@@ -9,7 +9,6 @@ use App\Ai\Templates\AiContentTemplate;
 use App\Ai\Templates\TemplateContext;
 use App\Enums\Ai\GeneratorFormat;
 use App\Models\Workspace;
-use App\Services\Ai\TemplateContextResolver;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
@@ -35,20 +34,6 @@ class PostContentGenerator implements Agent, HasStructuredOutput
 
     public function instructions(): string
     {
-        $examples = [];
-
-        if ($this->platformContext !== null) {
-            $resolver = app(TemplateContextResolver::class);
-            $examples = $resolver->relevantFor($this->platformContext, 2)
-                ->map(fn ($t) => [
-                    'name' => $t->name,
-                    'description' => $t->description,
-                    'content' => $t->content,
-                    'slides' => $t->slides,
-                ])
-                ->all();
-        }
-
         $budget = $this->platformCopyBudget($this->platformContext);
 
         if ($this->template?->style()->isTweetCard()) {
@@ -68,7 +53,6 @@ class PostContentGenerator implements Agent, HasStructuredOutput
             'current_content' => $this->currentContent,
             'format' => $this->format->value,
             'slide_count' => $this->slideCount,
-            'examples' => $examples,
             'hard_max_chars' => data_get($budget, 'hard_max_chars'),
             'target_chars' => data_get($budget, 'target_chars'),
             'platform_label' => data_get($budget, 'platform_label'),

@@ -600,8 +600,6 @@ return [
         'ai_description' => 'Describe what you want and AI generates the content for you.',
         'ai_configure_description' => 'Pick a format and describe the post you want to create.',
         'ai_pick_template_description' => 'Choose a style for your AI-generated post.',
-        'template_title' => 'Use a template',
-        'template_description' => 'Pick from our curated templates and customize.',
         'coming_soon' => 'Coming soon',
 
         'preview' => [
@@ -667,31 +665,6 @@ return [
                 'instagram_story' => 'Instagram Story',
                 'facebook_story' => 'Facebook Story',
             ],
-        ],
-    ],
-
-    'templates' => [
-        'browser_title' => 'Choose a template',
-        'browser_description' => 'Start from a curated template and adapt it.',
-        'search_placeholder' => 'Search templates…',
-        'no_search_results' => 'No templates match your search',
-        'try_different_search' => 'Try a different keyword or clear the search.',
-        'slides_count' => '{count} slide|{count} slides',
-        'all_platforms' => 'All platforms',
-        'platform_search_placeholder' => 'Search platform…',
-        'no_platform_match' => 'No platform matches.',
-        'use_this' => 'Use this template',
-        'no_templates' => 'No templates available.',
-        'applying' => 'Applying template…',
-        'category' => [
-            'product_launch' => 'Product launch',
-            'promotion' => 'Promotion',
-            'educational' => 'Educational',
-            'behind_the_scenes' => 'Behind the scenes',
-            'testimonial' => 'Testimonial',
-            'industry_tip' => 'Industry tip',
-            'event' => 'Event',
-            'engagement' => 'Engagement',
         ],
     ],
 ];

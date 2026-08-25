@@ -48,7 +48,12 @@ class TelegramWebhookController extends Controller
         $workspace = $payload === null ? null : Workspace::find(data_get($payload, 'workspace_id'));
 
         if ($workspace !== null) {
-            ConnectTelegramChannel::execute($workspace, $chat, data_get($payload, 'nonce'));
+            ConnectTelegramChannel::execute(
+                $workspace,
+                $chat,
+                data_get($payload, 'nonce'),
+                data_get($payload, 'reconnect_id'),
+            );
         }
 
         return response()->noContent();
