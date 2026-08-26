@@ -157,7 +157,7 @@ return [
         'channel_not_found' => 'Kanaal niet gevonden.',
         'pages_read_incomplete' => 'We konden je pagina’s niet volledig uitlezen. Probeer het zo meteen opnieuw.',
         'publish_permission_refused' => 'Deze login heeft een recht geweigerd dat we nodig hebben om te posten. Maak opnieuw verbinding en accepteer alles.',
-        'pages_missing_permission' => 'We hebben je pagina’s gevonden, maar niet de rechten om erop te posten. Maak opnieuw verbinding en accepteer alle rechten.',
+        'pages_missing_permission' => 'We vonden pagina\'s, maar geen waar je op kunt posten. Je hebt een rol op de pagina zelf nodig en alle rechten.',
         'no_facebook_pages' => 'Geen Facebook-pagina\'s gevonden. Je moet beheerder zijn van ten minste één pagina.',
         'no_facebook_instagram_pages' => 'Geen Facebook-pagina\'s met gekoppelde Instagram-accounts gevonden.',
         'no_youtube_channels' => 'Geen YouTube-kanalen gevonden. Maak eerst een kanaal aan.',

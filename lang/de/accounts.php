@@ -159,7 +159,7 @@ return [
         'channel_not_found' => 'Kanal nicht gefunden.',
         'pages_read_incomplete' => 'Wir konnten deine Seiten nicht vollständig lesen. Bitte versuche es gleich noch einmal.',
         'publish_permission_refused' => 'Diese Anmeldung hat eine zum Posten nötige Berechtigung abgelehnt. Verbinde erneut und akzeptiere alle.',
-        'pages_missing_permission' => 'Wir haben deine Seiten gefunden, aber nicht die Berechtigung, dort zu posten. Verbinde erneut und akzeptiere alle Berechtigungen.',
+        'pages_missing_permission' => 'Wir haben Seiten gefunden, aber keine zum Posten. Du brauchst eine Rolle auf der Seite selbst und alle Berechtigungen.',
         'no_facebook_pages' => 'Keine Facebook-Seiten gefunden. Du musst Administrator mindestens einer Seite sein.',
         'no_facebook_instagram_pages' => 'Keine Facebook-Seiten mit verknüpften Instagram-Konten gefunden.',
         'no_youtube_channels' => 'Keine YouTube-Kanäle gefunden. Bitte erstelle zuerst einen Kanal.',

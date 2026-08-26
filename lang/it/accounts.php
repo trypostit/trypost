@@ -157,7 +157,7 @@ return [
         'channel_not_found' => 'Canale non trovato.',
         'pages_read_incomplete' => 'Non siamo riusciti a leggere tutte le tue Pagine. Riprova tra poco.',
         'publish_permission_refused' => 'Questo accesso ha rifiutato una autorizzazione necessaria per pubblicare. Riconnetti accettandole tutte.',
-        'pages_missing_permission' => 'Abbiamo trovato le tue Pagine, ma non l’autorizzazione a pubblicarci. Riconnetti accettando tutte le autorizzazioni.',
+        'pages_missing_permission' => 'Abbiamo trovato Pagine, ma nessuna su cui pubblicare. Serve un ruolo sulla Pagina stessa e tutte le autorizzazioni accettate.',
         'no_facebook_pages' => 'Nessuna pagina Facebook trovata. Devi essere amministratore di almeno una pagina.',
         'no_facebook_instagram_pages' => 'Nessuna pagina Facebook con account Instagram collegati trovata.',
         'no_youtube_channels' => 'Nessun canale YouTube trovato. Crea prima un canale.',

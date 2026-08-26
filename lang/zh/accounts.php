@@ -157,7 +157,7 @@ return [
         'channel_not_found' => '未找到频道。',
         'pages_read_incomplete' => '我们没能读取你的全部主页。请稍后再试。',
         'publish_permission_refused' => '本次登录拒绝了发布所需的权限。请重新连接并接受全部权限。',
-        'pages_missing_permission' => '我们找到了你的主页，但没有发布权限。请重新连接并接受所有权限。',
+        'pages_missing_permission' => '我们找到了主页，但没有你能发布的。你需要在主页本身拥有角色，并接受全部权限。',
         'no_facebook_pages' => '未找到 Facebook 主页。你至少需要是一个主页的管理员。',
         'no_facebook_instagram_pages' => '未找到关联了 Instagram 账号的 Facebook 主页。',
         'no_youtube_channels' => '未找到 YouTube 频道，请先创建一个频道。',

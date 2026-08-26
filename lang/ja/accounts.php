@@ -157,7 +157,7 @@ return [
         'channel_not_found' => 'チャンネルが見つかりません。',
         'pages_read_incomplete' => 'ページをすべて読み取れませんでした。少し時間をおいて再度お試しください。',
         'publish_permission_refused' => '投稿に必要な権限が許可されませんでした。再接続してすべて許可してください。',
-        'pages_missing_permission' => 'ページは見つかりましたが、投稿する権限がありません。再接続してすべての権限を許可してください。',
+        'pages_missing_permission' => 'ページは見つかりましたが、投稿できるものがありません。ページ自体での役割と、すべての権限が必要です。',
         'no_facebook_pages' => 'Facebook ページが見つかりません。少なくとも 1 つのページの管理者である必要があります。',
         'no_facebook_instagram_pages' => 'Instagram アカウントが連携された Facebook ページが見つかりません。',
         'no_youtube_channels' => 'YouTube チャンネルが見つかりません。先にチャンネルを作成してください。',

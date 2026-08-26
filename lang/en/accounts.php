@@ -157,7 +157,7 @@ return [
         'channel_not_found' => 'Channel not found.',
         'pages_read_incomplete' => 'We could not finish reading your Pages. Please try again in a moment.',
         'publish_permission_refused' => 'This login refused a permission we need to post. Reconnect and accept all of them.',
-        'pages_missing_permission' => 'We found your Pages but not the permission to post to them. Reconnect and accept every permission.',
+        'pages_missing_permission' => 'We found Pages, but none you can post to. You need a role on the Page itself, and every permission accepted.',
         'no_facebook_pages' => 'No Facebook Pages found. You need to be an admin of at least one page.',
         'no_facebook_instagram_pages' => 'No Facebook Pages with linked Instagram accounts found.',
         'no_youtube_channels' => 'No YouTube channels found. Please create a channel first.',

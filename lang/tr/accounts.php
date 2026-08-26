@@ -159,7 +159,7 @@ return [
         'channel_not_found' => 'Kanal bulunamadı.',
         'pages_read_incomplete' => 'Sayfalarınızın tamamını okuyamadık. Birazdan tekrar deneyin.',
         'publish_permission_refused' => 'Bu girişte paylaşım için gereken bir izin reddedildi. Yeniden bağlanıp hepsini kabul edin.',
-        'pages_missing_permission' => 'Sayfalarınızı bulduk ama orada paylaşım izni bulamadık. Yeniden bağlanıp tüm izinleri kabul edin.',
+        'pages_missing_permission' => 'Sayfalar bulduk ama paylaşım yapabileceğiniz yok. Sayfanın kendisinde bir rolünüz ve tüm izinler gerekli.',
         'no_facebook_pages' => 'Facebook Sayfası bulunamadı. En az bir sayfanın yöneticisi olmanız gerekir.',
         'no_facebook_instagram_pages' => 'Bağlı Instagram hesabı olan Facebook Sayfası bulunamadı.',
         'no_youtube_channels' => 'YouTube kanalı bulunamadı. Lütfen önce bir kanal oluşturun.',

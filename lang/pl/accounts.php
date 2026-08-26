@@ -157,7 +157,7 @@ return [
         'channel_not_found' => 'Nie znaleziono kanału.',
         'pages_read_incomplete' => 'Nie udało się odczytać wszystkich Twoich stron. Spróbuj ponownie za chwilę.',
         'publish_permission_refused' => 'To logowanie odrzuciło uprawnienie potrzebne do publikowania. Połącz ponownie i zaakceptuj wszystkie.',
-        'pages_missing_permission' => 'Znaleźliśmy Twoje strony, ale nie uprawnienia do publikowania na nich. Połącz ponownie i zaakceptuj wszystkie uprawnienia.',
+        'pages_missing_permission' => 'Znaleźliśmy strony, ale na żadnej nie możesz publikować. Potrzebujesz roli na samej stronie i wszystkich uprawnień.',
         'no_facebook_pages' => 'Nie znaleziono stron na Facebooku. Musisz być administratorem co najmniej jednej strony.',
         'no_facebook_instagram_pages' => 'Nie znaleziono stron na Facebooku z powiązanymi kontami Instagram.',
         'no_youtube_channels' => 'Nie znaleziono kanałów YouTube. Najpierw utwórz kanał.',

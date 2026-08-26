@@ -68,7 +68,9 @@ class ManagedPages
     }
 
     /**
-     * A Page Meta lists without an `access_token` would connect into an account that
+     * Meta returns `access_token` on a Page only when the login holds a role on that
+     * Page — being in the portfolio that owns it is not enough — so a portfolio can
+     * list Pages this login cannot post to. Connecting one produces an account that
      * cannot publish, so callers separate it from a Page they never had.
      *
      * @param  array<int, array<string, mixed>>  $pages
