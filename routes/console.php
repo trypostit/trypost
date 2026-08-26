@@ -8,6 +8,7 @@ use App\Console\Commands\Automation\PruneDryRunAutomationRuns;
 use App\Console\Commands\Automation\RecoverStuckAutomationRuns;
 use App\Console\Commands\CheckSocialConnections;
 use App\Console\Commands\CheckUpcomingPostConnections;
+use App\Console\Commands\Media\PruneAbandonedChunks;
 use App\Console\Commands\ProcessScheduledPosts;
 use App\Console\Commands\RecoverStuckPosts;
 use App\Console\Commands\RefreshExpiringTokens;
@@ -22,3 +23,4 @@ Schedule::command(FireScheduleTriggers::class)->everyMinute()->withoutOverlappin
 Schedule::command(ProcessAutomationDelays::class)->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command(RecoverStuckAutomationRuns::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(PruneDryRunAutomationRuns::class)->everyTenMinutes()->withoutOverlapping()->onOneServer();
+Schedule::command(PruneAbandonedChunks::class)->hourly()->withoutOverlapping()->onOneServer();

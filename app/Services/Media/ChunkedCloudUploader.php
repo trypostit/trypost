@@ -19,7 +19,7 @@ class ChunkedCloudUploader
 {
     private const CACHE_PREFIX = 'chunked-cloud-upload:';
 
-    private const CACHE_TTL_HOURS = 6;
+    public const CACHE_TTL_HOURS = 6;
 
     /** S3/R2 require every non-final multipart part to be at least 5 MiB. */
     public const MIN_PART_BYTES = 5 * 1024 * 1024;
