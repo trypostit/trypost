@@ -131,7 +131,7 @@ test('a login meta reports as refusing business_management never touches the por
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/me/businesses'));
 });
 
-test('a refused portfolio index means we could not look, not that there is nothing', function () {
+test('an app without business_management reaches no portfolio pages, and that is an answer', function () {
     $graphApi = managedPagesGraphApi();
 
     $walk = managedPagesWalk([
@@ -144,7 +144,41 @@ test('a refused portfolio index means we could not look, not that there is nothi
     ]);
 
     expect(managedPagesIds($walk))->toBe(['page_1'])
+        ->and($walk->complete)->toBeTrue();
+});
+
+test('a throttled portfolio index leaves the walk unable to vouch for itself', function () {
+    $graphApi = managedPagesGraphApi();
+
+    $walk = managedPagesWalk([
+        "{$graphApi}/me/accounts*" => Http::response([
+            'data' => [['id' => 'page_1', 'name' => 'Page', 'access_token' => 'role-token']],
+        ], 200),
+        "{$graphApi}/me/businesses*" => Http::response([
+            'error' => ['message' => 'Application request limit reached', 'code' => 4],
+        ], 400),
+    ]);
+
+    expect(managedPagesIds($walk))->toBe(['page_1'])
         ->and($walk->complete)->toBeFalse();
+});
+
+test('the walk gives up on time rather than outliving the request', function () {
+    config()->set('trypost.meta_page_walk_seconds', 0);
+
+    $graphApi = managedPagesGraphApi();
+
+    $walk = managedPagesWalk([
+        "{$graphApi}/me/accounts*" => Http::response([
+            'data' => [['id' => 'page_1', 'name' => 'Page', 'access_token' => 'role-token']],
+        ], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
+    ]);
+
+    expect(managedPagesIds($walk))->toBe(['page_1'])
+        ->and($walk->complete)->toBeFalse();
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '_pages'));
 });
 
 test('a refused single edge is an answer about that edge, and leaves the walk complete', function () {

@@ -18,6 +18,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Meta page walk budget
+    |--------------------------------------------------------------------------
+    |
+    | Seconds the Facebook/Instagram page walk may spend before it returns what
+    | it has and reports itself incomplete. It runs inside the OAuth callback,
+    | so this must stay well under the web server's request timeout.
+    |
+    */
+
+    'meta_page_walk_seconds' => (int) env('META_PAGE_WALK_SECONDS', 20),
+
+    /*
+    |--------------------------------------------------------------------------
     | Multiple social accounts per network
     |--------------------------------------------------------------------------
     |

@@ -23,10 +23,13 @@ abstract class MetaController extends SocialController
     /** Popup key for "this login has no pages of the kind we want". */
     protected string $noPagesKey;
 
-    /** Meta's app review wants to see this called; the answer is unused. */
+    /** Meta's app review wants to see this called; the answer is unused, so nothing it does can fail the connect. */
     protected function touchProfile(string $userToken): void
     {
-        Http::get("{$this->graphApi()}/me", ['fields' => 'id,name', 'access_token' => $userToken]);
+        rescue(fn () => Http::timeout(5)->connectTimeout(5)->get("{$this->graphApi()}/me", [
+            'fields' => 'id,name',
+            'access_token' => $userToken,
+        ]), report: false);
     }
 
     /**

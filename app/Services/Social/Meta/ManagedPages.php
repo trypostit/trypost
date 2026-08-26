@@ -40,11 +40,15 @@ class ManagedPages
 
     private int $continuations = 0;
 
+    private readonly float $deadline;
+
     private function __construct(
         private readonly string $graphApi,
         private readonly string $userToken,
         private readonly string $fields,
-    ) {}
+    ) {
+        $this->deadline = microtime(true) + (int) config('trypost.meta_page_walk_seconds');
+    }
 
     /**
      * @param  array<int, string>  $grantedScopes
@@ -101,18 +105,23 @@ class ManagedPages
      */
     private function portfolioPages(): Collection
     {
-        $rounds = collect($this->businessIds())
+        return collect($this->businessIds())
             ->crossJoin(['owned_pages', 'client_pages'])
             ->map(fn (array $edge) => Uri::of("{$this->graphApi}/{$edge[0]}/{$edge[1]}")->withQuery($this->query())->value())
-            ->chunk(self::EDGES_PER_ROUND);
+            ->chunk(self::EDGES_PER_ROUND)
+            ->flatMap($this->readRound(...));
+    }
 
-        $pages = collect();
-
-        foreach ($rounds as $round) {
-            $pages = $pages->concat($this->readRound($round));
+    /** Every per-request budget is bounded, but the walk sits in an OAuth callback. */
+    private function outOfTime(): bool
+    {
+        if (microtime(true) < $this->deadline) {
+            return false;
         }
 
-        return $pages;
+        $this->complete = false;
+
+        return true;
     }
 
     /**
@@ -121,35 +130,33 @@ class ManagedPages
      */
     private function readRound(Collection $urls): Collection
     {
+        if ($this->outOfTime()) {
+            return collect();
+        }
+
         $urls = $urls->values();
 
         $responses = Http::pool(fn (Pool $pool) => $urls
             ->map(fn (string $url) => $pool->timeout(15)->connectTimeout(5)->get($url))
             ->all());
 
-        $pages = collect();
-
-        foreach ($urls as $index => $url) {
+        return $urls->flatMap(function (string $url, int $index) use ($responses) {
             $response = data_get($responses, $index);
 
             if (! $response instanceof Response) {
                 $this->complete = false;
 
-                continue;
+                return [];
             }
 
             if ($response->failed()) {
                 $this->note($url, $response);
 
-                continue;
+                return [];
             }
 
-            $pages = $pages->concat($response->collect('data'))->concat(
-                $this->rest($url, $response->json('paging.next')),
-            );
-        }
-
-        return $pages;
+            return $response->collect('data')->concat($this->rest($url, $response->json('paging.next')));
+        });
     }
 
     /**
@@ -164,7 +171,7 @@ class ManagedPages
         $pages = [];
 
         while (is_string($next) && filled($next)) {
-            if ($this->continuations >= self::MAX_CONTINUATIONS || Uri::of($next)->host() !== Uri::of($url)->host()) {
+            if ($this->continuations >= self::MAX_CONTINUATIONS || $this->outOfTime() || Uri::of($next)->host() !== Uri::of($url)->host()) {
                 $this->complete = false;
 
                 break;
@@ -198,9 +205,6 @@ class ManagedPages
      * Reading one page is what bounds the walk: paginating here would let one login
      * spawn thousands of edge reads. More portfolios than fit is incomplete, not failed.
      *
-     * A refusal here is not "this login has no portfolios" — it is "we could not look",
-     * which is the difference between an edge and the index of edges.
-     *
      * @return list<string>
      */
     private function businessIds(): array
@@ -219,8 +223,7 @@ class ManagedPages
         }
 
         if ($response->failed()) {
-            GraphPaginator::failure($url, $response);
-            $this->complete = false;
+            $this->note($url, $response);
 
             return [];
         }
