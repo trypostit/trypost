@@ -121,6 +121,12 @@ class ManagedPages
             ->flatMap($this->readRound(...));
     }
 
+    /** No single request may outlive the budget by its own timeout. */
+    private function timeout(): int
+    {
+        return max(1, min(15, (int) ceil($this->deadline - microtime(true))));
+    }
+
     /** Every per-request budget is bounded, but the walk sits in an OAuth callback. */
     private function outOfTime(): bool
     {
@@ -146,7 +152,7 @@ class ManagedPages
         $urls = $urls->values();
 
         $responses = Http::pool(fn (Pool $pool) => $urls
-            ->map(fn (string $url) => $pool->timeout(15)->connectTimeout(5)->get($url))
+            ->map(fn (string $url) => $pool->timeout($this->timeout())->connectTimeout(5)->get($url))
             ->all());
 
         return $urls->flatMap(function (string $url, int $index) use ($responses) {
@@ -189,7 +195,7 @@ class ManagedPages
             $this->continuations++;
 
             try {
-                $response = Http::timeout(15)->connectTimeout(5)->get($next);
+                $response = Http::timeout($this->timeout())->connectTimeout(5)->get($next);
             } catch (ConnectionException) {
                 $this->complete = false;
 
@@ -214,6 +220,11 @@ class ManagedPages
      * Reading one page is what bounds the walk: paginating here would let one login
      * spawn thousands of edge reads. More portfolios than fit is incomplete, not failed.
      *
+     * A refusal here is not an answer about any Page. Refusing one edge says those Pages
+     * are unreadable, and unreadable is unconnectable; refusing the index says no edge
+     * was ever read, and Meta's own reference has Pages carrying a token on those edges
+     * while `/me/accounts` omits them, which is the whole reason this walk exists.
+     *
      * @return list<string>
      */
     private function businessIds(): array
@@ -221,7 +232,7 @@ class ManagedPages
         $url = "{$this->graphApi}/me/businesses";
 
         try {
-            $response = Http::timeout(15)->connectTimeout(5)->get($url, [
+            $response = Http::timeout($this->timeout())->connectTimeout(5)->get($url, [
                 'access_token' => $this->userToken,
                 'limit' => self::MAX_PORTFOLIOS,
             ]);
@@ -232,7 +243,8 @@ class ManagedPages
         }
 
         if ($response->failed()) {
-            $this->note($url, $response);
+            GraphPaginator::failure($url, $response);
+            $this->complete = false;
 
             return [];
         }

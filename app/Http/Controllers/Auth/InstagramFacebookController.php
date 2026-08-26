@@ -214,11 +214,14 @@ class InstagramFacebookController extends MetaController
     {
         $avatarPath = data_get($pageData, 'ig_picture') ? uploadFromUrl(data_get($pageData, 'ig_picture')) : null;
 
+        // A lookup we never made says nothing about the handle a reconnect already has.
+        $described = (bool) data_get($pageData, 'ig_described');
+
         SocialAccount::connectIdentity(
             $workspace,
             $this->platform,
             (string) data_get($pageData, 'ig_id'),
-            [
+            array_diff_key([
                 'username' => data_get($pageData, 'ig_username'),
                 'display_name' => data_get($pageData, 'ig_name')
                     ?? data_get($pageData, 'ig_username')
@@ -235,7 +238,7 @@ class InstagramFacebookController extends MetaController
                     'page_id' => data_get($pageData, 'page_id'),
                     'page_name' => data_get($pageData, 'page_name'),
                 ],
-            ],
+            ], $described ? [] : ['username' => true, 'avatar_url' => true]),
             $existingAccount,
         );
 
@@ -267,7 +270,9 @@ class InstagramFacebookController extends MetaController
         $pages = $pages->values();
         $graphApi = $this->graphApi();
 
-        $responses = microtime(true) >= $deadline ? [] : Http::pool(fn (Pool $pool) => $pages
+        $described = microtime(true) < $deadline;
+
+        $responses = $described ? Http::pool(fn (Pool $pool) => $pages
             ->map(fn (array $page) => $pool
                 ->timeout(15)
                 ->connectTimeout(5)
@@ -275,9 +280,9 @@ class InstagramFacebookController extends MetaController
                     'access_token' => data_get($page, 'access_token'),
                     'fields' => 'username,name,profile_picture_url',
                 ]))
-            ->all());
+            ->all()) : [];
 
-        return $pages->map(function (array $page, int $index) use ($responses) {
+        return $pages->map(function (array $page, int $index) use ($responses, $described) {
             $response = data_get($responses, $index);
             $igData = $response instanceof ClientResponse && $response->successful() ? $response->json() : [];
 
@@ -290,6 +295,7 @@ class InstagramFacebookController extends MetaController
                 'ig_username' => data_get($igData, 'username'),
                 'ig_name' => data_get($igData, 'name'),
                 'ig_picture' => data_get($igData, 'profile_picture_url'),
+                'ig_described' => $described && $response instanceof ClientResponse,
             ];
         });
     }

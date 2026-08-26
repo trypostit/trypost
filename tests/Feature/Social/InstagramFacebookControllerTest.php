@@ -347,6 +347,7 @@ test('instagram-facebook select skips deferred onboarding progress in self-hoste
                     'page_access_token' => 'page-token',
                     'ig_id' => 'ig-new',
                     'ig_username' => 'mybiz',
+                    'ig_described' => true,
                     'ig_name' => 'My Biz',
                     'ig_picture' => null,
                 ],
@@ -406,6 +407,7 @@ test('instagram-facebook reconnect updates the original card via connectIdentity
                     'page_access_token' => 'fresh-token',
                     'ig_id' => 'ig-old',
                     'ig_username' => 'mybiz',
+                    'ig_described' => true,
                     'ig_name' => 'My Biz',
                     'ig_picture' => null,
                 ],
@@ -464,6 +466,7 @@ test('instagram-facebook select shows network_taken when a standalone instagram 
                     'page_access_token' => 'page-token',
                     'ig_id' => 'ig-new',
                     'ig_username' => 'mybiz',
+                    'ig_described' => true,
                     'ig_name' => 'My Biz',
                     'ig_picture' => null,
                 ],
@@ -800,4 +803,54 @@ test('instagram via facebook falls back to the page name when the lookups run ou
         ->and($account->username)->toBeNull();
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/ig_1'));
+});
+
+test('a reconnect keeps the handle it had when the lookup never ran', function () {
+    config()->set('trypost.meta_page_walk_seconds', 0);
+
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::InstagramFacebook,
+        'platform_user_id' => 'ig_1',
+        'username' => 'the_handle_we_had',
+        'avatar_url' => 'avatars/kept.jpg',
+    ]);
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'social_reconnect_id' => $account->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()
+            ->shouldReceive('usingGraphVersion')->andReturnSelf()
+            ->shouldReceive('redirectUrl')->andReturnSelf()
+            ->shouldReceive('user')->andReturn($socialiteUser)
+            ->getMock());
+
+    $graphApi = config('trypost.platforms.instagram-facebook.graph_api');
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/permissions*" => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/accounts*" => Http::response(['data' => [[
+            'id' => 'page_1',
+            'name' => 'The Page',
+            'access_token' => 'fresh-token',
+            'instagram_business_account' => ['id' => 'ig_1'],
+        ]]], 200),
+    ]);
+
+    $this->actingAs($this->user)->get(route('app.social.instagram-facebook.callback'));
+
+    $account->refresh();
+
+    expect($account->username)->toBe('the_handle_we_had')
+        ->and($account->getRawOriginal('avatar_url'))->toBe('avatars/kept.jpg')
+        ->and($account->access_token)->toBe('fresh-token');
 });

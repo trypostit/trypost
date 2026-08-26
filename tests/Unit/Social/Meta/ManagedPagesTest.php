@@ -131,7 +131,7 @@ test('a login meta reports as refusing business_management never touches the por
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/me/businesses'));
 });
 
-test('an app without business_management reaches no portfolio pages, and that is an answer', function () {
+test('a refused portfolio index says nothing about the pages behind it', function () {
     $graphApi = managedPagesGraphApi();
 
     $walk = managedPagesWalk([
@@ -144,7 +144,7 @@ test('an app without business_management reaches no portfolio pages, and that is
     ]);
 
     expect(managedPagesIds($walk))->toBe(['page_1'])
-        ->and($walk->complete)->toBeTrue();
+        ->and($walk->complete)->toBeFalse();
 });
 
 test('a throttled portfolio index leaves the walk unable to vouch for itself', function () {
