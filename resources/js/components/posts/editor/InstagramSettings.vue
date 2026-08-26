@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import { IconAlertTriangle, IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
+import { IconAlertTriangle, IconChevronDown, IconChevronUp, IconX } from '@tabler/icons-vue';
+import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
 
+import InputError from '@/components/InputError.vue';
 import { Avatar } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
 import { getMediaValidationWarning } from '@/composables/useMedia';
+import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import { formatUsername, useUsername } from '@/composables/useUsername';
 import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -13,7 +18,7 @@ interface SocialAccount {
     id: string;
     platform: string;
     display_name: string;
-    username: string;
+    username: string | null;
     display_label: string;
     avatar_url: string | null;
 }
@@ -39,6 +44,9 @@ const emit = defineEmits<{
 }>();
 
 const open = ref(false);
+
+/** Mirrors `InstagramCollaborators::MAX`. */
+const MAX_COLLABORATORS = 3;
 
 const allVariants = [
     { value: ContentType.InstagramFeed, labelKey: 'posts.form.instagram.variant.feed' },
@@ -68,15 +76,36 @@ const aspectRatios = [
 
 const isFeed = computed(() => props.contentType === ContentType.InstagramFeed);
 const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? '1:1');
+const errors = usePageErrors();
+
+const updateMeta = (patch: Record<string, any>) => emit('update:meta', { ...props.meta, ...patch });
+const { draft, rejection, add, remove } = useUsername(
+    () => props.meta.collaborators ?? [],
+    () => props.socialAccount?.username,
+    (collaborators) => updateMeta({ collaborators }),
+);
+
+const collaboratorError = computed(
+    () =>
+        (rejection.value && trans(`posts.form.instagram.collaborators_${rejection.value}`)) ||
+        Object.entries(errors.value).find(([key]) => /\.meta\.collaborators(\.\d+)?$/.test(key))?.[1],
+);
 
 const pickVariant = (value: string) => {
-    if (props.disabled) return;
+    if (props.disabled) {
+        return;
+    }
+
     emit('update:contentType', value);
+
+    if (value === ContentType.InstagramStory) {
+        updateMeta({ collaborators: [] });
+    }
 };
 
 const pickAspectRatio = (value: string) => {
     if (props.disabled) return;
-    emit('update:meta', { ...props.meta, aspect_ratio: value });
+    updateMeta({ aspect_ratio: value });
 };
 
 const warning = computed(() => getMediaValidationWarning(props.contentType, props.media));
@@ -152,6 +181,39 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                         {{ $t(ratio.labelKey) }}
                     </button>
                 </div>
+            </div>
+
+            <div v-if="contentType !== ContentType.InstagramStory" class="space-y-2">
+                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.instagram.collaborators') }}</p>
+                <div v-if="meta.collaborators?.length" class="flex flex-wrap gap-1.5">
+                    <span
+                        v-for="(username, index) in meta.collaborators"
+                        :key="`${index}-${username}`"
+                        class="inline-flex items-center gap-1 rounded-full border-2 border-foreground/30 bg-violet-50 px-2 py-0.5 text-xs font-semibold text-foreground"
+                    >
+                        {{ formatUsername(username) }}
+                        <button
+                            v-if="!disabled"
+                            type="button"
+                            class="text-foreground/50 hover:text-foreground"
+                            @click="remove(username)"
+                        >
+                            <IconX class="size-3" />
+                        </button>
+                    </span>
+                </div>
+                <Input
+                    v-if="!disabled && (meta.collaborators?.length ?? 0) < MAX_COLLABORATORS"
+                    v-model="draft"
+                    dusk="instagram-collaborators-input"
+                    :placeholder="$t('posts.form.instagram.collaborators_placeholder')"
+                    @keydown.enter.prevent="add"
+                    @blur="add"
+                />
+                <InputError :message="collaboratorError" />
+                <p class="text-xs font-medium text-foreground/60">
+                    {{ $t('posts.form.instagram.collaborators_hint') }}
+                </p>
             </div>
 
             <p

@@ -1364,6 +1364,230 @@ test('update post accepts valid instagram aspect_ratio meta', function () {
     expect(data_get($postPlatform->meta, 'aspect_ratio'))->toBe('4:5');
 });
 
+test('update post accepts instagram collaborators and strips at signs', function () {
+    $instagramAccount = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+
+    $postPlatform = PostPlatform::factory()->instagram()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagramAccount->id,
+    ]);
+
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'draft',
+        'platforms' => [
+            [
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::InstagramFeed->value,
+                'meta' => ['collaborators' => ['@Host_One', 'host_two']],
+            ],
+        ],
+    ]);
+
+    $response->assertSessionDoesntHaveErrors('platforms.0.meta.collaborators');
+    $postPlatform->refresh();
+    expect(data_get($postPlatform->meta, 'collaborators'))->toBe(['Host_One', 'host_two']);
+});
+
+test('update post rejects instagram collaborators sent as a comma-separated string', function () {
+    $instagramAccount = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+
+    $postPlatform = PostPlatform::factory()->instagram()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagramAccount->id,
+    ]);
+
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'draft',
+        'platforms' => [
+            [
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::InstagramFeed->value,
+                'meta' => ['collaborators' => 'Host_One,host_two'],
+            ],
+        ],
+    ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.collaborators');
+});
+
+test('update post clears instagram collaborators when switching to a story without sending meta', function () {
+    $instagramAccount = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+
+    $postPlatform = PostPlatform::factory()->instagram()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagramAccount->id,
+        'content_type' => ContentType::InstagramReel->value,
+        'meta' => ['collaborators' => ['Host_One'], 'aspect_ratio' => '4:5'],
+    ]);
+
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'draft',
+        'platforms' => [
+            [
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::InstagramStory->value,
+            ],
+        ],
+    ]);
+
+    $response->assertSessionDoesntHaveErrors();
+    $postPlatform->refresh();
+
+    expect(data_get($postPlatform->meta, 'collaborators'))->toBe([])
+        ->and(data_get($postPlatform->meta, 'aspect_ratio'))->toBe('4:5')
+        ->and($postPlatform->content_type)->toBe(ContentType::InstagramStory);
+});
+
+test('update post clears leftover instagram collaborators on an already-story row without sending content_type', function () {
+    $instagramAccount = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+
+    $postPlatform = PostPlatform::factory()->instagram()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagramAccount->id,
+        'content_type' => ContentType::InstagramStory->value,
+        'meta' => ['collaborators' => ['Host_One'], 'aspect_ratio' => '4:5'],
+    ]);
+
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'draft',
+        'platforms' => [
+            [
+                'id' => $postPlatform->id,
+            ],
+        ],
+    ]);
+
+    $response->assertSessionDoesntHaveErrors();
+    $postPlatform->refresh();
+
+    expect(data_get($postPlatform->meta, 'collaborators'))->toBe([])
+        ->and(data_get($postPlatform->meta, 'aspect_ratio'))->toBe('4:5')
+        ->and($postPlatform->content_type)->toBe(ContentType::InstagramStory);
+});
+
+test('update post rejects tagging the connected instagram account as a collaborator', function () {
+    $instagramAccount = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => 'testuser',
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+
+    $postPlatform = PostPlatform::factory()->instagram()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagramAccount->id,
+    ]);
+
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'draft',
+        'platforms' => [
+            [
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::InstagramFeed->value,
+                'meta' => ['collaborators' => ['testuser']],
+            ],
+        ],
+    ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.collaborators.0');
+});
+
+test('update post rejects an invalid instagram collaborator username', function () {
+    $instagramAccount = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+
+    $postPlatform = PostPlatform::factory()->instagram()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagramAccount->id,
+    ]);
+
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'draft',
+        'platforms' => [
+            [
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::InstagramFeed->value,
+                'meta' => ['collaborators' => ['.user']],
+            ],
+        ],
+    ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.collaborators.0');
+});
+
+test('update post rejects more than three instagram collaborators', function () {
+    $instagramAccount = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+
+    $postPlatform = PostPlatform::factory()->instagram()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagramAccount->id,
+    ]);
+
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+        'status' => 'draft',
+        'platforms' => [
+            [
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::InstagramFeed->value,
+                'meta' => ['collaborators' => ['a', 'b', 'c', 'd']],
+            ],
+        ],
+    ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.collaborators');
+});
+
 test('scheduling without content_type per platform fails', function () {
     $youtubeAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,

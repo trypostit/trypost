@@ -9,6 +9,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\Workspace;
+use App\Support\PostPlatformMetaRules;
 use App\Support\PostStatusRules;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
@@ -47,22 +48,30 @@ class UpdatePost
             DB::transaction(function () use ($post, $data) {
                 $post->postPlatforms()->update(['enabled' => false]);
 
+                $existing = $post->postPlatforms()
+                    ->with('socialAccount')
+                    ->get()
+                    ->keyBy('id');
+
                 foreach (data_get($data, 'platforms', []) as $platformData) {
                     $updateData = ['enabled' => true];
+                    $contentType = data_get($platformData, 'content_type');
+                    $incomingMeta = data_get($platformData, 'meta');
+                    $postPlatform = $existing->get(data_get($platformData, 'id'));
 
-                    if (data_get($platformData, 'content_type') !== null) {
-                        $updateData['content_type'] = data_get($platformData, 'content_type');
+                    if ($contentType !== null) {
+                        $updateData['content_type'] = $contentType;
                     }
 
-                    if (data_get($platformData, 'meta') !== null) {
-                        $postPlatform = $post->postPlatforms()->where('id', data_get($platformData, 'id'))->first();
-
-                        if ($postPlatform) {
-                            $updateData['meta'] = array_filter(
-                                array_merge($postPlatform->meta ?? [], data_get($platformData, 'meta') ?? []),
-                                fn (mixed $value): bool => $value !== null,
-                            );
-                        }
+                    if (
+                        $postPlatform
+                        && ($incomingMeta !== null || PostPlatformMetaRules::dropsCollaborators($contentType ?? $postPlatform->content_type))
+                    ) {
+                        $updateData['meta'] = PostPlatformMetaRules::mergeFrom(
+                            $postPlatform,
+                            $incomingMeta ?? [],
+                            $contentType,
+                        );
                     }
 
                     $post->postPlatforms()

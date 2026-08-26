@@ -158,6 +158,15 @@ enum ContentType: string
         };
     }
 
+    /** Instagram Feed and Reels accept collaborator invites; Stories do not. */
+    public function supportsCollaborators(): bool
+    {
+        return match ($this) {
+            self::InstagramFeed, self::InstagramReel => true,
+            default => false,
+        };
+    }
+
     public function maxMediaCount(): int
     {
         return match ($this) {

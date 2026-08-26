@@ -15,6 +15,7 @@ use App\Models\PostPlatform;
 use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Meta\GraphError;
+use App\Support\Social\InstagramCollaborators;
 use App\Support\Social\PublishCheckpoint;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
@@ -109,6 +110,7 @@ class InstagramPublisher
             'image_url' => $imageUrl,
             'caption' => $content,
             'access_token' => $accessToken,
+            ...$this->collaboratorPayload(),
         ];
 
         $alt = $media->altTextFor(Platform::Instagram);
@@ -129,6 +131,7 @@ class InstagramPublisher
             'caption' => $content,
             'media_type' => 'REELS',
             'access_token' => $accessToken,
+            ...$this->collaboratorPayload(),
         ], 'reel container');
 
         return $this->finishContainer($instagramId, $accessToken, $containerId);
@@ -238,6 +241,7 @@ class InstagramPublisher
             'caption' => $content,
             'children' => implode(',', $childContainers),
             'access_token' => $accessToken,
+            ...$this->collaboratorPayload(),
         ], 'carousel container');
 
         return $this->finishContainer($instagramId, $accessToken, $carouselId);
@@ -474,6 +478,17 @@ class InstagramPublisher
             context: [PublishCheckpoint::INSTAGRAM_WORKFLOW => $workflow],
             retryDelaySeconds: self::STATUS_RETRY_DELAY_SECONDS,
             maxRetries: self::STATUS_MAX_RETRIES,
+        );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function collaboratorPayload(): array
+    {
+        return InstagramCollaborators::payload(
+            data_get($this->postPlatform->meta, 'collaborators'),
+            $this->postPlatform->socialAccount?->username,
         );
     }
 

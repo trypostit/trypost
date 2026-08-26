@@ -9,6 +9,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\PostPlatformMetaRules;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -70,13 +71,15 @@ class CreatePost
                 $meta = data_get($platformData, 'meta');
                 if (is_array($meta) && $meta !== []) {
                     $existing = $post->postPlatforms()
+                        ->with('socialAccount')
                         ->where('social_account_id', $accountId)
                         ->first();
 
                     if ($existing) {
-                        $updates['meta'] = array_filter(
-                            array_merge($existing->meta ?? [], $meta),
-                            fn (mixed $value): bool => $value !== null,
+                        $updates['meta'] = PostPlatformMetaRules::mergeFrom(
+                            $existing,
+                            $meta,
+                            data_get($platformData, 'content_type'),
                         );
                     }
                 }

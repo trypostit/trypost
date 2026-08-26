@@ -93,6 +93,14 @@ class SocialAccountFactory extends Factory
         ]);
     }
 
+    public function instagramFacebook(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'platform' => Platform::InstagramFacebook,
+            'scopes' => Platform::InstagramFacebook->requiredPublishScopes(),
+        ]);
+    }
+
     public function threads(): static
     {
         return $this->state(fn (array $attributes) => [
