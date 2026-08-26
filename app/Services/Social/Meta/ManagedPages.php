@@ -19,7 +19,9 @@ use Illuminate\Support\Uri;
  * Portfolio admin — the New Pages Experience norm — gets nothing there. The
  * portfolio's `owned_pages` and `client_pages` edges are read too and merged by id.
  *
- * Only `/me/accounts` failing is fatal; everything else keeps what arrived. A refusal
+ * `/me/accounts` is the list everything else is added to, so it is all or nothing:
+ * failing it — running out of budget included — aborts rather than handing back a base
+ * this walk cannot vouch for. Everything after it keeps what arrived. A refusal there
  * is an answer — a Page this login cannot enumerate is one it cannot get a token for,
  * so it was never connectable. An unknown is not: a throttle, a hiccup, a budget or a
  * ceiling leaves the walk unable to vouch for itself, and it says so, so no caller
@@ -49,8 +51,9 @@ class ManagedPages
         private readonly string $graphApi,
         private readonly string $userToken,
         private readonly string $fields,
+        ?float $deadline,
     ) {
-        $this->deadline = microtime(true) + (int) config('trypost.meta_page_walk_seconds');
+        $this->deadline = $deadline ?? microtime(true) + (int) config('trypost.meta_page_walk_seconds');
     }
 
     /**
@@ -63,8 +66,9 @@ class ManagedPages
         string $userToken,
         string $fields,
         array $grantedScopes = [self::PORTFOLIO_SCOPE],
+        ?float $deadline = null,
     ): ManagedPageList {
-        return (new self($graphApi, $userToken, $fields))->walk($grantedScopes);
+        return (new self($graphApi, $userToken, $fields, $deadline))->walk($grantedScopes);
     }
 
     /**

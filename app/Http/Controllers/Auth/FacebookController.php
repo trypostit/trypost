@@ -73,7 +73,7 @@ class FacebookController extends MetaController
                 return $granted;
             }
 
-            $walk = ManagedPages::forUser($this->graphApi(), $socialUser->token, $this->pageFields, $granted);
+            $walk = ManagedPages::forUser($this->graphApi(), $socialUser->token, $this->pageFields, $granted, $this->deadline());
             $listed = $this->toPageCards($walk->pages);
             $pages = ManagedPages::publishable($listed);
 

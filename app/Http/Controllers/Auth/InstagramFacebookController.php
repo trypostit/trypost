@@ -91,7 +91,7 @@ class InstagramFacebookController extends MetaController
                 return $granted;
             }
 
-            $walk = ManagedPages::forUser($this->graphApi(), $socialUser->token, $this->pageFields, $granted);
+            $walk = ManagedPages::forUser($this->graphApi(), $socialUser->token, $this->pageFields, $granted, $this->deadline());
 
             $listed = collect($walk->pages)
                 ->filter(fn (array $page) => filled(data_get($page, 'instagram_business_account.id')))
@@ -220,7 +220,9 @@ class InstagramFacebookController extends MetaController
             (string) data_get($pageData, 'ig_id'),
             [
                 'username' => data_get($pageData, 'ig_username'),
-                'display_name' => data_get($pageData, 'ig_name') ?? data_get($pageData, 'ig_username'),
+                'display_name' => data_get($pageData, 'ig_name')
+                    ?? data_get($pageData, 'ig_username')
+                    ?? data_get($pageData, 'page_name'),
                 'avatar_url' => $avatarPath,
                 'access_token' => data_get($pageData, 'page_access_token'),
                 'refresh_token' => null,
@@ -246,18 +248,16 @@ class InstagramFacebookController extends MetaController
      */
     private function describeInstagramAccounts(array $pages): array
     {
-        $deadline = microtime(true) + (int) config('trypost.meta_page_walk_seconds');
-
         return collect($pages)
             ->chunk(self::INSTAGRAM_LOOKUPS_PER_ROUND)
-            ->flatMap(fn (Collection $round) => $this->describeRound($round, $deadline))
+            ->flatMap(fn (Collection $round) => $this->describeRound($round, $this->deadline()))
             ->values()
             ->all();
     }
 
     /**
      * Past the deadline the lookups are skipped rather than dropped: the Page still
-     * connects, only its Instagram handle and avatar arrive empty.
+     * connects, falling back to its own name, with no Instagram handle or avatar.
      *
      * @param  Collection<int, array<string, mixed>>  $pages
      * @return Collection<int, array<string, mixed>>

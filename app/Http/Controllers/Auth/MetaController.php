@@ -17,11 +17,19 @@ abstract class MetaController extends SocialController
 {
     protected string $driver = 'facebook';
 
+    private ?float $deadline = null;
+
     /** Graph fields the page walk asks for. */
     protected string $pageFields;
 
     /** Popup key for "this login has no pages of the kind we want". */
     protected string $noPagesKey;
+
+    /** When the whole callback must stop reading pages, shared by every phase of it. */
+    protected function deadline(): float
+    {
+        return $this->deadline ??= microtime(true) + (int) config('trypost.meta_page_walk_seconds');
+    }
 
     /** Meta's app review wants to see this called; the answer is unused, so nothing it does can fail the connect. */
     protected function touchProfile(string $userToken): void

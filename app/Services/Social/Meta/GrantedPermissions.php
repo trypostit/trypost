@@ -14,6 +14,10 @@ use Illuminate\Support\Facades\Http;
  * unknown, not a refusal — `/me/permissions` is paginated and Meta does not document
  * that it echoes scope strings verbatim, and failForMissingScopes() blocks publishing
  * on a scope missing from this column.
+ *
+ * A failed request is unknown in the same way, so it yields the requested list whole.
+ * That is where this app already stood before it asked Meta at all: a scope declined
+ * during a Graph outage still surfaces, later, when publishing rejects it.
  */
 class GrantedPermissions
 {

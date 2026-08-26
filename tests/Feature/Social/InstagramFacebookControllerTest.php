@@ -761,3 +761,43 @@ test('instagram via facebook falls back to the username when meta returns a null
 
     expect(SocialAccount::where('platform_user_id', 'ig_1')->sole()->display_name)->toBe('only_a_handle');
 });
+
+test('instagram via facebook falls back to the page name when the lookups run out of time', function () {
+    config()->set('trypost.meta_page_walk_seconds', 0);
+
+    session(['social_connect_workspace' => $this->workspace->id]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->token = 'test-user-token';
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn(Mockery::mock()
+            ->shouldReceive('usingGraphVersion')->andReturnSelf()
+            ->shouldReceive('redirectUrl')->andReturnSelf()
+            ->shouldReceive('user')->andReturn($socialiteUser)
+            ->getMock());
+
+    $graphApi = config('trypost.platforms.instagram-facebook.graph_api');
+
+    Http::fake([
+        "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
+        "{$graphApi}/me/permissions*" => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/accounts*" => Http::response(['data' => [[
+            'id' => 'page_1',
+            'name' => 'The Page Name',
+            'access_token' => 'page-token',
+            'instagram_business_account' => ['id' => 'ig_1'],
+        ]]], 200),
+    ]);
+
+    $this->actingAs($this->user)->get(route('app.social.instagram-facebook.callback'));
+
+    $account = SocialAccount::where('platform_user_id', 'ig_1')->sole();
+
+    expect($account->display_name)->toBe('The Page Name')
+        ->and($account->username)->toBeNull();
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/ig_1'));
+});
