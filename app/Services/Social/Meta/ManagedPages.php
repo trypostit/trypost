@@ -19,8 +19,11 @@ use Illuminate\Support\Uri;
  * Portfolio admin — the New Pages Experience norm — gets nothing there. The
  * portfolio's `owned_pages` and `client_pages` edges are read too and merged by id.
  *
- * Only `/me/accounts` failing is fatal. Anything else keeps what arrived and reports
- * the walk incomplete, so no caller auto-connects off a list it cannot vouch for.
+ * Only `/me/accounts` failing is fatal; everything else keeps what arrived. A refusal
+ * is an answer — a Page this login cannot enumerate is one it cannot get a token for,
+ * so it was never connectable. An unknown is not: a throttle, a hiccup, a budget or a
+ * ceiling leaves the walk unable to vouch for itself, and it says so, so no caller
+ * auto-connects off a list that may be missing something.
  */
 class ManagedPages
 {
