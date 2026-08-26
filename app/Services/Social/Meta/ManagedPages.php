@@ -33,8 +33,8 @@ class ManagedPages
     /** Portfolios read, and the page size asked of `/me/businesses`, which is read once. */
     public const MAX_PORTFOLIOS = 100;
 
-    /** Cursor follow-ups allowed across the whole walk; these cannot be pooled. */
-    public const MAX_CONTINUATIONS = 50;
+    /** Cursor requests allowed across the whole walk; these cannot be pooled. */
+    public const MAX_CONTINUATIONS = 25;
 
     private bool $complete = true;
 
@@ -153,37 +153,53 @@ class ManagedPages
     }
 
     /**
-     * Follows what is left of an edge. A cursor cannot be pooled, so the budget is
-     * what keeps a synchronous OAuth callback from walking thousands of pages.
+     * Follows what is left of an edge, one budgeted request at a time. A cursor cannot
+     * be pooled, so this is the only serial path in the walk. Whatever arrived before a
+     * cut-off is kept; only the walk's completeness is lost.
      *
      * @return list<array<string, mixed>>
      */
     private function rest(string $url, mixed $next): array
     {
-        if (! is_string($next) || blank($next)) {
-            return [];
+        $pages = [];
+
+        while (is_string($next) && filled($next)) {
+            if ($this->continuations >= self::MAX_CONTINUATIONS || Uri::of($next)->host() !== Uri::of($url)->host()) {
+                $this->complete = false;
+
+                break;
+            }
+
+            $this->continuations++;
+
+            try {
+                $response = Http::timeout(15)->connectTimeout(5)->get($next);
+            } catch (ConnectionException) {
+                $this->complete = false;
+
+                break;
+            }
+
+            if ($response->failed()) {
+                GraphPaginator::failure($next, $response);
+                $this->complete = false;
+
+                break;
+            }
+
+            $pages = [...$pages, ...$response->collect('data')->all()];
+            $next = $response->json('paging.next');
         }
 
-        if (Uri::of($next)->host() !== Uri::of($url)->host() || $this->continuations >= self::MAX_CONTINUATIONS) {
-            $this->complete = false;
-
-            return [];
-        }
-
-        $this->continuations++;
-
-        try {
-            return GraphPaginator::all($next);
-        } catch (IncompleteMetaGraphPaginationException) {
-            $this->complete = false;
-
-            return [];
-        }
+        return $pages;
     }
 
     /**
      * Reading one page is what bounds the walk: paginating here would let one login
      * spawn thousands of edge reads. More portfolios than fit is incomplete, not failed.
+     *
+     * A refusal here is not "this login has no portfolios" — it is "we could not look",
+     * which is the difference between an edge and the index of edges.
      *
      * @return list<string>
      */
@@ -203,7 +219,8 @@ class ManagedPages
         }
 
         if ($response->failed()) {
-            $this->note($url, $response);
+            GraphPaginator::failure($url, $response);
+            $this->complete = false;
 
             return [];
         }

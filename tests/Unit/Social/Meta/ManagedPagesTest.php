@@ -131,7 +131,7 @@ test('a login meta reports as refusing business_management never touches the por
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/me/businesses'));
 });
 
-test('a portfolio edge denied by permissions is a complete walk with nothing behind it', function () {
+test('a refused portfolio index means we could not look, not that there is nothing', function () {
     $graphApi = managedPagesGraphApi();
 
     $walk = managedPagesWalk([
@@ -144,7 +144,69 @@ test('a portfolio edge denied by permissions is a complete walk with nothing beh
     ]);
 
     expect(managedPagesIds($walk))->toBe(['page_1'])
+        ->and($walk->complete)->toBeFalse();
+});
+
+test('a refused single edge is an answer about that edge, and leaves the walk complete', function () {
+    $graphApi = managedPagesGraphApi();
+
+    $walk = managedPagesWalk([
+        "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
+        "{$graphApi}/biz_1/owned_pages*" => Http::response([
+            'data' => [['id' => 'page_1', 'name' => 'Owned', 'access_token' => 'token-1']],
+        ], 200),
+        "{$graphApi}/biz_1/client_pages*" => Http::response([
+            'error' => ['message' => 'permission denied', 'code' => 10],
+        ], 403),
+    ]);
+
+    expect(managedPagesIds($walk))->toBe(['page_1'])
         ->and($walk->complete)->toBeTrue();
+});
+
+test('a continuation cut short keeps the pages it already read', function () {
+    $graphApi = managedPagesGraphApi();
+    $cursor = "{$graphApi}/biz_1/owned_pages?access_token=user-token&after=";
+
+    $walk = managedPagesWalk([
+        "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
+        "{$graphApi}/biz_1/owned_pages*" => Http::sequence()
+            ->push([
+                'data' => [['id' => 'page_1', 'name' => 'One', 'access_token' => 'token-1']],
+                'paging' => ['next' => "{$cursor}c1"],
+            ], 200)
+            ->push([
+                'data' => [['id' => 'page_2', 'name' => 'Two', 'access_token' => 'token-2']],
+                'paging' => ['next' => "{$cursor}c2"],
+            ], 200)
+            ->push(['error' => ['message' => 'Invalid cursor', 'code' => 100]], 400),
+        "{$graphApi}/biz_1/client_pages*" => Http::response(['data' => []], 200),
+    ]);
+
+    expect(managedPagesIds($walk))->toBe(['page_1', 'page_2'])
+        ->and($walk->complete)->toBeFalse();
+});
+
+test('the cursor budget counts requests, not edges', function () {
+    $graphApi = managedPagesGraphApi();
+
+    $walk = managedPagesWalk([
+        "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
+        "{$graphApi}/biz_1/owned_pages*" => Http::response([
+            'data' => [['id' => 'page_x', 'name' => 'X', 'access_token' => 'token']],
+            'paging' => ['next' => "{$graphApi}/biz_1/owned_pages?access_token=user-token&after=forever"],
+        ], 200),
+        "{$graphApi}/biz_1/client_pages*" => Http::response(['data' => []], 200),
+    ]);
+
+    expect($walk->complete)->toBeFalse();
+
+    expect(collect(Http::recorded())->filter(
+        fn (array $pair) => str_contains($pair[0]->url(), 'after=forever'),
+    ))->toHaveCount(ManagedPages::MAX_CONTINUATIONS);
 });
 
 test('a throttled portfolio edge keeps the pages it has and admits it is incomplete', function () {

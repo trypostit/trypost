@@ -208,6 +208,12 @@ Vue components must have a single root element.
 
 - Always use arrow functions in Vue components and TypeScript files. Never use `function` declarations.
 
+## Inertia SSR
+
+- This project does **not** run Inertia SSR. Nothing in the repo sets `INERTIA_SSR_ENABLED`, and no process starts `inertia:start-ssr`.
+- Tests disable it in `phpunit.xml` (`INERTIA_SSR_ENABLED=false`), the same way `PULSE_ENABLED` / `TELESCOPE_ENABLED` / `NIGHTWATCH_ENABLED` are handled. Without it, every test rendering an Inertia page issues a real HTTP request to the SSR endpoint, which fails silently and falls back to client rendering.
+- Do **not** fix that by flipping the default in `config/inertia.php` — the SSR build wiring is still shipped (`resources/js/ssr.ts`, `vite.config.ts`, `npm run build:ssr` in `docker/Dockerfile`), so a changed default would silently turn SSR off wherever it is started for us.
+
 ## Dialogs
 
 - In `<DialogFooter>`, put the **primary action button first** in the markup, then secondary/cancel (e.g. Save → Cancel). `DialogFooter` uses `flex-col` on mobile (primary on top, cancel at the bottom) and `sm:flex-row sm:justify-start` on desktop, so the first child is the leftmost action on larger screens.
