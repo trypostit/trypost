@@ -11,7 +11,7 @@ use Throwable;
 
 class TikTokPhotoDerivativeCleaner
 {
-    public const string DIRECTORY = 'social-tiktok-photos';
+    public const string DIRECTORY = SocialMediaDerivativeDirectory::TIKTOK_PHOTOS;
 
     /**
      * @param  array<string, mixed>|null  $context

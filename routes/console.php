@@ -11,6 +11,7 @@ use App\Console\Commands\CheckUpcomingPostConnections;
 use App\Console\Commands\ProcessScheduledPosts;
 use App\Console\Commands\RecoverStuckPosts;
 use App\Console\Commands\RefreshExpiringTokens;
+use App\Console\Commands\Social\PruneSocialMediaDerivatives;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command(ProcessScheduledPosts::class)->everyMinute()->withoutOverlapping()->onOneServer();
@@ -22,3 +23,4 @@ Schedule::command(FireScheduleTriggers::class)->everyMinute()->withoutOverlappin
 Schedule::command(ProcessAutomationDelays::class)->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command(RecoverStuckAutomationRuns::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(PruneDryRunAutomationRuns::class)->everyTenMinutes()->withoutOverlapping()->onOneServer();
+Schedule::command(PruneSocialMediaDerivatives::class)->hourly()->withoutOverlapping()->onOneServer();

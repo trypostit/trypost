@@ -7,13 +7,14 @@ namespace App\Services\Social\Concerns;
 use App\Enums\PostPlatform\AspectRatio;
 use App\Exceptions\Social\SocialPublishException;
 use App\Services\Media\MediaOptimizer;
+use App\Support\Social\SocialMediaDerivativeDirectory;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 trait CropsImageForAspectRatio
 {
-    private const CROP_DIRECTORY = 'social-crops';
+    private const string CROP_DIRECTORY = SocialMediaDerivativeDirectory::CROPS;
 
     /**
      * Crop the image to the user-selected aspect ratio and return a public URL
