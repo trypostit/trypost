@@ -10,23 +10,13 @@ use Illuminate\Support\Facades\Http;
 /**
  * The scopes a Meta login is not known to have refused.
  *
- * Meta lets someone decline individual permissions in the consent dialog, so the
- * scope list an app asked for is a request, not a record. Storing it on the
- * account claims access the login may have refused — `business_management` above
- * all, which also needs Advanced Access and is declined by default without it.
- *
- * Only a scope Meta explicitly reports as declined or expired is dropped. A scope
- * it does not mention is kept: `/me/permissions` is paginated and Meta does not
- * document that it echoes scope strings verbatim, so an absence is unknown, not a
- * refusal — and PublishToSocialPlatform::failForMissingScopes() blocks publishing
- * on a scope missing from this column. Guessing there would turn a cosmetic
- * inaccuracy into dead accounts.
+ * Only a scope Meta explicitly reports declined or expired is dropped. An absence is
+ * unknown, not a refusal — `/me/permissions` is paginated and Meta does not document
+ * that it echoes scope strings verbatim, and failForMissingScopes() blocks publishing
+ * on a scope missing from this column.
  */
 class GrantedPermissions
 {
-    /**
-     * Statuses that mean this login will not act on the scope.
-     */
     private const REFUSED = ['declined', 'expired'];
 
     /**

@@ -13,46 +13,38 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Uri;
 
 /**
- * Every Facebook Page a login can publish to, gathered from all the edges Meta lists them under.
+ * Every Facebook Page a login can publish to.
  *
- * `/me/accounts` only returns Pages the person holds a Page role on. Someone whose
- * access comes from a Business Portfolio assignment — an admin of a Page owned by
- * someone else's portfolio, the norm under the New Pages Experience — gets an empty
- * list there, so the portfolio's own `owned_pages` and `client_pages` edges are read
- * too and merged by Page id.
+ * `/me/accounts` only returns Pages the person holds a Page role on, so a Business
+ * Portfolio admin — the New Pages Experience norm — gets nothing there. The
+ * portfolio's `owned_pages` and `client_pages` edges are read too and merged by id.
  *
- * Those edges need `business_management`. A login Meta reports as having refused it
- * skips them outright — walking anyway would spend a request on a certain 403 and
- * log it at error level on every otherwise-successful connect. A refusal Meta does
- * not report is not assumed: the walk runs, and a rejection there still reads as
- * "this login reaches no portfolio pages" rather than failing the connect.
- *
- * A throttle, an upstream hiccup or more portfolios than the ceiling walks leaves the
- * real list unknown. None of that denies the connect — the Pages that did arrive are
- * still returned — but the walk reports itself incomplete so no caller auto-connects
- * off a list it cannot vouch for. Only `/me/accounts` itself failing is fatal: with
- * nothing to stand on there is no list at all.
+ * Only `/me/accounts` failing is fatal. Anything else keeps what arrived and reports
+ * the walk incomplete, so no caller auto-connects off a list it cannot vouch for.
  */
 class ManagedPages
 {
     private const PER_PAGE = 100;
 
-    /**
-     * Portfolio edges read concurrently per round. The walk sits inside a
-     * synchronous OAuth callback, where serial round trips are what break it.
-     */
     private const EDGES_PER_ROUND = 20;
 
-    /**
-     * Portfolios walked, and the page size asked of `/me/businesses` — the walk
-     * reads that one page and no more, so this is what bounds the whole thing.
-     */
+    private const PORTFOLIO_SCOPE = 'business_management';
+
+    /** Portfolios read, and the page size asked of `/me/businesses`, which is read once. */
     public const MAX_PORTFOLIOS = 100;
 
-    /**
-     * The permission Meta requires to read a portfolio's Page edges.
-     */
-    private const PORTFOLIO_SCOPE = 'business_management';
+    /** Cursor follow-ups allowed across the whole walk; these cannot be pooled. */
+    public const MAX_CONTINUATIONS = 50;
+
+    private bool $complete = true;
+
+    private int $continuations = 0;
+
+    private function __construct(
+        private readonly string $graphApi,
+        private readonly string $userToken,
+        private readonly string $fields,
+    ) {}
 
     /**
      * @param  array<int, string>  $grantedScopes
@@ -65,23 +57,11 @@ class ManagedPages
         string $fields,
         array $grantedScopes = [self::PORTFOLIO_SCOPE],
     ): ManagedPageList {
-        $query = ['access_token' => $userToken, 'fields' => $fields, 'limit' => self::PER_PAGE];
-        $pages = collect(GraphPaginator::all("{$graphApi}/me/accounts", $query));
-
-        if (! in_array(self::PORTFOLIO_SCOPE, $grantedScopes, true)) {
-            return new ManagedPageList(self::merge($pages), true);
-        }
-
-        $complete = true;
-        $pages = $pages->concat(self::portfolioPages($graphApi, $userToken, $query, $complete));
-
-        return new ManagedPageList(self::merge($pages), $complete);
+        return (new self($graphApi, $userToken, $fields))->walk($grantedScopes);
     }
 
     /**
-     * The Pages this login can actually post to. A Page Meta lists without an
-     * `access_token` — the shape of a login that declined `pages_read_engagement`
-     * on Meta's per-permission toggles — would connect into an account that
+     * A Page Meta lists without an `access_token` would connect into an account that
      * cannot publish, so callers separate it from a Page they never had.
      *
      * @param  array<int, array<string, mixed>>  $pages
@@ -96,50 +76,50 @@ class ManagedPages
     }
 
     /**
-     * One record per Page id, preferring whichever copy carries a token.
-     *
-     * @param  Collection<int, array<string, mixed>>  $pages
-     * @return list<array<string, mixed>>
+     * @param  array<int, string>  $grantedScopes
      */
-    private static function merge(Collection $pages): array
+    private function walk(array $grantedScopes): ManagedPageList
     {
-        return $pages
-            ->sortBy(fn (array $page) => filled(data_get($page, 'access_token')) ? 0 : 1)
-            ->unique(fn (array $page) => (string) data_get($page, 'id'))
-            ->values()
-            ->all();
+        $pages = collect(GraphPaginator::all("{$this->graphApi}/me/accounts", $this->query()));
+
+        if (in_array(self::PORTFOLIO_SCOPE, $grantedScopes, true)) {
+            $pages = $pages->concat($this->portfolioPages());
+        }
+
+        return new ManagedPageList(
+            $pages
+                ->sortBy(fn (array $page) => filled(data_get($page, 'access_token')) ? 0 : 1)
+                ->unique(fn (array $page) => (string) data_get($page, 'id'))
+                ->values()
+                ->all(),
+            $this->complete,
+        );
     }
 
     /**
-     * @param  array<string, mixed>  $query
      * @return Collection<int, array<string, mixed>>
      */
-    private static function portfolioPages(string $graphApi, string $userToken, array $query, bool &$complete): Collection
+    private function portfolioPages(): Collection
     {
-        $rounds = collect(self::businessIds($graphApi, $userToken, $complete))
+        $rounds = collect($this->businessIds())
             ->crossJoin(['owned_pages', 'client_pages'])
-            ->map(fn (array $edge) => Uri::of("{$graphApi}/{$edge[0]}/{$edge[1]}")->withQuery($query)->value())
+            ->map(fn (array $edge) => Uri::of("{$this->graphApi}/{$edge[0]}/{$edge[1]}")->withQuery($this->query())->value())
             ->chunk(self::EDGES_PER_ROUND);
 
         $pages = collect();
 
         foreach ($rounds as $round) {
-            $pages = $pages->concat(self::readRound($round, $complete));
+            $pages = $pages->concat($this->readRound($round));
         }
 
         return $pages;
     }
 
     /**
-     * Reads a round of edges at once, classifying each answer where it lands so a
-     * failure costs one request rather than two. A `paging.next` is followed only
-     * when it stays on the host the edge was read from; anything else is handed to
-     * GraphPaginator, whose own guard refuses it.
-     *
      * @param  Collection<int, string>  $urls
      * @return Collection<int, array<string, mixed>>
      */
-    private static function readRound(Collection $urls, bool &$complete): Collection
+    private function readRound(Collection $urls): Collection
     {
         $urls = $urls->values();
 
@@ -153,83 +133,83 @@ class ManagedPages
             $response = data_get($responses, $index);
 
             if (! $response instanceof Response) {
-                $complete = false;
+                $this->complete = false;
 
                 continue;
             }
 
             if ($response->failed()) {
-                $complete = GraphPaginator::failure($url, $response)->transient ? false : $complete;
+                $this->note($url, $response);
 
                 continue;
             }
 
-            $pages = $pages->concat($response->collect('data'));
-            $next = $response->json('paging.next');
-
-            if (! is_string($next) || blank($next)) {
-                continue;
-            }
-
-            $pages = $pages->concat(self::rest(
-                Uri::of($next)->host() === Uri::of($url)->host() ? $next : $url,
-                $complete,
-            ));
+            $pages = $pages->concat($response->collect('data'))->concat(
+                $this->rest($url, $response->json('paging.next')),
+            );
         }
 
         return $pages;
     }
 
     /**
-     * Follows what is left of an edge. Anything short of the whole remainder — a
-     * rejection included, since a page already arrived — leaves the walk unable to
-     * vouch for the edge.
+     * Follows what is left of an edge. A cursor cannot be pooled, so the budget is
+     * what keeps a synchronous OAuth callback from walking thousands of pages.
      *
      * @return list<array<string, mixed>>
      */
-    private static function rest(string $url, bool &$complete): array
+    private function rest(string $url, mixed $next): array
     {
+        if (! is_string($next) || blank($next)) {
+            return [];
+        }
+
+        if (Uri::of($next)->host() !== Uri::of($url)->host() || $this->continuations >= self::MAX_CONTINUATIONS) {
+            $this->complete = false;
+
+            return [];
+        }
+
+        $this->continuations++;
+
         try {
-            return GraphPaginator::all($url);
+            return GraphPaginator::all($next);
         } catch (IncompleteMetaGraphPaginationException) {
-            $complete = false;
+            $this->complete = false;
 
             return [];
         }
     }
 
     /**
-     * The portfolios to walk, from a single request. Reading only the first page
-     * is what actually bounds the work: paginating here would let one login spawn
-     * thousands of edge reads inside a synchronous OAuth callback. More portfolios
-     * than fit means the walk cannot see all of them, which is an incomplete walk,
-     * not a failed one.
+     * Reading one page is what bounds the walk: paginating here would let one login
+     * spawn thousands of edge reads. More portfolios than fit is incomplete, not failed.
      *
      * @return list<string>
      */
-    private static function businessIds(string $graphApi, string $userToken, bool &$complete): array
+    private function businessIds(): array
     {
-        $url = "{$graphApi}/me/businesses";
+        $url = "{$this->graphApi}/me/businesses";
 
         try {
             $response = Http::timeout(15)->connectTimeout(5)->get($url, [
-                'access_token' => $userToken,
+                'access_token' => $this->userToken,
                 'limit' => self::MAX_PORTFOLIOS,
             ]);
         } catch (ConnectionException) {
-            $complete = false;
+            $this->complete = false;
 
             return [];
         }
 
         if ($response->failed()) {
-            $complete = GraphPaginator::failure($url, $response)->transient ? false : $complete;
+            $this->note($url, $response);
 
             return [];
         }
 
         if (filled($response->json('paging.next'))) {
-            $complete = false;
+            $this->complete = false;
         }
 
         return $response->collect('data')
@@ -239,5 +219,24 @@ class ManagedPages
             ->take(self::MAX_PORTFOLIOS)
             ->values()
             ->all();
+    }
+
+    /**
+     * A rejection is Meta answering that this login reaches nothing there. Anything
+     * else leaves the edge unread, which the walk cannot vouch for.
+     */
+    private function note(string $url, Response $response): void
+    {
+        if (GraphPaginator::failure($url, $response)->transient) {
+            $this->complete = false;
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function query(): array
+    {
+        return ['access_token' => $this->userToken, 'fields' => $this->fields, 'limit' => self::PER_PAGE];
     }
 }

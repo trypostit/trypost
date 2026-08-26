@@ -149,13 +149,16 @@ class SocialController extends Controller
      * Nothing on this network is left to connect: the card being reconnected is
      * gone from the provider, this login has nothing left to offer, or the
      * single slot is taken.
+     *
+     * A taken slot is a fact about our own rows, so it stands even when the provider
+     * listing came back short. The other two answers depend on having seen everything.
      */
-    protected function noConnectableIdentities(?SocialAccount $reconnect, string $missingKey): Response
+    protected function noConnectableIdentities(?SocialAccount $reconnect, string $missingKey, bool $listingComplete = true): Response
     {
         $key = match (true) {
-            $reconnect !== null => $missingKey,
-            (bool) config('trypost.allow_multiple_social_accounts') => 'all_connected',
-            default => 'network_taken',
+            ! (bool) config('trypost.allow_multiple_social_accounts') && $reconnect === null => 'network_taken',
+            $listingComplete => $reconnect !== null ? $missingKey : 'all_connected',
+            default => 'pages_read_incomplete',
         };
 
         return $this->popupCallback(false, __("accounts.popup_callback.{$key}"), $this->platform->value);

@@ -351,3 +351,44 @@ test('a portfolio edge paging off-host never gets the token', function () {
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), 'evil.example'));
 });
+
+test('an off-host cursor stops the edge instead of re-reading it', function () {
+    $graphApi = managedPagesGraphApi();
+
+    $walk = managedPagesWalk([
+        "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/businesses*" => Http::response(['data' => [['id' => 'biz_1']]], 200),
+        "{$graphApi}/biz_1/owned_pages*" => Http::response([
+            'data' => [['id' => 'page_1', 'name' => 'One', 'access_token' => 'token-1']],
+            'paging' => ['next' => 'https://evil.example/owned_pages?access_token=user-token'],
+        ], 200),
+        "{$graphApi}/biz_1/client_pages*" => Http::response(['data' => []], 200),
+    ]);
+
+    expect(managedPagesIds($walk))->toBe(['page_1'])
+        ->and($walk->complete)->toBeFalse();
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'evil.example'));
+    expect(collect(Http::recorded())->filter(
+        fn (array $pair) => str_contains($pair[0]->url(), 'owned_pages'),
+    ))->toHaveCount(1);
+});
+
+test('the cursor budget stops a walk that would never end', function () {
+    $graphApi = managedPagesGraphApi();
+
+    $walk = managedPagesWalk([
+        "{$graphApi}/me/accounts*" => Http::response(['data' => []], 200),
+        "{$graphApi}/me/businesses*" => Http::response([
+            'data' => collect(range(1, ManagedPages::MAX_CONTINUATIONS + 5))
+                ->map(fn (int $n) => ['id' => "biz_{$n}"])
+                ->all(),
+        ], 200),
+        "{$graphApi}/*_pages*" => Http::response([
+            'data' => [['id' => 'page_x', 'name' => 'X', 'access_token' => 'token']],
+            'paging' => ['next' => "{$graphApi}/biz_1/owned_pages?access_token=user-token&after=cursor"],
+        ], 200),
+    ]);
+
+    expect($walk->complete)->toBeFalse();
+});

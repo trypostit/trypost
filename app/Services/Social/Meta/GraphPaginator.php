@@ -14,11 +14,10 @@ use Illuminate\Support\Uri;
 use Throwable;
 
 /**
- * Collects every item from a paginated Meta Graph API edge by following `paging.next`.
+ * Collects every item from a paginated Meta Graph edge by following `paging.next`.
  *
- * Stops only when pagination is exhausted. Request failures and pathological cases
- * (repeated next URL, off-host next URL, extreme page count) throw so callers never
- * confuse an error with an empty Page list or auto-connect on a truncated list.
+ * Failures and pathological cases (repeated next URL, off-host next URL, extreme page
+ * count) throw, so no caller confuses an error with an empty list.
  */
 class GraphPaginator
 {
@@ -83,11 +82,7 @@ class GraphPaginator
         return $items->values()->all();
     }
 
-    /**
-     * Classify and log a single failed Graph response for a caller that read the
-     * page itself — a pooled first page — rather than walking it here. Keeps the
-     * one description of what a Graph failure means in this one place.
-     */
+    /** Classify and log a failed response a caller read itself, rather than walked here. */
     public static function failure(string $url, Response $response): IncompleteMetaGraphPaginationException
     {
         return self::describe($url, 0, response: $response);
@@ -106,11 +101,7 @@ class GraphPaginator
         throw self::describe($url, $fetched, $e, $response, $reason);
     }
 
-    /**
-     * A confirmed rejection is Meta answering the question, and callers that treat
-     * it as "this edge is not readable" log nothing further — so it is a warning.
-     * Anything unknown leaves a walk in the dark and stays at error level.
-     */
+    /** A confirmed rejection is Meta answering, so it warns; an unknown stays an error. */
     private static function describe(
         string $url,
         int $fetched,
@@ -131,6 +122,6 @@ class GraphPaginator
 
         $transient ? Log::error($message, $context) : Log::warning($message, $context);
 
-        return new IncompleteMetaGraphPaginationException($e, transient: $transient, fetched: $fetched);
+        return new IncompleteMetaGraphPaginationException($e, transient: $transient);
     }
 }

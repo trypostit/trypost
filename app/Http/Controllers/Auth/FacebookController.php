@@ -101,12 +101,9 @@ class FacebookController extends SocialController
             $pages = $this->filterConnectableIdentities($workspace, $pages, 'id', $reconnect);
 
             if (empty($pages)) {
-                return $walk->complete
-                    ? $this->noConnectableIdentities($reconnect, 'page_not_found')
-                    : $this->popupCallback(false, __('accounts.popup_callback.pages_read_incomplete'), $this->platform->value);
+                return $this->noConnectableIdentities($reconnect, 'page_not_found', $walk->complete);
             }
 
-            // A lone page is only safe to take without asking when the walk saw everything
             if (count($pages) === 1 && ($walk->complete || $reconnect !== null)) {
                 $page = $pages[0];
                 $avatarPath = uploadFromUrl(data_get($page, 'picture'));

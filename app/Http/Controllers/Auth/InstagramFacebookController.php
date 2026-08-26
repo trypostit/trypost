@@ -126,14 +126,11 @@ class InstagramFacebookController extends SocialController
             );
 
             if (empty($connectable)) {
-                return $walk->complete
-                    ? $this->noConnectableIdentities($existingAccount, 'page_not_found')
-                    : $this->popupCallback(false, __('accounts.popup_callback.pages_read_incomplete'), $this->platform->value);
+                return $this->noConnectableIdentities($existingAccount, 'page_not_found', $walk->complete);
             }
 
             $pages = $this->describeInstagramAccounts($connectable);
 
-            // A lone page is only safe to take without asking when the walk saw everything
             if (count($pages) === 1 && ($walk->complete || $existingAccount !== null)) {
                 return $this->connectInstagramAccount($workspace, $pages[0], $existingAccount, $granted);
             }
