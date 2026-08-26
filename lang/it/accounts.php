@@ -155,6 +155,7 @@ return [
         'failed_to_get_profile' => 'Impossibile ottenere il profilo.',
         'page_not_found' => 'Pagina non trovata.',
         'channel_not_found' => 'Canale non trovato.',
+        'pages_read_incomplete' => 'Non siamo riusciti a leggere tutte le tue Pagine. Riprova tra poco.',
         'pages_missing_permission' => 'Abbiamo trovato le tue Pagine, ma non l’autorizzazione a pubblicarci. Riconnetti accettando tutte le autorizzazioni.',
         'no_facebook_pages' => 'Nessuna pagina Facebook trovata. Devi essere amministratore di almeno una pagina.',
         'no_facebook_instagram_pages' => 'Nessuna pagina Facebook con account Instagram collegati trovata.',

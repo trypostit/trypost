@@ -157,6 +157,7 @@ return [
         'failed_to_get_profile' => 'Profil alınamadı.',
         'page_not_found' => 'Sayfa bulunamadı.',
         'channel_not_found' => 'Kanal bulunamadı.',
+        'pages_read_incomplete' => 'Sayfalarınızın tamamını okuyamadık. Birazdan tekrar deneyin.',
         'pages_missing_permission' => 'Sayfalarınızı bulduk ama orada paylaşım izni bulamadık. Yeniden bağlanıp tüm izinleri kabul edin.',
         'no_facebook_pages' => 'Facebook Sayfası bulunamadı. En az bir sayfanın yöneticisi olmanız gerekir.',
         'no_facebook_instagram_pages' => 'Bağlı Instagram hesabı olan Facebook Sayfası bulunamadı.',

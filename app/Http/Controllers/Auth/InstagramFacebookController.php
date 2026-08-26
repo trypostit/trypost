@@ -111,9 +111,11 @@ class InstagramFacebookController extends SocialController
             $publishable = ManagedPages::publishable($listed);
 
             if (empty($publishable)) {
-                return $this->popupCallback(false, __(empty($listed)
-                    ? 'accounts.popup_callback.no_facebook_instagram_pages'
-                    : 'accounts.popup_callback.pages_missing_permission'), $this->platform->value);
+                return $this->popupCallback(false, __(match (true) {
+                    ! $walk->complete => 'accounts.popup_callback.pages_read_incomplete',
+                    empty($listed) => 'accounts.popup_callback.no_facebook_instagram_pages',
+                    default => 'accounts.popup_callback.pages_missing_permission',
+                }), $this->platform->value);
             }
 
             $connectable = $this->filterConnectableIdentities(
@@ -124,7 +126,9 @@ class InstagramFacebookController extends SocialController
             );
 
             if (empty($connectable)) {
-                return $this->noConnectableIdentities($existingAccount, 'page_not_found');
+                return $walk->complete
+                    ? $this->noConnectableIdentities($existingAccount, 'page_not_found')
+                    : $this->popupCallback(false, __('accounts.popup_callback.pages_read_incomplete'), $this->platform->value);
             }
 
             $pages = $this->describeInstagramAccounts($connectable);

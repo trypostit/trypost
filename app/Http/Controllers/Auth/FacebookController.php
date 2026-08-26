@@ -91,15 +91,19 @@ class FacebookController extends SocialController
             $pages = ManagedPages::publishable($listed);
 
             if (empty($pages)) {
-                return $this->popupCallback(false, __(empty($listed)
-                    ? 'accounts.popup_callback.no_facebook_pages'
-                    : 'accounts.popup_callback.pages_missing_permission'), $this->platform->value);
+                return $this->popupCallback(false, __(match (true) {
+                    ! $walk->complete => 'accounts.popup_callback.pages_read_incomplete',
+                    empty($listed) => 'accounts.popup_callback.no_facebook_pages',
+                    default => 'accounts.popup_callback.pages_missing_permission',
+                }), $this->platform->value);
             }
 
             $pages = $this->filterConnectableIdentities($workspace, $pages, 'id', $reconnect);
 
             if (empty($pages)) {
-                return $this->noConnectableIdentities($reconnect, 'page_not_found');
+                return $walk->complete
+                    ? $this->noConnectableIdentities($reconnect, 'page_not_found')
+                    : $this->popupCallback(false, __('accounts.popup_callback.pages_read_incomplete'), $this->platform->value);
             }
 
             // A lone page is only safe to take without asking when the walk saw everything

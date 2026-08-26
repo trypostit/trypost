@@ -155,6 +155,7 @@ return [
         'failed_to_get_profile' => 'プロフィールの取得に失敗しました。',
         'page_not_found' => 'ページが見つかりません。',
         'channel_not_found' => 'チャンネルが見つかりません。',
+        'pages_read_incomplete' => 'ページをすべて読み取れませんでした。少し時間をおいて再度お試しください。',
         'pages_missing_permission' => 'ページは見つかりましたが、投稿する権限がありません。再接続してすべての権限を許可してください。',
         'no_facebook_pages' => 'Facebook ページが見つかりません。少なくとも 1 つのページの管理者である必要があります。',
         'no_facebook_instagram_pages' => 'Instagram アカウントが連携された Facebook ページが見つかりません。',

@@ -155,6 +155,7 @@ return [
         'failed_to_get_profile' => 'Failed to get profile.',
         'page_not_found' => 'Page not found.',
         'channel_not_found' => 'Channel not found.',
+        'pages_read_incomplete' => 'We could not finish reading your Pages. Please try again in a moment.',
         'pages_missing_permission' => 'We found your Pages but not the permission to post to them. Reconnect and accept every permission.',
         'no_facebook_pages' => 'No Facebook Pages found. You need to be an admin of at least one page.',
         'no_facebook_instagram_pages' => 'No Facebook Pages with linked Instagram accounts found.',

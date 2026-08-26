@@ -155,6 +155,7 @@ return [
         'failed_to_get_profile' => 'Nie udało się pobrać profilu.',
         'page_not_found' => 'Nie znaleziono strony.',
         'channel_not_found' => 'Nie znaleziono kanału.',
+        'pages_read_incomplete' => 'Nie udało się odczytać wszystkich Twoich stron. Spróbuj ponownie za chwilę.',
         'pages_missing_permission' => 'Znaleźliśmy Twoje strony, ale nie uprawnienia do publikowania na nich. Połącz ponownie i zaakceptuj wszystkie uprawnienia.',
         'no_facebook_pages' => 'Nie znaleziono stron na Facebooku. Musisz być administratorem co najmniej jednej strony.',
         'no_facebook_instagram_pages' => 'Nie znaleziono stron na Facebooku z powiązanymi kontami Instagram.',

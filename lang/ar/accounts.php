@@ -155,6 +155,7 @@ return [
         'failed_to_get_profile' => 'فشل جلب الملف الشخصي.',
         'page_not_found' => 'لم يتم العثور على الصفحة.',
         'channel_not_found' => 'لم يتم العثور على القناة.',
+        'pages_read_incomplete' => 'لم نتمكن من إكمال قراءة صفحاتك. حاول مرة أخرى بعد قليل.',
         'pages_missing_permission' => 'وجدنا صفحاتك ولكن ليس إذن النشر فيها. أعد الاتصال واقبل جميع الأذونات.',
         'no_facebook_pages' => 'لم يتم العثور على صفحات Facebook. يجب أن تكون مشرفًا على صفحة واحدة على الأقل.',
         'no_facebook_instagram_pages' => 'لم يتم العثور على صفحات Facebook مرتبطة بحسابات Instagram.',
