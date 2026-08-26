@@ -501,3 +501,19 @@ test('the deadline stops me/accounts from paginating forever', function () {
         ], 200),
     ]);
 })->throws(IncompleteMetaGraphPaginationException::class);
+
+test('a pages-api throttle on a user token is a throttle, not an answer', function () {
+    $graphApi = managedPagesGraphApi();
+
+    $walk = managedPagesWalk([
+        "{$graphApi}/me/accounts*" => Http::response([
+            'data' => [['id' => 'page_1', 'name' => 'Page', 'access_token' => 'role-token']],
+        ], 200),
+        "{$graphApi}/me/businesses*" => Http::response([
+            'error' => ['message' => 'Page request limit reached', 'code' => 32],
+        ], 400),
+    ]);
+
+    expect(managedPagesIds($walk))->toBe(['page_1'])
+        ->and($walk->complete)->toBeFalse();
+});
