@@ -10,7 +10,6 @@ use App\Exceptions\SocialAccount\ConnectPopupException;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
-use App\Services\Social\Meta\GrantedPermissions;
 use App\Services\Social\Meta\ManagedPages;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response as ClientResponse;
@@ -26,9 +25,11 @@ use Inertia\Response as InertiaResponse;
 use Laravel\Socialite\Facades\Socialite;
 use Symfony\Component\HttpFoundation\Response;
 
-class InstagramFacebookController extends SocialController
+class InstagramFacebookController extends MetaController
 {
-    protected string $driver = 'facebook';
+    protected string $pageFields = 'id,name,username,picture{url},access_token,instagram_business_account';
+
+    protected string $noPagesKey = 'accounts.popup_callback.no_facebook_instagram_pages';
 
     protected SocialPlatform $platform = SocialPlatform::InstagramFacebook;
 
@@ -39,8 +40,6 @@ class InstagramFacebookController extends SocialController
      * hundreds of Pages does not serialise the OAuth callback.
      */
     private const INSTAGRAM_LOOKUPS_PER_ROUND = 20;
-
-    private const PAGE_FIELDS = 'id,name,username,picture{url},access_token,instagram_business_account';
 
     protected array $scopes = [
         'public_profile',
@@ -84,24 +83,15 @@ class InstagramFacebookController extends SocialController
                 ->redirectUrl(route('app.social.instagram-facebook.callback'))
                 ->user();
 
-            // Trigger public_profile API call for Meta app review verification
-            Http::get(config('trypost.platforms.instagram-facebook.graph_api').'/me', [
-                'fields' => 'id,name',
-                'access_token' => $socialUser->token,
-            ]);
+            $this->touchProfile($socialUser->token);
 
-            $granted = GrantedPermissions::for($this->graphApi(), $socialUser->token, $this->scopes);
+            $granted = $this->grantedScopes($socialUser->token);
 
-            if (array_diff($this->platform->requiredPublishScopes(), $granted) !== []) {
-                return $this->popupCallback(false, __('accounts.popup_callback.pages_missing_permission'), $this->platform->value);
+            if ($granted instanceof InertiaResponse) {
+                return $granted;
             }
 
-            $walk = ManagedPages::forUser(
-                $this->graphApi(),
-                $socialUser->token,
-                self::PAGE_FIELDS,
-                $granted,
-            );
+            $walk = ManagedPages::forUser($this->graphApi(), $socialUser->token, $this->pageFields, $granted);
 
             $listed = collect($walk->pages)
                 ->filter(fn (array $page) => filled(data_get($page, 'instagram_business_account.id')))
@@ -111,11 +101,7 @@ class InstagramFacebookController extends SocialController
             $publishable = ManagedPages::publishable($listed);
 
             if (empty($publishable)) {
-                return $this->popupCallback(false, __(match (true) {
-                    ! $walk->complete => 'accounts.popup_callback.pages_read_incomplete',
-                    empty($listed) => 'accounts.popup_callback.no_facebook_instagram_pages',
-                    default => 'accounts.popup_callback.pages_missing_permission',
-                }), $this->platform->value);
+                return $this->noPagesOnOffer($walk, $listed);
             }
 
             $connectable = $this->filterConnectableIdentities(
@@ -303,13 +289,8 @@ class InstagramFacebookController extends SocialController
         });
     }
 
-    private function graphApi(): string
-    {
-        return (string) config('trypost.platforms.instagram-facebook.graph_api');
-    }
-
     private function graphVersion(): string
     {
-        return Uri::of(config('trypost.platforms.instagram-facebook.graph_api'))->path();
+        return Uri::of($this->graphApi())->path();
     }
 }

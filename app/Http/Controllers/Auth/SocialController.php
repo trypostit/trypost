@@ -26,6 +26,12 @@ class SocialController extends Controller
 {
     protected SocialPlatform $platform;
 
+    /** The platform's API host, keyed in config by the enum value. */
+    protected function graphApi(): string
+    {
+        return (string) config("trypost.platforms.{$this->platform->value}.graph_api");
+    }
+
     protected function ensurePlatformEnabled(): void
     {
         if (! $this->platform->isEnabled()) {
