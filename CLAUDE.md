@@ -210,9 +210,9 @@ Vue components must have a single root element.
 
 ## Inertia SSR
 
-- This project does **not** run Inertia SSR. `config/inertia.php` defaults `ssr.enabled` to `false`; nothing in the repo sets `INERTIA_SSR_ENABLED`, and no process starts `inertia:start-ssr`.
+- This project does **not** run Inertia SSR. `config/inertia.php` defaults `ssr.enabled` to `false` and nothing in the repo sets `INERTIA_SSR_ENABLED`.
 - Keep it off. With it on, every test rendering an Inertia page issues a real HTTP request to the SSR endpoint, which fails silently and falls back to client rendering — slow, and it hides missing `Http::fake()` stubs.
-- The build wiring is still shipped (`resources/js/ssr.ts`, `vite.config.ts`, `npm run build:ssr` in `docker/Dockerfile`). Turning SSR on means starting the SSR process too, not just flipping the env.
+- The build wiring is still shipped (`resources/js/ssr.ts`, `vite.config.ts`, `npm run build:ssr` in `docker/Dockerfile`). Turning SSR on means building that bundle and running `inertia:start-ssr` alongside the app, not just flipping the env.
 
 ## Dialogs
 

@@ -29,11 +29,12 @@ class GraphPaginator
 
     /**
      * @param  array<string, mixed>  $query
+     * @param  float|null  $deadline  microtime after which no *further* page is fetched; the first always is
      * @return list<array<string, mixed>>
      *
      * @throws IncompleteMetaGraphPaginationException
      */
-    public static function all(string $url, array $query = []): array
+    public static function all(string $url, array $query = [], ?float $deadline = null): array
     {
         $items = collect();
         $fetched = 0;
@@ -48,6 +49,10 @@ class GraphPaginator
 
             if (isset($seen[$next])) {
                 self::abort($next, $fetched, reason: 'Meta Graph pagination stopped: repeated paging URL');
+            }
+
+            if ($fetched > 0 && $deadline !== null && microtime(true) >= $deadline) {
+                self::abort($next, $fetched, reason: 'Meta Graph pagination stopped: out of time');
             }
 
             $seen[$next] = true;

@@ -156,6 +156,7 @@ return [
         'page_not_found' => '페이지를 찾을 수 없습니다.',
         'channel_not_found' => '채널을 찾을 수 없습니다.',
         'pages_read_incomplete' => '페이지를 모두 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.',
+        'publish_permission_refused' => '게시에 필요한 권한이 거부되었습니다. 다시 연결하고 모두 허용해 주세요.',
         'pages_missing_permission' => '페이지는 찾았지만 게시 권한이 없습니다. 다시 연결하고 모든 권한을 허용해 주세요.',
         'no_facebook_pages' => 'Facebook 페이지를 찾을 수 없습니다. 최소 한 개 페이지의 관리자여야 합니다.',
         'no_facebook_instagram_pages' => 'Instagram 계정이 연결된 Facebook 페이지를 찾을 수 없습니다.',

@@ -87,7 +87,7 @@ class ManagedPages
      */
     private function walk(array $grantedScopes): ManagedPageList
     {
-        $pages = collect(GraphPaginator::all("{$this->graphApi}/me/accounts", $this->query()));
+        $pages = collect(GraphPaginator::all("{$this->graphApi}/me/accounts", $this->query(), $this->deadline));
 
         if (in_array(self::PORTFOLIO_SCOPE, $grantedScopes, true)) {
             $pages = $pages->concat($this->portfolioPages());

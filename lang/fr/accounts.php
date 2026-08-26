@@ -156,6 +156,7 @@ return [
         'page_not_found' => 'Page introuvable.',
         'channel_not_found' => 'Chaîne introuvable.',
         'pages_read_incomplete' => 'Nous n’avons pas pu finir de lire vos Pages. Réessayez dans un instant.',
+        'publish_permission_refused' => 'Cette connexion a refusé une autorisation nécessaire pour publier. Reconnectez-vous en les acceptant toutes.',
         'pages_missing_permission' => 'Nous avons trouvé vos Pages, mais pas l’autorisation d’y publier. Reconnectez-vous en acceptant toutes les autorisations.',
         'no_facebook_pages' => 'Aucune page Facebook trouvée. Vous devez être administrateur d\'au moins une page.',
         'no_facebook_instagram_pages' => 'Aucune page Facebook associée à un compte Instagram trouvée.',

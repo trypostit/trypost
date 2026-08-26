@@ -73,7 +73,7 @@ class GraphError
     {
         return $response->serverError()
             || $response->status() === 429
-            || self::isTransient($response->json());
+            || self::isTransient(is_array($body = $response->json()) ? $body : null);
     }
 
     /**

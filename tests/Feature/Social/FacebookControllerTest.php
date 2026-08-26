@@ -1362,7 +1362,7 @@ test('facebook refuses a login that declined the permission needed to publish', 
         ->get(route('app.social.facebook.callback'))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('success', false)
-            ->where('message', __('accounts.popup_callback.pages_missing_permission')));
+            ->where('message', __('accounts.popup_callback.publish_permission_refused')));
 
     $this->assertDatabaseCount('social_accounts', 0);
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/me/accounts'));

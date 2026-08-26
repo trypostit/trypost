@@ -44,7 +44,7 @@ abstract class MetaController extends SocialController
 
         return array_diff($this->platform->requiredPublishScopes(), $granted) === []
             ? $granted
-            : $this->popupCallback(false, __('accounts.popup_callback.pages_missing_permission'), $this->platform->value);
+            : $this->popupCallback(false, __('accounts.popup_callback.publish_permission_refused'), $this->platform->value);
     }
 
     /**

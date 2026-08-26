@@ -246,23 +246,28 @@ class InstagramFacebookController extends MetaController
      */
     private function describeInstagramAccounts(array $pages): array
     {
+        $deadline = microtime(true) + (int) config('trypost.meta_page_walk_seconds');
+
         return collect($pages)
             ->chunk(self::INSTAGRAM_LOOKUPS_PER_ROUND)
-            ->flatMap($this->describeRound(...))
+            ->flatMap(fn (Collection $round) => $this->describeRound($round, $deadline))
             ->values()
             ->all();
     }
 
     /**
+     * Past the deadline the lookups are skipped rather than dropped: the Page still
+     * connects, only its Instagram handle and avatar arrive empty.
+     *
      * @param  Collection<int, array<string, mixed>>  $pages
      * @return Collection<int, array<string, mixed>>
      */
-    private function describeRound(Collection $pages): Collection
+    private function describeRound(Collection $pages, float $deadline): Collection
     {
         $pages = $pages->values();
         $graphApi = $this->graphApi();
 
-        $responses = Http::pool(fn (Pool $pool) => $pages
+        $responses = microtime(true) >= $deadline ? [] : Http::pool(fn (Pool $pool) => $pages
             ->map(fn (array $page) => $pool
                 ->timeout(15)
                 ->connectTimeout(5)

@@ -156,6 +156,7 @@ return [
         'page_not_found' => 'Página não encontrada.',
         'channel_not_found' => 'Canal não encontrado.',
         'pages_read_incomplete' => 'Não conseguimos terminar de ler suas páginas. Tente novamente em instantes.',
+        'publish_permission_refused' => 'Este login recusou uma permissão necessária para publicar. Reconecte aceitando todas.',
         'pages_missing_permission' => 'Encontramos suas páginas, mas não a permissão para publicar nelas. Reconecte aceitando todas as permissões.',
         'no_facebook_pages' => 'Nenhuma página do Facebook encontrada. Você precisa ser administrador de pelo menos uma página.',
         'no_facebook_instagram_pages' => 'Nenhuma página do Facebook com conta do Instagram vinculada foi encontrada.',

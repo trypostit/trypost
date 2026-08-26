@@ -488,3 +488,16 @@ test('the cursor budget stops a walk that would never end', function () {
 
     expect($walk->complete)->toBeFalse();
 });
+
+test('the deadline stops me/accounts from paginating forever', function () {
+    config()->set('trypost.meta_page_walk_seconds', 0);
+
+    $graphApi = managedPagesGraphApi();
+
+    managedPagesWalk([
+        "{$graphApi}/me/accounts*" => Http::response([
+            'data' => [['id' => 'page_1', 'name' => 'One', 'access_token' => 'token-1']],
+            'paging' => ['next' => "{$graphApi}/me/accounts?access_token=user-token&after=c1"],
+        ], 200),
+    ]);
+})->throws(IncompleteMetaGraphPaginationException::class);
