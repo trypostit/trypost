@@ -16,7 +16,6 @@ use Laravel\Socialite\Two\User as SocialiteUser;
 
 beforeEach(function () {
     Http::preventStrayRequests();
-    Http::allowStrayRequests(['*__inertia_ssr*']);
 
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
