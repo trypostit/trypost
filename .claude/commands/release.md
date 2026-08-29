@@ -90,24 +90,24 @@ Read the commits only as **internal source material**. Translate to user-facing 
 
 ```markdown
 ---
-subject: "Changelog <version> — <theme 1>, <theme 2>, <theme 3>..."
+subject: "Changelog <version> — <improvement 1>, <improvement 2> and more..."
 ---
 
-# Changelog <version> — <theme 1>, <theme 2>, <theme 3>...
+# Changelog <version> — <improvement 1>, <improvement 2> and more...
 
 By TryPost Product Team • [Release <version>](https://github.com/<OWNER>/<REPO>/releases/tag/<version>)
 
 Hello! Welcome to this week's update. Here's what's new in TryPost.
 
-## <Theme 1>
+## <Outcome the reader gets, or the symptom that is gone>
 
-<2-4 sentences of concrete narrative — what changed, why a user should care, what they'll notice. No marketing puffery.>
+<2-4 sentences of concrete narrative — what changed, why a user should care, what they'll notice. Open on what the reader experienced ("you may have watched it go out twice"), not on the internal cause. No marketing puffery.>
 
-## <Theme 2>
+## <second outcome>
 
 <same>
 
-## <Theme 3 — only if there are genuinely 3 themes worth of work>
+## <third outcome — only if there are genuinely 3 themes worth of work>
 
 <same>
 
@@ -134,6 +134,17 @@ You're receiving this because you subscribed.
 
 **Always end with the unsubscribe footer** — the `---` separator, the "You're receiving this because you subscribed." line, and an `[Unsubscribe]({{unsubscribe_url}})` link below the signature. Keep `{{unsubscribe_url}}` as a literal placeholder; the email sending tool fills it in. This footer is required on every customer email.
 
+#### Section headers
+
+A theme header names the outcome the reader gets or the symptom that is gone. Sentence case. It has to make sense to someone who never saw the bug report.
+
+- ❌ `## Publishing that finishes what it started` (writerly; says nothing concrete)
+- ❌ `## Your Asset Library, from anywhere` (area label dressed up)
+- ✅ `## Your long videos stop posting twice`
+- ✅ `## The Facebook Pages that wouldn't connect`
+
+**Section order must match the subject order.** The subject promises a sequence. A reader who opens on a different topic than the one that got them to click feels the mismatch even if they can't name it.
+
 #### Theme grouping (AI clusters by user impact)
 
 Read all commits since the last tag and cluster into **2-3 user-facing themes**. Use whatever frame makes the changes feel coherent to a customer, not to a developer.
@@ -152,6 +163,10 @@ Read all commits since the last tag and cluster into **2-3 user-facing themes**.
 
 If there are fewer than 3 themeable groups, use 2 or just 1. Don't pad. Internal-only changes (chore, CI, refactor, deps) usually shouldn't appear at all — fold the user-visible ones into "Fixes" with a user-voice rewrite, drop the rest.
 
+**Order themes by reach, not by newness.** The first theme goes to whatever the largest share of subscribers will actually feel. A fix that unblocks a whole platform for everyone who uses it outranks a feature only integrators can reach, even though the feature is the newer work. Rank by how many people were affected.
+
+**Check who a theme really reaches before you headline it.** Exposing an existing in-app capability over the API or MCP is new for integrators only — everyone else already had it in the UI. Headlining it as if the capability itself were new misleads the majority. Either qualify the section in its first sentence ("If you build against the TryPost API or connect an AI assistant...") and say plainly that the in-app path already worked, or demote it under a theme with broader reach.
+
 #### Bullet rules for "New features" / "Fixes"
 
 Rewrite each item in **user voice**, not commit voice:
@@ -167,13 +182,25 @@ Rewrite each item in **user voice**, not commit voice:
 
 If a commit has no user-visible effect, **omit it**. Don't pad the email.
 
+**Never repeat a theme section in the bullets.** "New features" and "Fixes" are for what did *not* earn its own section. If duplicate Instagram posts got three paragraphs above, they don't also get a bullet — the reader meets the same fact twice and the lists stop being scannable. Write the sections first, then list only what is left over.
+
 #### Subject line
 
-Pattern: `Changelog <version> — <theme 1>, <theme 2>, <theme 3>...`
+Pattern: `Changelog <version> — <improvement 1>, <improvement 2> and more...`
 
-Don't put "TryPost" in the subject — the email already comes from the TryPost sender, so it's redundant.
+Each slot must name **what got better for the reader**, never the area it happened in. The area is where the work landed; the improvement is what they can now do, or what stopped hurting. A subject built from area labels tells a customer nothing — they already know TryPost has an Asset Library.
 
-Cap around 80 chars. If themes don't fit, shorten to the 2 most impactful + "and more...".
+- ❌ `Changelog v1.0.8 — Publishing that finishes, Facebook Pages, Asset Library` (a writerly abstraction plus two bare area labels)
+- ❌ `Changelog v1.0.8 — No duplicate posts, Facebook Pages that connect` (still abstract: "no duplicate posts" reads like a new dedup feature rather than a fix, and the second half is awkward)
+- ✅ `Changelog v1.0.8 — Facebook Pages finally connect, reuse your media and more...`
+
+Rules:
+
+- **Two named improvements plus `and more...` beats three cramped ones.** The trailing `and more...` carries the rest of the release and buys the two named slots enough room to be specific.
+- **The first slot goes to the widest reach.** Same ranking as the themes: most subscribers affected wins, even when that is a bug fix and the release also shipped a shiny feature.
+- Plain words like `finally`, `stop`, `no longer` are good — they read as an honest founder, not a marketer.
+- Don't put "TryPost" in the subject — the email already comes from the TryPost sender, so it's redundant.
+- Cap around 80 chars.
 
 ### Step 5 — Humanize the email prose
 
@@ -199,7 +226,7 @@ Derive these inputs from the release. The **headline and the chips play differen
   - ❌ `Your language, mobile, and per-image alt text` (this is just the chip labels)
   - ✅ `Speak every language, reach every reader` (benefit-driven, distinct from the chips)
 - **underline** — a short emphasis phrase *inside* the headline (1-3 words) to carry the hand-drawn violet squiggle, usually the last / most important phrase (e.g. `every reader`). Must appear in the headline verbatim. Optional; omit for no squiggle.
-- **themes** — 2-4 short chip labels naming the concrete areas that shipped, condensed to 1-2 words each (e.g. `Languages`, `Mobile`, `Alt text & previews`). These are secondary supporting labels, rendered smaller than the headline; the template auto-colors them (violet / green / sky / orange / rose, in order). Keep them concrete and distinct from the headline's wording.
+- **themes** — 2-4 short chip labels naming the concrete areas that shipped, condensed to 1-2 words each (e.g. `Languages`, `Mobile`, `Alt text & previews`). These are secondary supporting labels, rendered smaller than the headline; the template auto-colors them (violet / green / sky / orange / rose, in order). Keep them concrete and distinct from the headline's wording. **Order the chips to match the email's section order**, so the image and the email tell the story in the same sequence. Chips are the one place a bare area label is correct: the headline sells the benefit, the chips name where it landed.
 
 Create the directory and render the thumbnail so the user can preview it before confirming:
 
