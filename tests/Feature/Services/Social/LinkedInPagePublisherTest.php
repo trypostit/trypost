@@ -437,3 +437,20 @@ test('linkedin page publisher throws and does not post when document processing 
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/rest/posts'));
 });
+
+test('linkedin page publisher keeps links intact', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+
+    $this->post->update(['content' => 'New post: https://acme.com/blog']);
+
+    Http::fake([
+        config('trypost.platforms.linkedin-page.api').'/rest/posts' => Http::response(null, 201, [
+            'x-restli-id' => 'urn:li:share:1234567890',
+        ]),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/rest/posts')
+        && $request['commentary'] === 'New post: https://acme.com/blog');
+});

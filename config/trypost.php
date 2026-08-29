@@ -170,6 +170,7 @@ return [
         'x' => [
             'enabled' => env('X_ENABLED', true),
             'api' => env('X_API', 'https://api.x.com/2'),
+            'defuse_links' => (bool) env('X_DEFUSE_LINKS', false),
         ],
         'tiktok' => [
             'enabled' => env('TIKTOK_ENABLED', true),

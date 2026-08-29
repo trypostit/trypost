@@ -1306,3 +1306,28 @@ test('pinterest publisher treats media status connection errors as platform unav
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/v5/pins'));
     Sleep::assertNeverSlept();
 });
+
+test('pinterest publisher keeps links intact', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+
+    $this->post->update([
+        'content' => 'New post: https://acme.com/blog',
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/image.jpg',
+            'url' => 'https://example.com/media/2026-01/image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'image.jpg',
+        ]],
+    ]);
+
+    Http::fake([
+        '*/v5/pins' => Http::response(['id' => 'pin_123456'], 200),
+        '*' => Http::response('fake-image-content', 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/v5/pins')
+        && $request['description'] === 'New post: https://acme.com/blog');
+});

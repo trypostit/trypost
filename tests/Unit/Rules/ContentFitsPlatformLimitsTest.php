@@ -60,3 +60,33 @@ test('treats null content as an empty string and passes', function () {
 
     expect($errors)->toBe([]);
 });
+
+test('measures the defused length for x so a link post that will fit is accepted', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+    $errors = runFitsRule(str_repeat('a', 263).' https://acme.com/x', [Platform::X]);
+
+    expect($errors)->toBe([]);
+});
+
+test('measures the defused length for x so a link post that will not fit is rejected', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+    $errors = runFitsRule(str_repeat('a', 271).' acme.com', [Platform::X]);
+
+    expect($errors)->toHaveCount(1);
+    expect($errors[0])->toContain('X')->toContain('280')->toContain('2');
+});
+
+test('does not count html markup toward a platform cap', function () {
+    $errors = runFitsRule('<p>'.str_repeat('a', 275).'</p>', [Platform::X]);
+
+    expect($errors)->toBe([]);
+});
+
+test('measures telegram against the rendered text, not the escaped markup', function () {
+    // 3.597 characters, under Telegram's 4.096 cap. Escaping every ampersand for
+    // parse_mode=HTML nearly doubles that, but the reader still sees one character.
+    $content = implode(' & ', array_fill(0, 900, 'a'));
+
+    expect(mb_strlen($content))->toBeLessThan(Platform::Telegram->maxContentLength())
+        ->and(runFitsRule($content, [Platform::Telegram]))->toBe([]);
+});

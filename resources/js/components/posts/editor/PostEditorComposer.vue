@@ -24,6 +24,7 @@ import SignaturesModal from '@/components/posts/SignaturesModal.vue';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
+import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import date from '@/date';
 import { classify, isDocument, isImage, isVideo, MediaType } from '@/lib/mediaType';
 import type { MediaItem } from '@/types/media';
@@ -89,9 +90,12 @@ const openPreview = (item: MediaItem) => {
     );
 };
 
+/** What each network will actually receive — X publishes its links defused. */
+const { contentFor } = useXLinkDefuser();
+
 const limitsWithUsage = computed(() =>
     props.platformLimits.map((p) => {
-        const used = content.value.length;
+        const used = contentFor(content.value, p.platform).length;
         const ratio = p.maxLength > 0 ? used / p.maxLength : 0;
         const state = ratio > 1 ? 'over' : ratio >= 0.9 ? 'warn' : 'ok';
         return { ...p, used, state };
@@ -104,9 +108,19 @@ const limitClass = (state: string): string => {
     return 'border-foreground bg-card text-foreground';
 };
 
+/**
+ * The limit expressed against the draft the user is typing. When a network rewrites
+ * the text before publishing, the allowance in draft characters shifts by whatever
+ * the rewrite adds or removes, so the highlight lands on the text that truly spills.
+ */
 const smallestLimit = computed(() => {
     if (props.platformLimits.length === 0) return null;
-    return Math.min(...props.platformLimits.map((p) => p.maxLength));
+
+    const draftLength = content.value.length;
+
+    return Math.min(
+        ...props.platformLimits.map((p) => p.maxLength + (draftLength - contentFor(content.value, p.platform).length)),
+    );
 });
 
 const overflowParts = computed(() => {
@@ -450,6 +464,7 @@ const onAltTextSave = (alt: string): void => {
                     <Tooltip>
                         <TooltipTrigger as-child>
                             <span
+                                :data-testid="`content-counter-${limit.platform}`"
                                 class="inline-flex items-center gap-1.5 rounded-full border-2 px-2 py-1 text-[11px] font-bold leading-none tabular-nums shadow-2xs transition-colors"
                                 :class="limitClass(limit.state)"
                             >

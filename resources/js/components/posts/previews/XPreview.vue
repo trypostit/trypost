@@ -93,7 +93,7 @@ const { card: linkCard, loading: linkCardLoading } = useLinkCard(
                 </div>
 
                 <!-- Content -->
-                <div v-if="content" class="mt-3 text-[17px] text-[#0f1419] dark:text-[#e7e9ea] whitespace-pre-wrap leading-[22px]">
+                <div v-if="content" data-testid="x-preview-content" class="mt-3 text-[17px] text-[#0f1419] dark:text-[#e7e9ea] whitespace-pre-wrap leading-[22px]">
                     {{ content }}
                 </div>
 

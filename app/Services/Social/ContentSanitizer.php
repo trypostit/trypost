@@ -5,17 +5,91 @@ declare(strict_types=1);
 namespace App\Services\Social;
 
 use App\Enums\SocialAccount\Platform;
+use App\Support\LinkTlds;
 
 class ContentSanitizer
 {
+    /**
+     * Splits a candidate URL into the character that precedes it, prefix (scheme,
+     * optional userinfo and `www.`), host, the host's last label and the path. The
+     * boundary is consumed rather than looked behind so the same expression runs on
+     * browsers without lookbehind, and it is put back untouched by the callback. An explicit scheme is proof on its
+     * own that the token is a URL; a bare host only counts when its last label is a
+     * delegated TLD, the single thing telling `acme.com` apart from `Node.js`.
+     *
+     * Hosts are matched as Unicode letters and digits so internationalised domains
+     * (`café.com`, `пример.рф`) are recognised, and the lookbehind keeps a bare host
+     * that follows an `@` out — that is an email address, which X does not link.
+     */
+    private const LINK_PATTERN = '~(^|[^\p{L}\p{N}\p{M}_@/.])((?:https?://(?:[^\s/@]+@)?)?(?:www\.)?)((?:[\p{L}\p{N}](?:[\p{L}\p{N}\p{M}-]*[\p{L}\p{N}\p{M}])?\.)+([\p{L}\p{N}\p{M}-]{2,63}))(?![\p{L}\p{N}\p{M}-])((?:/\S*)?)~iu';
+
     public function sanitize(string $content, Platform $platform): string
     {
         return match ($platform) {
             Platform::LinkedIn, Platform::LinkedInPage => $this->convertBoldAndStrip($content),
             Platform::Mastodon => $this->stripUnsafeHtml($content),
             Platform::Telegram => $this->toTelegramHtml($content),
+            Platform::X => $this->defuseLinks($this->stripHtml($content)),
             default => $this->stripHtml($content),
         };
+    }
+
+    /**
+     * The content as a reader will see it, which is what a character limit applies
+     * to. Mirrors {@see self::sanitize()} arm for arm, because only two of them
+     * leave markup behind:
+     *
+     * - Telegram is handed HTML with entities escaped for `parse_mode=HTML`, so its
+     *   tags and entities both resolve away — `&amp;` renders as one character.
+     * - Mastodon keeps an HTML subset but its sanitizer already decoded entities, so
+     *   only the tags come off. Decoding again would eat a literal `&amp;` the user
+     *   typed and undercount the post.
+     * - Everything else, X included, is already plain text: the defused form is
+     *   literally what gets posted, so it counts as-is.
+     */
+    public function displayText(string $content, Platform $platform): string
+    {
+        $sanitized = $this->sanitize($content, $platform);
+
+        return match ($platform) {
+            Platform::Telegram => html_entity_decode(strip_tags($sanitized), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            Platform::Mastodon => strip_tags($sanitized),
+            default => $sanitized,
+        };
+    }
+
+    /**
+     * Rewrites every URL into a non-clickable form (`example.com` →
+     * `example(.)com`), dropping the scheme and any `www.` prefix and breaking
+     * every dot of the host — leaving one intact dot would still leave a
+     * resolvable domain for X to detect.
+     *
+     * X bills a post carrying a link at a much higher rate than a plain post, and
+     * its algorithm demotes link posts, so neither side of that wants the raw URL.
+     * Off by default; opt in with `X_DEFUSE_LINKS`.
+     */
+    private function defuseLinks(string $content): string
+    {
+        if (! config('trypost.platforms.x.defuse_links')) {
+            return $content;
+        }
+
+        $defused = preg_replace_callback(
+            self::LINK_PATTERN,
+            function (array $matches): string {
+                [$whole, $boundary, $prefix, $host, $tld] = $matches;
+                $path = $matches[5] ?? '';
+
+                if ($prefix === '' && ! LinkTlds::has($tld)) {
+                    return $whole;
+                }
+
+                return $boundary.str_replace('.', '(.)', $host).$path;
+            },
+            $content,
+        );
+
+        return $defused ?? $content;
     }
 
     /**

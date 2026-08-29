@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import type { MediaItem } from '@/types/media';
 
 import BlueskyPreview from './BlueskyPreview.vue';
@@ -39,6 +40,15 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
+const { contentFor } = useXLinkDefuser();
+
+/**
+ * X publishes links defused (`acme(.)com`), so the preview has to show that or it
+ * promises text the network never receives. Every preview goes through here, which
+ * keeps the rewrite in one place on the client just as it is on the server.
+ */
+const previewContent = computed((): string => contentFor(props.content, props.platform));
 
 const resolvedSocialAccount = computed((): SocialAccount => props.socialAccount ?? {
     id: '',
@@ -88,7 +98,7 @@ const previewComponent = computed(() => {
     <component
         :is="previewComponent"
         :social-account="resolvedSocialAccount"
-        :content="content"
+        :content="previewContent"
         :media="media"
         :content-type="contentType"
         :meta="meta"

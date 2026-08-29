@@ -885,3 +885,23 @@ test('threads publisher can publish video with null content', function () {
 
     expect($result['id'])->toBe('video-123');
 });
+
+test('threads publisher keeps links intact', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+
+    $this->post->update(['content' => 'New post: https://acme.com/blog']);
+
+    Http::fake([
+        'https://graph.threads.net/v1.0/123456789/threads' => Http::response(['id' => 'container-123'], 200),
+        'https://graph.threads.net/v1.0/123456789/threads_publish' => Http::response(['id' => 'post-123456789'], 200),
+        'https://graph.threads.net/v1.0/post-123456789*' => Http::response([
+            'permalink' => 'https://www.threads.net/@testuser/post/ABC123',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/123456789/threads')
+        && ! str_contains($request->url(), 'threads_publish')
+        && data_get($request->data(), 'text') === 'New post: https://acme.com/blog');
+});

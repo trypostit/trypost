@@ -1,9 +1,11 @@
 import { trans } from 'laravel-vue-i18n';
 import { computed, type ComputedRef, type Ref } from 'vue';
 
+
 import { getMediaItemIssue, getMediaValidationWarning } from '@/composables/useMedia';
 import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';
@@ -153,6 +155,8 @@ interface UsePostComplianceOptions {
 }
 
 export const usePostCompliance = (opts: UsePostComplianceOptions) => {
+    const { contentFor } = useXLinkDefuser();
+
     const { post, content, media, selectedPlatformIds, platformContentTypes, platformMeta, platformConfigs } = opts;
 
     const selectedPlatforms = computed(() => post.value.post_platforms.filter(
@@ -228,10 +232,10 @@ export const usePostCompliance = (opts: UsePostComplianceOptions) => {
     );
 
     const contentLengthOverflows = computed(() => {
-        const len = content.value.length;
         return platformLimits.value
-            .filter((p) => len > p.maxLength)
-            .map((p) => ({ platform: p.platform, limit: p.maxLength, over: len - p.maxLength }));
+            .map((p) => ({ p, len: contentFor(content.value, p.platform).length }))
+            .filter(({ p, len }) => len > p.maxLength)
+            .map(({ p, len }) => ({ platform: p.platform, limit: p.maxLength, over: len - p.maxLength }));
     });
 
     const canSchedule = computed(() => {

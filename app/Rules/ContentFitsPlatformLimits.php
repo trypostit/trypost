@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Rules;
 
 use App\Enums\SocialAccount\Platform;
+use App\Services\Social\ContentSanitizer;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Collection;
@@ -15,6 +16,11 @@ use Illuminate\Translation\PotentiallyTranslatedString;
  * exceeded by the submitted text. Pre-resolve the platforms the post is bound
  * to (App: from `post_platforms.id`; API store: from `social_accounts.id`) and
  * pass them in — keeps the rule decoupled from the FormRequest payload shape.
+ *
+ * Each platform is measured against its own sanitized content, matching what the
+ * publisher will actually send: the editor stores HTML, and per-platform rules
+ * (X link defusing, Telegram entity escaping) change the length again. Measuring
+ * the raw draft would block saving a post that publishes fine, and vice versa.
  */
 class ContentFitsPlatformLimits implements ValidationRule
 {
@@ -40,7 +46,7 @@ class ContentFitsPlatformLimits implements ValidationRule
                 continue;
             }
 
-            $over = $platform->contentOverflow($content);
+            $over = $platform->contentOverflow(app(ContentSanitizer::class)->displayText($content, $platform));
             if ($over === 0) {
                 continue;
             }
