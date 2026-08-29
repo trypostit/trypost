@@ -301,8 +301,10 @@ enum ContentType: string
         return match ($this) {
             self::InstagramFeed => ['min' => 0.8, 'max' => 1.91],
             self::InstagramReel, self::InstagramStory,
-            self::FacebookReel, self::FacebookStory,
-            self::YouTubeShort => ['min' => 0.5, 'max' => 0.6],
+            self::FacebookReel, self::FacebookStory => ['min' => 0.5, 'max' => 0.6],
+            // YouTube Shorts accepts square as well as vertical video, up to
+            // the 3-minute cap: https://support.google.com/youtube/answer/15424877
+            self::YouTubeShort => ['min' => 0.5, 'max' => 1.0],
             default => null,
         };
     }

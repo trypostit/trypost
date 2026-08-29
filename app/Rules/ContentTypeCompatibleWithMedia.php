@@ -142,9 +142,24 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
             return;
         }
 
+        $maxFiles = $contentType->maxMediaCount();
+        if ($count > $maxFiles) {
+            $fail("{$contentType->label()} allows at most {$maxFiles} media file(s).");
+
+            return;
+        }
+
+        $minFiles = $contentType->minMediaCount();
+        if ($minFiles > 0 && $count < $minFiles) {
+            $fail("{$contentType->label()} requires at least {$minFiles} media files.");
+
+            return;
+        }
+
         $hasImage = collect($media)->contains(fn ($item) => $this->isImage((array) $item));
         $hasVideo = collect($media)->contains(fn ($item) => $this->isVideo((array) $item));
         $hasDocument = collect($media)->contains(fn ($item) => $this->isDocument((array) $item));
+        $hasGif = collect($media)->contains(fn ($item) => MediaType::isGif(data_get((array) $item, 'mime_type')));
 
         if ($hasImage && ! $contentType->supportsImage()) {
             $fail("{$contentType->label()} does not support images.");
@@ -158,6 +173,10 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
             $fail("{$contentType->label()} does not support PDF documents.");
         }
 
+        if ($hasGif && ! $contentType->acceptsGif()) {
+            $fail("{$contentType->label()} does not support animated GIFs.");
+        }
+
         // A PDF document is always published on its own (LinkedIn document post).
         if ($hasDocument && $count > 1) {
             $fail('A PDF document must be the only attachment.');
@@ -166,6 +185,114 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
         if ($hasImage && $hasVideo && ! $contentType->supportsMixedMedia()) {
             $fail("{$contentType->label()} can't combine an image and a video in the same post.");
         }
+
+        foreach ($media as $item) {
+            $this->validateItemConstraints($contentType, (array) $item, $fail);
+        }
+    }
+
+    /**
+     * Per-item size, duration, and aspect-ratio checks against the content
+     * type's numeric rules (the same rules `ContentType::mediaRules()` gives
+     * the Vue editor via `useMediaRules`/`useMedia`). Duration and dimensions
+     * come from client-supplied `meta` - there is no server-side probe (e.g.
+     * ffprobe) yet, so a missing value is treated as unknown and skipped
+     * rather than rejected.
+     *
+     * @param  array<string, mixed>  $item
+     * @param  Closure(string, ?string=): PotentiallyTranslatedString  $fail
+     */
+    private function validateItemConstraints(ContentType $contentType, array $item, Closure $fail): void
+    {
+        $size = (int) data_get($item, 'size', 0);
+
+        if ($this->isDocument($item)) {
+            $maxDocumentBytes = $contentType->maxDocumentBytes();
+
+            if ($maxDocumentBytes && $size > $maxDocumentBytes) {
+                $fail("{$contentType->label()} documents must be under ".self::formatBytes($maxDocumentBytes).'.');
+            }
+
+            return;
+        }
+
+        if ($this->isVideo($item)) {
+            $maxVideoBytes = $contentType->maxVideoBytes();
+
+            if ($maxVideoBytes && $size > $maxVideoBytes) {
+                $fail("{$contentType->label()} videos must be under ".self::formatBytes($maxVideoBytes).'.');
+            }
+
+            $maxDuration = $contentType->maxVideoDurationSec();
+            $duration = (float) data_get($item, 'meta.duration', 0);
+
+            if ($maxDuration && $duration > $maxDuration) {
+                $fail("{$contentType->label()} videos must be under ".self::formatDuration($maxDuration).'.');
+            }
+        } elseif ($this->isImage($item)) {
+            $maxImageBytes = $contentType->maxImageBytes();
+
+            if ($maxImageBytes && $size > $maxImageBytes) {
+                $fail("{$contentType->label()} images must be under ".self::formatBytes($maxImageBytes).'.');
+            }
+        }
+
+        $this->validateAspectRatio($contentType, $item, $fail);
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @param  Closure(string, ?string=): PotentiallyTranslatedString  $fail
+     */
+    private function validateAspectRatio(ContentType $contentType, array $item, Closure $fail): void
+    {
+        $width = (float) data_get($item, 'meta.width', 0);
+        $height = (float) data_get($item, 'meta.height', 0);
+
+        if ($width <= 0 || $height <= 0) {
+            return;
+        }
+
+        if ($contentType->autoFitsImage() && $this->isImage($item)) {
+            return;
+        }
+
+        $bounds = $contentType->aspectRatioBounds();
+
+        if (! $bounds) {
+            return;
+        }
+
+        $ratio = $width / $height;
+
+        if ($ratio < $bounds['min'] || $ratio > $bounds['max']) {
+            $fail("{$contentType->label()} media must have an aspect ratio between {$bounds['min']} and {$bounds['max']}.");
+        }
+    }
+
+    private static function formatBytes(int $bytes): string
+    {
+        if ($bytes >= 1024 * 1024 * 1024) {
+            return number_format($bytes / (1024 * 1024 * 1024), 1).' GB';
+        }
+
+        if ($bytes >= 1024 * 1024) {
+            return number_format($bytes / (1024 * 1024), 1).' MB';
+        }
+
+        return number_format($bytes / 1024, 1).' KB';
+    }
+
+    private static function formatDuration(int $seconds): string
+    {
+        $minutes = intdiv($seconds, 60);
+        $remainingSeconds = $seconds % 60;
+
+        if ($minutes === 0) {
+            return "{$seconds}s";
+        }
+
+        return $remainingSeconds === 0 ? "{$minutes}m" : "{$minutes}m {$remainingSeconds}s";
     }
 
     /**
