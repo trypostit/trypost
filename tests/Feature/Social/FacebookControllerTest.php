@@ -27,6 +27,7 @@ test('facebook connect redirects to oauth provider', function () {
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('usingGraphVersion')->andReturnSelf();
     $driverMock->shouldReceive('setScopes')->andReturnSelf();
+    $driverMock->shouldReceive('with')->with(['auth_type' => 'rerequest'])->once()->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
         'getTargetUrl' => 'https://www.facebook.com/v25.0/dialog/oauth?test=1',
     ]));
@@ -646,6 +647,7 @@ test('facebook connect remembers the reconnect account from the query string', f
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('usingGraphVersion')->andReturnSelf();
     $driverMock->shouldReceive('setScopes')->andReturnSelf();
+    $driverMock->shouldReceive('with')->with(['auth_type' => 'rerequest'])->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
         'getTargetUrl' => 'https://www.facebook.com/v25.0/dialog/oauth?test=1',
     ]));
@@ -673,6 +675,7 @@ test('facebook connect ignores a reconnect id from another workspace', function 
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('usingGraphVersion')->andReturnSelf();
     $driverMock->shouldReceive('setScopes')->andReturnSelf();
+    $driverMock->shouldReceive('with')->with(['auth_type' => 'rerequest'])->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
         'getTargetUrl' => 'https://www.facebook.com/v25.0/dialog/oauth?test=1',
     ]));
@@ -699,6 +702,7 @@ test('facebook connect ignores a reconnect id from another network', function ()
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('usingGraphVersion')->andReturnSelf();
     $driverMock->shouldReceive('setScopes')->andReturnSelf();
+    $driverMock->shouldReceive('with')->with(['auth_type' => 'rerequest'])->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
         'getTargetUrl' => 'https://www.facebook.com/v25.0/dialog/oauth?test=1',
     ]));

@@ -51,6 +51,9 @@ class FacebookController extends MetaController
             Socialite::driver($this->driver)
                 ->usingGraphVersion($this->graphVersion())
                 ->setScopes($this->scopes)
+                // Meta silently reuses the previous grant (and its page selection),
+                // so without rerequest a newly created Page never shows up.
+                ->with(['auth_type' => 'rerequest'])
                 ->redirect()
                 ->getTargetUrl()
         );
