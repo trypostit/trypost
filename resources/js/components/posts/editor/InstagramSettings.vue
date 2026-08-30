@@ -3,6 +3,7 @@ import { IconAlertTriangle, IconChevronDown, IconChevronUp } from '@tabler/icons
 import { computed, ref, watch } from 'vue';
 
 import { Avatar } from '@/components/ui/avatar';
+import { Textarea } from '@/components/ui/textarea';
 import { getMediaValidationWarning } from '@/composables/useMedia';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
@@ -79,6 +80,13 @@ const pickAspectRatio = (value: string) => {
     emit('update:meta', { ...props.meta, aspect_ratio: value });
 };
 
+const FIRST_COMMENT_MAX = 2200;
+
+const firstComment = computed({
+    get: () => (props.meta?.first_comment as string | undefined) || '',
+    set: (value: string) => emit('update:meta', { ...props.meta, first_comment: value || null }),
+});
+
 const warning = computed(() => getMediaValidationWarning(props.contentType, props.media));
 </script>
 
@@ -152,6 +160,23 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                         {{ $t(ratio.labelKey) }}
                     </button>
                 </div>
+            </div>
+
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.first_comment.label') }}</p>
+                    <span class="text-[11px] font-medium" :class="firstComment.length > FIRST_COMMENT_MAX ? 'text-destructive' : 'text-foreground/50'">
+                        {{ firstComment.length }}/{{ FIRST_COMMENT_MAX }}
+                    </span>
+                </div>
+                <Textarea
+                    v-model="firstComment"
+                    :rows="2"
+                    :maxlength="FIRST_COMMENT_MAX"
+                    :placeholder="$t('posts.form.first_comment.placeholder')"
+                    :disabled="disabled || previewOnly"
+                />
+                <p class="text-xs text-foreground/60">{{ $t('posts.form.first_comment.hint_instagram') }}</p>
             </div>
 
             <p

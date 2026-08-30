@@ -142,6 +142,21 @@ return [
             'document_title' => 'ドキュメントタイトル',
             'document_title_placeholder' => 'PDF ドキュメント投稿に表示されます',
         ],
+        'youtube' => [
+            'settings' => 'YouTube設定',
+            'posting_to' => '投稿先',
+            'description' => '説明',
+            'description_placeholder' => '動画の詳細説明:情報、リンク、ハッシュタグなど…',
+            'description_hint' => '最大5000文字、リンクはクリック可能です。空の場合は投稿テキストが使われます。',
+            'description_max' => '説明は5000文字を超えられません。',
+        ],
+        'first_comment' => [
+            'label' => '最初のコメント',
+            'placeholder' => '最初のコメントに入れるリンクや補足…',
+            'hint' => '動画公開直後にチャンネルから投稿されます。',
+            'hint_instagram' => '投稿直後にコメントされます。Instagramのキャプションでクリックできないリンクの定番の置き場所です。コメント権限を付与するには一度アカウントを再連携してください。',
+            'max' => '最初のコメントは2200文字を超えられません。',
+        ],
         'pinterest' => [
             'settings' => 'Pinterest 設定',
             'posting_to' => '投稿先',

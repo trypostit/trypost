@@ -289,6 +289,45 @@ it('publishes a Discord post when the channel is set', function () {
     Queue::assertPushed(PublishPost::class);
 });
 
+it('persists YouTube description and first_comment meta on store', function () {
+    $youtube = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::YouTube]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Short title text',
+            'platforms' => [[
+                'social_account_id' => $youtube->id,
+                'content_type' => ContentType::YouTubeShort->value,
+                'meta' => [
+                    'description' => "Full description with facts and links:\nhttps://example.com/map",
+                    'first_comment' => 'More details: https://example.com',
+                ],
+            ]],
+        ])
+        ->assertCreated();
+
+    $meta = PostPlatform::where('social_account_id', $youtube->id)->sole()->meta;
+
+    expect(data_get($meta, 'description'))->toBe("Full description with facts and links:\nhttps://example.com/map")
+        ->and(data_get($meta, 'first_comment'))->toBe('More details: https://example.com');
+});
+
+it('rejects a YouTube description over 5000 characters', function () {
+    $youtube = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::YouTube]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Short title text',
+            'platforms' => [[
+                'social_account_id' => $youtube->id,
+                'content_type' => ContentType::YouTubeShort->value,
+                'meta' => ['description' => str_repeat('a', 5001)],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.description']);
+});
+
 it('persists Pinterest title and link meta on store', function () {
     $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
 
