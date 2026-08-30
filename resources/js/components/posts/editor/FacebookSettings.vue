@@ -3,6 +3,7 @@ import { IconAlertTriangle, IconChevronDown, IconChevronUp } from '@tabler/icons
 import { computed, ref, watch } from 'vue';
 
 import { Avatar } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
 import { getMediaValidationWarning } from '@/composables/useMedia';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
@@ -68,6 +69,16 @@ const aspectRatios = [
 
 const isFeed = computed(() => props.contentType === ContentType.FacebookPost);
 const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? 'original');
+
+const locationId = computed({
+    get: () => (props.meta?.location_id as string | undefined) || '',
+    set: (value: string) => emit('update:meta', { ...props.meta, location_id: value.trim() || null }),
+});
+
+const locationName = computed({
+    get: () => (props.meta?.location_name as string | undefined) || '',
+    set: (value: string) => emit('update:meta', { ...props.meta, location_name: value || null }),
+});
 
 const pickVariant = (value: string) => {
     if (props.disabled) return;
@@ -152,6 +163,15 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                         {{ $t(ratio.labelKey) }}
                     </button>
                 </div>
+            </div>
+
+            <div class="space-y-2">
+                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.location.label') }}</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <Input v-model="locationId" type="text" :placeholder="$t('posts.form.location.id_placeholder')" :disabled="disabled || previewOnly" />
+                    <Input v-model="locationName" type="text" :placeholder="$t('posts.form.location.name_placeholder')" :disabled="disabled || previewOnly" />
+                </div>
+                <p class="text-xs text-foreground/60">{{ $t('posts.form.location.hint') }}</p>
             </div>
 
             <p

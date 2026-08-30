@@ -289,6 +289,116 @@ it('publishes a Discord post when the channel is set', function () {
     Queue::assertPushed(PublishPost::class);
 });
 
+it('persists YouTube description and first_comment meta on store', function () {
+    $youtube = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::YouTube]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Short title text',
+            'platforms' => [[
+                'social_account_id' => $youtube->id,
+                'content_type' => ContentType::YouTubeShort->value,
+                'meta' => [
+                    'description' => "Full description with facts and links:\nhttps://example.com/map",
+                    'first_comment' => 'More details: https://example.com',
+                ],
+            ]],
+        ])
+        ->assertCreated();
+
+    $meta = PostPlatform::where('social_account_id', $youtube->id)->sole()->meta;
+
+    expect(data_get($meta, 'description'))->toBe("Full description with facts and links:\nhttps://example.com/map")
+        ->and(data_get($meta, 'first_comment'))->toBe('More details: https://example.com');
+});
+
+it('rejects a YouTube description over 5000 characters', function () {
+    $youtube = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::YouTube]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Short title text',
+            'platforms' => [[
+                'social_account_id' => $youtube->id,
+                'content_type' => ContentType::YouTubeShort->value,
+                'meta' => ['description' => str_repeat('a', 5001)],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.description']);
+});
+
+it('persists YouTube SEO meta and recording location on store', function () {
+    $youtube = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::YouTube]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Short title text',
+            'platforms' => [[
+                'social_account_id' => $youtube->id,
+                'content_type' => ContentType::YouTubeShort->value,
+                'meta' => [
+                    'title' => 'Pixel Brisbane — Story Bridge',
+                    'tags' => ['brisbane', 'pixel art'],
+                    'category_id' => '19',
+                    'default_language' => 'en',
+                    'recording_location' => ['lat' => -27.4679, 'lng' => 153.0281, 'description' => 'Brisbane QLD'],
+                ],
+            ]],
+        ])
+        ->assertCreated();
+
+    $meta = PostPlatform::where('social_account_id', $youtube->id)->sole()->meta;
+
+    expect(data_get($meta, 'title'))->toBe('Pixel Brisbane — Story Bridge')
+        ->and(data_get($meta, 'tags'))->toBe(['brisbane', 'pixel art'])
+        ->and(data_get($meta, 'category_id'))->toBe('19')
+        ->and(data_get($meta, 'default_language'))->toBe('en')
+        ->and(data_get($meta, 'recording_location.lat'))->toBe(-27.4679)
+        ->and(data_get($meta, 'recording_location.description'))->toBe('Brisbane QLD');
+});
+
+it('rejects an out-of-range recording location latitude', function () {
+    $youtube = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::YouTube]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Short title text',
+            'platforms' => [[
+                'social_account_id' => $youtube->id,
+                'content_type' => ContentType::YouTubeShort->value,
+                'meta' => ['recording_location' => ['lat' => 120, 'lng' => 10]],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.recording_location.lat']);
+});
+
+it('persists a per-platform content override and instagram location meta on store', function () {
+    $instagram = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Instagram]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Shared caption',
+            'platforms' => [[
+                'social_account_id' => $instagram->id,
+                'content_type' => ContentType::InstagramFeed->value,
+                'meta' => [
+                    'content' => 'Instagram-only caption with #hashtags',
+                    'location_id' => '106190712750250',
+                    'location_name' => 'Brisbane',
+                ],
+            ]],
+        ])
+        ->assertCreated();
+
+    $row = PostPlatform::where('social_account_id', $instagram->id)->sole();
+
+    expect(data_get($row->meta, 'content'))->toBe('Instagram-only caption with #hashtags')
+        ->and(data_get($row->meta, 'location_id'))->toBe('106190712750250')
+        ->and($row->resolvedContent())->toBe('Instagram-only caption with #hashtags');
+});
+
 it('persists Pinterest title and link meta on store', function () {
     $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
 

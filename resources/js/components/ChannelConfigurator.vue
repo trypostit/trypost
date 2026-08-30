@@ -2,12 +2,14 @@
 import { IconAlertCircle, IconCircleCheck } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
+import ChannelCaptionOverride from '@/components/posts/editor/ChannelCaptionOverride.vue';
 import DiscordSettings from '@/components/posts/editor/DiscordSettings.vue';
 import FacebookSettings from '@/components/posts/editor/FacebookSettings.vue';
 import InstagramSettings from '@/components/posts/editor/InstagramSettings.vue';
 import LinkedInSettings from '@/components/posts/editor/LinkedInSettings.vue';
 import PinterestSettings from '@/components/posts/editor/PinterestSettings.vue';
 import TikTokSettings from '@/components/posts/editor/TikTokSettings.vue';
+import YouTubeSettings from '@/components/posts/editor/YouTubeSettings.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -174,6 +176,21 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                 v-else-if="channel.platform === Platform.Discord"
                 :social-account="channel.socialAccount"
                 :meta="channel.meta"
+                :disabled="disabled"
+                :preview-only="previewOnly"
+                @update:meta="emit('update:meta', channel.id, $event)"
+            />
+            <YouTubeSettings
+                v-else-if="channel.platform === Platform.YouTube"
+                :social-account="channel.socialAccount"
+                :platform="channel.platform"
+                :meta="channel.meta"
+                :disabled="disabled"
+                :preview-only="previewOnly"
+                @update:meta="emit('update:meta', channel.id, $event)"
+            />
+            <ChannelCaptionOverride
+                :channel="channel"
                 :disabled="disabled"
                 :preview-only="previewOnly"
                 @update:meta="emit('update:meta', channel.id, $event)"

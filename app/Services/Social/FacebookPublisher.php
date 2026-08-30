@@ -24,6 +24,13 @@ class FacebookPublisher
 
     private string $baseUrl;
 
+    /**
+     * Facebook place ID from the platform row's `meta.location_id` — tags feed
+     * and photo posts with a location (`place` param). Reels/stories don't
+     * accept it.
+     */
+    private ?string $placeId = null;
+
     public function __construct()
     {
         $this->baseUrl = config('trypost.platforms.facebook.graph_api');
@@ -42,7 +49,8 @@ class FacebookPublisher
     {
         $this->validateContentLength($postPlatform);
 
-        $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
+        $content = $postPlatform->resolvedContent() ? app(ContentSanitizer::class)->sanitize($postPlatform->resolvedContent(), $postPlatform->platform) : null;
+        $this->placeId = trim((string) data_get($postPlatform->meta, 'location_id')) ?: null;
 
         $account = $postPlatform->socialAccount;
         $pageId = $account->platform_user_id;
@@ -100,12 +108,25 @@ class FacebookPublisher
         );
     }
 
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function withPlace(array $payload): array
+    {
+        if ($this->placeId !== null) {
+            $payload['place'] = $this->placeId;
+        }
+
+        return $payload;
+    }
+
     private function publishTextPost(string $pageId, string $accessToken, string $content): array
     {
-        $response = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/feed", [
+        $response = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/feed", $this->withPlace([
             'message' => $content,
             'access_token' => $accessToken,
-        ]);
+        ]));
 
         if ($response->failed()) {
             Log::error('Facebook text post failed', [
@@ -141,7 +162,7 @@ class FacebookPublisher
             $payload['alt_text_custom'] = $alt;
         }
 
-        $response = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/photos", $payload);
+        $response = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/photos", $this->withPlace($payload));
 
         if ($response->failed()) {
             Log::error('Facebook single image post failed', [
@@ -216,7 +237,7 @@ class FacebookPublisher
             $postData["attached_media[{$index}]"] = json_encode($media);
         }
 
-        $response = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/feed", $postData);
+        $response = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/feed", $this->withPlace($postData));
 
         if ($response->failed()) {
             Log::error('Facebook multi-image post failed', [

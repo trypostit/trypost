@@ -30,6 +30,7 @@ use App\Services\Social\PinterestPublisher;
 use App\Services\Social\Telegram\TelegramPublisher;
 use App\Services\Social\ThreadsPublisher;
 use App\Services\Social\TikTokPublisher;
+use App\Services\Social\FirstCommentPoster;
 use App\Services\Social\XPublisher;
 use App\Services\Social\YouTubePublisher;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
@@ -125,6 +126,13 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 $publisher = $this->getPublisher();
                 $result = $publisher->publish($this->postPlatform);
                 $this->postPlatform->markAsPublished(data_get($result, 'id'), data_get($result, 'url'));
+
+                // The post is live; a failed first comment must never fail it —
+                // FirstCommentPoster logs and swallows its own errors.
+                if (($externalId = (string) data_get($result, 'id')) !== '') {
+                    app(FirstCommentPoster::class)->post($this->postPlatform, $externalId);
+                }
+
                 break;
             } catch (PlatformUnavailableException $e) {
                 $this->rescheduleForRetry($e);

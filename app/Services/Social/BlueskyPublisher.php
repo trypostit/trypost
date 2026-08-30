@@ -51,7 +51,7 @@ class BlueskyPublisher
     {
         $this->validateContentLength($postPlatform);
 
-        $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
+        $content = $postPlatform->resolvedContent() ? app(ContentSanitizer::class)->sanitize($postPlatform->resolvedContent(), $postPlatform->platform) : null;
 
         $account = $postPlatform->socialAccount;
         $service = $account->meta['service'] ?? config('trypost.platforms.bluesky.default_service');
@@ -100,6 +100,10 @@ class BlueskyPublisher
                         '$type' => BlueskyLexicon::EMBED_VIDEO,
                         'video' => $videoBlob,
                     ];
+
+                    if (($alt = $video->altTextFor(Platform::Bluesky)) !== null) {
+                        $embed['alt'] = $alt;
+                    }
                 }
             }
         }

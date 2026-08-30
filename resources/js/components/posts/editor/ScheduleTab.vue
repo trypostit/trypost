@@ -151,6 +151,7 @@ const channels = computed<Channel[]>(() =>
         creatorInfo: getCreatorInfo(pp),
         boards: getBoards(pp),
         boardsTruncated: boardsTruncated(pp),
+        contentLimit: pp.social_account_id ? props.platformConfigs[pp.social_account_id]?.maxContentLength ?? null : null,
     })),
 );
 </script>
