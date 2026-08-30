@@ -1,11 +1,41 @@
 import dayjs from '@/dayjs';
+import { usePage } from '@inertiajs/vue3';
 
 /**
  * Obtém o timezone do usuário
  * Tenta pegar do Inertia page props primeiro, senão usa o timezone do browser
  */
 function getUserTimezone(): string {
+    try {
+        const tz = (usePage().props as any)?.auth?.currentWorkspace?.timezone;
+        if (tz) return tz as string;
+    } catch {
+        // Вне контекста Inertia (например, в тестах) — падаем на браузерную.
+    }
+
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
+/**
+ * Пресеты формата даты/времени из настроек воркспейса. Null/неизвестное
+ * значение — «авто»: локализованные форматы dayjs (прежнее поведение).
+ */
+const DATETIME_PRESETS: Record<string, { date: string; time: string; datetime: string }> = {
+    dmy_24: { date: 'D MMM YYYY', time: 'HH:mm', datetime: 'D MMM YYYY, HH:mm' },
+    dmy_12: { date: 'D MMM YYYY', time: 'h:mm A', datetime: 'D MMM YYYY, h:mm A' },
+    dots_24: { date: 'DD.MM.YYYY', time: 'HH:mm', datetime: 'DD.MM.YYYY HH:mm' },
+    slash_12: { date: 'MM/DD/YYYY', time: 'h:mm A', datetime: 'MM/DD/YYYY h:mm A' },
+};
+
+function getWorkspacePreset(): { date: string; time: string; datetime: string } | null {
+    try {
+        const preset = (usePage().props as any)?.auth?.currentWorkspace?.datetime_format;
+        if (preset && DATETIME_PRESETS[preset]) return DATETIME_PRESETS[preset];
+    } catch {
+        // Вне контекста Inertia — «авто».
+    }
+
+    return null;
 }
 
 /** Resolve scheduled local datetime for platform previews, else now. */
@@ -30,7 +60,7 @@ const formatAbsolutePreviewPostedAt = (postedAt?: string | null) => {
 export default {
     formatDate(date: string | null | undefined) {
         if (!date) return '-';
-        return dayjs.utc(date).tz(getUserTimezone()).format('LL');
+        return dayjs.utc(date).tz(getUserTimezone()).format(getWorkspacePreset()?.date ?? 'LL');
     },
 
     /**
@@ -51,7 +81,7 @@ export default {
             return '—';
         }
 
-        return dayjs.utc(date).tz(getUserTimezone()).format('LLL');
+        return dayjs.utc(date).tz(getUserTimezone()).format(getWorkspacePreset()?.datetime ?? 'LLL');
     },
 
     /**
@@ -131,7 +161,7 @@ export default {
 
     formatTime(date: string | null | undefined) {
         if (!date) return '-';
-        return dayjs.utc(date).tz(getUserTimezone()).format('HH:mm');
+        return dayjs.utc(date).tz(getUserTimezone()).format(getWorkspacePreset()?.time ?? 'HH:mm');
     },
 
     formatDateTimeForApi(date: string) {

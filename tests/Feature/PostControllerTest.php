@@ -170,7 +170,30 @@ test('calendar shows posts for current week', function () {
     );
 });
 
+test('calendar buckets posts by the workspace timezone', function () {
+    $this->workspace->update(['timezone' => 'Australia/Brisbane']);
+
+    // 20:00 UTC во вторник = 06:00 среды по Брисбену (UTC+10): пост должен
+    // лежать в среде, а не во вторнике.
+    $scheduledAt = now('Australia/Brisbane')->startOfWeek()->addDays(2)->setTime(6, 0);
+
+    Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => \App\Enums\Post\Status::Scheduled,
+        'scheduled_at' => $scheduledAt->copy()->utc(),
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.calendar', ['view' => 'week', 'week' => $scheduledAt->format('Y-m-d')]));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->has('posts.'.$scheduledAt->format('Y-m-d'))
+    );
+});
+
 test('calendar supports month view', function () {
+
     $response = $this->actingAs($this->user)->get(route('app.calendar', ['view' => 'month']));
 
     $response->assertOk();
