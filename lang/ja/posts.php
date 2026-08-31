@@ -420,7 +420,10 @@ return [
             'published' => '公開済み',
             'publishing' => '公開中...',
             'retrying' => '再試行中...',
+            'submitted' => 'Google に送信済み',
+            'pending_review' => 'Google の審査待ち',
             'failed' => '失敗',
+            'rejected' => '却下済み',
         ],
 
         'delete_modal' => [
@@ -514,6 +517,22 @@ return [
             'label' => 'ショート',
             'description' => '最大 3 分の縦型動画',
         ],
+        'google_business_profile_standard' => [
+            'label' => '最新情報',
+            'description' => 'メディアと行動を促すフレーズを任意で追加できるビジネス最新情報',
+        ],
+        'google_business_profile_event' => [
+            'label' => 'イベント',
+            'description' => 'メディアと行動を促すフレーズを任意で追加できる期間限定または定期イベント',
+        ],
+        'google_business_profile_offer' => [
+            'label' => '特典',
+            'description' => 'クーポンと利用情報を含む期間限定または定期特典',
+        ],
+        'google_business_profile_alert' => [
+            'label' => 'アラート',
+            'description' => 'Google で作成が許可されている場合の優先度の高いアラート',
+        ],
         'x_post' => [
             'label' => '投稿',
             'description' => 'テキストとメディア付きのツイート',
@@ -557,7 +576,9 @@ return [
         'linkedin-page' => 'LinkedIn ページ',
         'x' => 'X',
         'tiktok' => 'TikTok',
+        'facebook' => 'Facebook ページ',
         'youtube' => 'YouTube ショート',
+        'google-business-profile' => 'Google ビジネス プロフィール',
         'facebook' => 'Facebook ページ',
         'instagram' => 'Instagram',
         'threads' => 'Threads',

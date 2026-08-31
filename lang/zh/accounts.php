@@ -30,6 +30,7 @@ return [
         'mastodon' => '连接你的 Mastodon 账号',
         'telegram' => '连接一个 Telegram 频道或群组',
         'discord' => '连接一个 Discord 服务器',
+        'google-business-profile' => '连接一个或多个 Google 商家资料地点',
     ],
 
     'disconnect_modal' => [
@@ -88,6 +89,16 @@ return [
         'page_label' => 'Facebook 主页',
         'view' => '查看',
         'choose' => '选择',
+    ],
+
+    'google_business_profile' => [
+        'title' => '选择 Google 商家资料地点',
+        'description' => '选择要在 TryPost 中发布内容和查看分析数据的所有地点。',
+        'no_locations' => '未找到地点',
+        'no_locations_description' => '此 Google 账号未管理任何商家资料地点。',
+        'store_code' => '门店代码：:code',
+        'save' => '连接所选地点',
+        'saving' => '正在连接...',
     ],
 
     'instagram_facebook' => [
@@ -162,5 +173,7 @@ return [
         'no_facebook_instagram_pages' => '未找到关联了 Instagram 账号的 Facebook 主页。',
         'no_youtube_channels' => '未找到 YouTube 频道，请先创建一个频道。',
         'not_linkedin_admin' => '你不是任何 LinkedIn 页面的管理员。',
+        'no_google_business_profile_locations' => '未找到此 Google 账号的 Google 商家资料地点。',
+        'error_connecting_google_business_profile' => '无法连接 Google 商家资料，请重试。',
     ],
 ];

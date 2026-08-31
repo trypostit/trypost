@@ -420,7 +420,10 @@ return [
             'published' => 'Δημοσιεύτηκε',
             'publishing' => 'Δημοσίευση...',
             'retrying' => 'Επανάληψη...',
+            'submitted' => 'Υποβλήθηκε στην Google',
+            'pending_review' => 'Αναμονή ελέγχου από την Google',
             'failed' => 'Απέτυχε',
+            'rejected' => 'Απορρίφθηκε',
         ],
 
         'delete_modal' => [
@@ -514,6 +517,22 @@ return [
             'label' => 'Short',
             'description' => 'Κατακόρυφο βίντεο έως 3 λεπτά',
         ],
+        'google_business_profile_standard' => [
+            'label' => 'Ενημέρωση',
+            'description' => 'Ενημέρωση επιχείρησης με προαιρετικά πολυμέσα και παρότρυνση για δράση',
+        ],
+        'google_business_profile_event' => [
+            'label' => 'Εκδήλωση',
+            'description' => 'Χρονικά καθορισμένη ή επαναλαμβανόμενη εκδήλωση με προαιρετικά πολυμέσα και παρότρυνση για δράση',
+        ],
+        'google_business_profile_offer' => [
+            'label' => 'Προσφορά',
+            'description' => 'Χρονικά καθορισμένη ή επαναλαμβανόμενη προσφορά με κουπόνι και λεπτομέρειες εξαργύρωσης',
+        ],
+        'google_business_profile_alert' => [
+            'label' => 'Ειδοποίηση',
+            'description' => 'Ειδοποίηση υψηλής προτεραιότητας όταν η Google επιτρέπει τη σύνταξή της',
+        ],
         'x_post' => [
             'label' => 'Δημοσίευση',
             'description' => 'Tweet με κείμενο και πολυμέσα',
@@ -557,7 +576,9 @@ return [
         'linkedin-page' => 'Σελίδα LinkedIn',
         'x' => 'X',
         'tiktok' => 'TikTok',
+        'facebook' => 'Σελίδα Facebook',
         'youtube' => 'YouTube Shorts',
+        'google-business-profile' => 'Επιχειρηματικό προφίλ Google',
         'facebook' => 'Σελίδα Facebook',
         'instagram' => 'Instagram',
         'threads' => 'Threads',

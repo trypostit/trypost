@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Mastodon 계정을 연결하세요',
         'telegram' => 'Telegram 채널 또는 그룹을 연결하세요',
         'discord' => 'Discord 서버를 연결하세요',
+        'google-business-profile' => '하나 이상의 Google 비즈니스 프로필 위치 연결',
     ],
 
     'disconnect_modal' => [
@@ -88,6 +89,16 @@ return [
         'page_label' => 'Facebook 페이지',
         'view' => '보기',
         'choose' => '선택',
+    ],
+
+    'google_business_profile' => [
+        'title' => 'Google 비즈니스 프로필 위치 선택',
+        'description' => 'TryPost에서 게시하고 분석할 모든 위치를 선택하세요.',
+        'no_locations' => '위치를 찾을 수 없음',
+        'no_locations_description' => '이 Google 계정은 비즈니스 프로필 위치를 관리하지 않습니다.',
+        'store_code' => '매장 코드: :code',
+        'save' => '선택한 위치 연결',
+        'saving' => '연결 중...',
     ],
 
     'instagram_facebook' => [
@@ -162,5 +173,7 @@ return [
         'no_facebook_instagram_pages' => 'Instagram 계정이 연결된 Facebook 페이지를 찾을 수 없습니다.',
         'no_youtube_channels' => 'YouTube 채널을 찾을 수 없습니다. 먼저 채널을 만드세요.',
         'not_linkedin_admin' => '관리자로 있는 LinkedIn 페이지가 없습니다.',
+        'no_google_business_profile_locations' => '이 Google 계정에서 Google 비즈니스 프로필 위치를 찾을 수 없습니다.',
+        'error_connecting_google_business_profile' => 'Google 비즈니스 프로필을 연결할 수 없습니다. 다시 시도하세요.',
     ],
 ];

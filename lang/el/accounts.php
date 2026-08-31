@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Συνδέστε τον λογαριασμό σας Mastodon',
         'telegram' => 'Συνδέστε ένα κανάλι ή ομάδα Telegram',
         'discord' => 'Συνδέστε έναν διακομιστή Discord',
+        'google-business-profile' => 'Συνδέστε μία ή περισσότερες τοποθεσίες Επιχειρηματικού προφίλ Google',
     ],
 
     'disconnect_modal' => [
@@ -88,6 +89,16 @@ return [
         'page_label' => 'Σελίδα Facebook',
         'view' => 'Προβολή',
         'choose' => 'Επιλογή',
+    ],
+
+    'google_business_profile' => [
+        'title' => 'Επιλέξτε τοποθεσίες Επιχειρηματικού προφίλ Google',
+        'description' => 'Επιλέξτε όλες τις τοποθεσίες όπου θέλετε να δημοσιεύετε και να βλέπετε αναλυτικά στοιχεία στο TryPost.',
+        'no_locations' => 'Δεν βρέθηκαν τοποθεσίες',
+        'no_locations_description' => 'Αυτός ο λογαριασμός Google δεν διαχειρίζεται τοποθεσίες Επιχειρηματικού προφίλ.',
+        'store_code' => 'Κωδικός καταστήματος: :code',
+        'save' => 'Σύνδεση επιλεγμένων τοποθεσιών',
+        'saving' => 'Γίνεται σύνδεση...',
     ],
 
     'instagram_facebook' => [
@@ -162,5 +173,7 @@ return [
         'no_facebook_instagram_pages' => 'Δεν βρέθηκαν σελίδες Facebook με συνδεδεμένους λογαριασμούς Instagram.',
         'no_youtube_channels' => 'Δεν βρέθηκαν κανάλια YouTube. Παρακαλούμε δημιουργήστε πρώτα ένα κανάλι.',
         'not_linkedin_admin' => 'Δεν είστε διαχειριστής καμίας σελίδας LinkedIn.',
+        'no_google_business_profile_locations' => 'Δεν βρέθηκαν τοποθεσίες Επιχειρηματικού προφίλ Google για αυτόν τον λογαριασμό.',
+        'error_connecting_google_business_profile' => 'Δεν ήταν δυνατή η σύνδεση του Επιχειρηματικού προφίλ Google. Δοκιμάστε ξανά.',
     ],
 ];

@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Koppel je Mastodon-account',
         'telegram' => 'Koppel een Telegram-kanaal of -groep',
         'discord' => 'Koppel een Discord-server',
+        'google-business-profile' => 'Verbind een of meer Google-bedrijfsprofiellocaties',
     ],
 
     'disconnect_modal' => [
@@ -88,6 +89,16 @@ return [
         'page_label' => 'Facebook-pagina',
         'view' => 'Bekijken',
         'choose' => 'Kiezen',
+    ],
+
+    'google_business_profile' => [
+        'title' => 'Google-bedrijfsprofiellocaties selecteren',
+        'description' => 'Kies alle locaties waarop je via TryPost wilt publiceren en analyses wilt bekijken.',
+        'no_locations' => 'Geen locaties gevonden',
+        'no_locations_description' => 'Dit Google-account beheert geen bedrijfsprofiellocaties.',
+        'store_code' => 'Winkelcode: :code',
+        'save' => 'Geselecteerde locaties verbinden',
+        'saving' => 'Verbinden...',
     ],
 
     'instagram_facebook' => [
@@ -162,5 +173,7 @@ return [
         'no_facebook_instagram_pages' => 'Geen Facebook-pagina\'s met gekoppelde Instagram-accounts gevonden.',
         'no_youtube_channels' => 'Geen YouTube-kanalen gevonden. Maak eerst een kanaal aan.',
         'not_linkedin_admin' => 'Je bent geen beheerder van een LinkedIn-pagina.',
+        'no_google_business_profile_locations' => 'Er zijn geen Google-bedrijfsprofiellocaties gevonden voor dit Google-account.',
+        'error_connecting_google_business_profile' => 'Google Bedrijfsprofiel kon niet worden verbonden. Probeer het opnieuw.',
     ],
 ];

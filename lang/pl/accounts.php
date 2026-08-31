@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Połącz swoje konto Mastodon',
         'telegram' => 'Połącz kanał lub grupę na Telegramie',
         'discord' => 'Połącz serwer Discord',
+        'google-business-profile' => 'Połącz co najmniej jedną lokalizację Profilu Firmy w Google',
     ],
 
     'disconnect_modal' => [
@@ -88,6 +89,16 @@ return [
         'page_label' => 'Strona na Facebooku',
         'view' => 'Zobacz',
         'choose' => 'Wybierz',
+    ],
+
+    'google_business_profile' => [
+        'title' => 'Wybierz lokalizacje Profilu Firmy w Google',
+        'description' => 'Wybierz wszystkie lokalizacje, w których chcesz publikować i analizować wyniki w TryPost.',
+        'no_locations' => 'Nie znaleziono lokalizacji',
+        'no_locations_description' => 'To konto Google nie zarządza żadnymi lokalizacjami Profilu Firmy.',
+        'store_code' => 'Kod sklepu: :code',
+        'save' => 'Połącz wybrane lokalizacje',
+        'saving' => 'Łączenie...',
     ],
 
     'instagram_facebook' => [
@@ -162,5 +173,7 @@ return [
         'no_facebook_instagram_pages' => 'Nie znaleziono stron na Facebooku z powiązanymi kontami Instagram.',
         'no_youtube_channels' => 'Nie znaleziono kanałów YouTube. Najpierw utwórz kanał.',
         'not_linkedin_admin' => 'Nie jesteś administratorem żadnej strony LinkedIn.',
+        'no_google_business_profile_locations' => 'Nie znaleziono lokalizacji Profilu Firmy w Google dla tego konta Google.',
+        'error_connecting_google_business_profile' => 'Nie udało się połączyć Profilu Firmy w Google. Spróbuj ponownie.',
     ],
 ];

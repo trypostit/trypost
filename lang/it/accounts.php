@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Collega il tuo account Mastodon',
         'telegram' => 'Collega un canale o gruppo Telegram',
         'discord' => 'Collega un server Discord',
+        'google-business-profile' => 'Collega una o più sedi del Profilo dell’attività su Google',
     ],
 
     'disconnect_modal' => [
@@ -88,6 +89,16 @@ return [
         'page_label' => 'Pagina Facebook',
         'view' => 'Visualizza',
         'choose' => 'Scegli',
+    ],
+
+    'google_business_profile' => [
+        'title' => 'Seleziona le sedi del Profilo dell’attività su Google',
+        'description' => 'Scegli tutte le sedi in cui vuoi pubblicare e visualizzare le analisi in TryPost.',
+        'no_locations' => 'Nessuna sede trovata',
+        'no_locations_description' => 'Questo account Google non gestisce sedi del Profilo dell’attività.',
+        'store_code' => 'Codice negozio: :code',
+        'save' => 'Collega le sedi selezionate',
+        'saving' => 'Connessione...',
     ],
 
     'instagram_facebook' => [
@@ -162,5 +173,7 @@ return [
         'no_facebook_instagram_pages' => 'Nessuna pagina Facebook con account Instagram collegati trovata.',
         'no_youtube_channels' => 'Nessun canale YouTube trovato. Crea prima un canale.',
         'not_linkedin_admin' => 'Non sei amministratore di alcuna pagina LinkedIn.',
+        'no_google_business_profile_locations' => 'Non sono state trovate sedi del Profilo dell’attività su Google per questo account.',
+        'error_connecting_google_business_profile' => 'Impossibile collegare il Profilo dell’attività su Google. Riprova.',
     ],
 ];

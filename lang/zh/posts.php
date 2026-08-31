@@ -420,7 +420,10 @@ return [
             'published' => '已发布',
             'publishing' => '发布中…',
             'retrying' => '重试中…',
+            'submitted' => '已提交至 Google',
+            'pending_review' => '等待 Google 审核',
             'failed' => '已失败',
+            'rejected' => '已拒绝',
         ],
 
         'delete_modal' => [
@@ -514,6 +517,22 @@ return [
             'label' => 'Short',
             'description' => '最长 3 分钟的竖版视频',
         ],
+        'google_business_profile_standard' => [
+            'label' => '动态',
+            'description' => '可选择添加媒体和号召性用语的商家动态',
+        ],
+        'google_business_profile_event' => [
+            'label' => '活动',
+            'description' => '可选择添加媒体和号召性用语的限时或周期性活动',
+        ],
+        'google_business_profile_offer' => [
+            'label' => '优惠',
+            'description' => '包含优惠券和兑换详情的限时或周期性优惠',
+        ],
+        'google_business_profile_alert' => [
+            'label' => '提醒',
+            'description' => 'Google 开放创建功能时可发布的高优先级提醒',
+        ],
         'x_post' => [
             'label' => '帖子',
             'description' => '带文字和媒体的推文',
@@ -557,7 +576,9 @@ return [
         'linkedin-page' => 'LinkedIn 页面',
         'x' => 'X',
         'tiktok' => 'TikTok',
+        'facebook' => 'Facebook 主页',
         'youtube' => 'YouTube Shorts',
+        'google-business-profile' => 'Google 商家资料',
         'facebook' => 'Facebook 主页',
         'instagram' => 'Instagram',
         'threads' => 'Threads',

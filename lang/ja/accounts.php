@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Mastodon アカウントを接続',
         'telegram' => 'Telegram チャンネルまたはグループを接続',
         'discord' => 'Discord サーバーを接続',
+        'google-business-profile' => '1 つ以上の Google ビジネス プロフィールの店舗を接続',
     ],
 
     'disconnect_modal' => [
@@ -88,6 +89,16 @@ return [
         'page_label' => 'Facebook ページ',
         'view' => '表示',
         'choose' => '選択',
+    ],
+
+    'google_business_profile' => [
+        'title' => 'Google ビジネス プロフィールの店舗を選択',
+        'description' => 'TryPost で投稿と分析を行うすべての店舗を選択してください。',
+        'no_locations' => '店舗が見つかりません',
+        'no_locations_description' => 'この Google アカウントが管理するビジネス プロフィールの店舗はありません。',
+        'store_code' => '店舗コード: :code',
+        'save' => '選択した店舗を接続',
+        'saving' => '接続中...',
     ],
 
     'instagram_facebook' => [
@@ -162,5 +173,7 @@ return [
         'no_facebook_instagram_pages' => 'Instagram アカウントが連携された Facebook ページが見つかりません。',
         'no_youtube_channels' => 'YouTube チャンネルが見つかりません。先にチャンネルを作成してください。',
         'not_linkedin_admin' => 'あなたは管理者となっている LinkedIn ページがありません。',
+        'no_google_business_profile_locations' => 'この Google アカウントの Google ビジネス プロフィール店舗が見つかりませんでした。',
+        'error_connecting_google_business_profile' => 'Google ビジネス プロフィールに接続できませんでした。もう一度お試しください。',
     ],
 ];

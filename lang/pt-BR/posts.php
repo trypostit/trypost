@@ -420,7 +420,10 @@ return [
             'published' => 'Publicado',
             'publishing' => 'Publicando...',
             'retrying' => 'Tentando novamente...',
+            'submitted' => 'Enviado ao Google',
+            'pending_review' => 'Aguardando análise do Google',
             'failed' => 'Falhou',
+            'rejected' => 'Rejeitado',
         ],
 
         'delete_modal' => [
@@ -514,6 +517,22 @@ return [
             'label' => 'Short',
             'description' => 'Vídeo vertical de até 3 minutos',
         ],
+        'google_business_profile_standard' => [
+            'label' => 'Atualização',
+            'description' => 'Atualização da empresa com mídia e chamada para ação opcionais',
+        ],
+        'google_business_profile_event' => [
+            'label' => 'Evento',
+            'description' => 'Evento com horário definido ou recorrente, com mídia e chamada para ação opcionais',
+        ],
+        'google_business_profile_offer' => [
+            'label' => 'Oferta',
+            'description' => 'Oferta com horário definido ou recorrente, com cupom e detalhes de resgate',
+        ],
+        'google_business_profile_alert' => [
+            'label' => 'Alerta',
+            'description' => 'Alerta de alta prioridade quando o Google permite a criação',
+        ],
         'x_post' => [
             'label' => 'Post',
             'description' => 'Tweet com texto e mídia',
@@ -557,7 +576,9 @@ return [
         'linkedin-page' => 'Página do LinkedIn',
         'x' => 'X',
         'tiktok' => 'TikTok',
+        'facebook' => 'Página do Facebook',
         'youtube' => 'YouTube Shorts',
+        'google-business-profile' => 'Perfil da Empresa no Google',
         'facebook' => 'Página do Facebook',
         'instagram' => 'Instagram',
         'threads' => 'Threads',

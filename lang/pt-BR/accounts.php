@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Conecte sua conta do Mastodon',
         'telegram' => 'Conecte um canal ou grupo do Telegram',
         'discord' => 'Conecte um servidor do Discord',
+        'google-business-profile' => 'Conecte um ou mais locais do Perfil da Empresa no Google',
     ],
 
     'disconnect_modal' => [
@@ -88,6 +89,16 @@ return [
         'page_label' => 'Página do Facebook',
         'view' => 'Ver',
         'choose' => 'Escolher',
+    ],
+
+    'google_business_profile' => [
+        'title' => 'Selecione os locais do Perfil da Empresa no Google',
+        'description' => 'Escolha todos os locais em que você deseja publicar e analisar no TryPost.',
+        'no_locations' => 'Nenhum local encontrado',
+        'no_locations_description' => 'Esta Conta do Google não gerencia nenhum local do Perfil da Empresa.',
+        'store_code' => 'Código da loja: :code',
+        'save' => 'Conectar locais selecionados',
+        'saving' => 'Conectando...',
     ],
 
     'instagram_facebook' => [
@@ -162,5 +173,7 @@ return [
         'no_facebook_instagram_pages' => 'Nenhuma página do Facebook com conta do Instagram vinculada foi encontrada.',
         'no_youtube_channels' => 'Nenhum canal do YouTube encontrado. Por favor, crie um canal primeiro.',
         'not_linkedin_admin' => 'Você não é administrador de nenhuma página do LinkedIn.',
+        'no_google_business_profile_locations' => 'Nenhum local do Perfil da Empresa no Google foi encontrado para esta Conta do Google.',
+        'error_connecting_google_business_profile' => 'Não foi possível conectar o Perfil da Empresa no Google. Tente novamente.',
     ],
 ];

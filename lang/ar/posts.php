@@ -420,7 +420,10 @@ return [
             'published' => 'منشور',
             'publishing' => 'جارٍ النشر...',
             'retrying' => 'جارٍ إعادة المحاولة...',
+            'submitted' => 'تم الإرسال إلى Google',
+            'pending_review' => 'بانتظار مراجعة Google',
             'failed' => 'فشل',
+            'rejected' => 'مرفوض',
         ],
 
         'delete_modal' => [
@@ -514,6 +517,22 @@ return [
             'label' => 'مقطع قصير',
             'description' => 'فيديو عمودي حتى 3 دقائق',
         ],
+        'google_business_profile_standard' => [
+            'label' => 'تحديث',
+            'description' => 'تحديث للنشاط التجاري مع وسائط وعبارة تحث على اتخاذ إجراء اختياريًا',
+        ],
+        'google_business_profile_event' => [
+            'label' => 'فعالية',
+            'description' => 'فعالية محددة الوقت أو متكررة مع وسائط وعبارة تحث على اتخاذ إجراء اختياريًا',
+        ],
+        'google_business_profile_offer' => [
+            'label' => 'عرض',
+            'description' => 'عرض محدد الوقت أو متكرر مع قسيمة وتفاصيل الاسترداد',
+        ],
+        'google_business_profile_alert' => [
+            'label' => 'تنبيه',
+            'description' => 'تنبيه عالي الأولوية عندما تتيح Google إمكانية إنشائه',
+        ],
         'x_post' => [
             'label' => 'منشور',
             'description' => 'تغريدة بنص ووسائط',
@@ -557,7 +576,9 @@ return [
         'linkedin-page' => 'LinkedIn Page',
         'x' => 'X',
         'tiktok' => 'TikTok',
+        'facebook' => 'Facebook Page',
         'youtube' => 'YouTube Shorts',
+        'google-business-profile' => 'الملف التجاري على Google',
         'facebook' => 'Facebook Page',
         'instagram' => 'Instagram',
         'threads' => 'Threads',

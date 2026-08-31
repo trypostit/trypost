@@ -420,7 +420,10 @@ return [
             'published' => 'Gepubliceerd',
             'publishing' => 'Publiceren...',
             'retrying' => 'Opnieuw proberen...',
+            'submitted' => 'Ingediend bij Google',
+            'pending_review' => 'In afwachting van Google-beoordeling',
             'failed' => 'Mislukt',
+            'rejected' => 'Afgewezen',
         ],
 
         'delete_modal' => [
@@ -514,6 +517,22 @@ return [
             'label' => 'Short',
             'description' => 'Verticale video tot 3 minuten',
         ],
+        'google_business_profile_standard' => [
+            'label' => 'Update',
+            'description' => 'Bedrijfsupdate met optionele media en actieknop',
+        ],
+        'google_business_profile_event' => [
+            'label' => 'Evenement',
+            'description' => 'Tijdgebonden of terugkerend evenement met optionele media en actieknop',
+        ],
+        'google_business_profile_offer' => [
+            'label' => 'Aanbieding',
+            'description' => 'Tijdgebonden of terugkerende aanbieding met coupon- en inwisselgegevens',
+        ],
+        'google_business_profile_alert' => [
+            'label' => 'Waarschuwing',
+            'description' => 'Belangrijke waarschuwing wanneer Google het opstellen beschikbaar stelt',
+        ],
         'x_post' => [
             'label' => 'Post',
             'description' => 'Tweet met tekst en media',
@@ -557,7 +576,9 @@ return [
         'linkedin-page' => 'LinkedIn-pagina',
         'x' => 'X',
         'tiktok' => 'TikTok',
+        'facebook' => 'Facebook-pagina',
         'youtube' => 'YouTube Shorts',
+        'google-business-profile' => 'Google Bedrijfsprofiel',
         'facebook' => 'Facebook-pagina',
         'instagram' => 'Instagram',
         'threads' => 'Threads',

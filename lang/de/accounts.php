@@ -32,6 +32,7 @@ return [
         'mastodon' => 'Verbinde dein Mastodon-Konto',
         'telegram' => 'Verbinde einen Telegram-Kanal oder eine Telegram-Gruppe',
         'discord' => 'Verbinde einen Discord-Server',
+        'google-business-profile' => 'Verbinde einen oder mehrere Google-Unternehmensprofil-Standorte',
     ],
 
     'disconnect_modal' => [
@@ -90,6 +91,16 @@ return [
         'page_label' => 'Facebook-Seite',
         'view' => 'Ansehen',
         'choose' => 'Auswählen',
+    ],
+
+    'google_business_profile' => [
+        'title' => 'Google-Unternehmensprofil-Standorte auswählen',
+        'description' => 'Wähle alle Standorte aus, auf denen du in TryPost veröffentlichen und Analysen ansehen möchtest.',
+        'no_locations' => 'Keine Standorte gefunden',
+        'no_locations_description' => 'Dieses Google-Konto verwaltet keine Unternehmensprofil-Standorte.',
+        'store_code' => 'Geschäftscode: :code',
+        'save' => 'Ausgewählte Standorte verbinden',
+        'saving' => 'Wird verbunden...',
     ],
 
     'instagram_facebook' => [
@@ -164,5 +175,7 @@ return [
         'no_facebook_instagram_pages' => 'Keine Facebook-Seiten mit verknüpften Instagram-Konten gefunden.',
         'no_youtube_channels' => 'Keine YouTube-Kanäle gefunden. Bitte erstelle zuerst einen Kanal.',
         'not_linkedin_admin' => 'Du bist kein Administrator einer LinkedIn-Seite.',
+        'no_google_business_profile_locations' => 'Für dieses Google-Konto wurden keine Google-Unternehmensprofil-Standorte gefunden.',
+        'error_connecting_google_business_profile' => 'Google Unternehmensprofil konnte nicht verbunden werden. Versuche es erneut.',
     ],
 ];

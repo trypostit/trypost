@@ -30,6 +30,7 @@ return [
         'mastodon' => 'اربط حسابك على Mastodon',
         'telegram' => 'اربط قناة أو مجموعة على Telegram',
         'discord' => 'اربط خادم Discord',
+        'google-business-profile' => 'اربط موقعًا واحدًا أو أكثر للملف التجاري على Google',
     ],
 
     'disconnect_modal' => [
@@ -88,6 +89,16 @@ return [
         'page_label' => 'صفحة Facebook',
         'view' => 'عرض',
         'choose' => 'اختيار',
+    ],
+
+    'google_business_profile' => [
+        'title' => 'حدّد مواقع الملف التجاري على Google',
+        'description' => 'اختر جميع المواقع التي تريد النشر فيها وعرض تحليلاتها في TryPost.',
+        'no_locations' => 'لم يتم العثور على مواقع',
+        'no_locations_description' => 'لا يدير حساب Google هذا أي مواقع لملف تجاري.',
+        'store_code' => 'رمز المتجر: :code',
+        'save' => 'ربط المواقع المحددة',
+        'saving' => 'جارٍ الاتصال...',
     ],
 
     'instagram_facebook' => [
@@ -162,5 +173,7 @@ return [
         'no_facebook_instagram_pages' => 'لم يتم العثور على صفحات Facebook مرتبطة بحسابات Instagram.',
         'no_youtube_channels' => 'لم يتم العثور على قنوات YouTube. يرجى إنشاء قناة أولًا.',
         'not_linkedin_admin' => 'أنت لست مشرفًا على أي صفحة LinkedIn.',
+        'no_google_business_profile_locations' => 'لم يتم العثور على مواقع للملف التجاري على Google لهذا الحساب.',
+        'error_connecting_google_business_profile' => 'تعذّر ربط الملف التجاري على Google. يُرجى المحاولة مرة أخرى.',
     ],
 ];

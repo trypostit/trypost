@@ -420,7 +420,10 @@ return [
             'published' => '게시됨',
             'publishing' => '게시 중...',
             'retrying' => '재시도 중...',
+            'submitted' => 'Google에 제출됨',
+            'pending_review' => 'Google 검토 대기 중',
             'failed' => '실패',
+            'rejected' => '거부됨',
         ],
 
         'delete_modal' => [
@@ -514,6 +517,22 @@ return [
             'label' => 'Short',
             'description' => '최대 3분 세로 동영상',
         ],
+        'google_business_profile_standard' => [
+            'label' => '소식',
+            'description' => '미디어와 클릭 유도 문구를 선택적으로 포함하는 비즈니스 소식',
+        ],
+        'google_business_profile_event' => [
+            'label' => '이벤트',
+            'description' => '미디어와 클릭 유도 문구를 선택적으로 포함하는 기간 지정 또는 반복 이벤트',
+        ],
+        'google_business_profile_offer' => [
+            'label' => '혜택',
+            'description' => '쿠폰과 사용 세부정보가 포함된 기간 지정 또는 반복 혜택',
+        ],
+        'google_business_profile_alert' => [
+            'label' => '알림',
+            'description' => 'Google에서 작성 기능을 제공하는 경우의 우선순위가 높은 알림',
+        ],
         'x_post' => [
             'label' => '게시물',
             'description' => '텍스트와 미디어가 있는 트윗',
@@ -557,7 +576,9 @@ return [
         'linkedin-page' => 'LinkedIn 페이지',
         'x' => 'X',
         'tiktok' => 'TikTok',
+        'facebook' => 'Facebook 페이지',
         'youtube' => 'YouTube Shorts',
+        'google-business-profile' => 'Google 비즈니스 프로필',
         'facebook' => 'Facebook 페이지',
         'instagram' => 'Instagram',
         'threads' => 'Threads',

@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Подключите аккаунт Mastodon',
         'telegram' => 'Подключите канал или группу Telegram',
         'discord' => 'Подключите сервер Discord',
+        'google-business-profile' => 'Подключите одну или несколько точек профиля компании в Google',
     ],
 
     'disconnect_modal' => [
@@ -88,6 +89,16 @@ return [
         'page_label' => 'Страница Facebook',
         'view' => 'Открыть',
         'choose' => 'Выбрать',
+    ],
+
+    'google_business_profile' => [
+        'title' => 'Выберите точки профиля компании в Google',
+        'description' => 'Выберите все точки, в которых хотите публиковать материалы и просматривать аналитику в TryPost.',
+        'no_locations' => 'Точки не найдены',
+        'no_locations_description' => 'Этот аккаунт Google не управляет точками профиля компании.',
+        'store_code' => 'Код магазина: :code',
+        'save' => 'Подключить выбранные точки',
+        'saving' => 'Подключение...',
     ],
 
     'instagram_facebook' => [
@@ -162,5 +173,7 @@ return [
         'no_facebook_instagram_pages' => 'Не найдено страниц Facebook со связанными аккаунтами Instagram.',
         'no_youtube_channels' => 'Каналы YouTube не найдены. Сначала создайте канал.',
         'not_linkedin_admin' => 'Вы не являетесь администратором ни одной страницы LinkedIn.',
+        'no_google_business_profile_locations' => 'Для этого аккаунта Google не найдено точек профиля компании.',
+        'error_connecting_google_business_profile' => 'Не удалось подключить профиль компании в Google. Повторите попытку.',
     ],
 ];

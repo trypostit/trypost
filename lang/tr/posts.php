@@ -422,7 +422,10 @@ return [
             'published' => 'Yayınlandı',
             'publishing' => 'Yayınlanıyor...',
             'retrying' => 'Yeniden deneniyor...',
+            'submitted' => 'Google’a gönderildi',
+            'pending_review' => 'Google incelemesi bekleniyor',
             'failed' => 'Başarısız',
+            'rejected' => 'Reddedildi',
         ],
 
         'delete_modal' => [
@@ -516,6 +519,22 @@ return [
             'label' => 'Short',
             'description' => '3 dakikaya kadar dikey video',
         ],
+        'google_business_profile_standard' => [
+            'label' => 'Güncelleme',
+            'description' => 'İsteğe bağlı medya ve harekete geçirici mesaj içeren işletme güncellemesi',
+        ],
+        'google_business_profile_event' => [
+            'label' => 'Etkinlik',
+            'description' => 'İsteğe bağlı medya ve harekete geçirici mesaj içeren zamanlanmış veya yinelenen etkinlik',
+        ],
+        'google_business_profile_offer' => [
+            'label' => 'Teklif',
+            'description' => 'Kupon ve kullanım ayrıntıları içeren zamanlanmış veya yinelenen teklif',
+        ],
+        'google_business_profile_alert' => [
+            'label' => 'Uyarı',
+            'description' => 'Google’ın yazmaya izin verdiği yüksek öncelikli uyarı',
+        ],
         'x_post' => [
             'label' => 'Gönderi',
             'description' => 'Metin ve medya içeren tweet',
@@ -559,7 +578,9 @@ return [
         'linkedin-page' => 'LinkedIn Sayfası',
         'x' => 'X',
         'tiktok' => 'TikTok',
+        'facebook' => 'Facebook Sayfası',
         'youtube' => 'YouTube Shorts',
+        'google-business-profile' => 'Google İşletme Profili',
         'facebook' => 'Facebook Sayfası',
         'instagram' => 'Instagram',
         'threads' => 'Threads',

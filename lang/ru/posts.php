@@ -420,7 +420,10 @@ return [
             'published' => 'Опубликован',
             'publishing' => 'Публикация...',
             'retrying' => 'Повторная попытка...',
+            'submitted' => 'Отправлено в Google',
+            'pending_review' => 'Ожидает проверки Google',
             'failed' => 'Ошибка',
+            'rejected' => 'Отклонено',
         ],
 
         'delete_modal' => [
@@ -514,6 +517,22 @@ return [
             'label' => 'Short',
             'description' => 'Вертикальное видео до 3 минут',
         ],
+        'google_business_profile_standard' => [
+            'label' => 'Новость',
+            'description' => 'Новость компании с необязательными медиафайлами и призывом к действию',
+        ],
+        'google_business_profile_event' => [
+            'label' => 'Мероприятие',
+            'description' => 'Ограниченное по времени или повторяющееся мероприятие с необязательными медиафайлами и призывом к действию',
+        ],
+        'google_business_profile_offer' => [
+            'label' => 'Предложение',
+            'description' => 'Ограниченное по времени или повторяющееся предложение с купоном и условиями использования',
+        ],
+        'google_business_profile_alert' => [
+            'label' => 'Оповещение',
+            'description' => 'Важное оповещение, когда Google разрешает его создание',
+        ],
         'x_post' => [
             'label' => 'Пост',
             'description' => 'Твит с текстом и медиа',
@@ -557,7 +576,9 @@ return [
         'linkedin-page' => 'Страница LinkedIn',
         'x' => 'X',
         'tiktok' => 'TikTok',
+        'facebook' => 'Страница Facebook',
         'youtube' => 'YouTube Shorts',
+        'google-business-profile' => 'Профиль компании в Google',
         'facebook' => 'Страница Facebook',
         'instagram' => 'Instagram',
         'threads' => 'Threads',

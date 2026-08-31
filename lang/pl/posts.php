@@ -420,7 +420,10 @@ return [
             'published' => 'Opublikowany',
             'publishing' => 'Publikowanie...',
             'retrying' => 'Ponawianie...',
+            'submitted' => 'Przesłano do Google',
+            'pending_review' => 'Oczekuje na weryfikację Google',
             'failed' => 'Nieudany',
+            'rejected' => 'Odrzucono',
         ],
 
         'delete_modal' => [
@@ -514,6 +517,22 @@ return [
             'label' => 'Short',
             'description' => 'Pionowy film do 3 minut',
         ],
+        'google_business_profile_standard' => [
+            'label' => 'Aktualność',
+            'description' => 'Aktualność firmy z opcjonalnymi multimediami i wezwaniem do działania',
+        ],
+        'google_business_profile_event' => [
+            'label' => 'Wydarzenie',
+            'description' => 'Wydarzenie czasowe lub cykliczne z opcjonalnymi multimediami i wezwaniem do działania',
+        ],
+        'google_business_profile_offer' => [
+            'label' => 'Oferta',
+            'description' => 'Oferta czasowa lub cykliczna z kuponem i informacjami o realizacji',
+        ],
+        'google_business_profile_alert' => [
+            'label' => 'Alert',
+            'description' => 'Alert o wysokim priorytecie, gdy Google umożliwia jego utworzenie',
+        ],
         'x_post' => [
             'label' => 'Post',
             'description' => 'Tweet z tekstem i multimediami',
@@ -557,7 +576,9 @@ return [
         'linkedin-page' => 'Strona LinkedIn',
         'x' => 'X',
         'tiktok' => 'TikTok',
+        'facebook' => 'Strona na Facebooku',
         'youtube' => 'YouTube Shorts',
+        'google-business-profile' => 'Profil Firmy w Google',
         'facebook' => 'Strona na Facebooku',
         'instagram' => 'Instagram',
         'threads' => 'Threads',

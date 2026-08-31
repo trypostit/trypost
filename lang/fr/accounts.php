@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Connectez votre compte Mastodon',
         'telegram' => 'Connectez un canal ou un groupe Telegram',
         'discord' => 'Connectez un serveur Discord',
+        'google-business-profile' => 'Connectez un ou plusieurs établissements Google Business Profile',
     ],
 
     'disconnect_modal' => [
@@ -88,6 +89,16 @@ return [
         'page_label' => 'Page Facebook',
         'view' => 'Voir',
         'choose' => 'Choisir',
+    ],
+
+    'google_business_profile' => [
+        'title' => 'Sélectionnez les établissements Google Business Profile',
+        'description' => 'Choisissez tous les établissements sur lesquels publier et analyser dans TryPost.',
+        'no_locations' => 'Aucun établissement trouvé',
+        'no_locations_description' => 'Ce compte Google ne gère aucun établissement Business Profile.',
+        'store_code' => 'Code établissement : :code',
+        'save' => 'Connecter les établissements sélectionnés',
+        'saving' => 'Connexion...',
     ],
 
     'instagram_facebook' => [
@@ -162,5 +173,7 @@ return [
         'no_facebook_instagram_pages' => 'Aucune page Facebook associée à un compte Instagram trouvée.',
         'no_youtube_channels' => 'Aucune chaîne YouTube trouvée. Veuillez d\'abord créer une chaîne.',
         'not_linkedin_admin' => 'Vous n\'êtes administrateur d\'aucune page LinkedIn.',
+        'no_google_business_profile_locations' => 'Aucun établissement Google Business Profile n’a été trouvé pour ce compte Google.',
+        'error_connecting_google_business_profile' => 'Impossible de connecter Google Business Profile. Réessayez.',
     ],
 ];

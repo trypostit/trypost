@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Conecta tu cuenta de Mastodon',
         'telegram' => 'Conecta un canal o grupo de Telegram',
         'discord' => 'Conecta un servidor de Discord',
+        'google-business-profile' => 'Conecta una o más ubicaciones de Perfil de Empresa de Google',
     ],
 
     'disconnect_modal' => [
@@ -88,6 +89,16 @@ return [
         'page_label' => 'Página de Facebook',
         'view' => 'Ver',
         'choose' => 'Elegir',
+    ],
+
+    'google_business_profile' => [
+        'title' => 'Selecciona ubicaciones de Perfil de Empresa de Google',
+        'description' => 'Elige todas las ubicaciones en las que quieras publicar y analizar en TryPost.',
+        'no_locations' => 'No se encontraron ubicaciones',
+        'no_locations_description' => 'Esta cuenta de Google no administra ninguna ubicación de Perfil de Empresa.',
+        'store_code' => 'Código de tienda: :code',
+        'save' => 'Conectar ubicaciones seleccionadas',
+        'saving' => 'Conectando...',
     ],
 
     'instagram_facebook' => [
@@ -162,5 +173,7 @@ return [
         'no_facebook_instagram_pages' => 'No se encontraron páginas de Facebook con cuentas de Instagram vinculadas.',
         'no_youtube_channels' => 'No se encontraron canales de YouTube. Crea un canal primero.',
         'not_linkedin_admin' => 'No eres administrador de ninguna página de LinkedIn.',
+        'no_google_business_profile_locations' => 'No se encontraron ubicaciones de Perfil de Empresa de Google para esta cuenta de Google.',
+        'error_connecting_google_business_profile' => 'No se pudo conectar el Perfil de Empresa de Google. Inténtalo de nuevo.',
     ],
 ];

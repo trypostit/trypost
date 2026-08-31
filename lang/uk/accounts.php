@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Підключіть акаунт Mastodon',
         'telegram' => 'Підключіть канал або групу Telegram',
         'discord' => 'Підключіть сервер Discord',
+        'google-business-profile' => 'Підключіть одне або кілька місцеположень профілю компанії в Google',
     ],
 
     'disconnect_modal' => [
@@ -88,6 +89,16 @@ return [
         'page_label' => 'Сторінка Facebook',
         'view' => 'Переглянути',
         'choose' => 'Вибрати',
+    ],
+
+    'google_business_profile' => [
+        'title' => 'Виберіть місцеположення профілю компанії в Google',
+        'description' => 'Виберіть усі місцеположення, де хочете публікувати дописи й переглядати аналітику в TryPost.',
+        'no_locations' => 'Місцеположень не знайдено',
+        'no_locations_description' => 'Цей обліковий запис Google не керує жодним місцеположенням профілю компанії.',
+        'store_code' => 'Код магазину: :code',
+        'save' => 'Підключити вибрані місцеположення',
+        'saving' => 'Підключення...',
     ],
 
     'instagram_facebook' => [
@@ -162,5 +173,7 @@ return [
         'no_facebook_instagram_pages' => 'Не знайдено сторінок Facebook із підключеними акаунтами Instagram.',
         'no_youtube_channels' => 'Каналів YouTube не знайдено. Спочатку створіть канал.',
         'not_linkedin_admin' => 'Ви не є адміністратором жодної сторінки LinkedIn.',
+        'no_google_business_profile_locations' => 'Для цього облікового запису Google не знайдено місцеположень профілю компанії.',
+        'error_connecting_google_business_profile' => 'Не вдалося підключити профіль компанії в Google. Спробуйте ще раз.',
     ],
 ];

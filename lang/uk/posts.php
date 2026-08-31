@@ -420,7 +420,10 @@ return [
             'published' => 'Опубліковано',
             'publishing' => 'Публікується...',
             'retrying' => 'Повторна спроба...',
+            'submitted' => 'Надіслано в Google',
+            'pending_review' => 'Очікує на перевірку Google',
             'failed' => 'Помилка',
+            'rejected' => 'Відхилено',
         ],
 
         'delete_modal' => [
@@ -514,6 +517,22 @@ return [
             'label' => 'Short',
             'description' => 'Вертикальне відео до 3 хвилин',
         ],
+        'google_business_profile_standard' => [
+            'label' => 'Оновлення',
+            'description' => 'Оновлення компанії з необов’язковими медіафайлами та закликом до дії',
+        ],
+        'google_business_profile_event' => [
+            'label' => 'Подія',
+            'description' => 'Подія з визначеним часом або повторенням, необов’язковими медіафайлами та закликом до дії',
+        ],
+        'google_business_profile_offer' => [
+            'label' => 'Пропозиція',
+            'description' => 'Пропозиція з визначеним часом або повторенням, купоном і деталями використання',
+        ],
+        'google_business_profile_alert' => [
+            'label' => 'Сповіщення',
+            'description' => 'Важливе сповіщення, коли Google дозволяє його створення',
+        ],
         'x_post' => [
             'label' => 'Пост',
             'description' => 'Твіт із текстом та медіа',
@@ -557,7 +576,9 @@ return [
         'linkedin-page' => 'Сторінка LinkedIn',
         'x' => 'X',
         'tiktok' => 'TikTok',
+        'facebook' => 'Сторінка Facebook',
         'youtube' => 'YouTube Shorts',
+        'google-business-profile' => 'Профіль компанії в Google',
         'facebook' => 'Сторінка Facebook',
         'instagram' => 'Instagram',
         'threads' => 'Threads',
