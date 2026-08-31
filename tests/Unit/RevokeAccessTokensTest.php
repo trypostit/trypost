@@ -31,7 +31,7 @@ test('revokes access tokens and their refresh tokens', function () {
     RevokeAccessTokens::execute($token);
 
     expect(AccessToken::query()->find($token->id)->revoked)->toBeTrue();
-    expect(DB::table('oauth_refresh_tokens')->where('id', $refreshId)->value('revoked'))->toBeTrue();
+    expect((bool) DB::table('oauth_refresh_tokens')->where('id', $refreshId)->value('revoked'))->toBeTrue();
 });
 
 test('ignores already revoked tokens without error', function () {

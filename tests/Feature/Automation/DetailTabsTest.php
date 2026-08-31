@@ -61,7 +61,7 @@ it('renames the automation from settings without wiping the graph', function () 
 
     $automation->refresh();
     expect($automation->name)->toBe('Renamed flow');
-    expect($automation->nodes)->toBe($originalNodes);
+    expect($automation->nodes)->toEqual($originalNodes);
 });
 
 it('renders the invocations tab with a scroll-paginated list', function () {

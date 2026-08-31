@@ -160,33 +160,6 @@ test('single instructions mention image_keywords', function () {
     expect($instructions)->toContain('image_keywords');
 });
 
-test('instructions include examples when platform context provided and templates exist', function () {
-    $agent = new PostContentGenerator(
-        workspace: Workspace::factory()->make(),
-        format: GeneratorFormat::Carousel,
-        slideCount: 3,
-        platformContext: 'instagram_carousel',
-    );
-
-    // The registry ships with carousel templates whose content contains
-    // distinctive snippets like "Swipe to see" — at least one should appear.
-    $instructions = $agent->instructions();
-    expect(
-        str_contains($instructions, 'Swipe')
-            || str_contains($instructions, 'carousel')
-            || str_contains($instructions, '{{brand_name}}'),
-    )->toBeTrue();
-});
-
-test('instructions do not include examples section when platform context is null', function () {
-    $agent = new PostContentGenerator(
-        workspace: Workspace::factory()->make(),
-        format: GeneratorFormat::Single,
-    );
-
-    expect($agent->instructions())->not->toContain('curated library');
-});
-
 test('instructions inject the platform character cap from the shared budget', function () {
     $agent = new PostContentGenerator(
         workspace: Workspace::factory()->make(),

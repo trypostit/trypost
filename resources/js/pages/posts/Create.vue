@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
-import { IconBookmarks, IconPencil, IconSparkles } from '@tabler/icons-vue';
+import { Head, router } from '@inertiajs/vue3';
+import { IconPencil, IconSparkles } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
-import { index as templatesIndex } from '@/actions/App/Http/Controllers/App/PostTemplateController';
 import PageHeader from '@/components/PageHeader.vue';
 import AiPostWizard from '@/components/posts/create/AiPostWizard.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { store as storePost } from '@/routes/app/posts';
+import type { AiTemplate } from '@/types';
 
 interface SocialAccount {
     id: string;
@@ -17,15 +17,6 @@ interface SocialAccount {
     username: string;
     display_label: string;
     avatar_url: string | null;
-}
-
-interface AiTemplate {
-    key: string;
-    name: string;
-    description: string;
-    preview: string;
-    needs_account: boolean;
-    supported_formats: string[];
 }
 
 interface Props {
@@ -81,7 +72,7 @@ const stepHeader = computed(() => {
 
                 <!-- Choice screen -->
                 <template v-if="view === 'choice'">
-                    <div class="grid gap-4 sm:grid-cols-3">
+                    <div class="grid gap-4 sm:grid-cols-2">
                         <button
                             type="button"
                             class="group flex flex-col items-start gap-4 rounded-2xl border-2 border-foreground bg-card p-5 text-left shadow-2xs transition-all hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-2xs"
@@ -120,21 +111,6 @@ const stepHeader = computed(() => {
                                 </p>
                             </div>
                         </button>
-
-                        <Link
-                            :href="templatesIndex.url({ query: { date: props.date } })"
-                            class="group flex flex-col items-start gap-4 rounded-2xl border-2 border-foreground bg-card p-5 text-left shadow-2xs transition-all hover:-translate-y-0.5 hover:shadow-md"
-                        >
-                            <div class="inline-flex size-12 -rotate-1 items-center justify-center rounded-2xl border-2 border-foreground bg-emerald-200 shadow-2xs transition-transform group-hover:rotate-0">
-                                <IconBookmarks class="size-6 text-foreground" stroke-width="2" />
-                            </div>
-                            <div class="space-y-1">
-                                <p class="text-base font-bold text-foreground">{{ $t('posts.create.template_title') }}</p>
-                                <p class="text-xs leading-relaxed text-foreground/70">
-                                    {{ $t('posts.create.template_description') }}
-                                </p>
-                            </div>
-                        </Link>
                     </div>
                 </template>
 

@@ -27,7 +27,7 @@ class ListWorkspaceAssets
             ->where('mediable_type', Relation::getMorphAlias(Workspace::class))
             ->where('mediable_id', $workspace->id)
             ->where('collection', 'assets')
-            ->when(filled($search), fn (Builder $query) => $query->where('original_filename', 'ilike', '%'.trim($search).'%'))
+            ->when(filled($search), fn (Builder $query) => $query->whereLike('original_filename', '%'.trim($search).'%'))
             ->when(filled($type), fn (Builder $query) => $query->where('type', $type))
             ->latest()
             ->orderByDesc('id');

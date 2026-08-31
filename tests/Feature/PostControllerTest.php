@@ -15,6 +15,8 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
+use App\Support\LinkTlds;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -1482,3 +1484,25 @@ test('member can create post', function () {
 
     $response->assertRedirect();
 });
+
+test('the editor receives the tld list only while x link defusing is on', function (bool $enabled, bool $expectsList) {
+    config()->set('trypost.platforms.x.defuse_links', $enabled);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.edit', $post))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('posts/Edit')
+            ->where('xLinkTlds', fn (Collection $tlds): bool => $expectsList
+                ? $tlds->contains('com') && $tlds->count() === count(LinkTlds::all())
+                : $tlds->isEmpty())
+        );
+})->with([
+    'enabled' => [true, true],
+    'disabled' => [false, false],
+]);

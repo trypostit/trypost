@@ -564,3 +564,19 @@ test('mastodon publisher defaults to mastodon.social if no instance in meta', fu
         return str_contains($request->url(), 'mastodon.social');
     });
 });
+
+test('mastodon publisher keeps links intact', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+
+    $this->post->update(['content' => 'New post: https://acme.com/blog']);
+
+    Http::fake(['https://mastodon.social/api/v1/statuses' => Http::response([
+        'id' => '109876543210',
+        'url' => 'https://mastodon.social/@testuser/109876543210',
+    ], 200)]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/api/v1/statuses')
+        && $request['status'] === 'New post: https://acme.com/blog');
+});

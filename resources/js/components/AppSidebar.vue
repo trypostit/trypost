@@ -204,7 +204,6 @@ const bottomNavItems = computed(() => [
                                     class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                                     data-test="sidebar-menu-button"
                                     data-testid="sidebar-workspace-menu"
-                                    dusk="sidebar-workspace-menu"
                                 >
                                     <Avatar
                                         :src="currentWorkspace?.logo_url"
@@ -287,7 +286,6 @@ const bottomNavItems = computed(() => [
 
             <div
                 v-if="subscriptionPastDue"
-                dusk="past-due-notice"
                 class="mx-1 mb-1 rounded-md border-2 border-destructive bg-destructive/10 p-3"
             >
                 <div class="flex items-center gap-2 text-destructive">
@@ -305,7 +303,6 @@ const bottomNavItems = computed(() => [
                     variant="destructive"
                     size="sm"
                     class="mt-2 w-full"
-                    dusk="past-due-cta"
                 >
                     {{ $t('billing.past_due_notice.cta') }}
                 </Button>

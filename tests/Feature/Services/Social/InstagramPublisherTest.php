@@ -922,7 +922,7 @@ test('instagram publisher keeps a published media id when the permalink request 
         'url' => null,
     ]);
 
-    expect($this->postPlatform->fresh()->error_context['instagram_workflow'] ?? null)->toBe([
+    expect($this->postPlatform->fresh()->error_context['instagram_workflow'] ?? null)->toEqual([
         'stage' => 'final_container',
         'container_id' => 'container-123',
         'media_id' => 'media-123456789',
@@ -1272,7 +1272,7 @@ test('instagram publisher checkpoints the media id before fetching the permalink
         'url' => null,
     ]);
 
-    expect($this->postPlatform->fresh()->error_context['instagram_workflow'] ?? null)->toBe([
+    expect($this->postPlatform->fresh()->error_context['instagram_workflow'] ?? null)->toEqual([
         'stage' => 'final_container',
         'container_id' => 'container-123',
         'media_id' => 'media-123456789',
@@ -1280,6 +1280,7 @@ test('instagram publisher checkpoints the media id before fetching the permalink
 });
 
 test('instagram facebook publisher recovers a published container on graph.facebook.com', function () {
+    config()->set('trypost.allow_multiple_social_accounts', true);
     $account = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::InstagramFacebook,
@@ -2003,4 +2004,34 @@ test('instagram publisher sends alt text on image carousel children but never on
             && data_get($data, 'video_url') !== null
             && ! array_key_exists('alt_text', $data);
     });
+});
+
+test('instagram publisher keeps links intact', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+
+    $this->post->update([
+        'content' => 'New post: https://acme.com/blog',
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'container-123'], 200),
+        'https://graph.instagram.com/v25.0/container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response(['id' => 'media-123456789'], 200),
+        'https://graph.instagram.com/v25.0/media-123456789*' => Http::response([
+            'permalink' => 'https://www.instagram.com/p/ABC123/',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/ig_123456789/media')
+        && ! str_contains($request->url(), 'media_publish')
+        && data_get($request->data(), 'caption') === 'New post: https://acme.com/blog');
 });

@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Auth;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
-use App\Models\Workspace;
+use App\Models\SocialAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -35,10 +35,7 @@ class InstagramController extends SocialController
 
         $this->authorize('manageAccounts', $workspace);
 
-        session([
-            'social_connect_workspace' => $workspace->id,
-            'social_reconnect_id' => null,
-        ]);
+        $this->rememberConnectSession($request, $workspace);
 
         $url = Socialite::driver($this->driver)
             ->scopes($this->scopes)
@@ -50,17 +47,7 @@ class InstagramController extends SocialController
 
     public function callback(Request $request): InertiaResponse
     {
-        $workspaceId = session('social_connect_workspace');
-
-        if (! $workspaceId) {
-            return $this->popupCallback(false, __('accounts.popup_callback.session_expired'), $this->platform->value);
-        }
-
-        $workspace = Workspace::find($workspaceId);
-
-        if (! $workspace || ! $request->user()->can('manageAccounts', $workspace)) {
-            return $this->popupCallback(false, __('accounts.popup_callback.workspace_not_found'), $this->platform->value);
-        }
+        $workspace = $this->connectWorkspace($request);
 
         try {
             $socialUser = Socialite::driver($this->driver)->user();
@@ -71,12 +58,19 @@ class InstagramController extends SocialController
             // Calculate token expiration (long-lived tokens last 60 days)
             $expiresIn = $socialUser->expiresIn ?? $this->platform->defaultTokenTtlSeconds();
             $tokenExpiresAt = now()->addSeconds($expiresIn);
+            $reconnect = $this->reconnectAccount($workspace);
 
-            $workspace->socialAccounts()->updateOrCreate(
-                [
-                    'platform' => $this->platform->value,
-                    'platform_user_id' => $socialUser->getId(),
-                ],
+            // Instagram Login returns a single identity, but it shares a network
+            // with the Facebook variant: without this the same account could be
+            // seated twice, once under each platform.
+            if ($this->filterConnectableIdentities($workspace, [['id' => $socialUser->getId()]], 'id', $reconnect) === []) {
+                return $this->noConnectableIdentities($reconnect, 'wrong_account');
+            }
+
+            SocialAccount::connectIdentity(
+                $workspace,
+                $this->platform,
+                $socialUser->getId(),
                 [
                     'username' => $socialUser->getNickname(),
                     'display_name' => $socialUser->getName() ?? $socialUser->getNickname(),
@@ -92,11 +86,12 @@ class InstagramController extends SocialController
                         'account_type' => $socialUser->user['account_type'] ?? null,
                     ],
                 ],
+                $reconnect,
             );
 
-            return $this->popupCallback(true, __('accounts.popup_callback.connected'), $this->platform->value);
-        } catch (NetworkAlreadyConnectedException) {
-            return $this->popupCallback(false, __('accounts.popup_callback.network_taken'), $this->platform->value);
+            return $this->connectedCallback($reconnect);
+        } catch (NetworkAlreadyConnectedException $e) {
+            return $this->popupCallback(false, __("accounts.popup_callback.{$e->messageKey}"), $this->platform->value);
         } catch (\Exception $e) {
             Log::error('Instagram OAuth Error', [
                 'error' => $e->getMessage(),

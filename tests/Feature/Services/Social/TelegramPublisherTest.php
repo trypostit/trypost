@@ -218,3 +218,16 @@ test('telegram publisher builds a private-channel url when there is no username'
 
     expect($result['url'])->toBe('https://t.me/c/9876543210/99');
 });
+
+test('telegram publisher keeps links intact', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+
+    $this->post->update(['content' => 'New post: https://acme.com/blog']);
+
+    Http::fake(['*/botTESTTOKEN/sendMessage' => Http::response(telegramOk(['message_id' => 42]), 200)]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/sendMessage')
+        && $request['text'] === 'New post: https://acme.com/blog');
+});

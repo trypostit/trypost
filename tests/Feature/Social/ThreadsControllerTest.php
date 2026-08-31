@@ -106,8 +106,8 @@ test('threads callback fails with expired session', function () {
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Session expired. Please try again.'));
 });
 
-test('user can connect multiple threads accounts in self-hosted mode', function () {
-    config()->set('trypost.self_hosted', true);
+test('user can connect multiple threads accounts when multiple social accounts are allowed', function () {
+    config()->set('trypost.allow_multiple_social_accounts', true);
 
     SocialAccount::factory()->threads()->create([
         'workspace_id' => $this->workspace->id,
@@ -174,7 +174,7 @@ test('threads callback handles token exchange failure', function () {
 });
 
 test('threads callback shows network_taken when the network is already connected', function () {
-    config()->set('trypost.self_hosted', false);
+    config()->set('trypost.allow_multiple_social_accounts', false);
 
     SocialAccount::factory()->threads()->create([
         'workspace_id' => $this->workspace->id,
@@ -288,4 +288,103 @@ test('threads callback records a 60-day expiry when the long-lived exchange omit
 
     expect($account->token_expires_at)->not->toBeNull();
     expect($account->token_expires_at->isAfter(now()->addDays(59)))->toBeTrue();
+});
+
+test('threads callback reconnects the original card', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Threads,
+        'platform_user_id' => '123456789',
+        'username' => 'old',
+        'access_token' => 'expired-token',
+        'status' => Status::TokenExpired,
+    ]);
+
+    $state = bin2hex(random_bytes(16));
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'social_reconnect_id' => $account->id,
+        'threads_oauth_state' => $state,
+    ]);
+
+    $authApi = config('trypost.platforms.threads.auth_api');
+    $graphApi = config('trypost.platforms.threads.graph_api');
+
+    Http::fake([
+        "{$authApi}/oauth/access_token" => Http::response([
+            'access_token' => 'short-lived-token',
+            'user_id' => '123456789',
+        ], 200),
+        "{$authApi}/access_token*" => Http::response([
+            'access_token' => 'long-lived-token',
+            'expires_in' => 5184000,
+        ], 200),
+        "{$graphApi}/123456789*" => Http::response([
+            'id' => '123456789',
+            'username' => 'testuser',
+            'name' => 'Test User',
+            'threads_profile_picture_url' => null,
+        ], 200),
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.social.threads.callback', ['code' => 'test-auth-code', 'state' => $state]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('success', true)
+            ->where('message', __('accounts.popup_callback.reconnected'))
+        );
+
+    expect($this->workspace->socialAccounts()->count())->toBe(1)
+        ->and($account->fresh()->username)->toBe('testuser')
+        ->and($account->fresh()->status)->toBe(Status::Connected);
+});
+
+test('threads reconnect that authorizes another account says so instead of connecting', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Threads,
+        'platform_user_id' => '123456789',
+        'username' => 'old',
+    ]);
+
+    $state = bin2hex(random_bytes(16));
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'social_reconnect_id' => $account->id,
+        'threads_oauth_state' => $state,
+    ]);
+
+    $authApi = config('trypost.platforms.threads.auth_api');
+    $graphApi = config('trypost.platforms.threads.graph_api');
+
+    Http::fake([
+        "{$authApi}/oauth/access_token" => Http::response([
+            'access_token' => 'short-lived-token',
+            'user_id' => '999999999',
+        ], 200),
+        "{$authApi}/access_token*" => Http::response([
+            'access_token' => 'long-lived-token',
+            'expires_in' => 5184000,
+        ], 200),
+        "{$graphApi}/999999999*" => Http::response([
+            'id' => '999999999',
+            'username' => 'someone-else',
+            'name' => 'Someone Else',
+            'threads_profile_picture_url' => null,
+        ], 200),
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.social.threads.callback', ['code' => 'test-auth-code', 'state' => $state]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('success', false)
+            ->where('message', __('accounts.popup_callback.wrong_account'))
+        );
+
+    expect($this->workspace->socialAccounts()->count())->toBe(1)
+        ->and($account->fresh()->platform_user_id)->toBe('123456789');
 });

@@ -1874,3 +1874,21 @@ test('bluesky publisher publishes with only a facet when no card is available', 
             );
     });
 });
+
+test('bluesky publisher keeps links intact', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+
+    $this->post->update(['content' => 'New post: https://acme.com/blog']);
+
+    Http::fake([
+        'https://bsky.social/xrpc/com.atproto.repo.createRecord' => Http::response([
+            'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+            'cid' => 'bafyreiabc123',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'createRecord')
+        && $request['record']['text'] === 'New post: https://acme.com/blog');
+});

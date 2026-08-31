@@ -1166,3 +1166,64 @@ test('x publisher fails when tweet rejects invalid media ids', function () {
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(XPublishException::class, 'X rejected the attached media');
 });
+
+test('x publisher sends the tweet with links defused', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+    $this->post->update(['content' => 'New post: https://trypost.it/blog']);
+
+    Http::fake([
+        config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '111']], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/2/tweets')
+        && $request['text'] === 'New post: trypost(.)it/blog');
+});
+
+test('x publisher leaves the tweet untouched when defusing is disabled', function () {
+    config()->set('trypost.platforms.x.defuse_links', false);
+    $this->post->update(['content' => 'New post: https://trypost.it/blog']);
+
+    Http::fake([
+        config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '111']], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/2/tweets')
+        && $request['text'] === 'New post: https://trypost.it/blog');
+});
+
+test('x publisher rejects a post that only fits before its links are defused', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+    $this->post->update(['content' => str_repeat('a', 271).' acme.com']);
+
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '1']], 200)]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(Exception::class, 'Content exceeds X limit of 280 characters (282 provided).');
+
+    Http::assertNothingSent();
+});
+
+test('x publisher accepts a post that only fits once its links are defused', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+    $this->post->update(['content' => str_repeat('a', 263).' https://acme.com/x']);
+
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '1']], 200)]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => mb_strlen($request['text']) === 276);
+});
+
+test('x publisher does not count html markup toward the character limit', function () {
+    $this->post->update(['content' => '<p>'.str_repeat('a', 275).'</p>']);
+
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '1']], 200)]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => mb_strlen($request['text']) === 275);
+});

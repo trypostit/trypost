@@ -1374,3 +1374,30 @@ test('tiktok publisher still reports success when derivative cleanup throws on t
 
     expect($result['id'])->toBe('pub_cleanup_throws_123');
 });
+
+test('tiktok publisher keeps links intact', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+
+    $this->post->update([
+        'content' => 'New post: https://acme.com/blog',
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/test-video.mp4',
+            'url' => 'https://example.com/media/2026-01/test-video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'test-video.mp4',
+        ]],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/video/init/' => Http::response(['data' => ['publish_id' => 'pub_123']], 200),
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'data' => ['status' => 'PUBLISH_COMPLETE', 'publish_id' => 'pub_123'],
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/video/init/')
+        && data_get($request->data(), 'post_info.title') === 'New post: https://acme.com/blog');
+});

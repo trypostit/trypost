@@ -24,6 +24,7 @@ beforeEach(function () {
 // ---- needsProactiveTokenRefresh ----
 
 test('needsProactiveTokenRefresh: rotating platforms refresh only when expired, extension platforms while still valid', function () {
+    config()->set('trypost.allow_multiple_social_accounts', true);
     // Rotating (X): a still-valid token that is merely expiring soon is NOT refreshed.
     $xValid = SocialAccount::factory()->x()->create([
         'workspace_id' => $this->workspace->id,

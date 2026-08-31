@@ -10,6 +10,7 @@ use App\Mail\WorkspaceConnectionsDisconnected;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 
 test('job does nothing when workspace has no connected accounts', function () {
@@ -155,4 +156,103 @@ test('job skips already disconnected accounts', function () {
     VerifyWorkspaceConnections::dispatch($workspace);
 
     Mail::assertNothingSent();
+});
+
+test('daily sweep skips verifying a connected account a recent refresh already proved valid', function () {
+    Mail::fake();
+    Http::fake([
+        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+    ]);
+
+    $workspace = Workspace::factory()->create();
+    SocialAccount::factory()->x()->create([
+        'workspace_id' => $workspace->id,
+        'status' => Status::Connected,
+        'last_verified_at' => now()->subHours(2),
+    ]);
+
+    VerifyWorkspaceConnections::dispatch($workspace);
+
+    // A successful token refresh within the trust window already proved the
+    // credential — re-reading the profile would only burn a billed User Read.
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/users/me'));
+    Mail::assertNothingSent();
+});
+
+test('daily sweep still verifies a connected account whose last_verified_at is stale', function () {
+    Mail::fake();
+    Http::fake([
+        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+    ]);
+
+    $workspace = Workspace::factory()->create();
+    SocialAccount::factory()->x()->create([
+        'workspace_id' => $workspace->id,
+        'status' => Status::Connected,
+        'last_verified_at' => now()->subHours(20),
+    ]);
+
+    VerifyWorkspaceConnections::dispatch($workspace);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/users/me'));
+});
+
+test('daily sweep still verifies a TokenExpired account despite a fresh last_verified_at', function () {
+    Mail::fake();
+    Http::fake([
+        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+    ]);
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->x()->create([
+        'workspace_id' => $workspace->id,
+        'status' => Status::TokenExpired,
+        'last_verified_at' => now()->subMinutes(5),
+    ]);
+
+    VerifyWorkspaceConnections::dispatch($workspace);
+
+    // Skipping here would strand a recovered account in TokenExpired forever.
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/users/me'));
+    expect($account->fresh()->status)->toBe(Status::Connected);
+});
+
+test('daily sweep records its own successful verification', function () {
+    Mail::fake();
+    Http::fake([
+        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+    ]);
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->x()->create([
+        'workspace_id' => $workspace->id,
+        'status' => Status::Connected,
+        'last_verified_at' => null,
+    ]);
+
+    VerifyWorkspaceConnections::dispatch($workspace);
+
+    // Otherwise VerifyUpcomingPostConnections burns a fresh call minutes later
+    // on an account this sweep just confirmed healthy.
+    expect($account->fresh()->last_verified_at)->not->toBeNull();
+});
+
+test('an unreachable platform does not revive an account nobody verified', function () {
+    Mail::fake();
+
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->x()->create([
+        'workspace_id' => $workspace->id,
+        'status' => Status::TokenExpired,
+    ]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')->andThrow(new PlatformUnavailableException('X API returned 503', 503));
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    VerifyWorkspaceConnections::dispatch($workspace);
+
+    // "Don't disconnect" is not the same as "verified". Promoting on an
+    // outage tells the owner their reconnect worked when nothing was checked.
+    expect($account->fresh()->status)->toBe(Status::TokenExpired);
 });

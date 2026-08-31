@@ -65,6 +65,7 @@ class HandleInertiaRequests extends Middleware
             ])->values()->all(),
             'aiEnabled' => filled(config('ai.providers.'.config('ai.default').'.key')),
             'selfHosted' => $isSelfHosted,
+            'allowMultipleSocialAccounts' => (bool) config('trypost.allow_multiple_social_accounts'),
             'googleAuthEnabled' => SocialAuthProvider::Google->isEnabled(),
             'githubAuthEnabled' => SocialAuthProvider::GitHub->isEnabled(),
         ];

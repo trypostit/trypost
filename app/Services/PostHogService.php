@@ -33,22 +33,29 @@ class PostHogService
      */
     public function capture(string $distinctId, string $event, array $properties = [], ?Account $account = null): void
     {
-        $payload = [
-            'distinctId' => $distinctId,
-            'event' => $event,
-            'properties' => $properties,
-        ];
+        try {
+            $payload = [
+                'distinctId' => $distinctId,
+                'event' => $event,
+                'properties' => $properties,
+            ];
 
-        if ($account) {
-            $payload['properties']['$groups'] = ['account' => (string) $account->id];
-            $payload['properties']['account_id'] = (string) $account->id;
-            $payload['properties']['plan'] = $account->plan?->name;
-        }
+            if ($account) {
+                $payload['properties']['$groups'] = ['account' => (string) $account->id];
+                $payload['properties']['account_id'] = (string) $account->id;
+                $payload['properties']['plan'] = $account->plan?->name;
+            }
 
-        $this->logLocally('capture', $payload);
+            $this->logLocally('capture', $payload);
 
-        if (self::isEnabled()) {
-            $this->dispatch('capture', $payload);
+            if (self::isEnabled()) {
+                $this->dispatch('capture', $payload);
+            }
+        } catch (Throwable $e) {
+            Log::warning('PostHogService: failed to capture event', [
+                'event' => $event,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -57,15 +64,21 @@ class PostHogService
      */
     public function identify(string $distinctId, array $properties = []): void
     {
-        $payload = [
-            'distinctId' => $distinctId,
-            'properties' => $properties,
-        ];
+        try {
+            $payload = [
+                'distinctId' => $distinctId,
+                'properties' => $properties,
+            ];
 
-        $this->logLocally('identify', $payload);
+            $this->logLocally('identify', $payload);
 
-        if (self::isEnabled()) {
-            $this->dispatch('identify', $payload);
+            if (self::isEnabled()) {
+                $this->dispatch('identify', $payload);
+            }
+        } catch (Throwable $e) {
+            Log::warning('PostHogService: failed to identify', [
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -74,16 +87,22 @@ class PostHogService
      */
     public function groupIdentify(string $groupType, string $groupKey, array $properties = []): void
     {
-        $payload = [
-            'groupType' => $groupType,
-            'groupKey' => $groupKey,
-            'properties' => $properties,
-        ];
+        try {
+            $payload = [
+                'groupType' => $groupType,
+                'groupKey' => $groupKey,
+                'properties' => $properties,
+            ];
 
-        $this->logLocally('groupIdentify', $payload);
+            $this->logLocally('groupIdentify', $payload);
 
-        if (self::isEnabled()) {
-            $this->dispatch('groupIdentify', $payload);
+            if (self::isEnabled()) {
+                $this->dispatch('groupIdentify', $payload);
+            }
+        } catch (Throwable $e) {
+            Log::warning('PostHogService: failed to group identify', [
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

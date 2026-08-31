@@ -108,14 +108,4 @@ class Workspace extends Model
     {
         return $this->account?->owner_id === $user->id || $this->members()->where('user_id', $user->id)->exists();
     }
-
-    public function hasConnectedPlatform(string $platform): bool
-    {
-        return $this->socialAccounts()->where('platform', $platform)->exists();
-    }
-
-    public function getSocialAccount(string $platform): ?SocialAccount
-    {
-        return $this->socialAccounts()->where('platform', $platform)->first();
-    }
 }

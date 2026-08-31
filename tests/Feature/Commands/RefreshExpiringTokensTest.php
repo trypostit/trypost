@@ -10,6 +10,7 @@ use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
 
 test('it dispatches refresh jobs for rotating tokens near expiry and extension tokens well ahead of expiry', function () {
+    config()->set('trypost.allow_multiple_social_accounts', true);
     Queue::fake();
 
     $workspace = Workspace::factory()->create();
@@ -122,11 +123,13 @@ test('extension-model platforms get a wider refresh window than rotating platfor
 test('google business profile tokens use the rotating refresh window, not the extension window', function () {
     Queue::fake();
 
-    $workspace = Workspace::factory()->create();
+    // One account per network, so the two windows need a workspace each.
+    $soonWorkspace = Workspace::factory()->create();
+    $laterWorkspace = Workspace::factory()->create();
 
     // Inside the 30-minute rotating window — should be dispatched.
     $soon = SocialAccount::factory()->create([
-        'workspace_id' => $workspace->id,
+        'workspace_id' => $soonWorkspace->id,
         'platform' => Platform::GoogleBusiness,
         'status' => Status::Connected,
         'token_expires_at' => now()->addMinutes(15),
@@ -136,7 +139,7 @@ test('google business profile tokens use the rotating refresh window, not the ex
     // window) — must NOT be dispatched, proving Google Business Profile is
     // treated as a rotating-refresh_token platform, not an extension platform.
     $outsideRotatingWindow = SocialAccount::factory()->create([
-        'workspace_id' => $workspace->id,
+        'workspace_id' => $laterWorkspace->id,
         'platform' => Platform::GoogleBusiness,
         'status' => Status::Connected,
         'token_expires_at' => now()->addHour(),
@@ -157,4 +160,39 @@ test('it dispatches nothing when no tokens are expiring', function () {
         ->assertSuccessful();
 
     Queue::assertNothingPushed();
+});
+
+test('a backed-up queue cannot stack duplicate refresh jobs for one account', function () {
+    Queue::fake();
+
+    SocialAccount::factory()->x()->create([
+        'workspace_id' => Workspace::factory()->create()->id,
+        'status' => Status::Connected,
+        'token_expires_at' => now()->addMinutes(20),
+    ]);
+
+    // Two scheduler ticks before the first job got a worker: token_expires_at
+    // has not moved, so the account is still inside the window.
+    $this->artisan('social:refresh-expiring-tokens');
+    $this->artisan('social:refresh-expiring-tokens');
+
+    // Each extra job rotates a single-use refresh_token again for nothing, and
+    // widens the window where a worker death loses the pair.
+    Queue::assertPushed(RefreshSocialToken::class, 1);
+});
+
+test('the command reports accounts in the window, not jobs it cannot know landed', function () {
+    Queue::fake();
+
+    SocialAccount::factory()->x()->create([
+        'workspace_id' => Workspace::factory()->create()->id,
+        'status' => Status::Connected,
+        'token_expires_at' => now()->addMinutes(20),
+    ]);
+
+    // RefreshSocialToken is unique per account, so a second dispatch while the
+    // first is in flight is silently discarded. dispatch() still returns a
+    // PendingDispatch either way, so a "dispatched" count would be a guess.
+    $this->artisan('social:refresh-expiring-tokens')
+        ->expectsOutput('1 accounts due for a token refresh.');
 });

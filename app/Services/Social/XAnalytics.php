@@ -16,6 +16,9 @@ class XAnalytics
 {
     use HasSocialHttpClient;
 
+    /** Each page is billed per Post returned, so this bounds cost as well as time. */
+    private const MAX_TIMELINE_PAGES = 5;
+
     private string $baseUrl;
 
     private string $accessToken;
@@ -52,27 +55,51 @@ class XAnalytics
 
         $this->accessToken = $account->access_token;
 
-        // Fetch recent tweets in the period
-        $tweetIds = $this->fetchTweetIds($account, $since, $until);
+        [$totals, $tweetCount] = $this->fetchTimelineMetrics($account, $since, $until);
 
-        if (empty($tweetIds)) {
+        if ($tweetCount === 0) {
             return [];
         }
 
-        // Fetch public_metrics for those tweets
-        return $this->fetchTweetMetrics($tweetIds);
+        return [
+            ['label' => __('analytics.metrics.impressions'), 'value' => $totals['impression_count']],
+            ['label' => __('analytics.metrics.likes'), 'value' => $totals['like_count']],
+            ['label' => __('analytics.metrics.retweets'), 'value' => $totals['retweet_count']],
+            ['label' => __('analytics.metrics.replies'), 'value' => $totals['reply_count']],
+            ['label' => __('analytics.metrics.quotes'), 'value' => $totals['quote_count']],
+            ['label' => __('analytics.metrics.bookmarks'), 'value' => $totals['bookmark_count']],
+        ];
     }
 
-    private function fetchTweetIds(SocialAccount $account, CarbonInterface $since, CarbonInterface $until): array
+    /**
+     * Walk the timeline, summing public_metrics as the pages come back.
+     *
+     * Asked for on the timeline request rather than looked up afterwards from
+     * /2/tweets: both bill per Post returned, so re-reading the same ids only
+     * bought a second round-trip.
+     *
+     * @return array{0: array<string, int>, 1: int} totals, and how many Posts fed them
+     */
+    private function fetchTimelineMetrics(SocialAccount $account, CarbonInterface $since, CarbonInterface $until): array
     {
-        $ids = [];
+        $totals = [
+            'impression_count' => 0,
+            'like_count' => 0,
+            'retweet_count' => 0,
+            'reply_count' => 0,
+            'quote_count' => 0,
+            'bookmark_count' => 0,
+        ];
+
+        $tweetCount = 0;
         $paginationToken = null;
 
-        for ($i = 0; $i < 5; $i++) {
+        for ($page = 0; $page < self::MAX_TIMELINE_PAGES; $page++) {
             $params = [
                 'start_time' => $since->toIso8601ZuluString(),
                 'end_time' => $until->toIso8601ZuluString(),
                 'max_results' => 100,
+                'tweet.fields' => 'public_metrics',
             ];
 
             if ($paginationToken) {
@@ -90,10 +117,14 @@ class XAnalytics
             }
 
             $data = $response->json();
-            $tweets = data_get($data, 'data', []);
 
-            foreach ($tweets as $tweet) {
-                $ids[] = data_get($tweet, 'id');
+            foreach (data_get($data, 'data', []) as $tweet) {
+                $tweetCount++;
+                $metrics = data_get($tweet, 'public_metrics', []);
+
+                foreach (array_keys($totals) as $metric) {
+                    $totals[$metric] += (int) data_get($metrics, $metric, 0);
+                }
             }
 
             $paginationToken = data_get($data, 'meta.next_token');
@@ -103,54 +134,7 @@ class XAnalytics
             }
         }
 
-        return $ids;
-    }
-
-    private function fetchTweetMetrics(array $tweetIds): array
-    {
-        $totals = [
-            'impression_count' => 0,
-            'like_count' => 0,
-            'retweet_count' => 0,
-            'reply_count' => 0,
-            'quote_count' => 0,
-            'bookmark_count' => 0,
-        ];
-
-        // X API allows max 100 IDs per request
-        foreach (array_chunk($tweetIds, 100) as $chunk) {
-            $response = $this->getHttpClient()
-                ->get("{$this->baseUrl}/tweets", [
-                    'ids' => implode(',', $chunk),
-                    'tweet.fields' => 'public_metrics',
-                ]);
-
-            if ($response->failed()) {
-                Log::warning('X tweets metrics fetch failed', [
-                    'body' => $this->redactResponseBody($response->body()),
-                ]);
-
-                continue;
-            }
-
-            $tweets = data_get($response->json(), 'data', []);
-
-            foreach ($tweets as $tweet) {
-                $metrics = data_get($tweet, 'public_metrics', []);
-                foreach ($totals as $key => &$total) {
-                    $total += data_get($metrics, $key, 0);
-                }
-            }
-        }
-
-        return [
-            ['label' => __('analytics.metrics.impressions'), 'value' => $totals['impression_count']],
-            ['label' => __('analytics.metrics.likes'), 'value' => $totals['like_count']],
-            ['label' => __('analytics.metrics.retweets'), 'value' => $totals['retweet_count']],
-            ['label' => __('analytics.metrics.replies'), 'value' => $totals['reply_count']],
-            ['label' => __('analytics.metrics.quotes'), 'value' => $totals['quote_count']],
-            ['label' => __('analytics.metrics.bookmarks'), 'value' => $totals['bookmark_count']],
-        ];
+        return [$totals, $tweetCount];
     }
 
     public function fetchPostMetrics(PostPlatform $postPlatform): array

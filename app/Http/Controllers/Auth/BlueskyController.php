@@ -6,6 +6,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
+use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
+use App\Models\SocialAccount;
 use App\Services\Social\BlueskyLexicon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -25,6 +27,8 @@ class BlueskyController extends SocialController
         $workspace = $request->user()->currentWorkspace;
 
         $this->authorize('manageAccounts', $workspace);
+
+        $this->rememberConnectSession($request, $workspace);
 
         return Inertia::render('accounts/BlueskyConnect', [
             'errors' => session('errors')?->getBag('default')?->toArray() ?? [],
@@ -79,12 +83,12 @@ class BlueskyController extends SocialController
             $profile = $profileResponse->successful() ? $profileResponse->json() : [];
 
             $avatarPath = data_get($profile, 'avatar') ? uploadFromUrl(data_get($profile, 'avatar')) : null;
+            $reconnect = $this->reconnectAccount($workspace);
 
-            $workspace->socialAccounts()->updateOrCreate(
-                [
-                    'platform' => $this->platform->value,
-                    'platform_user_id' => data_get($data, 'did'),
-                ],
+            SocialAccount::connectIdentity(
+                $workspace,
+                $this->platform,
+                (string) data_get($data, 'did'),
                 [
                     'username' => data_get($data, 'handle'),
                     'display_name' => data_get($profile, 'displayName', data_get($data, 'handle')),
@@ -101,11 +105,14 @@ class BlueskyController extends SocialController
                         'password' => encrypt($request->password),
                     ],
                 ],
+                $reconnect,
             );
 
-            return $this->popupCallback(true, __('accounts.popup_callback.connected'), $this->platform->value);
+            return $this->connectedCallback($reconnect);
         } catch (ValidationException $e) {
             throw $e;
+        } catch (NetworkAlreadyConnectedException $e) {
+            return $this->popupCallback(false, __("accounts.popup_callback.{$e->messageKey}"), $this->platform->value);
         } catch (\Exception $e) {
             Log::error('Bluesky connection error', [
                 'error' => $e->getMessage(),

@@ -18,6 +18,39 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Meta page walk budget
+    |--------------------------------------------------------------------------
+    |
+    | Seconds the Facebook/Instagram page walk may spend before it returns what
+    | it has and reports itself incomplete. It runs inside the OAuth callback,
+    | so this must stay well under the web server's request timeout.
+    |
+    */
+
+    'meta_page_walk_seconds' => (int) env('META_PAGE_WALK_SECONDS', 20),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Multiple social accounts per network
+    |--------------------------------------------------------------------------
+    |
+    | When false (Cloud default), a workspace may connect only one account
+    | per social network. Variants of the same network (LinkedIn profile/page,
+    | Instagram standalone/Facebook) count as one. Reconnecting the same
+    | identity (platform + platform_user_id) still updates the existing row.
+    |
+    | Independent of SELF_HOSTED so Cloud can flip this later without becoming
+    | self-hosted. Self-hosted installs typically set this true.
+    |
+    */
+
+    'allow_multiple_social_accounts' => (bool) env(
+        'ALLOW_MULTIPLE_SOCIAL_ACCOUNTS',
+        env('SELF_HOSTED', true),
+    ),
+
+    /*
+    |--------------------------------------------------------------------------
     | Security
     |--------------------------------------------------------------------------
     |
@@ -137,6 +170,7 @@ return [
         'x' => [
             'enabled' => env('X_ENABLED', true),
             'api' => env('X_API', 'https://api.x.com/2'),
+            'defuse_links' => (bool) env('X_DEFUSE_LINKS', false),
         ],
         'tiktok' => [
             'enabled' => env('TIKTOK_ENABLED', true),

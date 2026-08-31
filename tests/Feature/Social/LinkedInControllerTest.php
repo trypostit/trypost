@@ -478,7 +478,7 @@ test('select fails with expired session', function () {
 });
 
 test('selecting the person shows network_taken when a linkedin page already occupies the network', function () {
-    config()->set('trypost.self_hosted', false);
+    config()->set('trypost.allow_multiple_social_accounts', false);
 
     SocialAccount::factory()->linkedinPage()->create([
         'workspace_id' => $this->workspace->id,
@@ -509,8 +509,8 @@ test('selecting the person shows network_taken when a linkedin page already occu
     ]);
 });
 
-test('user can connect multiple linkedin organizations in self-hosted mode', function () {
-    config()->set('trypost.self_hosted', true);
+test('user can connect multiple linkedin organizations when multiple social accounts are allowed', function () {
+    config()->set('trypost.allow_multiple_social_accounts', true);
 
     SocialAccount::factory()->linkedinPage()->create([
         'workspace_id' => $this->workspace->id,
@@ -538,4 +538,405 @@ test('user can connect multiple linkedin organizations in self-hosted mode', fun
     $response->assertInertia(fn (Assert $page) => $page->where('success', true));
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::LinkedInPage)->count())->toBe(2);
+});
+
+test('linkedin reconnect keeps the original profile card', function () {
+    $account = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => 'person-123',
+        'username' => 'old',
+        'access_token' => 'expired-token',
+    ]);
+
+    session([
+        'social_reconnect_id' => $account->id,
+        'linkedin_pending' => [
+            'workspace_id' => $this->workspace->id,
+            'token' => 'fresh-access-token',
+            'refresh_token' => 'fresh-refresh-token',
+            'expires_in' => 5184000,
+            'approved_scopes' => ['openid', 'profile', 'email', 'w_member_social'],
+            'person' => ['id' => 'person-123', 'name' => 'John Doe', 'avatar' => null, 'vanity_name' => 'johndoe'],
+            'organizations' => [
+                ['id' => 111, 'name' => 'My Company', 'vanity_name' => 'myco', 'logo' => null],
+            ],
+        ],
+    ]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.social.linkedin.select'), ['type' => 'person'])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('success', true)
+            ->where('message', __('accounts.popup_callback.reconnected'))
+        );
+
+    expect($this->workspace->socialAccounts()->count())->toBe(1)
+        ->and($account->fresh()->access_token)->toBe('fresh-access-token')
+        ->and($account->fresh()->username)->toBe('johndoe');
+});
+
+test('linkedin reconnect keeps the original page card', function () {
+    $account = SocialAccount::factory()->linkedinPage()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => '111',
+        'username' => 'old-page',
+        'access_token' => 'expired-token',
+    ]);
+
+    session([
+        'social_reconnect_id' => $account->id,
+        'linkedin_pending' => [
+            'workspace_id' => $this->workspace->id,
+            'token' => 'fresh-access-token',
+            'refresh_token' => 'fresh-refresh-token',
+            'expires_in' => 5184000,
+            'approved_scopes' => ['openid', 'w_organization_social'],
+            'person' => ['id' => 'person-123', 'name' => 'John Doe', 'avatar' => null, 'vanity_name' => 'johndoe'],
+            'organizations' => [
+                ['id' => 111, 'name' => 'My Company', 'vanity_name' => 'myco', 'logo' => null],
+            ],
+        ],
+    ]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.social.linkedin.select'), [
+            'type' => 'organization',
+            'organization_id' => 111,
+        ])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('success', true)
+            ->where('message', __('accounts.popup_callback.reconnected'))
+        );
+
+    expect($this->workspace->socialAccounts()->count())->toBe(1)
+        ->and($account->fresh()->platform)->toBe(Platform::LinkedInPage)
+        ->and($account->fresh()->access_token)->toBe('fresh-access-token')
+        ->and($account->fresh()->username)->toBe('myco');
+});
+
+test('linkedin reconnect rejects picking a different identity than the card', function () {
+    $account = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => 'person-123',
+    ]);
+
+    session([
+        'social_reconnect_id' => $account->id,
+        'linkedin_pending' => [
+            'workspace_id' => $this->workspace->id,
+            'token' => 'fresh-access-token',
+            'refresh_token' => 'fresh-refresh-token',
+            'expires_in' => 5184000,
+            'approved_scopes' => ['openid', 'w_organization_social'],
+            'person' => ['id' => 'person-123', 'name' => 'John Doe', 'avatar' => null, 'vanity_name' => 'johndoe'],
+            'organizations' => [
+                ['id' => 111, 'name' => 'My Company', 'vanity_name' => 'myco', 'logo' => null],
+            ],
+        ],
+    ]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.social.linkedin.select'), [
+            'type' => 'organization',
+            'organization_id' => 111,
+        ])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('success', false)
+            ->where('message', __('accounts.popup_callback.wrong_account'))
+        );
+
+    expect($account->fresh()->platform_user_id)->toBe('person-123')
+        ->and($this->workspace->socialAccounts()->count())->toBe(1);
+});
+
+test('linkedin identity picker hides identities that are not the reconnect card', function () {
+    $account = SocialAccount::factory()->linkedinPage()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => '111',
+    ]);
+
+    session([
+        'social_reconnect_id' => $account->id,
+        'linkedin_pending' => [
+            'workspace_id' => $this->workspace->id,
+            'token' => 'fresh-access-token',
+            'refresh_token' => 'fresh-refresh-token',
+            'expires_in' => 5184000,
+            'approved_scopes' => ['openid', 'w_organization_social'],
+            'person' => ['id' => 'person-123', 'name' => 'John Doe', 'avatar' => null, 'vanity_name' => 'johndoe'],
+            'organizations' => [
+                ['id' => 111, 'name' => 'My Company', 'vanity_name' => 'myco', 'logo' => null],
+                ['id' => 222, 'name' => 'Other Co', 'vanity_name' => 'other', 'logo' => null],
+            ],
+        ],
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.social.linkedin.select-identity'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('accounts/LinkedInSelect')
+            ->where('person', null)
+            ->has('organizations', 1)
+            ->where('organizations.0.id', 111)
+        );
+});
+
+test('select-identity hides an organization that is already connected', function () {
+    config()->set('trypost.allow_multiple_social_accounts', true);
+
+    SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedInPage,
+        'platform_user_id' => '123456',
+    ]);
+
+    session(['linkedin_pending' => [
+        'workspace_id' => $this->workspace->id,
+        'token' => 'test-access-token',
+        'refresh_token' => 'test-refresh-token',
+        'expires_in' => 5184000,
+        'approved_scopes' => ['openid', 'profile', 'email', 'w_member_social'],
+        'person' => ['id' => 'person-123', 'name' => 'John Doe', 'avatar' => null, 'vanity_name' => 'johndoe'],
+        'organizations' => [
+            ['id' => 123456, 'name' => 'Taken Company', 'vanity_name' => 'taken', 'logo' => null],
+            ['id' => 999, 'name' => 'Free Company', 'vanity_name' => 'free', 'logo' => null],
+        ],
+    ]]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.social.linkedin.select-identity'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('accounts/LinkedInSelect')
+            ->where('person.name', 'John Doe')
+            ->has('organizations', 1)
+            ->where('organizations.0.name', 'Free Company')
+        );
+});
+
+test('select-identity reports the network is taken when nothing is connectable', function () {
+    config()->set('trypost.allow_multiple_social_accounts', false);
+
+    SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+        'platform_user_id' => 'person-123',
+    ]);
+
+    session(['linkedin_pending' => [
+        'workspace_id' => $this->workspace->id,
+        'token' => 'test-access-token',
+        'refresh_token' => 'test-refresh-token',
+        'expires_in' => 5184000,
+        'approved_scopes' => ['openid', 'profile', 'email', 'w_member_social'],
+        'person' => ['id' => 'person-123', 'name' => 'John Doe', 'avatar' => null, 'vanity_name' => 'johndoe'],
+        'organizations' => [],
+    ]]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.social.linkedin.select-identity'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('accounts/PopupCallback')
+            ->where('success', false)
+            ->where('message', __('accounts.popup_callback.network_taken'))
+        );
+
+    expect(session()->has('linkedin_pending'))->toBeFalse();
+});
+
+test('select-identity keeps the picker empty state when linkedin offers nothing', function () {
+    config()->set('trypost.platforms.linkedin.enabled', false);
+    config()->set('trypost.platforms.linkedin-page.enabled', true);
+
+    session(['linkedin_pending' => [
+        'workspace_id' => $this->workspace->id,
+        'token' => 'test-access-token',
+        'refresh_token' => 'test-refresh-token',
+        'expires_in' => 5184000,
+        'approved_scopes' => ['openid', 'profile', 'email', 'w_member_social'],
+        'person' => ['id' => 'person-123', 'name' => 'John Doe', 'avatar' => null, 'vanity_name' => 'johndoe'],
+        'organizations' => [],
+    ]]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.social.linkedin.select-identity'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('accounts/LinkedInSelect')
+            ->where('person', null)
+            ->has('organizations', 0)
+        );
+});
+
+test('select-identity does not defer onboarding progress back onto its own route', function () {
+    config()->set('trypost.platforms.linkedin.enabled', false);
+    config()->set('trypost.platforms.linkedin-page.enabled', true);
+
+    session(['linkedin_pending' => [
+        'workspace_id' => $this->workspace->id,
+        'token' => 'test-access-token',
+        'refresh_token' => 'test-refresh-token',
+        'expires_in' => 5184000,
+        'approved_scopes' => ['openid', 'profile', 'email', 'w_member_social'],
+        'person' => ['id' => 'person-123', 'name' => 'John Doe', 'avatar' => null, 'vanity_name' => 'johndoe'],
+        'organizations' => [],
+    ]]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.social.linkedin.select-identity'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('accounts/LinkedInSelect')
+            ->where('onboardingProgress', false)
+        );
+
+    expect(session()->has('linkedin_pending'))->toBeFalse();
+});
+
+test('select-identity reports a wrong account when a profile reconnect authorized another member', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+        'platform_user_id' => 'person-123',
+    ]);
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'social_reconnect_id' => $account->id,
+        'linkedin_pending' => [
+            'workspace_id' => $this->workspace->id,
+            'token' => 'test-access-token',
+            'refresh_token' => 'test-refresh-token',
+            'expires_in' => 5184000,
+            'approved_scopes' => ['openid', 'profile', 'email', 'w_member_social'],
+            'person' => ['id' => 'person-999', 'name' => 'Someone Else', 'avatar' => null, 'vanity_name' => null],
+            'organizations' => [],
+        ],
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.linkedin.select-identity'));
+
+    $response->assertInertia(fn (Assert $page) => $page->where('success', false));
+    $response->assertInertia(fn (Assert $page) => $page->where('message', __('accounts.popup_callback.wrong_account')));
+
+    expect(session('linkedin_pending'))->toBeNull()
+        ->and($account->fresh()->platform_user_id)->toBe('person-123');
+});
+
+test('select-identity still reports a missing page when a page reconnect lost its organization', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedInPage,
+        'platform_user_id' => 'org-123',
+    ]);
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'social_reconnect_id' => $account->id,
+        'linkedin_pending' => [
+            'workspace_id' => $this->workspace->id,
+            'token' => 'test-access-token',
+            'refresh_token' => 'test-refresh-token',
+            'expires_in' => 5184000,
+            'approved_scopes' => ['openid', 'w_organization_social'],
+            'person' => ['id' => 'person-123', 'name' => 'John Doe', 'avatar' => null, 'vanity_name' => null],
+            'organizations' => [],
+        ],
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.social.linkedin.select-identity'));
+
+    $response->assertInertia(fn (Assert $page) => $page->where('success', false));
+    $response->assertInertia(fn (Assert $page) => $page->where('message', __('accounts.popup_callback.page_not_found')));
+});
+
+/**
+ * connectIdentity() refuses a mismatched reconnect on its own, so these guards
+ * are not what produces the error — they are what stops the avatar download
+ * that building the connect payload would otherwise run first. Without them the
+ * suite still passes and the wasted fetch comes back unnoticed.
+ */
+test('rejecting a mismatched organization reconnect never downloads its logo', function () {
+    Storage::fake();
+
+    $account = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => 'person-123',
+    ]);
+
+    session([
+        'social_reconnect_id' => $account->id,
+        'linkedin_pending' => [
+            'workspace_id' => $this->workspace->id,
+            'token' => 'fresh-access-token',
+            'refresh_token' => 'fresh-refresh-token',
+            'expires_in' => 5184000,
+            'approved_scopes' => ['openid', 'w_organization_social'],
+            'person' => ['id' => 'person-123', 'name' => 'John Doe', 'avatar' => null, 'vanity_name' => 'johndoe'],
+            'organizations' => [
+                ['id' => 111, 'name' => 'My Company', 'vanity_name' => 'myco', 'logo' => 'https://93.184.216.34/logo.jpg'],
+            ],
+        ],
+    ]);
+
+    // A public IP literal as the host lets SafeHttpFetcher's SSRF guard pass
+    // without a real DNS lookup; Http::fake() intercepts before any network I/O.
+    Http::fake([
+        'https://93.184.216.34/logo.jpg' => Http::response('fake-image-bytes', 200, ['Content-Type' => 'image/jpeg']),
+    ]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.social.linkedin.select'), ['type' => 'organization', 'organization_id' => 111])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('success', false)
+            ->where('message', __('accounts.popup_callback.wrong_account'))
+        );
+
+    Http::assertNotSent(fn ($request) => $request->url() === 'https://93.184.216.34/logo.jpg');
+
+    expect($account->fresh()->platform_user_id)->toBe('person-123');
+});
+
+test('rejecting a mismatched profile reconnect never downloads its avatar', function () {
+    Storage::fake();
+
+    $account = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => 'person-123',
+    ]);
+
+    session([
+        'social_reconnect_id' => $account->id,
+        'linkedin_pending' => [
+            'workspace_id' => $this->workspace->id,
+            'token' => 'fresh-access-token',
+            'refresh_token' => 'fresh-refresh-token',
+            'expires_in' => 5184000,
+            'approved_scopes' => ['openid', 'profile', 'w_member_social'],
+            'person' => ['id' => 'person-999', 'name' => 'Someone Else', 'avatar' => 'https://93.184.216.34/avatar.jpg', 'vanity_name' => 'someone'],
+            'organizations' => [],
+        ],
+    ]);
+
+    Http::fake([
+        'https://93.184.216.34/avatar.jpg' => Http::response('fake-image-bytes', 200, ['Content-Type' => 'image/jpeg']),
+    ]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.social.linkedin.select'), ['type' => 'person'])
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('success', false)
+            ->where('message', __('accounts.popup_callback.wrong_account'))
+        );
+
+    Http::assertNotSent(fn ($request) => $request->url() === 'https://93.184.216.34/avatar.jpg');
+
+    expect($account->fresh()->platform_user_id)->toBe('person-123');
 });

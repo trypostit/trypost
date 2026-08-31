@@ -173,7 +173,6 @@ const toggleExpand = async (invocation: Invocation) => {
                 <div class="flex items-center gap-2 sm:contents">
                     <Select v-model="statusFilter">
                         <SelectTrigger
-                            dusk="invocations-status-filter"
                             class="w-full sm:w-44"
                         >
                             <SelectValue>{{ statusLabel }}</SelectValue>
@@ -207,7 +206,6 @@ const toggleExpand = async (invocation: Invocation) => {
                                         $t('automations.invocations.refresh')
                                     "
                                     :disabled="isRefreshing"
-                                    dusk="invocations-refresh"
                                     @click="reload"
                                 >
                                     <IconRefresh
@@ -228,7 +226,6 @@ const toggleExpand = async (invocation: Invocation) => {
                         $t('automations.invocations.search_placeholder')
                     "
                     class="sm:max-w-xs"
-                    dusk="invocations-search"
                 />
             </div>
 
@@ -292,7 +289,6 @@ const toggleExpand = async (invocation: Invocation) => {
                                 >
                                     <TableRow
                                         class="cursor-pointer"
-                                        :dusk="`invocation-row-${invocation.id}`"
                                         @click="toggleExpand(invocation)"
                                     >
                                         <TableCell>

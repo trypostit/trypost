@@ -5,6 +5,7 @@ return [
     'page_title' => '소셜 계정',
     'description' => '연결된 모든 소셜 계정 개요',
     'connect_cta' => '연결',
+    'connect_another' => '다른 계정 연결',
 
     'not_connected' => '연결 안 됨',
     'connect' => '연결',
@@ -76,6 +77,8 @@ return [
         'retry' => '다시 시도',
         'error_generic' => '연결을 시작할 수 없습니다. 다시 시도해 주세요.',
         'network_taken' => '이 워크스페이스에는 이미 Telegram 채널이 연결되어 있습니다. 먼저 연결을 해제하세요.',
+        'wrong_chat' => '다시 연결하려는 채널에 명령을 게시하세요.',
+        'busy' => '다른 연결이 아직 완료되지 않았습니다. 잠시 후 명령을 다시 보내주세요.',
     ],
 
     'facebook' => [
@@ -141,6 +144,9 @@ return [
         'reconnected' => '계정이 다시 연결되었습니다!',
         'error_connecting' => '계정 연결 중 오류가 발생했습니다. 다시 시도해 주세요.',
         'network_taken' => '이 워크스페이스에는 이미 이 네트워크의 계정이 있습니다. 먼저 연결을 해제하세요.',
+        'wrong_account' => '다른 계정입니다. 다시 연결하려는 계정을 인증하세요.',
+        'all_connected' => '이 로그인의 모든 계정이 이미 연결되어 있습니다.',
+        'busy' => '다른 연결이 아직 완료되지 않았습니다. 잠시 후 다시 시도해 주세요.',
         'error_connecting_page' => '페이지 연결 중 오류가 발생했습니다. 다시 시도해 주세요.',
         'error_connecting_channel' => '채널 연결 중 오류가 발생했습니다. 다시 시도해 주세요.',
         'session_expired' => '세션이 만료되었습니다. 다시 시도해 주세요.',
@@ -150,6 +156,9 @@ return [
         'failed_to_get_profile' => '프로필을 가져오지 못했습니다.',
         'page_not_found' => '페이지를 찾을 수 없습니다.',
         'channel_not_found' => '채널을 찾을 수 없습니다.',
+        'pages_read_incomplete' => '페이지를 모두 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.',
+        'publish_permission_refused' => '게시에 필요한 권한이 거부되었습니다. 다시 연결하고 모두 허용해 주세요.',
+        'pages_missing_permission' => '페이지는 찾았지만 게시할 수 있는 곳이 없습니다. 페이지 자체의 역할과 모든 권한이 필요합니다.',
         'no_facebook_pages' => 'Facebook 페이지를 찾을 수 없습니다. 최소 한 개 페이지의 관리자여야 합니다.',
         'no_facebook_instagram_pages' => 'Instagram 계정이 연결된 Facebook 페이지를 찾을 수 없습니다.',
         'no_youtube_channels' => 'YouTube 채널을 찾을 수 없습니다. 먼저 채널을 만드세요.',

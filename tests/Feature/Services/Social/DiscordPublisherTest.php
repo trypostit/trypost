@@ -309,3 +309,16 @@ test('maps a missing-permission error to a publish exception', function () {
     expect(fn () => $this->publisher->publish(($this->makePostPlatform)()))
         ->toThrow(DiscordPublishException::class);
 });
+
+test('discord publisher keeps links intact', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+
+    $this->post->update(['content' => 'New post: https://acme.com/blog']);
+
+    fakeDiscord();
+
+    $this->publisher->publish(($this->makePostPlatform)());
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/messages')
+        && data_get($request->data(), 'content') === 'New post: https://acme.com/blog');
+});

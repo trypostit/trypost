@@ -929,3 +929,16 @@ test('facebook publisher omits alt_text_custom from photos payload when no alt t
             && ! array_key_exists('alt_text_custom', $request->data());
     });
 });
+
+test('facebook publisher keeps links intact', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+
+    $this->post->update(['content' => 'New post: https://acme.com/blog']);
+
+    Http::fake(['*/page_123/feed' => Http::response(['id' => 'page_123_post_456'], 200)]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/page_123/feed')
+        && $request['message'] === 'New post: https://acme.com/blog');
+});

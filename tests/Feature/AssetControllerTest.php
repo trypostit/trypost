@@ -61,6 +61,18 @@ test('assets search returns paginated json filtered by name', function () {
     $response->assertJsonPath('data.0.id', $matching->id);
 });
 
+test('assets search matches filenames case-insensitively', function () {
+    $matching = $this->workspace->addMedia(UploadedFile::fake()->image('VACATION-Beach.jpg'), 'assets');
+    $this->workspace->addMedia(UploadedFile::fake()->image('office-shot.jpg'), 'assets');
+
+    $response = $this->actingAs($this->user)
+        ->getJson(route('app.assets.search', ['search' => 'vacation']));
+
+    $response->assertOk();
+    $response->assertJsonCount(1, 'data');
+    $response->assertJsonPath('data.0.id', $matching->id);
+});
+
 test('assets search filters by type', function () {
     $this->workspace->addMedia(UploadedFile::fake()->image('photo.jpg'), 'assets');
     $this->workspace->addMedia(UploadedFile::fake()->create('clip.mp4', 100, 'video/mp4'), 'assets');

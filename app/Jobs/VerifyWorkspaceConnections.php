@@ -26,6 +26,12 @@ class VerifyWorkspaceConnections implements ShouldQueue
 
     public int $timeout = 120;
 
+    // A refresh stamps last_verified_at and replaces the access token, so
+    // there is nothing left for a billed read to confirm. On short-TTL
+    // platforms the stamp is never stale here and this sweep stops calling
+    // verify() entirely — intended, not an oversight.
+    private const VERIFIED_WITHIN_HOURS = 12;
+
     public function __construct(public Workspace $workspace) {}
 
     public function handle(ConnectionVerifier $verifier): void
@@ -42,12 +48,11 @@ class VerifyWorkspaceConnections implements ShouldQueue
         $disconnectedAccounts = collect();
 
         foreach ($accounts as $account) {
-            if ($this->verifyAccount($verifier, $account)) {
-                // If was TokenExpired but now verified OK, mark as connected again
-                if ($account->status === Status::TokenExpired) {
-                    $account->markAsConnected();
-                }
+            if ($this->recentlyProvenValid($account)) {
+                continue;
+            }
 
+            if ($this->verifyAccount($verifier, $account)) {
                 continue;
             }
 
@@ -59,10 +64,28 @@ class VerifyWorkspaceConnections implements ShouldQueue
         }
     }
 
+    /**
+     * Connected only: verifying a TokenExpired account is how it gets promoted
+     * back, so a stale stamp would strand one that has recovered.
+     */
+    private function recentlyProvenValid(SocialAccount $account): bool
+    {
+        return $account->status === Status::Connected
+            && $account->last_verified_at !== null
+            && $account->last_verified_at->isAfter(now()->subHours(self::VERIFIED_WITHIN_HOURS));
+    }
+
     private function verifyAccount(ConnectionVerifier $verifier, SocialAccount $account): bool
     {
         try {
             $verifier->verify($account);
+            $account->update(['last_verified_at' => now()]);
+
+            // Here, not on this method's return value — that is also true
+            // for "could not check, don't disconnect".
+            if ($account->status === Status::TokenExpired) {
+                $account->markAsConnected();
+            }
 
             return true;
         } catch (PlatformUnavailableException $e) {

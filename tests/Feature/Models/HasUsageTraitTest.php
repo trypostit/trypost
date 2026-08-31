@@ -24,6 +24,7 @@ test('usage returns correct counts across the account', function () {
         'user_id' => $this->owner->id,
     ]);
     $workspace = $this->account->workspaces()->first();
+    config()->set('trypost.allow_multiple_social_accounts', true);
     SocialAccount::factory()->count(3)->create(['workspace_id' => $workspace->id]);
 
     User::factory()->count(2)->create(['account_id' => $this->account->id]);

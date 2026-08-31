@@ -116,7 +116,7 @@ test('graph paginator throws when a later request fails after earlier pages succ
     $graphApi = 'https://graph.facebook.com/v25.0';
     $nextUrl = "{$graphApi}/me/accounts?access_token=secret-token&after=cursor1&limit=100";
 
-    Log::shouldReceive('error')->once()->withArgs(function (string $message, array $context) {
+    Log::shouldReceive('warning')->once()->withArgs(function (string $message, array $context) {
         return $message === 'Meta Graph pagination request failed'
             && ! str_contains((string) data_get($context, 'url'), 'secret-token')
             && str_contains((string) data_get($context, 'url'), 'access_token=[REDACTED]');
@@ -144,7 +144,7 @@ test('graph paginator throws when a later request fails after earlier pages succ
 test('graph paginator throws when the first request fails', function () {
     Http::preventStrayRequests();
 
-    Log::shouldReceive('error')->once()->withArgs(function (string $message) {
+    Log::shouldReceive('warning')->once()->withArgs(function (string $message) {
         return $message === 'Meta Graph pagination request failed';
     });
 

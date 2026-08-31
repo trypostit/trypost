@@ -57,7 +57,6 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
                     type="button"
                     variant="outline"
                     class="w-full"
-                    dusk="register-email-toggle"
                     @click="showEmailForm = true"
                 >
                     <IconMail class="size-4" />

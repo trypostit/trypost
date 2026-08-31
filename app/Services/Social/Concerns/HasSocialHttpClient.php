@@ -5,15 +5,25 @@ declare(strict_types=1);
 namespace App\Services\Social\Concerns;
 
 use App\Models\PostPlatform;
+use App\Services\Social\ContentSanitizer;
 use App\Services\Social\TokenRedactor;
+use Exception;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 
 trait HasSocialHttpClient
 {
+    /**
+     * Measures the sanitized content — the exact string the publisher sends —
+     * rather than the stored draft. The two differ by more than markup: X
+     * defusing rewrites URLs, Telegram escapes entities, and every platform
+     * strips HTML the editor stored. Checking the raw draft both rejected
+     * posts that would have fit and let through posts the network rejects.
+     */
     protected function validateContentLength(PostPlatform $postPlatform): void
     {
-        $content = $postPlatform->post->content ?? '';
+        $raw = $postPlatform->post->content ?? '';
+        $content = app(ContentSanitizer::class)->displayText($raw, $postPlatform->platform);
 
         if ($postPlatform->platform->contentOverflow($content) === 0) {
             return;
@@ -22,7 +32,7 @@ trait HasSocialHttpClient
         $maxLength = $postPlatform->platform->maxContentLength();
         $contentLength = mb_strlen($content);
 
-        throw new \Exception(
+        throw new Exception(
             "Content exceeds {$postPlatform->platform->label()} limit of {$maxLength} characters ({$contentLength} provided)."
         );
     }

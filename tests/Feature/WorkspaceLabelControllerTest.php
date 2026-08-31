@@ -166,6 +166,19 @@ test('labels index filters by search query', function () {
     );
 });
 
+test('labels index search is case insensitive', function () {
+    WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'IMPORTANT']);
+    WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Urgent']);
+
+    $response = $this->actingAs($this->user)->get(route('app.labels.index', ['search' => 'important']));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->has('labels.data', 1)
+        ->where('filters.search', 'important')
+    );
+});
+
 test('labels index returns all when no search query', function () {
     WorkspaceLabel::factory()->count(3)->create(['workspace_id' => $this->workspace->id]);
 

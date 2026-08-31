@@ -23,7 +23,6 @@ const tabs = computed(() => [
             v-for="tab in tabs"
             :key="tab.key"
             :href="tab.href"
-            :dusk="`automation-tab-${tab.key}`"
             class="-mb-0.5 shrink-0 whitespace-nowrap border-b-2 py-2.5 text-sm font-medium transition-colors"
             :class="
                 tab.key === current

@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Enums\SocialAccount\Status;
+use App\Jobs\PostHog\IdentifyConnectedPlatforms;
+use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\Account;
 use App\Models\SocialAccount;
@@ -20,6 +22,40 @@ beforeEach(function () {
         'account_id' => $this->account->id,
         'user_id' => $this->user->id,
     ]);
+});
+
+test('creating a social account dispatches IdentifyConnectedPlatforms', function () {
+    Bus::fake();
+
+    SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+
+    Bus::assertDispatched(IdentifyConnectedPlatforms::class, function (IdentifyConnectedPlatforms $job): bool {
+        return $job->workspaceId === (string) $this->workspace->id;
+    });
+});
+
+test('deleting a social account dispatches IdentifyConnectedPlatforms', function () {
+    $socialAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+
+    Bus::fake();
+
+    $socialAccount->delete();
+
+    Bus::assertDispatched(IdentifyConnectedPlatforms::class, function (IdentifyConnectedPlatforms $job): bool {
+        return $job->workspaceId === (string) $this->workspace->id;
+    });
+});
+
+test('disconnecting a social account dispatches IdentifyConnectedPlatforms', function () {
+    $socialAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+
+    Bus::fake();
+
+    $socialAccount->update(['status' => Status::Disconnected]);
+
+    Bus::assertDispatched(IdentifyConnectedPlatforms::class, function (IdentifyConnectedPlatforms $job): bool {
+        return $job->workspaceId === (string) $this->workspace->id;
+    });
 });
 
 test('creating a social account dispatches SyncAccountUsage', function () {
@@ -54,6 +90,8 @@ test('updating a social account does not dispatch SyncAccountUsage', function ()
     $socialAccount->update(['is_active' => false]);
 
     Bus::assertNotDispatched(SyncAccountUsage::class);
+    Bus::assertNotDispatched(IdentifyConnectedPlatforms::class);
+    Bus::assertNotDispatched(SendEvent::class);
 });
 
 test('does not dispatch when PostHog is disabled', function () {
@@ -64,9 +102,32 @@ test('does not dispatch when PostHog is disabled', function () {
     SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 
     Bus::assertNotDispatched(SyncAccountUsage::class);
+    Bus::assertNotDispatched(IdentifyConnectedPlatforms::class);
+    Bus::assertNotDispatched(SendEvent::class);
+});
+
+test('does not identify connected platforms when self-hosted without PostHog', function () {
+    config([
+        'trypost.self_hosted' => true,
+        'services.posthog.enabled' => false,
+        'services.posthog.api_key' => null,
+    ]);
+
+    Bus::fake();
+
+    $socialAccount = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $this->assertModelExists($socialAccount);
+    Bus::assertNotDispatched(SyncAccountUsage::class);
+    Bus::assertNotDispatched(IdentifyConnectedPlatforms::class);
+    Bus::assertNotDispatched(SendEvent::class);
 });
 
 test('updating status on multiple batch-hydrated social accounts does not throw a lazy loading violation', function () {
+    config()->set('trypost.allow_multiple_social_accounts', true);
+
     $accounts = SocialAccount::factory()->count(2)->create([
         'workspace_id' => $this->workspace->id,
         'status' => Status::Connected,

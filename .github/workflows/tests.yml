@@ -17,23 +17,47 @@ env:
   SESSION_DRIVER: array
 
 jobs:
-  backend:
+  tests:
+    name: Tests (${{ matrix.name }})
     runs-on: ubuntu-latest
 
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: PostgreSQL
+            connection: pgsql
+            image: postgres:16
+            port: '5432'
+            username: postgres
+            health: '--health-cmd="pg_isready"'
+          - name: MySQL
+            connection: mysql
+            image: mysql:8.4
+            port: '3306'
+            username: root
+            health: '--health-cmd="mysqladmin ping -h 127.0.0.1 -u root -ppassword"'
+
+    env:
+      DB_CONNECTION: ${{ matrix.connection }}
+      DB_USERNAME: ${{ matrix.username }}
+
     services:
-      postgres:
-        image: postgres:16
+      database:
+        image: ${{ matrix.image }}
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
           POSTGRES_DB: trypost_test
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: trypost_test
         ports:
-          - 5432/tcp
+          - ${{ matrix.port }}/tcp
         options: >-
-          --health-cmd="pg_isready"
-          --health-interval=10s
+          ${{ matrix.health }}
+          --health-interval=5s
           --health-timeout=5s
-          --health-retries=3
+          --health-retries=20
 
       redis:
         image: redis:7
@@ -52,14 +76,24 @@ jobs:
       - name: Setup test environment
         uses: ./.github/actions/setup-laravel
         with:
-          db-port: ${{ job.services.postgres.ports['5432'] }}
+          db-port: ${{ job.services.database.ports[matrix.port] }}
           redis-port: ${{ job.services.redis.ports['6379'] }}
 
       - name: Run backend tests
         env:
-          DB_PORT: ${{ job.services.postgres.ports['5432'] }}
+          DB_PORT: ${{ job.services.database.ports[matrix.port] }}
           REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
         run: php artisan test --compact --parallel
+
+  backend:
+    name: backend
+    runs-on: ubuntu-latest
+    needs: [tests]
+    if: always()
+
+    steps:
+      - name: Fail unless every engine passed
+        run: '[ "${{ needs.tests.result }}" = "success" ]'
 
   e2e:
     runs-on: ubuntu-latest

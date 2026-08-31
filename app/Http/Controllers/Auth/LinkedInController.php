@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\LinkedInIdentityType;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
+use App\Models\SocialAccount;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -46,7 +47,7 @@ class LinkedInController extends SocialController
 
         $this->authorize('manageAccounts', $workspace);
 
-        session(['social_connect_workspace' => $workspace->id]);
+        $this->rememberConnectSession($request, $workspace);
 
         return Inertia::location(
             Socialite::driver($this->driver)
@@ -58,17 +59,7 @@ class LinkedInController extends SocialController
 
     public function callback(Request $request): InertiaResponse|RedirectResponse
     {
-        $workspaceId = session('social_connect_workspace');
-
-        if (! $workspaceId) {
-            return $this->popupCallback(false, __('accounts.popup_callback.session_expired'), $this->platform->value);
-        }
-
-        $workspace = Workspace::find($workspaceId);
-
-        if (! $workspace || ! $request->user()->can('manageAccounts', $workspace)) {
-            return $this->popupCallback(false, __('accounts.popup_callback.workspace_not_found'), $this->platform->value);
-        }
+        $workspace = $this->connectWorkspace($request);
 
         try {
             $socialUser = Socialite::driver($this->driver)->user();
@@ -100,6 +91,15 @@ class LinkedInController extends SocialController
         }
     }
 
+    /**
+     * Render the identity picker.
+     *
+     * The pending payload carries its own workspace, so the picker survives a
+     * cleared connect session where connectWorkspace() would not. The profile
+     * and the pages are one pool of LinkedIn identities: they go through the
+     * shared filter together and are split again for the view, and only the
+     * filter emptying the pool counts as the network being taken.
+     */
     public function selectIdentity(Request $request): InertiaResponse
     {
         $pending = session('linkedin_pending');
@@ -114,9 +114,37 @@ class LinkedInController extends SocialController
             return $this->popupCallback(false, __('accounts.popup_callback.workspace_not_found'), $this->platform->value);
         }
 
+        $identities = array_values(array_filter([
+            $this->personEnabled() ? $pending['person'] : null,
+            ...$pending['organizations'],
+        ]));
+
+        $reconnect = $this->reconnectAccount($workspace);
+        $connectable = collect($this->filterConnectableIdentities($workspace, $identities, 'id', $reconnect));
+
+        if ($identities !== [] && $connectable->isEmpty()) {
+            session()->forget('linkedin_pending');
+
+            // A profile reconnect has no page to be missing: the pool emptying
+            // means this login is a different member than the card being
+            // reconnected.
+            return $this->noConnectableIdentities(
+                $reconnect,
+                $reconnect?->platform === SocialPlatform::LinkedIn ? 'wrong_account' : 'page_not_found',
+            );
+        }
+
+        if ($connectable->isEmpty()) {
+            session()->forget('linkedin_pending');
+        }
+
+        $personId = (string) data_get($pending, 'person.id');
+        $isPerson = fn (array $identity): bool => (string) data_get($identity, 'id') === $personId;
+
         return Inertia::render('accounts/LinkedInSelect', [
-            'person' => $this->personEnabled() ? $pending['person'] : null,
-            'organizations' => $pending['organizations'],
+            'person' => $connectable->first($isPerson),
+            'organizations' => $connectable->reject($isPerson)->values()->all(),
+            'onboardingProgress' => false,
         ]);
     }
 
@@ -152,6 +180,8 @@ class LinkedInController extends SocialController
             return $this->popupCallback(false, __('accounts.popup_callback.error_connecting'), $this->platform->value);
         }
 
+        $reconnect = $this->reconnectAccount($workspace);
+
         try {
             if ($type === LinkedInIdentityType::Organization) {
                 $organization = $this->resolveAdministeredOrganization($pending, data_get($validated, 'organization_id'));
@@ -160,16 +190,24 @@ class LinkedInController extends SocialController
                     return $this->popupCallback(false, __('accounts.popup_callback.error_connecting'), $this->platform->value);
                 }
 
-                $this->connectOrganization($workspace, $pending, $organization);
+                if ($reconnect !== null && (string) data_get($organization, 'id') !== (string) $reconnect->platform_user_id) {
+                    return $this->popupCallback(false, __('accounts.popup_callback.wrong_account'), $this->platform->value);
+                }
+
+                $this->connectOrganization($workspace, $pending, $organization, $reconnect);
             } else {
-                $this->connectPerson($workspace, $pending);
+                if ($reconnect !== null && (string) data_get($pending, 'person.id') !== (string) $reconnect->platform_user_id) {
+                    return $this->popupCallback(false, __('accounts.popup_callback.wrong_account'), $this->platform->value);
+                }
+
+                $this->connectPerson($workspace, $pending, $reconnect);
             }
 
             session()->forget('linkedin_pending');
 
-            return $this->popupCallback(true, __('accounts.popup_callback.connected'), $this->platform->value);
-        } catch (NetworkAlreadyConnectedException) {
-            return $this->popupCallback(false, __('accounts.popup_callback.network_taken'), $this->platform->value);
+            return $this->connectedCallback($reconnect);
+        } catch (NetworkAlreadyConnectedException $e) {
+            return $this->popupCallback(false, __("accounts.popup_callback.{$e->messageKey}"), $this->platform->value);
         } catch (\Exception $e) {
             Log::error('LinkedIn selection error', [
                 'error' => $e->getMessage(),
@@ -182,15 +220,14 @@ class LinkedInController extends SocialController
     /**
      * The user's personal LinkedIn profile becomes a `linkedin` account.
      */
-    private function connectPerson(Workspace $workspace, array $pending): void
+    private function connectPerson(Workspace $workspace, array $pending, ?SocialAccount $reconnect): void
     {
         $person = $pending['person'];
 
-        $workspace->socialAccounts()->updateOrCreate(
-            [
-                'platform' => SocialPlatform::LinkedIn->value,
-                'platform_user_id' => data_get($person, 'id'),
-            ],
+        SocialAccount::connectIdentity(
+            $workspace,
+            SocialPlatform::LinkedIn,
+            (string) data_get($person, 'id'),
             [
                 'username' => data_get($person, 'vanity_name'),
                 'display_name' => data_get($person, 'name'),
@@ -203,6 +240,7 @@ class LinkedInController extends SocialController
                 'error_message' => null,
                 'disconnected_at' => null,
             ],
+            $reconnect,
         );
     }
 
@@ -229,15 +267,14 @@ class LinkedInController extends SocialController
      * @param  array<string, mixed>  $pending
      * @param  array<string, mixed>  $organization
      */
-    private function connectOrganization(Workspace $workspace, array $pending, array $organization): void
+    private function connectOrganization(Workspace $workspace, array $pending, array $organization, ?SocialAccount $reconnect): void
     {
         $organizationId = data_get($organization, 'id');
 
-        $workspace->socialAccounts()->updateOrCreate(
-            [
-                'platform' => SocialPlatform::LinkedInPage->value,
-                'platform_user_id' => $organizationId,
-            ],
+        SocialAccount::connectIdentity(
+            $workspace,
+            SocialPlatform::LinkedInPage,
+            (string) $organizationId,
             [
                 'username' => data_get($organization, 'vanity_name'),
                 'display_name' => data_get($organization, 'name'),
@@ -255,6 +292,7 @@ class LinkedInController extends SocialController
                     'admin_name' => data_get($pending, 'person.name'),
                 ],
             ],
+            $reconnect,
         );
     }
 

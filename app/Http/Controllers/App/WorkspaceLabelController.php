@@ -26,7 +26,7 @@ class WorkspaceLabelController extends Controller
         $this->authorize('createPost', $workspace);
 
         $labels = $workspace->labels()
-            ->when($request->input('search'), fn ($query, $search) => $query->where('name', 'ilike', "%{$search}%"))
+            ->when($request->input('search'), fn ($query, $search) => $query->whereLike('name', "%{$search}%"))
             ->latest()
             ->paginate(config('app.pagination.default'));
 

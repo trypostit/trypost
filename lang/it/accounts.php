@@ -5,6 +5,7 @@ return [
     'page_title' => 'Account social',
     'description' => 'Panoramica di tutti i tuoi account social collegati',
     'connect_cta' => 'Collega',
+    'connect_another' => 'Collega un altro',
 
     'not_connected' => 'Non collegato',
     'connect' => 'Collega',
@@ -76,6 +77,8 @@ return [
         'retry' => 'Riprova',
         'error_generic' => 'Impossibile avviare il collegamento. Riprova.',
         'network_taken' => 'Questo workspace ha già un canale Telegram collegato. Scollegalo prima.',
+        'wrong_chat' => 'Pubblica il comando nel canale che stai ricollegando.',
+        'busy' => 'Una connessione precedente è ancora in corso. Invia di nuovo il comando tra un istante.',
     ],
 
     'facebook' => [
@@ -141,6 +144,9 @@ return [
         'reconnected' => 'Account ricollegato!',
         'error_connecting' => 'Errore durante il collegamento dell\'account. Riprova.',
         'network_taken' => 'Questo workspace ha già un account per questa rete. Scollegalo prima.',
+        'wrong_account' => 'Questo è un account diverso. Autorizza quello che stai ricollegando.',
+        'all_connected' => 'Tutti gli account di questo accesso sono già collegati.',
+        'busy' => 'Una connessione precedente è ancora in corso. Riprova tra un istante.',
         'error_connecting_page' => 'Errore durante il collegamento della pagina. Riprova.',
         'error_connecting_channel' => 'Errore durante il collegamento del canale. Riprova.',
         'session_expired' => 'Sessione scaduta. Riprova.',
@@ -150,6 +156,9 @@ return [
         'failed_to_get_profile' => 'Impossibile ottenere il profilo.',
         'page_not_found' => 'Pagina non trovata.',
         'channel_not_found' => 'Canale non trovato.',
+        'pages_read_incomplete' => 'Non siamo riusciti a leggere tutte le tue Pagine. Riprova tra poco.',
+        'publish_permission_refused' => 'Questo accesso ha rifiutato una autorizzazione necessaria per pubblicare. Riconnetti accettandole tutte.',
+        'pages_missing_permission' => 'Abbiamo trovato Pagine, ma nessuna su cui pubblicare. Serve un ruolo sulla Pagina stessa e tutte le autorizzazioni accettate.',
         'no_facebook_pages' => 'Nessuna pagina Facebook trovata. Devi essere amministratore di almeno una pagina.',
         'no_facebook_instagram_pages' => 'Nessuna pagina Facebook con account Instagram collegati trovata.',
         'no_youtube_channels' => 'Nessun canale YouTube trovato. Crea prima un canale.',

@@ -5,6 +5,7 @@ return [
     'page_title' => 'Konta społecznościowe',
     'description' => 'Przegląd wszystkich Twoich połączonych kont społecznościowych',
     'connect_cta' => 'Połącz',
+    'connect_another' => 'Połącz kolejne',
 
     'not_connected' => 'Niepołączone',
     'connect' => 'Połącz',
@@ -76,6 +77,8 @@ return [
         'retry' => 'Spróbuj ponownie',
         'error_generic' => 'Nie udało się rozpocząć łączenia. Spróbuj ponownie.',
         'network_taken' => 'Ta przestrzeń robocza ma już połączony kanał Telegram. Najpierw go rozłącz.',
+        'wrong_chat' => 'Opublikuj polecenie w kanale, który ponownie łączysz.',
+        'busy' => 'Inne łączenie wciąż się kończy. Wyślij polecenie ponownie za chwilę.',
     ],
 
     'facebook' => [
@@ -141,6 +144,9 @@ return [
         'reconnected' => 'Konto połączone ponownie!',
         'error_connecting' => 'Błąd podczas łączenia konta. Spróbuj ponownie.',
         'network_taken' => 'Ta przestrzeń robocza ma już konto dla tej sieci. Najpierw je rozłącz.',
+        'wrong_account' => 'To inne konto. Autoryzuj to, które ponownie łączysz.',
+        'all_connected' => 'Wszystkie konta z tego logowania są już połączone.',
+        'busy' => 'Inne łączenie wciąż się kończy. Spróbuj ponownie za chwilę.',
         'error_connecting_page' => 'Błąd podczas łączenia strony. Spróbuj ponownie.',
         'error_connecting_channel' => 'Błąd podczas łączenia kanału. Spróbuj ponownie.',
         'session_expired' => 'Sesja wygasła. Spróbuj ponownie.',
@@ -150,6 +156,9 @@ return [
         'failed_to_get_profile' => 'Nie udało się pobrać profilu.',
         'page_not_found' => 'Nie znaleziono strony.',
         'channel_not_found' => 'Nie znaleziono kanału.',
+        'pages_read_incomplete' => 'Nie udało się odczytać wszystkich Twoich stron. Spróbuj ponownie za chwilę.',
+        'publish_permission_refused' => 'To logowanie odrzuciło uprawnienie potrzebne do publikowania. Połącz ponownie i zaakceptuj wszystkie.',
+        'pages_missing_permission' => 'Znaleźliśmy strony, ale na żadnej nie możesz publikować. Potrzebujesz roli na samej stronie i wszystkich uprawnień.',
         'no_facebook_pages' => 'Nie znaleziono stron na Facebooku. Musisz być administratorem co najmniej jednej strony.',
         'no_facebook_instagram_pages' => 'Nie znaleziono stron na Facebooku z powiązanymi kontami Instagram.',
         'no_youtube_channels' => 'Nie znaleziono kanałów YouTube. Najpierw utwórz kanał.',

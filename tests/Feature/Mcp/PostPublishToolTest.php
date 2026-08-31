@@ -227,7 +227,7 @@ test('publish post scheduled does not dispatch immediately', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(PublishPostTool::class, [
             'post_id' => $post->id,
-            'scheduled_at' => '2099-12-31T15:30:00Z',
+            'scheduled_at' => '2037-12-31T15:30:00Z',
         ]);
 
     $response->assertOk();

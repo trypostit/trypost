@@ -25,6 +25,7 @@ use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Services\Post\PostMetricsFetcher;
 use App\Services\Social\TikTokCreatorInfo;
+use App\Support\LinkTlds;
 use App\Support\PostStatusRules;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -58,7 +59,7 @@ class PostController extends Controller
         }
 
         if ($search = $request->input('search')) {
-            $query->where('content', 'ilike', "%{$search}%");
+            $query->whereLike('content', "%{$search}%");
         }
 
         $labelIds = $request->collect('labels')
@@ -287,6 +288,7 @@ class PostController extends Controller
             'labels' => $labels,
             'signatures' => $signatures,
             'authUserId' => $request->user()->id,
+            'xLinkTlds' => config('trypost.platforms.x.defuse_links') ? LinkTlds::all() : [],
         ]);
     }
 

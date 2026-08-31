@@ -26,6 +26,10 @@ import { connect as connectTelegram } from '@/routes/app/social/telegram';
 
 const open = defineModel<boolean>('open', { required: true });
 
+const props = defineProps<{
+    reconnectId?: string;
+}>();
+
 type Phase = 'loading' | 'ready' | 'connected' | 'expired' | 'error';
 
 interface ConnectResponse {
@@ -72,6 +76,8 @@ useWorkspaceEcho<{ nonce: string }>(
     },
 );
 
+const KNOWN_CONNECT_ERRORS = ['network_taken', 'wrong_chat', 'busy'];
+
 useWorkspaceEcho<{ nonce: string; reason: string }>(
     '.telegram.connect.failed',
     (payload) => {
@@ -81,10 +87,11 @@ useWorkspaceEcho<{ nonce: string; reason: string }>(
 
         phase.value = 'error';
         clearExpiry();
-        errorMessage.value =
-            payload.reason === 'network_taken'
-                ? trans('accounts.telegram.network_taken')
-                : trans('accounts.telegram.error_generic');
+        errorMessage.value = trans(
+            KNOWN_CONNECT_ERRORS.includes(payload.reason)
+                ? `accounts.telegram.${payload.reason}`
+                : 'accounts.telegram.error_generic',
+        );
     },
 );
 
@@ -93,7 +100,13 @@ const start = async () => {
     errorMessage.value = '';
 
     try {
-        const response = await httpConnect.post(connectTelegram.url());
+        const response = await httpConnect.post(
+            connectTelegram.url(
+                props.reconnectId
+                    ? { query: { reconnect: props.reconnectId } }
+                    : undefined,
+            ),
+        );
         code.value = response.code;
         nonce.value = response.nonce;
         botUsername.value = response.bot_username;

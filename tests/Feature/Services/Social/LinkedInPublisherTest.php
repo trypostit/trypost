@@ -1145,3 +1145,20 @@ test('linkedin publisher falls back to an empty id and null url when the post id
     expect($result['id'])->toBe('');
     expect($result['url'])->toBeNull();
 });
+
+test('linkedin publisher keeps links intact', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+
+    $this->post->update(['content' => 'New post: https://trypost.it/blog']);
+
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/rest/posts' => Http::response(null, 201, [
+            'x-restli-id' => 'urn:li:share:1234567890',
+        ]),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/rest/posts')
+        && $request['commentary'] === 'New post: https://trypost.it/blog');
+});

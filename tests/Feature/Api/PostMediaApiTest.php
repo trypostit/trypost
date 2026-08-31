@@ -662,7 +662,7 @@ it('attaches an existing workspace asset to a post', function () {
     expect($this->post->fresh()->media)->toHaveCount(1)
         ->and(data_get($this->post->fresh()->media, '0.id'))->toBe($asset->id)
         ->and(data_get($this->post->fresh()->media, '0.size'))->toBe(12345)
-        ->and(data_get($this->post->fresh()->media, '0.meta'))->toBe([
+        ->and(data_get($this->post->fresh()->media, '0.meta'))->toEqual([
             'width' => 1920,
             'height' => 1080,
             'duration' => 12.5,
@@ -688,7 +688,7 @@ it('preserves library alt text when attach omits alt', function () {
         ])
         ->assertOk();
 
-    expect(data_get($this->post->fresh()->media, '0.meta'))->toBe([
+    expect(data_get($this->post->fresh()->media, '0.meta'))->toEqual([
         'width' => 800,
         'height' => 600,
         'alt_text' => 'From library',

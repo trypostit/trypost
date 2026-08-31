@@ -66,6 +66,25 @@ test('filters assets by filename search and type', function () {
         ->assertJsonPath('data.0.original_filename', 'campaign-hero.jpg');
 });
 
+test('filters assets by filename search case-insensitively', function () {
+    Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+        'original_filename' => 'CAMPAIGN-Hero.jpg',
+    ]);
+    Media::factory()->assets()->create([
+        'mediable_type' => (new Workspace)->getMorphClass(),
+        'mediable_id' => $this->workspace->id,
+        'original_filename' => 'office-shot.jpg',
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->getJson(route('api.assets.index', ['search' => 'campaign-hero']))
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.original_filename', 'CAMPAIGN-Hero.jpg');
+});
+
 test('paginates assets with the application page size', function () {
     $perPage = (int) config('app.pagination.default');
 

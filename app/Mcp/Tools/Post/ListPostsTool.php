@@ -45,7 +45,7 @@ class ListPostsTool extends Tool
         };
 
         if ($search = data_get($validated, 'search')) {
-            $query->where('content', 'ilike', '%'.$search.'%');
+            $query->whereLike('content', '%'.$search.'%');
         }
 
         $posts = $query->latest('scheduled_at')

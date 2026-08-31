@@ -5,6 +5,7 @@ return [
     'page_title' => 'Contas Sociais',
     'description' => 'Visão geral de todas as suas contas sociais conectadas',
     'connect_cta' => 'Conectar',
+    'connect_another' => 'Conectar outra',
 
     'not_connected' => 'Não conectado',
     'connect' => 'Conectar',
@@ -76,6 +77,8 @@ return [
         'retry' => 'Tentar novamente',
         'error_generic' => 'Não foi possível iniciar a conexão. Tente novamente.',
         'network_taken' => 'Este workspace já tem um canal de Telegram conectado. Desconecte-o primeiro.',
+        'wrong_chat' => 'Publique o comando no canal que você está reconectando.',
+        'busy' => 'Outra conexão ainda está sendo concluída. Envie o comando novamente em instantes.',
     ],
 
     'facebook' => [
@@ -141,6 +144,9 @@ return [
         'reconnected' => 'Conta reconectada!',
         'error_connecting' => 'Erro ao conectar conta. Por favor, tente novamente.',
         'network_taken' => 'Este workspace já tem uma conta para esta rede. Desconecte-a primeiro.',
+        'wrong_account' => 'Essa é outra conta. Autorize a que você está reconectando.',
+        'all_connected' => 'Todas as contas deste login já estão conectadas.',
+        'busy' => 'Outra conexão ainda está sendo concluída. Tente novamente em instantes.',
         'error_connecting_page' => 'Erro ao conectar página. Por favor, tente novamente.',
         'error_connecting_channel' => 'Erro ao conectar canal. Por favor, tente novamente.',
         'session_expired' => 'Sessão expirada. Por favor, tente novamente.',
@@ -150,6 +156,9 @@ return [
         'failed_to_get_profile' => 'Falha ao obter perfil.',
         'page_not_found' => 'Página não encontrada.',
         'channel_not_found' => 'Canal não encontrado.',
+        'pages_read_incomplete' => 'Não conseguimos terminar de ler suas páginas. Tente novamente em instantes.',
+        'publish_permission_refused' => 'Este login recusou uma permissão necessária para publicar. Reconecte aceitando todas.',
+        'pages_missing_permission' => 'Encontramos páginas, mas nenhuma em que você possa publicar. É preciso ter um cargo na própria página e aceitar todas as permissões.',
         'no_facebook_pages' => 'Nenhuma página do Facebook encontrada. Você precisa ser administrador de pelo menos uma página.',
         'no_facebook_instagram_pages' => 'Nenhuma página do Facebook com conta do Instagram vinculada foi encontrada.',
         'no_youtube_channels' => 'Nenhum canal do YouTube encontrado. Por favor, crie um canal primeiro.',

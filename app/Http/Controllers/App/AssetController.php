@@ -48,7 +48,7 @@ class AssetController extends Controller
         $type = $request->input('type');
 
         $assets = $workspace->getMedia('assets')
-            ->when($term !== '', fn ($query) => $query->where('original_filename', 'ilike', '%'.$term.'%'))
+            ->when($term !== '', fn ($query) => $query->whereLike('original_filename', '%'.$term.'%'))
             ->when(in_array($type, ['image', 'video'], true), fn ($query) => $query->where('type', $type))
             ->latest()
             ->paginate(config('app.pagination.default'));

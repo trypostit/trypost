@@ -157,6 +157,19 @@ test('signatures index filters by search query', function () {
     );
 });
 
+test('signatures index search is case insensitive', function () {
+    WorkspaceSignature::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'MARKETING']);
+    WorkspaceSignature::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Travel']);
+
+    $response = $this->actingAs($this->user)->get(route('app.signatures.index', ['search' => 'marketing']));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->has('signatures.data', 1)
+        ->where('filters.search', 'marketing')
+    );
+});
+
 test('signatures index returns all when no search query', function () {
     WorkspaceSignature::factory()->count(3)->create(['workspace_id' => $this->workspace->id]);
 

@@ -16,6 +16,7 @@ import { copyToClipboard } from '@/lib/utils';
 import { complete } from '@/routes/app/onboarding';
 import { skip as skipMcpRoute } from '@/routes/app/onboarding/mcp';
 import { create as createPost } from '@/routes/app/posts';
+import { SocialAccountStatus } from '@/types/social-account-status';
 
 interface OnboardingStatus {
     mcp_connected: boolean;
@@ -49,23 +50,24 @@ const maxCompleteAttempts = 3;
 const socialConnectedElsewhere = computed(
     () =>
         props.status.social_connected &&
-        !props.accounts.some((account) => account.status === 'connected'),
+        !props.accounts.some(
+            (account) => account.status === SocialAccountStatus.Connected,
+        ),
 );
 
 // Keep listening until completion is stamped — all_complete alone is not enough
 // (auto-complete POST can fail before completed_at lands).
 useOnboardingLiveReload({
     only: reloadOnly,
-    enabled: () =>
-        !props.status.completed_at && !props.status.dismissed_at,
+    enabled: () => !props.status.completed_at && !props.status.dismissed_at,
 });
 
 const stampCompletionIfReady = (): void => {
     if (
-        ! props.status.all_complete ||
+        !props.status.all_complete ||
         props.status.completed_at ||
         completeForm.processing ||
-        ! props.canSkipSteps ||
+        !props.canSkipSteps ||
         completeAttempts >= maxCompleteAttempts
     ) {
         return;

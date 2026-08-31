@@ -5,6 +5,7 @@ return [
     'page_title' => 'Social Accounts',
     'description' => 'Overview of all your connected social accounts',
     'connect_cta' => 'Connect',
+    'connect_another' => 'Connect another',
 
     'not_connected' => 'Not connected',
     'connect' => 'Connect',
@@ -76,6 +77,8 @@ return [
         'retry' => 'Try again',
         'error_generic' => 'Could not start the connection. Please try again.',
         'network_taken' => 'This workspace already has a Telegram channel connected. Disconnect it first.',
+        'wrong_chat' => 'Post the command in the channel you are reconnecting.',
+        'busy' => 'Another connection is still finishing. Post the command again in a moment.',
     ],
 
     'facebook' => [
@@ -141,6 +144,9 @@ return [
         'reconnected' => 'Account reconnected!',
         'error_connecting' => 'Error connecting account. Please try again.',
         'network_taken' => 'This workspace already has an account for this network. Disconnect it first.',
+        'wrong_account' => 'That is a different account. Authorize the one you are reconnecting.',
+        'all_connected' => 'Every account on this login is already connected.',
+        'busy' => 'Another connection is still finishing. Please try again in a moment.',
         'error_connecting_page' => 'Error connecting page. Please try again.',
         'error_connecting_channel' => 'Error connecting channel. Please try again.',
         'session_expired' => 'Session expired. Please try again.',
@@ -150,6 +156,9 @@ return [
         'failed_to_get_profile' => 'Failed to get profile.',
         'page_not_found' => 'Page not found.',
         'channel_not_found' => 'Channel not found.',
+        'pages_read_incomplete' => 'We could not finish reading your Pages. Please try again in a moment.',
+        'publish_permission_refused' => 'This login refused a permission we need to post. Reconnect and accept all of them.',
+        'pages_missing_permission' => 'We found Pages, but none you can post to. You need a role on the Page itself, and every permission accepted.',
         'no_facebook_pages' => 'No Facebook Pages found. You need to be an admin of at least one page.',
         'no_facebook_instagram_pages' => 'No Facebook Pages with linked Instagram accounts found.',
         'no_youtube_channels' => 'No YouTube channels found. Please create a channel first.',

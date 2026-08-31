@@ -47,6 +47,7 @@ test('handle group-identifies the account with usage metrics', function () {
         'account_id' => $this->account->id,
         'user_id' => $this->user->id,
     ]);
+    config()->set('trypost.allow_multiple_social_accounts', true);
     SocialAccount::factory()->count(2)->create(['workspace_id' => $workspace->id]);
     Post::factory()->count(3)->create([
         'workspace_id' => $workspace->id,

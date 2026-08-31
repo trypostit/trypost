@@ -108,7 +108,7 @@ const submit = (): void => {
         :title="$t('welcome.title')"
         :description="$t('welcome.description')"
         :step="1"
-        wide
+        size="4xl"
     >
         <div class="flex flex-wrap justify-center gap-2.5">
             <button

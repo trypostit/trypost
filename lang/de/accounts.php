@@ -7,6 +7,7 @@ return [
     'page_title' => 'Social-Media-Konten',
     'description' => 'Übersicht über alle deine verbundenen Social-Media-Konten',
     'connect_cta' => 'Verbinden',
+    'connect_another' => 'Weitere verbinden',
 
     'not_connected' => 'Nicht verbunden',
     'connect' => 'Verbinden',
@@ -78,6 +79,8 @@ return [
         'retry' => 'Erneut versuchen',
         'error_generic' => 'Die Verbindung konnte nicht gestartet werden. Bitte versuche es erneut.',
         'network_taken' => 'Dieser Workspace hat bereits einen verbundenen Telegram-Kanal. Trenne ihn zuerst.',
+        'wrong_chat' => 'Poste den Befehl in dem Kanal, den du neu verbindest.',
+        'busy' => 'Eine andere Verbindung wird noch abgeschlossen. Sende den Befehl gleich erneut.',
     ],
 
     'facebook' => [
@@ -143,6 +146,9 @@ return [
         'reconnected' => 'Konto erneut verbunden!',
         'error_connecting' => 'Fehler beim Verbinden des Kontos. Bitte versuche es erneut.',
         'network_taken' => 'Dieser Workspace hat bereits ein Konto für dieses Netzwerk. Trenne es zuerst.',
+        'wrong_account' => 'Das ist ein anderes Konto. Autorisiere das Konto, das du neu verbindest.',
+        'all_connected' => 'Alle Konten dieses Logins sind bereits verbunden.',
+        'busy' => 'Eine andere Verbindung wird noch abgeschlossen. Bitte versuche es gleich erneut.',
         'error_connecting_page' => 'Fehler beim Verbinden der Seite. Bitte versuche es erneut.',
         'error_connecting_channel' => 'Fehler beim Verbinden des Kanals. Bitte versuche es erneut.',
         'session_expired' => 'Sitzung abgelaufen. Bitte versuche es erneut.',
@@ -152,6 +158,9 @@ return [
         'failed_to_get_profile' => 'Profil konnte nicht abgerufen werden.',
         'page_not_found' => 'Seite nicht gefunden.',
         'channel_not_found' => 'Kanal nicht gefunden.',
+        'pages_read_incomplete' => 'Wir konnten deine Seiten nicht vollständig lesen. Bitte versuche es gleich noch einmal.',
+        'publish_permission_refused' => 'Diese Anmeldung hat eine zum Posten nötige Berechtigung abgelehnt. Verbinde erneut und akzeptiere alle.',
+        'pages_missing_permission' => 'Wir haben Seiten gefunden, aber keine zum Posten. Du brauchst eine Rolle auf der Seite selbst und alle Berechtigungen.',
         'no_facebook_pages' => 'Keine Facebook-Seiten gefunden. Du musst Administrator mindestens einer Seite sein.',
         'no_facebook_instagram_pages' => 'Keine Facebook-Seiten mit verknüpften Instagram-Konten gefunden.',
         'no_youtube_channels' => 'Keine YouTube-Kanäle gefunden. Bitte erstelle zuerst einen Kanal.',

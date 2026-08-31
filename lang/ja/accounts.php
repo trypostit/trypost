@@ -5,6 +5,7 @@ return [
     'page_title' => 'ソーシャルアカウント',
     'description' => '接続済みのソーシャルアカウントの一覧',
     'connect_cta' => '接続',
+    'connect_another' => '別のアカウントを接続',
 
     'not_connected' => '未接続',
     'connect' => '接続',
@@ -76,6 +77,8 @@ return [
         'retry' => 'もう一度試す',
         'error_generic' => '接続を開始できませんでした。もう一度お試しください。',
         'network_taken' => 'このワークスペースにはすでに Telegram チャンネルが接続されています。先に接続を解除してください。',
+        'wrong_chat' => '再接続するチャンネルでコマンドを投稿してください。',
+        'busy' => '別の接続がまだ完了していません。少し待ってからコマンドを再送信してください。',
     ],
 
     'facebook' => [
@@ -141,6 +144,9 @@ return [
         'reconnected' => 'アカウントを再接続しました！',
         'error_connecting' => 'アカウントの接続中にエラーが発生しました。もう一度お試しください。',
         'network_taken' => 'このワークスペースにはすでにこのネットワークのアカウントが接続されています。先に接続を解除してください。',
+        'wrong_account' => '別のアカウントです。再接続するアカウントを認証してください。',
+        'all_connected' => 'このログインのアカウントはすべて接続済みです。',
+        'busy' => '別の接続がまだ完了していません。少し待ってからもう一度お試しください。',
         'error_connecting_page' => 'ページの接続中にエラーが発生しました。もう一度お試しください。',
         'error_connecting_channel' => 'チャンネルの接続中にエラーが発生しました。もう一度お試しください。',
         'session_expired' => 'セッションの有効期限が切れました。もう一度お試しください。',
@@ -150,6 +156,9 @@ return [
         'failed_to_get_profile' => 'プロフィールの取得に失敗しました。',
         'page_not_found' => 'ページが見つかりません。',
         'channel_not_found' => 'チャンネルが見つかりません。',
+        'pages_read_incomplete' => 'ページをすべて読み取れませんでした。少し時間をおいて再度お試しください。',
+        'publish_permission_refused' => '投稿に必要な権限が許可されませんでした。再接続してすべて許可してください。',
+        'pages_missing_permission' => 'ページは見つかりましたが、投稿できるものがありません。ページ自体での役割と、すべての権限が必要です。',
         'no_facebook_pages' => 'Facebook ページが見つかりません。少なくとも 1 つのページの管理者である必要があります。',
         'no_facebook_instagram_pages' => 'Instagram アカウントが連携された Facebook ページが見つかりません。',
         'no_youtube_channels' => 'YouTube チャンネルが見つかりません。先にチャンネルを作成してください。',

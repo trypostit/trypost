@@ -341,7 +341,7 @@ test('demoting a member to viewer keeps their mcp oauth grants', function () {
 
     $response->assertRedirect();
     expect($oauth->fresh()->revoked)->toBeFalse()
-        ->and(DB::table('oauth_refresh_tokens')->where('id', $refreshTokenId)->value('revoked'))->toBeFalse()
+        ->and((bool) DB::table('oauth_refresh_tokens')->where('id', $refreshTokenId)->value('revoked'))->toBeFalse()
         ->and($member->fresh()->can('createPost', $this->workspace))->toBeFalse()
         ->and($member->fresh()->can('view', $this->workspace))->toBeTrue();
 });

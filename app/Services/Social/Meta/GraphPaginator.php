@@ -14,11 +14,10 @@ use Illuminate\Support\Uri;
 use Throwable;
 
 /**
- * Collects every item from a paginated Meta Graph API edge by following `paging.next`.
+ * Collects every item from a paginated Meta Graph edge by following `paging.next`.
  *
- * Stops only when pagination is exhausted. Request failures and pathological cases
- * (repeated next URL, off-host next URL, extreme page count) throw so callers never
- * confuse an error with an empty Page list or auto-connect on a truncated list.
+ * Failures and pathological cases (repeated next URL, off-host next URL, extreme page
+ * count) throw, so no caller confuses an error with an empty list.
  */
 class GraphPaginator
 {
@@ -30,11 +29,12 @@ class GraphPaginator
 
     /**
      * @param  array<string, mixed>  $query
+     * @param  float|null  $deadline  microtime after which no *further* page is fetched; the first always is
      * @return list<array<string, mixed>>
      *
      * @throws IncompleteMetaGraphPaginationException
      */
-    public static function all(string $url, array $query = []): array
+    public static function all(string $url, array $query = [], ?float $deadline = null): array
     {
         $items = collect();
         $fetched = 0;
@@ -49,6 +49,10 @@ class GraphPaginator
 
             if (isset($seen[$next])) {
                 self::abort($next, $fetched, reason: 'Meta Graph pagination stopped: repeated paging URL');
+            }
+
+            if ($fetched > 0 && $deadline !== null && microtime(true) >= $deadline) {
+                self::abort($next, $fetched, reason: 'Meta Graph pagination stopped: out of time');
             }
 
             $seen[$next] = true;
@@ -83,6 +87,12 @@ class GraphPaginator
         return $items->values()->all();
     }
 
+    /** Classify and log a failed response a caller read itself, rather than walked here. */
+    public static function failure(string $url, Response $response): IncompleteMetaGraphPaginationException
+    {
+        return self::describe($url, 0, response: $response);
+    }
+
     /**
      * @throws IncompleteMetaGraphPaginationException
      */
@@ -93,14 +103,30 @@ class GraphPaginator
         ?Response $response = null,
         ?string $reason = null,
     ): never {
-        Log::error($reason ?? ($e ? 'Meta Graph pagination connection failed' : 'Meta Graph pagination request failed'), array_filter([
+        throw self::describe($url, $fetched, $e, $response, $reason);
+    }
+
+    /** A confirmed rejection is Meta answering, so it warns; an unknown stays an error. */
+    private static function describe(
+        string $url,
+        int $fetched,
+        ?Throwable $e = null,
+        ?Response $response = null,
+        ?string $reason = null,
+    ): IncompleteMetaGraphPaginationException {
+        $transient = $response === null || GraphError::isTransientFailure($response);
+
+        $message = $reason ?? ($e ? 'Meta Graph pagination connection failed' : 'Meta Graph pagination request failed');
+        $context = array_filter([
             'url' => TokenRedactor::redact($url),
             'error' => $e?->getMessage(),
             'status' => $response?->status(),
             'body' => $response ? TokenRedactor::redact($response->body()) : null,
             'fetched' => $fetched > 0 ? $fetched : null,
-        ]));
+        ]);
 
-        throw new IncompleteMetaGraphPaginationException($e);
+        $transient ? Log::error($message, $context) : Log::warning($message, $context);
+
+        return new IncompleteMetaGraphPaginationException($e, transient: $transient);
     }
 }

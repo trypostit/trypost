@@ -42,7 +42,7 @@ class WorkspaceController extends Controller
 
         $members = $workspace->members()
             ->where('users.id', '!=', $request->user()->id)
-            ->when($term !== '', fn ($query) => $query->where('users.name', 'ilike', '%'.$term.'%'))
+            ->when($term !== '', fn ($query) => $query->whereLike('users.name', '%'.$term.'%'))
             ->orderBy('users.name')
             ->limit(50)
             ->get(['users.id', 'users.name', 'users.email']);

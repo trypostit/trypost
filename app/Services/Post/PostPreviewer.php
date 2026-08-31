@@ -57,7 +57,7 @@ class PostPreviewer
             ->values()
             ->map(function (PostPlatform $pp) use ($original) {
                 $platform = $pp->socialAccount?->platform ?? $pp->platform;
-                $sanitized = $original === '' ? '' : $this->sanitizer->sanitize($original, $platform);
+                $sanitized = $this->sanitizer->sanitize($original, $platform);
 
                 return [
                     'post_platform_id' => $pp->id,

@@ -42,7 +42,7 @@ onMounted(() => {
 
 <template>
     <PopupLayout :title="success ? $t('accounts.popup_callback.title_success') : $t('accounts.popup_callback.title_error')">
-        <div class="flex flex-col items-center justify-center gap-3 py-16 text-center" dusk="popup-callback" role="status" aria-live="polite">
+        <div class="flex flex-col items-center justify-center gap-3 py-16 text-center" role="status" aria-live="polite">
             <div
                 class="flex h-14 w-14 items-center justify-center rounded-full"
                 :class="

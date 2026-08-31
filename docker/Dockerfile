@@ -26,6 +26,7 @@ RUN apk add --no-cache \
         tzdata \
         postgresql-client \
         postgresql-dev \
+        mysql-client \
         libpng-dev \
         libjpeg-turbo-dev \
         freetype-dev \
@@ -40,6 +41,7 @@ RUN apk add --no-cache \
     && docker-php-ext-install -j"$(nproc)" \
         pdo_pgsql \
         pgsql \
+        pdo_mysql \
         gd \
         zip \
         opcache \

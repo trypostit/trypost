@@ -25,7 +25,10 @@ use Illuminate\Http\Client\Response;
  *   limit". https://developers.facebook.com/docs/graph-api/guides/error-handling/
  * - Business Use Case (BUC) Rate Limits (Page/system-user tokens — Facebook
  *   and InstagramFacebook accounts here use Page tokens): code 80001 "Pages
- *   API", code 80002 "Instagram Platform". Unlike Platform Rate Limits, BUC
+ *   API", code 80002 "Instagram Platform", and code 32 "Pages API with a User
+ *   token" — which the connect flow hits, since the portfolio walk reads
+ *   /me/accounts, /me/businesses and the owned_pages / client_pages edges with
+ *   the user token straight from OAuth. Unlike Platform Rate Limits, BUC
  *   rejections come back as an ordinary HTTP 400, not 429. BUC also covers
  *   several other Meta products (Marketing API, WhatsApp, Messenger, ...)
  *   with their own 80000-series codes — irrelevant here since this app never
@@ -48,7 +51,7 @@ class GraphError
      * Codes Meta uses for rate-limit and other transient upstream problems.
      * These must never disconnect a still-valid token.
      */
-    private const TRANSIENT_CODES = [1, 2, 4, 17, 80001, 80002];
+    private const TRANSIENT_CODES = [1, 2, 4, 17, 32, 80001, 80002];
 
     /**
      * Whether the given Meta Graph error body is a known rate-limit or
@@ -73,7 +76,7 @@ class GraphError
     {
         return $response->serverError()
             || $response->status() === 429
-            || self::isTransient($response->json());
+            || self::isTransient(is_array($body = $response->json()) ? $body : null);
     }
 
     /**

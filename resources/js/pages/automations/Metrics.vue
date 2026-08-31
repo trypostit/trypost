@@ -74,7 +74,7 @@ const platformLabel = (platform: string): string => platform.charAt(0).toUpperCa
         <div class="space-y-6 p-4">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 class="text-sm font-semibold text-foreground/70">{{ $t('automations.metrics.overview') }}</h2>
-                <DateRangePicker v-model="dateRange" dusk="metrics-range" />
+                <DateRangePicker v-model="dateRange" />
             </div>
 
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">

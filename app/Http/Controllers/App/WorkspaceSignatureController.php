@@ -26,7 +26,7 @@ class WorkspaceSignatureController extends Controller
         $this->authorize('createPost', $workspace);
 
         $signatures = $workspace->signatures()
-            ->when($request->input('search'), fn ($query, $search) => $query->where('name', 'ilike', "%{$search}%"))
+            ->when($request->input('search'), fn ($query, $search) => $query->whereLike('name', "%{$search}%"))
             ->latest()
             ->paginate(config('app.pagination.default'));
 
