@@ -29,6 +29,8 @@ use App\Services\Social\ThreadsPublisher;
 use App\Services\Social\TikTokPublisher;
 use App\Services\Social\XPublisher;
 use App\Services\Social\YouTubePublisher;
+use App\Support\Social\GoogleBusinessProfileMediaDerivativeCleaner;
+use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -263,9 +265,15 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 ...$context,
             ]);
 
+            $terminalContext = [
+                ...$context,
+                'retries_exhausted' => true,
+                'failed_at' => now()->toIso8601String(),
+            ];
+
             $this->markPlatformAsFailed(
                 __('posts.errors.platform_unavailable_exhausted'),
-                [...$context, 'failed_at' => now()->toIso8601String()],
+                $terminalContext,
             );
 
             return;
@@ -276,8 +284,8 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         Log::warning('Publish rescheduled: platform unavailable', [
             'post_platform_id' => $this->postPlatform->id,
             'platform' => $this->postPlatform->platform->value,
-            'next_attempt_at' => $nextAttemptAt->toIso8601String(),
             ...$context,
+            'next_attempt_at' => $nextAttemptAt->toIso8601String(),
         ]);
 
         $this->postPlatform->update([
@@ -308,6 +316,16 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         }
 
         $failureContext = [...$previousContext, ...($context ?? [])];
+
+        if ($this->postPlatform->platform === SocialPlatform::GoogleBusinessProfile
+            && (ErrorCategory::tryFromContext($failureContext)?->isResumable() !== true
+                || data_get($failureContext, 'retries_exhausted') === true)) {
+            app(GoogleBusinessProfileMediaDerivativeCleaner::class)->cleanup(
+                $failureContext,
+                $this->postPlatform->id,
+            );
+            unset($failureContext[PublishCheckpoint::GOOGLE_BUSINESS_PROFILE_DERIVATIVE_PATH]);
+        }
 
         $this->postPlatform->markAsFailed($message, $failureContext === [] ? null : $failureContext);
     }
@@ -376,9 +394,12 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     private function recordGoogleBusinessProfileSubmission(array $result): void
     {
         $state = (string) data_get($result, 'provider_state', 'PROCESSING');
+        $derivativePath = data_get($result, 'derivative_path');
+        $cleaner = app(GoogleBusinessProfileMediaDerivativeCleaner::class);
 
         if (in_array($state, ['LIVE', 'RECURRING'], true)) {
             $this->postPlatform->markAsPublished((string) data_get($result, 'id'), data_get($result, 'url'));
+            $cleaner->cleanupPath(is_string($derivativePath) ? $derivativePath : null, $this->postPlatform->id);
 
             return;
         }
@@ -388,6 +409,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 'provider_state' => $state,
                 'reconciled_at' => now()->toIso8601String(),
             ]);
+            $cleaner->cleanupPath(is_string($derivativePath) ? $derivativePath : null, $this->postPlatform->id);
 
             return;
         }
@@ -400,6 +422,10 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             (string) data_get($result, 'id'),
             data_get($result, 'url'),
             $status,
+            array_filter([
+                'provider_state' => $state,
+                PublishCheckpoint::GOOGLE_BUSINESS_PROFILE_DERIVATIVE_PATH => is_string($derivativePath) ? $derivativePath : null,
+            ], fn (mixed $value): bool => $value !== null && $value !== ''),
         );
     }
 

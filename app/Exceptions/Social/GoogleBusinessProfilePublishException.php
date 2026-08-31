@@ -6,6 +6,7 @@ namespace App\Exceptions\Social;
 
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
+use App\Services\Social\TokenRedactor;
 use Illuminate\Http\Client\Response;
 
 class GoogleBusinessProfilePublishException extends SocialPublishException
@@ -21,9 +22,17 @@ class GoogleBusinessProfilePublishException extends SocialPublishException
         }
 
         if ($response->status() === 429 || $response->serverError()) {
+            $redactedBody = TokenRedactor::redact($response->body());
+
             throw new PlatformUnavailableException(
                 "Google Business Profile API temporarily failed ({$response->status()}).",
                 $response->status(),
+                array_filter([
+                    'platform_error_code' => $code,
+                    'google_error_status' => data_get($response->json(), 'error.status'),
+                    'google_error_message' => $message,
+                    'raw_response' => $redactedBody === null ? null : mb_substr($redactedBody, 0, 2000),
+                ], fn (mixed $value): bool => $value !== null && $value !== ''),
             );
         }
 

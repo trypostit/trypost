@@ -4,16 +4,30 @@ declare(strict_types=1);
 
 namespace App\Services\Social\GoogleBusinessProfile;
 
+use App\DataTransferObjects\MediaItem;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\PostPlatform\Status;
+use App\Enums\SocialAccount\Platform;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\GoogleBusinessProfilePublishException;
 use App\Models\PostPlatform;
+use App\Services\Media\MediaOptimizer;
 use App\Services\Social\ConnectionVerifier;
+use App\Support\Social\GoogleBusinessProfileMediaDerivativeCleaner;
+use App\Support\Social\PublishCheckpoint;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Throwable;
 
 class GoogleBusinessProfilePublisher
 {
-    public function __construct(private readonly GoogleBusinessProfileApi $api) {}
+    public function __construct(
+        private readonly GoogleBusinessProfileApi $api,
+        private readonly MediaOptimizer $mediaOptimizer,
+        private readonly GoogleBusinessProfileMediaDerivativeCleaner $derivativeCleaner,
+    ) {}
 
     /** @return array<string, mixed> */
     public function publish(PostPlatform $postPlatform): array
@@ -39,12 +53,59 @@ class GoogleBusinessProfilePublisher
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
-        $result = $this->api->createLocalPost($location, $this->payload($postPlatform));
+        [$payload, $derivativePath] = $this->preparePayload($postPlatform);
+
+        try {
+            $result = $this->api->createLocalPost($location, $payload);
+        } catch (PlatformUnavailableException $e) {
+            if ($derivativePath !== null) {
+                $e->context[PublishCheckpoint::GOOGLE_BUSINESS_PROFILE_DERIVATIVE_PATH] = $derivativePath;
+            }
+
+            throw $e;
+        } catch (Throwable $e) {
+            $this->derivativeCleaner->cleanupPath($derivativePath, $postPlatform->id);
+
+            throw $e;
+        }
+
+        $platformPostId = data_get($result, 'name');
+        if (! is_string($platformPostId) || $platformPostId === '') {
+            $this->derivativeCleaner->cleanupPath($derivativePath, $postPlatform->id);
+
+            throw new GoogleBusinessProfilePublishException(
+                userMessage: 'Google Business Profile did not confirm the created post.',
+                category: ErrorCategory::ServerError,
+            );
+        }
+
+        $platformUrl = data_get($result, 'searchUrl');
+        $state = (string) data_get($result, 'state', 'PROCESSING');
+        $context = array_filter([
+            'provider_state' => $state,
+            PublishCheckpoint::GOOGLE_BUSINESS_PROFILE_DERIVATIVE_PATH => $derivativePath,
+        ], fn (mixed $value): bool => $value !== null && $value !== '');
+
+        if (in_array($state, ['LIVE', 'RECURRING'], true)) {
+            $postPlatform->markAsPublished($platformPostId, $platformUrl);
+            $this->derivativeCleaner->cleanupPath($derivativePath, $postPlatform->id);
+        } elseif ($state === 'REJECTED') {
+            $postPlatform->markAsRejected('Google rejected this post during review.', ['provider_state' => $state]);
+            $this->derivativeCleaner->cleanupPath($derivativePath, $postPlatform->id);
+        } else {
+            $postPlatform->markAsSubmitted(
+                $platformPostId,
+                $platformUrl,
+                $state === 'PROCESSING' ? Status::PendingReview : Status::Submitted,
+                $context,
+            );
+        }
 
         return [
-            'id' => data_get($result, 'name'),
-            'url' => data_get($result, 'searchUrl'),
-            'provider_state' => data_get($result, 'state', 'PROCESSING'),
+            'id' => $platformPostId,
+            'url' => $platformUrl,
+            'provider_state' => $state,
+            'derivative_path' => $derivativePath,
         ];
     }
 
@@ -73,6 +134,125 @@ class GoogleBusinessProfilePublisher
         }
 
         return $payload;
+    }
+
+    /** @return array{0: array<string, mixed>, 1: string|null} */
+    private function preparePayload(PostPlatform $postPlatform): array
+    {
+        $payload = $this->payload($postPlatform);
+
+        $derivativePath = null;
+        $media = $postPlatform->post->mediaItems->first();
+        if ($media?->isImage()) {
+            [$sourceUrl, $derivativePath] = $this->resolveImageDerivative($media, $postPlatform);
+            data_set($payload, 'media.0.sourceUrl', $sourceUrl);
+        }
+
+        return [$payload, $derivativePath];
+    }
+
+    /** @return array{0: string, 1: string} */
+    private function resolveImageDerivative(MediaItem $media, PostPlatform $postPlatform): array
+    {
+        $existingPath = PublishCheckpoint::googleBusinessProfileDerivativePath($postPlatform->error_context);
+        if ($this->derivativeCleaner->isManagedDerivativePath($existingPath)) {
+            try {
+                if (Storage::exists($existingPath)) {
+                    return [$this->absoluteStorageUrl($existingPath), $existingPath];
+                }
+            } catch (Throwable) {
+                throw new PlatformUnavailableException('Media storage temporarily failed while reusing the Google Business Profile image derivative.');
+            }
+        }
+
+        $input = tempnam(sys_get_temp_dir(), 'gbp_input_');
+        if ($input === false) {
+            throw new GoogleBusinessProfilePublishException(
+                userMessage: 'Failed to prepare image for Google Business Profile.',
+                category: ErrorCategory::ServerError,
+            );
+        }
+
+        $optimized = null;
+        $derivativePath = null;
+
+        try {
+            try {
+                $sourceExists = $media->path !== '' && Storage::exists($media->path);
+            } catch (Throwable) {
+                throw new PlatformUnavailableException('Media storage temporarily failed while preparing the Google Business Profile image.');
+            }
+
+            if (! $sourceExists) {
+                throw new GoogleBusinessProfilePublishException(
+                    userMessage: 'The image for this Google Business Profile post is no longer available.',
+                    category: ErrorCategory::ServerError,
+                );
+            }
+
+            $maxSourceBytes = (int) config('trypost.media.max_size_mb.image', 10) * 1024 * 1024;
+            try {
+                $sourceSize = Storage::size($media->path);
+                $source = Storage::get($media->path);
+            } catch (Throwable) {
+                throw new PlatformUnavailableException('Media storage temporarily failed while preparing the Google Business Profile image.');
+            }
+
+            if ($sourceSize <= 0 || $sourceSize > $maxSourceBytes) {
+                throw new GoogleBusinessProfilePublishException(
+                    userMessage: 'The image is too large for Google Business Profile.',
+                    category: ErrorCategory::MediaFormat,
+                );
+            }
+
+            if (strlen($source) !== $sourceSize || file_put_contents($input, $source) === false) {
+                throw new PlatformUnavailableException('Media storage temporarily failed while preparing the Google Business Profile image.');
+            }
+
+            $optimized = $this->mediaOptimizer->optimizeImage($input, Platform::GoogleBusinessProfile);
+            if (mime_content_type($optimized) !== 'image/jpeg') {
+                throw new GoogleBusinessProfilePublishException(
+                    userMessage: 'Failed to prepare image for Google Business Profile.',
+                    category: ErrorCategory::MediaFormat,
+                );
+            }
+
+            $derivativePath = GoogleBusinessProfileMediaDerivativeCleaner::DIRECTORY.'/'.Str::uuid()->toString().'.jpg';
+            try {
+                $stored = Storage::put($derivativePath, file_get_contents($optimized));
+            } catch (Throwable) {
+                throw new PlatformUnavailableException('Media storage temporarily failed while preparing the Google Business Profile image.');
+            }
+
+            if (! $stored) {
+                throw new PlatformUnavailableException('Media storage temporarily failed while preparing the Google Business Profile image.');
+            }
+
+            return [$this->absoluteStorageUrl($derivativePath), $derivativePath];
+        } catch (GoogleBusinessProfilePublishException|PlatformUnavailableException $e) {
+            $this->derivativeCleaner->cleanupPath($derivativePath, $postPlatform->id);
+
+            throw $e;
+        } catch (Throwable $e) {
+            $this->derivativeCleaner->cleanupPath($derivativePath, $postPlatform->id);
+
+            throw new GoogleBusinessProfilePublishException(
+                userMessage: 'Failed to prepare image for Google Business Profile.',
+                category: ErrorCategory::ServerError,
+            );
+        } finally {
+            @unlink($input);
+            if ($optimized !== null) {
+                @unlink($optimized);
+            }
+        }
+    }
+
+    private function absoluteStorageUrl(string $path): string
+    {
+        $storageUrl = Storage::url($path);
+
+        return Str::startsWith($storageUrl, ['http://', 'https://']) ? $storageUrl : url($storageUrl);
     }
 
     /** @param array<string, mixed> $meta

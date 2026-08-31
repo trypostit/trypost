@@ -179,15 +179,20 @@ class PostPlatform extends Model
         $this->socialAccount?->update(['last_used_at' => $now]);
     }
 
-    public function markAsSubmitted(string $platformPostId, ?string $platformUrl = null, Status $status = Status::Submitted): void
-    {
+    /** @param array<string, mixed>|null $errorContext */
+    public function markAsSubmitted(
+        string $platformPostId,
+        ?string $platformUrl = null,
+        Status $status = Status::Submitted,
+        ?array $errorContext = null,
+    ): void {
         $this->update([
             'status' => $status,
             'platform_post_id' => $platformPostId,
             'platform_url' => $platformUrl,
             'submitted_at' => now(),
             'error_message' => null,
-            'error_context' => null,
+            'error_context' => $errorContext === [] ? null : $errorContext,
         ]);
     }
 

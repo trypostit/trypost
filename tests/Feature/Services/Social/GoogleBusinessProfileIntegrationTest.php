@@ -9,6 +9,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\UserWorkspace\Role;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\GoogleBusinessProfilePublishException;
 use App\Exceptions\TokenExpiredException;
@@ -25,9 +26,12 @@ use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\GoogleBusinessProfile\GoogleBusinessProfileAnalytics;
 use App\Services\Social\GoogleBusinessProfile\GoogleBusinessProfilePublisher;
 use App\Support\PostPlatformMetaRules;
+use App\Support\Social\GoogleBusinessProfileMediaDerivativeCleaner;
+use App\Support\Social\PublishCheckpoint;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 beforeEach(function (): void {
@@ -217,13 +221,221 @@ test('saving location selection disables unpublished targets for deselected loca
         ->and($scheduledPost->fresh()->scheduled_at)->toBeNull();
 });
 
-test('local post media sends only the source URL accepted by Google', function (): void {
-    Http::fake(['*' => Http::response(['name' => 'accounts/123/locations/456/localPosts/media', 'state' => 'LIVE'])]);
+test('local post media converts WebP to a public Google compliant JPEG derivative', function (): void {
+    if (! function_exists('imagewebp')) {
+        $this->markTestSkipped('GD WebP support is required for this conversion test.');
+    }
+
+    Storage::fake('public');
+    config(['filesystems.default' => 'public']);
+
+    $image = imagecreatetruecolor(300, 300);
+    imagefill($image, 0, 0, imagecolorallocate($image, 87, 42, 170));
+    ob_start();
+    imagewebp($image, null, 90);
+    $webp = (string) ob_get_clean();
+    imagedestroy($image);
+    Storage::put('posts/image.webp', $webp);
+
+    Http::fake([
+        'https://mybusiness.googleapis.com/v4/accounts/123/locations/456/localPosts' => Http::response([
+            'name' => 'accounts/123/locations/456/localPosts/media',
+            'state' => 'PROCESSING',
+        ]),
+    ]);
     $this->post->update(['media' => [[
         'id' => 'image-1',
-        'path' => 'posts/image.jpg',
-        'url' => 'https://cdn.example.com/posts/image.jpg',
-        'mime_type' => 'image/jpeg',
+        'path' => 'posts/image.webp',
+        'url' => 'https://cdn.example.com/posts/image.webp',
+        'mime_type' => 'image/webp',
+    ]]]);
+    $postPlatform = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->account->id,
+        'google_business_profile_location_id' => $this->location->id,
+    ]);
+
+    $result = app(GoogleBusinessProfilePublisher::class)->publish($postPlatform);
+    $derivativePath = $result['derivative_path'];
+
+    Storage::assertExists($derivativePath);
+    expect($derivativePath)->toStartWith('social-google-business-profile-media/')
+        ->and($derivativePath)->toEndWith('.jpg')
+        ->and(getimagesizefromstring(Storage::get($derivativePath))['mime'])->toBe('image/jpeg')
+        ->and($postPlatform->fresh()->status)->toBe(Status::PendingReview)
+        ->and(data_get($postPlatform->fresh()->error_context, PublishCheckpoint::GOOGLE_BUSINESS_PROFILE_DERIVATIVE_PATH))->toBe($derivativePath);
+
+    Http::assertSent(fn ($request): bool => $request->url() === 'https://mybusiness.googleapis.com/v4/accounts/123/locations/456/localPosts'
+        && data_get($request->data(), 'media.0.mediaFormat') === 'PHOTO'
+        && str_ends_with((string) data_get($request->data(), 'media.0.sourceUrl'), $derivativePath)
+        && data_get($request->data(), 'media.0.sourceUrl') !== 'https://cdn.example.com/posts/image.webp');
+});
+
+test('retryable Google failures retain and reuse the same JPEG derivative', function (): void {
+    if (! function_exists('imagewebp')) {
+        $this->markTestSkipped('GD WebP support is required for this conversion test.');
+    }
+
+    Storage::fake('public');
+    config(['filesystems.default' => 'public']);
+
+    $image = imagecreatetruecolor(300, 300);
+    ob_start();
+    imagewebp($image, null, 90);
+    $webp = (string) ob_get_clean();
+    imagedestroy($image);
+    Storage::put('posts/image.webp', $webp);
+
+    Http::fake([
+        'https://mybusiness.googleapis.com/v4/accounts/123/locations/456/localPosts' => Http::sequence()
+            ->push(['error' => ['message' => 'Backend error', 'status' => 'INTERNAL']], 500)
+            ->push(['name' => 'accounts/123/locations/456/localPosts/retry', 'state' => 'PROCESSING']),
+    ]);
+    $this->post->update(['media' => [[
+        'id' => 'image-1',
+        'path' => 'posts/image.webp',
+        'url' => 'https://cdn.example.com/posts/image.webp',
+        'mime_type' => 'image/webp',
+    ]]]);
+    $postPlatform = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->account->id,
+        'google_business_profile_location_id' => $this->location->id,
+    ]);
+
+    $derivativePath = null;
+    try {
+        app(GoogleBusinessProfilePublisher::class)->publish($postPlatform);
+        $this->fail('Expected a retryable Google failure.');
+    } catch (PlatformUnavailableException $e) {
+        $derivativePath = PublishCheckpoint::googleBusinessProfileDerivativePath($e->context);
+        expect($derivativePath)->not->toBeNull()
+            ->and(data_get($e->context, 'google_error_status'))->toBe('INTERNAL')
+            ->and(data_get($e->context, 'raw_response'))->toContain('Backend error');
+        Storage::assertExists($derivativePath);
+        $postPlatform->update(['error_context' => $e->context]);
+    }
+
+    $result = app(GoogleBusinessProfilePublisher::class)->publish($postPlatform->fresh());
+
+    expect($result['derivative_path'])->toBe($derivativePath);
+    Http::assertSentCount(2);
+});
+
+test('payload inspection does not create a Google media derivative', function (): void {
+    Storage::fake('public');
+    config(['filesystems.default' => 'public']);
+    $this->post->update(['media' => [[
+        'id' => 'image-1',
+        'path' => 'posts/image.webp',
+        'url' => 'https://cdn.example.com/posts/image.webp',
+        'mime_type' => 'image/webp',
+    ]]]);
+    $postPlatform = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->account->id,
+        'google_business_profile_location_id' => $this->location->id,
+    ]);
+
+    $payload = app(GoogleBusinessProfilePublisher::class)->payload($postPlatform);
+
+    expect(data_get($payload, 'media.0.sourceUrl'))->toBe('https://cdn.example.com/posts/image.webp')
+        ->and(Storage::allFiles(GoogleBusinessProfileMediaDerivativeCleaner::DIRECTORY))->toBe([]);
+});
+
+test('temporary media storage failures use the retryable platform unavailable path', function (): void {
+    config(['filesystems.default' => 'public']);
+    Storage::shouldReceive('exists')->once()->with('posts/image.webp')->andReturnTrue();
+    Storage::shouldReceive('size')->once()->with('posts/image.webp')->andThrow(new RuntimeException('temporary storage outage'));
+    $this->post->update(['media' => [[
+        'id' => 'image-1',
+        'path' => 'posts/image.webp',
+        'url' => 'https://cdn.example.com/posts/image.webp',
+        'mime_type' => 'image/webp',
+    ]]]);
+    $postPlatform = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->account->id,
+        'google_business_profile_location_id' => $this->location->id,
+    ]);
+
+    expect(fn () => app(GoogleBusinessProfilePublisher::class)->publish($postPlatform))
+        ->toThrow(PlatformUnavailableException::class);
+    Http::assertNothingSent();
+});
+
+test('temporary retained derivative storage failures remain retryable', function (): void {
+    config(['filesystems.default' => 'public']);
+    $derivativePath = GoogleBusinessProfileMediaDerivativeCleaner::DIRECTORY.'/123e4567-e89b-12d3-a456-426614174000.jpg';
+    Storage::shouldReceive('exists')->once()->with($derivativePath)->andThrow(new RuntimeException('temporary storage outage'));
+    $this->post->update(['media' => [[
+        'id' => 'image-1',
+        'path' => 'posts/image.webp',
+        'url' => 'https://cdn.example.com/posts/image.webp',
+        'mime_type' => 'image/webp',
+    ]]]);
+    $postPlatform = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->account->id,
+        'google_business_profile_location_id' => $this->location->id,
+        'error_context' => [
+            'category' => 'platform_unavailable',
+            PublishCheckpoint::GOOGLE_BUSINESS_PROFILE_DERIVATIVE_PATH => $derivativePath,
+        ],
+    ]);
+
+    expect(fn () => app(GoogleBusinessProfilePublisher::class)->publish($postPlatform))
+        ->toThrow(PlatformUnavailableException::class);
+    Http::assertNothingSent();
+});
+
+test('automatic Google retry exhaustion removes the retained JPEG derivative', function (): void {
+    Queue::fake([SendNotification::class]);
+    Storage::fake('public');
+    config(['filesystems.default' => 'public']);
+
+    $derivativePath = GoogleBusinessProfileMediaDerivativeCleaner::DIRECTORY.'/123e4567-e89b-12d3-a456-426614174000.jpg';
+    Storage::put($derivativePath, 'retained JPEG derivative');
+
+    Http::fake([
+        'https://mybusiness.googleapis.com/v4/accounts/123/locations/456/localPosts' => Http::response([
+            'error' => ['message' => 'Backend error', 'status' => 'INTERNAL'],
+        ], 500),
+    ]);
+    $this->post->update(['media' => [[
+        'id' => 'image-1',
+        'path' => 'posts/image.webp',
+        'url' => 'https://cdn.example.com/posts/image.webp',
+        'mime_type' => 'image/webp',
+    ]]]);
+    $postPlatform = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->account->id,
+        'google_business_profile_location_id' => $this->location->id,
+        'error_context' => [
+            'category' => 'platform_unavailable',
+            'retry_count' => 1,
+            'max_retries' => 1,
+            PublishCheckpoint::GOOGLE_BUSINESS_PROFILE_DERIVATIVE_PATH => $derivativePath,
+        ],
+    ]);
+
+    (new PublishToSocialPlatform($postPlatform))->handle();
+
+    $postPlatform->refresh();
+    expect($postPlatform->status)->toBe(Status::Failed)
+        ->and(data_get($postPlatform->error_context, PublishCheckpoint::GOOGLE_BUSINESS_PROFILE_DERIVATIVE_PATH))->toBeNull()
+        ->and($postPlatform->error_context['retries_exhausted'] ?? null)->toBeTrue();
+    Storage::assertMissing($derivativePath);
+});
+
+test('local post video identifies the media format Google must fetch', function (): void {
+    Http::fake(['*' => Http::response(['name' => 'accounts/123/locations/456/localPosts/video', 'state' => 'LIVE'])]);
+    $this->post->update(['media' => [[
+        'id' => 'video-1',
+        'path' => 'posts/video.mp4',
+        'url' => 'https://cdn.example.com/posts/video.mp4',
+        'mime_type' => 'video/mp4',
     ]]]);
     $postPlatform = PostPlatform::factory()->googleBusinessProfile()->create([
         'post_id' => $this->post->id,
@@ -234,7 +446,8 @@ test('local post media sends only the source URL accepted by Google', function (
     app(GoogleBusinessProfilePublisher::class)->publish($postPlatform);
 
     Http::assertSent(fn ($request): bool => data_get($request->data(), 'media.0') === [
-        'sourceUrl' => 'https://cdn.example.com/posts/image.jpg',
+        'mediaFormat' => 'VIDEO',
+        'sourceUrl' => 'https://cdn.example.com/posts/video.mp4',
     ]);
 });
 
@@ -320,6 +533,11 @@ test('publisher refuses legacy alert authoring', function (): void {
 });
 
 test('reconciliation only marks a processing post published after Google reports it live', function (): void {
+    Storage::fake('public');
+    config(['filesystems.default' => 'public']);
+    $derivativePath = GoogleBusinessProfileMediaDerivativeCleaner::DIRECTORY.'/123e4567-e89b-12d3-a456-426614174000.jpg';
+    Storage::put($derivativePath, 'temporary image');
+
     Http::fake([
         'https://mybusiness.googleapis.com/v4/accounts/123/locations/456/localPosts/999' => Http::response([
             'name' => 'accounts/123/locations/456/localPosts/999',
@@ -335,6 +553,7 @@ test('reconciliation only marks a processing post published after Google reports
         'status' => Status::PendingReview,
         'platform_post_id' => 'accounts/123/locations/456/localPosts/999',
         'submitted_at' => now(),
+        'error_context' => [PublishCheckpoint::GOOGLE_BUSINESS_PROFILE_DERIVATIVE_PATH => $derivativePath],
     ]);
 
     app()->call([new ReconcileGoogleBusinessProfilePost($postPlatform), 'handle']);
@@ -342,9 +561,15 @@ test('reconciliation only marks a processing post published after Google reports
     expect($postPlatform->fresh()->status)->toBe(Status::Published)
         ->and($postPlatform->fresh()->platform_url)->toBe('https://posts.google.com/live')
         ->and($postPlatform->fresh()->last_reconciled_at)->not->toBeNull();
+    Storage::assertMissing($derivativePath);
 });
 
 test('reconciliation exhaustion marks the target failed without losing the Google post id', function (): void {
+    Storage::fake('public');
+    config(['filesystems.default' => 'public']);
+    $derivativePath = GoogleBusinessProfileMediaDerivativeCleaner::DIRECTORY.'/123e4567-e89b-12d3-a456-426614174000.jpg';
+    Storage::put($derivativePath, 'temporary image');
+
     $postPlatform = PostPlatform::factory()->googleBusinessProfile()->create([
         'post_id' => $this->post->id,
         'social_account_id' => $this->account->id,
@@ -352,6 +577,7 @@ test('reconciliation exhaustion marks the target failed without losing the Googl
         'status' => Status::PendingReview,
         'platform_post_id' => 'accounts/123/locations/456/localPosts/failed-reconcile',
         'submitted_at' => now(),
+        'error_context' => [PublishCheckpoint::GOOGLE_BUSINESS_PROFILE_DERIVATIVE_PATH => $derivativePath],
     ]);
 
     (new ReconcileGoogleBusinessProfilePost($postPlatform))->failed(null);
@@ -359,6 +585,7 @@ test('reconciliation exhaustion marks the target failed without losing the Googl
     expect($postPlatform->fresh()->status)->toBe(Status::Failed)
         ->and($postPlatform->fresh()->platform_post_id)->toBe('accounts/123/locations/456/localPosts/failed-reconcile')
         ->and($postPlatform->fresh()->last_reconciled_at)->not->toBeNull();
+    Storage::assertMissing($derivativePath);
 });
 
 test('reconciliation is unique per target and sends the standard failure notification for rejection', function (): void {
@@ -684,6 +911,58 @@ test('duplicating a legacy Google Business Profile alert creates an authorable s
             'cta_action_type' => 'LEARN_MORE',
             'cta_url' => 'https://example.com',
         ]);
+});
+
+test('duplicating and editing a scheduled Google post never mutates the source', function (): void {
+    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->user->update(['current_workspace_id' => $this->workspace->id]);
+    $scheduledAt = now()->addDay()->startOfSecond();
+    $this->post->update([
+        'status' => PostStatus::Scheduled,
+        'scheduled_at' => $scheduledAt,
+    ]);
+    $sourceTarget = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->account->id,
+        'google_business_profile_location_id' => $this->location->id,
+        'enabled' => true,
+        'meta' => ['cta_action_type' => 'LEARN_MORE', 'cta_url' => 'https://example.com/source'],
+    ]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.posts.duplicate', $this->post))
+        ->assertRedirect();
+
+    $duplicate = $this->workspace->posts()->whereKeyNot($this->post->id)->latest('created_at')->firstOrFail();
+    $duplicateTarget = $duplicate->postPlatforms()->sole();
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $duplicate), [
+            'status' => PostStatus::Draft->value,
+            'scheduled_at' => null,
+            'content' => 'Edited duplicate content',
+            'platforms' => [[
+                'id' => $duplicateTarget->id,
+                'content_type' => ContentType::GoogleBusinessProfileStandard->value,
+                'meta' => ['cta_url' => 'https://example.com/duplicate'],
+            ]],
+        ])
+        ->assertRedirect();
+
+    expect($duplicate->fresh())
+        ->status->toBe(PostStatus::Draft)
+        ->scheduled_at->toBeNull()
+        ->content->toBe('Edited duplicate content')
+        ->and($duplicateTarget->fresh())
+        ->id->not->toBe($sourceTarget->id)
+        ->google_business_profile_location_id->toBe($this->location->id)
+        ->meta->toMatchArray(['cta_url' => 'https://example.com/duplicate'])
+        ->and($this->post->fresh())
+        ->status->toBe(PostStatus::Scheduled)
+        ->scheduled_at->toEqual($scheduledAt)
+        ->content->toBe('A fresh update from Downtown Store.')
+        ->and($sourceTarget->fresh()->meta)
+        ->toMatchArray(['cta_url' => 'https://example.com/source']);
 });
 
 test('post metrics degrade cleanly when a historical target has no account or location', function (): void {

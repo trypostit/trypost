@@ -12,6 +12,8 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\Social\GoogleBusinessProfileMediaDerivativeCleaner;
+use App\Support\Social\PublishCheckpoint;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Bus;
@@ -185,6 +187,61 @@ test('it keeps an Instagram workflow checkpoint on retry', function () {
         ->and($failedInstagram->fresh()->error_context)->toBe([
             'instagram_workflow' => $workflow,
         ]);
+});
+
+test('it reuses a retained Google Business Profile derivative for a resumable failure', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Storage::fake();
+
+    $derivativePath = GoogleBusinessProfileMediaDerivativeCleaner::DIRECTORY.'/123e4567-e89b-12d3-a456-426614174000.jpg';
+    Storage::put($derivativePath, 'temporary image');
+    $failedGoogle = PostPlatform::factory()->googleBusinessProfile()->failed()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => SocialAccount::factory()->googleBusinessProfile()->create([
+            'workspace_id' => $this->workspace->id,
+        ]),
+        'error_context' => [
+            PublishCheckpoint::GOOGLE_BUSINESS_PROFILE_DERIVATIVE_PATH => $derivativePath,
+            'retry_count' => 6,
+            'category' => ErrorCategory::PlatformUnavailable->value,
+        ],
+    ]);
+
+    $this->artisan('posts:retry', ['post' => $this->post->id])
+        ->expectsConfirmation('Queue publish attempts for these failed platforms?', 'yes')
+        ->expectsOutputToContain('Resume')
+        ->assertSuccessful();
+
+    Storage::assertExists($derivativePath);
+    expect($failedGoogle->fresh()->error_context)->toBe([
+        PublishCheckpoint::GOOGLE_BUSINESS_PROFILE_DERIVATIVE_PATH => $derivativePath,
+    ]);
+});
+
+test('it prunes a Google Business Profile derivative for a nonresumable failure', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Storage::fake();
+
+    $derivativePath = GoogleBusinessProfileMediaDerivativeCleaner::DIRECTORY.'/123e4567-e89b-12d3-a456-426614174000.jpg';
+    Storage::put($derivativePath, 'temporary image');
+    $failedGoogle = PostPlatform::factory()->googleBusinessProfile()->failed()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => SocialAccount::factory()->googleBusinessProfile()->create([
+            'workspace_id' => $this->workspace->id,
+        ]),
+        'error_context' => [
+            PublishCheckpoint::GOOGLE_BUSINESS_PROFILE_DERIVATIVE_PATH => $derivativePath,
+            'category' => ErrorCategory::MediaFormat->value,
+        ],
+    ]);
+
+    $this->artisan('posts:retry', ['post' => $this->post->id])
+        ->expectsConfirmation('Queue publish attempts for these failed platforms?', 'yes')
+        ->expectsOutputToContain('New')
+        ->assertSuccessful();
+
+    Storage::assertMissing($derivativePath);
+    expect($failedGoogle->fresh()->error_context)->toBeNull();
 });
 
 test('it removes stale TikTok derivatives when there is no publish_id to resume', function () {

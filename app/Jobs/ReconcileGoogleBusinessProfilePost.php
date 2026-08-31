@@ -10,6 +10,8 @@ use App\Models\PostPlatform;
 use App\Services\Post\PostPublicationFinalizer;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\GoogleBusinessProfile\GoogleBusinessProfileApi;
+use App\Support\Social\GoogleBusinessProfileMediaDerivativeCleaner;
+use App\Support\Social\PublishCheckpoint;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -48,6 +50,7 @@ class ReconcileGoogleBusinessProfilePost implements ShouldBeUnique, ShouldQueue
         }
 
         $account = $this->postPlatform->socialAccount;
+        $derivativePath = PublishCheckpoint::googleBusinessProfileDerivativePath($this->postPlatform->error_context);
         if ($account->needsProactiveTokenRefresh()) {
             $verifier->refreshToken($account);
         }
@@ -55,22 +58,29 @@ class ReconcileGoogleBusinessProfilePost implements ShouldBeUnique, ShouldQueue
         $remote = $api->localPost($account, $this->postPlatform->platform_post_id);
         $state = (string) data_get($remote, 'state', 'PROCESSING');
 
-        match (true) {
-            in_array($state, ['LIVE', 'RECURRING'], true) => $this->postPlatform->markAsPublished(
+        if (in_array($state, ['LIVE', 'RECURRING'], true)) {
+            $this->postPlatform->markAsPublished(
                 $this->postPlatform->platform_post_id,
                 data_get($remote, 'searchUrl', $this->postPlatform->platform_url),
-            ),
-            $state === 'REJECTED' => $this->postPlatform->markAsRejected(
+            );
+            app(GoogleBusinessProfileMediaDerivativeCleaner::class)->cleanupPath($derivativePath, $this->postPlatform->id);
+        } elseif ($state === 'REJECTED') {
+            $this->postPlatform->markAsRejected(
                 'Google rejected this post during review.',
                 ['provider_state' => $state, 'remote' => $this->safeRemoteContext($remote)],
-            ),
-            default => $this->postPlatform->update([
+            );
+            app(GoogleBusinessProfileMediaDerivativeCleaner::class)->cleanupPath($derivativePath, $this->postPlatform->id);
+        } else {
+            $this->postPlatform->update([
                 'status' => $state === 'PROCESSING' ? Status::PendingReview : Status::Submitted,
                 'platform_url' => data_get($remote, 'searchUrl', $this->postPlatform->platform_url),
                 'last_reconciled_at' => now(),
-                'error_context' => ['provider_state' => $state],
-            ]),
-        };
+                'error_context' => array_filter([
+                    'provider_state' => $state,
+                    PublishCheckpoint::GOOGLE_BUSINESS_PROFILE_DERIVATIVE_PATH => $derivativePath,
+                ], fn (mixed $value): bool => $value !== null && $value !== ''),
+            ]);
+        }
 
         if (in_array($state, ['LIVE', 'RECURRING'], true)) {
             $this->postPlatform->update(['last_reconciled_at' => now()]);
@@ -88,6 +98,8 @@ class ReconcileGoogleBusinessProfilePost implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        $derivativePath = PublishCheckpoint::googleBusinessProfileDerivativePath($this->postPlatform->error_context);
+
         $this->postPlatform->update([
             'status' => Status::Failed,
             'error_message' => 'Google Business Profile post status could not be confirmed after several attempts.',
@@ -97,6 +109,8 @@ class ReconcileGoogleBusinessProfilePost implements ShouldBeUnique, ShouldQueue
             ],
             'last_reconciled_at' => now(),
         ]);
+
+        app(GoogleBusinessProfileMediaDerivativeCleaner::class)->cleanupPath($derivativePath, $this->postPlatform->id);
 
         app(PostPublicationFinalizer::class)->finalize($this->postPlatform);
         PostPlatformStatusUpdated::dispatch($this->postPlatform->fresh());

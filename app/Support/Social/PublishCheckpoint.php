@@ -17,6 +17,8 @@ final class PublishCheckpoint
 
     public const string INSTAGRAM_WORKFLOW = 'instagram_workflow';
 
+    public const string GOOGLE_BUSINESS_PROFILE_DERIVATIVE_PATH = 'google_business_profile_derivative_path';
+
     /**
      * @param  array<string, mixed>|null  $context
      */
@@ -47,5 +49,15 @@ final class PublishCheckpoint
         $workflow = data_get($context, self::INSTAGRAM_WORKFLOW);
 
         return is_array($workflow) && $workflow !== [] ? $workflow : null;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $context
+     */
+    public static function googleBusinessProfileDerivativePath(?array $context): ?string
+    {
+        $path = data_get($context, self::GOOGLE_BUSINESS_PROFILE_DERIVATIVE_PATH);
+
+        return is_string($path) && $path !== '' ? $path : null;
     }
 }

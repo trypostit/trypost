@@ -11,6 +11,7 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Jobs\PublishToSocialPlatform;
 use App\Models\Post;
 use App\Models\PostPlatform;
+use App\Support\Social\GoogleBusinessProfileMediaDerivativeCleaner;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Console\Command;
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class RetryFailedPost extends Command
 {
@@ -28,6 +30,7 @@ class RetryFailedPost extends Command
 
     public function __construct(
         private readonly TikTokPhotoDerivativeCleaner $tiktokPhotoDerivativeCleaner,
+        private readonly GoogleBusinessProfileMediaDerivativeCleaner $googleBusinessProfileMediaDerivativeCleaner,
     ) {
         parent::__construct();
     }
@@ -84,6 +87,11 @@ class RetryFailedPost extends Command
         foreach ($retryEntries as $entry) {
             if ($entry['platform'] === SocialPlatform::TikTok && PublishCheckpoint::tiktokPublishId($entry['error_context']) === null) {
                 $this->tiktokPhotoDerivativeCleaner->cleanup($entry['original_error_context'], $entry['id']);
+            }
+
+            if ($entry['platform'] === SocialPlatform::GoogleBusinessProfile
+                && PublishCheckpoint::googleBusinessProfileDerivativePath($entry['error_context']) === null) {
+                $this->googleBusinessProfileMediaDerivativeCleaner->cleanup($entry['original_error_context'], $entry['id']);
             }
 
             $postPlatform = PostPlatform::query()->findOrFail($entry['id']);
@@ -183,6 +191,7 @@ class RetryFailedPost extends Command
         $kept = [];
         $publishId = PublishCheckpoint::tiktokPublishId($context);
         $workflow = PublishCheckpoint::instagramWorkflow($context);
+        $googleDerivativePath = PublishCheckpoint::googleBusinessProfileDerivativePath($context);
 
         if ($publishId !== null) {
             $kept[PublishCheckpoint::TIKTOK_PUBLISH_ID] = $publishId;
@@ -195,6 +204,11 @@ class RetryFailedPost extends Command
 
         if ($workflow !== null) {
             $kept[PublishCheckpoint::INSTAGRAM_WORKFLOW] = $workflow;
+        }
+
+        if ($this->googleBusinessProfileMediaDerivativeCleaner->isManagedDerivativePath($googleDerivativePath)
+            && Storage::exists($googleDerivativePath)) {
+            $kept[PublishCheckpoint::GOOGLE_BUSINESS_PROFILE_DERIVATIVE_PATH] = $googleDerivativePath;
         }
 
         return $kept === [] ? null : $kept;
