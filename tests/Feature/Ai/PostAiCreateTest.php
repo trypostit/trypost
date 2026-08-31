@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Jobs\Ai\StreamPostCreation;
+use App\Models\GoogleBusinessProfileLocation;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -198,6 +199,157 @@ test('start dispatches StreamPostCreation using the client-supplied creation id'
     });
 });
 
+test('start dispatches the selected Google Business Profile location', function () {
+    Bus::fake();
+
+    $account = SocialAccount::factory()->googleBusinessProfile()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+    $location = GoogleBusinessProfileLocation::factory()->create([
+        'social_account_id' => $account->id,
+        'is_selected' => true,
+    ]);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.create'), [
+            'prompt' => 'Write a local business update',
+            'format' => 'google_business_profile_standard',
+            'social_account_id' => $account->id,
+            'google_business_profile_location_id' => $location->id,
+            'creation_id' => Str::uuid()->toString(),
+        ])
+        ->assertAccepted();
+
+    Bus::assertDispatched(
+        StreamPostCreation::class,
+        fn ($job) => $job->socialAccountId === $account->id
+            && $job->googleBusinessProfileLocationId === $location->id,
+    );
+});
+
+test('start requires a selected Google Business Profile location for the Google format', function () {
+    Bus::fake();
+
+    $account = SocialAccount::factory()->googleBusinessProfile()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.create'), [
+            'prompt' => 'Write a local business update',
+            'format' => 'google_business_profile_standard',
+            'social_account_id' => $account->id,
+            'creation_id' => Str::uuid()->toString(),
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['google_business_profile_location_id']);
+
+    Bus::assertNotDispatched(StreamPostCreation::class);
+});
+
+test('start returns validation errors for malformed Google Business Profile ids', function () {
+    Bus::fake();
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.create'), [
+            'prompt' => 'Write a local business update',
+            'format' => 'google_business_profile_standard',
+            'social_account_id' => 'not-a-uuid',
+            'google_business_profile_location_id' => 'also-not-a-uuid',
+            'creation_id' => Str::uuid()->toString(),
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'social_account_id',
+            'google_business_profile_location_id',
+        ]);
+
+    Bus::assertNotDispatched(StreamPostCreation::class);
+});
+
+test('start rejects a Google Business Profile location on an inactive connection', function () {
+    Bus::fake();
+
+    $account = SocialAccount::factory()->googleBusinessProfile()->create([
+        'workspace_id' => $this->workspace->id,
+        'is_active' => false,
+    ]);
+    $location = GoogleBusinessProfileLocation::factory()->create([
+        'social_account_id' => $account->id,
+        'is_selected' => true,
+    ]);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.create'), [
+            'prompt' => 'Write a local business update',
+            'format' => 'google_business_profile_standard',
+            'social_account_id' => $account->id,
+            'google_business_profile_location_id' => $location->id,
+            'creation_id' => Str::uuid()->toString(),
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['google_business_profile_location_id']);
+
+    Bus::assertNotDispatched(StreamPostCreation::class);
+});
+
+test('start rejects a deselected or unrelated Google Business Profile location', function (bool $selected, bool $sameAccount) {
+    Bus::fake();
+
+    $account = SocialAccount::factory()->googleBusinessProfile()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+    $locationAccount = $sameAccount
+        ? $account
+        : SocialAccount::factory()->googleBusinessProfile()->create([
+            'workspace_id' => $this->workspace->id,
+        ]);
+    $location = GoogleBusinessProfileLocation::factory()->create([
+        'social_account_id' => $locationAccount->id,
+        'is_selected' => $selected,
+    ]);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.create'), [
+            'prompt' => 'Write a local business update',
+            'format' => 'google_business_profile_standard',
+            'social_account_id' => $account->id,
+            'google_business_profile_location_id' => $location->id,
+            'creation_id' => Str::uuid()->toString(),
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['google_business_profile_location_id']);
+
+    Bus::assertNotDispatched(StreamPostCreation::class);
+})->with([
+    'deselected location' => [false, true],
+    'location from another connection' => [true, false],
+]);
+
+test('start rejects a Google Business Profile location for another format', function () {
+    Bus::fake();
+
+    $account = SocialAccount::factory()->googleBusinessProfile()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+    $location = GoogleBusinessProfileLocation::factory()->create([
+        'social_account_id' => $account->id,
+        'is_selected' => true,
+    ]);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.create'), [
+            'prompt' => 'Write a post',
+            'format' => 'x_post',
+            'google_business_profile_location_id' => $location->id,
+            'creation_id' => Str::uuid()->toString(),
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['google_business_profile_location_id']);
+
+    Bus::assertNotDispatched(StreamPostCreation::class);
+});
+
 test('start does not dispatch StreamPostCreation twice for the same creation_id', function () {
     Bus::fake();
 
@@ -325,7 +477,7 @@ test('loading page renders the Inertia component with channel and query context'
     $creationId = '019e0532-7b74-7369-b238-a5f2a93d12b7';
 
     $this->actingAs($this->user)
-        ->get(route('app.posts.ai.loading', $creationId).'?images=5&format=instagram_carousel&prompt=Hello&template=tweet_card&apply_brand_visuals=0')
+        ->get(route('app.posts.ai.loading', $creationId).'?images=5&format=instagram_carousel&prompt=Hello&template=tweet_card&apply_brand_visuals=0&google_business_profile_location_id=019e0532-7b74-7369-b238-a5f2a93d12b8')
         ->assertInertia(fn ($page) => $page
             ->component('posts/ai/Loading')
             ->where('creationId', $creationId)
@@ -333,6 +485,7 @@ test('loading page renders the Inertia component with channel and query context'
             ->where('imageCount', 5)
             ->where('format', 'instagram_carousel')
             ->where('prompt', 'Hello')
+            ->where('googleBusinessProfileLocationId', '019e0532-7b74-7369-b238-a5f2a93d12b8')
             ->where('template', 'tweet_card')
             ->where('applyBrandVisuals', false)
         );
@@ -347,6 +500,7 @@ test('loading page defaults template and applyBrandVisuals when omitted', functi
             ->where('template', 'image_card')
             ->where('applyBrandVisuals', true)
             ->where('socialAccountId', null)
+            ->where('googleBusinessProfileLocationId', null)
             ->where('date', null)
         );
 });

@@ -16,6 +16,7 @@ use App\Enums\Notification\Channel as NotificationChannel;
 use App\Enums\Notification\Type as NotificationType;
 use App\Enums\Post\CreatedVia;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Platform;
 use App\Events\Ai\PostCreationReady;
 use App\Jobs\SendNotification;
 use App\Models\Post;
@@ -48,6 +49,7 @@ class StreamPostCreation implements ShouldBeUnique, ShouldQueue
         public ?string $date = null,
         public string $template = 'image_card',
         public bool $applyBrandVisuals = true,
+        public ?string $googleBusinessProfileLocationId = null,
     ) {
         $this->onQueue('ai');
     }
@@ -200,31 +202,35 @@ class StreamPostCreation implements ShouldBeUnique, ShouldQueue
     {
         $user = User::findOrFail($this->userId);
 
-        $post = CreatePost::execute($workspace, $user, [
+        $platforms = [];
+
+        if ($generated->contentType && $socialAccount) {
+            $contentType = $socialAccount->platform === Platform::GoogleBusinessProfile
+                ? ContentType::GoogleBusinessProfileStandard
+                : $generated->contentType;
+            $aspectRatio = $this->aspectRatioFor($contentType);
+            $platform = [
+                'social_account_id' => $socialAccount->id,
+                'content_type' => $contentType->value,
+                'meta' => array_filter([
+                    'aspect_ratio' => $aspectRatio,
+                ], fn (mixed $value): bool => $value !== null),
+            ];
+
+            if ($socialAccount->platform === Platform::GoogleBusinessProfile) {
+                $platform['google_business_profile_location_id'] = $this->googleBusinessProfileLocationId;
+            }
+
+            $platforms[] = $platform;
+        }
+
+        return CreatePost::execute($workspace, $user, [
             'content' => $generated->content,
             'media' => $generated->media,
             'date' => $this->date,
             'created_via' => CreatedVia::Web,
+            'platforms' => $platforms,
         ]);
-
-        if ($generated->contentType && $socialAccount) {
-            $aspectRatio = $this->aspectRatioFor($generated->contentType);
-
-            $post->postPlatforms()
-                ->where('social_account_id', $socialAccount->id)
-                ->each(function ($platform) use ($aspectRatio, $generated): void {
-                    $meta = $platform->meta ?? [];
-                    if ($aspectRatio !== null) {
-                        $meta['aspect_ratio'] = $aspectRatio;
-                    }
-                    $platform->meta = $meta;
-                    $platform->content_type = $generated->contentType->value;
-                    $platform->enabled = true;
-                    $platform->save();
-                });
-        }
-
-        return $post;
     }
 
     private function notifyReady(Workspace $workspace, Post $post): void

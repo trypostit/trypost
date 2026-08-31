@@ -18,6 +18,19 @@ import { loading as loadingRoute } from '@/routes/app/posts/ai';
 import type { AiTemplate } from '@/types';
 import { ContentType, type ContentTypeValue } from '@/types/content-type';
 
+interface GoogleBusinessProfileLocation {
+    id: string;
+    title: string;
+    store_code: string | null;
+    storefront_address: {
+        addressLines?: string[];
+        locality?: string;
+        administrativeArea?: string;
+    } | null;
+    maps_uri: string | null;
+    is_verified: boolean;
+}
+
 interface SocialAccount {
     id: string;
     platform: string;
@@ -25,6 +38,7 @@ interface SocialAccount {
     username: string;
     display_label: string;
     avatar_url: string | null;
+    google_business_profile_locations?: GoogleBusinessProfileLocation[];
 }
 
 interface Props {
@@ -52,6 +66,7 @@ type AiFormat = ContentTypeValue | typeof CAROUSEL_FORMAT;
 const selectedFormat = ref<AiFormat | null>(null);
 const selectedStyle = ref<string>('image_card');
 const selectedAccountId = ref<string | null>(null);
+const selectedGoogleBusinessProfileLocationId = ref<string | null>(null);
 const includeImages = ref(true);
 const imageCount = ref(2);
 const promptText = ref('');
@@ -134,6 +149,23 @@ const maxOptionalImages = computed(() =>
     selectedFormat.value === ContentType.InstagramFeed ? 1 : 4,
 );
 const showsAccountPicker = computed(() => accountsForFormat.value.length > 1);
+const isGoogleBusinessProfileFormat = computed(
+    () => selectedFormat.value === ContentType.GoogleBusinessProfileStandard,
+);
+const selectedAccount = computed(
+    () => props.socialAccounts.find((account) => account.id === selectedAccountId.value) ?? null,
+);
+const googleBusinessProfileLocations = computed(
+    () => selectedAccount.value?.google_business_profile_locations ?? [],
+);
+const googleBusinessProfileAddress = (location: GoogleBusinessProfileLocation): string =>
+    [
+        location.storefront_address?.addressLines?.join(', '),
+        location.storefront_address?.locality,
+        location.storefront_address?.administrativeArea,
+    ]
+        .filter(Boolean)
+        .join(', ');
 
 const templateNeedsAccount = computed(() => resolvedTemplateRecord.value?.needs_account ?? false);
 
@@ -149,6 +181,7 @@ const promptLength = computed(() => [...promptText.value.trim()].length);
 const canSubmit = computed(() =>
     selectedFormat.value !== null &&
     selectedAccountId.value !== null &&
+    (!isGoogleBusinessProfileFormat.value || selectedGoogleBusinessProfileLocationId.value !== null) &&
     promptLength.value >= PROMPT_MIN &&
     promptLength.value <= PROMPT_MAX,
 );
@@ -161,6 +194,16 @@ watch(accountsForFormat, (accounts) => {
         selectedAccountId.value = null;
     } else if (accounts.length > 1 && !accounts.some((a) => a.id === selectedAccountId.value)) {
         selectedAccountId.value = null;
+    }
+});
+
+watch(googleBusinessProfileLocations, (locations) => {
+    if (!isGoogleBusinessProfileFormat.value || locations.length === 0) {
+        selectedGoogleBusinessProfileLocationId.value = null;
+    } else if (locations.length === 1) {
+        selectedGoogleBusinessProfileLocationId.value = locations[0].id;
+    } else if (!locations.some((location) => location.id === selectedGoogleBusinessProfileLocationId.value)) {
+        selectedGoogleBusinessProfileLocationId.value = null;
     }
 });
 
@@ -200,6 +243,7 @@ const startGeneration = () => {
                     format: selectedFormat.value ?? '',
                     prompt: promptText.value.trim(),
                     social_account_id: selectedAccountId.value ?? '',
+                    google_business_profile_location_id: selectedGoogleBusinessProfileLocationId.value ?? '',
                     date: props.date ?? '',
                     template: resolvedTemplate.value,
                     apply_brand_visuals: useBrandColors.value ? '1' : '0',
@@ -295,6 +339,35 @@ const startGeneration = () => {
             </div>
         </div>
 
+        <!-- Google Business Profile location -->
+        <div v-if="isGoogleBusinessProfileFormat && selectedAccountId" class="space-y-2">
+            <Label class="text-sm font-bold">{{ $t('accounts.google_business_profile.title') }}</Label>
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button
+                    v-for="location in googleBusinessProfileLocations"
+                    :key="location.id"
+                    type="button"
+                    class="relative flex cursor-pointer items-center gap-2 rounded-xl border-2 border-foreground bg-card p-3 text-left text-sm shadow-2xs transition-all hover:bg-foreground/5"
+                    :class="{ '!bg-violet-100 shadow-md': selectedGoogleBusinessProfileLocationId === location.id }"
+                    :aria-pressed="selectedGoogleBusinessProfileLocationId === location.id"
+                    :data-testid="`gbp-location-${location.id}`"
+                    @click="selectedGoogleBusinessProfileLocationId = location.id"
+                >
+                    <div class="min-w-0 flex-1">
+                        <p class="truncate text-sm font-bold text-foreground">{{ location.title }}</p>
+                        <p v-if="googleBusinessProfileAddress(location)" class="truncate text-xs text-foreground/60">
+                            {{ googleBusinessProfileAddress(location) }}
+                        </p>
+                    </div>
+                    <IconCheck
+                        v-if="selectedGoogleBusinessProfileLocationId === location.id"
+                        class="absolute right-2 top-2 size-3.5 text-foreground"
+                        stroke-width="3"
+                    />
+                </button>
+            </div>
+        </div>
+
         <!-- Media — inline, only when format actually has options -->
         <div v-if="selectedFormat && isCarousel" class="space-y-2">
             <Label class="text-sm font-bold">{{ $t('posts.create.steps.media_carousel') }}</Label>
@@ -353,6 +426,7 @@ const startGeneration = () => {
             <Label for="ai-prompt" class="text-sm font-bold">{{ $t('posts.create.steps.prompt_label') }}</Label>
             <Textarea
                 id="ai-prompt"
+                data-testid="ai-prompt"
                 v-model="promptText"
                 :placeholder="$t('posts.create.steps.prompt_placeholder')"
                 class="min-h-[140px] resize-none"
@@ -369,7 +443,7 @@ const startGeneration = () => {
 
         <!-- Generate -->
         <div v-if="selectedFormat" class="flex justify-end pt-1">
-            <Button :disabled="!canSubmit || submitting" @click="startGeneration">
+            <Button data-testid="ai-generate-button" :disabled="!canSubmit || submitting" @click="startGeneration">
                 {{ $t('posts.ai.generate.start') }}
             </Button>
         </div>

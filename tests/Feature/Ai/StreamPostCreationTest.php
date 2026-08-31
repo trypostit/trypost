@@ -8,6 +8,7 @@ use App\Enums\Post\CreatedVia;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\UserWorkspace\Role;
 use App\Jobs\Ai\StreamPostCreation;
+use App\Models\GoogleBusinessProfileLocation;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -88,6 +89,52 @@ test('AI single feed generation stores the post as an instagram feed', function 
     $platform = PostPlatform::where('social_account_id', $this->account->id)->firstOrFail();
 
     expect($platform->content_type)->toBe(ContentType::InstagramFeed);
+});
+
+test('Google Business Profile generation enables only the selected business location', function () {
+    PostContentGenerator::fake([[
+        'content' => 'A local business update',
+        'image_title' => 'Update',
+        'image_body' => 'Local news',
+        'image_keywords' => [],
+    ]]);
+    PostContentHumanizer::fake([[
+        'content' => 'A local business update',
+        'image_title' => 'Update',
+        'image_body' => 'Local news',
+    ]]);
+
+    $account = SocialAccount::factory()->googleBusinessProfile()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+    $selectedLocation = GoogleBusinessProfileLocation::factory()->create([
+        'social_account_id' => $account->id,
+        'title' => 'Coastal Comfort Electric',
+        'is_selected' => true,
+    ]);
+    $otherLocation = GoogleBusinessProfileLocation::factory()->create([
+        'social_account_id' => $account->id,
+        'title' => 'qFido LLC',
+        'is_selected' => true,
+    ]);
+
+    (new StreamPostCreation(
+        userId: $this->user->id,
+        creationId: (string) Str::uuid(),
+        workspaceId: $this->workspace->id,
+        format: ContentType::GoogleBusinessProfileStandard->value,
+        socialAccountId: $account->id,
+        imageCount: 0,
+        prompt: 'Write a local business update',
+        googleBusinessProfileLocationId: $selectedLocation->id,
+    ))->handle();
+
+    $selectedTarget = PostPlatform::where('google_business_profile_location_id', $selectedLocation->id)->firstOrFail();
+    $otherTarget = PostPlatform::where('google_business_profile_location_id', $otherLocation->id)->firstOrFail();
+
+    expect($selectedTarget->enabled)->toBeTrue()
+        ->and($selectedTarget->content_type)->toBe(ContentType::GoogleBusinessProfileStandard)
+        ->and($otherTarget->enabled)->toBeFalse();
 });
 
 test('tweet_card template stores the tweet_text as post content and attaches a media item', function () {

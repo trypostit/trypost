@@ -32,6 +32,7 @@ class PostAiCreateController extends Controller
         if ($socialAccountId) {
             $owned = SocialAccount::where('id', $socialAccountId)
                 ->where('workspace_id', $workspace->id)
+                ->where('is_active', true)
                 ->exists();
 
             if (! $owned) {
@@ -47,6 +48,7 @@ class PostAiCreateController extends Controller
             workspaceId: $workspace->id,
             format: $request->string('format')->toString(),
             socialAccountId: $socialAccountId,
+            googleBusinessProfileLocationId: $request->input('google_business_profile_location_id'),
             imageCount: (int) $request->input('image_count', 0),
             prompt: $request->string('prompt')->toString(),
             date: $request->input('date'),
@@ -69,6 +71,7 @@ class PostAiCreateController extends Controller
             'format' => (string) $request->query('format', ''),
             'prompt' => (string) $request->query('prompt', ''),
             'socialAccountId' => $request->query('social_account_id') ?: null,
+            'googleBusinessProfileLocationId' => $request->query('google_business_profile_location_id') ?: null,
             'date' => $request->query('date') ?: null,
             'template' => (string) $request->query('template', 'image_card'),
             'applyBrandVisuals' => $request->boolean('apply_brand_visuals', true),

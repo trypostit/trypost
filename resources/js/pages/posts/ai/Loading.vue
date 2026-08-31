@@ -21,6 +21,7 @@ const props = defineProps<{
     format: string;
     prompt: string;
     socialAccountId: string | null;
+    googleBusinessProfileLocationId: string | null;
     date: string | null;
     template: string;
     applyBrandVisuals: boolean;
@@ -85,6 +86,7 @@ const httpStart = useHttp<{
     creation_id: string;
     format: string;
     social_account_id: string | null;
+    google_business_profile_location_id: string | null;
     image_count: number;
     prompt: string;
     date: string | null;
@@ -94,6 +96,7 @@ const httpStart = useHttp<{
     creation_id: props.creationId,
     format: props.format,
     social_account_id: props.socialAccountId,
+    google_business_profile_location_id: props.googleBusinessProfileLocationId,
     image_count: props.imageCount,
     prompt: props.prompt,
     date: props.date,
@@ -139,7 +142,10 @@ const startGeneration = async () => {
         if (httpStart.hasErrors) {
             unsubscribe();
             status.value = 'error';
-            errorMessage.value = httpStart.errors.social_account_id ?? Object.values(httpStart.errors)[0] ?? trans('posts.create.steps.preview_error');
+            errorMessage.value = httpStart.errors.google_business_profile_location_id
+                ?? httpStart.errors.social_account_id
+                ?? Object.values(httpStart.errors)[0]
+                ?? trans('posts.create.steps.preview_error');
         }
     } catch (error: unknown) {
         unsubscribe();
