@@ -13,6 +13,7 @@ use App\Models\AutomationNodeRun;
 use App\Models\AutomationNodeState;
 use App\Models\AutomationRun;
 use App\Models\AutomationTriggerItem;
+use App\Models\GoogleBusinessProfileLocation;
 use App\Models\Invite;
 use App\Models\Media;
 use App\Models\Notification;
@@ -103,6 +104,7 @@ class AppServiceProvider extends ServiceProvider
             'automationNodeState' => AutomationNodeState::class,
             'automationRun' => AutomationRun::class,
             'automationTriggerItem' => AutomationTriggerItem::class,
+            'googleBusinessProfileLocation' => GoogleBusinessProfileLocation::class,
             'invite' => Invite::class,
             'media' => Media::class,
             'notification' => Notification::class,
