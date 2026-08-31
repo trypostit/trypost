@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social\GoogleBusinessProfile;
 
+use App\Exceptions\Social\GoogleBusinessProfilePublishException;
 use App\Models\GoogleBusinessProfileLocation;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -101,7 +102,7 @@ class GoogleBusinessProfileAnalytics
         ];
     }
 
-    /** @return array<int, array{label: string, value: int}> */
+    /** @return array<int, array{label: string, value: int}>|array{unsupported: true, reason: string} */
     public function fetchPostMetrics(PostPlatform $postPlatform): array
     {
         $account = $postPlatform->socialAccount;
@@ -112,10 +113,18 @@ class GoogleBusinessProfileAnalytics
 
         $this->refreshTokenIfNeeded($account);
 
-        $response = $this->api->localPostInsights(
-            $location,
-            $postPlatform->platform_post_id,
-        );
+        try {
+            $response = $this->api->localPostInsights(
+                $location,
+                $postPlatform->platform_post_id,
+            );
+        } catch (GoogleBusinessProfilePublishException $exception) {
+            if ($this->isLocalPostInsightsCapabilityUnavailable($exception)) {
+                return ['unsupported' => true, 'reason' => 'provider_capability_unavailable'];
+            }
+
+            throw $exception;
+        }
         $metricValues = (array) data_get($response, 'localPostMetrics.0.metricValues', []);
         $metrics = collect($metricValues)->mapWithKeys(fn (array $metric): array => [
             data_get($metric, 'metric') => (int) data_get($metric, 'totalValue.value', 0),
@@ -125,6 +134,18 @@ class GoogleBusinessProfileAnalytics
             ['label' => 'Views in Google Search', 'value' => (int) $metrics->get('LOCAL_POST_VIEWS_SEARCH', 0)],
             ['label' => 'Call-to-action clicks', 'value' => (int) $metrics->get('LOCAL_POST_ACTIONS_CALL_TO_ACTION', 0)],
         ];
+    }
+
+    private function isLocalPostInsightsCapabilityUnavailable(
+        GoogleBusinessProfilePublishException $exception,
+    ): bool {
+        $errorCode = strtolower((string) $exception->platformErrorCode);
+        $response = strtolower($exception->userMessage.' '.($exception->rawResponse ?? ''));
+
+        return in_array($errorCode, ['404', 'not_found'], true)
+            && str_contains($response, 'localposts:reportinsights')
+            && str_contains($response, 'requested url')
+            && str_contains($response, 'was not found');
     }
 
     private function refreshTokenIfNeeded(SocialAccount $account): void

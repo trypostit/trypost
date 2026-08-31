@@ -1077,6 +1077,63 @@ test('post metrics degrade cleanly when a historical target has no account or lo
     ]);
 });
 
+test('post metrics treat the unavailable legacy Google insights endpoint as unsupported', function (): void {
+    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->user->update(['current_workspace_id' => $this->workspace->id]);
+
+    $postPlatform = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->account->id,
+        'google_business_profile_location_id' => $this->location->id,
+        'platform_post_id' => 'accounts/123/locations/456/localPosts/789',
+        'status' => Status::Published,
+    ]);
+
+    Http::fake([
+        'https://mybusiness.googleapis.com/v4/accounts/123/locations/456/localPosts:reportInsights' => Http::response([
+            'error' => [
+                'code' => 404,
+                'message' => 'requested URL /v4/accounts/123/locations/456/localPosts:reportInsights was not found',
+                'status' => 'NOT_FOUND',
+            ],
+        ], 404),
+    ]);
+
+    $this->actingAs($this->user)
+        ->getJson(route('app.posts.platforms.metrics', [
+            'post' => $this->post->id,
+            'postPlatform' => $postPlatform->id,
+        ]))
+        ->assertOk()
+        ->assertExactJson([
+            'unsupported' => true,
+            'reason' => 'provider_capability_unavailable',
+        ]);
+});
+
+test('post metrics still surface unrelated Google not found responses', function (): void {
+    $postPlatform = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->account->id,
+        'google_business_profile_location_id' => $this->location->id,
+        'platform_post_id' => 'accounts/123/locations/456/localPosts/789',
+        'status' => Status::Published,
+    ]);
+
+    Http::fake([
+        'https://mybusiness.googleapis.com/v4/accounts/123/locations/456/localPosts:reportInsights' => Http::response([
+            'error' => [
+                'code' => 404,
+                'message' => 'Requested entity was not found.',
+                'status' => 'NOT_FOUND',
+            ],
+        ], 404),
+    ]);
+
+    expect(fn (): array => app(GoogleBusinessProfileAnalytics::class)->fetchPostMetrics($postPlatform))
+        ->toThrow(GoogleBusinessProfilePublishException::class);
+});
+
 test('effective stored Google metadata is validated when scheduling without platform overrides', function (): void {
     PostPlatform::factory()->googleBusinessProfile()->create([
         'post_id' => $this->post->id,
