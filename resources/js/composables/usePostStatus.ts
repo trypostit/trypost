@@ -34,9 +34,34 @@ const CONFIGS: Record<string, Pick<StatusConfig, 'variant' | 'icon'>> = {
     rejected: { variant: 'destructive', icon: IconAlertCircle },
 };
 
+const STATUS_FALLBACKS: Record<string, string> = {
+    pending: 'Pending',
+    draft: 'Draft',
+    scheduled: 'Scheduled',
+    publishing: 'Publishing',
+    retrying: 'Retrying',
+    submitted: 'Submitted to Google',
+    pending_review: 'Pending Google review',
+    published: 'Published',
+    partially_published: 'Partially published',
+    failed: 'Failed',
+    rejected: 'Rejected',
+};
+
+const translatedStatus = (key: string, fallback: string): string => {
+    const label = trans(key);
+
+    return label === key ? fallback : label;
+};
+
 export const getPostStatusConfig = (status: string): StatusConfig => {
     const config = CONFIGS[status] ?? CONFIGS.draft;
-    return { ...config, label: trans(`posts.status.${status}`) };
+    const fallback = STATUS_FALLBACKS[status] ?? STATUS_FALLBACKS.draft;
+
+    return {
+        ...config,
+        label: translatedStatus(`posts.status.${status}`, fallback),
+    };
 };
 
 export const getPlatformStatusConfig = (status: string): StatusConfig => {
@@ -52,5 +77,10 @@ export const getPlatformStatusConfig = (status: string): StatusConfig => {
     };
     const key = map[status] ?? 'draft';
     const config = CONFIGS[key];
-    return { ...config, label: trans(`posts.edit.status.${status}`) };
+    const fallback = STATUS_FALLBACKS[status] ?? STATUS_FALLBACKS.draft;
+
+    return {
+        ...config,
+        label: translatedStatus(`posts.edit.status.${status}`, fallback),
+    };
 };

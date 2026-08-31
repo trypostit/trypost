@@ -212,8 +212,11 @@ return [
         'scheduled' => '已排期',
         'publishing' => '发布中',
         'retrying' => '重试中',
+        'submitted' => '已提交至 Google',
+        'pending_review' => '等待 Google 审核',
         'published' => '已发布',
         'partially_published' => '部分发布',
+        'rejected' => '已拒绝',
         'failed' => '已失败',
     ],
 

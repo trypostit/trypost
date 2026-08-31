@@ -42,6 +42,7 @@ import {
 } from '@/lib/mediaType';
 import { index as postsIndex } from '@/routes/app/posts';
 import type { MediaItem } from '@/types/media';
+import type { PostPlatformStatusValue } from '@/types/post';
 import { PostPlatformStatus, PostStatus } from '@/types/post';
 
 interface SocialAccount {
@@ -59,7 +60,7 @@ interface PostPlatform {
     display_username: string | null;
     display_avatar: string | null;
     content_type: string | null;
-    status: 'pending' | 'publishing' | 'published' | 'failed';
+    status: PostPlatformStatusValue;
     platform_url: string | null;
     error_message: string | null;
     published_at: string | null;
@@ -101,9 +102,11 @@ const postStatus = computed(() => getPostStatusConfig(props.post.status));
 const pageTitle = computed(() => {
     const snippet =
         props.post.content?.trim().split('\n')[0]?.slice(0, 60) ?? '';
+    const title = translated('posts.show.title', 'Post');
+
     return snippet
-        ? `${trans('posts.show.title')} · ${snippet}${props.post.content.length > 60 ? '…' : ''}`
-        : trans('posts.show.title');
+        ? `${title} · ${snippet}${props.post.content.length > 60 ? '…' : ''}`
+        : title;
 });
 
 const getDisplayName = (pp: PostPlatform): string =>
@@ -116,6 +119,16 @@ const getDisplayAvatar = (pp: PostPlatform): string | null => pp.display_avatar;
 
 const formatDateTime = (value: string | null): string =>
     value ? date.formatDateTime(value) : '';
+
+const translated = (
+    key: string,
+    fallback: string,
+    replacements: Record<string, string> = {},
+): string => {
+    const value = trans(key, replacements);
+
+    return value === key ? fallback : value;
+};
 
 const lightbox = ref<InstanceType<typeof ImagePreviewDialog> | null>(null);
 
@@ -153,10 +166,20 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
                 class="text-2xl leading-tight font-semibold text-foreground"
                 style="font-family: var(--font-display)"
             >
-                {{ $t('posts.edit.publishing_overlay_title') }}
+                {{
+                    translated(
+                        'posts.edit.publishing_overlay_title',
+                        'Publishing your post…',
+                    )
+                }}
             </p>
             <p class="max-w-md text-center text-sm text-foreground/70">
-                {{ $t('posts.edit.publishing_overlay_subtitle') }}
+                {{
+                    translated(
+                        'posts.edit.publishing_overlay_subtitle',
+                        'This may take a moment. You can safely leave this page.',
+                    )
+                }}
             </p>
         </div>
 
@@ -168,7 +191,7 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
                     <Link :href="postsIndex.url()">
                         <Button variant="outline">
                             <IconArrowLeft class="size-4" />
-                            {{ $t('posts.show.back') }}
+                            {{ translated('posts.show.back', 'Back') }}
                         </Button>
                     </Link>
                 </div>
@@ -183,19 +206,29 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
                         />
                         <span v-if="post.published_at">
                             {{
-                                $t('posts.show.published_on', {
-                                    date: formatDateTime(post.published_at),
-                                })
+                                translated(
+                                    'posts.show.published_on',
+                                    `Published ${formatDateTime(post.published_at)}`,
+                                    {
+                                        date: formatDateTime(post.published_at),
+                                    },
+                                )
                             }}
                         </span>
                         <span v-else-if="post.scheduled_at">
                             {{
-                                $t('posts.show.scheduled_for', {
-                                    date: formatDateTime(post.scheduled_at),
-                                })
+                                translated(
+                                    'posts.show.scheduled_for',
+                                    `Scheduled for ${formatDateTime(post.scheduled_at)}`,
+                                    {
+                                        date: formatDateTime(post.scheduled_at),
+                                    },
+                                )
                             }}
                         </span>
-                        <span v-else>{{ $t('posts.show.draft') }}</span>
+                        <span v-else>{{
+                            translated('posts.show.draft', 'Draft')
+                        }}</span>
                     </span>
                     <Badge :variant="postStatus.variant" class="shrink-0">
                         <component :is="postStatus.icon" class="size-3" />
@@ -280,7 +313,7 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
                     <h2
                         class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
                     >
-                        {{ $t('posts.show.platforms') }}
+                        {{ translated('posts.show.platforms', 'Platforms') }}
                         <span class="ml-1 text-foreground/40"
                             >({{ enabledPlatforms.length }})</span
                         >
@@ -290,7 +323,12 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
                         <CardContent
                             class="p-8 text-center text-sm font-medium text-foreground/60"
                         >
-                            {{ $t('posts.show.no_platforms') }}
+                            {{
+                                translated(
+                                    'posts.show.no_platforms',
+                                    'No publishing platforms selected.',
+                                )
+                            }}
                         </CardContent>
                     </Card>
 
@@ -389,8 +427,9 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
                                                     </a>
                                                 </TooltipTrigger>
                                                 <TooltipContent>{{
-                                                    $t(
+                                                    translated(
                                                         'posts.show.view_on_platform',
+                                                        'View on platform',
                                                     )
                                                 }}</TooltipContent>
                                             </Tooltip>

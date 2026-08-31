@@ -214,8 +214,11 @@ return [
         'scheduled' => 'Zamanlandı',
         'publishing' => 'Yayınlanıyor',
         'retrying' => 'Yeniden deneniyor',
+        'submitted' => 'Google’a gönderildi',
+        'pending_review' => 'Google incelemesi bekleniyor',
         'published' => 'Yayınlandı',
         'partially_published' => 'Kısmen Yayınlandı',
+        'rejected' => 'Reddedildi',
         'failed' => 'Başarısız',
     ],
 

@@ -212,8 +212,11 @@ return [
         'scheduled' => 'Gepland',
         'publishing' => 'Publiceren',
         'retrying' => 'Opnieuw proberen',
+        'submitted' => 'Ingediend bij Google',
+        'pending_review' => 'In afwachting van Google-beoordeling',
         'published' => 'Gepubliceerd',
         'partially_published' => 'Gedeeltelijk gepubliceerd',
+        'rejected' => 'Afgewezen',
         'failed' => 'Mislukt',
     ],
 

@@ -212,8 +212,11 @@ return [
         'scheduled' => 'مجدول',
         'publishing' => 'قيد النشر',
         'retrying' => 'إعادة المحاولة',
+        'submitted' => 'تم الإرسال إلى Google',
+        'pending_review' => 'بانتظار مراجعة Google',
         'published' => 'منشور',
         'partially_published' => 'منشور جزئيًا',
+        'rejected' => 'مرفوض',
         'failed' => 'فشل',
     ],
 

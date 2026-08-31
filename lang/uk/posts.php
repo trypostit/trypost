@@ -212,8 +212,11 @@ return [
         'scheduled' => 'Заплановано',
         'publishing' => 'Публікується',
         'retrying' => 'Повторна спроба',
+        'submitted' => 'Надіслано в Google',
+        'pending_review' => 'Очікує на перевірку Google',
         'published' => 'Опубліковано',
         'partially_published' => 'Частково опубліковано',
+        'rejected' => 'Відхилено',
         'failed' => 'Помилка',
     ],
 

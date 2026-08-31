@@ -212,8 +212,11 @@ return [
         'scheduled' => '予約済み',
         'publishing' => '公開中',
         'retrying' => '再試行中',
+        'submitted' => 'Google に送信済み',
+        'pending_review' => 'Google の審査待ち',
         'published' => '公開済み',
         'partially_published' => '一部公開済み',
+        'rejected' => '却下済み',
         'failed' => '失敗',
     ],
 

@@ -212,8 +212,11 @@ return [
         'scheduled' => 'Προγραμματισμένη',
         'publishing' => 'Δημοσιεύεται',
         'retrying' => 'Επανάληψη',
+        'submitted' => 'Υποβλήθηκε στην Google',
+        'pending_review' => 'Αναμονή ελέγχου από την Google',
         'published' => 'Δημοσιεύτηκε',
         'partially_published' => 'Δημοσιεύτηκε εν μέρει',
+        'rejected' => 'Απορρίφθηκε',
         'failed' => 'Απέτυχε',
     ],
 

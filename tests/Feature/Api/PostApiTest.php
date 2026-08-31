@@ -154,6 +154,43 @@ it('deletes a post', function () {
     expect(Post::find($post->id))->toBeNull();
 });
 
+it('refuses to delete posts that may already exist on a provider', function (PostStatus $status) {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => $status,
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->deleteJson(route('api.posts.destroy', $post))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['post']);
+
+    expect($post->fresh())->not->toBeNull()
+        ->and($post->fresh()->status)->toBe($status);
+})->with([
+    PostStatus::Publishing,
+    PostStatus::Published,
+    PostStatus::PartiallyPublished,
+]);
+
+it('allows deletion of unpublished cleanup states', function (PostStatus $status) {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => $status,
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->deleteJson(route('api.posts.destroy', $post))
+        ->assertNoContent();
+
+    expect(Post::find($post->id))->toBeNull();
+})->with([
+    PostStatus::Scheduled,
+    PostStatus::Failed,
+]);
+
 it('cannot delete post from another workspace', function () {
     $otherWorkspace = Workspace::factory()->create();
     $post = Post::factory()->create([
@@ -277,7 +314,8 @@ it('cannot update post in any terminal state', function (PostStatus $status) {
                 ],
             ],
         ])
-        ->assertUnprocessable();
+        ->assertUnprocessable()
+        ->assertJsonPath('message', __('posts.flash.cannot_edit_finalized'));
 })->with([
     PostStatus::Published,
     PostStatus::PartiallyPublished,

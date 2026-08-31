@@ -212,8 +212,11 @@ return [
         'scheduled' => '예약됨',
         'publishing' => '게시 중',
         'retrying' => '재시도 중',
+        'submitted' => 'Google에 제출됨',
+        'pending_review' => 'Google 검토 대기 중',
         'published' => '게시됨',
         'partially_published' => '부분 게시됨',
+        'rejected' => '거부됨',
         'failed' => '실패',
     ],
 

@@ -214,8 +214,11 @@ return [
         'scheduled' => 'Geplant',
         'publishing' => 'Wird veröffentlicht',
         'retrying' => 'Erneuter Versuch',
+        'submitted' => 'An Google übermittelt',
+        'pending_review' => 'Google-Prüfung ausstehend',
         'published' => 'Veröffentlicht',
         'partially_published' => 'Teilweise veröffentlicht',
+        'rejected' => 'Abgelehnt',
         'failed' => 'Fehlgeschlagen',
     ],
 

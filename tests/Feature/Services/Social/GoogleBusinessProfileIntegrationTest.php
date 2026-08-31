@@ -564,6 +564,104 @@ test('reconciliation only marks a processing post published after Google reports
     Storage::assertMissing($derivativePath);
 });
 
+test('event and offer reconciliation reaches a terminal status and sends one notification', function (
+    ContentType $contentType,
+    string $providerState,
+    Status $expectedTargetStatus,
+    PostStatus $expectedPostStatus,
+    string $expectedNotificationTitle,
+): void {
+    Queue::fake([SendNotification::class]);
+    Http::fake(['*' => Http::response([
+        'name' => 'accounts/123/locations/456/localPosts/terminal',
+        'state' => $providerState,
+        'searchUrl' => 'https://posts.google.com/terminal',
+    ])]);
+    $postPlatform = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->account->id,
+        'google_business_profile_location_id' => $this->location->id,
+        'content_type' => $contentType,
+        'status' => Status::PendingReview,
+        'platform_post_id' => 'accounts/123/locations/456/localPosts/terminal',
+        'submitted_at' => now(),
+    ]);
+
+    app()->call([new ReconcileGoogleBusinessProfilePost($postPlatform), 'handle']);
+
+    expect($postPlatform->fresh()->status)->toBe($expectedTargetStatus)
+        ->and($this->post->fresh()->status)->toBe($expectedPostStatus)
+        ->and($postPlatform->fresh()->last_reconciled_at)->not->toBeNull();
+    Queue::assertPushed(SendNotification::class, fn (SendNotification $notification): bool => $notification->title === $expectedNotificationTitle);
+    Queue::assertPushed(SendNotification::class, 1);
+})->with([
+    'event accepted' => [
+        ContentType::GoogleBusinessProfileEvent,
+        'LIVE',
+        Status::Published,
+        PostStatus::Published,
+        'Post published successfully',
+    ],
+    'offer rejected' => [
+        ContentType::GoogleBusinessProfileOffer,
+        'REJECTED',
+        Status::Rejected,
+        PostStatus::Failed,
+        'Post failed to publish',
+    ],
+]);
+
+test('multi-location reconciliation finalizes a mixed result as partially published', function (): void {
+    Queue::fake([SendNotification::class]);
+    $secondLocation = GoogleBusinessProfileLocation::factory()->create([
+        'social_account_id' => $this->account->id,
+        'google_account_name' => 'accounts/123',
+        'google_location_name' => 'locations/789',
+        'title' => 'Uptown Store',
+    ]);
+    Http::fake([
+        'https://mybusiness.googleapis.com/v4/accounts/123/locations/456/localPosts/live' => Http::response([
+            'name' => 'accounts/123/locations/456/localPosts/live',
+            'state' => 'LIVE',
+            'searchUrl' => 'https://posts.google.com/live',
+        ]),
+        'https://mybusiness.googleapis.com/v4/accounts/123/locations/789/localPosts/rejected' => Http::response([
+            'name' => 'accounts/123/locations/789/localPosts/rejected',
+            'state' => 'REJECTED',
+        ]),
+    ]);
+    $publishedTarget = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->account->id,
+        'google_business_profile_location_id' => $this->location->id,
+        'status' => Status::PendingReview,
+        'platform_post_id' => 'accounts/123/locations/456/localPosts/live',
+    ]);
+    $rejectedTarget = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->account->id,
+        'google_business_profile_location_id' => $secondLocation->id,
+        'status' => Status::PendingReview,
+        'platform_post_id' => 'accounts/123/locations/789/localPosts/rejected',
+    ]);
+
+    app()->call([new ReconcileGoogleBusinessProfilePost($publishedTarget), 'handle']);
+    expect($this->post->fresh()->status)->not->toBeIn([
+        PostStatus::Published,
+        PostStatus::PartiallyPublished,
+        PostStatus::Failed,
+    ]);
+
+    app()->call([new ReconcileGoogleBusinessProfilePost($rejectedTarget), 'handle']);
+
+    expect($publishedTarget->fresh()->status)->toBe(Status::Published)
+        ->and($rejectedTarget->fresh()->status)->toBe(Status::Rejected)
+        ->and($this->post->fresh()->status)->toBe(PostStatus::PartiallyPublished);
+    Queue::assertPushed(SendNotification::class, fn (SendNotification $notification): bool => $notification->title === 'Post failed to publish'
+        && str_contains($notification->body, 'Uptown Store'));
+    Queue::assertPushed(SendNotification::class, 1);
+});
+
 test('reconciliation exhaustion marks the target failed without losing the Google post id', function (): void {
     Storage::fake('public');
     config(['filesystems.default' => 'public']);

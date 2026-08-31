@@ -212,8 +212,11 @@ return [
         'scheduled' => 'Agendado',
         'publishing' => 'Publicando',
         'retrying' => 'Tentando novamente',
+        'submitted' => 'Enviado ao Google',
+        'pending_review' => 'Aguardando análise do Google',
         'published' => 'Publicado',
         'partially_published' => 'Parcialmente Publicado',
+        'rejected' => 'Rejeitado',
         'failed' => 'Falhou',
     ],
 

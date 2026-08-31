@@ -14,7 +14,9 @@ use Illuminate\Validation\Rule;
  */
 class PostStatusRules
 {
-    private const EDIT_BLOCKED_MESSAGE_KEY = 'posts.cannot_edit_finalized';
+    private const EDIT_BLOCKED_MESSAGE_KEY = 'posts.flash.cannot_edit_finalized';
+
+    private const DELETE_BLOCKED_MESSAGE_KEY = 'posts.flash.cannot_delete_published';
 
     /**
      * Statuses where the post can no longer be edited.
@@ -52,6 +54,11 @@ class PostStatusRules
     public static function editBlockedMessage(): string
     {
         return __(self::EDIT_BLOCKED_MESSAGE_KEY);
+    }
+
+    public static function deleteBlockedMessage(): string
+    {
+        return __(self::DELETE_BLOCKED_MESSAGE_KEY);
     }
 
     /**

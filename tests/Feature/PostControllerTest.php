@@ -17,6 +17,7 @@ use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 use App\Support\LinkTlds;
 use Illuminate\Support\Collection;
+use App\Support\PostStatusRules;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -856,6 +857,28 @@ test('destroy post deletes the post and redirects to posts index', function () {
     $response->assertRedirect(route('app.posts.index'));
     expect(Post::find($post->id))->toBeNull();
 });
+
+test('destroy post keeps provider-backed records and returns a danger flash', function (PostStatus $status) {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => $status,
+    ]);
+
+    $this->actingAs($this->user)
+        ->from(route('app.posts.show', $post))
+        ->delete(route('app.posts.destroy', $post))
+        ->assertRedirect(route('app.posts.show', $post))
+        ->assertSessionHas('flash.banner', PostStatusRules::deleteBlockedMessage())
+        ->assertSessionHas('flash.bannerStyle', 'danger');
+
+    expect($post->fresh())->not->toBeNull()
+        ->and($post->fresh()->status)->toBe($status);
+})->with([
+    PostStatus::Publishing,
+    PostStatus::Published,
+    PostStatus::PartiallyPublished,
+]);
 
 test('destroy post with redirect param redirects to calendar', function () {
     $post = Post::factory()->create([

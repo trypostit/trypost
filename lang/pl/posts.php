@@ -212,8 +212,11 @@ return [
         'scheduled' => 'Zaplanowany',
         'publishing' => 'Publikowanie',
         'retrying' => 'Ponawianie',
+        'submitted' => 'Przesłano do Google',
+        'pending_review' => 'Oczekuje na weryfikację Google',
         'published' => 'Opublikowany',
         'partially_published' => 'Częściowo opublikowany',
+        'rejected' => 'Odrzucono',
         'failed' => 'Nieudany',
     ],
 

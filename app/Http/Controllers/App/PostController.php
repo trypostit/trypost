@@ -338,7 +338,7 @@ class PostController extends Controller
         $this->authorize('delete', $post);
 
         if (PostStatusRules::blocksDeletion($post)) {
-            session()->flash('flash.banner', __('posts.flash.cannot_delete_published'));
+            session()->flash('flash.banner', PostStatusRules::deleteBlockedMessage());
             session()->flash('flash.bannerStyle', 'danger');
 
             return back();
