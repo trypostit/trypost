@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
-use App\Enums\Post\Status as PostStatus;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
+use App\Actions\SocialAccount\ManageGoogleBusinessProfileLocationTargets;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
-use App\Models\Post;
-use App\Models\PostPlatform;
+use App\Models\GoogleBusinessProfileLocation;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\Social\GoogleBusinessProfile\GoogleBusinessProfileApi;
@@ -158,7 +156,7 @@ class GoogleBusinessProfileController extends SocialController
         ]);
     }
 
-    public function select(Request $request): InertiaResponse
+    public function select(Request $request, ManageGoogleBusinessProfileLocationTargets $targets): InertiaResponse
     {
         $account = $this->accountFromSession($request);
         if (! $account) {
@@ -173,36 +171,67 @@ class GoogleBusinessProfileController extends SocialController
             ],
         ]);
 
-        DB::transaction(function () use ($account, $validated): void {
+        DB::transaction(function () use ($account, $validated, $targets): void {
             $deselectedLocationIds = $account->googleBusinessProfileLocations()
                 ->whereNotIn('id', $validated['location_ids'])
                 ->pluck('id');
+            $newlySelectedLocationIds = $account->googleBusinessProfileLocations()
+                ->whereIn('id', $validated['location_ids'])
+                ->where('is_selected', false)
+                ->pluck('id');
 
-            $targetsToDisable = PostPlatform::query()
-                ->whereIn('google_business_profile_location_id', $deselectedLocationIds)
-                ->where('status', PostPlatformStatus::Pending)
-                ->whereHas('post', fn ($query) => $query->whereIn('status', [PostStatus::Draft, PostStatus::Scheduled]));
-            $candidatePostIds = (clone $targetsToDisable)->pluck('post_id');
-            Post::query()->whereIn('id', $candidatePostIds)->lockForUpdate()->get(['id']);
-
-            $affectedPostIds = (clone $targetsToDisable)->pluck('post_id');
-            $targetsToDisable->update(['enabled' => false]);
-
-            Post::query()
-                ->whereIn('id', $affectedPostIds)
-                ->where('status', PostStatus::Scheduled)
-                ->whereDoesntHave('postPlatforms', fn ($query) => $query->enabled())
-                ->update(['status' => PostStatus::Draft, 'scheduled_at' => null]);
+            $targets->disable($deselectedLocationIds);
 
             $account->googleBusinessProfileLocations()->update(['is_selected' => false]);
             $account->googleBusinessProfileLocations()
                 ->whereIn('id', $validated['location_ids'])
                 ->update(['is_selected' => true]);
+
+            $targets->restore($newlySelectedLocationIds);
         });
 
         session()->forget(['google_business_profile_account_id', 'social_connect_workspace', 'social_reconnect_id']);
 
         return $this->popupCallback(true, __('accounts.popup_callback.connected'), $this->platform->value);
+    }
+
+    public function disconnectLocation(
+        Request $request,
+        GoogleBusinessProfileLocation $location,
+        ManageGoogleBusinessProfileLocationTargets $targets,
+    ): RedirectResponse {
+        $workspace = $request->user()->currentWorkspace;
+        $this->authorize('manageAccounts', $workspace);
+
+        $location->load('socialAccount');
+
+        if ($location->socialAccount?->workspace_id !== $workspace->id
+            || $location->socialAccount?->platform !== $this->platform) {
+            abort(404);
+        }
+
+        DB::transaction(function () use ($location, $targets): void {
+            $targets->disable([$location->id]);
+            $location->update(['is_selected' => false]);
+
+            $account = $location->socialAccount;
+            if ($account && ! $account->googleBusinessProfileLocations()->where('is_selected', true)->exists()) {
+                $account->update([
+                    'access_token' => '',
+                    'refresh_token' => null,
+                    'token_expires_at' => null,
+                    'status' => Status::Disconnected,
+                    'disconnected_at' => now(),
+                ]);
+            }
+        });
+
+        session()->flash('flash.banner', __('accounts.flash.google_business_profile_location_disconnected', [
+            'location' => $location->title,
+        ]));
+        session()->flash('flash.bannerStyle', 'success');
+
+        return back();
     }
 
     private function provider(): GoogleProvider

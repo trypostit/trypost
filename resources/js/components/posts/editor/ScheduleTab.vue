@@ -30,6 +30,10 @@ interface PostPlatform {
     platform_name: string | null;
     platform_username: string | null;
     platform_avatar: string | null;
+    display_name: string;
+    display_username: string | null;
+    display_avatar: string | null;
+    connection_issue_code: string | null;
     content_type: string | null;
     status: string;
     platform_url: string | null;
@@ -120,10 +124,21 @@ const videoDurationSec = computed(() => {
 });
 
 const getPlatformDisplayName = (pp: PostPlatform): string =>
-    pp.social_account?.display_label ?? pp.platform_name ?? pp.platform;
+    pp.display_name ?? pp.platform_name ?? pp.social_account?.display_label ?? pp.platform;
 
 const getPlatformAvatar = (pp: PostPlatform): string | null =>
-    pp.social_account?.avatar_url ?? pp.platform_avatar ?? null;
+    pp.display_avatar ?? pp.platform_avatar ?? pp.social_account?.avatar_url ?? null;
+
+const destinationAccount = (pp: PostPlatform): SocialAccount | null =>
+    pp.social_account
+        ? {
+              ...pp.social_account,
+              display_name: getPlatformDisplayName(pp),
+              display_label: getPlatformDisplayName(pp),
+              username: pp.display_username ?? '',
+              avatar_url: getPlatformAvatar(pp),
+          }
+        : null;
 
 // Map pp.id → submit-array index, matching what Edit.vue sends as `platforms[i]`.
 // Backend validation errors are keyed `platforms.{i}.content_type`, so we use this
@@ -150,9 +165,9 @@ const channels = computed<Channel[]>(() =>
         id: pp.id,
         platform: pp.platform,
         displayName: getPlatformDisplayName(pp),
-        username: pp.social_account?.username ?? pp.platform_username ?? null,
+        username: pp.display_username ?? pp.platform_username ?? null,
         avatarUrl: getPlatformAvatar(pp),
-        socialAccount: pp.social_account,
+        socialAccount: destinationAccount(pp),
         contentType: props.platformContentTypes[pp.id] ?? pp.content_type ?? '',
         meta: props.platformMeta[pp.id] ?? {},
         issue: props.platformIssues?.[pp.id] ?? null,

@@ -5,6 +5,7 @@ import { toast } from 'vue-sonner';
 import { connect as blueskyConnect } from '@/routes/app/social/bluesky';
 import { connect as discordConnect } from '@/routes/app/social/discord';
 import { connect as facebookConnect } from '@/routes/app/social/facebook';
+import { connect as googleBusinessProfileConnect } from '@/routes/app/social/google-business-profile';
 import { connect as instagramConnect } from '@/routes/app/social/instagram';
 import { connect as instagramFacebookConnect } from '@/routes/app/social/instagram-facebook';
 import { connect as linkedinConnect } from '@/routes/app/social/linkedin';
@@ -23,6 +24,7 @@ const CONNECT_ROUTES: Record<string, { url: (options?: { query?: Record<string, 
     [Platform.Bluesky]: blueskyConnect,
     [Platform.Discord]: discordConnect,
     [Platform.Facebook]: facebookConnect,
+    [Platform.GoogleBusinessProfile]: googleBusinessProfileConnect,
     [Platform.Instagram]: instagramConnect,
     [Platform.InstagramFacebook]: instagramFacebookConnect,
     [Platform.LinkedIn]: linkedinConnect,

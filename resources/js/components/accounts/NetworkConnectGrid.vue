@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { oauthConnectUrl, useOAuthPopup } from '@/composables/useOAuthPopup';
 import { getPlatformTheme } from '@/composables/usePlatformLogo';
 import { disconnect } from '@/routes/app/accounts';
+import { disconnect as disconnectGoogleBusinessProfileLocation } from '@/routes/app/social/google-business-profile/locations';
 import { Platform } from '@/types/platform';
 import {
     SocialAccountStatus,
@@ -34,6 +35,12 @@ export interface ConnectedAccount {
     handle_label: string;
     avatar_url: string | null;
     status: SocialAccountStatusValue | null;
+    google_business_profile_locations?: GoogleBusinessProfileLocation[];
+}
+
+interface GoogleBusinessProfileLocation {
+    id: string;
+    title: string;
 }
 
 const props = withDefaults(
@@ -52,6 +59,7 @@ const telegramOpen = ref(false);
 const telegramReconnectId = ref<string>();
 const instagramOpen = ref(false);
 const disconnectModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
+const locationDisconnectModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
 const { openOAuthPopup } = useOAuthPopup((result) => {
     if (result.success) {
@@ -96,6 +104,35 @@ const disconnectAccount = (account: ConnectedAccount) => {
         url: disconnect.url(account.id),
         confirmText: account.handle_label,
     });
+};
+
+const disconnectLocation = (location: GoogleBusinessProfileLocation) => {
+    locationDisconnectModal.value?.open({
+        url: disconnectGoogleBusinessProfileLocation.url(location.id),
+        confirmText: location.title,
+    });
+};
+
+const connectedDescription = (account?: ConnectedAccount): string => {
+    if (!account) {
+        return '';
+    }
+
+    if (account.platform !== Platform.GoogleBusinessProfile) {
+        return account.display_label;
+    }
+
+    const locations = account.google_business_profile_locations ?? [];
+
+    if (locations.length === 0) {
+        return trans('accounts.google_business_profile.no_selected_locations');
+    }
+
+    if (locations.length === 1) {
+        return locations[0].title;
+    }
+
+    return trans('accounts.google_business_profile.location_count', { count: String(locations.length) });
 };
 
 const instagramMethods = computed(
@@ -230,8 +267,27 @@ const cards = computed<ConnectCard[]>(() => {
                         v-else
                         class="mt-0.5 truncate text-xs leading-tight text-foreground/70"
                     >
-                        {{ card.account?.display_label }}
+                        {{ connectedDescription(card.account) }}
                     </p>
+                    <div
+                        v-if="card.platform.value === Platform.GoogleBusinessProfile && card.state === 'connected'"
+                        class="mt-2 space-y-1 text-left"
+                    >
+                        <div
+                            v-for="location in card.account?.google_business_profile_locations ?? []"
+                            :key="location.id"
+                            class="flex items-center gap-1 rounded-md bg-white/70 px-2 py-1 text-xs"
+                        >
+                            <span class="min-w-0 flex-1 truncate font-medium">{{ location.title }}</span>
+                            <button
+                                type="button"
+                                class="shrink-0 font-semibold text-rose-700 hover:underline"
+                                @click="disconnectLocation(location)"
+                            >
+                                {{ $t('accounts.disconnect') }}
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <Button
@@ -243,7 +299,7 @@ const cards = computed<ConnectCard[]>(() => {
                     {{ $t('accounts.reconnect') }}
                 </Button>
                 <Button
-                    v-else-if="card.state === 'connected' && card.account"
+                    v-else-if="card.state === 'connected' && card.account && card.platform.value !== Platform.GoogleBusinessProfile"
                     variant="destructive"
                     size="sm"
                     class="mt-auto w-full"
@@ -280,6 +336,14 @@ const cards = computed<ConnectCard[]>(() => {
 
         <ConfirmDeleteModal
             ref="disconnectModal"
+            :title="$t('accounts.disconnect_modal.title')"
+            :description="$t('accounts.disconnect_modal.description')"
+            :action="$t('accounts.disconnect_modal.confirm')"
+            :cancel="$t('accounts.disconnect_modal.cancel')"
+        />
+
+        <ConfirmDeleteModal
+            ref="locationDisconnectModal"
             :title="$t('accounts.disconnect_modal.title')"
             :description="$t('accounts.disconnect_modal.description')"
             :action="$t('accounts.disconnect_modal.confirm')"

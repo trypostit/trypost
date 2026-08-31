@@ -47,6 +47,11 @@ const props = defineProps({
         type: String,
         default: 'delete',
     },
+
+    irreversible: {
+        type: Boolean,
+        default: true,
+    },
 });
 
 const emit = defineEmits(['deleted', 'closed']);
@@ -131,7 +136,7 @@ defineExpose({
                         <DialogTitle>{{ title }}</DialogTitle>
                         <DialogDescription class="space-y-1">
                             <span class="block">{{ description }}</span>
-                            <span class="block font-semibold text-rose-700">
+                            <span v-if="irreversible" class="block font-semibold text-rose-700">
                                 {{ trans('common.confirm_modal.cannot_be_undone') }}
                             </span>
                         </DialogDescription>

@@ -9,6 +9,7 @@ import { ContentType } from '@/types/content-type';
 interface Props {
     socialAccount: { display_label: string } | null;
     contentType: string;
+    contentTypeError?: string;
     meta: Record<string, any>;
     disabled?: boolean;
     previewOnly?: boolean;
@@ -28,7 +29,6 @@ const variants = [
     { value: ContentType.GoogleBusinessProfileStandard, label: 'Update' },
     { value: ContentType.GoogleBusinessProfileEvent, label: 'Event' },
     { value: ContentType.GoogleBusinessProfileOffer, label: 'Offer' },
-    { value: ContentType.GoogleBusinessProfileAlert, label: 'Alert' },
 ];
 const ctaTypes = [
     ['', 'No button'],
@@ -56,9 +56,6 @@ const isEvent = computed(() =>
 );
 const isOffer = computed(
     () => props.contentType === ContentType.GoogleBusinessProfileOffer,
-);
-const isAlert = computed(
-    () => props.contentType === ContentType.GoogleBusinessProfileAlert,
 );
 
 const update = (key: string, value: any) =>
@@ -122,6 +119,9 @@ const toggleWeekday = (day: string) => {
                         {{ variant.label }}
                     </button>
                 </div>
+                <p v-if="contentTypeError" class="text-xs font-semibold text-destructive">
+                    {{ contentTypeError }}
+                </p>
             </div>
 
             <div class="grid gap-4 sm:grid-cols-2">
@@ -324,22 +324,6 @@ const toggleWeekday = (day: string) => {
                 </label>
             </template>
 
-            <label v-if="isAlert" class="grid gap-2 text-sm font-semibold"
-                >Alert type<select
-                    class="h-10 rounded-md border-2 border-foreground/30 bg-background px-3"
-                    :value="meta.alert_type ?? ''"
-                    :disabled="disabled"
-                    @change="
-                        update(
-                            'alert_type',
-                            ($event.target as HTMLSelectElement).value,
-                        )
-                    "
-                >
-                    <option value="">Choose</option>
-                    <option value="COVID_19">COVID-19</option>
-                </select></label
-            >
         </div>
     </div>
 </template>

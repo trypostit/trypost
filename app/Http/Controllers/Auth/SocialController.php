@@ -64,6 +64,13 @@ class SocialController extends Controller
             abort(403);
         }
 
+        if ($account->platform === SocialPlatform::GoogleBusinessProfile) {
+            session()->flash('flash.banner', __('accounts.flash.disconnect_google_business_profile_locations_individually'));
+            session()->flash('flash.bannerStyle', 'danger');
+
+            return back();
+        }
+
         // Drop pending platform rows from drafts/scheduled posts so the account
         // disappears cleanly from their UI. Published/failed rows survive via the
         // FK's nullOnDelete cascade and keep their snapshot fields for history.
@@ -291,6 +298,7 @@ class SocialController extends Controller
             'success' => $success,
             'message' => $message,
             'platform' => $platform,
+            'fallbackUrl' => route('app.accounts'),
             'onboardingProgress' => false,
         ]);
     }

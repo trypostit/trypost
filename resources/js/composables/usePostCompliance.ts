@@ -16,6 +16,7 @@ export interface CompliancePostPlatform {
     platform_name: string | null;
     social_account_id: string | null;
     content_type: string | null;
+    connection_issue_code?: string | null;
 }
 
 export interface CompliancePost {
@@ -200,6 +201,11 @@ export const usePostCompliance = (opts: UsePostComplianceOptions) => {
         const issues: Record<string, string> = {};
 
         for (const pp of post.value.post_platforms) {
+            if (pp.connection_issue_code) {
+                issues[pp.id] = trans(`posts.errors.${pp.connection_issue_code}`);
+                continue;
+            }
+
             const contentType = platformContentTypes.value[pp.id];
             if (!contentType) {
                 issues[pp.id] = trans('posts.edit.compliance.no_content_type');

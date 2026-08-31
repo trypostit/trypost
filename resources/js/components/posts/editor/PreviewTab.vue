@@ -23,7 +23,11 @@ interface PostPlatform {
     id: string;
     platform: string;
     platform_name: string | null;
+    platform_username: string | null;
     platform_avatar: string | null;
+    display_name: string;
+    display_username: string | null;
+    display_avatar: string | null;
     content_type: string | null;
     social_account: SocialAccount | null;
 }
@@ -37,8 +41,16 @@ const props = defineProps<{
     postedAt?: string | null;
 }>();
 
-const getPlatformAvatar = (pp: PostPlatform): string | null => pp.social_account?.avatar_url ?? pp.platform_avatar ?? null;
-const getPlatformDisplayName = (pp: PostPlatform): string => pp.social_account?.display_label ?? pp.platform_name ?? pp.platform;
+const getPlatformAvatar = (pp: PostPlatform): string | null => pp.display_avatar ?? pp.platform_avatar ?? pp.social_account?.avatar_url ?? null;
+const getPlatformDisplayName = (pp: PostPlatform): string => pp.display_name ?? pp.platform_name ?? pp.social_account?.display_label ?? pp.platform;
+const destinationAccount = (pp: PostPlatform): SocialAccount | null => pp.social_account ? {
+    ...pp.social_account,
+    display_name: getPlatformDisplayName(pp),
+    display_label: getPlatformDisplayName(pp),
+    handle_label: pp.display_username ?? getPlatformDisplayName(pp),
+    username: pp.display_username ?? '',
+    avatar_url: getPlatformAvatar(pp),
+} : null;
 
 const activeId = ref<string | null>(props.platforms[0]?.id ?? null);
 
@@ -88,7 +100,7 @@ const activeContentType = computed((): string | undefined => {
                         </TooltipTrigger>
                         <TooltipContent>
                             <div class="space-y-0.5 text-xs">
-                                <p class="font-semibold">{{ getPlatformDisplayName(pp) }}<span v-if="pp.social_account?.username" class="font-normal opacity-80">&nbsp;·&nbsp;@{{ pp.social_account.username }}</span></p>
+                                <p class="font-semibold">{{ getPlatformDisplayName(pp) }}<span v-if="pp.display_username" class="font-normal opacity-80">&nbsp;·&nbsp;{{ pp.display_username }}</span></p>
                                 <p class="opacity-70">{{ getPlatformLabel(pp.platform) }}</p>
                             </div>
                         </TooltipContent>
@@ -103,7 +115,7 @@ const activeContentType = computed((): string | undefined => {
                     :platform="activePlatform.platform"
                     :content="content"
                     :media="media"
-                    :social-account="activePlatform.social_account"
+                    :social-account="destinationAccount(activePlatform)"
                     :content-type="activeContentType"
                     :meta="platformMeta?.[activePlatform.id] ?? {}"
                     :posted-at="postedAt"

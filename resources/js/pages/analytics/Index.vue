@@ -141,7 +141,8 @@ const platformSupportsDateRange = computed(() => {
                 v-else-if="
                     selectedAccount?.platform === 'google-business-profile'
                 "
-                :account-id="selectedAccountId"
+                :account-id="selectedAccount.account_id"
+                :location-id="selectedAccount.location_id"
                 :date-range="dateRange"
             />
 

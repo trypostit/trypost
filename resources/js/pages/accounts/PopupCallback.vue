@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
 import { IconCircleCheck, IconCircleX } from '@tabler/icons-vue';
 import { onMounted, ref } from 'vue';
 
@@ -8,6 +9,7 @@ const props = defineProps<{
     success: boolean;
     message: string;
     platform?: string | null;
+    fallbackUrl: string;
 }>();
 
 const CLOSE_DELAY = 1500;
@@ -56,6 +58,9 @@ onMounted(() => {
             </div>
             <p class="text-lg font-medium text-foreground">{{ message }}</p>
             <p class="text-sm text-muted-foreground">{{ canAutoClose ? $t('accounts.popup_callback.closing') : $t('accounts.popup_callback.manual_close') }}</p>
+            <Link v-if="!canAutoClose" :href="fallbackUrl" class="mt-2 rounded-lg border-2 border-foreground px-4 py-2 text-sm font-bold shadow-2xs">
+                {{ $t('accounts.popup_callback.return_to_accounts') }}
+            </Link>
         </div>
     </PopupLayout>
 </template>

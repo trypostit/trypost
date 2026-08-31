@@ -36,26 +36,34 @@ class DuplicatePost
             ]);
 
             $platforms = $original->postPlatforms()
+                ->with('googleBusinessProfileLocation')
                 ->whereHas('socialAccount')
                 ->get();
 
             foreach ($platforms as $platform) {
+                $locationDisconnected = $platform->google_business_profile_location_id
+                    && ! $platform->googleBusinessProfileLocation?->is_selected;
+
                 $copy->postPlatforms()->create([
                     'social_account_id' => $platform->social_account_id,
+                    'google_business_profile_location_id' => $platform->google_business_profile_location_id,
                     'platform' => $platform->platform,
                     'platform_name' => $platform->platform_name,
                     'platform_username' => $platform->platform_username,
                     'platform_avatar' => $platform->getRawOriginal('platform_avatar'),
                     'content_type' => $platform->content_type,
-                    'enabled' => $platform->enabled,
+                    'enabled' => $platform->enabled && ! $locationDisconnected,
                     'meta' => $platform->meta,
                     // Always reset platform-level status — never carry
                     // published/failed/publishing into the new draft.
                     'status' => PostPlatformStatus::Pending,
                     'platform_post_id' => null,
                     'platform_url' => null,
-                    'error_message' => null,
-                    'error_context' => null,
+                    'error_message' => $locationDisconnected ? __('posts.errors.gbp_location_disconnected') : null,
+                    'error_context' => $locationDisconnected ? [
+                        'category' => 'connection_action_required',
+                        'reason' => 'gbp_location_disconnected',
+                    ] : null,
                     'published_at' => null,
                 ]);
             }

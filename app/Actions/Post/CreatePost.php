@@ -6,11 +6,13 @@ namespace App\Actions\Post;
 
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CreatePost
 {
@@ -63,6 +65,26 @@ class CreatePost
 
                 $updates = ['enabled' => true];
                 $googleBusinessProfileLocationId = data_get($platformData, 'google_business_profile_location_id');
+                $account = $workspace->socialAccounts()->find($accountId);
+
+                if ($account?->platform === Platform::GoogleBusinessProfile) {
+                    if (! $googleBusinessProfileLocationId) {
+                        throw ValidationException::withMessages([
+                            'platforms' => 'Choose a specific Google Business Profile location.',
+                        ]);
+                    }
+
+                    $validLocation = $account->googleBusinessProfileLocations()
+                        ->where('is_selected', true)
+                        ->whereKey($googleBusinessProfileLocationId)
+                        ->exists();
+
+                    if (! $validLocation) {
+                        throw ValidationException::withMessages([
+                            'platforms' => 'Choose a currently connected Google Business Profile location.',
+                        ]);
+                    }
+                }
 
                 if ($contentType = data_get($platformData, 'content_type')) {
                     $updates['content_type'] = $contentType;

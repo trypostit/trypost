@@ -46,6 +46,10 @@ interface PostPlatform {
     platform_name: string | null;
     platform_username: string | null;
     platform_avatar: string | null;
+    display_name: string;
+    display_username: string | null;
+    display_avatar: string | null;
+    connection_issue_code: string | null;
     content_type: string | null;
     status: string;
     platform_url: string | null;

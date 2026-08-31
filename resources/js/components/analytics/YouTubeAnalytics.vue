@@ -14,6 +14,7 @@ interface MetricItem {
 
 const props = defineProps<{
     accountId: string;
+    locationId?: string | null;
     dateRange: { start: Date; end: Date };
 }>();
 
@@ -31,6 +32,7 @@ const fetchMetrics = async () => {
             query: {
                 since: dayjs(props.dateRange.start).format('YYYY-MM-DD'),
                 until: dayjs(props.dateRange.end).format('YYYY-MM-DD'),
+                location_id: props.locationId ?? undefined,
             },
         }));
         metrics.value = response?.metrics || [];
@@ -41,7 +43,7 @@ const fetchMetrics = async () => {
     }
 };
 
-watch(() => props.accountId, () => {
+watch(() => [props.accountId, props.locationId], () => {
     fetchMetrics();
 });
 

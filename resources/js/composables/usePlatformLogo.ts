@@ -50,7 +50,6 @@ const PLATFORM_CONTENT_TYPES: Record<string, string[]> = {
         'google_business_profile_standard',
         'google_business_profile_event',
         'google_business_profile_offer',
-        'google_business_profile_alert',
     ],
     x: ['x_post'],
     threads: ['threads_post'],

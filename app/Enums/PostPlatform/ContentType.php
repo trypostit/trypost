@@ -621,8 +621,17 @@ enum ContentType: string
 
         return array_filter(
             self::cases(),
-            fn (self $type) => $type->platform() === $effective
+            fn (self $type) => $type->platform() === $effective && $type->isAuthorable()
         );
+    }
+
+    /**
+     * Whether providers currently allow creating new posts of this type.
+     * Kept separate from enum membership so historical posts still render.
+     */
+    public function isAuthorable(): bool
+    {
+        return $this !== self::GoogleBusinessProfileAlert;
     }
 
     /**

@@ -36,7 +36,7 @@ class SocialAccountResource extends JsonResource
                 fn () => $this->googleBusinessProfileLocations()
                     ->where('is_selected', true)
                     ->orderBy('title')
-                    ->get(['id', 'title', 'store_code', 'maps_uri', 'is_verified']),
+                    ->get(['id', 'title', 'store_code', 'storefront_address', 'maps_uri', 'is_verified']),
             ),
         ];
     }

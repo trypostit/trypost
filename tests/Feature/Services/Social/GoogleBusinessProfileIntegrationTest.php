@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Post\CreatePost;
 use App\Actions\Post\SyncPostPlatforms;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
@@ -64,6 +65,30 @@ test('sync creates one post target for each selected location without duplicatin
     expect($this->post->postPlatforms()->count())->toBe(2)
         ->and($this->post->postPlatforms()->pluck('social_account_id')->unique()->all())->toBe([$this->account->id])
         ->and($this->post->postPlatforms()->pluck('google_business_profile_location_id')->filter()->count())->toBe(2);
+});
+
+test('creating a post rejects an ambiguous Google credential without a location', function (): void {
+    GoogleBusinessProfileLocation::factory()->create([
+        'social_account_id' => $this->account->id,
+        'title' => 'Uptown Store',
+    ]);
+
+    expect(fn () => CreatePost::execute($this->workspace, $this->user, [
+        'content' => 'Do not publish this everywhere.',
+        'platforms' => [['social_account_id' => $this->account->id]],
+    ]))->toThrow(ValidationException::class);
+});
+
+test('direct location selection callback provides a return-to-accounts fallback', function (): void {
+    $this->user->update(['current_workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.social.google-business-profile.select-locations'))
+        ->assertInertia(fn ($page) => $page
+            ->component('accounts/PopupCallback')
+            ->where('success', false)
+            ->where('fallbackUrl', route('app.accounts'))
+        );
 });
 
 test('publisher creates a standard local post for the selected location', function (): void {
@@ -278,8 +303,8 @@ test('publisher maps event schedule and title', function (): void {
         && data_get($request->data(), 'event.schedule.startTime.minutes') === 30);
 });
 
-test('publisher maps alert type', function (): void {
-    Http::fake(['*' => Http::response(['name' => 'accounts/123/locations/456/localPosts/alert', 'state' => 'LIVE'])]);
+test('publisher refuses legacy alert authoring', function (): void {
+    Http::fake();
     $postPlatform = PostPlatform::factory()->googleBusinessProfile()->create([
         'post_id' => $this->post->id,
         'social_account_id' => $this->account->id,
@@ -288,10 +313,9 @@ test('publisher maps alert type', function (): void {
         'meta' => ['alert_type' => 'COVID_19'],
     ]);
 
-    app(GoogleBusinessProfilePublisher::class)->publish($postPlatform);
-
-    Http::assertSent(fn ($request): bool => $request['topicType'] === 'ALERT'
-        && $request['alertType'] === 'COVID_19');
+    expect(fn () => app(GoogleBusinessProfilePublisher::class)->publish($postPlatform))
+        ->toThrow(GoogleBusinessProfilePublishException::class);
+    Http::assertNothingSent();
 });
 
 test('reconciliation only marks a processing post published after Google reports it live', function (): void {
@@ -445,9 +469,150 @@ test('analytics labels Google privacy thresholds as upper bounds', function (): 
     expect(collect($metrics)->firstWhere('label', 'Search: electrician near me')['value'])->toBe('<15');
 });
 
+test('analytics selector exposes each business location instead of the Google login', function (): void {
+    config(['trypost.self_hosted' => true]);
+    $this->user->update(['current_workspace_id' => $this->workspace->id]);
+    GoogleBusinessProfileLocation::factory()->create([
+        'social_account_id' => $this->account->id,
+        'title' => 'Uptown Store',
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('app.analytics'));
+    $response->assertOk();
+
+    $accounts = collect($response->original->getData()['page']['props']['accounts'])
+        ->where('platform', Platform::GoogleBusinessProfile->value)
+        ->values();
+
+    expect($accounts)->toHaveCount(2)
+        ->and($accounts->pluck('display_label')->all())->toBe(['Downtown Store', 'Uptown Store'])
+        ->and($accounts->pluck('account_id')->unique()->all())->toBe([$this->account->id])
+        ->and($accounts->pluck('location_id')->filter())->toHaveCount(2);
+});
+
 test('google business profile declares every local post content type', function (): void {
-    expect(ContentType::forPlatform(Platform::GoogleBusinessProfile))->toHaveCount(4)
+    expect(ContentType::forPlatform(Platform::GoogleBusinessProfile))->toHaveCount(3)
+        ->and(ContentType::forPlatform(Platform::GoogleBusinessProfile))->not->toContain(ContentType::GoogleBusinessProfileAlert)
         ->and(ContentType::defaultFor(Platform::GoogleBusinessProfile))->toBe(ContentType::GoogleBusinessProfileStandard);
+});
+
+test('disconnecting one location preserves its target and other locations', function (): void {
+    $this->user->update(['current_workspace_id' => $this->workspace->id]);
+    $otherLocation = GoogleBusinessProfileLocation::factory()->create([
+        'social_account_id' => $this->account->id,
+        'title' => 'Uptown Store',
+    ]);
+    $scheduledPost = Post::factory()->scheduled()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'scheduled_at' => now()->addDay(),
+    ]);
+    $target = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $scheduledPost->id,
+        'social_account_id' => $this->account->id,
+        'google_business_profile_location_id' => $this->location->id,
+        'status' => Status::Pending,
+        'enabled' => true,
+    ]);
+    $facebookAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Facebook,
+    ]);
+    $otherTarget = PostPlatform::factory()->create([
+        'post_id' => $scheduledPost->id,
+        'social_account_id' => $facebookAccount->id,
+        'platform' => Platform::Facebook,
+        'status' => Status::Pending,
+        'enabled' => true,
+    ]);
+
+    $this->actingAs($this->user)
+        ->delete(route('app.social.google-business-profile.locations.disconnect', $this->location))
+        ->assertRedirect();
+
+    expect($this->account->fresh())->not->toBeNull()
+        ->and($this->location->fresh()->is_selected)->toBeFalse()
+        ->and($otherLocation->fresh()->is_selected)->toBeTrue()
+        ->and($target->fresh()->enabled)->toBeFalse()
+        ->and(data_get($target->fresh()->error_context, 'reason'))->toBe('gbp_location_disconnected')
+        ->and($otherTarget->fresh()->enabled)->toBeTrue()
+        ->and($scheduledPost->fresh()->status)->toBe(PostStatus::Draft)
+        ->and($scheduledPost->fresh()->scheduled_at)->toBeNull();
+});
+
+test('disconnecting the final location clears the OAuth credential but preserves identity rows', function (): void {
+    $this->user->update(['current_workspace_id' => $this->workspace->id]);
+    $this->account->update(['refresh_token' => 'refresh-token']);
+    $target = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->account->id,
+        'google_business_profile_location_id' => $this->location->id,
+        'status' => Status::Pending,
+        'enabled' => true,
+    ]);
+
+    $this->actingAs($this->user)
+        ->delete(route('app.social.google-business-profile.locations.disconnect', $this->location))
+        ->assertRedirect();
+
+    $account = $this->account->fresh();
+
+    expect($account)->not->toBeNull()
+        ->and($account->status)->toBe(App\Enums\SocialAccount\Status::Disconnected)
+        ->and($account->access_token)->toBe('')
+        ->and($account->refresh_token)->toBeNull()
+        ->and($account->disconnected_at)->not->toBeNull()
+        ->and($this->location->fresh())->not->toBeNull()
+        ->and($this->location->fresh()->is_selected)->toBeFalse()
+        ->and($target->fresh()->connection_issue_code)->toBe('gbp_location_disconnected');
+});
+
+test('reselecting a disconnected location restores only targets disabled by that disconnect', function (): void {
+    $this->user->update(['current_workspace_id' => $this->workspace->id]);
+    $target = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->account->id,
+        'google_business_profile_location_id' => $this->location->id,
+        'status' => Status::Pending,
+        'enabled' => true,
+    ]);
+
+    $this->actingAs($this->user)
+        ->delete(route('app.social.google-business-profile.locations.disconnect', $this->location));
+
+    $this->withSession([
+        'social_connect_workspace' => $this->workspace->id,
+        'google_business_profile_account_id' => $this->account->id,
+    ])->post(route('app.social.google-business-profile.select'), [
+        'location_ids' => [$this->location->id],
+    ])->assertOk();
+
+    expect($this->location->fresh()->is_selected)->toBeTrue()
+        ->and($target->fresh()->enabled)->toBeTrue()
+        ->and($target->fresh()->error_message)->toBeNull()
+        ->and($target->fresh()->error_context)->toBeNull()
+        ->and($this->post->fresh()->status)->toBe(PostStatus::Draft);
+});
+
+test('serialized Google Business Profile target exposes location identity and connection issue', function (): void {
+    $target = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->account->id,
+        'google_business_profile_location_id' => $this->location->id,
+        'platform_name' => 'Downtown Store',
+        'platform_username' => 'DT-01',
+    ]);
+
+    expect($target->fresh()->toArray())
+        ->toMatchArray([
+            'display_name' => 'Downtown Store',
+            'display_username' => 'DT-01',
+            'connection_issue_code' => null,
+        ]);
+
+    $this->location->update(['is_selected' => false]);
+
+    expect($target->fresh()->toArray()['connection_issue_code'])->toBe('gbp_location_disconnected');
 });
 
 test('post metrics degrade cleanly when a historical target has no account or location', function (): void {

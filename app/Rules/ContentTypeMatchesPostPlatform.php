@@ -47,6 +47,12 @@ class ContentTypeMatchesPostPlatform implements DataAwareRule, ValidationRule
             return;
         }
 
+        if (! $contentType->isAuthorable()) {
+            $fail(sprintf('content_type "%s" is no longer available for new posts.', $contentType->value));
+
+            return;
+        }
+
         if (! in_array($postPlatform->socialAccount->platform, $contentType->compatiblePlatforms(), true)) {
             $fail(sprintf(
                 'content_type "%s" is not compatible with the %s account.',

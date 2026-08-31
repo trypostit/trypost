@@ -223,6 +223,7 @@ const selectedChannels = computed(() =>
                 v-else-if="channel.platform === Platform.GoogleBusinessProfile"
                 :social-account="channel.socialAccount"
                 :content-type="channel.contentType"
+                :content-type-error="channel.contentTypeError"
                 :meta="channel.meta"
                 :disabled="disabled"
                 :preview-only="previewOnly"

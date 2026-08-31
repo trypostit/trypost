@@ -27,6 +27,7 @@ class PostPlatformResource extends JsonResource
             'last_reconciled_at' => $this->last_reconciled_at?->format('Y-m-d H:i:s'),
             'google_business_profile_location_id' => $this->google_business_profile_location_id,
             'error_message' => $this->error_message,
+            'connection_issue_code' => $this->connection_issue_code,
             // Display fields fall back to snapshots (platform_name/username/avatar)
             // so deleted accounts still render correctly in the post history.
             'display_name' => $this->display_name,

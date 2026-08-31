@@ -18,6 +18,13 @@ class GoogleBusinessProfilePublisher
     /** @return array<string, mixed> */
     public function publish(PostPlatform $postPlatform): array
     {
+        if (! $postPlatform->content_type->isAuthorable()) {
+            throw new GoogleBusinessProfilePublishException(
+                userMessage: 'Google Business Profile alerts are no longer available for new posts.',
+                category: ErrorCategory::ContentPolicy,
+            );
+        }
+
         $location = $postPlatform->googleBusinessProfileLocation;
 
         if (! $location || ! $location->is_selected || $location->social_account_id !== $postPlatform->social_account_id) {

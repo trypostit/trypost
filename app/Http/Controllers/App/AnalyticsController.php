@@ -9,6 +9,7 @@ use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\GoogleBusinessProfilePublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Http\Controllers\Controller;
+use App\Models\GoogleBusinessProfileLocation;
 use App\Models\SocialAccount;
 use App\Services\Social\FacebookAnalytics;
 use App\Services\Social\GoogleBusinessProfile\GoogleBusinessProfileAnalytics;
@@ -54,13 +55,33 @@ class AnalyticsController extends Controller
             ->where('is_active', true)
             ->whereIn('platform', self::SUPPORTED_PLATFORMS)
             ->get()
-            ->map(fn (SocialAccount $account) => [
-                'id' => $account->id,
-                'platform' => $account->platform->value,
-                'username' => $account->username,
-                'display_label' => $account->display_label,
-                'avatar_url' => $account->avatar_url,
-            ]);
+            ->flatMap(function (SocialAccount $account): array {
+                if ($account->platform === Platform::GoogleBusinessProfile) {
+                    return $account->googleBusinessProfileLocations()
+                        ->where('is_selected', true)
+                        ->orderBy('title')
+                        ->get()
+                        ->map(fn (GoogleBusinessProfileLocation $location): array => [
+                            'id' => 'gbp-location-'.$location->id,
+                            'account_id' => $account->id,
+                            'location_id' => $location->id,
+                            'platform' => $account->platform->value,
+                            'username' => null,
+                            'display_label' => $location->title,
+                            'avatar_url' => $account->avatar_url,
+                        ])->all();
+                }
+
+                return [[
+                    'id' => $account->id,
+                    'account_id' => $account->id,
+                    'location_id' => null,
+                    'platform' => $account->platform->value,
+                    'username' => $account->username,
+                    'display_label' => $account->display_label,
+                    'avatar_url' => $account->avatar_url,
+                ]];
+            })->values();
 
         return Inertia::render('analytics/Index', [
             'accounts' => $accounts,
@@ -78,7 +99,14 @@ class AnalyticsController extends Controller
         $since = $request->has('since') ? Carbon::parse($request->input('since')) : null;
         $until = $request->has('until') ? Carbon::parse($request->input('until')) : null;
 
-        $metrics = $this->metricsFor($account, $since, $until);
+        $location = null;
+        if ($account->platform === Platform::GoogleBusinessProfile && $request->filled('location_id')) {
+            $location = $account->googleBusinessProfileLocations()
+                ->where('is_selected', true)
+                ->findOrFail($request->string('location_id')->toString());
+        }
+
+        $metrics = $this->metricsFor($account, $since, $until, $location);
 
         return response()->json(['metrics' => $metrics]);
     }
@@ -90,8 +118,12 @@ class AnalyticsController extends Controller
      *
      * @return array<int, array{label: string, value: int|string}>
      */
-    private function metricsFor(SocialAccount $account, ?Carbon $since, ?Carbon $until): array
-    {
+    private function metricsFor(
+        SocialAccount $account,
+        ?Carbon $since,
+        ?Carbon $until,
+        ?GoogleBusinessProfileLocation $googleBusinessProfileLocation = null,
+    ): array {
         try {
             return match ($account->platform) {
                 Platform::TikTok => app(TikTokAnalytics::class)->getMetrics($account),
@@ -102,7 +134,7 @@ class AnalyticsController extends Controller
                 Platform::LinkedInPage => app(LinkedInPageAnalytics::class)->getMetrics($account, $since, $until),
                 Platform::Pinterest => app(PinterestAnalytics::class)->getMetrics($account, $since, $until),
                 Platform::YouTube => app(YouTubeAnalytics::class)->getMetrics($account, $since, $until),
-                Platform::GoogleBusinessProfile => app(GoogleBusinessProfileAnalytics::class)->getMetrics($account, $since, $until),
+                Platform::GoogleBusinessProfile => app(GoogleBusinessProfileAnalytics::class)->getMetrics($account, $since, $until, $googleBusinessProfileLocation),
                 Platform::Telegram => app(TelegramAnalytics::class)->getMetrics($account),
                 default => [],
             };

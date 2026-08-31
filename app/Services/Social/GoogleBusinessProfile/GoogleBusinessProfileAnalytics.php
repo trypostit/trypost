@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social\GoogleBusinessProfile;
 
+use App\Models\GoogleBusinessProfileLocation;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Social\ConnectionVerifier;
@@ -28,8 +29,12 @@ class GoogleBusinessProfileAnalytics
     public function __construct(private readonly GoogleBusinessProfileApi $api) {}
 
     /** @return array<int, array{label: string, value: int|string}> */
-    public function getMetrics(SocialAccount $account, ?CarbonInterface $since = null, ?CarbonInterface $until = null): array
-    {
+    public function getMetrics(
+        SocialAccount $account,
+        ?CarbonInterface $since = null,
+        ?CarbonInterface $until = null,
+        ?GoogleBusinessProfileLocation $location = null,
+    ): array {
         $this->refreshTokenIfNeeded($account);
 
         $since ??= now()->subDays(30);
@@ -38,7 +43,11 @@ class GoogleBusinessProfileAnalytics
         /** @var array<string, array{value: int, estimated: bool}> $keywords */
         $keywords = [];
 
-        foreach ($account->googleBusinessProfileLocations()->where('is_selected', true)->get() as $location) {
+        $locations = $location
+            ? collect([$location])
+            : $account->googleBusinessProfileLocations()->where('is_selected', true)->get();
+
+        foreach ($locations as $location) {
             $response = $this->api->performance($location, [
                 'dailyMetrics' => self::DAILY_METRICS,
                 'dailyRange.start_date.year' => $since->year,

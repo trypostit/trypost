@@ -113,6 +113,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('connect/telegram', [TelegramController::class, 'connect'])->name('app.social.telegram.connect');
         Route::get('connect/discord', [DiscordController::class, 'connect'])->name('app.social.discord.connect');
 
+        Route::delete('accounts/google-business-profile/locations/{location}', [GoogleBusinessProfileController::class, 'disconnectLocation'])
+            ->name('app.social.google-business-profile.locations.disconnect');
+
         Route::delete('accounts/{account}', [SocialController::class, 'disconnect'])->name('app.accounts.disconnect');
     });
 

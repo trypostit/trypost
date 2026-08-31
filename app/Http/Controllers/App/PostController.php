@@ -47,7 +47,7 @@ class PostController extends Controller
         $this->authorize('view', $workspace);
 
         $query = $workspace->posts()
-            ->with(['postPlatforms' => fn ($query) => $query->enabled()->with('socialAccount'), 'user', 'labels']);
+            ->with(['postPlatforms' => fn ($query) => $query->enabled()->with(['socialAccount', 'googleBusinessProfileLocation']), 'user', 'labels']);
 
         if ($status) {
             $query = match ($status) {
@@ -124,7 +124,7 @@ class PostController extends Controller
         };
 
         $posts = $workspace->posts()
-            ->with(['postPlatforms' => fn ($query) => $query->enabled()->with('socialAccount')])
+            ->with(['postPlatforms' => fn ($query) => $query->enabled()->with(['socialAccount', 'googleBusinessProfileLocation'])])
             ->whereBetween('scheduled_at', [$rangeStart->copy()->utc(), $rangeEnd->copy()->utc()])
             ->orderBy('scheduled_at')
             ->get()
@@ -222,7 +222,7 @@ class PostController extends Controller
             return redirect()->route('app.posts.edit', $post);
         }
 
-        $post->load(['postPlatforms.socialAccount', 'labels']);
+        $post->load(['postPlatforms.socialAccount', 'postPlatforms.googleBusinessProfileLocation', 'labels']);
 
         return Inertia::render('posts/Show', [
             'workspace' => $workspace,
@@ -248,7 +248,7 @@ class PostController extends Controller
             SyncPostPlatforms::execute($post);
         }
 
-        $post->load(['postPlatforms.socialAccount', 'labels']);
+        $post->load(['postPlatforms.socialAccount', 'postPlatforms.googleBusinessProfileLocation', 'labels']);
         $socialAccounts = $workspace->socialAccounts()->active()->get();
         $labels = $workspace->labels;
         $signatures = $workspace->signatures;

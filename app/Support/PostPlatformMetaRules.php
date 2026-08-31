@@ -199,6 +199,10 @@ class PostPlatformMetaRules
         $errors = [];
 
         foreach ($post->postPlatforms()->enabled()->get()->values() as $index => $postPlatform) {
+            if ($postPlatform->content_type && ! $postPlatform->content_type->isAuthorable()) {
+                $errors["platforms.{$index}.content_type"] = 'Google Business Profile alerts are no longer available for new posts.';
+            }
+
             $violation = self::requiredMetaViolation($postPlatform->platform, $postPlatform->meta);
 
             if ($violation !== null) {
@@ -225,8 +229,13 @@ class PostPlatformMetaRules
     public static function addGoogleBusinessProfileErrors(Validator $validator, array $platforms, callable $resolveContentType): void
     {
         foreach ($platforms as $index => $platform) {
+            $contentType = $resolveContentType($platform, $index);
+            if ($contentType && ! $contentType->isAuthorable()) {
+                $validator->errors()->add("platforms.{$index}.content_type", 'Google Business Profile alerts are no longer available for new posts.');
+            }
+
             foreach (self::googleBusinessProfileErrorsFor(
-                $resolveContentType($platform, $index),
+                $contentType,
                 (array) data_get($platform, 'meta', []),
                 "platforms.{$index}.meta",
             ) as $field => $message) {
@@ -245,8 +254,13 @@ class PostPlatformMetaRules
     {
         $errors = [];
         foreach ($platforms as $index => $platform) {
+            $contentType = $resolveContentType($platform, $index);
+            if ($contentType && ! $contentType->isAuthorable()) {
+                $errors["platforms.{$index}.content_type"] = 'Google Business Profile alerts are no longer available for new posts.';
+            }
+
             $errors = [...$errors, ...self::googleBusinessProfileErrorsFor(
-                $resolveContentType($platform, $index),
+                $contentType,
                 (array) data_get($platform, 'meta', []),
                 "platforms.{$index}.meta",
             )];
@@ -318,10 +332,6 @@ class PostPlatformMetaRules
                 && strtotime((string) data_get($meta, 'event_end_at')) <= strtotime((string) data_get($meta, 'event_start_at'))) {
                 $errors["{$prefix}.event_end_at"] = 'Event end must be after event start.';
             }
-        }
-
-        if ($contentType === ContentType::GoogleBusinessProfileAlert && blank(data_get($meta, 'alert_type'))) {
-            $errors["{$prefix}.alert_type"] = 'Alert type is required for a Google Business Profile alert.';
         }
 
         if (data_get($meta, 'recurrence_pattern') === 'weekly' && blank(data_get($meta, 'recurrence_days_of_week'))) {

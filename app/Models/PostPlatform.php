@@ -20,6 +20,13 @@ class PostPlatform extends Model
     /** @use HasFactory<PostPlatformFactory> */
     use HasFactory, HasUuids;
 
+    protected $appends = [
+        'display_name',
+        'display_username',
+        'display_avatar',
+        'connection_issue_code',
+    ];
+
     protected $fillable = [
         'post_id',
         'social_account_id',
@@ -119,6 +126,32 @@ class PostPlatform extends Model
         }
 
         return $this->platform_avatar ? Storage::url($this->platform_avatar) : null;
+    }
+
+    public function getConnectionIssueCodeAttribute(): ?string
+    {
+        if ($this->platform === SocialPlatform::GoogleBusinessProfile
+            && (! $this->googleBusinessProfileLocation || ! $this->googleBusinessProfileLocation->is_selected)) {
+            return 'gbp_location_disconnected';
+        }
+
+        if (! $this->socialAccount) {
+            return 'account_disconnected';
+        }
+
+        if (! $this->socialAccount->is_active) {
+            return 'account_inactive';
+        }
+
+        if ($this->socialAccount->status === \App\Enums\SocialAccount\Status::TokenExpired) {
+            return 'account_token_expired';
+        }
+
+        if ($this->socialAccount->status !== \App\Enums\SocialAccount\Status::Connected) {
+            return 'account_disconnected';
+        }
+
+        return null;
     }
 
     public function markAsPublishing(): void
