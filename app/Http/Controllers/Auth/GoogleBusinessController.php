@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Http\Requests\Auth\SelectGoogleBusinessLocationRequest;
+use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\Social\GoogleBusinessPublisher;
 use Illuminate\Http\RedirectResponse;
@@ -158,29 +159,7 @@ class GoogleBusinessController extends SocialController
                 return $this->popupCallback(false, __('accounts.popup_callback.location_not_found'), $this->platform->value);
             }
 
-            $reconnectId = data_get($oauthData, 'reconnect_id');
-
-            if ($reconnectId) {
-                $existingAccount = $workspace->socialAccounts()->find($reconnectId);
-
-                if ($existingAccount) {
-                    $existingAccount->update([
-                        ...$this->locationAttributes(
-                            $selectedLocation,
-                            data_get($oauthData, 'access_token'),
-                            data_get($oauthData, 'refresh_token'),
-                            data_get($oauthData, 'expires_in'),
-                            data_get($oauthData, 'user_id'),
-                        ),
-                        'platform_user_id' => data_get($selectedLocation, 'id'),
-                    ]);
-                    $existingAccount->markAsConnected();
-
-                    session()->forget(['google_business_oauth', 'social_reconnect_id']);
-
-                    return $this->popupCallback(true, __('accounts.popup_callback.reconnected'), $this->platform->value);
-                }
-            }
+            $reconnect = $this->reconnectAccount($workspace, data_get($oauthData, 'reconnect_id'));
 
             $this->connectLocation(
                 $workspace,
@@ -189,13 +168,18 @@ class GoogleBusinessController extends SocialController
                 data_get($oauthData, 'refresh_token'),
                 data_get($oauthData, 'expires_in'),
                 data_get($oauthData, 'user_id'),
+                $reconnect,
             );
 
             session()->forget(['google_business_oauth', 'social_reconnect_id']);
 
-            return $this->popupCallback(true, __('accounts.popup_callback.connected'), $this->platform->value);
-        } catch (NetworkAlreadyConnectedException) {
-            return $this->popupCallback(false, __('accounts.popup_callback.network_taken'), $this->platform->value);
+            return $this->popupCallback(
+                true,
+                __($reconnect ? 'accounts.popup_callback.reconnected' : 'accounts.popup_callback.connected'),
+                $this->platform->value,
+            );
+        } catch (NetworkAlreadyConnectedException $e) {
+            return $this->popupCallback(false, __("accounts.popup_callback.{$e->messageKey}"), $this->platform->value);
         } catch (\Exception $e) {
             Log::error('Google Business Profile location selection error', [
                 'error' => $e->getMessage(),
@@ -205,19 +189,19 @@ class GoogleBusinessController extends SocialController
         }
     }
 
-    private function connectLocation(Workspace $workspace, array $location, string $accessToken, ?string $refreshToken, ?int $expiresIn, ?string $googleUserId): void
+    private function connectLocation(Workspace $workspace, array $location, string $accessToken, ?string $refreshToken, ?int $expiresIn, ?string $googleUserId, ?SocialAccount $reconnect = null): void
     {
-        $workspace->socialAccounts()->updateOrCreate(
-            [
-                'platform' => $this->platform->value,
-                'platform_user_id' => data_get($location, 'id'),
-            ],
+        SocialAccount::connectIdentity(
+            $workspace,
+            $this->platform,
+            (string) data_get($location, 'id'),
             [
                 ...$this->locationAttributes($location, $accessToken, $refreshToken, $expiresIn, $googleUserId),
                 'status' => Status::Connected,
                 'error_message' => null,
                 'disconnected_at' => null,
             ],
+            $reconnect,
         );
     }
 

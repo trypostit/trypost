@@ -386,3 +386,42 @@ test('select reconnects an existing account when a reconnect id is present', fun
     expect($existingAccount->status)->toBe(Status::Connected)
         ->and($existingAccount->access_token)->toBe('new-access-token');
 });
+
+test('select refuses to repoint a reconnected account at a different location', function () {
+    $existingAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::GoogleBusiness,
+        'platform_user_id' => 'accounts/1/locations/2',
+        'access_token' => 'the-token-that-still-works',
+        'status' => Status::TokenExpired,
+    ]);
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'google_business_oauth' => [
+            'access_token' => 'new-access-token',
+            'refresh_token' => 'new-refresh-token',
+            'expires_in' => 3600,
+            'user_id' => 'gid-1',
+            'reconnect_id' => $existingAccount->id,
+            'locations' => [
+                ['id' => 'accounts/1/locations/9', 'account_name' => 'accounts/1', 'location_name' => 'locations/9', 'title' => 'Airport Kiosk', 'address' => null],
+            ],
+        ],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->post(route('app.social.google-business.select'), ['location_id' => 'accounts/1/locations/9']);
+
+    $response->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('success', false)
+        ->where('message', __('accounts.popup_callback.wrong_account'))
+    );
+
+    // The card and every post scheduled against it stay on the original store.
+    $existingAccount->refresh();
+    expect($existingAccount->platform_user_id)->toBe('accounts/1/locations/2')
+        ->and($existingAccount->access_token)->toBe('the-token-that-still-works')
+        ->and($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->count())->toBe(1);
+});
