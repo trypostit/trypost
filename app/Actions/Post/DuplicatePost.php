@@ -6,6 +6,7 @@ namespace App\Actions\Post;
 
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Models\Post;
 use App\Models\User;
@@ -43,6 +44,14 @@ class DuplicatePost
             foreach ($platforms as $platform) {
                 $locationDisconnected = $platform->google_business_profile_location_id
                     && ! $platform->googleBusinessProfileLocation?->is_selected;
+                $contentType = $platform->content_type->isAuthorable()
+                    ? $platform->content_type
+                    : ContentType::defaultFor($platform->platform);
+                $meta = $platform->meta;
+
+                if (! $platform->content_type->isAuthorable()) {
+                    unset($meta['alert_type']);
+                }
 
                 $copy->postPlatforms()->create([
                     'social_account_id' => $platform->social_account_id,
@@ -51,9 +60,9 @@ class DuplicatePost
                     'platform_name' => $platform->platform_name,
                     'platform_username' => $platform->platform_username,
                     'platform_avatar' => $platform->getRawOriginal('platform_avatar'),
-                    'content_type' => $platform->content_type,
+                    'content_type' => $contentType,
                     'enabled' => $platform->enabled && ! $locationDisconnected,
-                    'meta' => $platform->meta,
+                    'meta' => $meta,
                     // Always reset platform-level status — never carry
                     // published/failed/publishing into the new draft.
                     'status' => PostPlatformStatus::Pending,

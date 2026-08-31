@@ -130,6 +130,10 @@ class PostPlatform extends Model
 
     public function getConnectionIssueCodeAttribute(): ?string
     {
+        if (in_array($this->status, [Status::Published, Status::Failed, Status::Rejected], true)) {
+            return null;
+        }
+
         if ($this->platform === SocialPlatform::GoogleBusinessProfile
             && (! $this->googleBusinessProfileLocation || ! $this->googleBusinessProfileLocation->is_selected)) {
             return 'gbp_location_disconnected';

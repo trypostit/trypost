@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Post\CreatePost;
+use App\Actions\Post\DuplicatePost;
 use App\Actions\Post\SyncPostPlatforms;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
@@ -540,6 +541,35 @@ test('disconnecting one location preserves its target and other locations', func
         ->and($scheduledPost->fresh()->scheduled_at)->toBeNull();
 });
 
+test('a user cannot disconnect a Google Business Profile location from another workspace', function (): void {
+    $this->user->update(['current_workspace_id' => $this->workspace->id]);
+    $foreignWorkspace = Workspace::factory()->create();
+    $foreignAccount = SocialAccount::factory()->googleBusinessProfile()->create([
+        'workspace_id' => $foreignWorkspace->id,
+    ]);
+    $foreignLocation = GoogleBusinessProfileLocation::factory()->create([
+        'social_account_id' => $foreignAccount->id,
+        'is_selected' => true,
+    ]);
+    $foreignPost = Post::factory()->create([
+        'workspace_id' => $foreignWorkspace->id,
+    ]);
+    $foreignTarget = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $foreignPost->id,
+        'social_account_id' => $foreignAccount->id,
+        'google_business_profile_location_id' => $foreignLocation->id,
+        'enabled' => true,
+    ]);
+
+    $this->actingAs($this->user)
+        ->delete(route('app.social.google-business-profile.locations.disconnect', $foreignLocation))
+        ->assertNotFound();
+
+    expect($foreignLocation->fresh()->is_selected)->toBeTrue()
+        ->and($foreignTarget->fresh()->enabled)->toBeTrue()
+        ->and($foreignAccount->fresh()->status)->toBe(App\Enums\SocialAccount\Status::Connected);
+});
+
 test('disconnecting the final location clears the OAuth credential but preserves identity rows', function (): void {
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
     $this->account->update(['refresh_token' => 'refresh-token']);
@@ -613,6 +643,47 @@ test('serialized Google Business Profile target exposes location identity and co
     $this->location->update(['is_selected' => false]);
 
     expect($target->fresh()->toArray()['connection_issue_code'])->toBe('gbp_location_disconnected');
+});
+
+test('terminal Google Business Profile history is not marked as needing reconnection', function (Status $status): void {
+    $target = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->account->id,
+        'google_business_profile_location_id' => $this->location->id,
+        'status' => $status,
+    ]);
+
+    $this->location->update(['is_selected' => false]);
+
+    expect($target->fresh()->connection_issue_code)->toBeNull();
+})->with([
+    'published' => Status::Published,
+    'failed' => Status::Failed,
+    'rejected' => Status::Rejected,
+]);
+
+test('duplicating a legacy Google Business Profile alert creates an authorable standard draft', function (): void {
+    PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->account->id,
+        'google_business_profile_location_id' => $this->location->id,
+        'content_type' => ContentType::GoogleBusinessProfileAlert,
+        'meta' => [
+            'alert_type' => 'COVID_19',
+            'cta_action_type' => 'LEARN_MORE',
+            'cta_url' => 'https://example.com',
+        ],
+    ]);
+
+    $duplicate = DuplicatePost::execute($this->post, $this->user);
+    $duplicatedTarget = $duplicate->postPlatforms()->sole();
+
+    expect($duplicatedTarget->content_type)->toBe(ContentType::GoogleBusinessProfileStandard)
+        ->and($duplicatedTarget->meta)->not->toHaveKey('alert_type')
+        ->and($duplicatedTarget->meta)->toMatchArray([
+            'cta_action_type' => 'LEARN_MORE',
+            'cta_url' => 'https://example.com',
+        ]);
 });
 
 test('post metrics degrade cleanly when a historical target has no account or location', function (): void {
