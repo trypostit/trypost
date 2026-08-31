@@ -109,12 +109,12 @@ test('Google Business Profile generation enables only the selected business loca
     ]);
     $selectedLocation = GoogleBusinessProfileLocation::factory()->create([
         'social_account_id' => $account->id,
-        'title' => 'Coastal Comfort Electric',
+        'title' => 'Downtown Store',
         'is_selected' => true,
     ]);
     $otherLocation = GoogleBusinessProfileLocation::factory()->create([
         'social_account_id' => $account->id,
-        'title' => 'qFido LLC',
+        'title' => 'Uptown Store',
         'is_selected' => true,
     ]);
 
