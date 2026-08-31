@@ -59,7 +59,13 @@ class RecoverStuckPosts extends Command
                 // fresh updated_at — do not finalize the post while that work is still live.
                 $stillActive = $post->postPlatforms()
                     ->enabled()
-                    ->whereIn('status', [PlatformStatus::Publishing, PlatformStatus::Pending, PlatformStatus::Retrying])
+                    ->whereIn('status', [
+                        PlatformStatus::Publishing,
+                        PlatformStatus::Pending,
+                        PlatformStatus::Retrying,
+                        PlatformStatus::Submitted,
+                        PlatformStatus::PendingReview,
+                    ])
                     ->exists();
 
                 if ($stillActive) {

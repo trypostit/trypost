@@ -80,6 +80,19 @@ class UpdatePostRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            $submittedPlatforms = (array) $this->input('platforms', []);
+            if ($this->has('platforms') || $this->isPublishingOrScheduling()) {
+                $effectivePayloads = PostPlatformMetaRules::effectivePayloadsForUpdate(
+                    $this->route('post'),
+                    $this->has('platforms') ? $submittedPlatforms : null,
+                );
+                PostPlatformMetaRules::addGoogleBusinessProfileErrors(
+                    $validator,
+                    $effectivePayloads,
+                    fn ($platform) => ContentType::tryFrom((string) data_get($platform, 'content_type')),
+                );
+            }
+
             if (! $this->isPublishingOrScheduling()) {
                 return;
             }

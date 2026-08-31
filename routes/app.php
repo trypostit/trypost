@@ -35,6 +35,7 @@ use App\Http\Controllers\App\WorkspaceSignatureController;
 use App\Http\Controllers\Auth\BlueskyController;
 use App\Http\Controllers\Auth\DiscordController;
 use App\Http\Controllers\Auth\FacebookController;
+use App\Http\Controllers\Auth\GoogleBusinessProfileController;
 use App\Http\Controllers\Auth\InstagramController;
 use App\Http\Controllers\Auth\InstagramFacebookController;
 use App\Http\Controllers\Auth\LinkedInController;
@@ -99,6 +100,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('connect/x', [XController::class, 'connect'])->name('app.social.x.connect');
         Route::get('connect/tiktok', [TikTokController::class, 'connect'])->name('app.social.tiktok.connect');
         Route::get('connect/youtube', [YouTubeController::class, 'connect'])->name('app.social.youtube.connect');
+        Route::get('connect/google-business-profile', [GoogleBusinessProfileController::class, 'connect'])->name('app.social.google-business-profile.connect');
         Route::get('connect/facebook', [FacebookController::class, 'connect'])->name('app.social.facebook.connect');
         Route::get('connect/instagram', [InstagramController::class, 'connect'])->name('app.social.instagram.connect');
         Route::get('connect/instagram-facebook', [InstagramFacebookController::class, 'connect'])->name('app.social.instagram-facebook.connect');
@@ -127,6 +129,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('accounts/tiktok/callback', [TikTokController::class, 'callback'])->name('app.social.tiktok.callback');
 
     Route::get('accounts/youtube/callback', [YouTubeController::class, 'callback'])->name('app.social.youtube.callback');
+
+    Route::get('accounts/google-business-profile/callback', [GoogleBusinessProfileController::class, 'callback'])->name('app.social.google-business-profile.callback');
+    Route::get('accounts/google-business-profile/select', [GoogleBusinessProfileController::class, 'selectLocations'])->name('app.social.google-business-profile.select-locations');
+    Route::post('accounts/google-business-profile/select', [GoogleBusinessProfileController::class, 'select'])->name('app.social.google-business-profile.select');
 
     Route::get('accounts/facebook/callback', [FacebookController::class, 'callback'])->name('app.social.facebook.callback');
     Route::get('accounts/facebook/select', [FacebookController::class, 'selectPage'])->name('app.social.facebook.select-page');

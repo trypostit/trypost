@@ -193,7 +193,10 @@ const channels = computed<Channel[]>(() =>
                                     <IconLoader2 class="size-3 animate-spin" />
                                     {{ $t('posts.edit.status.publishing') }}
                                 </Badge>
+                                <Badge v-else-if="pp.status === PostPlatformStatus.Submitted" variant="warning">{{ $t('posts.edit.status.submitted') }}</Badge>
+                                <Badge v-else-if="pp.status === PostPlatformStatus.PendingReview" variant="warning">{{ $t('posts.edit.status.pending_review') }}</Badge>
                                 <Badge v-else-if="pp.status === PostPlatformStatus.Failed" variant="destructive">{{ $t('posts.edit.status.failed') }}</Badge>
+                                <Badge v-else-if="pp.status === PostPlatformStatus.Rejected" variant="destructive">{{ $t('posts.edit.status.rejected') }}</Badge>
                                 <a
                                     v-if="pp.platform_url"
                                     :href="pp.platform_url"

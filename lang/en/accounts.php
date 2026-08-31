@@ -21,6 +21,7 @@ return [
         'x' => 'Connect your X (Twitter) account',
         'tiktok' => 'Connect your TikTok account',
         'youtube' => 'Connect a YouTube channel',
+        'google-business-profile' => 'Connect one or more Google Business Profile locations',
         'facebook' => 'Connect a Facebook page',
         'instagram' => 'Connect via Instagram Login or Facebook Pages',
         'instagram-facebook' => 'Connect Instagram via Facebook page',
@@ -90,6 +91,16 @@ return [
         'choose' => 'Choose',
     ],
 
+    'google_business_profile' => [
+        'title' => 'Select Google Business Profile locations',
+        'description' => 'Choose every location you want to publish to and analyze in TryPost.',
+        'no_locations' => 'No locations found',
+        'no_locations_description' => 'This Google account does not manage any Business Profile locations.',
+        'store_code' => 'Store code: :code',
+        'save' => 'Connect selected locations',
+        'saving' => 'Connecting...',
+    ],
+
     'instagram_facebook' => [
         'title' => 'Select Instagram Account',
         'description' => 'Choose which Instagram account you want to connect',
@@ -146,6 +157,8 @@ return [
         'wrong_account' => 'That is a different account. Authorize the one you are reconnecting.',
         'all_connected' => 'Every account on this login is already connected.',
         'busy' => 'Another connection is still finishing. Please try again in a moment.',
+        'no_google_business_profile_locations' => 'No Google Business Profile locations were found for this Google account.',
+        'error_connecting_google_business_profile' => 'Could not connect Google Business Profile. Please try again.',
         'error_connecting_page' => 'Error connecting page. Please try again.',
         'error_connecting_channel' => 'Error connecting channel. Please try again.',
         'session_expired' => 'Session expired. Please try again.',

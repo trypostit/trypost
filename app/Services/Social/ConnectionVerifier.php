@@ -179,6 +179,7 @@ class ConnectionVerifier
             Platform::Threads => $this->verifyThreads($account),
             Platform::TikTok => $this->verifyTikTok($account),
             Platform::YouTube => $this->verifyYouTube($account),
+            Platform::GoogleBusinessProfile => $this->verifyGoogleBusinessProfile($account),
             Platform::Pinterest => $this->verifyPinterest($account),
             Platform::Bluesky => $this->verifyBluesky($account),
             Platform::Mastodon => $this->verifyMastodon($account),
@@ -231,6 +232,7 @@ class ConnectionVerifier
                 Platform::X => $this->refreshXToken($account),
                 Platform::Bluesky => $this->refreshBlueskyToken($account),
                 Platform::YouTube => $this->refreshYouTubeToken($account),
+                Platform::GoogleBusinessProfile => $this->refreshGoogleBusinessProfileToken($account),
                 Platform::TikTok => $this->refreshTikTokToken($account),
                 Platform::Pinterest => $this->refreshPinterestToken($account),
                 Platform::Threads => $this->refreshThreadsToken($account),
@@ -352,6 +354,30 @@ class ConnectionVerifier
                 'refresh_token' => $account->refresh_token,
                 'client_id' => config('services.google.client_id'),
                 'client_secret' => config('services.google.client_secret'),
+            ]));
+
+        $data = $response->json();
+
+        $account->update([
+            'access_token' => $this->tokenFrom($data, $account->platform),
+            'token_expires_at' => data_get($data, 'expires_in') ? now()->addSeconds(data_get($data, 'expires_in')) : null,
+        ]);
+
+        $account->refresh();
+    }
+
+    private function refreshGoogleBusinessProfileToken(SocialAccount $account): void
+    {
+        if (! $account->refresh_token) {
+            throw new TokenExpiredException('No refresh token available for Google Business Profile account');
+        }
+
+        $response = TokenRefreshClient::for(Platform::GoogleBusinessProfile)->send(fn () => $this->refreshHttp()->asForm()
+            ->post(config('trypost.platforms.google-business-profile.oauth_api').'/token', [
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $account->refresh_token,
+                'client_id' => config('services.google-business-profile.client_id'),
+                'client_secret' => config('services.google-business-profile.client_secret'),
             ]));
 
         $data = $response->json();
@@ -614,6 +640,25 @@ class ConnectionVerifier
 
         if (YouTubePublishException::isConfirmedDeadToken($response)) {
             throw new TokenExpiredException('YouTube access token is invalid or expired');
+        }
+
+        if ($response->successful()) {
+            return true;
+        }
+
+        throw new PlatformUnavailableException(
+            "{$account->platform->label()} verify failed ({$response->status()}).",
+            $response->status(),
+        );
+    }
+
+    private function verifyGoogleBusinessProfile(SocialAccount $account): bool
+    {
+        $response = Http::withToken($account->access_token)
+            ->get('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', ['pageSize' => 1]);
+
+        if ($response->status() === 401) {
+            throw new TokenExpiredException('Google Business Profile access token is invalid or expired');
         }
 
         if ($response->successful()) {

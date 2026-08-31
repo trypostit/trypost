@@ -123,6 +123,14 @@ class PostPlatformFactory extends Factory
         ]);
     }
 
+    public function googleBusinessProfile(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'platform' => Platform::GoogleBusinessProfile,
+            'content_type' => ContentType::GoogleBusinessProfileStandard,
+        ]);
+    }
+
     public function pinterest(): static
     {
         return $this->state(fn (array $attributes) => [

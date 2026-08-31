@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Enums\PostPlatform\AspectRatio;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use Illuminate\Validation\Rule;
@@ -30,6 +31,45 @@ class PostPlatformMetaRules
         'FOLLOWER_OF_CREATOR',
         'SELF_ONLY',
     ];
+
+    public const GOOGLE_BUSINESS_PROFILE_CTA_TYPES = ['BOOK', 'ORDER', 'SHOP', 'LEARN_MORE', 'SIGN_UP', 'CALL'];
+
+    public const GOOGLE_BUSINESS_PROFILE_RECURRENCE_PATTERNS = ['daily', 'weekly', 'monthly'];
+
+    public const GOOGLE_BUSINESS_PROFILE_DAYS_OF_WEEK = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+
+    public const GOOGLE_BUSINESS_PROFILE_WEEK_OCCURRENCES = ['FIRST', 'SECOND', 'THIRD', 'FOURTH', 'FIFTH', 'LAST'];
+
+    /**
+     * Resolve an update exactly as UpdatePost will: submitted rows become the
+     * enabled set and merge their meta patches; omitted rows keep stored state.
+     *
+     * @param  array<int, mixed>|null  $submittedPlatforms
+     * @return list<array{content_type: string, meta: array<string, mixed>}>
+     */
+    public static function effectivePayloadsForUpdate(Post $post, ?array $submittedPlatforms): array
+    {
+        $stored = $post->postPlatforms()->get()->keyBy('id');
+
+        if ($submittedPlatforms === null) {
+            return $stored->where('enabled', true)->map(fn ($postPlatform): array => [
+                'content_type' => $postPlatform->content_type->value,
+                'meta' => $postPlatform->meta ?? [],
+            ])->values()->all();
+        }
+
+        return collect($submittedPlatforms)->map(function ($platform) use ($stored): array {
+            $postPlatform = $stored->get(data_get($platform, 'id'));
+
+            return [
+                'content_type' => (string) (data_get($platform, 'content_type') ?? $postPlatform?->content_type?->value ?? ''),
+                'meta' => array_filter(
+                    array_merge($postPlatform?->meta ?? [], (array) data_get($platform, 'meta', [])),
+                    fn (mixed $value): bool => $value !== null,
+                ),
+            ];
+        })->values()->all();
+    }
 
     /**
      * Validation rules for `platforms.*.meta` and all its per-platform sub-keys.
@@ -63,6 +103,24 @@ class PostPlatformMetaRules
             'platforms.*.meta.board_id' => ['sometimes', 'nullable', 'string'],
             'platforms.*.meta.title' => ['sometimes', 'nullable', 'string', 'max:100'],
             'platforms.*.meta.link' => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
+
+            // Google Business Profile local posts
+            'platforms.*.meta.language_code' => ['sometimes', 'nullable', 'string', 'max:35'],
+            'platforms.*.meta.cta_action_type' => ['sometimes', 'nullable', 'string', Rule::in(self::GOOGLE_BUSINESS_PROFILE_CTA_TYPES)],
+            'platforms.*.meta.cta_url' => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
+            'platforms.*.meta.event_title' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'platforms.*.meta.event_start_at' => ['sometimes', 'nullable', 'date'],
+            'platforms.*.meta.event_end_at' => ['sometimes', 'nullable', 'date'],
+            'platforms.*.meta.offer_coupon_code' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'platforms.*.meta.offer_redeem_url' => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
+            'platforms.*.meta.offer_terms' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'platforms.*.meta.alert_type' => ['sometimes', 'nullable', 'string', Rule::in(['COVID_19'])],
+            'platforms.*.meta.recurrence_pattern' => ['sometimes', 'nullable', 'string', Rule::in(self::GOOGLE_BUSINESS_PROFILE_RECURRENCE_PATTERNS)],
+            'platforms.*.meta.recurrence_series_end_at' => ['sometimes', 'nullable', 'date'],
+            'platforms.*.meta.recurrence_days_of_week' => ['sometimes', 'nullable', 'array', 'min:1'],
+            'platforms.*.meta.recurrence_days_of_week.*' => ['string', Rule::in(self::GOOGLE_BUSINESS_PROFILE_DAYS_OF_WEEK)],
+            'platforms.*.meta.recurrence_day_of_month' => ['sometimes', 'nullable', 'integer', 'between:1,31'],
+            'platforms.*.meta.recurrence_day_of_week_occurrence' => ['sometimes', 'nullable', 'string', Rule::in(self::GOOGLE_BUSINESS_PROFILE_WEEK_OCCURRENCES)],
 
             // Discord
             'platforms.*.meta.channel_id' => ['sometimes', 'nullable', 'string'],
@@ -147,11 +205,112 @@ class PostPlatformMetaRules
                 [$field, $message] = $violation;
                 $errors["platforms.{$index}.meta.{$field}"] = $message;
             }
+
+            $errors = [...$errors, ...self::googleBusinessProfileErrorsFor(
+                $postPlatform->content_type,
+                $postPlatform->meta ?? [],
+                "platforms.{$index}.meta",
+            )];
         }
 
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
+    }
+
+    /**
+     * @param  array<int, mixed>  $platforms
+     * @param  callable(mixed, int): ?ContentType  $resolveContentType
+     */
+    public static function addGoogleBusinessProfileErrors(Validator $validator, array $platforms, callable $resolveContentType): void
+    {
+        foreach ($platforms as $index => $platform) {
+            foreach (self::googleBusinessProfileErrorsFor(
+                $resolveContentType($platform, $index),
+                (array) data_get($platform, 'meta', []),
+                "platforms.{$index}.meta",
+            ) as $field => $message) {
+                $validator->errors()->add($field, $message);
+            }
+        }
+    }
+
+    /**
+     * @param  array<int, mixed>  $platforms
+     * @param  callable(mixed, int): ?ContentType  $resolveContentType
+     *
+     * @throws ValidationException
+     */
+    public static function assertGoogleBusinessProfilePayloads(array $platforms, callable $resolveContentType): void
+    {
+        $errors = [];
+        foreach ($platforms as $index => $platform) {
+            $errors = [...$errors, ...self::googleBusinessProfileErrorsFor(
+                $resolveContentType($platform, $index),
+                (array) data_get($platform, 'meta', []),
+                "platforms.{$index}.meta",
+            )];
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    /** @param array<string, mixed> $meta
+     * @return array<string, string>
+     */
+    private static function googleBusinessProfileErrorsFor(?ContentType $contentType, array $meta, string $prefix): array
+    {
+        $gbpTypes = [
+            ContentType::GoogleBusinessProfileStandard,
+            ContentType::GoogleBusinessProfileEvent,
+            ContentType::GoogleBusinessProfileOffer,
+            ContentType::GoogleBusinessProfileAlert,
+        ];
+        if (! in_array($contentType, $gbpTypes, true)) {
+            return [];
+        }
+
+        $errors = [];
+        if (filled(data_get($meta, 'cta_action_type'))
+            && data_get($meta, 'cta_action_type') !== 'CALL'
+            && blank(data_get($meta, 'cta_url'))) {
+            $errors["{$prefix}.cta_url"] = 'A destination URL is required for this call to action.';
+        }
+
+        if (in_array($contentType, [ContentType::GoogleBusinessProfileEvent, ContentType::GoogleBusinessProfileOffer], true)) {
+            foreach (['event_title' => 'Event title', 'event_start_at' => 'Event start', 'event_end_at' => 'Event end'] as $field => $label) {
+                if (blank(data_get($meta, $field))) {
+                    $errors["{$prefix}.{$field}"] = "{$label} is required for this Google Business Profile post type.";
+                }
+            }
+
+            if (filled(data_get($meta, 'event_start_at')) && filled(data_get($meta, 'event_end_at'))
+                && strtotime((string) data_get($meta, 'event_end_at')) <= strtotime((string) data_get($meta, 'event_start_at'))) {
+                $errors["{$prefix}.event_end_at"] = 'Event end must be after event start.';
+            }
+        }
+
+        if ($contentType === ContentType::GoogleBusinessProfileAlert && blank(data_get($meta, 'alert_type'))) {
+            $errors["{$prefix}.alert_type"] = 'Alert type is required for a Google Business Profile alert.';
+        }
+
+        if (data_get($meta, 'recurrence_pattern') === 'weekly' && blank(data_get($meta, 'recurrence_days_of_week'))) {
+            $errors["{$prefix}.recurrence_days_of_week"] = 'Choose at least one weekday for weekly recurrence.';
+        }
+
+        if (data_get($meta, 'recurrence_pattern') === 'monthly') {
+            $monthlyOptions = collect([
+                data_get($meta, 'recurrence_day_of_month'),
+                data_get($meta, 'recurrence_day_of_week_occurrence'),
+            ])->filter(fn (mixed $value): bool => filled($value))->count();
+            if ($monthlyOptions !== 1) {
+                $errors["{$prefix}.recurrence_day_of_month"] = 'Choose either a day of month or a weekday occurrence for monthly recurrence.';
+            }
+        }
+
+        return $errors;
     }
 
     /**

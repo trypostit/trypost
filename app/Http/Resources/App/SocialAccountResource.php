@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\App;
 
+use App\Enums\SocialAccount\Platform;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -30,6 +31,13 @@ class SocialAccountResource extends JsonResource
             'error_message' => $this->error_message,
             'last_used_at' => $this->last_used_at,
             'created_at' => $this->created_at,
+            'google_business_profile_locations' => $this->when(
+                $this->platform === Platform::GoogleBusinessProfile,
+                fn () => $this->googleBusinessProfileLocations()
+                    ->where('is_selected', true)
+                    ->orderBy('title')
+                    ->get(['id', 'title', 'store_code', 'maps_uri', 'is_verified']),
+            ),
         ];
     }
 }

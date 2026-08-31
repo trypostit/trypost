@@ -35,7 +35,7 @@ class CreatePost
      *     date?: ?string,
      *     scheduled_at?: ?string,
      *     created_via?: ?CreatedVia,
-     *     platforms?: array<int, array{social_account_id: string, content_type?: string, meta?: array<string, mixed>}>,
+     *     platforms?: array<int, array{social_account_id: string, google_business_profile_location_id?: string, content_type?: string, meta?: array<string, mixed>}>,
      *     label_ids?: array<int, string>
      * }  $data
      */
@@ -62,6 +62,7 @@ class CreatePost
                 }
 
                 $updates = ['enabled' => true];
+                $googleBusinessProfileLocationId = data_get($platformData, 'google_business_profile_location_id');
 
                 if ($contentType = data_get($platformData, 'content_type')) {
                     $updates['content_type'] = $contentType;
@@ -71,6 +72,7 @@ class CreatePost
                 if (is_array($meta) && $meta !== []) {
                     $existing = $post->postPlatforms()
                         ->where('social_account_id', $accountId)
+                        ->when($googleBusinessProfileLocationId, fn ($query) => $query->where('google_business_profile_location_id', $googleBusinessProfileLocationId))
                         ->first();
 
                     if ($existing) {
@@ -83,6 +85,7 @@ class CreatePost
 
                 $post->postPlatforms()
                     ->where('social_account_id', $accountId)
+                    ->when($googleBusinessProfileLocationId, fn ($query) => $query->where('google_business_profile_location_id', $googleBusinessProfileLocationId))
                     ->update($updates);
             }
 

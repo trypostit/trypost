@@ -13,6 +13,7 @@ enum Platform: string
     case X = 'x';
     case TikTok = 'tiktok';
     case YouTube = 'youtube';
+    case GoogleBusinessProfile = 'google-business-profile';
     case Facebook = 'facebook';
     case Instagram = 'instagram';
     case InstagramFacebook = 'instagram-facebook';
@@ -60,6 +61,7 @@ enum Platform: string
             self::X => 'X',
             self::TikTok => 'TikTok',
             self::YouTube => 'YouTube Shorts',
+            self::GoogleBusinessProfile => 'Google Business Profile',
             self::Facebook => 'Facebook Page',
             self::Instagram => 'Instagram',
             self::InstagramFacebook => 'Instagram (Facebook Business)',
@@ -79,6 +81,7 @@ enum Platform: string
             self::X => '#000000',
             self::TikTok => '#000000',
             self::YouTube => '#FF0000',
+            self::GoogleBusinessProfile => '#4285F4',
             self::Facebook => '#1877F2',
             self::Instagram => '#E4405F',
             self::InstagramFacebook => '#E4405F',
@@ -98,6 +101,7 @@ enum Platform: string
             self::X => [MediaType::Image, MediaType::Video],
             self::TikTok => [MediaType::Video],
             self::YouTube => [MediaType::Video],
+            self::GoogleBusinessProfile => [MediaType::Image, MediaType::Video],
             self::Facebook => [MediaType::Image, MediaType::Video],
             self::Instagram, self::InstagramFacebook => [MediaType::Image, MediaType::Video],
             self::Threads => [MediaType::Image, MediaType::Video],
@@ -116,6 +120,7 @@ enum Platform: string
             self::X => 4,
             self::TikTok => 0,
             self::YouTube => 0,
+            self::GoogleBusinessProfile => 1,
             self::Facebook => 10,
             self::Instagram, self::InstagramFacebook => 10,
             self::Threads => 10,
@@ -147,7 +152,7 @@ enum Platform: string
             self::Threads => 1000,
             self::Pinterest => 500,
             self::Discord => 1024,
-            self::TikTok, self::YouTube, self::Telegram => null,
+            self::TikTok, self::YouTube, self::GoogleBusinessProfile, self::Telegram => null,
         };
     }
 
@@ -189,6 +194,7 @@ enum Platform: string
             self::X => 280,
             self::TikTok => 2200,
             self::YouTube => 100,
+            self::GoogleBusinessProfile => 1500,
             self::Facebook => 10000,
             self::Instagram, self::InstagramFacebook => 2200,
             self::Threads => 500,
@@ -238,6 +244,7 @@ enum Platform: string
             // YouTube Shorts — fits within the 100-char title (with " #Shorts"
             // suffix taking 8 chars) so the same string works as title + desc
             self::YouTube => 80,
+            self::GoogleBusinessProfile => 300,
             // Telegram channel posts — short announcements read best
             self::Telegram => 400,
             // Discord — conversational community posts read best when concise
@@ -256,6 +263,7 @@ enum Platform: string
             self::Facebook => ['pages_manage_posts'],
             self::TikTok => ['video.publish'],
             self::YouTube => ['https://www.googleapis.com/auth/youtube.upload'],
+            self::GoogleBusinessProfile => ['https://www.googleapis.com/auth/business.manage'],
             self::LinkedIn => ['w_member_social'],
             self::LinkedInPage => ['w_organization_social'],
             self::X => ['tweet.write'],
@@ -275,6 +283,7 @@ enum Platform: string
             self::X => true,
             self::TikTok => false,
             self::YouTube => false,
+            self::GoogleBusinessProfile => true,
             self::Facebook => true,
             self::Instagram, self::InstagramFacebook => false,
             self::Threads => true,
@@ -323,7 +332,7 @@ enum Platform: string
     {
         return match ($this) {
             self::LinkedIn, self::LinkedInPage, self::X, self::Bluesky,
-            self::YouTube, self::TikTok, self::Pinterest,
+            self::YouTube, self::GoogleBusinessProfile, self::TikTok, self::Pinterest,
             self::Threads, self::Instagram => true,
             default => false,
         };

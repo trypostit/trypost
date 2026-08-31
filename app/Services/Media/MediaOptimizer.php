@@ -342,6 +342,12 @@ class MediaOptimizer
                 'format' => 'image/jpeg',
                 'quality' => 100,
             ],
+            Platform::GoogleBusinessProfile => [
+                'max_width' => 1200,
+                'max_size' => 10 * 1024 * 1024,
+                'format' => 'image/jpeg',
+                'quality' => 100,
+            ],
             Platform::Telegram => [
                 'max_width' => 2048,
                 'max_size' => 10 * 1024 * 1024,

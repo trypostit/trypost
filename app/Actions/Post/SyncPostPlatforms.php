@@ -6,6 +6,7 @@ namespace App\Actions\Post;
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
+use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 
 class SyncPostPlatforms
@@ -20,14 +21,44 @@ class SyncPostPlatforms
     {
         $workspace = $post->workspace;
 
-        $existingAccountIds = $post->postPlatforms()->pluck('social_account_id')->filter();
+        $existingAccountIds = $post->postPlatforms()
+            ->whereNull('google_business_profile_location_id')
+            ->pluck('social_account_id')
+            ->filter();
+
+        $existingGoogleLocationIds = $post->postPlatforms()
+            ->whereNotNull('google_business_profile_location_id')
+            ->pluck('google_business_profile_location_id')
+            ->filter();
 
         $missingAccounts = $workspace->socialAccounts()
             ->active()
-            ->whereNotIn('id', $existingAccountIds)
+            ->with(['googleBusinessProfileLocations' => fn ($query) => $query->where('is_selected', true)])
             ->get();
 
         foreach ($missingAccounts as $account) {
+            if ($account->platform === Platform::GoogleBusinessProfile) {
+                foreach ($account->googleBusinessProfileLocations->whereNotIn('id', $existingGoogleLocationIds) as $location) {
+                    $post->postPlatforms()->create([
+                        'social_account_id' => $account->id,
+                        'google_business_profile_location_id' => $location->id,
+                        'platform' => $account->platform->value,
+                        'platform_name' => $location->title,
+                        'platform_username' => $location->store_code,
+                        'platform_avatar' => $account->getRawOriginal('avatar_url'),
+                        'content_type' => ContentType::defaultFor($account->platform),
+                        'status' => PostPlatformStatus::Pending,
+                        'enabled' => false,
+                    ]);
+                }
+
+                continue;
+            }
+
+            if ($existingAccountIds->contains($account->id)) {
+                continue;
+            }
+
             $post->postPlatforms()->create([
                 'social_account_id' => $account->id,
                 'platform' => $account->platform->value,

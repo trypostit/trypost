@@ -41,6 +41,7 @@ const platformSupportsDateRange = computed(() => {
         'instagram-facebook',
         'facebook',
         'youtube',
+        'google-business-profile',
         'pinterest',
         'threads',
         'x',
@@ -132,6 +133,12 @@ const platformSupportsDateRange = computed(() => {
 
             <YouTubeAnalytics
                 v-else-if="selectedAccount?.platform === 'youtube'"
+                :account-id="selectedAccountId"
+                :date-range="dateRange"
+            />
+
+            <YouTubeAnalytics
+                v-else-if="selectedAccount?.platform === 'google-business-profile'"
                 :account-id="selectedAccountId"
                 :date-range="dateRange"
             />

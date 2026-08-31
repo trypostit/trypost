@@ -68,6 +68,14 @@ return [
         'redirect' => env('GOOGLE_CLIENT_REDIRECT'),
     ],
 
+    // Google OAuth used for Business Profile management. A separate client is
+    // supported so YouTube and GBP can have independent consent screens.
+    'google-business-profile' => [
+        'client_id' => env('GOOGLE_BUSINESS_PROFILE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_BUSINESS_PROFILE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_BUSINESS_PROFILE_CLIENT_REDIRECT'),
+    ],
+
     // Google OAuth (used for login/signup)
     'google-auth' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),

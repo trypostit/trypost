@@ -275,7 +275,7 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
 
                                 <!-- Failed: error message -->
                                 <div
-                                    v-if="pp.status === PostPlatformStatus.Failed && pp.error_message"
+                                    v-if="(pp.status === PostPlatformStatus.Failed || pp.status === PostPlatformStatus.Rejected) && pp.error_message"
                                     class="border-t-2 border-foreground/10 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700"
                                 >
                                     {{ pp.error_message }}

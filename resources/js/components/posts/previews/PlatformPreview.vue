@@ -8,6 +8,7 @@ import type { MediaItem } from '@/types/media';
 import BlueskyPreview from './BlueskyPreview.vue';
 import DiscordPreview from './DiscordPreview.vue';
 import FacebookPreview from './FacebookPreview.vue';
+import GoogleBusinessProfilePreview from './GoogleBusinessProfilePreview.vue';
 import InstagramPreview from './InstagramPreview.vue';
 import LinkedInPreview from './LinkedInPreview.vue';
 import MastodonPreview from './MastodonPreview.vue';
@@ -78,6 +79,8 @@ const previewComponent = computed(() => {
             return TikTokPreview;
         case 'youtube':
             return YouTubePreview;
+        case 'google-business-profile':
+            return GoogleBusinessProfilePreview;
         case 'pinterest':
             return PinterestPreview;
         case 'bluesky':

@@ -6,9 +6,12 @@ namespace App\Http\Controllers\App;
 
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
+use App\Exceptions\Social\GoogleBusinessProfilePublishException;
+use App\Exceptions\TokenExpiredException;
 use App\Http\Controllers\Controller;
 use App\Models\SocialAccount;
 use App\Services\Social\FacebookAnalytics;
+use App\Services\Social\GoogleBusinessProfile\GoogleBusinessProfileAnalytics;
 use App\Services\Social\InstagramAnalytics;
 use App\Services\Social\LinkedInPageAnalytics;
 use App\Services\Social\PinterestAnalytics;
@@ -37,6 +40,7 @@ class AnalyticsController extends Controller
         Platform::LinkedInPage,
         Platform::Pinterest,
         Platform::YouTube,
+        Platform::GoogleBusinessProfile,
         Platform::Telegram,
     ];
 
@@ -98,10 +102,11 @@ class AnalyticsController extends Controller
                 Platform::LinkedInPage => app(LinkedInPageAnalytics::class)->getMetrics($account, $since, $until),
                 Platform::Pinterest => app(PinterestAnalytics::class)->getMetrics($account, $since, $until),
                 Platform::YouTube => app(YouTubeAnalytics::class)->getMetrics($account, $since, $until),
+                Platform::GoogleBusinessProfile => app(GoogleBusinessProfileAnalytics::class)->getMetrics($account, $since, $until),
                 Platform::Telegram => app(TelegramAnalytics::class)->getMetrics($account),
                 default => [],
             };
-        } catch (PlatformUnavailableException|ConnectionException $e) {
+        } catch (GoogleBusinessProfilePublishException|PlatformUnavailableException|TokenExpiredException|ConnectionException $e) {
             report($e);
 
             return [];

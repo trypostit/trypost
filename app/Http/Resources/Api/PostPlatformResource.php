@@ -23,6 +23,9 @@ class PostPlatformResource extends JsonResource
             'enabled' => $this->enabled,
             'platform_url' => $this->platform_url,
             'published_at' => $this->published_at?->format('Y-m-d H:i:s'),
+            'submitted_at' => $this->submitted_at?->format('Y-m-d H:i:s'),
+            'last_reconciled_at' => $this->last_reconciled_at?->format('Y-m-d H:i:s'),
+            'google_business_profile_location_id' => $this->google_business_profile_location_id,
             'error_message' => $this->error_message,
             // Display fields fall back to snapshots (platform_name/username/avatar)
             // so deleted accounts still render correctly in the post history.

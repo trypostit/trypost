@@ -23,6 +23,7 @@ class PostPlatform extends Model
     protected $fillable = [
         'post_id',
         'social_account_id',
+        'google_business_profile_location_id',
         'enabled',
         'platform',
         'platform_name',
@@ -35,6 +36,8 @@ class PostPlatform extends Model
         'error_message',
         'error_context',
         'published_at',
+        'submitted_at',
+        'last_reconciled_at',
         'meta',
         'connection_warning_sent_at',
     ];
@@ -47,6 +50,8 @@ class PostPlatform extends Model
             'content_type' => ContentType::class,
             'status' => Status::class,
             'published_at' => 'datetime',
+            'submitted_at' => 'datetime',
+            'last_reconciled_at' => 'datetime',
             'meta' => 'array',
             'error_context' => 'array',
             'connection_warning_sent_at' => 'datetime',
@@ -61,6 +66,11 @@ class PostPlatform extends Model
     public function socialAccount(): BelongsTo
     {
         return $this->belongsTo(SocialAccount::class);
+    }
+
+    public function googleBusinessProfileLocation(): BelongsTo
+    {
+        return $this->belongsTo(GoogleBusinessProfileLocation::class);
     }
 
     /**
@@ -120,6 +130,28 @@ class PostPlatform extends Model
         ]);
 
         $this->socialAccount?->update(['last_used_at' => $now]);
+    }
+
+    public function markAsSubmitted(string $platformPostId, ?string $platformUrl = null, Status $status = Status::Submitted): void
+    {
+        $this->update([
+            'status' => $status,
+            'platform_post_id' => $platformPostId,
+            'platform_url' => $platformUrl,
+            'submitted_at' => now(),
+            'error_message' => null,
+            'error_context' => null,
+        ]);
+    }
+
+    public function markAsRejected(string $message, ?array $context = null): void
+    {
+        $this->update([
+            'status' => Status::Rejected,
+            'error_message' => $message,
+            'error_context' => $context,
+            'last_reconciled_at' => now(),
+        ]);
     }
 
     public function markAsFailed(string $errorMessage, ?array $errorContext = null): void

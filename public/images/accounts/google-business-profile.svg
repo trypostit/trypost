@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Google Business Profile">
+  <rect width="64" height="64" rx="14" fill="#fff"/>
+  <path fill="#4285f4" d="M12 27h40v25H12z"/>
+  <path fill="#fff" d="M22 35h20v17H22z"/>
+  <path fill="#34a853" d="M8 23 14 10h9l-3 13z"/>
+  <path fill="#fbbc04" d="m20 23 3-13h9v13z"/>
+  <path fill="#ea4335" d="M32 23V10h9l3 13z"/>
+  <path fill="#4285f4" d="m44 23-3-13h9l6 13z"/>
+  <path fill="#1a73e8" d="M8 23h12v3a6 6 0 0 1-12 0z"/>
+  <path fill="#f9ab00" d="M20 23h12v3a6 6 0 0 1-12 0z"/>
+  <path fill="#d93025" d="M32 23h12v3a6 6 0 0 1-12 0z"/>
+  <path fill="#1967d2" d="M44 23h12v3a6 6 0 0 1-12 0z"/>
+</svg>

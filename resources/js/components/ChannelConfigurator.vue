@@ -4,6 +4,7 @@ import { computed } from 'vue';
 
 import DiscordSettings from '@/components/posts/editor/DiscordSettings.vue';
 import FacebookSettings from '@/components/posts/editor/FacebookSettings.vue';
+import GoogleBusinessProfileSettings from '@/components/posts/editor/GoogleBusinessProfileSettings.vue';
 import InstagramSettings from '@/components/posts/editor/InstagramSettings.vue';
 import LinkedInSettings from '@/components/posts/editor/LinkedInSettings.vue';
 import PinterestSettings from '@/components/posts/editor/PinterestSettings.vue';
@@ -84,6 +85,7 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                                     <IconCircleCheck class="h-2.5 w-2.5" />
                                 </Badge>
                                 <Badge v-else-if="channel.status === PostPlatformStatus.Failed" variant="destructive" class="absolute -top-1 -right-1 h-4 w-4 p-0 text-[9px]">!</Badge>
+                                <Badge v-else-if="channel.status === PostPlatformStatus.Rejected" variant="destructive" class="absolute -top-1 -right-1 h-4 w-4 p-0 text-[9px]">!</Badge>
                             </div>
                             <span
                                 class="line-clamp-2 text-center text-xs leading-tight"
@@ -127,6 +129,16 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                 :social-account="channel.socialAccount"
                 :content-type="channel.contentType"
                 :media="media"
+                :meta="channel.meta"
+                :disabled="disabled"
+                :preview-only="previewOnly"
+                @update:content-type="emit('update:contentType', channel.id, $event)"
+                @update:meta="emit('update:meta', channel.id, $event)"
+            />
+            <GoogleBusinessProfileSettings
+                v-else-if="channel.platform === Platform.GoogleBusinessProfile"
+                :social-account="channel.socialAccount"
+                :content-type="channel.contentType"
                 :meta="channel.meta"
                 :disabled="disabled"
                 :preview-only="previewOnly"

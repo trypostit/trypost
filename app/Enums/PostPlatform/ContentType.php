@@ -33,6 +33,12 @@ enum ContentType: string
     // YouTube
     case YouTubeShort = 'youtube_short';
 
+    // Google Business Profile local posts
+    case GoogleBusinessProfileStandard = 'google_business_profile_standard';
+    case GoogleBusinessProfileEvent = 'google_business_profile_event';
+    case GoogleBusinessProfileOffer = 'google_business_profile_offer';
+    case GoogleBusinessProfileAlert = 'google_business_profile_alert';
+
     // X (Twitter)
     case XPost = 'x_post';
 
@@ -75,6 +81,10 @@ enum ContentType: string
             self::TikTokVideo => 'Video',
             self::TikTokPhoto => 'Photo carousel',
             self::YouTubeShort => 'Short',
+            self::GoogleBusinessProfileStandard => 'Update',
+            self::GoogleBusinessProfileEvent => 'Event',
+            self::GoogleBusinessProfileOffer => 'Offer',
+            self::GoogleBusinessProfileAlert => 'Alert',
             self::XPost => 'Post',
             self::ThreadsPost => 'Post',
             self::PinterestPin => 'Pin',
@@ -101,6 +111,10 @@ enum ContentType: string
             self::FacebookPost, self::FacebookReel, self::FacebookStory => SocialPlatform::Facebook,
             self::TikTokVideo, self::TikTokPhoto => SocialPlatform::TikTok,
             self::YouTubeShort => SocialPlatform::YouTube,
+            self::GoogleBusinessProfileStandard,
+            self::GoogleBusinessProfileEvent,
+            self::GoogleBusinessProfileOffer,
+            self::GoogleBusinessProfileAlert => SocialPlatform::GoogleBusinessProfile,
             self::XPost => SocialPlatform::X,
             self::ThreadsPost => SocialPlatform::Threads,
             self::PinterestPin, self::PinterestVideoPin, self::PinterestCarousel => SocialPlatform::Pinterest,
@@ -131,6 +145,10 @@ enum ContentType: string
             self::XPost,
             self::BlueskyPost,
             self::MastodonPost => ['width' => 1080, 'height' => 1080],
+            self::GoogleBusinessProfileStandard,
+            self::GoogleBusinessProfileEvent,
+            self::GoogleBusinessProfileOffer,
+            self::GoogleBusinessProfileAlert => ['width' => 1200, 'height' => 900],
 
             // Stories 9:16 (Instagram + Facebook)
             self::InstagramStory,
@@ -169,6 +187,10 @@ enum ContentType: string
             self::TikTokVideo => 1,
             self::TikTokPhoto => 35,
             self::YouTubeShort => 1,
+            self::GoogleBusinessProfileStandard,
+            self::GoogleBusinessProfileEvent,
+            self::GoogleBusinessProfileOffer,
+            self::GoogleBusinessProfileAlert => 1,
             self::XPost => 4,
             self::ThreadsPost => 10,
             self::PinterestPin, self::PinterestVideoPin => 1,
@@ -450,6 +472,10 @@ enum ContentType: string
             self::TikTokVideo => true,
             self::TikTokPhoto => false,
             self::YouTubeShort => true,
+            self::GoogleBusinessProfileStandard,
+            self::GoogleBusinessProfileEvent,
+            self::GoogleBusinessProfileOffer,
+            self::GoogleBusinessProfileAlert => true,
             self::XPost => true,
             self::ThreadsPost => true,
             self::PinterestVideoPin => true,
@@ -469,6 +495,10 @@ enum ContentType: string
             self::TikTokVideo => false,
             self::TikTokPhoto => true,
             self::YouTubeShort => false,
+            self::GoogleBusinessProfileStandard,
+            self::GoogleBusinessProfileEvent,
+            self::GoogleBusinessProfileOffer,
+            self::GoogleBusinessProfileAlert => true,
             self::PinterestVideoPin => false,
             default => true,
         };
@@ -526,6 +556,10 @@ enum ContentType: string
             self::TelegramPost => false,
             self::FacebookPost => false,
             self::DiscordMessage => false,
+            self::GoogleBusinessProfileStandard,
+            self::GoogleBusinessProfileEvent,
+            self::GoogleBusinessProfileOffer,
+            self::GoogleBusinessProfileAlert => false,
             default => true,
         };
     }
@@ -550,6 +584,7 @@ enum ContentType: string
             self::FacebookPost,
             self::PinterestPin,
             self::PinterestCarousel,
+            self::GoogleBusinessProfileStandard,
         ];
     }
 
@@ -602,6 +637,7 @@ enum ContentType: string
             SocialPlatform::Facebook => self::FacebookPost,
             SocialPlatform::TikTok => self::TikTokVideo,
             SocialPlatform::YouTube => self::YouTubeShort,
+            SocialPlatform::GoogleBusinessProfile => self::GoogleBusinessProfileStandard,
             SocialPlatform::X => self::XPost,
             SocialPlatform::Threads => self::ThreadsPost,
             SocialPlatform::Pinterest => self::PinterestPin,

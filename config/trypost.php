@@ -182,6 +182,10 @@ return [
             'analytics_api' => env('YOUTUBE_ANALYTICS_API', 'https://youtubeanalytics.googleapis.com/v2'),
             'oauth_api' => env('YOUTUBE_OAUTH_API', 'https://oauth2.googleapis.com'),
         ],
+        'google-business-profile' => [
+            'enabled' => env('GOOGLE_BUSINESS_PROFILE_ENABLED', true),
+            'oauth_api' => env('GOOGLE_BUSINESS_PROFILE_OAUTH_API', 'https://oauth2.googleapis.com'),
+        ],
         'facebook' => [
             'enabled' => env('FACEBOOK_ENABLED', true),
             'graph_api' => env('FACEBOOK_GRAPH_API', 'https://graph.facebook.com/v25.0'),

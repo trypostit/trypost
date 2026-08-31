@@ -223,6 +223,11 @@ class SocialAccount extends Model
         return $this->hasMany(PostPlatform::class);
     }
 
+    public function googleBusinessProfileLocations(): HasMany
+    {
+        return $this->hasMany(GoogleBusinessProfileLocation::class);
+    }
+
     protected function isTokenExpired(): Attribute
     {
         return Attribute::make(

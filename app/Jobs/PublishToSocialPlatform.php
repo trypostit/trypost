@@ -22,6 +22,7 @@ use App\Services\Social\BlueskyPublisher;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\Discord\DiscordPublisher;
 use App\Services\Social\FacebookPublisher;
+use App\Services\Social\GoogleBusinessProfile\GoogleBusinessProfilePublisher;
 use App\Services\Social\InstagramPublisher;
 use App\Services\Social\LinkedInPagePublisher;
 use App\Services\Social\LinkedInPublisher;
@@ -124,7 +125,11 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             try {
                 $publisher = $this->getPublisher();
                 $result = $publisher->publish($this->postPlatform);
-                $this->postPlatform->markAsPublished(data_get($result, 'id'), data_get($result, 'url'));
+                if ($this->postPlatform->platform === SocialPlatform::GoogleBusinessProfile) {
+                    $this->recordGoogleBusinessProfileSubmission($result);
+                } else {
+                    $this->postPlatform->markAsPublished(data_get($result, 'id'), data_get($result, 'url'));
+                }
                 break;
             } catch (PlatformUnavailableException $e) {
                 $this->rescheduleForRetry($e);
@@ -318,6 +323,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         return in_array($this->postPlatform->status, [
             PostPlatformStatus::Published,
             PostPlatformStatus::Failed,
+            PostPlatformStatus::Rejected,
         ], true);
     }
 
@@ -337,7 +343,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             : 'An unexpected error occurred while publishing. Please try again.';
     }
 
-    private function getPublisher(): LinkedInPublisher|LinkedInPagePublisher|XPublisher|TikTokPublisher|YouTubePublisher|FacebookPublisher|InstagramPublisher|ThreadsPublisher|PinterestPublisher|BlueskyPublisher|MastodonPublisher|TelegramPublisher|DiscordPublisher
+    private function getPublisher(): LinkedInPublisher|LinkedInPagePublisher|XPublisher|TikTokPublisher|YouTubePublisher|GoogleBusinessProfilePublisher|FacebookPublisher|InstagramPublisher|ThreadsPublisher|PinterestPublisher|BlueskyPublisher|MastodonPublisher|TelegramPublisher|DiscordPublisher
     {
         return match ($this->postPlatform->platform) {
             SocialPlatform::LinkedIn => app(LinkedInPublisher::class),
@@ -345,6 +351,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             SocialPlatform::X => app(XPublisher::class),
             SocialPlatform::TikTok => app(TikTokPublisher::class),
             SocialPlatform::YouTube => app(YouTubePublisher::class),
+            SocialPlatform::GoogleBusinessProfile => app(GoogleBusinessProfilePublisher::class),
             SocialPlatform::Facebook => app(FacebookPublisher::class),
             SocialPlatform::Instagram, SocialPlatform::InstagramFacebook => app(InstagramPublisher::class),
             SocialPlatform::Threads => app(ThreadsPublisher::class),
@@ -363,7 +370,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
         $total = $enabledPlatforms->count();
         $publishedCount = $enabledPlatforms->where('status', PostPlatformStatus::Published)->count();
-        $failedCount = $enabledPlatforms->where('status', PostPlatformStatus::Failed)->count();
+        $failedCount = $enabledPlatforms->whereIn('status', [PostPlatformStatus::Failed, PostPlatformStatus::Rejected])->count();
         $finishedCount = $publishedCount + $failedCount;
 
         // Only update post status when all platforms have finished
@@ -385,6 +392,37 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         }
 
         $this->notify($post, PostPlatformStatus::Failed);
+    }
+
+    /** @param array<string, mixed> $result */
+    private function recordGoogleBusinessProfileSubmission(array $result): void
+    {
+        $state = (string) data_get($result, 'provider_state', 'PROCESSING');
+
+        if (in_array($state, ['LIVE', 'RECURRING'], true)) {
+            $this->postPlatform->markAsPublished((string) data_get($result, 'id'), data_get($result, 'url'));
+
+            return;
+        }
+
+        if ($state === 'REJECTED') {
+            $this->postPlatform->markAsRejected('Google rejected this post during review.', [
+                'provider_state' => $state,
+                'reconciled_at' => now()->toIso8601String(),
+            ]);
+
+            return;
+        }
+
+        $status = $state === 'PROCESSING'
+            ? PostPlatformStatus::PendingReview
+            : PostPlatformStatus::Submitted;
+
+        $this->postPlatform->markAsSubmitted(
+            (string) data_get($result, 'id'),
+            data_get($result, 'url'),
+            $status,
+        );
     }
 
     public function failed(?Throwable $exception): void

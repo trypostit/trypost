@@ -420,7 +420,10 @@ return [
             'published' => 'Published',
             'publishing' => 'Publishing...',
             'retrying' => 'Retrying...',
+            'submitted' => 'Submitted to Google',
+            'pending_review' => 'Pending Google review',
             'failed' => 'Failed',
+            'rejected' => 'Rejected',
         ],
 
         'delete_modal' => [
@@ -514,6 +517,22 @@ return [
             'label' => 'Short',
             'description' => 'Vertical video up to 3 minutes',
         ],
+        'google_business_profile_standard' => [
+            'label' => 'Update',
+            'description' => 'Business update with optional media and call to action',
+        ],
+        'google_business_profile_event' => [
+            'label' => 'Event',
+            'description' => 'Timed or recurring event with optional media and call to action',
+        ],
+        'google_business_profile_offer' => [
+            'label' => 'Offer',
+            'description' => 'Timed or recurring offer with coupon and redemption details',
+        ],
+        'google_business_profile_alert' => [
+            'label' => 'Alert',
+            'description' => 'High-priority alert where Google makes authoring available',
+        ],
         'x_post' => [
             'label' => 'Post',
             'description' => 'Tweet with text and media',
@@ -558,6 +577,7 @@ return [
         'x' => 'X',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube Shorts',
+        'google-business-profile' => 'Google Business Profile',
         'facebook' => 'Facebook Page',
         'instagram' => 'Instagram',
         'threads' => 'Threads',

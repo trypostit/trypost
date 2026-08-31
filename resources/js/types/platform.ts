@@ -4,6 +4,7 @@ export const Platform = {
     X: 'x',
     TikTok: 'tiktok',
     YouTube: 'youtube',
+    GoogleBusinessProfile: 'google-business-profile',
     Facebook: 'facebook',
     Instagram: 'instagram',
     InstagramFacebook: 'instagram-facebook',

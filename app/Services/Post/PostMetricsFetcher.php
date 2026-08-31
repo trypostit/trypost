@@ -10,6 +10,7 @@ use App\Models\PostPlatform;
 use App\Services\Social\BlueskyAnalytics;
 use App\Services\Social\Discord\DiscordAnalytics;
 use App\Services\Social\FacebookAnalytics;
+use App\Services\Social\GoogleBusinessProfile\GoogleBusinessProfileAnalytics;
 use App\Services\Social\InstagramAnalytics;
 use App\Services\Social\LinkedInPageAnalytics;
 use App\Services\Social\MastodonAnalytics;
@@ -73,6 +74,7 @@ class PostMetricsFetcher
             Platform::Threads => app(ThreadsAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::LinkedInPage => app(LinkedInPageAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::YouTube => app(YouTubeAnalytics::class)->fetchPostMetrics($postPlatform),
+            Platform::GoogleBusinessProfile => app(GoogleBusinessProfileAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::Pinterest => app(PinterestAnalytics::class)->fetchPostMetrics($postPlatform),
             default => ['unsupported' => true, 'reason' => 'platform_not_supported'],
         });

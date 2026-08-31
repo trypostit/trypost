@@ -77,6 +77,15 @@ class SocialAccountFactory extends Factory
         ]);
     }
 
+    public function googleBusinessProfile(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'platform' => Platform::GoogleBusinessProfile,
+            'scopes' => Platform::GoogleBusinessProfile->requiredPublishScopes(),
+            'meta' => ['google_user_id' => 'google-user-123'],
+        ]);
+    }
+
     public function facebook(): static
     {
         return $this->state(fn (array $attributes) => [
