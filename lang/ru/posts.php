@@ -600,6 +600,7 @@ return [
         'account_disconnected' => 'Социальный аккаунт отключён',
         'account_inactive' => 'Социальный аккаунт деактивирован',
         'account_token_expired' => 'Сессия социального аккаунта истекла — переподключите',
+        'gbp_location_disconnected' => 'Google Business Profile location is disconnected — reconnect it to restore this target',
         'platform_unavailable' => 'Платформа временно недоступна. Мы повторим попытку вскоре.',
         'platform_unavailable_exhausted' => 'Платформа оставалась недоступной после нескольких попыток. Попробуйте позже.',
         'publishing_timed_out' => 'Публикация превысила время ожидания. Попробуйте снова.',

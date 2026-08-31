@@ -602,6 +602,7 @@ return [
         'account_disconnected' => 'Sosyal hesabın bağlantısı kesildi',
         'account_inactive' => 'Sosyal hesap devre dışı bırakıldı',
         'account_token_expired' => 'Sosyal hesap oturumunun süresi doldu — lütfen yeniden bağlanın',
+        'gbp_location_disconnected' => 'Google Business Profile location is disconnected — reconnect it to restore this target',
         'platform_unavailable' => 'Platform geçici olarak kullanılamıyor. Kısa süre içinde yeniden deneyeceğiz.',
         'platform_unavailable_exhausted' => 'Platform birkaç denemeden sonra kullanılamaz kaldı. Lütfen daha sonra tekrar deneyin.',
         'publishing_timed_out' => 'Yayınlama zaman aşımına uğradı. Lütfen tekrar deneyin.',

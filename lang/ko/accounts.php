@@ -99,6 +99,11 @@ return [
         'store_code' => '매장 코드: :code',
         'save' => '선택한 위치 연결',
         'saving' => '연결 중...',
+        'manage_locations' => 'Manage locations',
+        'no_selected_locations' => 'No locations selected',
+        'location_count' => ':count locations connected',
+        'disconnect_title' => 'Disconnect Google Business Profile location',
+        'disconnect_description' => 'This location will stop publishing. Pending draft and scheduled targets are kept, and reconnecting the location restores them as drafts for review.',
     ],
 
     'instagram_facebook' => [
@@ -142,6 +147,8 @@ return [
         'deactivated' => '계정이 비활성화되었습니다!',
         'already_connected' => '이 플랫폼은 이미 연결되어 있습니다.',
         'no_youtube_channels' => 'YouTube 채널을 찾을 수 없습니다. 먼저 채널을 만드세요.',
+        'google_business_profile_location_disconnected' => ':location was disconnected. Its pending draft and scheduled targets are preserved and can be restored by reconnecting the location.',
+        'disconnect_google_business_profile_locations_individually' => 'Disconnect Google Business Profile locations individually so drafts and history stay attached to the correct business.',
     ],
 
     'popup_callback' => [
@@ -149,6 +156,7 @@ return [
         'title_error' => '오류',
         'closing' => '이 창은 자동으로 닫힙니다...',
         'manual_close' => '이 창을 닫아도 됩니다.',
+        'return_to_accounts' => 'Return to Social Accounts',
         'popup_blocked' => '연결 창을 열 수 없습니다. 팝업을 허용한 후 다시 시도하세요.',
         'connected' => '계정이 연결되었습니다!',
         'reconnected' => '계정이 다시 연결되었습니다!',

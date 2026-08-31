@@ -600,6 +600,7 @@ return [
         'account_disconnected' => 'الحساب الاجتماعي مفصول',
         'account_inactive' => 'الحساب الاجتماعي مُعطَّل',
         'account_token_expired' => 'انتهت جلسة الحساب الاجتماعي — يرجى إعادة الربط',
+        'gbp_location_disconnected' => 'Google Business Profile location is disconnected — reconnect it to restore this target',
         'platform_unavailable' => 'المنصة غير متاحة مؤقتًا. سنعيد المحاولة قريبًا.',
         'platform_unavailable_exhausted' => 'ظلت المنصة غير متاحة بعد عدة محاولات. يرجى المحاولة لاحقًا.',
         'publishing_timed_out' => 'انتهت مهلة النشر. يرجى المحاولة مرة أخرى.',

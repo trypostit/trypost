@@ -99,6 +99,11 @@ return [
         'store_code' => '店舗コード: :code',
         'save' => '選択した店舗を接続',
         'saving' => '接続中...',
+        'manage_locations' => 'Manage locations',
+        'no_selected_locations' => 'No locations selected',
+        'location_count' => ':count locations connected',
+        'disconnect_title' => 'Disconnect Google Business Profile location',
+        'disconnect_description' => 'This location will stop publishing. Pending draft and scheduled targets are kept, and reconnecting the location restores them as drafts for review.',
     ],
 
     'instagram_facebook' => [
@@ -142,6 +147,8 @@ return [
         'deactivated' => 'アカウントを無効化しました！',
         'already_connected' => 'このプラットフォームはすでに接続されています。',
         'no_youtube_channels' => 'YouTube チャンネルが見つかりません。先にチャンネルを作成してください。',
+        'google_business_profile_location_disconnected' => ':location was disconnected. Its pending draft and scheduled targets are preserved and can be restored by reconnecting the location.',
+        'disconnect_google_business_profile_locations_individually' => 'Disconnect Google Business Profile locations individually so drafts and history stay attached to the correct business.',
     ],
 
     'popup_callback' => [
@@ -149,6 +156,7 @@ return [
         'title_error' => 'エラー',
         'closing' => 'このウィンドウは自動的に閉じます...',
         'manual_close' => 'このウィンドウを閉じても構いません。',
+        'return_to_accounts' => 'Return to Social Accounts',
         'popup_blocked' => '接続ウィンドウを開けませんでした。ポップアップを許可してもう一度お試しください。',
         'connected' => 'アカウントを接続しました！',
         'reconnected' => 'アカウントを再接続しました！',

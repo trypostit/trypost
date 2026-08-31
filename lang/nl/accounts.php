@@ -99,6 +99,11 @@ return [
         'store_code' => 'Winkelcode: :code',
         'save' => 'Geselecteerde locaties verbinden',
         'saving' => 'Verbinden...',
+        'manage_locations' => 'Manage locations',
+        'no_selected_locations' => 'No locations selected',
+        'location_count' => ':count locations connected',
+        'disconnect_title' => 'Disconnect Google Business Profile location',
+        'disconnect_description' => 'This location will stop publishing. Pending draft and scheduled targets are kept, and reconnecting the location restores them as drafts for review.',
     ],
 
     'instagram_facebook' => [
@@ -142,6 +147,8 @@ return [
         'deactivated' => 'Account gedeactiveerd!',
         'already_connected' => 'Dit platform is al gekoppeld.',
         'no_youtube_channels' => 'Geen YouTube-kanalen gevonden. Maak eerst een kanaal aan.',
+        'google_business_profile_location_disconnected' => ':location was disconnected. Its pending draft and scheduled targets are preserved and can be restored by reconnecting the location.',
+        'disconnect_google_business_profile_locations_individually' => 'Disconnect Google Business Profile locations individually so drafts and history stay attached to the correct business.',
     ],
 
     'popup_callback' => [
@@ -149,6 +156,7 @@ return [
         'title_error' => 'Fout',
         'closing' => 'Dit venster wordt automatisch gesloten...',
         'manual_close' => 'Je kunt dit venster sluiten.',
+        'return_to_accounts' => 'Return to Social Accounts',
         'popup_blocked' => 'Kon het koppelvenster niet openen. Sta pop-ups toe en probeer het opnieuw.',
         'connected' => 'Account gekoppeld!',
         'reconnected' => 'Account opnieuw gekoppeld!',

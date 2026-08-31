@@ -99,6 +99,11 @@ return [
         'store_code' => '门店代码：:code',
         'save' => '连接所选地点',
         'saving' => '正在连接...',
+        'manage_locations' => 'Manage locations',
+        'no_selected_locations' => 'No locations selected',
+        'location_count' => ':count locations connected',
+        'disconnect_title' => 'Disconnect Google Business Profile location',
+        'disconnect_description' => 'This location will stop publishing. Pending draft and scheduled targets are kept, and reconnecting the location restores them as drafts for review.',
     ],
 
     'instagram_facebook' => [
@@ -142,6 +147,8 @@ return [
         'deactivated' => '账号已停用！',
         'already_connected' => '此平台已连接。',
         'no_youtube_channels' => '未找到 YouTube 频道，请先创建一个频道。',
+        'google_business_profile_location_disconnected' => ':location was disconnected. Its pending draft and scheduled targets are preserved and can be restored by reconnecting the location.',
+        'disconnect_google_business_profile_locations_individually' => 'Disconnect Google Business Profile locations individually so drafts and history stay attached to the correct business.',
     ],
 
     'popup_callback' => [
@@ -149,6 +156,7 @@ return [
         'title_error' => '错误',
         'closing' => '此窗口将自动关闭…',
         'manual_close' => '你可以关闭此窗口。',
+        'return_to_accounts' => 'Return to Social Accounts',
         'popup_blocked' => '无法打开连接窗口。请允许弹出窗口后重试。',
         'connected' => '账号已连接！',
         'reconnected' => '账号已重新连接！',

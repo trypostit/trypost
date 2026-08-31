@@ -99,6 +99,11 @@ return [
         'store_code' => 'رمز المتجر: :code',
         'save' => 'ربط المواقع المحددة',
         'saving' => 'جارٍ الاتصال...',
+        'manage_locations' => 'Manage locations',
+        'no_selected_locations' => 'No locations selected',
+        'location_count' => ':count locations connected',
+        'disconnect_title' => 'Disconnect Google Business Profile location',
+        'disconnect_description' => 'This location will stop publishing. Pending draft and scheduled targets are kept, and reconnecting the location restores them as drafts for review.',
     ],
 
     'instagram_facebook' => [
@@ -142,6 +147,8 @@ return [
         'deactivated' => 'تم إلغاء تفعيل الحساب!',
         'already_connected' => 'هذه المنصة متصلة بالفعل.',
         'no_youtube_channels' => 'لم يتم العثور على قنوات YouTube. يرجى إنشاء قناة أولًا.',
+        'google_business_profile_location_disconnected' => ':location was disconnected. Its pending draft and scheduled targets are preserved and can be restored by reconnecting the location.',
+        'disconnect_google_business_profile_locations_individually' => 'Disconnect Google Business Profile locations individually so drafts and history stay attached to the correct business.',
     ],
 
     'popup_callback' => [
@@ -149,6 +156,7 @@ return [
         'title_error' => 'خطأ',
         'closing' => 'ستُغلق هذه النافذة تلقائيًا...',
         'manual_close' => 'يمكنك إغلاق هذه النافذة.',
+        'return_to_accounts' => 'Return to Social Accounts',
         'popup_blocked' => 'تعذر فتح نافذة الاتصال. يرجى السماح بالنوافذ المنبثقة والمحاولة مرة أخرى.',
         'connected' => 'تم ربط الحساب!',
         'reconnected' => 'تمت إعادة ربط الحساب!',

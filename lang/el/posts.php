@@ -600,6 +600,7 @@ return [
         'account_disconnected' => 'Ο λογαριασμός κοινωνικού δικτύου έχει αποσυνδεθεί',
         'account_inactive' => 'Ο λογαριασμός κοινωνικού δικτύου έχει απενεργοποιηθεί',
         'account_token_expired' => 'Η συνεδρία του λογαριασμού κοινωνικού δικτύου έληξε — επανασυνδεθείτε',
+        'gbp_location_disconnected' => 'Google Business Profile location is disconnected — reconnect it to restore this target',
         'platform_unavailable' => 'Η πλατφόρμα είναι προσωρινά μη διαθέσιμη. Θα δοκιμάσουμε ξανά σύντομα.',
         'platform_unavailable_exhausted' => 'Η πλατφόρμα παρέμεινε μη διαθέσιμη μετά από αρκετές προσπάθειες. Δοκιμάστε ξανά αργότερα.',
         'publishing_timed_out' => 'Η δημοσίευση έληξε. Δοκιμάστε ξανά.',

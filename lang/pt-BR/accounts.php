@@ -99,6 +99,11 @@ return [
         'store_code' => 'Código da loja: :code',
         'save' => 'Conectar locais selecionados',
         'saving' => 'Conectando...',
+        'manage_locations' => 'Manage locations',
+        'no_selected_locations' => 'No locations selected',
+        'location_count' => ':count locations connected',
+        'disconnect_title' => 'Disconnect Google Business Profile location',
+        'disconnect_description' => 'This location will stop publishing. Pending draft and scheduled targets are kept, and reconnecting the location restores them as drafts for review.',
     ],
 
     'instagram_facebook' => [
@@ -142,6 +147,8 @@ return [
         'deactivated' => 'Conta desativada!',
         'already_connected' => 'Esta plataforma já está conectada.',
         'no_youtube_channels' => 'Nenhum canal do YouTube encontrado. Por favor, crie um canal primeiro.',
+        'google_business_profile_location_disconnected' => ':location was disconnected. Its pending draft and scheduled targets are preserved and can be restored by reconnecting the location.',
+        'disconnect_google_business_profile_locations_individually' => 'Disconnect Google Business Profile locations individually so drafts and history stay attached to the correct business.',
     ],
 
     'popup_callback' => [
@@ -149,6 +156,7 @@ return [
         'title_error' => 'Erro',
         'closing' => 'Esta janela será fechada automaticamente...',
         'manual_close' => 'Você pode fechar esta janela.',
+        'return_to_accounts' => 'Return to Social Accounts',
         'popup_blocked' => 'Não foi possível abrir a janela de conexão. Permita pop-ups e tente novamente.',
         'connected' => 'Conta conectada!',
         'reconnected' => 'Conta reconectada!',
