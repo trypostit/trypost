@@ -18,6 +18,7 @@ return new class extends Migration
                 ->nullOnDelete();
             $table->timestamp('submitted_at')->nullable()->after('published_at');
             $table->timestamp('last_reconciled_at')->nullable()->after('submitted_at');
+            $table->index(['platform', 'status', 'last_reconciled_at'], 'post_platforms_reconciliation_index');
         });
     }
 
@@ -25,6 +26,7 @@ return new class extends Migration
     {
         Schema::table('post_platforms', function (Blueprint $table) {
             $table->dropConstrainedForeignId('google_business_profile_location_id');
+            $table->dropIndex('post_platforms_reconciliation_index');
             $table->dropColumn(['submitted_at', 'last_reconciled_at']);
         });
     }

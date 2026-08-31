@@ -257,6 +257,34 @@ class PostPlatformMetaRules
         }
     }
 
+    /**
+     * @param  array<int, mixed>  $platforms
+     * @return array<string, string>
+     */
+    public static function googleBusinessProfileLocationErrorsForUpdate(Post $post, array $platforms): array
+    {
+        $targets = $post->postPlatforms()
+            ->with('googleBusinessProfileLocation')
+            ->whereIn('id', collect($platforms)->pluck('id')->filter())
+            ->get()
+            ->keyBy('id');
+        $errors = [];
+
+        foreach ($platforms as $index => $platform) {
+            $target = $targets->get(data_get($platform, 'id'));
+            if ($target?->platform !== Platform::GoogleBusinessProfile) {
+                continue;
+            }
+
+            $location = $target->googleBusinessProfileLocation;
+            if (! $location || ! $location->is_selected || $location->social_account_id !== $target->social_account_id) {
+                $errors["platforms.{$index}.id"] = 'Choose a currently selected Google Business Profile location.';
+            }
+        }
+
+        return $errors;
+    }
+
     /** @param array<string, mixed> $meta
      * @return array<string, string>
      */

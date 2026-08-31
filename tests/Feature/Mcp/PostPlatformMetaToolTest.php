@@ -12,6 +12,7 @@ use App\Mcp\Tools\Post\AttachMediaFromUploadTool;
 use App\Mcp\Tools\Post\CreatePostTool;
 use App\Mcp\Tools\Post\PublishPostTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
+use App\Models\GoogleBusinessProfileLocation;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -99,6 +100,104 @@ test('update post merges per-platform meta', function () {
     $meta = $platform->fresh()->meta;
     expect($meta['channel_id'])->toBe('444555666')
         ->and($meta['channel_name'])->toBe('general'); // merged, not overwritten
+});
+
+test('update post rejects incomplete Google event metadata while remaining a draft', function () {
+    $account = SocialAccount::factory()->googleBusinessProfile()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+    $location = GoogleBusinessProfileLocation::factory()->create([
+        'social_account_id' => $account->id,
+    ]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    $platform = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'google_business_profile_location_id' => $location->id,
+        'content_type' => ContentType::GoogleBusinessProfileStandard,
+        'enabled' => true,
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'platforms' => [[
+                'id' => $platform->id,
+                'content_type' => ContentType::GoogleBusinessProfileEvent->value,
+                'meta' => [],
+            ]],
+        ]);
+
+    $response->assertHasErrors([
+        'Event title is required for this Google Business Profile post type.',
+        'Event start is required for this Google Business Profile post type.',
+        'Event end is required for this Google Business Profile post type.',
+    ]);
+});
+
+test('update post allows unrelated draft edits while stored Google event metadata is incomplete', function () {
+    $account = SocialAccount::factory()->googleBusinessProfile()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+    $location = GoogleBusinessProfileLocation::factory()->create([
+        'social_account_id' => $account->id,
+    ]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'google_business_profile_location_id' => $location->id,
+        'content_type' => ContentType::GoogleBusinessProfileEvent,
+        'enabled' => true,
+        'meta' => [],
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'content' => 'Still editing the caption',
+        ])
+        ->assertOk();
+
+    expect($post->fresh()->content)->toBe('Still editing the caption');
+});
+
+test('update post cannot re-enable a deselected Google location target', function () {
+    $account = SocialAccount::factory()->googleBusinessProfile()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+    $location = GoogleBusinessProfileLocation::factory()->create([
+        'social_account_id' => $account->id,
+        'is_selected' => false,
+    ]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    $platform = PostPlatform::factory()->googleBusinessProfile()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'google_business_profile_location_id' => $location->id,
+        'enabled' => false,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'platforms' => [['id' => $platform->id]],
+        ])
+        ->assertHasErrors(['Choose a currently selected Google Business Profile location.']);
+
+    expect($platform->fresh()->enabled)->toBeFalse();
 });
 
 test('publish guard ignores disabled platforms missing meta', function () {

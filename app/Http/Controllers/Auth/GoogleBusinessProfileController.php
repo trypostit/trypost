@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\Post\Status as PostStatus;
+use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
+use App\Models\Post;
+use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\Social\GoogleBusinessProfile\GoogleBusinessProfileApi;
@@ -170,6 +174,26 @@ class GoogleBusinessProfileController extends SocialController
         ]);
 
         DB::transaction(function () use ($account, $validated): void {
+            $deselectedLocationIds = $account->googleBusinessProfileLocations()
+                ->whereNotIn('id', $validated['location_ids'])
+                ->pluck('id');
+
+            $targetsToDisable = PostPlatform::query()
+                ->whereIn('google_business_profile_location_id', $deselectedLocationIds)
+                ->where('status', PostPlatformStatus::Pending)
+                ->whereHas('post', fn ($query) => $query->whereIn('status', [PostStatus::Draft, PostStatus::Scheduled]));
+            $candidatePostIds = (clone $targetsToDisable)->pluck('post_id');
+            Post::query()->whereIn('id', $candidatePostIds)->lockForUpdate()->get(['id']);
+
+            $affectedPostIds = (clone $targetsToDisable)->pluck('post_id');
+            $targetsToDisable->update(['enabled' => false]);
+
+            Post::query()
+                ->whereIn('id', $affectedPostIds)
+                ->where('status', PostStatus::Scheduled)
+                ->whereDoesntHave('postPlatforms', fn ($query) => $query->enabled())
+                ->update(['status' => PostStatus::Draft, 'scheduled_at' => null]);
+
             $account->googleBusinessProfileLocations()->update(['is_selected' => false]);
             $account->googleBusinessProfileLocations()
                 ->whereIn('id', $validated['location_ids'])

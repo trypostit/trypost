@@ -86,6 +86,12 @@ class UpdatePostRequest extends FormRequest
             $submittedPlatforms = (array) $this->input('platforms', []);
             $isPublishing = in_array($this->input('status'), [Status::Scheduled->value, Status::Publishing->value], true);
 
+            if ($this->has('platforms')) {
+                foreach (PostPlatformMetaRules::googleBusinessProfileLocationErrorsForUpdate($this->route('post'), $submittedPlatforms) as $field => $message) {
+                    $validator->errors()->add($field, $message);
+                }
+            }
+
             if ($this->has('platforms') || $isPublishing) {
                 $effectivePayloads = PostPlatformMetaRules::effectivePayloadsForUpdate(
                     $this->route('post'),

@@ -657,8 +657,8 @@ class ConnectionVerifier
         $response = Http::withToken($account->access_token)
             ->get('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', ['pageSize' => 1]);
 
-        if ($response->status() === 401) {
-            throw new TokenExpiredException('Google Business Profile access token is invalid or expired');
+        if (in_array($response->status(), [401, 403], true)) {
+            throw new TokenExpiredException('Google Business Profile access token is invalid, expired, or missing the required permission');
         }
 
         if ($response->successful()) {

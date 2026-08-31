@@ -22,4 +22,5 @@ export const PostPlatformStatus = {
     Rejected: 'rejected',
 } as const;
 
-export type PostPlatformStatusValue = (typeof PostPlatformStatus)[keyof typeof PostPlatformStatus];
+export type PostPlatformStatusValue =
+    (typeof PostPlatformStatus)[keyof typeof PostPlatformStatus];

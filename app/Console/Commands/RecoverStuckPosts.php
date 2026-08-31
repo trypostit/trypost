@@ -76,7 +76,9 @@ class RecoverStuckPosts extends Command
                 $total = $enabledPlatforms->count();
                 $publishedCount = $enabledPlatforms->where('status', PlatformStatus::Published)->count();
 
-                if ($publishedCount === $total) {
+                if ($total === 0) {
+                    $post->markAsFailed();
+                } elseif ($publishedCount === $total) {
                     $post->markAsPublished();
                 } elseif ($publishedCount > 0) {
                     $post->markAsPartiallyPublished();

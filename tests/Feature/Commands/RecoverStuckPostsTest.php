@@ -54,6 +54,23 @@ test('it recovers posts stuck in publishing for over 1 hour', function () {
     expect($post->status)->toBe(PostStatus::Failed);
 });
 
+test('it fails a stuck publishing post with no enabled targets', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Publishing,
+        'updated_at' => now()->subHours(2),
+    ]);
+    PostPlatform::factory()->disabled()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+
+    $this->artisan('social:recover-stuck-posts')->assertSuccessful();
+
+    expect($post->fresh()->status)->toBe(PostStatus::Failed);
+});
+
 test('it does not touch posts publishing for less than 1 hour', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,

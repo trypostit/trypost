@@ -138,7 +138,9 @@ const platformSupportsDateRange = computed(() => {
             />
 
             <YouTubeAnalytics
-                v-else-if="selectedAccount?.platform === 'google-business-profile'"
+                v-else-if="
+                    selectedAccount?.platform === 'google-business-profile'
+                "
                 :account-id="selectedAccountId"
                 :date-range="dateRange"
             />

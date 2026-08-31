@@ -77,16 +77,25 @@ class UpdatePostTool extends Tool
         // here, or stored) against the post's stored media — the tool can't change
         // media, so a misconfigured post can't be scheduled even without resubmitting
         // content_type. Mirrors the public API's withValidator check.
-        if ($status === Status::Scheduled->value) {
-            $effectivePayloads = PostPlatformMetaRules::effectivePayloadsForUpdate(
-                $post,
-                array_key_exists('platforms', $validated) ? $validated['platforms'] : null,
-            );
+        $effectivePayloads = PostPlatformMetaRules::effectivePayloadsForUpdate(
+            $post,
+            array_key_exists('platforms', $validated) ? $validated['platforms'] : null,
+        );
+        if (array_key_exists('platforms', $validated)) {
+            $locationErrors = PostPlatformMetaRules::googleBusinessProfileLocationErrorsForUpdate($post, $validated['platforms']);
+            if ($locationErrors !== []) {
+                throw ValidationException::withMessages($locationErrors);
+            }
+        }
+
+        if (array_key_exists('platforms', $validated) || $status === Status::Scheduled->value) {
             PostPlatformMetaRules::assertGoogleBusinessProfilePayloads(
                 $effectivePayloads,
                 fn ($platform) => ContentType::tryFrom((string) data_get($platform, 'content_type')),
             );
+        }
 
+        if ($status === Status::Scheduled->value) {
             $errors = ContentTypeCompatibleWithMedia::errorsFor(
                 ContentTypeCompatibleWithMedia::entriesForUpdate($post, data_get($validated, 'platforms')),
                 (array) ($post->media ?? []),

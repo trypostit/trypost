@@ -88,6 +88,12 @@ class PostPlatform extends Model
      */
     public function getDisplayNameAttribute(): string
     {
+        if ($this->platform === SocialPlatform::GoogleBusinessProfile) {
+            return $this->platform_name
+                ?? $this->googleBusinessProfileLocation?->title
+                ?? $this->platform->label();
+        }
+
         return $this->socialAccount?->accountDisplayName() ?? $this->platform_name ?? $this->platform->label();
     }
 
@@ -96,6 +102,10 @@ class PostPlatform extends Model
      */
     public function getDisplayUsernameAttribute(): ?string
     {
+        if ($this->platform === SocialPlatform::GoogleBusinessProfile) {
+            return $this->platform_username ?? $this->googleBusinessProfileLocation?->store_code;
+        }
+
         return $this->socialAccount?->username ?? $this->platform_username;
     }
 

@@ -7,13 +7,15 @@ namespace App\Jobs;
 use App\Enums\PostPlatform\Status;
 use App\Events\PostPlatformStatusUpdated;
 use App\Models\PostPlatform;
+use App\Services\Post\PostPublicationFinalizer;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\GoogleBusinessProfile\GoogleBusinessProfileApi;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
 
-class ReconcileGoogleBusinessProfilePost implements ShouldQueue
+class ReconcileGoogleBusinessProfilePost implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -21,12 +23,19 @@ class ReconcileGoogleBusinessProfilePost implements ShouldQueue
 
     public int $timeout = 60;
 
+    public int $uniqueFor = 7200;
+
     /** @var list<int> */
     public array $backoff = [60, 300, 900, 1800];
 
     public function __construct(public PostPlatform $postPlatform)
     {
         $this->onQueue($postPlatform->platform->queue());
+    }
+
+    public function uniqueId(): string
+    {
+        return $this->postPlatform->id;
     }
 
     public function handle(GoogleBusinessProfileApi $api, ConnectionVerifier $verifier): void
@@ -67,7 +76,7 @@ class ReconcileGoogleBusinessProfilePost implements ShouldQueue
             $this->postPlatform->update(['last_reconciled_at' => now()]);
         }
 
-        $this->reconcilePostStatus();
+        app(PostPublicationFinalizer::class)->finalize($this->postPlatform);
         PostPlatformStatusUpdated::dispatch($this->postPlatform->fresh());
     }
 
@@ -89,7 +98,7 @@ class ReconcileGoogleBusinessProfilePost implements ShouldQueue
             'last_reconciled_at' => now(),
         ]);
 
-        $this->reconcilePostStatus();
+        app(PostPublicationFinalizer::class)->finalize($this->postPlatform);
         PostPlatformStatusUpdated::dispatch($this->postPlatform->fresh());
 
         if ($exception) {
@@ -108,23 +117,5 @@ class ReconcileGoogleBusinessProfilePost implements ShouldQueue
             'topic_type' => data_get($remote, 'topicType'),
             'update_time' => data_get($remote, 'updateTime'),
         ]);
-    }
-
-    private function reconcilePostStatus(): void
-    {
-        $post = $this->postPlatform->post->fresh('postPlatforms');
-        $enabled = $post->postPlatforms->where('enabled', true);
-        $published = $enabled->where('status', Status::Published)->count();
-        $failed = $enabled->whereIn('status', [Status::Failed, Status::Rejected])->count();
-
-        if (($published + $failed) < $enabled->count()) {
-            return;
-        }
-
-        match (true) {
-            $published === $enabled->count() => $post->markAsPublished(),
-            $published > 0 => $post->markAsPartiallyPublished(),
-            default => $post->markAsFailed(),
-        };
     }
 }

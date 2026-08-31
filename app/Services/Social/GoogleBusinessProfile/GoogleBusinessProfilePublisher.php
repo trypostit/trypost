@@ -20,7 +20,7 @@ class GoogleBusinessProfilePublisher
     {
         $location = $postPlatform->googleBusinessProfileLocation;
 
-        if (! $location || $location->social_account_id !== $postPlatform->social_account_id) {
+        if (! $location || ! $location->is_selected || $location->social_account_id !== $postPlatform->social_account_id) {
             throw new GoogleBusinessProfilePublishException(
                 userMessage: 'Choose a valid Google Business Profile location before publishing.',
                 category: ErrorCategory::Permission,
