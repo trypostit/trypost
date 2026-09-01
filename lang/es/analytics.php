@@ -56,5 +56,11 @@ return [
         'direction_requests' => 'Solicitudes de Dirección',
         'desktop_map_impressions' => 'Impresiones de Mapa de Escritorio',
         'mobile_map_impressions' => 'Impresiones de Mapa Móvil',
+        'desktop_search_impressions' => 'Impresiones en Búsqueda (escritorio)',
+        'mobile_search_impressions' => 'Impresiones en Búsqueda (móvil)',
+        'conversations' => 'Conversaciones',
+        'bookings' => 'Reservas',
+        'food_orders' => 'Pedidos de comida',
+        'food_menu_clicks' => 'Clics en el menú',
     ],
 ];

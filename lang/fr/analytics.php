@@ -56,5 +56,11 @@ return [
         'direction_requests' => 'Demandes d\'itinéraire',
         'desktop_map_impressions' => 'Impressions de carte sur ordinateur',
         'mobile_map_impressions' => 'Impressions de carte sur mobile',
+        'desktop_search_impressions' => 'Impressions dans la recherche (ordinateur)',
+        'mobile_search_impressions' => 'Impressions dans la recherche (mobile)',
+        'conversations' => 'Conversations',
+        'bookings' => 'Réservations',
+        'food_orders' => 'Commandes de repas',
+        'food_menu_clicks' => 'Clics sur le menu',
     ],
 ];

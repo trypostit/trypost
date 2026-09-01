@@ -34,7 +34,7 @@ beforeEach(function () {
     $this->analytics = new GoogleBusinessAnalytics;
 });
 
-test('fetches the five performance metrics for the account location', function () {
+test('fetches the universal performance metrics for the account location', function () {
     Http::fake([
         config('trypost.platforms.google_business.performance_api').'/*' => Http::response([
             'multiDailyMetricTimeSeries' => [
@@ -57,7 +57,7 @@ test('fetches the five performance metrics for the account location', function (
     $metrics = $this->analytics->getMetrics($this->socialAccount);
 
     $labels = array_column($metrics, 'label');
-    expect($labels)->toHaveCount(5);
+    expect($labels)->toHaveCount(8);
 
     $websiteClicks = collect($metrics)->firstWhere('label', __('analytics.metrics.website_clicks'));
     expect($websiteClicks['value'])->toBe(15);
@@ -124,11 +124,11 @@ test('the analytics show endpoint returns google business metrics', function () 
     $response = $this->actingAs($this->user)
         ->getJson(route('app.analytics.show', $this->socialAccount));
 
-    $response->assertOk()->assertJsonCount(5, 'metrics');
+    $response->assertOk()->assertJsonCount(8, 'metrics');
 
     $metrics = $response->json('metrics');
 
-    expect(collect($metrics)->pluck('label')->filter())->toHaveCount(5)
+    expect(collect($metrics)->pluck('label')->filter())->toHaveCount(8)
         ->and(collect($metrics)->firstWhere('label', __('analytics.metrics.website_clicks'))['value'])->toBe(7);
 });
 
@@ -162,4 +162,43 @@ test('returns empty array on api failure', function () {
     ]);
 
     expect($this->analytics->getMetrics($this->socialAccount))->toBe([]);
+});
+
+test('it reports search impressions, not just maps impressions', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.performance_api').'/*' => Http::response([
+            'multiDailyMetricTimeSeries' => [[
+                'dailyMetricTimeSeries' => [
+                    ['dailyMetric' => 'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH', 'timeSeries' => ['datedValues' => [['value' => '40']]]],
+                    ['dailyMetric' => 'BUSINESS_IMPRESSIONS_MOBILE_SEARCH', 'timeSeries' => ['datedValues' => [['value' => '60']]]],
+                    ['dailyMetric' => 'BUSINESS_CONVERSATIONS', 'timeSeries' => ['datedValues' => [['value' => '7']]]],
+                ],
+            ]],
+        ], 200),
+    ]);
+
+    $metrics = collect($this->analytics->getMetrics($this->socialAccount));
+
+    expect($metrics->firstWhere('label', __('analytics.metrics.desktop_search_impressions'))['value'])->toBe(40)
+        ->and($metrics->firstWhere('label', __('analytics.metrics.mobile_search_impressions'))['value'])->toBe(60)
+        ->and($metrics->firstWhere('label', __('analytics.metrics.conversations'))['value'])->toBe(7);
+});
+
+test('it hides the food and booking metrics that only some business types ever report', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.performance_api').'/*' => Http::response([
+            'multiDailyMetricTimeSeries' => [[
+                'dailyMetricTimeSeries' => [
+                    ['dailyMetric' => 'BUSINESS_FOOD_ORDERS', 'timeSeries' => ['datedValues' => [['value' => '0']]]],
+                    ['dailyMetric' => 'BUSINESS_BOOKINGS', 'timeSeries' => ['datedValues' => [['value' => '4']]]],
+                ],
+            ]],
+        ], 200),
+    ]);
+
+    $labels = array_column($this->analytics->getMetrics($this->socialAccount), 'label');
+
+    expect($labels)->toContain(__('analytics.metrics.bookings'))
+        ->and($labels)->not->toContain(__('analytics.metrics.food_orders'))
+        ->and($labels)->not->toContain(__('analytics.metrics.food_menu_clicks'));
 });

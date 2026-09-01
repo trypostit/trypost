@@ -58,5 +58,11 @@ return [
         'direction_requests' => 'Rota Talepleri',
         'desktop_map_impressions' => 'Masaüstü Harita Gösterimleri',
         'mobile_map_impressions' => 'Mobil Harita Gösterimleri',
+        'desktop_search_impressions' => 'Aramada gösterim (masaüstü)',
+        'mobile_search_impressions' => 'Aramada gösterim (mobil)',
+        'conversations' => 'Sohbetler',
+        'bookings' => 'Rezervasyonlar',
+        'food_orders' => 'Yemek siparişleri',
+        'food_menu_clicks' => 'Menü tıklamaları',
     ],
 ];

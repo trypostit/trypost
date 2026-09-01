@@ -56,5 +56,11 @@ return [
         'direction_requests' => 'Routeaanvragen',
         'desktop_map_impressions' => 'Kaartweergaven op desktop',
         'mobile_map_impressions' => 'Kaartweergaven op mobiel',
+        'desktop_search_impressions' => 'Zoekvertoningen (desktop)',
+        'mobile_search_impressions' => 'Zoekvertoningen (mobiel)',
+        'conversations' => 'Gesprekken',
+        'bookings' => 'Reserveringen',
+        'food_orders' => 'Maaltijdbestellingen',
+        'food_menu_clicks' => 'Menuklikken',
     ],
 ];

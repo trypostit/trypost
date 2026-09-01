@@ -56,5 +56,11 @@ return [
         'direction_requests' => 'Запросы маршрутов',
         'desktop_map_impressions' => 'Показы карты на ПК',
         'mobile_map_impressions' => 'Показы карты на мобильном',
+        'desktop_search_impressions' => 'Показы в Поиске (компьютер)',
+        'mobile_search_impressions' => 'Показы в Поиске (телефон)',
+        'conversations' => 'Переписки',
+        'bookings' => 'Бронирования',
+        'food_orders' => 'Заказы еды',
+        'food_menu_clicks' => 'Клики по меню',
     ],
 ];

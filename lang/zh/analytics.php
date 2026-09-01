@@ -56,5 +56,11 @@ return [
         'direction_requests' => '方向请求',
         'desktop_map_impressions' => '桌面地图展示量',
         'mobile_map_impressions' => '移动地图展示量',
+        'desktop_search_impressions' => '搜索展示次数（桌面端）',
+        'mobile_search_impressions' => '搜索展示次数（移动端）',
+        'conversations' => '对话数',
+        'bookings' => '预订数',
+        'food_orders' => '餐饮订单',
+        'food_menu_clicks' => '菜单点击',
     ],
 ];

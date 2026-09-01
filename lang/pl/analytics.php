@@ -56,5 +56,11 @@ return [
         'direction_requests' => 'Żądania tras',
         'desktop_map_impressions' => 'Wyświetlenia map na komputerze',
         'mobile_map_impressions' => 'Wyświetlenia map na urządzeniu mobilnym',
+        'desktop_search_impressions' => 'Wyświetlenia w wyszukiwarce (komputer)',
+        'mobile_search_impressions' => 'Wyświetlenia w wyszukiwarce (telefon)',
+        'conversations' => 'Rozmowy',
+        'bookings' => 'Rezerwacje',
+        'food_orders' => 'Zamówienia jedzenia',
+        'food_menu_clicks' => 'Kliknięcia menu',
     ],
 ];

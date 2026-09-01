@@ -56,5 +56,11 @@ return [
         'direction_requests' => 'طلبات الاتجاهات',
         'desktop_map_impressions' => 'مرات ظهور الخريطة على سطح المكتب',
         'mobile_map_impressions' => 'مرات ظهور الخريطة على الجوال',
+        'desktop_search_impressions' => 'ظهور في بحث سطح المكتب',
+        'mobile_search_impressions' => 'ظهور في بحث الجوال',
+        'conversations' => 'المحادثات',
+        'bookings' => 'الحجوزات',
+        'food_orders' => 'طلبات الطعام',
+        'food_menu_clicks' => 'النقرات على القائمة',
     ],
 ];

@@ -56,5 +56,11 @@ return [
         'direction_requests' => 'Запити маршрутів',
         'desktop_map_impressions' => 'Покази карти на комп\'ютері',
         'mobile_map_impressions' => 'Покази карти на мобільному',
+        'desktop_search_impressions' => 'Покази в Пошуку (комп’ютер)',
+        'mobile_search_impressions' => 'Покази в Пошуку (телефон)',
+        'conversations' => 'Розмови',
+        'bookings' => 'Бронювання',
+        'food_orders' => 'Замовлення їжі',
+        'food_menu_clicks' => 'Кліки по меню',
     ],
 ];

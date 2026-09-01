@@ -56,5 +56,11 @@ return [
         'direction_requests' => 'Αιτήματα κατεύθυνσης',
         'desktop_map_impressions' => 'Εμφανίσεις χάρτη σε υπολογιστή',
         'mobile_map_impressions' => 'Εμφανίσεις χάρτη σε κινητό',
+        'desktop_search_impressions' => 'Εμφανίσεις στην Αναζήτηση (υπολογιστή)',
+        'mobile_search_impressions' => 'Εμφανίσεις στην Αναζήτηση (κινητό)',
+        'conversations' => 'Συνομιλίες',
+        'bookings' => 'Κρατήσεις',
+        'food_orders' => 'Παραγγελίες φαγητού',
+        'food_menu_clicks' => 'Κλικ στο μενού',
     ],
 ];

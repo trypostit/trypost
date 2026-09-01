@@ -56,5 +56,11 @@ return [
         'direction_requests' => '길찾기 요청',
         'desktop_map_impressions' => '데스크톱 지도 노출수',
         'mobile_map_impressions' => '모바일 지도 노출수',
+        'desktop_search_impressions' => '검색 노출(데스크톱)',
+        'mobile_search_impressions' => '검색 노출(모바일)',
+        'conversations' => '대화',
+        'bookings' => '예약',
+        'food_orders' => '음식 주문',
+        'food_menu_clicks' => '메뉴 클릭',
     ],
 ];

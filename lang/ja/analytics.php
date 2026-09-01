@@ -56,5 +56,11 @@ return [
         'direction_requests' => '経路リクエスト',
         'desktop_map_impressions' => 'デスクトップ地図インプレッション',
         'mobile_map_impressions' => 'モバイル地図インプレッション',
+        'desktop_search_impressions' => '検索での表示（デスクトップ）',
+        'mobile_search_impressions' => '検索での表示（モバイル）',
+        'conversations' => 'メッセージのやり取り',
+        'bookings' => '予約',
+        'food_orders' => 'フード注文',
+        'food_menu_clicks' => 'メニューのクリック',
     ],
 ];

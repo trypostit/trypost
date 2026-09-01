@@ -58,5 +58,11 @@ return [
         'direction_requests' => 'Routenanfragen',
         'desktop_map_impressions' => 'Kartenimpressionen auf dem Desktop',
         'mobile_map_impressions' => 'Kartenimpressionen auf Mobilgeräten',
+        'desktop_search_impressions' => 'Suchimpressionen (Desktop)',
+        'mobile_search_impressions' => 'Suchimpressionen (Mobil)',
+        'conversations' => 'Chats',
+        'bookings' => 'Buchungen',
+        'food_orders' => 'Essensbestellungen',
+        'food_menu_clicks' => 'Klicks auf die Speisekarte',
     ],
 ];

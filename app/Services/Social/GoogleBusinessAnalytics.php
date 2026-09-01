@@ -15,12 +15,28 @@ class GoogleBusinessAnalytics
     use HasSocialHttpClient;
 
     /** @var array<string, string> Google metric enum => translation key. */
+    /** Metrics every Business Profile reports, whatever the business does. */
     private const METRICS = [
+        'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH' => 'analytics.metrics.desktop_search_impressions',
+        'BUSINESS_IMPRESSIONS_MOBILE_SEARCH' => 'analytics.metrics.mobile_search_impressions',
+        'BUSINESS_IMPRESSIONS_DESKTOP_MAPS' => 'analytics.metrics.desktop_map_impressions',
+        'BUSINESS_IMPRESSIONS_MOBILE_MAPS' => 'analytics.metrics.mobile_map_impressions',
         'WEBSITE_CLICKS' => 'analytics.metrics.website_clicks',
         'CALL_CLICKS' => 'analytics.metrics.call_clicks',
         'BUSINESS_DIRECTION_REQUESTS' => 'analytics.metrics.direction_requests',
-        'BUSINESS_IMPRESSIONS_DESKTOP_MAPS' => 'analytics.metrics.desktop_map_impressions',
-        'BUSINESS_IMPRESSIONS_MOBILE_MAPS' => 'analytics.metrics.mobile_map_impressions',
+        'BUSINESS_CONVERSATIONS' => 'analytics.metrics.conversations',
+    ];
+
+    /**
+     * Metrics Google only ever fills for a matching business type — bookings
+     * need Reserve with Google, the food pair needs a food listing. A dentist
+     * would otherwise stare at three permanent zeros, so these are rendered
+     * only when the period actually reported something.
+     */
+    private const CONDITIONAL_METRICS = [
+        'BUSINESS_BOOKINGS' => 'analytics.metrics.bookings',
+        'BUSINESS_FOOD_ORDERS' => 'analytics.metrics.food_orders',
+        'BUSINESS_FOOD_MENU_CLICKS' => 'analytics.metrics.food_menu_clicks',
     ];
 
     private string $baseUrl;
@@ -66,7 +82,8 @@ class GoogleBusinessAnalytics
 
         $series = data_get($response->json(), 'multiDailyMetricTimeSeries.0.dailyMetricTimeSeries', []);
 
-        $totals = collect(self::METRICS)->mapWithKeys(fn ($labelKey, $metric) => [$metric => 0])->all();
+        $requested = self::METRICS + self::CONDITIONAL_METRICS;
+        $totals = collect($requested)->mapWithKeys(fn ($labelKey, $metric) => [$metric => 0])->all();
 
         foreach ($series as $entry) {
             $metric = data_get($entry, 'dailyMetric');
@@ -81,7 +98,8 @@ class GoogleBusinessAnalytics
             $totals[$metric] = $values;
         }
 
-        return collect(self::METRICS)
+        return collect($requested)
+            ->reject(fn (string $labelKey, string $metric): bool => isset(self::CONDITIONAL_METRICS[$metric]) && $totals[$metric] === 0)
             ->map(fn (string $labelKey, string $metric) => ['label' => __($labelKey), 'value' => $totals[$metric]])
             ->values()
             ->all();
@@ -96,7 +114,7 @@ class GoogleBusinessAnalytics
     {
         $metrics = implode('&', array_map(
             fn (string $metric): string => 'dailyMetrics='.urlencode($metric),
-            array_keys(self::METRICS),
+            array_keys(self::METRICS + self::CONDITIONAL_METRICS),
         ));
 
         $range = http_build_query([

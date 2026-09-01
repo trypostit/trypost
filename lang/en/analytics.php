@@ -56,5 +56,11 @@ return [
         'direction_requests' => 'Direction requests',
         'desktop_map_impressions' => 'Desktop map impressions',
         'mobile_map_impressions' => 'Mobile map impressions',
+        'desktop_search_impressions' => 'Desktop search impressions',
+        'mobile_search_impressions' => 'Mobile search impressions',
+        'conversations' => 'Conversations',
+        'bookings' => 'Bookings',
+        'food_orders' => 'Food orders',
+        'food_menu_clicks' => 'Menu clicks',
     ],
 ];
