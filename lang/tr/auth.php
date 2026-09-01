@@ -24,7 +24,7 @@ return [
         'welcome_trial' => 'TryPost\'a hoş geldiniz! Deneme süreniz başladı.',
     ],
 
-    'legal' => 'Devam ederek <a href="https://trypost.it/terms" target="_blank">Hizmet Şartları</a> ve <a href="https://trypost.it/privacy" target="_blank">Gizlilik Politikası</a>\'nı kabul etmiş olursunuz.',
+    'legal' => 'Devam ederek <a href=":terms_url" target="_blank">Hizmet Şartları</a> ve <a href=":privacy_url" target="_blank">Gizlilik Politikası</a>\'nı kabul etmiş olursunuz.',
 
     'slides' => [
         'calendar' => [

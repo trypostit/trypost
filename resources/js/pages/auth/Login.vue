@@ -3,6 +3,7 @@ import { Form, Head, usePage } from '@inertiajs/vue3';
 import { IconEye, IconEyeOff } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
+import LegalLinks from '@/components/auth/LegalLinks.vue';
 import SocialLogin from '@/components/auth/SocialLogin.vue';
 import InputError from '@/components/InputError.vue';
 import TextLink from '@/components/TextLink.vue';
@@ -183,6 +184,8 @@ const pageErrors = usePageErrors();
                     }}</TextLink>
                 </div>
             </Form>
+
+            <LegalLinks />
         </div>
     </AuthBase>
 </template>

@@ -22,7 +22,7 @@ return [
         'welcome_trial' => 'مرحبًا بك في TryPost! لقد بدأت فترتك التجريبية.',
     ],
 
-    'legal' => 'بمتابعتك، فإنك توافق على <a href="https://trypost.it/terms" target="_blank">شروط الخدمة</a> و<a href="https://trypost.it/privacy" target="_blank">سياسة الخصوصية</a>.',
+    'legal' => 'بمتابعتك، فإنك توافق على <a href=":terms_url" target="_blank">شروط الخدمة</a> و<a href=":privacy_url" target="_blank">سياسة الخصوصية</a>.',
 
     'slides' => [
         'calendar' => [

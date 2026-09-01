@@ -18,6 +18,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Legal pages
+    |--------------------------------------------------------------------------
+    |
+    | Linked from the auth screens. Platform app reviews (TikTok explicitly)
+    | require Terms and Privacy links to be clearly visible; self-hosted
+    | installs point these at wherever they publish their own documents.
+    |
+    */
+
+    'legal' => [
+        'terms_url' => env('LEGAL_TERMS_URL', 'https://trypost.it/terms'),
+        'privacy_url' => env('LEGAL_PRIVACY_URL', 'https://trypost.it/privacy'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Meta page walk budget
     |--------------------------------------------------------------------------
     |

@@ -22,7 +22,7 @@ return [
         'welcome_trial' => 'Ласкаво просимо до TryPost! Ваш пробний період розпочато.',
     ],
 
-    'legal' => 'Продовжуючи, ви погоджуєтеся з нашими <a href="https://trypost.it/terms" target="_blank">Умовами використання</a> та <a href="https://trypost.it/privacy" target="_blank">Політикою конфіденційності</a>.',
+    'legal' => 'Продовжуючи, ви погоджуєтеся з нашими <a href=":terms_url" target="_blank">Умовами використання</a> та <a href=":privacy_url" target="_blank">Політикою конфіденційності</a>.',
 
     'slides' => [
         'calendar' => [

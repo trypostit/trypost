@@ -24,7 +24,7 @@ return [
         'welcome_trial' => 'Willkommen bei TryPost! Deine Testphase hat begonnen.',
     ],
 
-    'legal' => 'Indem du fortfährst, stimmst du unseren <a href="https://trypost.it/terms" target="_blank">Nutzungsbedingungen</a> und unserer <a href="https://trypost.it/privacy" target="_blank">Datenschutzerklärung</a> zu.',
+    'legal' => 'Indem du fortfährst, stimmst du unseren <a href=":terms_url" target="_blank">Nutzungsbedingungen</a> und unserer <a href=":privacy_url" target="_blank">Datenschutzerklärung</a> zu.',
 
     'slides' => [
         'calendar' => [

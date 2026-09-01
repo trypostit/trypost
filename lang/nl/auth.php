@@ -22,7 +22,7 @@ return [
         'welcome_trial' => 'Welkom bij TryPost! Je proefperiode is gestart.',
     ],
 
-    'legal' => 'Door door te gaan ga je akkoord met onze <a href="https://trypost.it/terms" target="_blank">Servicevoorwaarden</a> en <a href="https://trypost.it/privacy" target="_blank">Privacybeleid</a>.',
+    'legal' => 'Door door te gaan ga je akkoord met onze <a href=":terms_url" target="_blank">Servicevoorwaarden</a> en <a href=":privacy_url" target="_blank">Privacybeleid</a>.',
 
     'slides' => [
         'calendar' => [

@@ -51,6 +51,10 @@ class HandleInertiaRequests extends Middleware
                 'hasActiveSubscription' => $account ? $account->hasActiveSubscription() : false,
                 'subscriptionPastDue' => $account ? $account->isPastDue() : false,
             ],
+            'legal' => [
+                'terms' => (string) config('trypost.legal.terms_url'),
+                'privacy' => (string) config('trypost.legal.privacy_url'),
+            ],
             'usage' => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => $account && ! $isSelfHosted ? $account->featureLimits() : null,
             'onboardingProgress' => $this->onboardingProgress($request, $user),
