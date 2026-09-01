@@ -116,7 +116,9 @@ test('update post rejects posts in any terminal state', function (PostStatus $st
     $response = TryPostServer::actingAs($this->user)
         ->tool(UpdatePostTool::class, ['post_id' => $post->id, 'content' => 'x']);
 
-    $response->assertHasErrors([__('posts.cannot_edit_finalized')]);
+    $message = __('posts.flash.cannot_edit_finalized');
+    expect($message)->not->toBe('posts.flash.cannot_edit_finalized');
+    $response->assertHasErrors([$message]);
 })->with([
     PostStatus::Published,
     PostStatus::PartiallyPublished,
@@ -280,7 +282,9 @@ test('publish post rejects posts already in a terminal state', function (PostSta
     $response = TryPostServer::actingAs($this->user)
         ->tool(PublishPostTool::class, ['post_id' => $post->id]);
 
-    $response->assertHasErrors([__('posts.cannot_edit_finalized')]);
+    $message = __('posts.flash.cannot_edit_finalized');
+    expect($message)->not->toBe('posts.flash.cannot_edit_finalized');
+    $response->assertHasErrors([$message]);
 })->with([
     PostStatus::Published,
     PostStatus::PartiallyPublished,
