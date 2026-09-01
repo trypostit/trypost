@@ -7,6 +7,11 @@ return [
     'select_account' => 'اختر حسابًا لعرض التحليلات.',
     'no_data' => 'لا تتوفر بيانات تحليلات.',
 
+    'search_keywords' => [
+        'title' => 'كلمات البحث',
+        'estimated' => 'أخفت Google العدد الدقيق لهذا المصطلح',
+    ],
+
     'metrics' => [
         'avg_view_duration' => 'متوسط مدة المشاهدة (ث)',
         'avg_view_percentage' => 'متوسط نسبة المشاهدة',

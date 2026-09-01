@@ -9,6 +9,11 @@ return [
     'select_account' => 'Analitiği görüntülemek için bir hesap seçin.',
     'no_data' => 'Kullanılabilir analitik verisi yok.',
 
+    'search_keywords' => [
+        'title' => 'Arama terimleri',
+        'estimated' => 'Google bu terim için kesin sayıyı paylaşmıyor',
+    ],
+
     'metrics' => [
         'avg_view_duration' => 'Ort. İzlenme Süresi (sn)',
         'avg_view_percentage' => 'Ort. İzlenme Yüzdesi',

@@ -78,7 +78,30 @@ class AnalyticsController extends Controller
 
         $metrics = $this->metricsFor($account, $since, $until);
 
+        // Google aggregates search keywords by month, so they cannot be folded
+        // into the daily metric cards and travel as their own list.
+        if ($account->platform === Platform::GoogleBusiness) {
+            return response()->json([
+                'metrics' => $metrics,
+                'keywords' => $this->searchKeywordsFor($account, $since, $until),
+            ]);
+        }
+
         return response()->json(['metrics' => $metrics]);
+    }
+
+    /**
+     * @return array<int, array{keyword: string, value: int, estimated: bool}>
+     */
+    private function searchKeywordsFor(SocialAccount $account, ?Carbon $since, ?Carbon $until): array
+    {
+        try {
+            return app(GoogleBusinessAnalytics::class)->getSearchKeywords($account, $since, $until);
+        } catch (PlatformUnavailableException|ConnectionException $e) {
+            report($e);
+
+            return [];
+        }
     }
 
     /**

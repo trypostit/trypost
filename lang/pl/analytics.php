@@ -7,6 +7,11 @@ return [
     'select_account' => 'Wybierz konto, aby wyświetlić analitykę.',
     'no_data' => 'Brak dostępnych danych analitycznych.',
 
+    'search_keywords' => [
+        'title' => 'Wyszukiwane hasła',
+        'estimated' => 'Google nie podaje dokładnej liczby dla tego hasła',
+    ],
+
     'metrics' => [
         'avg_view_duration' => 'Śr. czas oglądania (s)',
         'avg_view_percentage' => 'Śr. procent obejrzenia',

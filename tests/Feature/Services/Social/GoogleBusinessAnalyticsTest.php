@@ -202,3 +202,62 @@ test('it hides the food and booking metrics that only some business types ever r
         ->and($labels)->not->toContain(__('analytics.metrics.food_orders'))
         ->and($labels)->not->toContain(__('analytics.metrics.food_menu_clicks'));
 });
+
+test('it reports the search keywords people used to find the business', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.performance_api').'/*/searchkeywords/*' => Http::response([
+            'searchKeywordsCounts' => [
+                ['searchKeyword' => 'coffee near me', 'insightsValue' => ['value' => '320']],
+                ['searchKeyword' => 'best espresso', 'insightsValue' => ['threshold' => '15']],
+            ],
+        ]),
+        config('trypost.platforms.google_business.performance_api').'/*' => Http::response(['multiDailyMetricTimeSeries' => []]),
+    ]);
+
+    $keywords = $this->analytics->getSearchKeywords($this->socialAccount);
+
+    // A suppressed term reports a privacy threshold, not a count — saying 15
+    // where Google said "fewer than 15" would be inventing a number.
+    expect($keywords)->toBe([
+        ['keyword' => 'coffee near me', 'value' => 320, 'estimated' => false],
+        ['keyword' => 'best espresso', 'value' => 15, 'estimated' => true],
+    ]);
+});
+
+test('it follows the keyword pages and asks for whole months', function () {
+    Http::fakeSequence()
+        ->push(['searchKeywordsCounts' => [['searchKeyword' => 'a', 'insightsValue' => ['value' => '2']]], 'nextPageToken' => 'page-2'])
+        ->push(['searchKeywordsCounts' => [['searchKeyword' => 'b', 'insightsValue' => ['value' => '1']]]]);
+
+    $keywords = $this->analytics->getSearchKeywords(
+        $this->socialAccount,
+        now()->setDate(2026, 6, 14),
+        now()->setDate(2026, 8, 3),
+    );
+
+    expect(array_column($keywords, 'keyword'))->toBe(['a', 'b']);
+
+    // parse_str() rewrites dots in keys to underscores, so match the raw query.
+    Http::assertSent(function ($request) {
+        $query = urldecode((string) parse_url($request->url(), PHP_URL_QUERY));
+
+        return str_contains($request->url(), '/searchkeywords/impressions/monthly')
+            && str_contains($query, 'monthlyRange.start_month.year=2026')
+            && str_contains($query, 'monthlyRange.start_month.month=6')
+            && str_contains($query, 'monthlyRange.end_month.month=8');
+    });
+});
+
+test('the analytics endpoint returns the search keywords alongside the metrics', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.performance_api').'/*/searchkeywords/*' => Http::response([
+            'searchKeywordsCounts' => [['searchKeyword' => 'coffee near me', 'insightsValue' => ['value' => '320']]],
+        ]),
+        config('trypost.platforms.google_business.performance_api').'/*' => Http::response(['multiDailyMetricTimeSeries' => []]),
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->getJson(route('app.analytics.show', $this->socialAccount));
+
+    $response->assertOk()->assertJsonPath('keywords.0.keyword', 'coffee near me');
+});

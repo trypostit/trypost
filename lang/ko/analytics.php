@@ -7,6 +7,11 @@ return [
     'select_account' => '분석을 보려면 계정을 선택하세요.',
     'no_data' => '사용 가능한 분석 데이터가 없습니다.',
 
+    'search_keywords' => [
+        'title' => '검색어',
+        'estimated' => 'Google가 이 검색어의 정확한 수를 공개하지 않습니다',
+    ],
+
     'metrics' => [
         'avg_view_duration' => '평균 시청 시간 (초)',
         'avg_view_percentage' => '평균 시청률',

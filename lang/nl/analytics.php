@@ -7,6 +7,11 @@ return [
     'select_account' => 'Selecteer een account om statistieken te bekijken.',
     'no_data' => 'Geen statistieken beschikbaar.',
 
+    'search_keywords' => [
+        'title' => 'Zoektermen',
+        'estimated' => 'Google geeft het exacte aantal voor deze term niet vrij',
+    ],
+
     'metrics' => [
         'avg_view_duration' => 'Gem. kijkduur (s)',
         'avg_view_percentage' => 'Gem. kijkpercentage',

@@ -9,6 +9,11 @@ return [
     'select_account' => 'Wähle ein Konto, um die Analysedaten anzuzeigen.',
     'no_data' => 'Keine Analysedaten verfügbar.',
 
+    'search_keywords' => [
+        'title' => 'Suchbegriffe',
+        'estimated' => 'Google gibt für diesen Begriff keine genaue Zahl an',
+    ],
+
     'metrics' => [
         'avg_view_duration' => 'Durchschn. Wiedergabedauer (s)',
         'avg_view_percentage' => 'Durchschn. Wiedergabeanteil',

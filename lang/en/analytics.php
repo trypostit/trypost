@@ -7,6 +7,11 @@ return [
     'select_account' => 'Select an account to view analytics.',
     'no_data' => 'No analytics data available.',
 
+    'search_keywords' => [
+        'title' => 'Search terms',
+        'estimated' => 'Google withholds the exact count for this term',
+    ],
+
     'metrics' => [
         'avg_view_duration' => 'Avg. View Duration (s)',
         'avg_view_percentage' => 'Avg. View Percentage',

@@ -57,6 +57,83 @@ class GoogleBusinessAnalytics
         return Cache::remember($cacheKey, $cacheTtl, fn () => $this->fetchMetricsFromApi($account, $since, $until));
     }
 
+    /**
+     * The terms people searched before landing on the profile. Google only
+     * aggregates these by month, so a day-level range is widened to the whole
+     * months it touches — the panel labels the period it actually got.
+     *
+     * @return list<array{keyword: string, value: int, estimated: bool}>
+     */
+    public function getSearchKeywords(SocialAccount $account, ?CarbonInterface $since = null, ?CarbonInterface $until = null): array
+    {
+        $since ??= now()->subMonth();
+        $until ??= now();
+
+        $cacheKey = "analytics:google_business:keywords:{$account->id}:{$since->format('Y-m')}:{$until->format('Y-m')}";
+
+        return Cache::remember(
+            $cacheKey,
+            app()->isProduction() ? 3600 : 1,
+            fn (): array => $this->fetchSearchKeywordsFromApi($account, $since, $until),
+        );
+    }
+
+    /**
+     * @return list<array{keyword: string, value: int, estimated: bool}>
+     */
+    private function fetchSearchKeywordsFromApi(SocialAccount $account, CarbonInterface $since, CarbonInterface $until): array
+    {
+        $locationName = (string) data_get($account->meta, 'location_name');
+
+        if (blank($locationName)) {
+            return [];
+        }
+
+        if ($account->needsProactiveTokenRefresh()) {
+            app(ConnectionVerifier::class)->refreshToken($account);
+        }
+
+        $keywords = [];
+        $pageToken = null;
+
+        do {
+            $response = $this->socialHttp()->withToken($account->access_token)
+                ->get("{$this->baseUrl}/{$locationName}/searchkeywords/impressions/monthly", array_filter([
+                    'monthlyRange.start_month.year' => (int) $since->format('Y'),
+                    'monthlyRange.start_month.month' => (int) $since->format('n'),
+                    'monthlyRange.end_month.year' => (int) $until->format('Y'),
+                    'monthlyRange.end_month.month' => (int) $until->format('n'),
+                    'pageSize' => 100,
+                    'pageToken' => $pageToken,
+                ]));
+
+            if ($response->failed()) {
+                Log::warning('Google Business Profile search keywords fetch failed', [
+                    'body' => $this->redactResponseBody($response->body()),
+                ]);
+
+                return $keywords;
+            }
+
+            foreach (data_get($response->json(), 'searchKeywordsCounts', []) as $entry) {
+                $threshold = data_get($entry, 'insightsValue.threshold');
+
+                $keywords[] = [
+                    'keyword' => (string) data_get($entry, 'searchKeyword'),
+                    // Google withholds the count for low-volume terms and sends
+                    // the floor it stayed under instead. Reporting that floor as
+                    // the count would state a number Google refused to give.
+                    'value' => (int) (data_get($entry, 'insightsValue.value') ?? $threshold ?? 0),
+                    'estimated' => $threshold !== null,
+                ];
+            }
+
+            $pageToken = data_get($response->json(), 'nextPageToken');
+        } while (filled($pageToken));
+
+        return $keywords;
+    }
+
     private function fetchMetricsFromApi(SocialAccount $account, CarbonInterface $since, CarbonInterface $until): array
     {
         if ($account->needsProactiveTokenRefresh()) {

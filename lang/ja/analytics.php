@@ -7,6 +7,11 @@ return [
     'select_account' => 'アナリティクスを表示するアカウントを選択してください。',
     'no_data' => '利用できるアナリティクスデータがありません。',
 
+    'search_keywords' => [
+        'title' => '検索キーワード',
+        'estimated' => 'この語句の正確な件数は Google が非公開にしています',
+    ],
+
     'metrics' => [
         'avg_view_duration' => '平均視聴時間（秒）',
         'avg_view_percentage' => '平均視聴率',

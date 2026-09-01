@@ -7,6 +7,11 @@ return [
     'select_account' => 'Selecione uma conta para ver analytics.',
     'no_data' => 'Nenhum dado de analytics disponível.',
 
+    'search_keywords' => [
+        'title' => 'Termos de busca',
+        'estimated' => 'O Google não informa o número exato deste termo',
+    ],
+
     'metrics' => [
         'avg_view_duration' => 'Duração Média (s)',
         'avg_view_percentage' => 'Visualização Média',

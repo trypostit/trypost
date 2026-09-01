@@ -7,6 +7,11 @@ return [
     'select_account' => '选择一个账号以查看分析数据。',
     'no_data' => '暂无分析数据。',
 
+    'search_keywords' => [
+        'title' => '搜索词',
+        'estimated' => 'Google 不公开该搜索词的精确次数',
+    ],
+
     'metrics' => [
         'avg_view_duration' => '平均观看时长（秒）',
         'avg_view_percentage' => '平均观看比例',

@@ -7,6 +7,11 @@ return [
     'select_account' => 'Sélectionnez un compte pour voir les statistiques.',
     'no_data' => 'Aucune donnée statistique disponible.',
 
+    'search_keywords' => [
+        'title' => 'Termes de recherche',
+        'estimated' => 'Google ne communique pas le nombre exact pour ce terme',
+    ],
+
     'metrics' => [
         'avg_view_duration' => 'Durée de visionnage moy. (s)',
         'avg_view_percentage' => 'Pourcentage de visionnage moy.',
