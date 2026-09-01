@@ -4,21 +4,29 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\DataTransferObjects\MediaItem;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\Workspace\ContentLanguage;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\GoogleBusinessPublishException;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
+use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\GoogleBusinessResourceName;
 use App\Support\PostPlatformMetaRules;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Throwable;
 
 class GoogleBusinessPublisher
 {
+    /** Where the Google-shaped copies of post images live on the default disk. */
+    private const DERIVATIVE_DIRECTORY = 'google-business-derivatives';
+
     use HasSocialHttpClient;
 
     private string $accountManagementUrl;
@@ -128,7 +136,7 @@ class GoogleBusinessPublisher
         if ($media) {
             $payload['media'] = [[
                 'mediaFormat' => 'PHOTO',
-                'sourceUrl' => $media->url,
+                'sourceUrl' => $this->imageSourceUrl($media),
             ]];
         }
 
@@ -145,6 +153,47 @@ class GoogleBusinessPublisher
         }
 
         return $payload;
+    }
+
+    /**
+     * Google fetches the image from the URL we hand it and rejects anything
+     * outside its size and format rules, so it gets a JPEG derivative built to
+     * the platform's MediaOptimizer profile rather than whatever the user
+     * uploaded. The derivative lives beside the original on the default disk;
+     * a retry rebuilds it rather than depending on one surviving.
+     */
+    private function imageSourceUrl(MediaItem $media): string
+    {
+        $input = tempnam(sys_get_temp_dir(), 'gbp_');
+
+        if ($input === false || blank($media->path) || ! Storage::exists($media->path)) {
+            return $media->url;
+        }
+
+        $optimized = null;
+
+        try {
+            file_put_contents($input, Storage::get($media->path));
+            $optimized = app(MediaOptimizer::class)->optimizeImage($input, Platform::GoogleBusiness);
+
+            $derivativePath = self::DERIVATIVE_DIRECTORY.'/'.Str::uuid()->toString().'.jpg';
+            Storage::put($derivativePath, file_get_contents($optimized));
+
+            return Storage::url($derivativePath);
+        } catch (Throwable $e) {
+            Log::warning('Google Business Profile image derivative failed; sending the original', [
+                'path' => $media->path,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $media->url;
+        } finally {
+            @unlink($input);
+
+            if ($optimized !== null) {
+                @unlink($optimized);
+            }
+        }
     }
 
     /**
@@ -254,7 +303,9 @@ class GoogleBusinessPublisher
         do {
             $response = $this->socialHttp()->withToken($accessToken)
                 ->get("{$this->accountManagementUrl}/accounts", array_filter([
-                    'pageSize' => 100,
+                    // The Account Management API caps this at 20; asking for
+                    // more is silently clamped and hides the real page size.
+                    'pageSize' => 20,
                     'pageToken' => $pageToken,
                 ]));
 
@@ -306,6 +357,13 @@ class GoogleBusinessPublisher
             $data = $response->json() ?? [];
 
             foreach (data_get($data, 'locations', []) as $location) {
+                // Google tells us which listings can carry a Local Post at all.
+                // Only an explicit refusal disqualifies one — an absent flag is
+                // not a no, and dropping those would hide working locations.
+                if (data_get($location, 'metadata.canOperateLocalPost') === false) {
+                    continue;
+                }
+
                 $shortName = (string) data_get($location, 'name');
 
                 $locations[] = [

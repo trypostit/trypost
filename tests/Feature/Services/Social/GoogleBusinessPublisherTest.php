@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\GoogleBusinessPublisher;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -38,6 +39,36 @@ beforeEach(function () {
     ]);
 
     $this->publisher = new GoogleBusinessPublisher;
+});
+
+test('publish hands Google a JPEG derivative rather than the raw upload', function () {
+    Storage::fake();
+    Storage::put('uploads/promo.png', base64_decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+    ));
+    $this->post->update(['media' => [[
+        'path' => 'uploads/promo.png',
+        'url' => Storage::url('uploads/promo.png'),
+        'mime_type' => 'image/png',
+        'type' => 'image',
+    ]]]);
+
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
+            'state' => 'LIVE',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(function ($request): bool {
+        $sourceUrl = (string) data_get($request->data(), 'media.0.sourceUrl');
+
+        return data_get($request->data(), 'media.0.mediaFormat') === 'PHOTO'
+            && str_ends_with($sourceUrl, '.jpg')
+            && ! str_contains($sourceUrl, 'promo.png');
+    });
 });
 
 test('publish reports the review state Google returned and the real post URL', function () {
@@ -285,7 +316,7 @@ test('fetchLocations flattens accounts and locations across pages', function () 
 
         return $request->method() === 'GET'
             && str_starts_with($request->url(), config('trypost.platforms.google_business.account_management_api').'/accounts')
-            && data_get($query, 'pageSize') === '100';
+            && data_get($query, 'pageSize') === '20';
     });
 
     Http::assertSent(function ($request) {
@@ -295,4 +326,24 @@ test('fetchLocations flattens accounts and locations across pages', function () 
             && str_starts_with($request->url(), config('trypost.platforms.google_business.business_information_api').'/accounts/111/locations')
             && data_get($query, 'readMask') === 'name,title,storefrontAddress,metadata';
     });
+});
+
+test('fetchLocations skips a location Google says cannot take local posts', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.account_management_api').'/accounts*' => Http::response([
+            'accounts' => [['name' => 'accounts/111']],
+        ], 200),
+        config('trypost.platforms.google_business.business_information_api').'/accounts/111/locations*' => Http::response([
+            'locations' => [
+                ['name' => 'locations/222', 'title' => 'Downtown Store', 'metadata' => ['canOperateLocalPost' => true]],
+                ['name' => 'locations/333', 'title' => 'Warehouse', 'metadata' => ['canOperateLocalPost' => false]],
+                ['name' => 'locations/444', 'title' => 'Airport Kiosk'],
+            ],
+        ], 200),
+    ]);
+
+    $titles = array_column($this->publisher->fetchLocations('fake-access-token'), 'title');
+
+    // An absent flag stays offered — only an explicit refusal is one.
+    expect($titles)->toBe(['Downtown Store', 'Airport Kiosk']);
 });
