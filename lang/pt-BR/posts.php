@@ -457,6 +457,7 @@ return [
             'publishing' => 'Publicando...',
             'retrying' => 'Tentando novamente...',
             'failed' => 'Falhou',
+            'pending_review' => 'Em revisão pelo Google',
             'rejected' => 'Recusado',
         ],
 
@@ -624,6 +625,7 @@ return [
         'platform_unavailable_exhausted' => 'A plataforma continuou indisponível após várias tentativas. Tente de novo mais tarde.',
         'publishing_timed_out' => 'A publicação excedeu o tempo limite. Tente novamente.',
         'rejected_in_review' => 'O Google recusou este post na revisão. Edite o conteúdo ou a imagem e tente novamente.',
+        'review_unconfirmed' => 'O Google nunca confirmou este post. Confira seu Perfil da Empresa e tente novamente.',
     ],
 
     'delete' => [

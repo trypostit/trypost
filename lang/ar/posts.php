@@ -457,6 +457,7 @@ return [
             'publishing' => 'جارٍ النشر...',
             'retrying' => 'جارٍ إعادة المحاولة...',
             'failed' => 'فشل',
+            'pending_review' => 'قيد مراجعة Google',
             'rejected' => 'مرفوض',
         ],
 
@@ -624,6 +625,7 @@ return [
         'platform_unavailable_exhausted' => 'ظلت المنصة غير متاحة بعد عدة محاولات. يرجى المحاولة لاحقًا.',
         'publishing_timed_out' => 'انتهت مهلة النشر. يرجى المحاولة مرة أخرى.',
         'rejected_in_review' => 'رفضت Google هذا المنشور أثناء المراجعة. عدّل المحتوى أو الصورة وحاول مرة أخرى.',
+        'review_unconfirmed' => 'لم تؤكد Google حالة هذا المنشور. تحقّق من ملفك التجاري وحاول مرة أخرى.',
     ],
 
     'delete' => [

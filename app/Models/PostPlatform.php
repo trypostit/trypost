@@ -35,6 +35,8 @@ class PostPlatform extends Model
         'error_message',
         'error_context',
         'published_at',
+        'submitted_at',
+        'last_reconciled_at',
         'meta',
         'connection_warning_sent_at',
     ];
@@ -47,6 +49,8 @@ class PostPlatform extends Model
             'content_type' => ContentType::class,
             'status' => Status::class,
             'published_at' => 'datetime',
+            'submitted_at' => 'datetime',
+            'last_reconciled_at' => 'datetime',
             'meta' => 'array',
             'error_context' => 'array',
             'connection_warning_sent_at' => 'datetime',
@@ -128,10 +132,28 @@ class PostPlatform extends Model
      *
      * @param  array<string, mixed>|null  $errorContext
      */
-    public function markAsRejected(string $errorMessage, ?array $errorContext = null): void
+    /**
+     * The provider accepted the post but has not finished reviewing it. It is
+     * neither published nor failed until the review settles.
+     */
+    public function markAsPendingReview(string $platformPostId, ?string $platformUrl = null): void
+    {
+        $this->update([
+            'status' => Status::PendingReview,
+            'platform_post_id' => $platformPostId,
+            'platform_url' => $platformUrl,
+            'submitted_at' => $this->submitted_at ?? now(),
+            'error_message' => null,
+            'error_context' => null,
+        ]);
+    }
+
+    public function markAsRejected(string $platformPostId, ?string $platformUrl, string $errorMessage, ?array $errorContext = null): void
     {
         $this->update([
             'status' => Status::Rejected,
+            'platform_post_id' => $platformPostId,
+            'platform_url' => $platformUrl,
             'error_message' => $errorMessage,
             'error_context' => $errorContext,
         ]);

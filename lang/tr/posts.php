@@ -459,6 +459,7 @@ return [
             'publishing' => 'Yayınlanıyor...',
             'retrying' => 'Yeniden deneniyor...',
             'failed' => 'Başarısız',
+            'pending_review' => 'Google incelemesinde',
             'rejected' => 'Reddedildi',
         ],
 
@@ -626,6 +627,7 @@ return [
         'platform_unavailable_exhausted' => 'Platform birkaç denemeden sonra kullanılamaz kaldı. Lütfen daha sonra tekrar deneyin.',
         'publishing_timed_out' => 'Yayınlama zaman aşımına uğradı. Lütfen tekrar deneyin.',
         'rejected_in_review' => 'Google bu gönderiyi incelemede reddetti. İçeriği veya görseli düzenleyip tekrar deneyin.',
+        'review_unconfirmed' => 'Google bu gönderiyi hiç onaylamadı. İşletme Profili\'ni kontrol edip tekrar deneyin.',
     ],
 
     'delete' => [

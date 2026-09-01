@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Enums\Notification\Channel;
-use App\Enums\Notification\Type;
+use App\Actions\Post\FinalizePostPublication;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
@@ -14,9 +13,6 @@ use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\SocialPublishException;
 use App\Exceptions\TokenExpiredException;
-use App\Mail\PostPublished;
-use App\Mail\PostPublishFailed;
-use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Services\Social\BlueskyPublisher;
 use App\Services\Social\ConnectionVerifier;
@@ -126,18 +122,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 $publisher = $this->getPublisher();
                 $result = $publisher->publish($this->postPlatform);
 
-                if (data_get($result, 'state') === 'REJECTED') {
-                    $this->postPlatform->update([
-                        'platform_post_id' => data_get($result, 'id'),
-                        'platform_url' => data_get($result, 'url'),
-                    ]);
-                    $this->postPlatform->markAsRejected(
-                        __('posts.errors.rejected_in_review'),
-                        ['provider_state' => 'REJECTED'],
-                    );
-                } else {
-                    $this->postPlatform->markAsPublished(data_get($result, 'id'), data_get($result, 'url'));
-                }
+                $this->recordPublishResult($result);
                 break;
             } catch (PlatformUnavailableException $e) {
                 $this->rescheduleForRetry($e);
@@ -207,6 +192,30 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
         // Broadcast final status
         $this->broadcastStatus();
+    }
+
+    /**
+     * A publisher may answer with a provider-side state instead of a finished
+     * post. Anything it does not report is a plain success, which is every
+     * platform but Google Business Profile.
+     *
+     * @param  array<string, mixed>  $result
+     */
+    private function recordPublishResult(array $result): void
+    {
+        $platformPostId = (string) data_get($result, 'id');
+        $platformUrl = data_get($result, 'url');
+
+        match (data_get($result, 'state')) {
+            'REJECTED' => $this->postPlatform->markAsRejected(
+                $platformPostId,
+                $platformUrl,
+                __('posts.errors.rejected_in_review'),
+                ['provider_state' => 'REJECTED'],
+            ),
+            'PROCESSING', 'SCHEDULED' => $this->postPlatform->markAsPendingReview($platformPostId, $platformUrl),
+            default => $this->postPlatform->markAsPublished($platformPostId, $platformUrl),
+        };
     }
 
     private function refreshAccountToken(): void
@@ -373,36 +382,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
     private function updatePostStatus(): void
     {
-        $post = $this->postPlatform->post->fresh();
-        $enabledPlatforms = $post->postPlatforms->where('enabled', true);
-
-        $total = $enabledPlatforms->count();
-        $publishedCount = $enabledPlatforms->where('status', PostPlatformStatus::Published)->count();
-        $failedCount = $enabledPlatforms->whereIn('status', [
-            PostPlatformStatus::Failed,
-            PostPlatformStatus::Rejected,
-        ])->count();
-        $finishedCount = $publishedCount + $failedCount;
-
-        // Only update post status when all platforms have finished
-        if ($finishedCount < $total) {
-            return;
-        }
-
-        if ($publishedCount === $total) {
-            $post->markAsPublished();
-            $this->notify($post, PostPlatformStatus::Published);
-
-            return;
-        }
-
-        if ($publishedCount > 0) {
-            $post->markAsPartiallyPublished();
-        } else {
-            $post->markAsFailed();
-        }
-
-        $this->notify($post, PostPlatformStatus::Failed);
+        app(FinalizePostPublication::class)->handle($this->postPlatform);
     }
 
     public function failed(?Throwable $exception): void
@@ -428,34 +408,5 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         );
         $this->updatePostStatus();
         $this->broadcastStatus();
-    }
-
-    private function notify(Post $post, PostPlatformStatus $status): void
-    {
-        $owner = $post->workspace->owner;
-
-        if (! $owner) {
-            return;
-        }
-
-        $successful = $status === PostPlatformStatus::Published;
-        $platforms = $post->postPlatforms()
-            ->with('socialAccount')
-            ->enabled()
-            ->where('status', $status)
-            ->get()
-            ->map(fn ($pp) => $pp->platform->label().' (@'.data_get($pp, 'socialAccount.username', '').')')
-            ->implode(', ');
-
-        SendNotification::dispatch(
-            user: $owner,
-            workspaceId: $post->workspace_id,
-            type: $successful ? Type::PostPublished : Type::PostFailed,
-            channel: Channel::Both,
-            title: $successful ? 'Post published successfully' : 'Post failed to publish',
-            body: $successful ? $platforms : "Failed on: {$platforms}",
-            data: ['post_id' => $post->id],
-            mailable: $successful ? new PostPublished($post) : new PostPublishFailed($post),
-        );
     }
 }

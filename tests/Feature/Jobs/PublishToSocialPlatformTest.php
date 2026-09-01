@@ -1482,7 +1482,10 @@ test('dispatches google business posts to GoogleBusinessPublisher', function () 
     ]);
 
     Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'accounts/1/locations/2/localPosts/3'], 200),
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/1/locations/2/localPosts/3',
+            'state' => 'LIVE',
+        ], 200),
     ]);
 
     (new PublishToSocialPlatform($postPlatform))->handle();
@@ -1548,4 +1551,32 @@ test('a rejected google business target finalizes the post instead of leaving it
 
     expect($post->fresh()->status)->toBe(PostStatus::Failed);
     Queue::assertPushed(SendNotification::class);
+});
+
+test('a google business post still in review is held, not reported as published', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addHour(),
+    ]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => ['topic_type' => 'STANDARD'],
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/1/locations/2/localPosts/3',
+            'state' => 'PROCESSING',
+        ], 200),
+    ]);
+
+    (new PublishToSocialPlatform($postPlatform))->handle();
+
+    $this->assertDatabaseHas('post_platforms', [
+        'id' => $postPlatform->id,
+        'status' => 'pending_review',
+    ]);
+    expect($postPlatform->fresh()->submitted_at)->not->toBeNull()
+        ->and($postPlatform->fresh()->published_at)->toBeNull();
 });

@@ -457,6 +457,7 @@ return [
             'publishing' => 'Publication en cours...',
             'retrying' => 'Nouvelle tentative...',
             'failed' => 'Échec',
+            'pending_review' => 'En cours d\'examen par Google',
             'rejected' => 'Refusé',
         ],
 
@@ -624,6 +625,7 @@ return [
         'platform_unavailable_exhausted' => 'La plateforme est restée indisponible après plusieurs tentatives. Réessayez plus tard.',
         'publishing_timed_out' => 'La publication a expiré. Veuillez réessayer.',
         'rejected_in_review' => 'Google a refusé ce post lors de l\'examen. Modifie le contenu ou l\'image et réessaie.',
+        'review_unconfirmed' => 'Google n\'a jamais confirmé ce post. Vérifie ta fiche d\'établissement et réessaie.',
     ],
 
     'delete' => [

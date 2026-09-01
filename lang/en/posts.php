@@ -457,6 +457,7 @@ return [
             'publishing' => 'Publishing...',
             'retrying' => 'Retrying...',
             'failed' => 'Failed',
+            'pending_review' => 'In review by Google',
             'rejected' => 'Rejected',
         ],
 
@@ -624,6 +625,7 @@ return [
         'platform_unavailable_exhausted' => 'The platform stayed unavailable after several retries. Please try again later.',
         'publishing_timed_out' => 'Publishing timed out. Please try again.',
         'rejected_in_review' => 'Google rejected this post in review. Edit the content or image and try again.',
+        'review_unconfirmed' => 'Google never confirmed this post. Check your Business Profile and try again.',
     ],
 
     'delete' => [

@@ -459,6 +459,7 @@ return [
             'publishing' => 'Wird veröffentlicht...',
             'retrying' => 'Erneuter Versuch...',
             'failed' => 'Fehlgeschlagen',
+            'pending_review' => 'Google-Prüfung läuft',
             'rejected' => 'Abgelehnt',
         ],
 
@@ -626,6 +627,7 @@ return [
         'platform_unavailable_exhausted' => 'Die Plattform blieb nach mehreren Versuchen nicht verfügbar. Bitte später erneut versuchen.',
         'publishing_timed_out' => 'Die Veröffentlichung ist abgelaufen. Bitte erneut versuchen.',
         'rejected_in_review' => 'Google hat diesen Beitrag bei der Prüfung abgelehnt. Bearbeite den Inhalt oder das Bild und versuche es erneut.',
+        'review_unconfirmed' => 'Google hat den Status dieses Beitrags nicht bestätigt. Prüfe dein Unternehmensprofil und versuche es erneut.',
     ],
 
     'delete' => [

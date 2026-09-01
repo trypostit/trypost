@@ -457,6 +457,7 @@ return [
             'publishing' => 'Publiceren...',
             'retrying' => 'Opnieuw proberen...',
             'failed' => 'Mislukt',
+            'pending_review' => 'In beoordeling bij Google',
             'rejected' => 'Afgewezen',
         ],
 
@@ -624,6 +625,7 @@ return [
         'platform_unavailable_exhausted' => 'Het platform bleef na meerdere pogingen niet beschikbaar. Probeer het later opnieuw.',
         'publishing_timed_out' => 'Publiceren is timed-out. Probeer het opnieuw.',
         'rejected_in_review' => 'Google heeft dit bericht bij de beoordeling afgewezen. Pas de inhoud of afbeelding aan en probeer het opnieuw.',
+        'review_unconfirmed' => 'Google heeft dit bericht nooit bevestigd. Controleer je bedrijfsprofiel en probeer het opnieuw.',
     ],
 
     'delete' => [

@@ -457,6 +457,7 @@ return [
             'publishing' => '公開中...',
             'retrying' => '再試行中...',
             'failed' => '失敗',
+            'pending_review' => 'Google が審査中',
             'rejected' => '拒否されました',
         ],
 
@@ -624,6 +625,7 @@ return [
         'platform_unavailable_exhausted' => '何度か再試行しましたがプラットフォームが利用できませんでした。後でもう一度お試しください。',
         'publishing_timed_out' => '公開がタイムアウトしました。もう一度お試しください。',
         'rejected_in_review' => 'Google の審査でこの投稿が拒否されました。本文または画像を修正して、もう一度お試しください。',
+        'review_unconfirmed' => 'Google からこの投稿の結果が返りませんでした。ビジネス プロフィールを確認して、もう一度お試しください。',
     ],
 
     'delete' => [

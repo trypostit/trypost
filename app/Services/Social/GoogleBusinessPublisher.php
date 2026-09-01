@@ -9,6 +9,7 @@ use App\Enums\Workspace\ContentLanguage;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\GoogleBusinessPublishException;
 use App\Models\PostPlatform;
+use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\GoogleBusinessResourceName;
 use App\Support\PostPlatformMetaRules;
@@ -217,6 +218,29 @@ class GoogleBusinessPublisher
         $carbon = CarbonImmutable::parse($time);
 
         return ['hours' => (int) $carbon->format('G'), 'minutes' => (int) $carbon->format('i'), 'seconds' => 0, 'nanos' => 0];
+    }
+
+    /**
+     * Re-read a Local Post so its review state can be settled. Google answers a
+     * create long before the post clears moderation, so `state` is the only
+     * place that says whether it went live or was refused.
+     *
+     * @return array<string, mixed>
+     */
+    public function fetchLocalPost(SocialAccount $account, string $localPostName): array
+    {
+        $response = $this->socialHttp()->withToken($account->access_token)
+            ->get("{$this->localPostsUrl}/{$localPostName}");
+
+        if ($response->failed()) {
+            Log::warning('Google Business Profile post lookup failed', [
+                'status' => $response->status(),
+                'body' => $this->redactResponseBody($response->body()),
+            ]);
+            $this->handleApiError($response);
+        }
+
+        return $response->json() ?? [];
     }
 
     /**

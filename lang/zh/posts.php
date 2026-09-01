@@ -457,6 +457,7 @@ return [
             'publishing' => '发布中…',
             'retrying' => '重试中…',
             'failed' => '已失败',
+            'pending_review' => 'Google 审核中',
             'rejected' => '已拒绝',
         ],
 
@@ -624,6 +625,7 @@ return [
         'platform_unavailable_exhausted' => '多次重试后平台仍不可用。请稍后再试。',
         'publishing_timed_out' => '发布超时。请重试。',
         'rejected_in_review' => 'Google 在审核中拒绝了这篇帖子。请修改内容或图片后重试。',
+        'review_unconfirmed' => 'Google 始终未确认这篇帖子。请检查你的商家资料后重试。',
     ],
 
     'delete' => [

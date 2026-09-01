@@ -457,6 +457,7 @@ return [
             'publishing' => 'Publikowanie...',
             'retrying' => 'Ponawianie...',
             'failed' => 'Nieudany',
+            'pending_review' => 'W weryfikacji przez Google',
             'rejected' => 'Odrzucony',
         ],
 
@@ -624,6 +625,7 @@ return [
         'platform_unavailable_exhausted' => 'Platforma pozostała niedostępna po kilku próbach. Spróbuj ponownie później.',
         'publishing_timed_out' => 'Publikowanie przekroczyło limit czasu. Spróbuj ponownie.',
         'rejected_in_review' => 'Google odrzuciło ten post podczas weryfikacji. Zmień treść lub obraz i spróbuj ponownie.',
+        'review_unconfirmed' => 'Google nie potwierdziło tego posta. Sprawdź swój profil firmy i spróbuj ponownie.',
     ],
 
     'delete' => [
