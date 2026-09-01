@@ -32,6 +32,12 @@ test('redirect applies checkout configuration and attribution metadata before op
         'utm_campaign' => 'launch',
         'utm_term' => 'social scheduler',
         'utm_content' => 'headline-b',
+        'gclid' => 'Cj0KCQgclid',
+        'fbclid' => 'IwAR0fbclid',
+        'li_fat_id' => '9f2li-fat-id',
+        'ttclid' => 'E.C.Pttclid',
+        'rdt_cid' => 'rdt-cid-value',
+        'epik' => 'dj0yepik',
         'persona' => Persona::Agency,
         'goals' => ['grow_audience', 'save_time'],
         'referral_source' => ReferralSource::ProductHunt,
@@ -50,6 +56,12 @@ test('redirect applies checkout configuration and attribution metadata before op
             'utm_campaign' => 'launch',
             'utm_term' => 'social scheduler',
             'utm_content' => 'headline-b',
+            'gclid' => 'Cj0KCQgclid',
+            'fbclid' => 'IwAR0fbclid',
+            'li_fat_id' => '9f2li-fat-id',
+            'ttclid' => 'E.C.Pttclid',
+            'rdt_cid' => 'rdt-cid-value',
+            'epik' => 'dj0yepik',
             'persona' => 'agency',
             'goals' => 'grow_audience,save_time',
             'referral_source' => 'product_hunt',
@@ -113,4 +125,39 @@ test('redirect sends no metadata for an account whose owner left every field emp
     $accountMock->shouldReceive('newSubscription')->once()->andReturn($builder);
 
     app(StartSubscriptionCheckout::class)->redirect($accountMock, 'price_monthly_test', $cancelUrl);
+});
+
+test('redirect cuts an oversized click id to the stripe metadata limit', function () {
+    config([
+        'trypost.billing.require_card_for_trial' => true,
+        'cashier.trial_days' => 8,
+        'cashier.first_month_coupon_id' => '',
+        'cashier.allow_promotion_codes' => false,
+    ]);
+
+    $account = Account::factory()->create();
+    Workspace::factory()->create(['account_id' => $account->id]);
+    User::factory()->create([
+        'account_id' => $account->id,
+        'fbclid' => str_repeat('a', 900),
+    ]);
+    $account->refresh();
+
+    $builder = Mockery::mock(SubscriptionBuilder::class);
+    $builder->shouldReceive('quantity')->once()->andReturnSelf();
+    $builder->shouldReceive('withMetadata')
+        ->once()
+        ->with(['fbclid' => str_repeat('a', 500)])
+        ->andReturnSelf();
+    $builder->shouldReceive('trialDays')->once()->andReturnSelf();
+    $builder->shouldReceive('checkout')
+        ->once()
+        ->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
+
+    /** @var Account&MockInterface $accountMock */
+    $accountMock = Mockery::mock($account)->makePartial();
+    $accountMock->shouldReceive('createOrGetStripeCustomer')->once()->andReturnNull();
+    $accountMock->shouldReceive('newSubscription')->once()->andReturn($builder);
+
+    app(StartSubscriptionCheckout::class)->redirect($accountMock, 'price_monthly_test', route('app.welcome'));
 });
