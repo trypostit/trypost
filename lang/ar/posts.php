@@ -457,6 +457,7 @@ return [
             'publishing' => 'جارٍ النشر...',
             'retrying' => 'جارٍ إعادة المحاولة...',
             'failed' => 'فشل',
+            'rejected' => 'مرفوض',
         ],
 
         'delete_modal' => [
@@ -622,6 +623,7 @@ return [
         'platform_unavailable' => 'المنصة غير متاحة مؤقتًا. سنعيد المحاولة قريبًا.',
         'platform_unavailable_exhausted' => 'ظلت المنصة غير متاحة بعد عدة محاولات. يرجى المحاولة لاحقًا.',
         'publishing_timed_out' => 'انتهت مهلة النشر. يرجى المحاولة مرة أخرى.',
+        'rejected_in_review' => 'رفضت Google هذا المنشور أثناء المراجعة. عدّل المحتوى أو الصورة وحاول مرة أخرى.',
     ],
 
     'delete' => [

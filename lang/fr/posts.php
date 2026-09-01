@@ -457,6 +457,7 @@ return [
             'publishing' => 'Publication en cours...',
             'retrying' => 'Nouvelle tentative...',
             'failed' => 'Échec',
+            'rejected' => 'Refusé',
         ],
 
         'delete_modal' => [
@@ -622,6 +623,7 @@ return [
         'platform_unavailable' => 'La plateforme est temporairement indisponible. Nouvelle tentative sous peu.',
         'platform_unavailable_exhausted' => 'La plateforme est restée indisponible après plusieurs tentatives. Réessayez plus tard.',
         'publishing_timed_out' => 'La publication a expiré. Veuillez réessayer.',
+        'rejected_in_review' => 'Google a refusé ce post lors de l\'examen. Modifie le contenu ou l\'image et réessaie.',
     ],
 
     'delete' => [

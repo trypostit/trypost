@@ -69,11 +69,12 @@ class GoogleBusinessPublisher
             $this->handleApiError($response);
         }
 
-        $postName = (string) data_get($response->json(), 'name');
+        $created = $response->json() ?? [];
 
         return [
-            'id' => $postName,
-            'url' => GoogleBusinessResourceName::dashboardUrl($locationId),
+            'id' => (string) data_get($created, 'name'),
+            'url' => (string) (data_get($created, 'searchUrl') ?: GoogleBusinessResourceName::dashboardUrl($locationId)),
+            'state' => (string) (data_get($created, 'state') ?: 'PROCESSING'),
         ];
     }
 

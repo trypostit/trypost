@@ -122,6 +122,21 @@ class PostPlatform extends Model
         $this->socialAccount?->update(['last_used_at' => $now]);
     }
 
+    /**
+     * The provider accepted the post and then refused it in review. Unlike a
+     * failure, the remote row exists, so its id and URL are kept for support.
+     *
+     * @param  array<string, mixed>|null  $errorContext
+     */
+    public function markAsRejected(string $errorMessage, ?array $errorContext = null): void
+    {
+        $this->update([
+            'status' => Status::Rejected,
+            'error_message' => $errorMessage,
+            'error_context' => $errorContext,
+        ]);
+    }
+
     public function markAsFailed(string $errorMessage, ?array $errorContext = null): void
     {
         $this->update([

@@ -457,6 +457,7 @@ return [
             'publishing' => 'Publishing...',
             'retrying' => 'Retrying...',
             'failed' => 'Failed',
+            'rejected' => 'Rejected',
         ],
 
         'delete_modal' => [
@@ -622,6 +623,7 @@ return [
         'platform_unavailable' => 'The platform is temporarily unavailable. We\'ll retry shortly.',
         'platform_unavailable_exhausted' => 'The platform stayed unavailable after several retries. Please try again later.',
         'publishing_timed_out' => 'Publishing timed out. Please try again.',
+        'rejected_in_review' => 'Google rejected this post in review. Edit the content or image and try again.',
     ],
 
     'delete' => [

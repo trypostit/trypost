@@ -457,6 +457,7 @@ return [
             'publishing' => 'Publicando...',
             'retrying' => 'Reintentando...',
             'failed' => 'Fallido',
+            'rejected' => 'Rechazado',
         ],
 
         'delete_modal' => [
@@ -622,6 +623,7 @@ return [
         'platform_unavailable' => 'La plataforma no está disponible temporalmente. Reintentaremos en breve.',
         'platform_unavailable_exhausted' => 'La plataforma siguió sin estar disponible tras varios reintentos. Inténtalo de nuevo más tarde.',
         'publishing_timed_out' => 'La publicación agotó el tiempo de espera. Inténtalo de nuevo.',
+        'rejected_in_review' => 'Google rechazó esta publicación durante la revisión. Edita el contenido o la imagen e inténtalo de nuevo.',
     ],
 
     'delete' => [

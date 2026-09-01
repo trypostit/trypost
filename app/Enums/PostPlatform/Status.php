@@ -11,4 +11,5 @@ enum Status: string
     case Retrying = 'retrying';
     case Published = 'published';
     case Failed = 'failed';
+    case Rejected = 'rejected';
 }

@@ -457,6 +457,7 @@ return [
             'publishing' => '게시 중...',
             'retrying' => '재시도 중...',
             'failed' => '실패',
+            'rejected' => '거부됨',
         ],
 
         'delete_modal' => [
@@ -622,6 +623,7 @@ return [
         'platform_unavailable' => '플랫폼을 일시적으로 사용할 수 없습니다. 곧 다시 시도합니다.',
         'platform_unavailable_exhausted' => '여러 번 재시도했지만 플랫폼을 사용할 수 없었습니다. 나중에 다시 시도하세요.',
         'publishing_timed_out' => '게시에 시간이 초과되었습니다. 다시 시도하세요.',
+        'rejected_in_review' => 'Google 검토에서 이 게시물이 거부되었습니다. 내용이나 이미지를 수정한 후 다시 시도하세요.',
     ],
 
     'delete' => [

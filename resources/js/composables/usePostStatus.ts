@@ -1,5 +1,6 @@
 import {
     IconAlertCircle,
+    IconBan,
     IconCircleCheck,
     IconClock,
     IconFileText,
@@ -23,6 +24,7 @@ const CONFIGS: Record<string, Pick<StatusConfig, 'variant' | 'icon'>> = {
     published: { variant: 'success', icon: IconCircleCheck },
     partially_published: { variant: 'warning', icon: IconAlertCircle },
     failed: { variant: 'destructive', icon: IconAlertCircle },
+    rejected: { variant: 'destructive', icon: IconBan },
 };
 
 export const getPostStatusConfig = (status: string): StatusConfig => {
@@ -37,6 +39,7 @@ export const getPlatformStatusConfig = (status: string): StatusConfig => {
         retrying: 'retrying',
         published: 'published',
         failed: 'failed',
+        rejected: 'rejected',
     };
     const key = map[status] ?? 'draft';
     const config = CONFIGS[key];

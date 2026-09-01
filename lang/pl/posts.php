@@ -457,6 +457,7 @@ return [
             'publishing' => 'Publikowanie...',
             'retrying' => 'Ponawianie...',
             'failed' => 'Nieudany',
+            'rejected' => 'Odrzucony',
         ],
 
         'delete_modal' => [
@@ -622,6 +623,7 @@ return [
         'platform_unavailable' => 'Platforma jest tymczasowo niedostępna. Spróbujemy ponownie wkrótce.',
         'platform_unavailable_exhausted' => 'Platforma pozostała niedostępna po kilku próbach. Spróbuj ponownie później.',
         'publishing_timed_out' => 'Publikowanie przekroczyło limit czasu. Spróbuj ponownie.',
+        'rejected_in_review' => 'Google odrzuciło ten post podczas weryfikacji. Zmień treść lub obraz i spróbuj ponownie.',
     ],
 
     'delete' => [

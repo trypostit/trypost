@@ -40,6 +40,21 @@ beforeEach(function () {
     $this->publisher = new GoogleBusinessPublisher;
 });
 
+test('publish reports the review state Google returned and the real post URL', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
+            'state' => 'LIVE',
+            'searchUrl' => 'https://posts.google.com/999',
+        ], 200),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['state'])->toBe('LIVE')
+        ->and($result['url'])->toBe('https://posts.google.com/999');
+});
+
 test('publishes a standard post with the workspace content language', function () {
     Http::fake([
         config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([

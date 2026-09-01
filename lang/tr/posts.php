@@ -459,6 +459,7 @@ return [
             'publishing' => 'Yayınlanıyor...',
             'retrying' => 'Yeniden deneniyor...',
             'failed' => 'Başarısız',
+            'rejected' => 'Reddedildi',
         ],
 
         'delete_modal' => [
@@ -624,6 +625,7 @@ return [
         'platform_unavailable' => 'Platform geçici olarak kullanılamıyor. Kısa süre içinde yeniden deneyeceğiz.',
         'platform_unavailable_exhausted' => 'Platform birkaç denemeden sonra kullanılamaz kaldı. Lütfen daha sonra tekrar deneyin.',
         'publishing_timed_out' => 'Yayınlama zaman aşımına uğradı. Lütfen tekrar deneyin.',
+        'rejected_in_review' => 'Google bu gönderiyi incelemede reddetti. İçeriği veya görseli düzenleyip tekrar deneyin.',
     ],
 
     'delete' => [

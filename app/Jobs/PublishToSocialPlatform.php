@@ -125,7 +125,19 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             try {
                 $publisher = $this->getPublisher();
                 $result = $publisher->publish($this->postPlatform);
-                $this->postPlatform->markAsPublished(data_get($result, 'id'), data_get($result, 'url'));
+
+                if (data_get($result, 'state') === 'REJECTED') {
+                    $this->postPlatform->update([
+                        'platform_post_id' => data_get($result, 'id'),
+                        'platform_url' => data_get($result, 'url'),
+                    ]);
+                    $this->postPlatform->markAsRejected(
+                        __('posts.errors.rejected_in_review'),
+                        ['provider_state' => 'REJECTED'],
+                    );
+                } else {
+                    $this->postPlatform->markAsPublished(data_get($result, 'id'), data_get($result, 'url'));
+                }
                 break;
             } catch (PlatformUnavailableException $e) {
                 $this->rescheduleForRetry($e);
@@ -319,6 +331,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         return in_array($this->postPlatform->status, [
             PostPlatformStatus::Published,
             PostPlatformStatus::Failed,
+            PostPlatformStatus::Rejected,
         ], true);
     }
 
@@ -365,7 +378,10 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
         $total = $enabledPlatforms->count();
         $publishedCount = $enabledPlatforms->where('status', PostPlatformStatus::Published)->count();
-        $failedCount = $enabledPlatforms->where('status', PostPlatformStatus::Failed)->count();
+        $failedCount = $enabledPlatforms->whereIn('status', [
+            PostPlatformStatus::Failed,
+            PostPlatformStatus::Rejected,
+        ])->count();
         $finishedCount = $publishedCount + $failedCount;
 
         // Only update post status when all platforms have finished

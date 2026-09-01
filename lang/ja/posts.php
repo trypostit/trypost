@@ -457,6 +457,7 @@ return [
             'publishing' => '公開中...',
             'retrying' => '再試行中...',
             'failed' => '失敗',
+            'rejected' => '拒否されました',
         ],
 
         'delete_modal' => [
@@ -622,6 +623,7 @@ return [
         'platform_unavailable' => 'プラットフォームが一時的に利用できません。まもなく再試行します。',
         'platform_unavailable_exhausted' => '何度か再試行しましたがプラットフォームが利用できませんでした。後でもう一度お試しください。',
         'publishing_timed_out' => '公開がタイムアウトしました。もう一度お試しください。',
+        'rejected_in_review' => 'Google の審査でこの投稿が拒否されました。本文または画像を修正して、もう一度お試しください。',
     ],
 
     'delete' => [
