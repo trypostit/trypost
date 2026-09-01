@@ -186,6 +186,42 @@ return [
             'embed_image' => 'URL εικόνας',
             'embed_color' => 'Χρώμα',
         ],
+        'google_business' => [
+            'settings' => 'Ρυθμίσεις Google Business Profile',
+            'posting_to' => 'Δημοσίευση σε',
+            'topic_type_label' => 'Τύπος δημοσίευσης',
+            'topic_type' => [
+                'standard' => 'Ενημέρωση',
+                'event' => 'Εκδήλωση',
+                'offer' => 'Προσφορά',
+            ],
+            'cta_label' => 'Κουμπί',
+            'cta_none' => 'Χωρίς κουμπί',
+            'cta' => [
+                'book' => 'Κράτηση',
+                'order' => 'Παραγγελία online',
+                'shop' => 'Αγορά',
+                'learn_more' => 'Μάθετε περισσότερα',
+                'sign_up' => 'Εγγραφή',
+                'get_offer' => 'Λάβετε προσφορά',
+                'call' => 'Καλέστε τώρα',
+            ],
+            'cta_url' => 'Σύνδεσμος κουμπιού',
+            'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'Εισάγετε έναν σύνδεσμο για αυτό το κουμπί ή επιλέξτε "Χωρίς κουμπί".',
+            'event_title' => 'Τίτλος εκδήλωσης',
+            'event_title_placeholder' => 'Θερινή έκπτωση',
+            'event_title_required' => 'Εισάγετε τίτλο εκδήλωσης.',
+            'event_start_date' => 'Ημερομηνία έναρξης',
+            'event_start_date_required' => 'Εισάγετε ημερομηνία έναρξης.',
+            'event_end_date' => 'Ημερομηνία λήξης',
+            'event_end_date_required' => 'Εισάγετε ημερομηνία λήξης.',
+            'event_start_time' => 'Ώρα έναρξης',
+            'event_end_time' => 'Ώρα λήξης',
+            'offer_coupon_code' => 'Κωδικός κουπονιού',
+            'offer_redeem_url' => 'Σύνδεσμος εξαργύρωσης online',
+            'offer_terms' => 'Όροι και προϋποθέσεις',
+        ],
         'warnings' => [
             'no_variant' => 'Επιλέξτε έναν τύπο δημοσίευσης για να συνεχίσετε.',
             'requires_media' => 'Αυτός ο τύπος δημοσίευσης απαιτεί τουλάχιστον μία εικόνα ή βίντεο.',
@@ -421,6 +457,8 @@ return [
             'publishing' => 'Δημοσίευση...',
             'retrying' => 'Επανάληψη...',
             'failed' => 'Απέτυχε',
+            'pending_review' => 'Σε έλεγχο από την Google',
+            'rejected' => 'Απορρίφθηκε',
         ],
 
         'delete_modal' => [
@@ -550,6 +588,10 @@ return [
             'label' => 'Μήνυμα',
             'description' => 'Μήνυμα σε κανάλι Discord με προαιρετικά πολυμέσα και embeds',
         ],
+        'google_business_post' => [
+            'label' => 'Δημοσίευση',
+            'description' => 'Εμφανίζεται στο Επιχειρηματικό σας Προφίλ στην Αναζήτηση και τους Χάρτες',
+        ],
     ],
 
     'platforms' => [
@@ -582,6 +624,8 @@ return [
         'platform_unavailable' => 'Η πλατφόρμα είναι προσωρινά μη διαθέσιμη. Θα δοκιμάσουμε ξανά σύντομα.',
         'platform_unavailable_exhausted' => 'Η πλατφόρμα παρέμεινε μη διαθέσιμη μετά από αρκετές προσπάθειες. Δοκιμάστε ξανά αργότερα.',
         'publishing_timed_out' => 'Η δημοσίευση έληξε. Δοκιμάστε ξανά.',
+        'rejected_in_review' => 'Η Google απέρριψε αυτήν τη δημοσίευση κατά τον έλεγχο. Επεξεργάσου το περιεχόμενο ή την εικόνα και δοκίμασε ξανά.',
+        'review_unconfirmed' => 'Η Google δεν επιβεβαίωσε την κατάσταση αυτής της δημοσίευσης. Έλεγξε το προφίλ σου και δοκίμασε ξανά.',
     ],
 
     'delete' => [

@@ -185,6 +185,13 @@ class AppServiceProvider extends ServiceProvider
             return Socialite::buildProvider(GoogleProvider::class, $config);
         });
 
+        // Google Business Profile — dedicated app, separate from 'google' (YouTube).
+        Socialite::extend('google-business', function ($app) {
+            $config = $app['config']['services.google-business'];
+
+            return Socialite::buildProvider(GoogleProvider::class, $config);
+        });
+
         // Instagram Business Login
         Socialite::extend('instagram', function ($app) {
             $config = $app['config']['services.instagram'];

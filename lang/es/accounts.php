@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Conecta tu cuenta de Mastodon',
         'telegram' => 'Conecta un canal o grupo de Telegram',
         'discord' => 'Conecta un servidor de Discord',
+        'google_business' => 'Conecta una ubicación de Google Business Profile',
     ],
 
     'disconnect_modal' => [
@@ -162,5 +163,16 @@ return [
         'no_facebook_instagram_pages' => 'No se encontraron páginas de Facebook con cuentas de Instagram vinculadas.',
         'no_youtube_channels' => 'No se encontraron canales de YouTube. Crea un canal primero.',
         'not_linkedin_admin' => 'No eres administrador de ninguna página de LinkedIn.',
+        'no_google_business_locations' => 'No se encontraron ubicaciones de Google Business Profile. Verifica tu negocio primero.',
+        'location_not_found' => 'Ubicación no encontrada.',
+        'error_connecting_location' => 'Error al conectar la ubicación. Por favor, inténtalo de nuevo.',
+    ],
+
+    'google_business' => [
+        'title' => 'Seleccionar Ubicación del Negocio',
+        'description' => 'Elige qué ubicación quieres conectar',
+        'no_locations' => 'No se encontraron ubicaciones',
+        'no_locations_description' => 'No eres administrador de ninguna ubicación verificada de Google Business Profile.',
+        'choose' => 'Elegir',
     ],
 ];

@@ -8,6 +8,7 @@ import type { MediaItem } from '@/types/media';
 import BlueskyPreview from './BlueskyPreview.vue';
 import DiscordPreview from './DiscordPreview.vue';
 import FacebookPreview from './FacebookPreview.vue';
+import GoogleBusinessPreview from './GoogleBusinessPreview.vue';
 import InstagramPreview from './InstagramPreview.vue';
 import LinkedInPreview from './LinkedInPreview.vue';
 import MastodonPreview from './MastodonPreview.vue';
@@ -88,6 +89,8 @@ const previewComponent = computed(() => {
             return TelegramPreview;
         case 'discord':
             return DiscordPreview;
+        case 'google_business':
+            return GoogleBusinessPreview;
         default:
             return LinkedInPreview;
     }

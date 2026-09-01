@@ -7,6 +7,11 @@ return [
     'select_account' => 'Выберите аккаунт, чтобы посмотреть аналитику.',
     'no_data' => 'Данные аналитики отсутствуют.',
 
+    'search_keywords' => [
+        'title' => 'Поисковые запросы',
+        'estimated' => 'Google не раскрывает точное число по этому запросу',
+    ],
+
     'metrics' => [
         'avg_view_duration' => 'Средняя длительность просмотра (с)',
         'avg_view_percentage' => 'Средний процент просмотра',
@@ -51,5 +56,16 @@ return [
         'video_views' => 'Просмотры видео',
         'videos' => 'Видео',
         'views' => 'Просмотры',
+        'website_clicks' => 'Клики по веб-сайту',
+        'call_clicks' => 'Клики на звонок',
+        'direction_requests' => 'Запросы маршрутов',
+        'desktop_map_impressions' => 'Показы карты на ПК',
+        'mobile_map_impressions' => 'Показы карты на мобильном',
+        'desktop_search_impressions' => 'Показы в Поиске (компьютер)',
+        'mobile_search_impressions' => 'Показы в Поиске (телефон)',
+        'conversations' => 'Переписки',
+        'bookings' => 'Бронирования',
+        'food_orders' => 'Заказы еды',
+        'food_menu_clicks' => 'Клики по меню',
     ],
 ];

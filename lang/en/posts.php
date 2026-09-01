@@ -186,6 +186,42 @@ return [
             'embed_image' => 'Image URL',
             'embed_color' => 'Color',
         ],
+        'google_business' => [
+            'settings' => 'Google Business Profile Settings',
+            'posting_to' => 'Posting to',
+            'topic_type_label' => 'Post type',
+            'topic_type' => [
+                'standard' => 'Update',
+                'event' => 'Event',
+                'offer' => 'Offer',
+            ],
+            'cta_label' => 'Button',
+            'cta_none' => 'No button',
+            'cta' => [
+                'book' => 'Book',
+                'order' => 'Order online',
+                'shop' => 'Buy',
+                'learn_more' => 'Learn more',
+                'sign_up' => 'Sign up',
+                'get_offer' => 'Redeem offer',
+                'call' => 'Call now',
+            ],
+            'cta_url' => 'Button link',
+            'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'Enter a link for this button, or choose "No button".',
+            'event_title' => 'Event title',
+            'event_title_placeholder' => 'Summer sale',
+            'event_title_required' => 'Enter an event title.',
+            'event_start_date' => 'Start date',
+            'event_start_date_required' => 'Enter an event start date.',
+            'event_end_date' => 'End date',
+            'event_end_date_required' => 'Enter an event end date.',
+            'event_start_time' => 'Start time',
+            'event_end_time' => 'End time',
+            'offer_coupon_code' => 'Coupon code',
+            'offer_redeem_url' => 'Redeem online link',
+            'offer_terms' => 'Terms & conditions',
+        ],
         'warnings' => [
             'no_variant' => 'Pick a post type to continue.',
             'requires_media' => 'This post type requires at least one image or video.',
@@ -421,6 +457,8 @@ return [
             'publishing' => 'Publishing...',
             'retrying' => 'Retrying...',
             'failed' => 'Failed',
+            'pending_review' => 'In review by Google',
+            'rejected' => 'Rejected',
         ],
 
         'delete_modal' => [
@@ -550,6 +588,10 @@ return [
             'label' => 'Message',
             'description' => 'Message to a Discord channel with optional media & embeds',
         ],
+        'google_business_post' => [
+            'label' => 'Post',
+            'description' => 'Appears on your Business Profile in Search and Maps',
+        ],
     ],
 
     'platforms' => [
@@ -582,6 +624,8 @@ return [
         'platform_unavailable' => 'The platform is temporarily unavailable. We\'ll retry shortly.',
         'platform_unavailable_exhausted' => 'The platform stayed unavailable after several retries. Please try again later.',
         'publishing_timed_out' => 'Publishing timed out. Please try again.',
+        'rejected_in_review' => 'Google rejected this post in review. Edit the content or image and try again.',
+        'review_unconfirmed' => 'Google never confirmed this post. Check your Business Profile and try again.',
     ],
 
     'delete' => [

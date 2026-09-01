@@ -9,6 +9,7 @@ use App\Exceptions\PlatformUnavailableException;
 use App\Http\Controllers\Controller;
 use App\Models\SocialAccount;
 use App\Services\Social\FacebookAnalytics;
+use App\Services\Social\GoogleBusinessAnalytics;
 use App\Services\Social\InstagramAnalytics;
 use App\Services\Social\LinkedInPageAnalytics;
 use App\Services\Social\PinterestAnalytics;
@@ -38,6 +39,7 @@ class AnalyticsController extends Controller
         Platform::Pinterest,
         Platform::YouTube,
         Platform::Telegram,
+        Platform::GoogleBusiness,
     ];
 
     public function index(Request $request): Response
@@ -76,7 +78,30 @@ class AnalyticsController extends Controller
 
         $metrics = $this->metricsFor($account, $since, $until);
 
+        // Google aggregates search keywords by month, so they cannot be folded
+        // into the daily metric cards and travel as their own list.
+        if ($account->platform === Platform::GoogleBusiness) {
+            return response()->json([
+                'metrics' => $metrics,
+                'keywords' => $this->searchKeywordsFor($account, $since, $until),
+            ]);
+        }
+
         return response()->json(['metrics' => $metrics]);
+    }
+
+    /**
+     * @return array<int, array{keyword: string, value: int, estimated: bool}>
+     */
+    private function searchKeywordsFor(SocialAccount $account, ?Carbon $since, ?Carbon $until): array
+    {
+        try {
+            return app(GoogleBusinessAnalytics::class)->getSearchKeywords($account, $since, $until);
+        } catch (PlatformUnavailableException|ConnectionException $e) {
+            report($e);
+
+            return [];
+        }
     }
 
     /**
@@ -99,6 +124,7 @@ class AnalyticsController extends Controller
                 Platform::Pinterest => app(PinterestAnalytics::class)->getMetrics($account, $since, $until),
                 Platform::YouTube => app(YouTubeAnalytics::class)->getMetrics($account, $since, $until),
                 Platform::Telegram => app(TelegramAnalytics::class)->getMetrics($account),
+                Platform::GoogleBusiness => app(GoogleBusinessAnalytics::class)->getMetrics($account, $since, $until),
                 default => [],
             };
         } catch (PlatformUnavailableException|ConnectionException $e) {

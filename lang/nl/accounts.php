@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Koppel je Mastodon-account',
         'telegram' => 'Koppel een Telegram-kanaal of -groep',
         'discord' => 'Koppel een Discord-server',
+        'google_business' => 'Koppel een Google Bedrijfsprofiel-locatie',
     ],
 
     'disconnect_modal' => [
@@ -162,5 +163,16 @@ return [
         'no_facebook_instagram_pages' => 'Geen Facebook-pagina\'s met gekoppelde Instagram-accounts gevonden.',
         'no_youtube_channels' => 'Geen YouTube-kanalen gevonden. Maak eerst een kanaal aan.',
         'not_linkedin_admin' => 'Je bent geen beheerder van een LinkedIn-pagina.',
+        'no_google_business_locations' => 'Geen Google Bedrijfsprofiel-locaties gevonden. Verifieer eerst je bedrijf.',
+        'location_not_found' => 'Locatie niet gevonden.',
+        'error_connecting_location' => 'Fout bij het koppelen van de locatie. Probeer het opnieuw.',
+    ],
+
+    'google_business' => [
+        'title' => 'Selecteer Bedrijfslocatie',
+        'description' => 'Kies welke locatie je wilt koppelen',
+        'no_locations' => 'Geen locaties gevonden',
+        'no_locations_description' => 'Je bent geen beheerder van een geverifieerde Google Bedrijfsprofiel-locatie.',
+        'choose' => 'Kiezen',
     ],
 ];

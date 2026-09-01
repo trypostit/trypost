@@ -7,6 +7,11 @@ return [
     'select_account' => 'Виберіть акаунт, щоб переглянути аналітику.',
     'no_data' => 'Дані аналітики недоступні.',
 
+    'search_keywords' => [
+        'title' => 'Пошукові запити',
+        'estimated' => 'Google не розкриває точне число за цим запитом',
+    ],
+
     'metrics' => [
         'avg_view_duration' => 'Сер. тривалість перегляду (с)',
         'avg_view_percentage' => 'Сер. відсоток перегляду',
@@ -51,5 +56,16 @@ return [
         'video_views' => 'Перегляди відео',
         'videos' => 'Відео',
         'views' => 'Перегляди',
+        'website_clicks' => 'Кліки по веб-сайту',
+        'call_clicks' => 'Кліки на дзвінок',
+        'direction_requests' => 'Запити маршрутів',
+        'desktop_map_impressions' => 'Покази карти на комп\'ютері',
+        'mobile_map_impressions' => 'Покази карти на мобільному',
+        'desktop_search_impressions' => 'Покази в Пошуку (комп’ютер)',
+        'mobile_search_impressions' => 'Покази в Пошуку (телефон)',
+        'conversations' => 'Розмови',
+        'bookings' => 'Бронювання',
+        'food_orders' => 'Замовлення їжі',
+        'food_menu_clicks' => 'Кліки по меню',
     ],
 ];

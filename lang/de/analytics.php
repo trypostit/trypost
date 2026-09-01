@@ -9,6 +9,11 @@ return [
     'select_account' => 'Wähle ein Konto, um die Analysedaten anzuzeigen.',
     'no_data' => 'Keine Analysedaten verfügbar.',
 
+    'search_keywords' => [
+        'title' => 'Suchbegriffe',
+        'estimated' => 'Google gibt für diesen Begriff keine genaue Zahl an',
+    ],
+
     'metrics' => [
         'avg_view_duration' => 'Durchschn. Wiedergabedauer (s)',
         'avg_view_percentage' => 'Durchschn. Wiedergabeanteil',
@@ -53,5 +58,16 @@ return [
         'video_views' => 'Videoaufrufe',
         'videos' => 'Videos',
         'views' => 'Aufrufe',
+        'website_clicks' => 'Website-Klicks',
+        'call_clicks' => 'Anruf-Klicks',
+        'direction_requests' => 'Routenanfragen',
+        'desktop_map_impressions' => 'Kartenimpressionen auf dem Desktop',
+        'mobile_map_impressions' => 'Kartenimpressionen auf Mobilgeräten',
+        'desktop_search_impressions' => 'Suchimpressionen (Desktop)',
+        'mobile_search_impressions' => 'Suchimpressionen (Mobil)',
+        'conversations' => 'Chats',
+        'bookings' => 'Buchungen',
+        'food_orders' => 'Essensbestellungen',
+        'food_menu_clicks' => 'Klicks auf die Speisekarte',
     ],
 ];

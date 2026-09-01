@@ -120,6 +120,39 @@ test('extension-model platforms get a wider refresh window than rotating platfor
     Queue::assertNotPushed(RefreshSocialToken::class, fn ($job) => $job->account->id === $rotating->id);
 });
 
+test('google business profile tokens use the rotating refresh window, not the extension window', function () {
+    Queue::fake();
+
+    // One account per network, so the two windows need a workspace each.
+    $soonWorkspace = Workspace::factory()->create();
+    $laterWorkspace = Workspace::factory()->create();
+
+    // Inside the 30-minute rotating window — should be dispatched.
+    $soon = SocialAccount::factory()->create([
+        'workspace_id' => $soonWorkspace->id,
+        'platform' => Platform::GoogleBusiness,
+        'status' => Status::Connected,
+        'token_expires_at' => now()->addMinutes(15),
+    ]);
+
+    // Outside the 30-minute rotating window (but inside the 24-hour extension
+    // window) — must NOT be dispatched, proving Google Business Profile is
+    // treated as a rotating-refresh_token platform, not an extension platform.
+    $outsideRotatingWindow = SocialAccount::factory()->create([
+        'workspace_id' => $laterWorkspace->id,
+        'platform' => Platform::GoogleBusiness,
+        'status' => Status::Connected,
+        'token_expires_at' => now()->addHour(),
+    ]);
+
+    $this->artisan('social:refresh-expiring-tokens')
+        ->assertSuccessful();
+
+    Queue::assertPushed(RefreshSocialToken::class, 1);
+    Queue::assertPushed(RefreshSocialToken::class, fn ($job) => $job->account->id === $soon->id);
+    Queue::assertNotPushed(RefreshSocialToken::class, fn ($job) => $job->account->id === $outsideRotatingWindow->id);
+});
+
 test('it dispatches nothing when no tokens are expiring', function () {
     Queue::fake();
 

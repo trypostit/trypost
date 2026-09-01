@@ -406,6 +406,7 @@ Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` d
 - **Bluesky / AT Protocol**: official lexicons — https://github.com/bluesky-social/atproto/tree/main/lexicons/com/atproto/repo ; HTTP API reference — https://docs.bsky.app
 - **Discord**: Webhook resource (used for our webhook-based publishing) — https://docs.discord.com/developers/resources/webhook
 - **Telegram**: Bot API — https://core.telegram.org/bots/api
+- **Google Business Profile**: Business Information API, Account Management API, Business Profile Performance API — https://developers.google.com/my-business/reference/rest ; legacy but still-active Local Posts v4 API (the only endpoint for creating/updating/deleting Local Posts) — https://developers.google.com/my-business/reference/rest/v4/accounts.locations.localPosts
 
 ## TryPost.it Documentation
 

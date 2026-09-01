@@ -351,3 +351,18 @@ test('linkedin exposes a single post content type per account kind', function ()
     expect(ContentType::forPlatform(Platform::LinkedIn))->toHaveCount(1)->toContain(ContentType::LinkedInPost);
     expect(ContentType::forPlatform(Platform::LinkedInPage))->toHaveCount(1)->toContain(ContentType::LinkedInPagePost);
 });
+
+test('google business post maps to the google business platform', function () {
+    expect(ContentType::GoogleBusinessPost->platform())->toBe(Platform::GoogleBusiness);
+});
+
+test('google business post media rules allow at most one image, no video', function () {
+    expect(ContentType::GoogleBusinessPost->maxMediaCount())->toBe(1);
+    expect(ContentType::GoogleBusinessPost->supportsVideo())->toBeFalse();
+    expect(ContentType::GoogleBusinessPost->supportsImage())->toBeTrue();
+    expect(ContentType::GoogleBusinessPost->requiresMedia())->toBeFalse();
+});
+
+test('google business post is the default content type for the platform', function () {
+    expect(ContentType::defaultFor(Platform::GoogleBusiness))->toBe(ContentType::GoogleBusinessPost);
+});

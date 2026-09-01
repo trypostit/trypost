@@ -186,6 +186,42 @@ return [
             'embed_image' => 'Adres URL obrazu',
             'embed_color' => 'Kolor',
         ],
+        'google_business' => [
+            'settings' => 'Ustawienia Google Business Profile',
+            'posting_to' => 'Publikowanie na',
+            'topic_type_label' => 'Typ posta',
+            'topic_type' => [
+                'standard' => 'Aktualizacja',
+                'event' => 'Wydarzenie',
+                'offer' => 'Oferta',
+            ],
+            'cta_label' => 'Przycisk',
+            'cta_none' => 'Bez przycisku',
+            'cta' => [
+                'book' => 'Zarezerwuj',
+                'order' => 'Zamów online',
+                'shop' => 'Kup',
+                'learn_more' => 'Dowiedz się więcej',
+                'sign_up' => 'Zarejestruj się',
+                'get_offer' => 'Uzyskaj ofertę',
+                'call' => 'Zadzwoń teraz',
+            ],
+            'cta_url' => 'Link przycisku',
+            'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'Wpisz link dla tego przycisku lub wybierz "Bez przycisku".',
+            'event_title' => 'Tytuł wydarzenia',
+            'event_title_placeholder' => 'Letnia wyprzedaż',
+            'event_title_required' => 'Wpisz tytuł wydarzenia.',
+            'event_start_date' => 'Data rozpoczęcia',
+            'event_start_date_required' => 'Wpisz datę rozpoczęcia.',
+            'event_end_date' => 'Data zakończenia',
+            'event_end_date_required' => 'Wpisz datę zakończenia.',
+            'event_start_time' => 'Czas rozpoczęcia',
+            'event_end_time' => 'Czas zakończenia',
+            'offer_coupon_code' => 'Kod kuponu',
+            'offer_redeem_url' => 'Link do realizacji online',
+            'offer_terms' => 'Warunki i postanowienia',
+        ],
         'warnings' => [
             'no_variant' => 'Wybierz typ posta, aby kontynuować.',
             'requires_media' => 'Ten typ posta wymaga co najmniej jednego obrazu lub filmu.',
@@ -421,6 +457,8 @@ return [
             'publishing' => 'Publikowanie...',
             'retrying' => 'Ponawianie...',
             'failed' => 'Nieudany',
+            'pending_review' => 'W weryfikacji przez Google',
+            'rejected' => 'Odrzucony',
         ],
 
         'delete_modal' => [
@@ -550,6 +588,10 @@ return [
             'label' => 'Wiadomość',
             'description' => 'Wiadomość na kanale Discord z opcjonalnymi multimediami i osadzeniami',
         ],
+        'google_business_post' => [
+            'label' => 'Post',
+            'description' => 'Pojawia się w twoim Profilu Biznesowym w Wyszukiwaniu i Mapach',
+        ],
     ],
 
     'platforms' => [
@@ -582,6 +624,8 @@ return [
         'platform_unavailable' => 'Platforma jest tymczasowo niedostępna. Spróbujemy ponownie wkrótce.',
         'platform_unavailable_exhausted' => 'Platforma pozostała niedostępna po kilku próbach. Spróbuj ponownie później.',
         'publishing_timed_out' => 'Publikowanie przekroczyło limit czasu. Spróbuj ponownie.',
+        'rejected_in_review' => 'Google odrzuciło ten post podczas weryfikacji. Zmień treść lub obraz i spróbuj ponownie.',
+        'review_unconfirmed' => 'Google nie potwierdziło tego posta. Sprawdź swój profil firmy i spróbuj ponownie.',
     ],
 
     'delete' => [

@@ -186,6 +186,42 @@ return [
             'embed_image' => 'رابط الصورة',
             'embed_color' => 'اللون',
         ],
+        'google_business' => [
+            'settings' => 'إعدادات ملف Google Business Profile',
+            'posting_to' => 'النشر إلى',
+            'topic_type_label' => 'نوع المنشور',
+            'topic_type' => [
+                'standard' => 'تحديث',
+                'event' => 'حدث',
+                'offer' => 'عرض',
+            ],
+            'cta_label' => 'زر',
+            'cta_none' => 'بدون زر',
+            'cta' => [
+                'book' => 'احجز',
+                'order' => 'اطلب عبر الإنترنت',
+                'shop' => 'اشتر',
+                'learn_more' => 'تعرف على المزيد',
+                'sign_up' => 'اشترك',
+                'get_offer' => 'احصل على العرض',
+                'call' => 'اتصل الآن',
+            ],
+            'cta_url' => 'رابط الزر',
+            'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'أدخل رابطًا لهذا الزر، أو اختر "بدون زر".',
+            'event_title' => 'عنوان الحدث',
+            'event_title_placeholder' => 'عرض الصيف',
+            'event_title_required' => 'أدخل عنوان الحدث.',
+            'event_start_date' => 'تاريخ البدء',
+            'event_start_date_required' => 'أدخل تاريخ البدء.',
+            'event_end_date' => 'تاريخ الانتهاء',
+            'event_end_date_required' => 'أدخل تاريخ الانتهاء.',
+            'event_start_time' => 'وقت البدء',
+            'event_end_time' => 'وقت الانتهاء',
+            'offer_coupon_code' => 'رمز القسيمة',
+            'offer_redeem_url' => 'رابط الاسترداد عبر الإنترنت',
+            'offer_terms' => 'الشروط والأحكام',
+        ],
         'warnings' => [
             'no_variant' => 'اختر نوع منشور للمتابعة.',
             'requires_media' => 'يتطلب هذا النوع من المنشورات صورة أو فيديو واحدًا على الأقل.',
@@ -421,6 +457,8 @@ return [
             'publishing' => 'جارٍ النشر...',
             'retrying' => 'جارٍ إعادة المحاولة...',
             'failed' => 'فشل',
+            'pending_review' => 'قيد مراجعة Google',
+            'rejected' => 'مرفوض',
         ],
 
         'delete_modal' => [
@@ -550,6 +588,10 @@ return [
             'label' => 'رسالة',
             'description' => 'رسالة إلى قناة Discord مع وسائط وتضمينات اختيارية',
         ],
+        'google_business_post' => [
+            'label' => 'منشور',
+            'description' => 'يظهر على ملفك التجاري في البحث والخرائط',
+        ],
     ],
 
     'platforms' => [
@@ -582,6 +624,8 @@ return [
         'platform_unavailable' => 'المنصة غير متاحة مؤقتًا. سنعيد المحاولة قريبًا.',
         'platform_unavailable_exhausted' => 'ظلت المنصة غير متاحة بعد عدة محاولات. يرجى المحاولة لاحقًا.',
         'publishing_timed_out' => 'انتهت مهلة النشر. يرجى المحاولة مرة أخرى.',
+        'rejected_in_review' => 'رفضت Google هذا المنشور أثناء المراجعة. عدّل المحتوى أو الصورة وحاول مرة أخرى.',
+        'review_unconfirmed' => 'لم تؤكد Google حالة هذا المنشور. تحقّق من ملفك التجاري وحاول مرة أخرى.',
     ],
 
     'delete' => [

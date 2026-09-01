@@ -186,6 +186,42 @@ return [
             'embed_image' => 'URL de la imagen',
             'embed_color' => 'Color',
         ],
+        'google_business' => [
+            'settings' => 'Configuración de Google Business Profile',
+            'posting_to' => 'Publicando en',
+            'topic_type_label' => 'Tipo de publicación',
+            'topic_type' => [
+                'standard' => 'Actualización',
+                'event' => 'Evento',
+                'offer' => 'Oferta',
+            ],
+            'cta_label' => 'Botón',
+            'cta_none' => 'Sin botón',
+            'cta' => [
+                'book' => 'Reservar',
+                'order' => 'Pedir online',
+                'shop' => 'Comprar',
+                'learn_more' => 'Más información',
+                'sign_up' => 'Registrarse',
+                'get_offer' => 'Canjear oferta',
+                'call' => 'Llamar ahora',
+            ],
+            'cta_url' => 'Enlace del botón',
+            'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'Ingresa un enlace para este botón, o elige "Sin botón".',
+            'event_title' => 'Título del evento',
+            'event_title_placeholder' => 'Venta de verano',
+            'event_title_required' => 'Ingresa un título de evento.',
+            'event_start_date' => 'Fecha de inicio',
+            'event_start_date_required' => 'Ingresa una fecha de inicio.',
+            'event_end_date' => 'Fecha de finalización',
+            'event_end_date_required' => 'Ingresa una fecha de finalización.',
+            'event_start_time' => 'Hora de inicio',
+            'event_end_time' => 'Hora de finalización',
+            'offer_coupon_code' => 'Código de cupón',
+            'offer_redeem_url' => 'Enlace para canjear online',
+            'offer_terms' => 'Términos y condiciones',
+        ],
         'warnings' => [
             'no_variant' => 'Elige un tipo de publicación para continuar.',
             'requires_media' => 'Este tipo requiere al menos una imagen o video.',
@@ -421,6 +457,8 @@ return [
             'publishing' => 'Publicando...',
             'retrying' => 'Reintentando...',
             'failed' => 'Fallido',
+            'pending_review' => 'En revisión por Google',
+            'rejected' => 'Rechazado',
         ],
 
         'delete_modal' => [
@@ -550,6 +588,10 @@ return [
             'label' => 'Mensaje',
             'description' => 'Mensaje a un canal de Discord con multimedia y embeds opcionales',
         ],
+        'google_business_post' => [
+            'label' => 'Publicación',
+            'description' => 'Aparece en tu Perfil Empresarial en Búsqueda y Mapas',
+        ],
     ],
 
     'platforms' => [
@@ -582,6 +624,8 @@ return [
         'platform_unavailable' => 'La plataforma no está disponible temporalmente. Reintentaremos en breve.',
         'platform_unavailable_exhausted' => 'La plataforma siguió sin estar disponible tras varios reintentos. Inténtalo de nuevo más tarde.',
         'publishing_timed_out' => 'La publicación agotó el tiempo de espera. Inténtalo de nuevo.',
+        'rejected_in_review' => 'Google rechazó esta publicación durante la revisión. Edita el contenido o la imagen e inténtalo de nuevo.',
+        'review_unconfirmed' => 'Google nunca confirmó esta publicación. Revisa tu Perfil de Empresa e inténtalo de nuevo.',
     ],
 
     'delete' => [

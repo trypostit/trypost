@@ -186,6 +186,42 @@ return [
             'embed_image' => '图片 URL',
             'embed_color' => '颜色',
         ],
+        'google_business' => [
+            'settings' => 'Google Business Profile 设置',
+            'posting_to' => '发布到',
+            'topic_type_label' => '帖子类型',
+            'topic_type' => [
+                'standard' => '更新',
+                'event' => '活动',
+                'offer' => '优惠',
+            ],
+            'cta_label' => '按钮',
+            'cta_none' => '无按钮',
+            'cta' => [
+                'book' => '预订',
+                'order' => '在线订购',
+                'shop' => '购买',
+                'learn_more' => '了解详情',
+                'sign_up' => '注册',
+                'get_offer' => '获取优惠',
+                'call' => '立即致电',
+            ],
+            'cta_url' => '按钮链接',
+            'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => '请输入此按钮的链接，或选择"无按钮"。',
+            'event_title' => '活动标题',
+            'event_title_placeholder' => '夏季促销',
+            'event_title_required' => '请输入活动标题。',
+            'event_start_date' => '开始日期',
+            'event_start_date_required' => '请输入开始日期。',
+            'event_end_date' => '结束日期',
+            'event_end_date_required' => '请输入结束日期。',
+            'event_start_time' => '开始时间',
+            'event_end_time' => '结束时间',
+            'offer_coupon_code' => '优惠券代码',
+            'offer_redeem_url' => '在线兑换链接',
+            'offer_terms' => '条款和条件',
+        ],
         'warnings' => [
             'no_variant' => '请选择一个帖子类型以继续。',
             'requires_media' => '此帖子类型至少需要一张图片或一个视频。',
@@ -421,6 +457,8 @@ return [
             'publishing' => '发布中…',
             'retrying' => '重试中…',
             'failed' => '已失败',
+            'pending_review' => 'Google 审核中',
+            'rejected' => '已拒绝',
         ],
 
         'delete_modal' => [
@@ -550,6 +588,10 @@ return [
             'label' => '消息',
             'description' => '发送到 Discord 频道的消息，可附带媒体和嵌入内容',
         ],
+        'google_business_post' => [
+            'label' => '帖子',
+            'description' => '在搜索和地图中显示在您的商业资料中',
+        ],
     ],
 
     'platforms' => [
@@ -582,6 +624,8 @@ return [
         'platform_unavailable' => '平台暂时不可用。我们稍后会重试。',
         'platform_unavailable_exhausted' => '多次重试后平台仍不可用。请稍后再试。',
         'publishing_timed_out' => '发布超时。请重试。',
+        'rejected_in_review' => 'Google 在审核中拒绝了这篇帖子。请修改内容或图片后重试。',
+        'review_unconfirmed' => 'Google 始终未确认这篇帖子。请检查你的商家资料后重试。',
     ],
 
     'delete' => [

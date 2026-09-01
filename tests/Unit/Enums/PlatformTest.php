@@ -187,3 +187,46 @@ test('instagram connectable option lists only enabled connect methods', function
         Platform::InstagramFacebook->value,
     ]);
 });
+
+test('google business has correct label and color', function () {
+    expect(Platform::GoogleBusiness->label())->toBe('Google Business Profile');
+    expect(Platform::GoogleBusiness->color())->toBe('#4285F4');
+});
+
+test('google business has correct media rules', function () {
+    expect(Platform::GoogleBusiness->allowedMediaTypes())->toBe([MediaType::Image]);
+    expect(Platform::GoogleBusiness->maxImages())->toBe(1);
+    expect(Platform::GoogleBusiness->supportsAltText())->toBeFalse();
+    expect(Platform::GoogleBusiness->maxContentLength())->toBe(1500);
+});
+
+test('google business supports text-only posts and requires no content by default', function () {
+    expect(Platform::GoogleBusiness->supportsTextOnly())->toBeTrue();
+    expect(Platform::GoogleBusiness->requiresContent())->toBeFalse();
+});
+
+test('google business has a real token refresh flow with a 1 hour default ttl', function () {
+    expect(Platform::GoogleBusiness->hasTokenRefreshFlow())->toBeTrue();
+    expect(Platform::GoogleBusiness->defaultTokenTtlSeconds())->toBe(3600);
+});
+
+test('google business requires the business.manage scope to publish', function () {
+    expect(Platform::GoogleBusiness->requiredPublishScopes())->toBe([
+        'https://www.googleapis.com/auth/business.manage',
+    ]);
+});
+
+test('google business queue name is scoped to the platform', function () {
+    expect(Platform::GoogleBusiness->queue())->toBe('social-google_business');
+});
+
+test('google business is enabled by default and connectable', function () {
+    expect(Platform::GoogleBusiness->isEnabled())->toBeTrue();
+    expect(Platform::GoogleBusiness->isConnectable())->toBeTrue();
+});
+
+test('google business can be disabled via config', function () {
+    config(['trypost.platforms.google_business.enabled' => false]);
+
+    expect(Platform::GoogleBusiness->isEnabled())->toBeFalse();
+});

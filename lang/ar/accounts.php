@@ -30,6 +30,7 @@ return [
         'mastodon' => 'اربط حسابك على Mastodon',
         'telegram' => 'اربط قناة أو مجموعة على Telegram',
         'discord' => 'اربط خادم Discord',
+        'google_business' => 'اربط موقع Google Business Profile',
     ],
 
     'disconnect_modal' => [
@@ -162,5 +163,16 @@ return [
         'no_facebook_instagram_pages' => 'لم يتم العثور على صفحات Facebook مرتبطة بحسابات Instagram.',
         'no_youtube_channels' => 'لم يتم العثور على قنوات YouTube. يرجى إنشاء قناة أولًا.',
         'not_linkedin_admin' => 'أنت لست مشرفًا على أي صفحة LinkedIn.',
+        'no_google_business_locations' => 'لم يتم العثور على مواقع Google Business Profile. يرجى التحقق من نشاطك التجاري أولاً.',
+        'location_not_found' => 'الموقع غير موجود.',
+        'error_connecting_location' => 'خطأ في ربط الموقع. يرجى المحاولة مرة أخرى.',
+    ],
+
+    'google_business' => [
+        'title' => 'اختر موقع النشاط التجاري',
+        'description' => 'اختر الموقع الذي تريد ربطه',
+        'no_locations' => 'لم يتم العثور على مواقع',
+        'no_locations_description' => 'أنت لست مديرًا لأي موقع تم التحقق منه في Google Business Profile.',
+        'choose' => 'اختيار',
     ],
 ];

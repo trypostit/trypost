@@ -270,6 +270,19 @@ return [
             'permissions' => env('DISCORD_PERMISSIONS', '248832'),
             'scopes' => array_values(array_filter(array_map('trim', explode(',', (string) env('DISCORD_SCOPES', 'bot,identify,guilds'))))),
         ],
+        'google_business' => [
+            'enabled' => env('GOOGLE_BUSINESS_ENABLED', true),
+            // Account Management API — lists the Business accounts a user administers.
+            'account_management_api' => env('GOOGLE_BUSINESS_ACCOUNT_MANAGEMENT_API', 'https://mybusinessaccountmanagement.googleapis.com/v1'),
+            // Business Information API — lists locations under an account.
+            'business_information_api' => env('GOOGLE_BUSINESS_BUSINESS_INFORMATION_API', 'https://mybusinessbusinessinformation.googleapis.com/v1'),
+            // Legacy but still-active v4 API — the only home for Local Post create/update/delete.
+            'local_posts_api' => env('GOOGLE_BUSINESS_LOCAL_POSTS_API', 'https://mybusiness.googleapis.com/v4'),
+            // Business Profile Performance API — location-level analytics.
+            'performance_api' => env('GOOGLE_BUSINESS_PERFORMANCE_API', 'https://businessprofileperformance.googleapis.com/v1'),
+            // OAuth token endpoint, same host Google uses for every OAuth2 client.
+            'oauth_api' => env('GOOGLE_BUSINESS_OAUTH_API', 'https://oauth2.googleapis.com'),
+        ],
     ],
 
 ];

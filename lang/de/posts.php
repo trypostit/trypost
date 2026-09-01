@@ -188,6 +188,42 @@ return [
             'embed_image' => 'Bild-URL',
             'embed_color' => 'Farbe',
         ],
+        'google_business' => [
+            'settings' => 'Google Business Profile-Einstellungen',
+            'posting_to' => 'Veröffentlichen auf',
+            'topic_type_label' => 'Beitragstyp',
+            'topic_type' => [
+                'standard' => 'Aktualisierung',
+                'event' => 'Veranstaltung',
+                'offer' => 'Angebot',
+            ],
+            'cta_label' => 'Schaltfläche',
+            'cta_none' => 'Keine Schaltfläche',
+            'cta' => [
+                'book' => 'Buchen',
+                'order' => 'Online bestellen',
+                'shop' => 'Kaufen',
+                'learn_more' => 'Mehr erfahren',
+                'sign_up' => 'Anmelden',
+                'get_offer' => 'Angebot nutzen',
+                'call' => 'Jetzt anrufen',
+            ],
+            'cta_url' => 'Schaltflächenlink',
+            'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'Gib einen Link für diese Schaltfläche ein oder wähle "Keine Schaltfläche".',
+            'event_title' => 'Veranstaltungstitel',
+            'event_title_placeholder' => 'Sommerverkauf',
+            'event_title_required' => 'Gib einen Veranstaltungstitel ein.',
+            'event_start_date' => 'Startdatum',
+            'event_start_date_required' => 'Gib ein Startdatum ein.',
+            'event_end_date' => 'Enddatum',
+            'event_end_date_required' => 'Gib ein Enddatum ein.',
+            'event_start_time' => 'Startzeit',
+            'event_end_time' => 'Endzeit',
+            'offer_coupon_code' => 'Gutscheincode',
+            'offer_redeem_url' => 'Online-Einlösungslink',
+            'offer_terms' => 'Geschäftsbedingungen',
+        ],
         'warnings' => [
             'no_variant' => 'Wähle einen Beitragstyp, um fortzufahren.',
             'requires_media' => 'Dieser Beitragstyp erfordert mindestens ein Bild oder Video.',
@@ -423,6 +459,8 @@ return [
             'publishing' => 'Wird veröffentlicht...',
             'retrying' => 'Erneuter Versuch...',
             'failed' => 'Fehlgeschlagen',
+            'pending_review' => 'Google-Prüfung läuft',
+            'rejected' => 'Abgelehnt',
         ],
 
         'delete_modal' => [
@@ -552,6 +590,10 @@ return [
             'label' => 'Nachricht',
             'description' => 'Nachricht an einen Discord-Kanal mit optionalen Medien & Embeds',
         ],
+        'google_business_post' => [
+            'label' => 'Beitrag',
+            'description' => 'Wird in deinem Geschäftsprofil in Suche und Karten angezeigt',
+        ],
     ],
 
     'platforms' => [
@@ -584,6 +626,8 @@ return [
         'platform_unavailable' => 'Die Plattform ist vorübergehend nicht verfügbar. Wir versuchen es in Kürze erneut.',
         'platform_unavailable_exhausted' => 'Die Plattform blieb nach mehreren Versuchen nicht verfügbar. Bitte später erneut versuchen.',
         'publishing_timed_out' => 'Die Veröffentlichung ist abgelaufen. Bitte erneut versuchen.',
+        'rejected_in_review' => 'Google hat diesen Beitrag bei der Prüfung abgelehnt. Bearbeite den Inhalt oder das Bild und versuche es erneut.',
+        'review_unconfirmed' => 'Google hat den Status dieses Beitrags nicht bestätigt. Prüfe dein Unternehmensprofil und versuche es erneut.',
     ],
 
     'delete' => [

@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Mastodon アカウントを接続',
         'telegram' => 'Telegram チャンネルまたはグループを接続',
         'discord' => 'Discord サーバーを接続',
+        'google_business' => 'Google ビジネス プロフィールの店舗を接続',
     ],
 
     'disconnect_modal' => [
@@ -162,5 +163,16 @@ return [
         'no_facebook_instagram_pages' => 'Instagram アカウントが連携された Facebook ページが見つかりません。',
         'no_youtube_channels' => 'YouTube チャンネルが見つかりません。先にチャンネルを作成してください。',
         'not_linkedin_admin' => 'あなたは管理者となっている LinkedIn ページがありません。',
+        'no_google_business_locations' => 'Google ビジネス プロフィールの店舗が見つかりません。まずビジネスを確認してください。',
+        'location_not_found' => '店舗が見つかりません。',
+        'error_connecting_location' => '店舗の接続中にエラーが発生しました。もう一度お試しください。',
+    ],
+
+    'google_business' => [
+        'title' => 'ビジネス店舗を選択',
+        'description' => '接続する店舗を選択してください',
+        'no_locations' => '店舗が見つかりません',
+        'no_locations_description' => '確認済みの Google ビジネス プロフィール店舗の管理者ではありません。',
+        'choose' => '選択',
     ],
 ];

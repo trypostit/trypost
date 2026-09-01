@@ -15,6 +15,8 @@ export const PostPlatformStatus = {
     Published: 'published',
     Failed: 'failed',
     Retrying: 'retrying',
+    Rejected: 'rejected',
+    PendingReview: 'pending_review',
 } as const;
 
 export type PostPlatformStatusValue = (typeof PostPlatformStatus)[keyof typeof PostPlatformStatus];

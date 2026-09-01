@@ -186,6 +186,42 @@ return [
             'embed_image' => 'URL зображення',
             'embed_color' => 'Колір',
         ],
+        'google_business' => [
+            'settings' => 'Налаштування Google Business Profile',
+            'posting_to' => 'Публікація в',
+            'topic_type_label' => 'Тип посту',
+            'topic_type' => [
+                'standard' => 'Оновлення',
+                'event' => 'Подія',
+                'offer' => 'Пропозиція',
+            ],
+            'cta_label' => 'Кнопка',
+            'cta_none' => 'Без кнопки',
+            'cta' => [
+                'book' => 'Забронювати',
+                'order' => 'Замовити онлайн',
+                'shop' => 'Купити',
+                'learn_more' => 'Дізнатись більше',
+                'sign_up' => 'Зареєструватися',
+                'get_offer' => 'Отримати пропозицію',
+                'call' => 'Позвонити зараз',
+            ],
+            'cta_url' => 'Посилання кнопки',
+            'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'Введіть посилання для цієї кнопки або виберіть "Без кнопки".',
+            'event_title' => 'Назва події',
+            'event_title_placeholder' => 'Літній розпродаж',
+            'event_title_required' => 'Введіть назву події.',
+            'event_start_date' => 'Дата початку',
+            'event_start_date_required' => 'Введіть дату початку.',
+            'event_end_date' => 'Дата завершення',
+            'event_end_date_required' => 'Введіть дату завершення.',
+            'event_start_time' => 'Час початку',
+            'event_end_time' => 'Час завершення',
+            'offer_coupon_code' => 'Код купона',
+            'offer_redeem_url' => 'Посилання на реалізацію онлайн',
+            'offer_terms' => 'Умови та положення',
+        ],
         'warnings' => [
             'no_variant' => 'Виберіть тип поста, щоб продовжити.',
             'requires_media' => 'Цей тип поста потребує принаймні одного зображення або відео.',
@@ -421,6 +457,8 @@ return [
             'publishing' => 'Публікується...',
             'retrying' => 'Повторна спроба...',
             'failed' => 'Помилка',
+            'pending_review' => 'На перевірці в Google',
+            'rejected' => 'Відхилено',
         ],
 
         'delete_modal' => [
@@ -550,6 +588,10 @@ return [
             'label' => 'Повідомлення',
             'description' => 'Повідомлення в канал Discord із необов’язковим медіа та вбудовуваннями',
         ],
+        'google_business_post' => [
+            'label' => 'Публікація',
+            'description' => 'Відображається у вашому Профілі компанії в Пошуку та Картах',
+        ],
     ],
 
     'platforms' => [
@@ -582,6 +624,8 @@ return [
         'platform_unavailable' => 'Платформа тимчасово недоступна. Ми спробуємо знову незабаром.',
         'platform_unavailable_exhausted' => 'Платформа залишалася недоступною після кількох спроб. Спробуйте пізніше.',
         'publishing_timed_out' => 'Публікація перевищила час очікування. Спробуйте ще раз.',
+        'rejected_in_review' => 'Google відхилив цю публікацію під час перевірки. Змініть текст або зображення та спробуйте ще раз.',
+        'review_unconfirmed' => 'Google так і не підтвердив цю публікацію. Перевірте профіль компанії та спробуйте ще раз.',
     ],
 
     'delete' => [

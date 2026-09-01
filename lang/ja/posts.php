@@ -186,6 +186,42 @@ return [
             'embed_image' => '画像 URL',
             'embed_color' => '色',
         ],
+        'google_business' => [
+            'settings' => 'Google Business Profile 設定',
+            'posting_to' => '投稿先',
+            'topic_type_label' => '投稿タイプ',
+            'topic_type' => [
+                'standard' => '更新',
+                'event' => 'イベント',
+                'offer' => 'オファー',
+            ],
+            'cta_label' => 'ボタン',
+            'cta_none' => 'ボタンなし',
+            'cta' => [
+                'book' => '予約',
+                'order' => 'オンラインで注文',
+                'shop' => '購入',
+                'learn_more' => 'もっと詳しく',
+                'sign_up' => '登録',
+                'get_offer' => 'オファーを利用',
+                'call' => '今すぐ電話',
+            ],
+            'cta_url' => 'ボタンリンク',
+            'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'このボタンのリンクを入力するか、「ボタンなし」を選択してください。',
+            'event_title' => 'イベントタイトル',
+            'event_title_placeholder' => '夏のセール',
+            'event_title_required' => 'イベントタイトルを入力してください。',
+            'event_start_date' => '開始日',
+            'event_start_date_required' => '開始日を入力してください。',
+            'event_end_date' => '終了日',
+            'event_end_date_required' => '終了日を入力してください。',
+            'event_start_time' => '開始時刻',
+            'event_end_time' => '終了時刻',
+            'offer_coupon_code' => 'クーポンコード',
+            'offer_redeem_url' => 'オンライン引き換えリンク',
+            'offer_terms' => '利用規約',
+        ],
         'warnings' => [
             'no_variant' => '続けるには投稿タイプを選択してください。',
             'requires_media' => 'この投稿タイプには少なくとも 1 つの画像または動画が必要です。',
@@ -421,6 +457,8 @@ return [
             'publishing' => '公開中...',
             'retrying' => '再試行中...',
             'failed' => '失敗',
+            'pending_review' => 'Google が審査中',
+            'rejected' => '拒否されました',
         ],
 
         'delete_modal' => [
@@ -550,6 +588,10 @@ return [
             'label' => 'メッセージ',
             'description' => 'メディアと埋め込み（任意）付きの Discord チャンネルへのメッセージ',
         ],
+        'google_business_post' => [
+            'label' => '投稿',
+            'description' => 'ビジネス プロフィールに検索とマップで表示されます',
+        ],
     ],
 
     'platforms' => [
@@ -582,6 +624,8 @@ return [
         'platform_unavailable' => 'プラットフォームが一時的に利用できません。まもなく再試行します。',
         'platform_unavailable_exhausted' => '何度か再試行しましたがプラットフォームが利用できませんでした。後でもう一度お試しください。',
         'publishing_timed_out' => '公開がタイムアウトしました。もう一度お試しください。',
+        'rejected_in_review' => 'Google の審査でこの投稿が拒否されました。本文または画像を修正して、もう一度お試しください。',
+        'review_unconfirmed' => 'Google からこの投稿の結果が返りませんでした。ビジネス プロフィールを確認して、もう一度お試しください。',
     ],
 
     'delete' => [

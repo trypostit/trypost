@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Συνδέστε τον λογαριασμό σας Mastodon',
         'telegram' => 'Συνδέστε ένα κανάλι ή ομάδα Telegram',
         'discord' => 'Συνδέστε έναν διακομιστή Discord',
+        'google_business' => 'Συνδέστε μια τοποθεσία Google Business Profile',
     ],
 
     'disconnect_modal' => [
@@ -162,5 +163,16 @@ return [
         'no_facebook_instagram_pages' => 'Δεν βρέθηκαν σελίδες Facebook με συνδεδεμένους λογαριασμούς Instagram.',
         'no_youtube_channels' => 'Δεν βρέθηκαν κανάλια YouTube. Παρακαλούμε δημιουργήστε πρώτα ένα κανάλι.',
         'not_linkedin_admin' => 'Δεν είστε διαχειριστής καμίας σελίδας LinkedIn.',
+        'no_google_business_locations' => 'Δεν βρέθηκαν τοποθεσίες Google Business Profile. Επαληθεύστε πρώτα την επιχείρησή σας.',
+        'location_not_found' => 'Η τοποθεσία δεν βρέθηκε.',
+        'error_connecting_location' => 'Σφάλμα κατά τη σύνδεση της τοποθεσίας. Δοκιμάστε ξανά.',
+    ],
+
+    'google_business' => [
+        'title' => 'Επιλογή Τοποθεσίας Επιχείρησης',
+        'description' => 'Επιλέξτε ποια τοποθεσία θέλετε να συνδέσετε',
+        'no_locations' => 'Δεν βρέθηκαν τοποθεσίες',
+        'no_locations_description' => 'Δεν είστε διαχειριστής καμίας επαληθευμένης τοποθεσίας Google Business Profile.',
+        'choose' => 'Επιλογή',
     ],
 ];

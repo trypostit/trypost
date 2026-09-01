@@ -127,6 +127,8 @@ const defaultContentTypeFor = (platform: string): string => {
             return ContentType.BlueskyPost;
         case Platform.Mastodon:
             return ContentType.MastodonPost;
+        case Platform.GoogleBusiness:
+            return ContentType.GoogleBusinessPost;
         default:
             return '';
     }

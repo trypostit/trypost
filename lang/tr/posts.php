@@ -188,6 +188,42 @@ return [
             'embed_image' => 'Görsel URL\'si',
             'embed_color' => 'Renk',
         ],
+        'google_business' => [
+            'settings' => 'Google Business Profile Ayarları',
+            'posting_to' => 'Şuraya paylaşılıyor',
+            'topic_type_label' => 'Gönderi türü',
+            'topic_type' => [
+                'standard' => 'Güncelleme',
+                'event' => 'Etkinlik',
+                'offer' => 'Teklif',
+            ],
+            'cta_label' => 'Düğme',
+            'cta_none' => 'Düğme yok',
+            'cta' => [
+                'book' => 'Rezervasyon',
+                'order' => 'Çevrimiçi sipariş',
+                'shop' => 'Satın al',
+                'learn_more' => 'Daha fazla bilgi',
+                'sign_up' => 'Kaydol',
+                'get_offer' => 'Teklifi al',
+                'call' => 'Hemen ara',
+            ],
+            'cta_url' => 'Düğme bağlantısı',
+            'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'Bu düğme için bir bağlantı girin veya "Düğme yok" seçeneğini seçin.',
+            'event_title' => 'Etkinlik başlığı',
+            'event_title_placeholder' => 'Yaz indirimi',
+            'event_title_required' => 'Bir etkinlik başlığı girin.',
+            'event_start_date' => 'Başlangıç tarihi',
+            'event_start_date_required' => 'Başlangıç tarihini girin.',
+            'event_end_date' => 'Bitiş tarihi',
+            'event_end_date_required' => 'Bitiş tarihini girin.',
+            'event_start_time' => 'Başlangıç saati',
+            'event_end_time' => 'Bitiş saati',
+            'offer_coupon_code' => 'Kupon kodu',
+            'offer_redeem_url' => 'Çevrimiçi kullanım bağlantısı',
+            'offer_terms' => 'Şartlar ve koşullar',
+        ],
         'warnings' => [
             'no_variant' => 'Devam etmek için bir gönderi türü seçin.',
             'requires_media' => 'Bu gönderi türü en az bir görsel veya video gerektirir.',
@@ -423,6 +459,8 @@ return [
             'publishing' => 'Yayınlanıyor...',
             'retrying' => 'Yeniden deneniyor...',
             'failed' => 'Başarısız',
+            'pending_review' => 'Google incelemesinde',
+            'rejected' => 'Reddedildi',
         ],
 
         'delete_modal' => [
@@ -552,6 +590,10 @@ return [
             'label' => 'Mesaj',
             'description' => 'İsteğe bağlı medya ve yerleştirmeler içeren Discord kanalına mesaj',
         ],
+        'google_business_post' => [
+            'label' => 'Gönderi',
+            'description' => 'İşletme Profilinde Arama ve Haritalar\'da görünür',
+        ],
     ],
 
     'platforms' => [
@@ -584,6 +626,8 @@ return [
         'platform_unavailable' => 'Platform geçici olarak kullanılamıyor. Kısa süre içinde yeniden deneyeceğiz.',
         'platform_unavailable_exhausted' => 'Platform birkaç denemeden sonra kullanılamaz kaldı. Lütfen daha sonra tekrar deneyin.',
         'publishing_timed_out' => 'Yayınlama zaman aşımına uğradı. Lütfen tekrar deneyin.',
+        'rejected_in_review' => 'Google bu gönderiyi incelemede reddetti. İçeriği veya görseli düzenleyip tekrar deneyin.',
+        'review_unconfirmed' => 'Google bu gönderiyi hiç onaylamadı. İşletme Profili\'ni kontrol edip tekrar deneyin.',
     ],
 
     'delete' => [

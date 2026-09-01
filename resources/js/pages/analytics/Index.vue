@@ -5,6 +5,7 @@ import { computed, ref } from 'vue';
 
 import AnalyticsAccountSelector from '@/components/analytics/AnalyticsAccountSelector.vue';
 import FacebookAnalytics from '@/components/analytics/FacebookAnalytics.vue';
+import GoogleBusinessAnalytics from '@/components/analytics/GoogleBusinessAnalytics.vue';
 import InstagramAnalytics from '@/components/analytics/InstagramAnalytics.vue';
 import LinkedInPageAnalytics from '@/components/analytics/LinkedInPageAnalytics.vue';
 import PinterestAnalytics from '@/components/analytics/PinterestAnalytics.vue';
@@ -45,6 +46,7 @@ const platformSupportsDateRange = computed(() => {
         'threads',
         'x',
         'linkedin-page',
+        'google_business',
     ].includes(selectedAccount.value.platform);
 });
 </script>
@@ -132,6 +134,12 @@ const platformSupportsDateRange = computed(() => {
 
             <YouTubeAnalytics
                 v-else-if="selectedAccount?.platform === 'youtube'"
+                :account-id="selectedAccountId"
+                :date-range="dateRange"
+            />
+
+            <GoogleBusinessAnalytics
+                v-else-if="selectedAccount?.platform === 'google_business'"
                 :account-id="selectedAccountId"
                 :date-range="dateRange"
             />

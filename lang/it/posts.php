@@ -186,6 +186,42 @@ return [
             'embed_image' => 'URL immagine',
             'embed_color' => 'Colore',
         ],
+        'google_business' => [
+            'settings' => 'Impostazioni Google Business Profile',
+            'posting_to' => 'Pubblicazione su',
+            'topic_type_label' => 'Tipo di post',
+            'topic_type' => [
+                'standard' => 'Aggiornamento',
+                'event' => 'Evento',
+                'offer' => 'Offerta',
+            ],
+            'cta_label' => 'Pulsante',
+            'cta_none' => 'Nessun pulsante',
+            'cta' => [
+                'book' => 'Prenota',
+                'order' => 'Ordina online',
+                'shop' => 'Acquista',
+                'learn_more' => 'Scopri di più',
+                'sign_up' => 'Iscriviti',
+                'get_offer' => 'Riscatta offerta',
+                'call' => 'Chiama ora',
+            ],
+            'cta_url' => 'Link del pulsante',
+            'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'Inserisci un link per questo pulsante, oppure scegli "Nessun pulsante".',
+            'event_title' => 'Titolo evento',
+            'event_title_placeholder' => 'Saldi estivi',
+            'event_title_required' => 'Inserisci un titolo evento.',
+            'event_start_date' => 'Data inizio',
+            'event_start_date_required' => 'Inserisci una data inizio.',
+            'event_end_date' => 'Data fine',
+            'event_end_date_required' => 'Inserisci una data fine.',
+            'event_start_time' => 'Ora inizio',
+            'event_end_time' => 'Ora fine',
+            'offer_coupon_code' => 'Codice coupon',
+            'offer_redeem_url' => 'Link riscatto online',
+            'offer_terms' => 'Termini e condizioni',
+        ],
         'warnings' => [
             'no_variant' => 'Scegli un tipo di post per continuare.',
             'requires_media' => 'Questo tipo di post richiede almeno un\'immagine o un video.',
@@ -421,6 +457,8 @@ return [
             'publishing' => 'Pubblicazione in corso...',
             'retrying' => 'Nuovo tentativo...',
             'failed' => 'Non riuscito',
+            'pending_review' => 'In revisione da Google',
+            'rejected' => 'Rifiutato',
         ],
 
         'delete_modal' => [
@@ -550,6 +588,10 @@ return [
             'label' => 'Messaggio',
             'description' => 'Messaggio a un canale Discord con media ed embed facoltativi',
         ],
+        'google_business_post' => [
+            'label' => 'Pubblicazione',
+            'description' => 'Appare nel tuo Profilo Aziendale in Ricerca e Mappe',
+        ],
     ],
 
     'platforms' => [
@@ -582,6 +624,8 @@ return [
         'platform_unavailable' => 'La piattaforma è temporaneamente non disponibile. Riproveremo a breve.',
         'platform_unavailable_exhausted' => 'La piattaforma è rimasta non disponibile dopo diversi tentativi. Riprova più tardi.',
         'publishing_timed_out' => 'Pubblicazione scaduta. Riprova.',
+        'rejected_in_review' => 'Google ha rifiutato questo post durante la revisione. Modifica il contenuto o l\'immagine e riprova.',
+        'review_unconfirmed' => 'Google non ha mai confermato questo post. Controlla il tuo profilo aziendale e riprova.',
     ],
 
     'delete' => [

@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Mastodon 계정을 연결하세요',
         'telegram' => 'Telegram 채널 또는 그룹을 연결하세요',
         'discord' => 'Discord 서버를 연결하세요',
+        'google_business' => 'Google 비즈니스 프로필 위치를 연결하세요',
     ],
 
     'disconnect_modal' => [
@@ -162,5 +163,16 @@ return [
         'no_facebook_instagram_pages' => 'Instagram 계정이 연결된 Facebook 페이지를 찾을 수 없습니다.',
         'no_youtube_channels' => 'YouTube 채널을 찾을 수 없습니다. 먼저 채널을 만드세요.',
         'not_linkedin_admin' => '관리자로 있는 LinkedIn 페이지가 없습니다.',
+        'no_google_business_locations' => 'Google 비즈니스 프로필 위치를 찾을 수 없습니다. 먼저 비즈니스를 인증하세요.',
+        'location_not_found' => '위치를 찾을 수 없습니다.',
+        'error_connecting_location' => '위치 연결 중 오류가 발생했습니다. 다시 시도해 주세요.',
+    ],
+
+    'google_business' => [
+        'title' => '비즈니스 위치 선택',
+        'description' => '연결할 위치를 선택하세요',
+        'no_locations' => '위치를 찾을 수 없습니다',
+        'no_locations_description' => '인증된 Google 비즈니스 프로필 위치의 관리자가 아닙니다.',
+        'choose' => '선택',
     ],
 ];

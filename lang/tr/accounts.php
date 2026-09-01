@@ -32,6 +32,7 @@ return [
         'mastodon' => 'Mastodon hesabınızı bağlayın',
         'telegram' => 'Bir Telegram kanalı veya grubu bağlayın',
         'discord' => 'Bir Discord sunucusu bağlayın',
+        'google_business' => 'Bir Google İşletme Profili konumu bağlayın',
     ],
 
     'disconnect_modal' => [
@@ -164,5 +165,16 @@ return [
         'no_facebook_instagram_pages' => 'Bağlı Instagram hesabı olan Facebook Sayfası bulunamadı.',
         'no_youtube_channels' => 'YouTube kanalı bulunamadı. Lütfen önce bir kanal oluşturun.',
         'not_linkedin_admin' => 'Hiçbir LinkedIn sayfasının yöneticisi değilsiniz.',
+        'no_google_business_locations' => 'Google İşletme Profili konumu bulunamadı. Önce işletmenizi doğrulayın.',
+        'location_not_found' => 'Konum bulunamadı.',
+        'error_connecting_location' => 'Konum bağlanırken hata oluştu. Lütfen tekrar deneyin.',
+    ],
+
+    'google_business' => [
+        'title' => 'İşletme Konumu Seç',
+        'description' => 'Bağlamak istediğiniz konumu seçin',
+        'no_locations' => 'Konum bulunamadı',
+        'no_locations_description' => 'Doğrulanmış herhangi bir Google İşletme Profili konumunun yöneticisi değilsiniz.',
+        'choose' => 'Seç',
     ],
 ];

@@ -186,6 +186,42 @@ return [
             'embed_image' => '이미지 URL',
             'embed_color' => '색상',
         ],
+        'google_business' => [
+            'settings' => 'Google Business Profile 설정',
+            'posting_to' => '게시 대상',
+            'topic_type_label' => '게시물 유형',
+            'topic_type' => [
+                'standard' => '업데이트',
+                'event' => '이벤트',
+                'offer' => '오퍼',
+            ],
+            'cta_label' => '버튼',
+            'cta_none' => '버튼 없음',
+            'cta' => [
+                'book' => '예약',
+                'order' => '온라인 주문',
+                'shop' => '구매',
+                'learn_more' => '자세히 알아보기',
+                'sign_up' => '가입',
+                'get_offer' => '오퍼 받기',
+                'call' => '지금 전화',
+            ],
+            'cta_url' => '버튼 링크',
+            'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => '이 버튼의 링크를 입력하거나 "버튼 없음"을 선택하세요.',
+            'event_title' => '이벤트 제목',
+            'event_title_placeholder' => '여름 세일',
+            'event_title_required' => '이벤트 제목을 입력하세요.',
+            'event_start_date' => '시작 날짜',
+            'event_start_date_required' => '시작 날짜를 입력하세요.',
+            'event_end_date' => '종료 날짜',
+            'event_end_date_required' => '종료 날짜를 입력하세요.',
+            'event_start_time' => '시작 시간',
+            'event_end_time' => '종료 시간',
+            'offer_coupon_code' => '쿠폰 코드',
+            'offer_redeem_url' => '온라인 사용 링크',
+            'offer_terms' => '약관',
+        ],
         'warnings' => [
             'no_variant' => '계속하려면 게시물 유형을 선택하세요.',
             'requires_media' => '이 게시물 유형에는 이미지 또는 동영상이 하나 이상 필요합니다.',
@@ -421,6 +457,8 @@ return [
             'publishing' => '게시 중...',
             'retrying' => '재시도 중...',
             'failed' => '실패',
+            'pending_review' => 'Google 검토 중',
+            'rejected' => '거부됨',
         ],
 
         'delete_modal' => [
@@ -550,6 +588,10 @@ return [
             'label' => '메시지',
             'description' => '선택적 미디어 및 임베드가 있는 Discord 채널 메시지',
         ],
+        'google_business_post' => [
+            'label' => '게시물',
+            'description' => '비즈니스 프로필에 검색 및 지도에 표시됩니다',
+        ],
     ],
 
     'platforms' => [
@@ -582,6 +624,8 @@ return [
         'platform_unavailable' => '플랫폼을 일시적으로 사용할 수 없습니다. 곧 다시 시도합니다.',
         'platform_unavailable_exhausted' => '여러 번 재시도했지만 플랫폼을 사용할 수 없었습니다. 나중에 다시 시도하세요.',
         'publishing_timed_out' => '게시에 시간이 초과되었습니다. 다시 시도하세요.',
+        'rejected_in_review' => 'Google 검토에서 이 게시물이 거부되었습니다. 내용이나 이미지를 수정한 후 다시 시도하세요.',
+        'review_unconfirmed' => 'Google가 이 게시물을 확인해 주지 않았습니다. 비즈니스 프로필을 확인한 후 다시 시도하세요.',
     ],
 
     'delete' => [

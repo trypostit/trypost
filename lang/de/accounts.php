@@ -32,6 +32,7 @@ return [
         'mastodon' => 'Verbinde dein Mastodon-Konto',
         'telegram' => 'Verbinde einen Telegram-Kanal oder eine Telegram-Gruppe',
         'discord' => 'Verbinde einen Discord-Server',
+        'google_business' => 'Verbinde einen Google Unternehmensprofil-Standort',
     ],
 
     'disconnect_modal' => [
@@ -164,5 +165,16 @@ return [
         'no_facebook_instagram_pages' => 'Keine Facebook-Seiten mit verknüpften Instagram-Konten gefunden.',
         'no_youtube_channels' => 'Keine YouTube-Kanäle gefunden. Bitte erstelle zuerst einen Kanal.',
         'not_linkedin_admin' => 'Du bist kein Administrator einer LinkedIn-Seite.',
+        'no_google_business_locations' => 'Keine Google Unternehmensprofil-Standorte gefunden. Bestätige zuerst dein Unternehmen.',
+        'location_not_found' => 'Standort nicht gefunden.',
+        'error_connecting_location' => 'Fehler beim Verbinden des Standorts. Bitte versuche es erneut.',
+    ],
+
+    'google_business' => [
+        'title' => 'Standort auswählen',
+        'description' => 'Wähle aus, welchen Standort du verbinden möchtest',
+        'no_locations' => 'Keine Standorte gefunden',
+        'no_locations_description' => 'Du bist kein Manager eines verifizierten Google Unternehmensprofil-Standorts.',
+        'choose' => 'Auswählen',
     ],
 ];

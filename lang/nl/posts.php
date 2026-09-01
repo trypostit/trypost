@@ -186,6 +186,42 @@ return [
             'embed_image' => 'Afbeeldings-URL',
             'embed_color' => 'Kleur',
         ],
+        'google_business' => [
+            'settings' => 'Google Business Profile-instellingen',
+            'posting_to' => 'Posten naar',
+            'topic_type_label' => 'Posttype',
+            'topic_type' => [
+                'standard' => 'Update',
+                'event' => 'Evenement',
+                'offer' => 'Aanbod',
+            ],
+            'cta_label' => 'Knop',
+            'cta_none' => 'Geen knop',
+            'cta' => [
+                'book' => 'Boeken',
+                'order' => 'Online bestellen',
+                'shop' => 'Kopen',
+                'learn_more' => 'Meer informatie',
+                'sign_up' => 'Aanmelden',
+                'get_offer' => 'Aanbod gebruiken',
+                'call' => 'Nu bellen',
+            ],
+            'cta_url' => 'Koppelinformatie voor knop',
+            'cta_url_placeholder' => 'https://example.com',
+            'cta_url_required' => 'Voer een link in voor deze knop, of kies "Geen knop".',
+            'event_title' => 'Evenementtitel',
+            'event_title_placeholder' => 'Zomeruitverkoop',
+            'event_title_required' => 'Voer een evenementtitel in.',
+            'event_start_date' => 'Startdatum',
+            'event_start_date_required' => 'Voer een startdatum in.',
+            'event_end_date' => 'Einddatum',
+            'event_end_date_required' => 'Voer een einddatum in.',
+            'event_start_time' => 'Starttijd',
+            'event_end_time' => 'Eindtijd',
+            'offer_coupon_code' => 'Couponcode',
+            'offer_redeem_url' => 'Online inwisselingskoppeling',
+            'offer_terms' => 'Voorwaarden',
+        ],
         'warnings' => [
             'no_variant' => 'Kies een posttype om door te gaan.',
             'requires_media' => 'Dit posttype vereist ten minste één afbeelding of video.',
@@ -421,6 +457,8 @@ return [
             'publishing' => 'Publiceren...',
             'retrying' => 'Opnieuw proberen...',
             'failed' => 'Mislukt',
+            'pending_review' => 'In beoordeling bij Google',
+            'rejected' => 'Afgewezen',
         ],
 
         'delete_modal' => [
@@ -550,6 +588,10 @@ return [
             'label' => 'Bericht',
             'description' => 'Bericht naar een Discord-kanaal met optionele media en embeds',
         ],
+        'google_business_post' => [
+            'label' => 'Bericht',
+            'description' => 'Wordt weergegeven in je Bedrijfsprofiel in Zoeken en Kaarten',
+        ],
     ],
 
     'platforms' => [
@@ -582,6 +624,8 @@ return [
         'platform_unavailable' => 'Het platform is tijdelijk niet beschikbaar. We proberen het zo opnieuw.',
         'platform_unavailable_exhausted' => 'Het platform bleef na meerdere pogingen niet beschikbaar. Probeer het later opnieuw.',
         'publishing_timed_out' => 'Publiceren is timed-out. Probeer het opnieuw.',
+        'rejected_in_review' => 'Google heeft dit bericht bij de beoordeling afgewezen. Pas de inhoud of afbeelding aan en probeer het opnieuw.',
+        'review_unconfirmed' => 'Google heeft dit bericht nooit bevestigd. Controleer je bedrijfsprofiel en probeer het opnieuw.',
     ],
 
     'delete' => [

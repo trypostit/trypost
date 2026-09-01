@@ -117,6 +117,15 @@ return [
         'redirect' => env('DISCORD_CLIENT_REDIRECT'),
     ],
 
+    // Google Business Profile — dedicated OAuth app, isolated from 'google'
+    // (YouTube) so adding the sensitive business.manage scope never triggers
+    // Google to re-review the YouTube app's already-verified scope set.
+    'google-business' => [
+        'client_id' => env('GOOGLE_BUSINESS_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_BUSINESS_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_BUSINESS_CLIENT_REDIRECT'),
+    ],
+
     'gtm' => [
         'id' => env('GTM_ID'),
     ],

@@ -1,8 +1,10 @@
 import {
     IconAlertCircle,
+    IconBan,
     IconCircleCheck,
     IconClock,
     IconFileText,
+    IconHourglass,
     IconLoader2,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
@@ -23,6 +25,8 @@ const CONFIGS: Record<string, Pick<StatusConfig, 'variant' | 'icon'>> = {
     published: { variant: 'success', icon: IconCircleCheck },
     partially_published: { variant: 'warning', icon: IconAlertCircle },
     failed: { variant: 'destructive', icon: IconAlertCircle },
+    rejected: { variant: 'destructive', icon: IconBan },
+    pending_review: { variant: 'warning', icon: IconHourglass },
 };
 
 export const getPostStatusConfig = (status: string): StatusConfig => {
@@ -37,6 +41,8 @@ export const getPlatformStatusConfig = (status: string): StatusConfig => {
         retrying: 'retrying',
         published: 'published',
         failed: 'failed',
+        rejected: 'rejected',
+        pending_review: 'pending_review',
     };
     const key = map[status] ?? 'draft';
     const config = CONFIGS[key];

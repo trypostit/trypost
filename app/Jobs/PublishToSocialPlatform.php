@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Enums\Notification\Channel;
-use App\Enums\Notification\Type;
+use App\Actions\Post\FinalizePostPublication;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
@@ -14,14 +13,12 @@ use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\SocialPublishException;
 use App\Exceptions\TokenExpiredException;
-use App\Mail\PostPublished;
-use App\Mail\PostPublishFailed;
-use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Services\Social\BlueskyPublisher;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\Discord\DiscordPublisher;
 use App\Services\Social\FacebookPublisher;
+use App\Services\Social\GoogleBusinessPublisher;
 use App\Services\Social\InstagramPublisher;
 use App\Services\Social\LinkedInPagePublisher;
 use App\Services\Social\LinkedInPublisher;
@@ -124,7 +121,8 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             try {
                 $publisher = $this->getPublisher();
                 $result = $publisher->publish($this->postPlatform);
-                $this->postPlatform->markAsPublished(data_get($result, 'id'), data_get($result, 'url'));
+
+                $this->recordPublishResult($result);
                 break;
             } catch (PlatformUnavailableException $e) {
                 $this->rescheduleForRetry($e);
@@ -194,6 +192,30 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
         // Broadcast final status
         $this->broadcastStatus();
+    }
+
+    /**
+     * A publisher may answer with a provider-side state instead of a finished
+     * post. Anything it does not report is a plain success, which is every
+     * platform but Google Business Profile.
+     *
+     * @param  array<string, mixed>  $result
+     */
+    private function recordPublishResult(array $result): void
+    {
+        $platformPostId = (string) data_get($result, 'id');
+        $platformUrl = data_get($result, 'url');
+
+        match (data_get($result, 'state')) {
+            'REJECTED' => $this->postPlatform->markAsRejected(
+                $platformPostId,
+                $platformUrl,
+                __('posts.errors.rejected_in_review'),
+                ['provider_state' => 'REJECTED'],
+            ),
+            'PROCESSING', 'SCHEDULED' => $this->postPlatform->markAsPendingReview($platformPostId, $platformUrl),
+            default => $this->postPlatform->markAsPublished($platformPostId, $platformUrl),
+        };
     }
 
     private function refreshAccountToken(): void
@@ -318,6 +340,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         return in_array($this->postPlatform->status, [
             PostPlatformStatus::Published,
             PostPlatformStatus::Failed,
+            PostPlatformStatus::Rejected,
         ], true);
     }
 
@@ -337,7 +360,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             : 'An unexpected error occurred while publishing. Please try again.';
     }
 
-    private function getPublisher(): LinkedInPublisher|LinkedInPagePublisher|XPublisher|TikTokPublisher|YouTubePublisher|FacebookPublisher|InstagramPublisher|ThreadsPublisher|PinterestPublisher|BlueskyPublisher|MastodonPublisher|TelegramPublisher|DiscordPublisher
+    private function getPublisher(): LinkedInPublisher|LinkedInPagePublisher|XPublisher|TikTokPublisher|YouTubePublisher|FacebookPublisher|InstagramPublisher|ThreadsPublisher|PinterestPublisher|BlueskyPublisher|MastodonPublisher|TelegramPublisher|DiscordPublisher|GoogleBusinessPublisher
     {
         return match ($this->postPlatform->platform) {
             SocialPlatform::LinkedIn => app(LinkedInPublisher::class),
@@ -353,38 +376,13 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             SocialPlatform::Mastodon => app(MastodonPublisher::class),
             SocialPlatform::Telegram => app(TelegramPublisher::class),
             SocialPlatform::Discord => app(DiscordPublisher::class),
+            SocialPlatform::GoogleBusiness => app(GoogleBusinessPublisher::class),
         };
     }
 
     private function updatePostStatus(): void
     {
-        $post = $this->postPlatform->post->fresh();
-        $enabledPlatforms = $post->postPlatforms->where('enabled', true);
-
-        $total = $enabledPlatforms->count();
-        $publishedCount = $enabledPlatforms->where('status', PostPlatformStatus::Published)->count();
-        $failedCount = $enabledPlatforms->where('status', PostPlatformStatus::Failed)->count();
-        $finishedCount = $publishedCount + $failedCount;
-
-        // Only update post status when all platforms have finished
-        if ($finishedCount < $total) {
-            return;
-        }
-
-        if ($publishedCount === $total) {
-            $post->markAsPublished();
-            $this->notify($post, PostPlatformStatus::Published);
-
-            return;
-        }
-
-        if ($publishedCount > 0) {
-            $post->markAsPartiallyPublished();
-        } else {
-            $post->markAsFailed();
-        }
-
-        $this->notify($post, PostPlatformStatus::Failed);
+        app(FinalizePostPublication::class)->handle($this->postPlatform);
     }
 
     public function failed(?Throwable $exception): void
@@ -410,34 +408,5 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         );
         $this->updatePostStatus();
         $this->broadcastStatus();
-    }
-
-    private function notify(Post $post, PostPlatformStatus $status): void
-    {
-        $owner = $post->workspace->owner;
-
-        if (! $owner) {
-            return;
-        }
-
-        $successful = $status === PostPlatformStatus::Published;
-        $platforms = $post->postPlatforms()
-            ->with('socialAccount')
-            ->enabled()
-            ->where('status', $status)
-            ->get()
-            ->map(fn ($pp) => $pp->platform->label().' (@'.data_get($pp, 'socialAccount.username', '').')')
-            ->implode(', ');
-
-        SendNotification::dispatch(
-            user: $owner,
-            workspaceId: $post->workspace_id,
-            type: $successful ? Type::PostPublished : Type::PostFailed,
-            channel: Channel::Both,
-            title: $successful ? 'Post published successfully' : 'Post failed to publish',
-            body: $successful ? $platforms : "Failed on: {$platforms}",
-            data: ['post_id' => $post->id],
-            mailable: $successful ? new PostPublished($post) : new PostPublishFailed($post),
-        );
     }
 }

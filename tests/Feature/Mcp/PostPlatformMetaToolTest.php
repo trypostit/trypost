@@ -369,3 +369,132 @@ test('create post rejects invalid Pinterest destination link', function () {
 
     $response->assertHasErrors();
 });
+
+test('create post persists Google Business topic_type and offer meta', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Big sale this week',
+            'platforms' => [[
+                'social_account_id' => $googleBusiness->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+                'meta' => [
+                    'topic_type' => 'OFFER',
+                    'offer' => ['coupon_code' => 'SAVE10'],
+                ],
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    $meta = PostPlatform::where('social_account_id', $googleBusiness->id)->sole()->meta;
+
+    expect(data_get($meta, 'topic_type'))->toBe('OFFER')
+        ->and(data_get($meta, 'offer.coupon_code'))->toBe('SAVE10');
+});
+
+test('create post persists Google Business call_to_action meta', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Book a table tonight',
+            'platforms' => [[
+                'social_account_id' => $googleBusiness->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+                'meta' => [
+                    'call_to_action' => ['action_type' => 'BOOK', 'url' => 'https://example.com'],
+                ],
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    $meta = PostPlatform::where('social_account_id', $googleBusiness->id)->sole()->meta;
+
+    expect(data_get($meta, 'call_to_action.action_type'))->toBe('BOOK')
+        ->and(data_get($meta, 'call_to_action.url'))->toBe('https://example.com');
+});
+
+test('create post persists Google Business event time meta', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Grand opening',
+            'platforms' => [[
+                'social_account_id' => $googleBusiness->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+                'meta' => [
+                    'topic_type' => 'EVENT',
+                    'event' => [
+                        'title' => 'Grand Opening',
+                        'start_date' => '2026-09-01',
+                        'end_date' => '2026-09-02',
+                        'start_time' => '09:00',
+                        'end_time' => '17:00',
+                    ],
+                ],
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    $meta = PostPlatform::where('social_account_id', $googleBusiness->id)->sole()->meta;
+
+    expect(data_get($meta, 'event.title'))->toBe('Grand Opening')
+        ->and(data_get($meta, 'event.start_date'))->toBe('2026-09-01')
+        ->and(data_get($meta, 'event.end_date'))->toBe('2026-09-02')
+        ->and(data_get($meta, 'event.start_time'))->toBe('09:00')
+        ->and(data_get($meta, 'event.end_time'))->toBe('17:00');
+});
+
+test('create post persists Google Business offer redeem url and terms meta', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Big sale this week',
+            'platforms' => [[
+                'social_account_id' => $googleBusiness->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+                'meta' => [
+                    'offer' => [
+                        'coupon_code' => 'SAVE10',
+                        'redeem_online_url' => 'https://example.com/redeem',
+                        'terms_conditions' => 'Some terms',
+                    ],
+                ],
+            ]],
+        ]);
+
+    $response->assertOk();
+
+    $meta = PostPlatform::where('social_account_id', $googleBusiness->id)->sole()->meta;
+
+    expect(data_get($meta, 'offer.coupon_code'))->toBe('SAVE10')
+        ->and(data_get($meta, 'offer.redeem_online_url'))->toBe('https://example.com/redeem')
+        ->and(data_get($meta, 'offer.terms_conditions'))->toBe('Some terms');
+});
+
+test('publish post rejects a Google Business event post without event fields', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $googleBusiness->id,
+        'enabled' => true,
+        'meta' => ['topic_type' => 'EVENT'],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id]);
+
+    $response->assertHasErrors([__('posts.form.google_business.event_title_required')]);
+});

@@ -7,6 +7,11 @@ return [
     'select_account' => 'اختر حسابًا لعرض التحليلات.',
     'no_data' => 'لا تتوفر بيانات تحليلات.',
 
+    'search_keywords' => [
+        'title' => 'كلمات البحث',
+        'estimated' => 'أخفت Google العدد الدقيق لهذا المصطلح',
+    ],
+
     'metrics' => [
         'avg_view_duration' => 'متوسط مدة المشاهدة (ث)',
         'avg_view_percentage' => 'متوسط نسبة المشاهدة',
@@ -51,5 +56,16 @@ return [
         'video_views' => 'مشاهدات الفيديو',
         'videos' => 'مقاطع الفيديو',
         'views' => 'المشاهدات',
+        'website_clicks' => 'نقرات الموقع الإلكتروني',
+        'call_clicks' => 'نقرات الاتصال',
+        'direction_requests' => 'طلبات الاتجاهات',
+        'desktop_map_impressions' => 'مرات ظهور الخريطة على سطح المكتب',
+        'mobile_map_impressions' => 'مرات ظهور الخريطة على الجوال',
+        'desktop_search_impressions' => 'ظهور في بحث سطح المكتب',
+        'mobile_search_impressions' => 'ظهور في بحث الجوال',
+        'conversations' => 'المحادثات',
+        'bookings' => 'الحجوزات',
+        'food_orders' => 'طلبات الطعام',
+        'food_menu_clicks' => 'النقرات على القائمة',
     ],
 ];

@@ -389,3 +389,123 @@ it('rejects non-http Pinterest links', function () {
             'platforms.0.meta.link' => __('posts.form.pinterest.link_invalid'),
         ]);
 });
+
+it('persists Google Business topic_type and offer meta on store', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Big sale this week',
+            'platforms' => [[
+                'social_account_id' => $googleBusiness->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+                'meta' => [
+                    'topic_type' => 'OFFER',
+                    'offer' => ['coupon_code' => 'SAVE10'],
+                ],
+            ]],
+        ])
+        ->assertCreated();
+
+    $meta = PostPlatform::where('social_account_id', $googleBusiness->id)->sole()->meta;
+
+    expect(data_get($meta, 'topic_type'))->toBe('OFFER')
+        ->and(data_get($meta, 'offer.coupon_code'))->toBe('SAVE10');
+});
+
+it('persists Google Business call_to_action meta on store', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Book a table tonight',
+            'platforms' => [[
+                'social_account_id' => $googleBusiness->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+                'meta' => [
+                    'call_to_action' => ['action_type' => 'BOOK', 'url' => 'https://example.com'],
+                ],
+            ]],
+        ])
+        ->assertCreated();
+
+    $meta = PostPlatform::where('social_account_id', $googleBusiness->id)->sole()->meta;
+
+    expect(data_get($meta, 'call_to_action.action_type'))->toBe('BOOK')
+        ->and(data_get($meta, 'call_to_action.url'))->toBe('https://example.com');
+});
+
+it('persists Google Business event time meta on store', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Grand opening',
+            'platforms' => [[
+                'social_account_id' => $googleBusiness->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+                'meta' => [
+                    'topic_type' => 'EVENT',
+                    'event' => [
+                        'title' => 'Grand Opening',
+                        'start_date' => '2026-09-01',
+                        'end_date' => '2026-09-02',
+                        'start_time' => '09:00',
+                        'end_time' => '17:00',
+                    ],
+                ],
+            ]],
+        ])
+        ->assertCreated();
+
+    $meta = PostPlatform::where('social_account_id', $googleBusiness->id)->sole()->meta;
+
+    expect(data_get($meta, 'event.title'))->toBe('Grand Opening')
+        ->and(data_get($meta, 'event.start_date'))->toBe('2026-09-01')
+        ->and(data_get($meta, 'event.end_date'))->toBe('2026-09-02')
+        ->and(data_get($meta, 'event.start_time'))->toBe('09:00')
+        ->and(data_get($meta, 'event.end_time'))->toBe('17:00');
+});
+
+it('persists Google Business offer redeem url and terms meta on store', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Big sale this week',
+            'platforms' => [[
+                'social_account_id' => $googleBusiness->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+                'meta' => [
+                    'offer' => [
+                        'coupon_code' => 'SAVE10',
+                        'redeem_online_url' => 'https://example.com/redeem',
+                        'terms_conditions' => 'Some terms',
+                    ],
+                ],
+            ]],
+        ])
+        ->assertCreated();
+
+    $meta = PostPlatform::where('social_account_id', $googleBusiness->id)->sole()->meta;
+
+    expect(data_get($meta, 'offer.coupon_code'))->toBe('SAVE10')
+        ->and(data_get($meta, 'offer.redeem_online_url'))->toBe('https://example.com/redeem')
+        ->and(data_get($meta, 'offer.terms_conditions'))->toBe('Some terms');
+});
+
+it('rejects publishing a Google Business event post without event fields', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $platform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id, 'social_account_id' => $googleBusiness->id, 'enabled' => true, 'meta' => [],
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Publishing->value,
+            'platforms' => [['id' => $platform->id, 'meta' => ['topic_type' => 'EVENT']]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.event.title']);
+});

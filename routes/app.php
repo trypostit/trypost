@@ -35,6 +35,7 @@ use App\Http\Controllers\App\WorkspaceSignatureController;
 use App\Http\Controllers\Auth\BlueskyController;
 use App\Http\Controllers\Auth\DiscordController;
 use App\Http\Controllers\Auth\FacebookController;
+use App\Http\Controllers\Auth\GoogleBusinessController;
 use App\Http\Controllers\Auth\InstagramController;
 use App\Http\Controllers\Auth\InstagramFacebookController;
 use App\Http\Controllers\Auth\LinkedInController;
@@ -110,6 +111,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('connect/mastodon', [MastodonController::class, 'authorizeInstance'])->name('app.social.mastodon.authorize');
         Route::post('connect/telegram', [TelegramController::class, 'connect'])->name('app.social.telegram.connect');
         Route::get('connect/discord', [DiscordController::class, 'connect'])->name('app.social.discord.connect');
+        Route::get('connect/google-business', [GoogleBusinessController::class, 'connect'])->name('app.social.google-business.connect');
 
         Route::delete('accounts/{account}', [SocialController::class, 'disconnect'])->name('app.accounts.disconnect');
     });
@@ -147,6 +149,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('accounts/mastodon/callback', [MastodonController::class, 'callback'])->name('app.social.mastodon.callback');
 
     Route::get('accounts/discord/callback', [DiscordController::class, 'callback'])->name('app.social.discord.callback');
+
+    Route::get('accounts/google-business/callback', [GoogleBusinessController::class, 'callback'])->name('app.social.google-business.callback');
+    Route::get('accounts/google-business/select', [GoogleBusinessController::class, 'selectLocation'])->name('app.social.google-business.select-location');
+    Route::post('accounts/google-business/select', [GoogleBusinessController::class, 'select'])->name('app.social.google-business.select');
 });
 
 // Routes that require account access and a current workspace

@@ -7,6 +7,11 @@ return [
     'select_account' => '분석을 보려면 계정을 선택하세요.',
     'no_data' => '사용 가능한 분석 데이터가 없습니다.',
 
+    'search_keywords' => [
+        'title' => '검색어',
+        'estimated' => 'Google가 이 검색어의 정확한 수를 공개하지 않습니다',
+    ],
+
     'metrics' => [
         'avg_view_duration' => '평균 시청 시간 (초)',
         'avg_view_percentage' => '평균 시청률',
@@ -51,5 +56,16 @@ return [
         'video_views' => '동영상 조회수',
         'videos' => '동영상',
         'views' => '조회수',
+        'website_clicks' => '웹사이트 클릭',
+        'call_clicks' => '통화 클릭',
+        'direction_requests' => '길찾기 요청',
+        'desktop_map_impressions' => '데스크톱 지도 노출수',
+        'mobile_map_impressions' => '모바일 지도 노출수',
+        'desktop_search_impressions' => '검색 노출(데스크톱)',
+        'mobile_search_impressions' => '검색 노출(모바일)',
+        'conversations' => '대화',
+        'bookings' => '예약',
+        'food_orders' => '음식 주문',
+        'food_menu_clicks' => '메뉴 클릭',
     ],
 ];

@@ -7,6 +7,11 @@ return [
     'select_account' => 'Selecteer een account om statistieken te bekijken.',
     'no_data' => 'Geen statistieken beschikbaar.',
 
+    'search_keywords' => [
+        'title' => 'Zoektermen',
+        'estimated' => 'Google geeft het exacte aantal voor deze term niet vrij',
+    ],
+
     'metrics' => [
         'avg_view_duration' => 'Gem. kijkduur (s)',
         'avg_view_percentage' => 'Gem. kijkpercentage',
@@ -51,5 +56,16 @@ return [
         'video_views' => 'Videoweergaven',
         'videos' => 'Video\'s',
         'views' => 'Weergaven',
+        'website_clicks' => 'Websiteklikken',
+        'call_clicks' => 'Oproepklikken',
+        'direction_requests' => 'Routeaanvragen',
+        'desktop_map_impressions' => 'Kaartweergaven op desktop',
+        'mobile_map_impressions' => 'Kaartweergaven op mobiel',
+        'desktop_search_impressions' => 'Zoekvertoningen (desktop)',
+        'mobile_search_impressions' => 'Zoekvertoningen (mobiel)',
+        'conversations' => 'Gesprekken',
+        'bookings' => 'Reserveringen',
+        'food_orders' => 'Maaltijdbestellingen',
+        'food_menu_clicks' => 'Menuklikken',
     ],
 ];

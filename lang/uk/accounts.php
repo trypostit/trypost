@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Підключіть акаунт Mastodon',
         'telegram' => 'Підключіть канал або групу Telegram',
         'discord' => 'Підключіть сервер Discord',
+        'google_business' => 'Підключіть місцезнаходження Google Business Profile',
     ],
 
     'disconnect_modal' => [
@@ -162,5 +163,16 @@ return [
         'no_facebook_instagram_pages' => 'Не знайдено сторінок Facebook із підключеними акаунтами Instagram.',
         'no_youtube_channels' => 'Каналів YouTube не знайдено. Спочатку створіть канал.',
         'not_linkedin_admin' => 'Ви не є адміністратором жодної сторінки LinkedIn.',
+        'no_google_business_locations' => 'Місцезнаходження Google Business Profile не знайдено. Спочатку підтвердьте свій бізнес.',
+        'location_not_found' => 'Місцезнаходження не знайдено.',
+        'error_connecting_location' => 'Помилка під час підключення місцезнаходження. Спробуйте ще раз.',
+    ],
+
+    'google_business' => [
+        'title' => 'Виберіть місцезнаходження бізнесу',
+        'description' => 'Виберіть місцезнаходження, яке хочете підключити',
+        'no_locations' => 'Місцезнаходження не знайдено',
+        'no_locations_description' => 'Ви не є менеджером жодного підтвердженого місцезнаходження Google Business Profile.',
+        'choose' => 'Вибрати',
     ],
 ];

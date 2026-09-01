@@ -30,6 +30,7 @@ return [
         'mastodon' => '连接你的 Mastodon 账号',
         'telegram' => '连接一个 Telegram 频道或群组',
         'discord' => '连接一个 Discord 服务器',
+        'google_business' => '连接一个 Google 商家资料位置',
     ],
 
     'disconnect_modal' => [
@@ -162,5 +163,16 @@ return [
         'no_facebook_instagram_pages' => '未找到关联了 Instagram 账号的 Facebook 主页。',
         'no_youtube_channels' => '未找到 YouTube 频道，请先创建一个频道。',
         'not_linkedin_admin' => '你不是任何 LinkedIn 页面的管理员。',
+        'no_google_business_locations' => '未找到 Google 商家资料位置。请先验证您的企业。',
+        'location_not_found' => '未找到该位置。',
+        'error_connecting_location' => '连接位置时出错。请重试。',
+    ],
+
+    'google_business' => [
+        'title' => '选择商家位置',
+        'description' => '选择您要连接的位置',
+        'no_locations' => '未找到位置',
+        'no_locations_description' => '您不是任何已验证的 Google 商家资料位置的管理者。',
+        'choose' => '选择',
     ],
 ];

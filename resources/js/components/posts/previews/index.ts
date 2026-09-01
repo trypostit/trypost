@@ -8,3 +8,4 @@ export { default as TikTokPreview } from './TikTokPreview.vue';
 export { default as YouTubePreview } from './YouTubePreview.vue';
 export { default as PinterestPreview } from './PinterestPreview.vue';
 export { default as BlueskyPreview } from './BlueskyPreview.vue';
+export { default as GoogleBusinessPreview } from './GoogleBusinessPreview.vue';

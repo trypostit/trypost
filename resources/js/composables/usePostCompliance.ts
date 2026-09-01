@@ -6,6 +6,7 @@ import { getMediaItemIssue, getMediaValidationWarning } from '@/composables/useM
 import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
+import { GOOGLE_BUSINESS_EVENT_TOPIC_TYPES } from '@/lib/googleBusiness';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';
@@ -67,6 +68,27 @@ const PLATFORM_META_RULES: Record<string, MetaRule> = {
         valid: Boolean(meta.channel_id),
         tooltipKey: meta.channel_id ? null : 'posts.form.discord.channel_required',
     }),
+    // Mirrors PostPlatformMetaRules::requiredMetaViolation()'s Google Business
+    // arms, including their check order.
+    [Platform.GoogleBusiness]: (meta) => {
+        const needsEvent = GOOGLE_BUSINESS_EVENT_TOPIC_TYPES.includes(meta.topic_type ?? 'STANDARD');
+        const ctaActionType = meta.call_to_action?.action_type ?? 'NONE';
+        const ctaNeedsUrl = !['NONE', 'CALL'].includes(ctaActionType);
+        let tooltipKey: string | null = null;
+        if (needsEvent && !meta.event?.title) {
+            tooltipKey = 'posts.form.google_business.event_title_required';
+        } else if (needsEvent && !meta.event?.start_date) {
+            tooltipKey = 'posts.form.google_business.event_start_date_required';
+        } else if (needsEvent && !meta.event?.end_date) {
+            tooltipKey = 'posts.form.google_business.event_end_date_required';
+        } else if (ctaNeedsUrl && !meta.call_to_action?.url) {
+            tooltipKey = 'posts.form.google_business.cta_url_required';
+        }
+        return {
+            valid: tooltipKey === null,
+            tooltipKey,
+        };
+    },
 };
 
 /**

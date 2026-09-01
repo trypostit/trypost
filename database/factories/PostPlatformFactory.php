@@ -131,6 +131,14 @@ class PostPlatformFactory extends Factory
         ]);
     }
 
+    public function googleBusiness(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'platform' => Platform::GoogleBusiness,
+            'content_type' => ContentType::GoogleBusinessPost,
+        ]);
+    }
+
     public function pinterestVideoPin(): static
     {
         return $this->state(fn (array $attributes) => [

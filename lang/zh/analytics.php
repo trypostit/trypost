@@ -7,6 +7,11 @@ return [
     'select_account' => '选择一个账号以查看分析数据。',
     'no_data' => '暂无分析数据。',
 
+    'search_keywords' => [
+        'title' => '搜索词',
+        'estimated' => 'Google 不公开该搜索词的精确次数',
+    ],
+
     'metrics' => [
         'avg_view_duration' => '平均观看时长（秒）',
         'avg_view_percentage' => '平均观看比例',
@@ -51,5 +56,16 @@ return [
         'video_views' => '视频观看量',
         'videos' => '视频',
         'views' => '观看量',
+        'website_clicks' => '网站点击',
+        'call_clicks' => '通话点击',
+        'direction_requests' => '方向请求',
+        'desktop_map_impressions' => '桌面地图展示量',
+        'mobile_map_impressions' => '移动地图展示量',
+        'desktop_search_impressions' => '搜索展示次数（桌面端）',
+        'mobile_search_impressions' => '搜索展示次数（移动端）',
+        'conversations' => '对话数',
+        'bookings' => '预订数',
+        'food_orders' => '餐饮订单',
+        'food_menu_clicks' => '菜单点击',
     ],
 ];

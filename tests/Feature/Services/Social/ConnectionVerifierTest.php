@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\PlatformUnavailableException;
+use App\Exceptions\Social\GoogleBusinessPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\SocialAccount;
 use App\Services\Social\ConnectionVerifier;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 test('verifies account without refresh when token is not expired', function () {
     Http::fake([
@@ -1199,4 +1201,59 @@ test('mastodon verify throws TokenExpiredException on a bare 403 from verify_cre
         ->toThrow(TokenExpiredException::class);
 
     Http::assertSentCount(1);
+});
+
+test('verify calls the business information api with the short location name', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create();
+
+    Http::fake([
+        config('trypost.platforms.google_business.business_information_api').'/*' => Http::response(['name' => $account->meta['location_name']], 200),
+    ]);
+
+    expect(app(ConnectionVerifier::class)->verify($account))->toBeTrue();
+
+    $expectedUrl = config('trypost.platforms.google_business.business_information_api')."/{$account->meta['location_name']}";
+
+    Http::assertSent(fn ($request) => Str::before($request->url(), '?') === $expectedUrl);
+});
+
+test('verify throws an actionable exception when the google business location name is missing', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create([
+        'meta' => ['location_id' => 'accounts/123456789/locations/987654321'],
+    ]);
+
+    Http::fake();
+
+    expect(fn () => app(ConnectionVerifier::class)->verify($account))
+        ->toThrow(GoogleBusinessPublishException::class);
+
+    Http::assertNothingSent();
+});
+
+test('verify throws token expired for a dead google business token', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create();
+
+    Http::fake([
+        config('trypost.platforms.google_business.business_information_api').'/*' => Http::response(['error' => ['status' => 'UNAUTHENTICATED']], 401),
+        config('trypost.platforms.google_business.oauth_api').'/token' => Http::response(['error' => 'invalid_grant'], 400),
+    ]);
+
+    expect(fn () => app(ConnectionVerifier::class)->verify($account))->toThrow(TokenExpiredException::class);
+});
+
+test('refreshToken exchanges the refresh token for a new access token', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create([
+        'refresh_token' => 'refresh-abc',
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.google_business.oauth_api').'/token' => Http::response([
+            'access_token' => 'new-access-token',
+            'expires_in' => 3600,
+        ], 200),
+    ]);
+
+    app(ConnectionVerifier::class)->refreshToken($account);
+
+    expect($account->fresh()->access_token)->toBe('new-access-token');
 });

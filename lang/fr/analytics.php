@@ -7,6 +7,11 @@ return [
     'select_account' => 'Sélectionnez un compte pour voir les statistiques.',
     'no_data' => 'Aucune donnée statistique disponible.',
 
+    'search_keywords' => [
+        'title' => 'Termes de recherche',
+        'estimated' => 'Google ne communique pas le nombre exact pour ce terme',
+    ],
+
     'metrics' => [
         'avg_view_duration' => 'Durée de visionnage moy. (s)',
         'avg_view_percentage' => 'Pourcentage de visionnage moy.',
@@ -51,5 +56,16 @@ return [
         'video_views' => 'Vues de la vidéo',
         'videos' => 'Vidéos',
         'views' => 'Vues',
+        'website_clicks' => 'Clics sur le site web',
+        'call_clicks' => 'Clics d\'appel',
+        'direction_requests' => 'Demandes d\'itinéraire',
+        'desktop_map_impressions' => 'Impressions de carte sur ordinateur',
+        'mobile_map_impressions' => 'Impressions de carte sur mobile',
+        'desktop_search_impressions' => 'Impressions dans la recherche (ordinateur)',
+        'mobile_search_impressions' => 'Impressions dans la recherche (mobile)',
+        'conversations' => 'Conversations',
+        'bookings' => 'Réservations',
+        'food_orders' => 'Commandes de repas',
+        'food_menu_clicks' => 'Clics sur le menu',
     ],
 ];

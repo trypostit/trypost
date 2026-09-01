@@ -7,6 +7,11 @@ return [
     'select_account' => 'Επιλέξτε έναν λογαριασμό για να δείτε στατιστικά.',
     'no_data' => 'Δεν υπάρχουν διαθέσιμα στατιστικά δεδομένα.',
 
+    'search_keywords' => [
+        'title' => 'Όροι αναζήτησης',
+        'estimated' => 'Η Google αποκρύπτει τον ακριβή αριθμό για αυτόν τον όρο',
+    ],
+
     'metrics' => [
         'avg_view_duration' => 'Μέση διάρκεια προβολής (δευτ.)',
         'avg_view_percentage' => 'Μέσο ποσοστό προβολής',
@@ -51,5 +56,16 @@ return [
         'video_views' => 'Προβολές βίντεο',
         'videos' => 'Βίντεο',
         'views' => 'Προβολές',
+        'website_clicks' => 'Κλικ ιστοσελίδας',
+        'call_clicks' => 'Κλικ κλήσης',
+        'direction_requests' => 'Αιτήματα κατεύθυνσης',
+        'desktop_map_impressions' => 'Εμφανίσεις χάρτη σε υπολογιστή',
+        'mobile_map_impressions' => 'Εμφανίσεις χάρτη σε κινητό',
+        'desktop_search_impressions' => 'Εμφανίσεις στην Αναζήτηση (υπολογιστή)',
+        'mobile_search_impressions' => 'Εμφανίσεις στην Αναζήτηση (κινητό)',
+        'conversations' => 'Συνομιλίες',
+        'bookings' => 'Κρατήσεις',
+        'food_orders' => 'Παραγγελίες φαγητού',
+        'food_menu_clicks' => 'Κλικ στο μενού',
     ],
 ];

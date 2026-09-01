@@ -13,6 +13,7 @@ const PLATFORM_LOGOS: Record<string, string> = {
     mastodon: '/images/accounts/mastodon.png',
     telegram: '/images/accounts/telegram.png',
     discord: '/images/accounts/discord.png',
+    google_business: '/images/accounts/google_business.png',
 };
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -30,6 +31,7 @@ const PLATFORM_LABELS: Record<string, string> = {
     mastodon: 'Mastodon',
     telegram: 'Telegram',
     discord: 'Discord',
+    google_business: 'Google Business Profile',
 };
 
 const PLATFORM_CONTENT_TYPES: Record<string, string[]> = {
@@ -51,6 +53,7 @@ const PLATFORM_CONTENT_TYPES: Record<string, string[]> = {
     mastodon: ['mastodon_post'],
     telegram: ['telegram_post'],
     discord: ['discord_message'],
+    google_business: ['google_business_post'],
 };
 
 export interface ContentTypeOption {
@@ -73,6 +76,7 @@ const PLATFORM_THEMES: Record<string, { bg: string; rotate: string }> = {
     mastodon: { bg: 'bg-violet-200', rotate: 'rotate-1' },
     telegram: { bg: 'bg-sky-200', rotate: '-rotate-2' },
     discord: { bg: 'bg-indigo-200', rotate: 'rotate-1' },
+    google_business: { bg: 'bg-blue-100', rotate: 'rotate-2' },
 };
 
 export const getPlatformLogo = (platform: string): string =>
