@@ -20,14 +20,16 @@ class TikTokController extends SocialController
 
     protected SocialPlatform $platform = SocialPlatform::TikTok;
 
-    protected array $scopes = [
-        'user.info.basic',
-        'user.info.profile',
-        'user.info.stats',
-        'video.publish',
-        'video.upload',
-        'video.list',
-    ];
+    /**
+     * Requested scopes come from config so self-hosters whose TikTok app lacks
+     * a product (Display API is no longer offered to new apps, taking
+     * user.info.profile/stats and video.list with it) can trim the list via
+     * TIKTOK_SCOPES instead of hitting a "scope" error on the consent screen.
+     */
+    private function scopes(): array
+    {
+        return (array) config('trypost.platforms.tiktok.scopes');
+    }
 
     public function connect(Request $request): Response
     {
@@ -37,7 +39,7 @@ class TikTokController extends SocialController
 
         $this->authorize('manageAccounts', $workspace);
 
-        return $this->redirectToProvider($request, $this->driver, $this->scopes);
+        return $this->redirectToProvider($request, $this->driver, $this->scopes());
     }
 
     public function callback(Request $request): InertiaResponse
@@ -46,7 +48,7 @@ class TikTokController extends SocialController
 
         try {
             $socialUser = Socialite::driver($this->driver)
-                ->scopes($this->scopes)
+                ->scopes($this->scopes())
                 ->user();
 
             // TikTok returns username via getNickname() when user.info.profile scope is included
