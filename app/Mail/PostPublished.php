@@ -36,7 +36,7 @@ class PostPublished extends Mailable implements ShouldQueue
             ->get()
             ->filter(fn ($pp) => $pp->status === Status::Published)
             ->map(fn ($pp) => [
-                'name' => $pp->socialAccount?->labeledHandle() ?? $pp->platform->label(),
+                'name' => $pp->notificationLabel(),
                 'url' => $pp->platform_url,
             ])
             ->values()
