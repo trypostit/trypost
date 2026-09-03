@@ -80,11 +80,24 @@ class WebhookController extends Controller
         return redirect()->route('app.webhooks.show', $webhook);
     }
 
-    public function update(UpdateWebhookRequest $request, Webhook $webhook): RedirectResponse
+    public function update(UpdateWebhookRequest $request, Webhook $webhook, WebhookService $webhookService): RedirectResponse
     {
         $this->authorize('update', $webhook);
 
         $validated = $request->validated();
+
+        if (
+            isset($validated['endpoint'])
+            && $validated['endpoint'] !== $webhook->endpoint
+        ) {
+            try {
+                $webhookService->ping($validated['endpoint']);
+            } catch (RuntimeException $e) {
+                return back()->withErrors([
+                    'endpoint' => $e->getMessage(),
+                ]);
+            }
+        }
 
         if (
             isset($validated['status'])
@@ -125,6 +138,7 @@ class WebhookController extends Controller
             $webhook,
             $webhookLog->event_type,
             data_get($webhookLog->payload, 'data', $webhookLog->payload) ?? [],
+            force: true,
         );
 
         session()->flash('flash.banner', __('webhooks.flash.replayed'));

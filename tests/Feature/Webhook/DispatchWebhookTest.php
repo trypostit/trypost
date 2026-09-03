@@ -121,6 +121,10 @@ test('dispatch webhook job creates log and delivers successfully', function () {
     expect($log->delivered_at)->not->toBeNull();
     expect($log->failed_at)->toBeNull();
     expect($log->attempts)->toBe(1);
+
+    $this->webhook->refresh();
+
+    expect($this->webhook->last_sent_at)->not->toBeNull();
 });
 
 test('dispatch webhook job sends correct signature header', function () {
@@ -209,6 +213,10 @@ test('dispatch webhook job marks log as failed on http error', function () {
     expect($log->delivered_at)->toBeNull();
     expect($log->response_status)->toBe(500);
     expect($log->response_body)->toBe('Server Error');
+
+    $this->webhook->refresh();
+
+    expect($this->webhook->last_sent_at)->toBeNull();
 });
 
 test('dispatch webhook job marks log as failed on connection error', function () {
@@ -233,6 +241,10 @@ test('dispatch webhook job marks log as failed on connection error', function ()
     $log = WebhookLog::query()->where('webhook_id', $this->webhook->id)->first();
 
     expect($log->failed_at)->not->toBeNull();
+
+    $this->webhook->refresh();
+
+    expect($this->webhook->last_sent_at)->toBeNull();
 });
 
 test('dispatch webhook job rejects private endpoints', function () {
@@ -254,6 +266,81 @@ test('dispatch webhook job rejects private endpoints', function () {
 
     expect($log->failed_at)->not->toBeNull();
     expect($log->delivered_at)->toBeNull();
+
+    $this->webhook->refresh();
+
+    expect($this->webhook->last_sent_at)->toBeNull();
+});
+
+test('dispatch webhook job skips delivery when the webhook is not enabled', function (Status $status) {
+    Http::fake([
+        'example.com/webhook' => Http::response('OK', 200),
+    ]);
+
+    $this->webhook->update([
+        'status' => $status,
+        'consecutive_failures' => $status === Status::Paused ? 5 : 0,
+        'paused_at' => $status === Status::Paused ? now() : null,
+    ]);
+
+    $job = new DispatchWebhook(
+        $this->webhook,
+        WebhookEvent::PostPublished->value,
+        ['id' => 'test-123'],
+    );
+
+    app()->call([$job, 'handle']);
+
+    Http::assertNothingSent();
+    expect(WebhookLog::query()->where('webhook_id', $this->webhook->id)->count())->toBe(0);
+
+    $this->webhook->refresh();
+
+    expect($this->webhook->last_sent_at)->toBeNull();
+})->with([
+    Status::Disabled,
+    Status::Paused,
+]);
+
+test('dispatch webhook job delivers a forced replay when the webhook is not enabled', function () {
+    Http::fake([
+        'example.com/webhook' => Http::response('OK', 200),
+    ]);
+
+    $this->webhook->update(['status' => Status::Disabled]);
+
+    $job = new DispatchWebhook(
+        $this->webhook,
+        WebhookEvent::PostPublished->value,
+        ['id' => 'test-123'],
+        force: true,
+    );
+
+    app()->call([$job, 'handle']);
+
+    Http::assertSentCount(1);
+    expect(WebhookLog::query()->where('webhook_id', $this->webhook->id)->first()?->delivered_at)
+        ->not->toBeNull();
+});
+
+test('successful delivery resets consecutive failures', function () {
+    Http::fake([
+        'example.com/webhook' => Http::response('OK', 200),
+    ]);
+
+    $this->webhook->update(['consecutive_failures' => 3]);
+
+    $job = new DispatchWebhook(
+        $this->webhook,
+        WebhookEvent::PostPublished->value,
+        ['id' => 'test-123'],
+    );
+
+    app()->call([$job, 'handle']);
+
+    $this->webhook->refresh();
+
+    expect($this->webhook->consecutive_failures)->toBe(0);
 });
 
 test('webhook service dispatches to multiple webhooks for same workspace', function () {

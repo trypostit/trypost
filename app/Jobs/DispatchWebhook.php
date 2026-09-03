@@ -42,6 +42,7 @@ class DispatchWebhook implements ShouldQueue
         public string $eventType,
         public array $payload,
         public ?string $logId = null,
+        public bool $force = false,
     ) {
         $this->onQueue('webhooks');
         $this->logId ??= (string) Str::uuid();
@@ -49,6 +50,12 @@ class DispatchWebhook implements ShouldQueue
 
     public function handle(SafeHttpFetcher $safeHttp): void
     {
+        $this->webhook->refresh();
+
+        if (! $this->force && $this->webhook->status !== Status::Enabled) {
+            return;
+        }
+
         $body = [
             'type' => $this->eventType,
             'data' => $this->payload,
@@ -77,8 +84,6 @@ class DispatchWebhook implements ShouldQueue
             $log->id = $this->logId;
             $log->save();
         }
-
-        $this->webhook->update(['last_sent_at' => now()]);
 
         try {
             $safeHttp->guardAgainstSsrf($this->webhook->endpoint);
@@ -113,6 +118,7 @@ class DispatchWebhook implements ShouldQueue
                     'delivered_at' => now(),
                 ]);
 
+                $this->webhook->update(['last_sent_at' => now()]);
                 $this->webhook->resetConsecutiveFailures();
 
                 $log->refresh();

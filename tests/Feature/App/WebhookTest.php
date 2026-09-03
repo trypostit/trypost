@@ -177,6 +177,65 @@ test('authenticated users can update a webhook endpoint', function () {
     ]);
 });
 
+test('updating a webhook endpoint pings the new url', function () {
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'endpoint' => 'https://old.example.com/hook',
+    ]);
+
+    $mock = Mockery::mock(WebhookService::class);
+    $mock->shouldReceive('ping')->once()->with('https://updated.com/hook');
+    $this->app->instance(WebhookService::class, $mock);
+
+    $this->actingAs($this->user)
+        ->put(route('app.webhooks.update', $webhook), [
+            'endpoint' => 'https://updated.com/hook',
+        ])
+        ->assertRedirect();
+});
+
+test('updating a webhook endpoint fails when ping throws exception', function () {
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'endpoint' => 'https://old.example.com/hook',
+    ]);
+
+    $failingMock = Mockery::mock(WebhookService::class);
+    $failingMock->shouldReceive('ping')->andThrow(new RuntimeException('Connection refused'));
+    $this->app->instance(WebhookService::class, $failingMock);
+
+    $this->actingAs($this->user)
+        ->put(route('app.webhooks.update', $webhook), [
+            'endpoint' => 'https://unreachable.example.com/webhooks',
+        ])
+        ->assertRedirect()
+        ->assertSessionHasErrors('endpoint');
+
+    $webhook->refresh();
+
+    expect($webhook->endpoint)->toBe('https://old.example.com/hook');
+});
+
+test('updating webhook status does not ping the endpoint', function () {
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $mock = Mockery::mock(WebhookService::class);
+    $mock->shouldReceive('ping')->never();
+    $this->app->instance(WebhookService::class, $mock);
+
+    $this->actingAs($this->user)
+        ->put(route('app.webhooks.update', $webhook), [
+            'status' => 'disabled',
+        ])
+        ->assertRedirect();
+
+    $webhook->refresh();
+
+    expect($webhook->status->value)->toBe('disabled');
+});
+
 test('authenticated users can update webhook events', function () {
     $webhook = Webhook::factory()->create([
         'workspace_id' => $this->workspace->id,

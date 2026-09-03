@@ -39,7 +39,8 @@ test('authenticated users can replay a webhook log', function () {
     Queue::assertPushed(DispatchWebhook::class, function (DispatchWebhook $job) use ($webhook) {
         return $job->webhook->id === $webhook->id
             && $job->eventType === EventType::PostPublished->value
-            && data_get($job->payload, 'id') === 'post-1';
+            && data_get($job->payload, 'id') === 'post-1'
+            && $job->force;
     });
 });
 
