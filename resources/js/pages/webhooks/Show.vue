@@ -302,7 +302,7 @@ const replayLog = (log: WebhookLogItem) => {
                             @click="
                                 confirmDeleteModal?.open({
                                     url: destroy.url(props.webhook),
-                                    confirmText: webhook.endpoint,
+                                    confirmText: trans('common.confirm_modal.delete_keyword'),
                                 })
                             "
                         >

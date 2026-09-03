@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
-import { IconCopy, IconDots, IconEye, IconTrash, IconWebhook } from '@tabler/icons-vue';
+import { Head, router } from '@inertiajs/vue3';
+import { IconEye, IconTrash, IconWebhook } from '@tabler/icons-vue';
 import { trans, transChoice } from 'laravel-vue-i18n';
 import { ref } from 'vue';
 
@@ -9,13 +9,6 @@ import EmptyState from '@/components/EmptyState.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
     Table,
     TableBody,
@@ -27,7 +20,6 @@ import {
 import CreateWebhookDialog from '@/components/webhook/CreateWebhookDialog.vue';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { copyToClipboard } from '@/lib/utils';
 import { destroy, show } from '@/routes/app/webhooks';
 
 interface WebhookItem {
@@ -45,7 +37,28 @@ defineProps<{
 const createDialogOpen = ref(false);
 const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
-const statusVariant = (status: string) => (status === 'enabled' ? 'default' : 'secondary');
+const statusVariant = (status: string): 'default' | 'secondary' | 'warning' => {
+    if (status === 'enabled') {
+        return 'default';
+    }
+
+    if (status === 'paused') {
+        return 'warning';
+    }
+
+    return 'secondary';
+};
+
+const openWebhook = (webhook: WebhookItem) => {
+    router.visit(show.url(webhook));
+};
+
+const handleDelete = (webhook: WebhookItem) => {
+    confirmDeleteModal.value?.open({
+        url: destroy.url(webhook),
+        confirmText: trans('common.confirm_modal.delete_keyword'),
+    });
+};
 </script>
 
 <template>
@@ -53,22 +66,25 @@ const statusVariant = (status: string) => (status === 'enabled' ? 'default' : 's
 
     <AppLayout>
         <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
-            <div class="flex items-center justify-between gap-4">
-                <PageHeader
-                    :title="$t('webhooks.title')"
-                    :description="$t('webhooks.description')"
-                    :total="webhooks.length"
-                />
+            <PageHeader
+                :title="$t('webhooks.title')"
+                :description="$t('webhooks.description')"
+            />
 
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
                 <Button data-testid="create-webhook-button" @click="createDialogOpen = true">
                     {{ $t('webhooks.new') }}
                 </Button>
             </div>
 
-            <div
-                v-if="webhooks.length > 0"
-                class="overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-2xs"
-            >
+            <EmptyState
+                v-if="webhooks.length === 0"
+                :icon="IconWebhook"
+                :title="$t('webhooks.empty_title')"
+                :description="$t('webhooks.empty_description')"
+            />
+
+            <div v-else>
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -76,98 +92,67 @@ const statusVariant = (status: string) => (status === 'enabled' ? 'default' : 's
                             <TableHead>{{ $t('webhooks.table.events') }}</TableHead>
                             <TableHead>{{ $t('webhooks.table.status') }}</TableHead>
                             <TableHead>{{ $t('webhooks.table.last_sent') }}</TableHead>
-                            <TableHead class="w-10" />
+                            <TableHead class="text-right" />
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow v-for="webhook in webhooks" :key="webhook.id">
-                            <TableCell class="font-medium">
-                                <Link :href="show.url(webhook)" class="hover:underline">
-                                    {{ webhook.endpoint }}
-                                </Link>
+                        <TableRow
+                            v-for="webhook in webhooks"
+                            :key="webhook.id"
+                            class="cursor-pointer"
+                            @click="openWebhook(webhook)"
+                        >
+                            <TableCell class="max-w-[160px] font-medium sm:max-w-md">
+                                <p class="truncate">{{ webhook.endpoint }}</p>
                             </TableCell>
                             <TableCell>
-                                <span class="text-sm text-muted-foreground">
-                                    {{
-                                        transChoice(
-                                            'webhooks.events_count',
-                                            webhook.events.length,
-                                            { count: String(webhook.events.length) },
-                                        )
-                                    }}
-                                </span>
+                                {{
+                                    transChoice(
+                                        'webhooks.events_count',
+                                        webhook.events.length,
+                                        { count: String(webhook.events.length) },
+                                    )
+                                }}
                             </TableCell>
                             <TableCell>
                                 <Badge :variant="statusVariant(webhook.status)">
                                     {{ $t(`webhooks.status.${webhook.status}`) }}
                                 </Badge>
                             </TableCell>
-                            <TableCell class="text-muted-foreground">
+                            <TableCell>
                                 <span v-if="webhook.last_sent_at">{{
                                     date.diffForHumans(webhook.last_sent_at)
                                 }}</span>
                                 <span v-else>{{ $t('webhooks.never') }}</span>
                             </TableCell>
-                            <TableCell>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger as-child>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            class="h-8 w-8"
-                                            data-testid="row-actions-trigger"
-                                        >
-                                            <IconDots class="size-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem as-child>
-                                            <Link :href="show.url(webhook)">
-                                                <IconEye class="size-4" />
-                                                {{ $t('webhooks.actions.view') }}
-                                            </Link>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                            data-testid="copy-id-button"
-                                            @click="
-                                                copyToClipboard(
-                                                    webhook.id,
-                                                    trans('webhooks.copied.id'),
-                                                )
-                                            "
-                                        >
-                                            <IconCopy class="size-4" />
-                                            {{ $t('webhooks.actions.copy_id') }}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                            variant="destructive"
-                                            data-testid="delete-webhook-button"
-                                            @click="
-                                                confirmDeleteModal?.open({
-                                                    url: destroy.url(webhook),
-                                                    confirmText: webhook.endpoint,
-                                                })
-                                            "
-                                        >
-                                            <IconTrash class="size-4" />
-                                            {{ $t('webhooks.actions.delete') }}
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                            <TableCell class="text-right" @click.stop>
+                                <div class="flex justify-end gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        class="size-8"
+                                        :aria-label="$t('webhooks.actions.view')"
+                                        data-testid="row-actions-trigger"
+                                        @click="openWebhook(webhook)"
+                                    >
+                                        <IconEye class="size-4" />
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        class="size-8 bg-rose-100 hover:bg-rose-200"
+                                        :aria-label="$t('webhooks.actions.delete')"
+                                        data-testid="delete-webhook-button"
+                                        @click="handleDelete(webhook)"
+                                    >
+                                        <IconTrash class="size-4 text-rose-700" />
+                                    </Button>
+                                </div>
                             </TableCell>
                         </TableRow>
                     </TableBody>
                 </Table>
             </div>
-
-            <EmptyState
-                v-else
-                :icon="IconWebhook"
-                :title="$t('webhooks.empty_title')"
-                :description="$t('webhooks.empty_description')"
-            />
 
             <CreateWebhookDialog v-model:open="createDialogOpen" />
             <ConfirmDeleteModal
