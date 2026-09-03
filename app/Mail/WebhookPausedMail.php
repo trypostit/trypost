@@ -33,6 +33,7 @@ class WebhookPausedMail extends Mailable implements ShouldQueue
                 'title' => __('webhooks.mail.paused_title'),
                 'previewText' => __('webhooks.mail.paused_preview'),
                 'body' => __('webhooks.mail.paused_body', ['endpoint' => $this->webhook->endpoint]),
+                'buttonText' => __('webhooks.mail.paused_cta'),
                 'url' => route('app.webhooks.show', $this->webhook),
             ],
         );
