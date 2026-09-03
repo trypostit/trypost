@@ -15,18 +15,9 @@ class PruneWebhookLogs extends Command
 {
     public function handle(): int
     {
-        $total = 0;
-
-        do {
-            $deleted = WebhookLog::query()
-                ->where('created_at', '<', now()->subDays(7))
-                ->limit(1000)
-                ->delete();
-
-            $total += $deleted;
-        } while ($deleted > 0);
-
-        $this->info("Pruned {$total} webhook logs.");
+        WebhookLog::query()
+            ->where('created_at', '<', now()->subDays(7))
+            ->delete();
 
         return self::SUCCESS;
     }

@@ -24,8 +24,8 @@ class UpdateWebhookRequest extends FormRequest
         return [
             'endpoint' => ['sometimes', 'url', 'max:255'],
             'events' => ['sometimes', 'array', 'min:1'],
-            'events.*' => ['string', Rule::in(array_column(EventType::cases(), 'value'))],
-            'status' => ['sometimes', 'string', Rule::in([Status::Enabled->value, Status::Disabled->value])],
+            'events.*' => ['string', Rule::enum(EventType::class)],
+            'status' => ['sometimes', 'string', Rule::enum(Status::class)->only([Status::Enabled, Status::Disabled])],
         ];
     }
 }

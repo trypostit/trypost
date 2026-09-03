@@ -23,7 +23,7 @@ class StoreWebhookRequest extends FormRequest
         return [
             'endpoint' => ['required', 'url', 'max:255'],
             'events' => ['required', 'array', 'min:1'],
-            'events.*' => ['string', Rule::in(array_column(EventType::cases(), 'value'))],
+            'events.*' => ['string', Rule::enum(EventType::class)],
         ];
     }
 }

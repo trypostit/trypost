@@ -21,13 +21,9 @@ use RuntimeException;
 
 class WebhookController extends Controller
 {
-    public function index(Request $request): Response|RedirectResponse
+    public function index(Request $request): Response
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('createPost', $workspace);
 
@@ -42,14 +38,8 @@ class WebhookController extends Controller
         ]);
     }
 
-    public function show(Request $request, Webhook $webhook): Response|RedirectResponse
+    public function show(Webhook $webhook): Response
     {
-        $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
-
         $this->authorize('view', $webhook);
 
         return Inertia::render('webhooks/Show', [
@@ -64,10 +54,6 @@ class WebhookController extends Controller
     public function store(StoreWebhookRequest $request, WebhookService $webhookService): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('create', Webhook::class);
 
