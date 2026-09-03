@@ -11,6 +11,6 @@ class WebhookLogChannel
 {
     public function join(User $user, Webhook $webhook): bool
     {
-        return $webhook->workspace?->hasMember($user) ?? false;
+        return $user->can('view', $webhook);
     }
 }

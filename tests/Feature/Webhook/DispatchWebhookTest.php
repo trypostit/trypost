@@ -309,10 +309,8 @@ test('dispatch webhook job reuses existing log on retry', function () {
         $this->webhook,
         WebhookEvent::PostPublished->value,
         ['id' => 'test-123'],
+        $log->id,
     );
-
-    $reflection = new ReflectionProperty($job, 'logId');
-    $reflection->setValue($job, $log->id);
 
     app()->call([$job, 'handle']);
 
@@ -322,6 +320,35 @@ test('dispatch webhook job reuses existing log on retry', function () {
     expect($log->failed_at)->toBeNull();
     expect($log->response_status)->toBe(200);
     expect(WebhookLog::query()->where('webhook_id', $this->webhook->id)->count())->toBe(1);
+});
+
+test('dispatch webhook job keeps the same log after serialize retry', function () {
+    Http::fake([
+        'example.com/webhook' => Http::sequence()
+            ->push('Server Error', 500)
+            ->push('OK', 200),
+    ]);
+
+    $job = new DispatchWebhook(
+        $this->webhook,
+        WebhookEvent::PostPublished->value,
+        ['id' => 'test-123'],
+    );
+
+    try {
+        app()->call([$job, 'handle']);
+    } catch (RuntimeException) {
+    }
+
+    expect(WebhookLog::query()->where('webhook_id', $this->webhook->id)->count())->toBe(1);
+
+    $retried = unserialize(serialize($job));
+
+    app()->call([$retried, 'handle']);
+
+    expect(WebhookLog::query()->where('webhook_id', $this->webhook->id)->count())->toBe(1);
+    expect(WebhookLog::query()->where('webhook_id', $this->webhook->id)->first()?->delivered_at)
+        ->not->toBeNull();
 });
 
 test('dispatch webhook failed method increments consecutive failures', function () {

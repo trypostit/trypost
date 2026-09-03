@@ -165,16 +165,65 @@ const toggleStatus = () => {
     );
 };
 
+const liveFields = (
+    log: WebhookLogItem,
+): Pick<
+    WebhookLogItem,
+    'response_status' | 'response_body' | 'delivered_at' | 'failed_at' | 'attempts'
+> => ({
+    response_status: log.response_status,
+    response_body: log.response_body,
+    delivered_at: log.delivered_at,
+    failed_at: log.failed_at,
+    attempts: log.attempts,
+});
+
+const mergeIncomingLog = (
+    incoming: WebhookLogItem,
+    local: WebhookLogItem | undefined,
+): WebhookLogItem => {
+    if (!local) {
+        return incoming;
+    }
+
+    const incomingDelivered = Boolean(incoming.delivered_at);
+    const localDelivered = Boolean(local.delivered_at);
+    const incomingFailed = Boolean(incoming.failed_at);
+    const localFailed = Boolean(local.failed_at);
+
+    if (incomingDelivered && !localDelivered) {
+        return incoming;
+    }
+
+    if (
+        (localDelivered && !incomingDelivered)
+        || local.attempts > incoming.attempts
+        || (localFailed && !incomingFailed && !incomingDelivered)
+    ) {
+        return { ...incoming, ...liveFields(local) };
+    }
+
+    return incoming;
+};
+
 watch(
     () => props.logs.data,
     (incoming) => {
+        const localById = new Map(liveLogs.value.map((log) => [log.id, log]));
         const incomingIds = new Set(incoming.map((log) => log.id));
+        const merged = incoming.map((log) => mergeIncomingLog(log, localById.get(log.id)));
         const echoOnly = liveLogs.value.filter((log) => !incomingIds.has(log.id));
-        liveLogs.value = [...echoOnly, ...incoming];
+
+        liveLogs.value = [...echoOnly, ...merged];
 
         if (!selectedLog.value || !liveLogs.value.some((log) => log.id === selectedLog.value!.id)) {
             selectedLog.value = liveLogs.value[0] ?? null;
+
+            return;
         }
+
+        selectedLog.value =
+            liveLogs.value.find((log) => log.id === selectedLog.value!.id) ?? selectedLog.value;
     },
 );
 

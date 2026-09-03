@@ -64,7 +64,17 @@ class ProcessAutomationNode implements ShouldQueue
             return;
         }
 
-        $nodeType = NodeType::from($node['type']);
+        $nodeType = NodeType::tryFrom((string) data_get($node, 'type', ''));
+
+        if ($nodeType === null) {
+            $this->run->update([
+                'status' => RunStatus::Failed,
+                'error' => ['message' => __('automations.errors.node_no_longer_exists', ['node_id' => $this->nodeId])],
+                'finished_at' => now(),
+            ]);
+
+            return;
+        }
 
         $this->run->update([
             'status' => RunStatus::Running,

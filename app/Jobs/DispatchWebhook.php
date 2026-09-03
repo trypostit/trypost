@@ -18,6 +18,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
@@ -33,8 +34,6 @@ class DispatchWebhook implements ShouldQueue
 
     public int $backoff = 60;
 
-    protected ?string $logId = null;
-
     /**
      * @param  array<string, mixed>  $payload
      */
@@ -42,8 +41,10 @@ class DispatchWebhook implements ShouldQueue
         public Webhook $webhook,
         public string $eventType,
         public array $payload,
+        public ?string $logId = null,
     ) {
         $this->onQueue('webhooks');
+        $this->logId ??= (string) Str::uuid();
     }
 
     public function handle(SafeHttpFetcher $safeHttp): void
@@ -56,9 +57,7 @@ class DispatchWebhook implements ShouldQueue
 
         $signature = hash_hmac('sha256', json_encode($body), $this->webhook->signing_secret);
 
-        $log = $this->logId
-            ? WebhookLog::query()->find($this->logId)
-            : null;
+        $log = WebhookLog::query()->find($this->logId);
 
         if ($log) {
             $log->update([
@@ -69,13 +68,14 @@ class DispatchWebhook implements ShouldQueue
                 'delivered_at' => null,
             ]);
         } else {
-            $log = WebhookLog::query()->create([
+            $log = new WebhookLog([
                 'webhook_id' => $this->webhook->id,
                 'event_type' => $this->eventType,
                 'payload' => $body,
                 'attempts' => $this->attempts(),
             ]);
-            $this->logId = $log->id;
+            $log->id = $this->logId;
+            $log->save();
         }
 
         $this->webhook->update(['last_sent_at' => now()]);
