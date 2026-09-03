@@ -215,3 +215,45 @@ test('markAsDisconnected creates notification row with i18n placeholders substit
     Event::assertDispatched(NotificationCreated::class);
     Mail::assertQueued(AccountDisconnected::class);
 });
+
+// ---- labeledHandle ----
+
+test('labeledHandle prefers username over display name', function () {
+    $account = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => 'myfbpage',
+        'display_name' => 'InboxPlacement.io',
+    ]);
+
+    expect($account->labeledHandle())->toBe('Facebook Page (@myfbpage)');
+});
+
+test('labeledHandle falls back to display name when username is empty', function () {
+    $account = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => null,
+        'display_name' => 'InboxPlacement.io',
+    ]);
+
+    expect($account->labeledHandle())->toBe('Facebook Page (@InboxPlacement.io)');
+});
+
+test('labeledHandle uses username when display name is empty', function () {
+    $account = SocialAccount::factory()->bluesky()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => 'inboxplacementio.bsky.social',
+        'display_name' => '',
+    ]);
+
+    expect($account->labeledHandle())->toBe('Bluesky (@inboxplacementio.bsky.social)');
+});
+
+test('labeledHandle omits empty parentheses when both identifiers are missing', function () {
+    $account = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => null,
+        'display_name' => '',
+    ]);
+
+    expect($account->labeledHandle())->toBe('Facebook Page');
+});

@@ -36,7 +36,7 @@ class PostPublishFailed extends Mailable implements ShouldQueue
             ->get()
             ->filter(fn ($pp) => $pp->status === Status::Failed)
             ->map(fn ($pp) => [
-                'name' => $pp->platform->label().' (@'.data_get($pp, 'socialAccount.username', data_get($pp, 'socialAccount.display_name', '')).')',
+                'name' => $pp->socialAccount?->labeledHandle() ?? $pp->platform->label(),
                 'error' => $pp->error_message,
             ])
             ->values()

@@ -302,6 +302,22 @@ class SocialAccount extends Model
     }
 
     /**
+     * "Facebook Page (@handle)" for email and in-app notification lines.
+     * Username wins, then display name. When neither is set, just the
+     * platform label — never an empty "(@)".
+     */
+    public function labeledHandle(): string
+    {
+        $identifier = $this->username ?: $this->display_name;
+
+        if (! filled($identifier)) {
+            return $this->platform->label();
+        }
+
+        return "{$this->platform->label()} (@{$identifier})";
+    }
+
+    /**
      * Friendly label for email templates — the display name wins over the
      * username when both are set.
      */
