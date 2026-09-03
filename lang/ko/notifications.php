@@ -7,6 +7,11 @@ return [
         'title' => '게시물이 준비되었습니다',
         'body' => 'AI 작업이 방금 완료되었습니다. 탭하여 검토하고 게시하세요.',
     ],
+
+    'post_manual_publish_due' => [
+        'title' => '수동 게시할 게시물이 있습니다',
+        'body' => '이 게시물은 게시할 때입니다 — 앱에서 게시하세요: “:caption”',
+    ],
     'account_disconnected' => [
         'title' => ':platform 계정 연결 해제됨',
         'body' => ':account을(를) 재연결해야 합니다',

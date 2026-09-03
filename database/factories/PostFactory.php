@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Enums\Post\PublishMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
 use App\Models\User;
@@ -28,7 +29,15 @@ class PostFactory extends Factory
             'content' => '',
             'media' => [],
             'status' => PostStatus::Draft,
+            'publish_mode' => PublishMode::Auto,
         ];
+    }
+
+    public function manual(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'publish_mode' => PublishMode::Manual,
+        ]);
     }
 
     public function draft(): static

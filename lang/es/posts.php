@@ -5,6 +5,15 @@ return [
     'search' => 'Buscar posts...',
     'all_posts' => 'Todos los posts',
     'new_post' => 'Nuevo post',
+
+    'publish_mode' => [
+        'auto' => 'Publicar automáticamente',
+        'auto_hint' => 'TryPost publica esta publicación automáticamente a la hora programada.',
+        'manual' => 'Avisarme para publicar manualmente',
+        'manual_hint' => 'TryPost te avisa cuando toca — la publicas tú.',
+        'schedule_hint' => 'Modo de publicación',
+        'manual_notice' => 'Recibirás un aviso cuando toque y la publicarás desde la app.',
+    ],
     'no_posts' => 'No se encontraron posts',
     'no_search_results' => 'Ningún post coincide con tu búsqueda',
     'try_different_search' => 'Prueba otra palabra clave o limpia la búsqueda.',

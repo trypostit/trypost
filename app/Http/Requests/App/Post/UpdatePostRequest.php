@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\App\Post;
 
+use App\Enums\Post\PublishMode;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
@@ -36,6 +37,7 @@ class UpdatePostRequest extends FormRequest
 
         return [
             'status' => ['required', 'string', Rule::in([Status::Draft->value, Status::Scheduled->value, Status::Publishing->value])],
+            'publish_mode' => ['sometimes', 'string', Rule::in(array_column(PublishMode::cases(), 'value'))],
             'content' => [
                 'nullable',
                 'string',

@@ -5,6 +5,15 @@ return [
     'search' => '搜索帖子…',
     'all_posts' => '所有帖子',
     'new_post' => '新建帖子',
+
+    'publish_mode' => [
+        'auto' => '自动发布',
+        'auto_hint' => 'TryPost 会在预定时间自动发布此帖子。',
+        'manual' => '通知我手动发布',
+        'manual_hint' => 'TryPost 会在到期时提醒您 — 由您自己发布。',
+        'schedule_hint' => '发布模式',
+        'manual_notice' => '到期时会收到通知，并可从应用中自己发布。',
+    ],
     'no_posts' => '未找到帖子',
     'no_search_results' => '没有与搜索匹配的帖子',
     'try_different_search' => '换一个关键词，或清除搜索。',

@@ -43,7 +43,7 @@ test('list posts returns wrapped posts array with PostResource shape', function 
     $response->assertOk()
         ->assertStructuredContent(function (AssertableJson $json) {
             $json->has('posts', 3, function (AssertableJson $post) {
-                $post->hasAll(['id', 'content', 'media', 'status', 'scheduled_at', 'published_at', 'platforms', 'labels', 'created_at', 'updated_at'])
+                $post->hasAll(['id', 'content', 'media', 'status', 'publish_mode', 'scheduled_at', 'published_at', 'platforms', 'labels', 'created_at', 'updated_at'])
                     ->missing('user_id')
                     ->missing('workspace_id');
             });

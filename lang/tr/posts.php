@@ -7,6 +7,15 @@ return [
     'search' => 'Gönderi ara...',
     'all_posts' => 'Tüm Gönderiler',
     'new_post' => 'Yeni Gönderi',
+
+    'publish_mode' => [
+        'auto' => 'Otomatik yayınla',
+        'auto_hint' => 'TryPost bu gönderiyi planlanan saatte otomatik olarak yayınlar.',
+        'manual' => 'Manuel yayınlamam için bana bildir',
+        'manual_hint' => 'TryPost zamanı geldiğinde hatırlatır — siz yayınlarsınız.',
+        'schedule_hint' => 'Yayın modu',
+        'manual_notice' => 'Zamanı geldiğinde bildirim alır ve uygulamadan yayınlarsınız.',
+    ],
     'no_posts' => 'Gönderi bulunamadı',
     'no_search_results' => 'Aramanızla eşleşen gönderi yok',
     'try_different_search' => 'Farklı bir anahtar kelime deneyin veya aramayı temizleyin.',

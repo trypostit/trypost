@@ -5,6 +5,15 @@ return [
     'search' => 'Cerca post...',
     'all_posts' => 'Tutti i post',
     'new_post' => 'Nuovo post',
+
+    'publish_mode' => [
+        'auto' => 'Pubblicazione automatica',
+        'auto_hint' => 'TryPost pubblica automaticamente questo post all’orario programmato.',
+        'manual' => 'Avvisami per pubblicare manualmente',
+        'manual_hint' => 'TryPost ti avvisa quando è il momento — pubblichi tu.',
+        'schedule_hint' => 'Modalità di pubblicazione',
+        'manual_notice' => 'Riceverai un avviso quando è il momento e lo pubblicherai dall’app.',
+    ],
     'no_posts' => 'Nessun post trovato',
     'no_search_results' => 'Nessun post corrisponde alla ricerca',
     'try_different_search' => 'Prova con un\'altra parola chiave o cancella la ricerca.',

@@ -5,6 +5,15 @@ return [
     'search' => '投稿を検索...',
     'all_posts' => 'すべての投稿',
     'new_post' => '新規投稿',
+
+    'publish_mode' => [
+        'auto' => '自動公開',
+        'auto_hint' => 'TryPostは予定した時刻に自動的に公開します。',
+        'manual' => '手動で公開するよう通知する',
+        'manual_hint' => 'TryPostが公開時刻になるとお知らせします — ご自身で公開します。',
+        'schedule_hint' => '公開モード',
+        'manual_notice' => '公開時刻になると通知され、アプリからご自身で公開します。',
+    ],
     'no_posts' => '投稿が見つかりません',
     'no_search_results' => '検索に一致する投稿がありません',
     'try_different_search' => '別のキーワードを試すか、検索をクリアしてください。',

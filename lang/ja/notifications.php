@@ -7,6 +7,11 @@ return [
         'title' => '投稿の準備ができました',
         'body' => 'AI の処理が完了しました。タップして確認・公開してください。',
     ],
+
+    'post_manual_publish_due' => [
+        'title' => '手動公開が可能な投稿があります',
+        'body' => 'この投稿の公開時期です — アプリから公開してください: “:caption”',
+    ],
     'account_disconnected' => [
         'title' => ':platform アカウントの接続が解除されました',
         'body' => ':account の再接続が必要です',

@@ -7,6 +7,11 @@ return [
         'title' => 'Je post is klaar',
         'body' => 'De AI is net klaar. Tik om te bekijken en te publiceren.',
     ],
+
+    'post_manual_publish_due' => [
+        'title' => 'Een bericht is klaar om handmatig te publiceren',
+        'body' => 'Dit bericht is klaar — publiceer het in de app: “:caption”',
+    ],
     'account_disconnected' => [
         'title' => ':platform-account losgekoppeld',
         'body' => ':account moet opnieuw worden gekoppeld',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Post;
 
 use App\Enums\Post\CreatedVia;
+use App\Enums\Post\PublishMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
 use App\Models\User;
@@ -34,6 +35,7 @@ class CreatePost
      *     media?: array<int, mixed>,
      *     date?: ?string,
      *     scheduled_at?: ?string,
+     *     publish_mode?: PublishMode|string|null,
      *     created_via?: ?CreatedVia,
      *     platforms?: array<int, array{social_account_id: string, content_type?: string, meta?: array<string, mixed>}>,
      *     label_ids?: array<int, string>
@@ -49,6 +51,7 @@ class CreatePost
                 'content' => data_get($data, 'content', ''),
                 'media' => data_get($data, 'media', []),
                 'status' => PostStatus::Draft,
+                'publish_mode' => data_get($data, 'publish_mode', PublishMode::Auto),
                 'created_via' => data_get($data, 'created_via'),
                 'scheduled_at' => $scheduledAt,
             ]);

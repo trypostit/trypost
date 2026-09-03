@@ -5,6 +5,15 @@ return [
     'search' => 'Rechercher des publications...',
     'all_posts' => 'Toutes les publications',
     'new_post' => 'Nouvelle publication',
+
+    'publish_mode' => [
+        'auto' => 'Publication automatique',
+        'auto_hint' => 'TryPost publie cette publication automatiquement à l’heure prévue.',
+        'manual' => 'Me prévenir pour publier manuellement',
+        'manual_hint' => 'TryPost vous prévient quand c’est l’heure — vous la publiez vous-même.',
+        'schedule_hint' => 'Mode de publication',
+        'manual_notice' => 'Vous serez prévenu quand ce sera l’heure et la publierez depuis l’application.',
+    ],
     'no_posts' => 'Aucune publication trouvée',
     'no_search_results' => 'Aucune publication ne correspond à votre recherche',
     'try_different_search' => 'Essayez un autre mot-clé ou effacez la recherche.',
