@@ -42,6 +42,7 @@ class Webhook extends Model
         return [
             'events' => 'array',
             'status' => Status::class,
+            'signing_secret' => 'encrypted',
             'paused_at' => 'datetime',
             'last_sent_at' => 'datetime',
         ];

@@ -82,6 +82,7 @@ const subscriptionPastDue = computed<boolean>(() =>
 const {
     canCreatePost,
     canManageAccounts,
+    canManageWebhooks,
     canManageAutomations,
     canCreateWorkspace,
 } = useWorkspaceRole();
@@ -165,6 +166,10 @@ const workspaceNavItems = computed<NavItem[]>(() => [
                   href: assets.url(),
                   icon: IconPhoto,
               },
+          ]
+        : []),
+    ...(canManageWebhooks.value
+        ? [
               {
                   title: trans('sidebar.workspace.webhooks'),
                   href: webhooks.url(),

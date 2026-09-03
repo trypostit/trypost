@@ -56,6 +56,11 @@ class WorkspacePolicy
         return $this->isOwnerOrWorkspaceAdmin($user, $workspace);
     }
 
+    public function manageWebhooks(User $user, Workspace $workspace): bool
+    {
+        return $this->isOwnerOrWorkspaceAdmin($user, $workspace);
+    }
+
     public function createPost(User $user, Workspace $workspace): bool
     {
         if ($this->isOwner($user, $workspace)) {

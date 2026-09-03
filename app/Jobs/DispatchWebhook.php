@@ -154,10 +154,14 @@ class DispatchWebhook implements ShouldQueue
     {
         $this->webhook->refresh();
 
+        if ($this->webhook->status !== Status::Enabled) {
+            return;
+        }
+
         $this->webhook->increment('consecutive_failures');
         $this->webhook->refresh();
 
-        if ($this->webhook->consecutive_failures >= 5 && $this->webhook->status === Status::Enabled) {
+        if ($this->webhook->consecutive_failures >= 5) {
             $this->webhook->pause();
 
             $owner = $this->webhook->workspace?->account?->owner;

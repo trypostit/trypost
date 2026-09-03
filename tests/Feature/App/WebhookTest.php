@@ -9,6 +9,8 @@ use App\Models\Webhook;
 use App\Models\WebhookLog;
 use App\Models\Workspace;
 use App\Services\WebhookService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -61,6 +63,18 @@ test('webhook signing_secret is generated with whsec_ prefix', function () {
     expect($webhook->signing_secret)->toStartWith('whsec_');
 });
 
+test('webhook signing secret is encrypted at rest', function () {
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'signing_secret' => 'whsec_test123',
+    ]);
+
+    $raw = DB::table('webhooks')->where('id', $webhook->id)->value('signing_secret');
+
+    expect($raw)->not->toStartWith('whsec_');
+    expect($webhook->signing_secret)->toBe('whsec_test123');
+});
+
 test('webhook creation fails when ping throws exception', function () {
     $failingMock = Mockery::mock(WebhookService::class);
     $failingMock->shouldReceive('ping')->andThrow(new RuntimeException('Connection refused'));
@@ -79,10 +93,15 @@ test('webhook creation fails when ping throws exception', function () {
     ]);
 });
 
-test('re-enabling a paused webhook resets consecutive failures', function () {
-    $webhook = Webhook::factory()->paused()->create([
-        'workspace_id' => $this->workspace->id,
-    ]);
+test('re-enabling a webhook resets consecutive failures', function (string $from) {
+    $webhook = $from === 'paused'
+        ? Webhook::factory()->paused()->create([
+            'workspace_id' => $this->workspace->id,
+        ])
+        : Webhook::factory()->disabled()->create([
+            'workspace_id' => $this->workspace->id,
+            'consecutive_failures' => 4,
+        ]);
 
     $this->actingAs($this->user)
         ->put(route('app.webhooks.update', $webhook), [
@@ -94,7 +113,7 @@ test('re-enabling a paused webhook resets consecutive failures', function () {
     expect($webhook->status->value)->toBe('enabled');
     expect($webhook->consecutive_failures)->toBe(0);
     expect($webhook->paused_at)->toBeNull();
-});
+})->with(['paused', 'disabled']);
 
 test('webhook endpoint is required', function () {
     $this->actingAs($this->user)
@@ -405,12 +424,112 @@ test('users cannot delete webhooks from other workspaces', function () {
         ->assertForbidden();
 });
 
-test('viewers cannot manage webhooks', function () {
-    $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
-    $viewer->update(['current_workspace_id' => $this->workspace->id]);
+test('workspace admins can manage webhooks', function () {
+    $admin = teammateForWebhookWorkspace(Role::Admin);
 
-    $this->actingAs($viewer)
+    $this->actingAs($admin)
+        ->get(route('app.webhooks.index'))
+        ->assertOk();
+
+    $this->actingAs($admin)
+        ->post(route('app.webhooks.store'), [
+            'endpoint' => 'https://admin.example.com/webhooks',
+            'events' => [EventType::PostPublished->value],
+        ])
+        ->assertRedirect();
+
+    $webhook = Webhook::query()->where('endpoint', 'https://admin.example.com/webhooks')->first();
+
+    expect($webhook)->not->toBeNull();
+
+    $this->actingAs($admin)
+        ->get(route('app.webhooks.show', $webhook))
+        ->assertOk();
+
+    $this->actingAs($admin)
+        ->put(route('app.webhooks.update', $webhook), [
+            'status' => 'disabled',
+        ])
+        ->assertRedirect();
+
+    $this->actingAs($admin)
+        ->post(route('app.webhooks.rotate-secret', $webhook))
+        ->assertRedirect();
+
+    $log = WebhookLog::factory()->create([
+        'webhook_id' => $webhook->id,
+    ]);
+
+    Queue::fake();
+
+    $this->actingAs($admin)
+        ->post(route('app.webhooks.replay', [$webhook, $log]))
+        ->assertRedirect();
+
+    $this->actingAs($admin)
+        ->delete(route('app.webhooks.destroy', $webhook))
+        ->assertRedirect(route('app.webhooks.index'));
+});
+
+test('members and viewers cannot manage webhooks', function (Role $role) {
+    $user = teammateForWebhookWorkspace($role);
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+    $log = WebhookLog::factory()->create([
+        'webhook_id' => $webhook->id,
+    ]);
+
+    $this->actingAs($user)
         ->get(route('app.webhooks.index'))
         ->assertForbidden();
-});
+
+    $this->actingAs($user)
+        ->get(route('app.webhooks.show', $webhook))
+        ->assertForbidden();
+
+    $this->actingAs($user)
+        ->post(route('app.webhooks.store'), [
+            'endpoint' => 'https://member.example.com/webhooks',
+            'events' => [EventType::PostPublished->value],
+        ])
+        ->assertForbidden();
+
+    $this->actingAs($user)
+        ->put(route('app.webhooks.update', $webhook), [
+            'endpoint' => 'https://stolen.example.com/hook',
+        ])
+        ->assertForbidden();
+
+    $this->actingAs($user)
+        ->post(route('app.webhooks.rotate-secret', $webhook))
+        ->assertForbidden();
+
+    $this->actingAs($user)
+        ->post(route('app.webhooks.replay', [$webhook, $log]))
+        ->assertForbidden();
+
+    $this->actingAs($user)
+        ->delete(route('app.webhooks.destroy', $webhook))
+        ->assertForbidden();
+
+    $this->assertDatabaseHas('webhooks', [
+        'id' => $webhook->id,
+        'endpoint' => $webhook->endpoint,
+    ]);
+    $this->assertDatabaseMissing('webhooks', [
+        'endpoint' => 'https://member.example.com/webhooks',
+    ]);
+})->with([
+    Role::Member,
+    Role::Viewer,
+]);
+
+function teammateForWebhookWorkspace(Role $role): User
+{
+    $user = User::factory()->create(['account_id' => test()->user->account_id]);
+    test()->workspace->members()->attach($user->id, ['role' => $role->value]);
+    $user->update(['current_workspace_id' => test()->workspace->id]);
+
+    return $user->fresh();
+}

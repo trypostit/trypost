@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('endpoint');
             $table->json('events');
             $table->string('status');
-            $table->string('signing_secret');
+            $table->text('signing_secret');
             $table->unsignedInteger('consecutive_failures')->default(0);
             $table->timestamp('paused_at')->nullable();
             $table->timestamp('last_sent_at')->nullable();

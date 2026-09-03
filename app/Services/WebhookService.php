@@ -10,6 +10,7 @@ use App\Models\Post;
 use App\Models\Webhook;
 use App\Models\Workspace;
 use App\Services\Brand\SafeHttpFetcher;
+use Exception;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -36,7 +37,7 @@ class WebhookService
                     'type' => 'webhook.test',
                     'data' => [],
                 ]);
-        } catch (\Exception) {
+        } catch (Exception) {
             throw new RuntimeException(__('webhooks.errors.endpoint_unreachable'));
         }
 

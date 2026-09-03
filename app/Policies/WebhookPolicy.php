@@ -12,13 +12,13 @@ class WebhookPolicy
     public function viewAny(User $user): bool
     {
         return $user->currentWorkspace !== null
-            && $user->can('createPost', $user->currentWorkspace);
+            && $user->can('manageWebhooks', $user->currentWorkspace);
     }
 
     public function view(User $user, Webhook $webhook): bool
     {
         return $webhook->workspace_id === $user->current_workspace_id
-            && $user->can('createPost', $user->currentWorkspace);
+            && $user->can('manageWebhooks', $user->currentWorkspace);
     }
 
     public function create(User $user): bool

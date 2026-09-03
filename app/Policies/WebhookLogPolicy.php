@@ -14,6 +14,6 @@ class WebhookLogPolicy
     {
         return $webhookLog->webhook_id === $webhook->id
             && $webhook->workspace_id === $user->current_workspace_id
-            && $user->can('createPost', $user->currentWorkspace);
+            && $user->can('manageWebhooks', $user->currentWorkspace);
     }
 }

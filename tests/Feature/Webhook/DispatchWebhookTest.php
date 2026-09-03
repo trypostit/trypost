@@ -438,6 +438,22 @@ test('dispatch webhook job keeps the same log after serialize retry', function (
         ->not->toBeNull();
 });
 
+test('dispatch webhook failed method does not increment when webhook is not enabled', function () {
+    $this->webhook->update(['status' => Status::Disabled]);
+
+    $job = new DispatchWebhook(
+        $this->webhook,
+        WebhookEvent::PostPublished->value,
+        ['id' => 'test-123'],
+    );
+
+    $job->failed(new RuntimeException('Connection timeout'));
+
+    $this->webhook->refresh();
+
+    expect($this->webhook->consecutive_failures)->toBe(0);
+});
+
 test('dispatch webhook failed method increments consecutive failures', function () {
     $job = new DispatchWebhook(
         $this->webhook,

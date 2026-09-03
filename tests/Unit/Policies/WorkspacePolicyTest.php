@@ -243,6 +243,30 @@ test('account owner and workspace admin can manage accounts', function () {
     expect($this->policy->manageAccounts($member, $workspace))->toBeFalse();
 });
 
+test('account owner and workspace admin can manage webhooks', function () {
+    $account = Account::factory()->create();
+    $owner = User::factory()->create([
+        'account_id' => $account->id,
+    ]);
+    $account->update(['owner_id' => $owner->id]);
+    $admin = User::factory()->create([
+        'account_id' => $account->id,
+    ]);
+    $member = User::factory()->create([
+        'account_id' => $account->id,
+    ]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $account->id,
+        'user_id' => $owner->id,
+    ]);
+    $workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+
+    expect($this->policy->manageWebhooks($owner, $workspace))->toBeTrue();
+    expect($this->policy->manageWebhooks($admin, $workspace))->toBeTrue();
+    expect($this->policy->manageWebhooks($member, $workspace))->toBeFalse();
+});
+
 test('account owner and workspace member can create post', function () {
     $account = Account::factory()->create();
     $owner = User::factory()->create([
@@ -281,6 +305,7 @@ test('a viewer can view but cannot create posts or manage the team', function ()
 
     expect($this->policy->view($viewer, $workspace))->toBeTrue();
     expect($this->policy->createPost($viewer, $workspace))->toBeFalse();
+    expect($this->policy->manageWebhooks($viewer, $workspace))->toBeFalse();
     expect($this->policy->manageTeam($viewer, $workspace))->toBeFalse();
     expect($this->policy->inviteMember($viewer, $workspace))->toBeFalse();
 });

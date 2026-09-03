@@ -25,7 +25,7 @@ class WebhookController extends Controller
     {
         $workspace = $request->user()->currentWorkspace;
 
-        $this->authorize('createPost', $workspace);
+        $this->authorize('viewAny', Webhook::class);
 
         $webhooks = Webhook::query()
             ->where('workspace_id', $workspace->id)
@@ -102,7 +102,7 @@ class WebhookController extends Controller
         if (
             isset($validated['status'])
             && $validated['status'] === Status::Enabled->value
-            && $webhook->status === Status::Paused
+            && $webhook->status !== Status::Enabled
         ) {
             $validated['consecutive_failures'] = 0;
             $validated['paused_at'] = null;

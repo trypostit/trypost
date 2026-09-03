@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\UserWorkspace\Role;
 use App\Enums\Webhook\EventType;
 use App\Jobs\DispatchWebhook;
 use App\Models\User;
@@ -42,6 +43,28 @@ test('authenticated users can replay a webhook log', function () {
             && data_get($job->payload, 'id') === 'post-1'
             && $job->force;
     });
+});
+
+test('workspace members cannot replay a webhook log', function () {
+    Queue::fake();
+
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $log = WebhookLog::factory()->create([
+        'webhook_id' => $webhook->id,
+    ]);
+
+    $this->actingAs($member)
+        ->post(route('app.webhooks.replay', [$webhook, $log]))
+        ->assertForbidden();
+
+    Queue::assertNothingPushed();
 });
 
 test('users cannot replay webhook logs from other workspaces', function () {

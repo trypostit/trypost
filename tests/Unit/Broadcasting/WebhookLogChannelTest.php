@@ -8,7 +8,7 @@ use App\Models\User;
 use App\Models\Webhook;
 use App\Models\Workspace;
 
-test('webhook log channel allows a member who can manage webhooks', function () {
+test('webhook log channel allows the account owner', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $user->update(['current_workspace_id' => $workspace->id]);
@@ -17,6 +17,32 @@ test('webhook log channel allows a member who can manage webhooks', function () 
     $webhook = Webhook::factory()->create(['workspace_id' => $workspace->id]);
 
     expect((new WebhookLogChannel)->join($user, $webhook))->toBeTrue();
+});
+
+test('webhook log channel allows a workspace admin', function () {
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $admin = User::factory()->create(['account_id' => $owner->account_id]);
+    $workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
+    $admin->update(['current_workspace_id' => $workspace->id]);
+    $admin->refresh();
+
+    $webhook = Webhook::factory()->create(['workspace_id' => $workspace->id]);
+
+    expect((new WebhookLogChannel)->join($admin, $webhook))->toBeTrue();
+});
+
+test('webhook log channel denies a member', function () {
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $member = User::factory()->create(['account_id' => $owner->account_id]);
+    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $member->update(['current_workspace_id' => $workspace->id]);
+    $member->refresh();
+
+    $webhook = Webhook::factory()->create(['workspace_id' => $workspace->id]);
+
+    expect((new WebhookLogChannel)->join($member, $webhook))->toBeFalse();
 });
 
 test('webhook log channel denies a viewer', function () {
