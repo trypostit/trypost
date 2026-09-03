@@ -219,6 +219,30 @@ test('dispatch webhook job marks log as failed on http error', function () {
     expect($this->webhook->last_sent_at)->toBeNull();
 });
 
+test('failed delivery does not overwrite last_sent_at', function () {
+    $sentAt = now()->subHour()->startOfSecond();
+    $this->webhook->update(['last_sent_at' => $sentAt]);
+
+    Http::fake([
+        'example.com/webhook' => Http::response('Server Error', 500),
+    ]);
+
+    $job = new DispatchWebhook(
+        $this->webhook,
+        WebhookEvent::PostPublished->value,
+        ['id' => 'test-123'],
+    );
+
+    try {
+        app()->call([$job, 'handle']);
+    } catch (RuntimeException) {
+    }
+
+    $this->webhook->refresh();
+
+    expect($this->webhook->last_sent_at?->equalTo($sentAt))->toBeTrue();
+});
+
 test('dispatch webhook job marks log as failed on connection error', function () {
     Http::fake([
         'example.com/webhook' => function () {
@@ -438,8 +462,12 @@ test('dispatch webhook job keeps the same log after serialize retry', function (
         ->not->toBeNull();
 });
 
-test('dispatch webhook failed method does not increment when webhook is not enabled', function () {
-    $this->webhook->update(['status' => Status::Disabled]);
+test('dispatch webhook failed method does not increment when webhook is not enabled', function (Status $status) {
+    $this->webhook->update([
+        'status' => $status,
+        'consecutive_failures' => $status === Status::Paused ? 5 : 0,
+        'paused_at' => $status === Status::Paused ? now() : null,
+    ]);
 
     $job = new DispatchWebhook(
         $this->webhook,
@@ -451,8 +479,11 @@ test('dispatch webhook failed method does not increment when webhook is not enab
 
     $this->webhook->refresh();
 
-    expect($this->webhook->consecutive_failures)->toBe(0);
-});
+    expect($this->webhook->consecutive_failures)->toBe($status === Status::Paused ? 5 : 0);
+})->with([
+    Status::Disabled,
+    Status::Paused,
+]);
 
 test('dispatch webhook failed method increments consecutive failures', function () {
     $job = new DispatchWebhook(

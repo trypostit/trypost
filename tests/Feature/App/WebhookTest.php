@@ -37,6 +37,23 @@ test('authenticated users can view webhooks', function () {
         );
 });
 
+test('webhook index hides the signing secret', function () {
+    Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'signing_secret' => 'whsec_hidden',
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.webhooks.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('webhooks', 1, fn ($webhook) => $webhook
+                ->missing('signing_secret')
+                ->etc()
+            )
+        );
+});
+
 test('authenticated users can create a webhook', function () {
     $this->actingAs($this->user)
         ->post(route('app.webhooks.store'), [
@@ -235,6 +252,24 @@ test('updating a webhook endpoint fails when ping throws exception', function ()
     expect($webhook->endpoint)->toBe('https://old.example.com/hook');
 });
 
+test('updating a webhook without changing the endpoint does not ping', function () {
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'endpoint' => 'https://same.example.com/hook',
+    ]);
+
+    $mock = Mockery::mock(WebhookService::class);
+    $mock->shouldReceive('ping')->never();
+    $this->app->instance(WebhookService::class, $mock);
+
+    $this->actingAs($this->user)
+        ->put(route('app.webhooks.update', $webhook), [
+            'endpoint' => 'https://same.example.com/hook',
+            'events' => [EventType::PostPublished->value],
+        ])
+        ->assertRedirect();
+});
+
 test('updating webhook status does not ping the endpoint', function () {
     $webhook = Webhook::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -398,6 +433,10 @@ test('authenticated users can rotate a webhook signing secret', function () {
     expect($webhook->signing_secret)
         ->not->toBe($originalSecret)
         ->toStartWith('whsec_');
+
+    $raw = DB::table('webhooks')->where('id', $webhook->id)->value('signing_secret');
+
+    expect($raw)->not->toStartWith('whsec_');
 });
 
 test('users cannot rotate signing secret for other workspaces webhooks', function () {
