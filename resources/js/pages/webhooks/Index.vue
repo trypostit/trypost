@@ -172,6 +172,7 @@ const statusVariant = (status: string) => (status === 'enabled' ? 'default' : 's
                 :title="$t('webhooks.delete.title')"
                 :description="$t('webhooks.delete.description')"
                 :action="$t('webhooks.delete.confirm')"
+                :cancel="$t('webhooks.delete.cancel')"
             />
         </div>
     </AppLayout>

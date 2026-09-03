@@ -26,4 +26,16 @@ class StoreWebhookRequest extends FormRequest
             'events.*' => ['string', Rule::enum(EventType::class)],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'endpoint' => __('webhooks.create.endpoint'),
+            'events' => __('webhooks.create.events'),
+            'events.*' => __('webhooks.create.events'),
+        ];
+    }
 }

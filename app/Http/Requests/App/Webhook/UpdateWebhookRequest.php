@@ -28,4 +28,17 @@ class UpdateWebhookRequest extends FormRequest
             'status' => ['sometimes', 'string', Rule::enum(Status::class)->only([Status::Enabled, Status::Disabled])],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'endpoint' => __('webhooks.create.endpoint'),
+            'events' => __('webhooks.create.events'),
+            'events.*' => __('webhooks.create.events'),
+            'status' => __('webhooks.table.status'),
+        ];
+    }
 }

@@ -139,30 +139,23 @@ watch(
     },
 );
 
-const httpStatusText: Record<number, string> = {
-    200: 'OK',
-    201: 'Created',
-    202: 'Accepted',
-    204: 'No Content',
-    400: 'Bad Request',
-    401: 'Unauthorized',
-    403: 'Forbidden',
-    404: 'Not Found',
-    408: 'Request Timeout',
-    422: 'Unprocessable Entity',
-    429: 'Too Many Requests',
-    500: 'Internal Server Error',
-    502: 'Bad Gateway',
-    503: 'Service Unavailable',
-    504: 'Gateway Timeout',
-};
+const httpReasonCodes = new Set([
+    200, 201, 202, 204, 400, 401, 403, 404, 408, 422, 429, 500, 502, 503, 504,
+]);
 
 const formatStatusCode = (code: number | null): string => {
     if (!code) {
         return trans('webhooks.show.no_response');
     }
 
-    return `${code} - ${httpStatusText[code] ?? 'Unknown'}`;
+    const reason = httpReasonCodes.has(code)
+        ? trans(`webhooks.http_reasons.${code}`)
+        : trans('webhooks.http_reasons.unknown');
+
+    return trans('webhooks.show.status_code', {
+        code: String(code),
+        reason,
+    });
 };
 
 const parsedResponseBody = computed((): unknown => {
@@ -479,6 +472,7 @@ const replayLog = (log: WebhookLogItem) => {
                 :title="$t('webhooks.delete.title')"
                 :description="$t('webhooks.delete.description')"
                 :action="$t('webhooks.delete.confirm')"
+                :cancel="$t('webhooks.delete.cancel')"
             />
         </div>
     </AppLayout>

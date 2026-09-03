@@ -102,6 +102,9 @@ test('webhook endpoint is required', function () {
             'events' => [EventType::PostPublished->value],
         ])
         ->assertSessionHasErrors('endpoint');
+
+    expect(session('errors')->first('endpoint'))
+        ->toContain(__('webhooks.create.endpoint'));
 });
 
 test('webhook endpoint must be a valid url', function () {
