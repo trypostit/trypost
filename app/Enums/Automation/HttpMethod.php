@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Enums\Automation;
 
 /**
- * HTTP verbs available to the HTTP Request and Webhook nodes. Mirrors the
+ * HTTP verbs available to the HTTP Request node. Mirrors the
  * frontend HttpMethod const (resources/js/types/automation/http-method.ts).
  */
 enum HttpMethod: string

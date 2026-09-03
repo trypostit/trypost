@@ -1,5 +1,5 @@
 /**
- * HTTP verbs for the HTTP Request and Webhook nodes. Mirrors the backend
+ * HTTP verbs for the HTTP Request node. Mirrors the backend
  * App\Enums\Automation\HttpMethod enum — these values feed the node config
  * selects and must match the validation rules server-side.
  */

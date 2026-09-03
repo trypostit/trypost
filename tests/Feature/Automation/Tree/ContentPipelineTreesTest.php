@@ -148,7 +148,7 @@ it('runs fetch_rss → generate → delay → publish, pausing at the delay then
     expect($post->content)->toBe('Post from RSS item');
 });
 
-it('runs http_request → condition (true) → webhook down the yes handle', function () {
+it('runs http_request → condition (true) → notify down the yes handle', function () {
     Http::fake([
         '8.8.8.8/*' => Http::response(['status' => 'active'], 200),
         '9.9.9.9/*' => Http::response(['ok' => true], 200),
@@ -161,7 +161,7 @@ it('runs http_request → condition (true) → webhook down the yes handle', fun
             ['id' => 't', 'type' => 'trigger', 'position' => ['x' => 0, 'y' => 0], 'data' => ['trigger_type' => 'schedule']],
             ['id' => 'h', 'type' => 'http_request', 'position' => ['x' => 1, 'y' => 0], 'data' => ['url' => 'https://8.8.8.8/status', 'method' => 'GET']],
             ['id' => 'c', 'type' => 'condition', 'position' => ['x' => 2, 'y' => 0], 'data' => ['field' => '{{ fetched.status }}', 'operator' => 'equals', 'value' => 'active']],
-            ['id' => 'w', 'type' => 'webhook', 'position' => ['x' => 3, 'y' => 0], 'data' => ['url' => 'https://9.9.9.9/notify', 'method' => 'POST', 'payload_template' => '{"ok":true}']],
+            ['id' => 'w', 'type' => 'http_request', 'position' => ['x' => 3, 'y' => 0], 'data' => ['url' => 'https://9.9.9.9/notify', 'method' => 'POST', 'auth_type' => 'none', 'body_template' => '{"ok":true}']],
             ['id' => 'e', 'type' => 'end', 'position' => ['x' => 3, 'y' => 1], 'data' => []],
         ],
         'connections' => [
@@ -180,7 +180,7 @@ it('runs http_request → condition (true) → webhook down the yes handle', fun
     Http::assertSent(fn ($request) => str_contains($request->url(), '9.9.9.9/notify'));
 });
 
-it('runs http_request → condition (false) → end down the no handle without hitting the webhook', function () {
+it('runs http_request → condition (false) → end down the no handle without hitting the notify request', function () {
     Http::fake([
         '8.8.8.8/*' => Http::response(['status' => 'inactive'], 200),
         '9.9.9.9/*' => Http::response(['ok' => true], 200),
@@ -193,7 +193,7 @@ it('runs http_request → condition (false) → end down the no handle without h
             ['id' => 't', 'type' => 'trigger', 'position' => ['x' => 0, 'y' => 0], 'data' => ['trigger_type' => 'schedule']],
             ['id' => 'h', 'type' => 'http_request', 'position' => ['x' => 1, 'y' => 0], 'data' => ['url' => 'https://8.8.8.8/status', 'method' => 'GET']],
             ['id' => 'c', 'type' => 'condition', 'position' => ['x' => 2, 'y' => 0], 'data' => ['field' => '{{ fetched.status }}', 'operator' => 'equals', 'value' => 'active']],
-            ['id' => 'w', 'type' => 'webhook', 'position' => ['x' => 3, 'y' => 0], 'data' => ['url' => 'https://9.9.9.9/notify', 'method' => 'POST', 'payload_template' => '{"ok":true}']],
+            ['id' => 'w', 'type' => 'http_request', 'position' => ['x' => 3, 'y' => 0], 'data' => ['url' => 'https://9.9.9.9/notify', 'method' => 'POST', 'auth_type' => 'none', 'body_template' => '{"ok":true}']],
             ['id' => 'e', 'type' => 'end', 'position' => ['x' => 3, 'y' => 1], 'data' => []],
         ],
         'connections' => [

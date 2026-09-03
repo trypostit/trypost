@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Automation\Node\RunConditionNode;
 use App\Actions\Automation\Node\RunFetchRssNode;
-use App\Actions\Automation\Node\RunWebhookNode;
+use App\Actions\Automation\Node\RunHttpRequestNode;
 use App\Enums\UserWorkspace\Role;
 use App\Http\Resources\AutomationResource;
 use App\Models\Automation;
@@ -88,7 +88,7 @@ it('merges variables into resolverContext but never into the persisted run conte
     expect($run->fresh()->context)->not->toHaveKey('variables');
 });
 
-it('resolves a variable in a webhook payload without persisting it in the run context', function () {
+it('resolves a variable in an HTTP request body without persisting it in the run context', function () {
     Http::fake(['1.1.1.1/*' => Http::response(['ok' => true], 200)]);
 
     $automation = Automation::factory()->for($this->workspace)->create([
@@ -96,10 +96,11 @@ it('resolves a variable in a webhook payload without persisting it in the run co
     ]);
     $run = AutomationRun::factory()->for($automation)->create(['context' => []]);
 
-    app(RunWebhookNode::class)($run, [
+    app(RunHttpRequestNode::class)($run, [
         'url' => 'https://1.1.1.1/hook',
         'method' => 'POST',
-        'payload_template' => '{"token":"{{ variables.TOKEN }}"}',
+        'auth_type' => 'none',
+        'body_template' => '{"token":"{{ variables.TOKEN }}"}',
     ]);
 
     Http::assertSent(fn ($request) => $request['token'] === 'abc123');

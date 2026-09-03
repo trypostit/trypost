@@ -16,6 +16,7 @@ return [
         'signatures' => '签名',
         'labels' => '标签',
         'assets' => '素材库',
+        'webhooks' => 'Webhooks',
         'mcp' => 'MCP',
     ],
     'language' => '语言：:name',

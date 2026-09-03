@@ -16,6 +16,7 @@ return [
         'signatures' => '署名',
         'labels' => 'ラベル',
         'assets' => 'アセット',
+        'webhooks' => 'ウェブフック',
         'mcp' => 'MCP',
     ],
     'language' => '言語: :name',

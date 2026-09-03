@@ -16,6 +16,7 @@ return [
         'signatures' => 'Firme',
         'labels' => 'Etichette',
         'assets' => 'Risorse',
+        'webhooks' => 'Webhook',
         'mcp' => 'MCP',
     ],
     'language' => 'Lingua: :name',

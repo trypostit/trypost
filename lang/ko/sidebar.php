@@ -16,6 +16,7 @@ return [
         'signatures' => '서명',
         'labels' => '라벨',
         'assets' => '에셋',
+        'webhooks' => '웹훅',
         'mcp' => 'MCP',
     ],
     'language' => '언어: :name',

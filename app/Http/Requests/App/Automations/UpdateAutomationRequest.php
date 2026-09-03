@@ -70,9 +70,8 @@ class UpdateAutomationRequest extends FormRequest
 
     /**
      * Block saving a node whose config can't run: a Generate node whose image
-     * count doesn't fit a selected account's content-type, or a Webhook node
-     * whose payload template isn't valid JSON. Each issue is keyed to the field
-     * the frontend surfaces it under (mirrors the inline frontend validation).
+     * count doesn't fit a selected account's content-type. Each issue is keyed
+     * to the field the frontend surfaces it under.
      */
     public function withValidator(Validator $validator): void
     {
@@ -171,13 +170,6 @@ class UpdateAutomationRequest extends FormRequest
             NodeType::Publish->value => [
                 'mode' => ['required', Rule::in(array_column(PublishMode::cases(), 'value'))],
                 'scheduled_offset' => ['required_if:nodes.'.$i.'.data.mode,'.PublishMode::Scheduled->value, 'integer', 'min:0'],
-            ],
-            NodeType::Webhook->value => [
-                'url' => ['required', new ResolvableUrl],
-                'method' => ['required', Rule::in(array_column(HttpMethod::cases(), 'value'))],
-                'payload_template' => ['nullable', 'string'],
-                'headers' => ['nullable', 'array'],
-                'headers.*' => ['string'],
             ],
             NodeType::End->value => [
                 'reason' => ['nullable', 'string'],

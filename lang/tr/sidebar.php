@@ -16,6 +16,7 @@ return [
         'signatures' => 'İmzalar',
         'labels' => 'Etiketler',
         'assets' => 'Varlıklar',
+        'webhooks' => 'Webhooklar',
         'mcp' => 'MCP',
     ],
     'language' => 'Dil: :name',

@@ -16,6 +16,7 @@ return [
         'signatures' => 'Подписи',
         'labels' => 'Метки',
         'assets' => 'Медиафайлы',
+        'webhooks' => 'Вебхуки',
         'mcp' => 'MCP',
     ],
     'language' => 'Язык: :name',

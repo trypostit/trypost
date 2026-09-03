@@ -16,6 +16,7 @@ return [
         'signatures' => 'Handtekeningen',
         'labels' => 'Labels',
         'assets' => 'Assets',
+        'webhooks' => 'Webhooks',
         'mcp' => 'MCP',
     ],
     'language' => 'Taal: :name',

@@ -7,7 +7,6 @@ import {
     IconRss,
     IconSend,
     IconSparkles,
-    IconWebhook,
     IconWorld,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
@@ -41,7 +40,6 @@ const categories = computed(() => [
         title: trans('automations.categories.output'),
         nodes: [
             { type: NodeType.Publish, label: trans('automations.nodes.publish'), icon: IconSend, accent: 'emerald' },
-            { type: NodeType.Webhook, label: trans('automations.nodes.webhook'), icon: IconWebhook, accent: 'slate' },
         ],
     },
 ]);

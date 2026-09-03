@@ -24,7 +24,7 @@ use Throwable;
  *  - When the fetch returns N new items, the current run takes item[0]; the
  *    remaining N-1 items are spawned as sibling runs that resume at the node
  *    immediately after this Fetch (with `context.fetched` already populated),
- *    so each item ends up generating its own Post / Webhook / etc.
+ *    so each item ends up generating its own Post / etc.
  *  - When the feed yields no new items, the result short-circuits via the
  *    `no_items` handle; if the user hasn't wired anything to it, the run
  *    completes silently (handled by AdvanceAutomationRun's default branch).

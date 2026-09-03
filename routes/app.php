@@ -27,6 +27,7 @@ use App\Http\Controllers\App\Settings\ProfileController;
 use App\Http\Controllers\App\Settings\SettingsController;
 use App\Http\Controllers\App\Settings\UsageController;
 use App\Http\Controllers\App\UnsplashController;
+use App\Http\Controllers\App\WebhookController;
 use App\Http\Controllers\App\WelcomeController;
 use App\Http\Controllers\App\WorkspaceController;
 use App\Http\Controllers\App\WorkspaceInviteController;
@@ -273,6 +274,15 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     // MCP
     Route::get('settings/workspace/mcp', [McpSettingsController::class, 'index'])->name('app.mcp.index');
     Route::delete('settings/workspace/mcp/{client}', [McpSettingsController::class, 'disconnect'])->name('app.mcp.disconnect');
+
+    // Webhooks
+    Route::get('webhooks', [WebhookController::class, 'index'])->name('app.webhooks.index');
+    Route::post('webhooks', [WebhookController::class, 'store'])->name('app.webhooks.store');
+    Route::get('webhooks/{webhook}', [WebhookController::class, 'show'])->name('app.webhooks.show');
+    Route::put('webhooks/{webhook}', [WebhookController::class, 'update'])->name('app.webhooks.update');
+    Route::post('webhooks/{webhook}/rotate-secret', [WebhookController::class, 'rotateSecret'])->name('app.webhooks.rotate-secret');
+    Route::post('webhooks/{webhook}/logs/{webhookLog}/replay', [WebhookController::class, 'replay'])->name('app.webhooks.replay');
+    Route::delete('webhooks/{webhook}', [WebhookController::class, 'destroy'])->name('app.webhooks.destroy');
 
     // Account Settings
     Route::get('settings/account', [AccountController::class, 'edit'])->name('app.account.edit');

@@ -16,6 +16,7 @@ return [
         'signatures' => 'Υπογραφές',
         'labels' => 'Ετικέτες',
         'assets' => 'Στοιχεία',
+        'webhooks' => 'Webhooks',
         'mcp' => 'MCP',
     ],
     'language' => 'Γλώσσα: :name',

@@ -161,18 +161,19 @@ it('accepts a templated url on an http_request node', function () {
         ->assertSessionHasNoErrors();
 });
 
-it('accepts a templated url on a webhook node', function () {
+it('accepts a templated url on an HTTP request node', function () {
     $automation = Automation::factory()->for($this->workspace)->create();
 
     $this->actingAs($this->user)
         ->put(route('app.automations.update', $automation->id), [
             'nodes' => [[
-                'id' => 'webhook_1',
-                'type' => 'webhook',
+                'id' => 'http_1',
+                'type' => 'http_request',
                 'position' => ['x' => 0, 'y' => 0],
                 'data' => [
                     'url' => 'https://hooks.example.com/{{ variables.TOKEN }}',
                     'method' => 'POST',
+                    'auth_type' => 'none',
                 ],
             ]],
         ])

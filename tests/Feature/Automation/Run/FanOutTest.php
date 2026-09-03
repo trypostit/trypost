@@ -48,7 +48,7 @@ it('forks siblings that inherit the generated post, so a branch after Generate c
         'nodes' => [
             ['id' => 'g', 'type' => 'generate', 'position' => ['x' => 0, 'y' => 0], 'data' => []],
             ['id' => 'p', 'type' => 'publish', 'position' => ['x' => 1, 'y' => 0], 'data' => ['mode' => 'now']],
-            ['id' => 'w', 'type' => 'webhook', 'position' => ['x' => 1, 'y' => 1], 'data' => []],
+            ['id' => 'w', 'type' => 'end', 'position' => ['x' => 1, 'y' => 1], 'data' => []],
         ],
         'connections' => [
             ['id' => 'e1', 'source' => 'g', 'target' => 'p'],

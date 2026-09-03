@@ -11,7 +11,6 @@ enum Type: string
     case Delay = 'delay';
     case Condition = 'condition';
     case Publish = 'publish';
-    case Webhook = 'webhook';
     case End = 'end';
     case FetchRss = 'fetch_rss';
     case HttpRequest = 'http_request';

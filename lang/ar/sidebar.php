@@ -16,6 +16,7 @@ return [
         'signatures' => 'التوقيعات',
         'labels' => 'التسميات',
         'assets' => 'الوسائط',
+        'webhooks' => 'Webhooks',
         'mcp' => 'MCP',
     ],
     'language' => 'اللغة: :name',

@@ -132,12 +132,12 @@ it('fans every spawned item out across all branches wired to the fetch node', fu
             ['id' => 'trigger_1', 'type' => 'trigger', 'position' => ['x' => 0, 'y' => 0], 'data' => ['trigger_type' => 'schedule']],
             ['id' => 'fetch_1', 'type' => 'fetch_rss', 'position' => ['x' => 200, 'y' => 0], 'data' => ['feed_url' => 'https://1.1.1.1/feed']],
             ['id' => 'generate_1', 'type' => 'generate', 'position' => ['x' => 400, 'y' => 0], 'data' => []],
-            ['id' => 'webhook_1', 'type' => 'webhook', 'position' => ['x' => 400, 'y' => 200], 'data' => []],
+            ['id' => 'end_1', 'type' => 'end', 'position' => ['x' => 400, 'y' => 200], 'data' => []],
         ],
         'connections' => [
             ['id' => 'e1', 'source' => 'trigger_1', 'target' => 'fetch_1'],
             ['id' => 'e2', 'source' => 'fetch_1', 'source_handle' => 'default', 'target' => 'generate_1'],
-            ['id' => 'e3', 'source' => 'fetch_1', 'source_handle' => 'default', 'target' => 'webhook_1'],
+            ['id' => 'e3', 'source' => 'fetch_1', 'source_handle' => 'default', 'target' => 'end_1'],
         ],
     ]);
 
@@ -154,7 +154,7 @@ it('fans every spawned item out across all branches wired to the fetch node', fu
     // 2 spawned items × 2 branches = 4 dispatches; both branches reached.
     Bus::assertDispatchedTimes(ProcessAutomationNode::class, 4);
     Bus::assertDispatched(ProcessAutomationNode::class, fn ($job) => $job->nodeId === 'generate_1');
-    Bus::assertDispatched(ProcessAutomationNode::class, fn ($job) => $job->nodeId === 'webhook_1');
+    Bus::assertDispatched(ProcessAutomationNode::class, fn ($job) => $job->nodeId === 'end_1');
 });
 
 it('does not persist the production watermark on a manual real-data test', function () {

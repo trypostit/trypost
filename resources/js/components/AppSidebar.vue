@@ -19,6 +19,7 @@ import {
     IconPlugConnected,
     IconSelector,
     IconTag,
+    IconWebhook,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
@@ -57,6 +58,7 @@ import { portal } from '@/routes/app/billing';
 import { index as labels } from '@/routes/app/labels';
 import { index as mcp } from '@/routes/app/mcp';
 import { index as signatures } from '@/routes/app/signatures';
+import { index as webhooks } from '@/routes/app/webhooks';
 import type { NavItem, User } from '@/types';
 
 interface Workspace {
@@ -162,6 +164,11 @@ const workspaceNavItems = computed<NavItem[]>(() => [
                   title: trans('sidebar.workspace.assets'),
                   href: assets.url(),
                   icon: IconPhoto,
+              },
+              {
+                  title: trans('sidebar.workspace.webhooks'),
+                  href: webhooks.url(),
+                  icon: IconWebhook,
               },
           ]
         : []),

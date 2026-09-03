@@ -17,7 +17,6 @@ final class AutomationConfigValidator
 {
     public function __construct(
         private GenerateNodeValidator $generateValidator,
-        private WebhookNodeValidator $webhookValidator,
     ) {}
 
     /**
@@ -35,7 +34,6 @@ final class AutomationConfigValidator
 
             [$field, $message] = match (data_get($node, 'type')) {
                 NodeType::Generate->value => ['accounts', $this->generateValidator->issueFor($config)],
-                NodeType::Webhook->value => ['payload_template', $this->webhookValidator->issueFor($config)],
                 default => [null, null],
             };
 

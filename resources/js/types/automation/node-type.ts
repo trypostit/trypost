@@ -4,7 +4,6 @@ export const NodeType = {
     Delay: 'delay',
     Condition: 'condition',
     Publish: 'publish',
-    Webhook: 'webhook',
     End: 'end',
     FetchRss: 'fetch_rss',
     HttpRequest: 'http_request',
