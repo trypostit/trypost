@@ -83,6 +83,23 @@ test('webhook service does not dispatch for disabled webhooks', function () {
     Queue::assertNotPushed(DispatchWebhook::class);
 });
 
+test('webhook service does not dispatch for paused webhooks', function () {
+    Queue::fake();
+
+    $this->webhook->update([
+        'status' => Status::Paused,
+        'events' => [WebhookEvent::PostPublished->value],
+    ]);
+
+    app(WebhookService::class)->dispatch(
+        $this->workspace,
+        WebhookEvent::PostPublished,
+        ['id' => 'test-123'],
+    );
+
+    Queue::assertNotPushed(DispatchWebhook::class);
+});
+
 test('dispatch webhook job creates log and delivers successfully', function () {
     Http::fake([
         'example.com/webhook' => Http::response('OK', 200),

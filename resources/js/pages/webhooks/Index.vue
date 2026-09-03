@@ -65,7 +65,10 @@ const statusVariant = (status: string) => (status === 'enabled' ? 'default' : 's
                 </Button>
             </div>
 
-            <div v-if="webhooks.length > 0" class="rounded-md border">
+            <div
+                v-if="webhooks.length > 0"
+                class="overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-2xs"
+            >
                 <Table>
                     <TableHeader>
                         <TableRow>

@@ -91,6 +91,19 @@ test('dispatch does not dispatch for disabled webhooks', function () {
     Queue::assertNotPushed(DispatchWebhook::class);
 });
 
+test('dispatch does not dispatch for paused webhooks', function () {
+    Queue::fake();
+
+    Webhook::factory()->paused()->create([
+        'workspace_id' => $this->workspace->id,
+        'events' => [WebhookEvent::PostCreated->value, WebhookEvent::PostPublished->value],
+    ]);
+
+    $this->service->dispatch($this->workspace, WebhookEvent::PostCreated, ['foo' => 'bar']);
+
+    Queue::assertNotPushed(DispatchWebhook::class);
+});
+
 test('dispatch does not match wildcard events', function () {
     Queue::fake();
 
