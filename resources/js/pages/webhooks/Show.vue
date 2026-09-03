@@ -75,23 +75,37 @@ const props = defineProps<{
 }>();
 
 const newLogIds = reactive(new Set<string>());
+const liveLogs = ref<WebhookLogItem[]>([...props.logs.data]);
+const selectedLog = ref<WebhookLogItem | null>(props.logs.data[0] ?? null);
+
+const applyLogUpdate = (payload: WebhookLogItem): void => {
+    const index = liveLogs.value.findIndex((log) => log.id === payload.id);
+
+    if (index >= 0) {
+        liveLogs.value[index] = {
+            ...liveLogs.value[index],
+            response_status: payload.response_status,
+            response_body: payload.response_body,
+            delivered_at: payload.delivered_at,
+            failed_at: payload.failed_at,
+            attempts: payload.attempts,
+        };
+    } else {
+        liveLogs.value.unshift(payload);
+        newLogIds.add(payload.id);
+    }
+
+    if (!selectedLog.value || selectedLog.value.id === payload.id) {
+        selectedLog.value =
+            liveLogs.value.find((log) => log.id === payload.id) ?? payload;
+    }
+};
 
 useWebhookEcho(
     props.webhook.id,
     '.webhook.log.updated',
     (payload: WebhookLogItem) => {
-        const existing = props.logs.data.find((log) => log.id === payload.id);
-
-        if (existing) {
-            existing.response_status = payload.response_status;
-            existing.response_body = payload.response_body;
-            existing.delivered_at = payload.delivered_at;
-            existing.failed_at = payload.failed_at;
-            existing.attempts = payload.attempts;
-        } else {
-            props.logs.data.unshift(payload);
-            newLogIds.add(payload.id);
-        }
+        applyLogUpdate(payload);
     },
 );
 
@@ -151,13 +165,15 @@ const toggleStatus = () => {
     );
 };
 
-const selectedLog = ref<WebhookLogItem | null>(props.logs.data[0] ?? null);
-
 watch(
     () => props.logs.data,
-    (data) => {
-        if (!selectedLog.value || !data.find((log) => log.id === selectedLog.value!.id)) {
-            selectedLog.value = data[0] ?? null;
+    (incoming) => {
+        const incomingIds = new Set(incoming.map((log) => log.id));
+        const echoOnly = liveLogs.value.filter((log) => !incomingIds.has(log.id));
+        liveLogs.value = [...echoOnly, ...incoming];
+
+        if (!selectedLog.value || !liveLogs.value.some((log) => log.id === selectedLog.value!.id)) {
+            selectedLog.value = liveLogs.value[0] ?? null;
         }
     },
 );
@@ -386,13 +402,13 @@ const replayLog = (log: WebhookLogItem) => {
             </div>
 
             <div
-                v-if="logs.data.length > 0"
+                v-if="liveLogs.length > 0"
                 class="grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-2xs lg:h-[calc(100vh-24rem)] lg:grid-cols-3"
             >
                 <div class="overflow-y-auto border-b-2 border-foreground lg:border-b-0 lg:border-r-2">
                     <InfiniteScroll data="logs" preserve-scroll>
                         <button
-                            v-for="log in logs.data"
+                            v-for="log in liveLogs"
                             :key="log.id"
                             class="relative flex w-full items-center gap-3 border-b-2 border-foreground/10 px-4 py-3 text-left transition-colors hover:bg-violet-50 dark:hover:bg-violet-950/30"
                             :class="
@@ -482,7 +498,11 @@ const replayLog = (log: WebhookLogItem) => {
                                     {{ $t('webhooks.show.delivered_at') }}
                                 </p>
                                 <p class="mt-1 text-sm font-medium text-foreground/80">
-                                    {{ date.formatDateTime(selectedLog.created_at) }}
+                                    {{
+                                        selectedLog.delivered_at
+                                            ? date.formatDateTime(selectedLog.delivered_at)
+                                            : $t('webhooks.never')
+                                    }}
                                 </p>
                             </div>
                         </div>

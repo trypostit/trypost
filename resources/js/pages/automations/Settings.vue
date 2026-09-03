@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { Form, router } from '@inertiajs/vue3';
-import { IconAlertCircle, IconTrash } from '@tabler/icons-vue';
+import { IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 import AutomationDetailLayout from '@/components/automations/AutomationDetailLayout.vue';
-import { firstConfigIssue } from '@/components/automations/config-validation';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import InputError from '@/components/InputError.vue';
@@ -42,11 +41,6 @@ const statusDot = computed(
 const isActive = computed(() => props.automation.status === 'active');
 const isToggling = ref(false);
 
-// A misconfigured node can't be activated (the backend rejects it too); surface
-// it up front and block the toggle. Pausing an active automation stays allowed.
-const configIssue = computed(() => firstConfigIssue(props.automation.nodes ?? []));
-const activationBlocked = computed(() => !isActive.value && configIssue.value !== null);
-
 const statusDetail = computed(() => {
     const automation = props.automation;
 
@@ -62,7 +56,7 @@ const statusDetail = computed(() => {
 });
 
 const toggleActive = () => {
-    if (isToggling.value || activationBlocked.value) return;
+    if (isToggling.value) return;
     isToggling.value = true;
     const url = isActive.value
         ? pauseAutomation.url(props.automation.id)
@@ -163,7 +157,7 @@ const openDeleteModal = () => {
                     </div>
                     <Switch
                         :model-value="isActive"
-                        :disabled="isToggling || activationBlocked"
+                        :disabled="isToggling"
                         :aria-label="
                             isActive
                                 ? $t('automations.actions.pause')
@@ -172,14 +166,6 @@ const openDeleteModal = () => {
                         @update:model-value="toggleActive"
                     />
                 </div>
-
-                <p
-                    v-if="activationBlocked"
-                    class="flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-500"
-                >
-                    <IconAlertCircle class="size-4 flex-shrink-0" />
-                    {{ configIssue }}
-                </p>
             </section>
 
             <Separator />

@@ -387,8 +387,6 @@ return [
         'graph_contains_cycle' => 'Le graphe de l\'automatisation contient un cycle.',
         'only_failed_can_retry' => 'Seules les exécutions échouées peuvent être relancées.',
         'no_generated_post' => 'Aucune publication générée trouvée pour cette exécution.',
-        'webhook_request_failed' => 'La requête webhook n\'a pas pu être exécutée.',
-        'webhook_invalid_payload_json' => 'Le modèle de payload n\'est pas du JSON valide.',
         'url_not_allowed' => 'L\'URL de la requête pointe vers une adresse privée ou inaccessible et a été bloquée.',
         'node_no_longer_exists' => 'Le nœud :node_id n\'existe plus dans l\'automatisation.',
         'no_trigger_connection' => 'Aucun nœud connecté au nœud déclencheur.',
