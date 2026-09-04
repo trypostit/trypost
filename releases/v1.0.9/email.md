@@ -22,7 +22,7 @@ When something happens to a post, we send the event to the URL you choose. You c
 - Post failed
 - Post deleted
 
-That's it. Webhooks are in the workspace sidebar. Go plug something in.
+If you're enjoying TryPost, consider leaving a review on [G2](https://www.g2.com/products/trypost/). We really appreciate the feedback.
 
 Cheers,
 Paulo from TryPost.it
