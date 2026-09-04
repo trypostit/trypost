@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Mcp\Tools\Webhook;
 
 use App\Actions\Webhook\CreateWebhook;
+use App\Enums\Webhook\EventType;
 use App\Http\Resources\Api\WebhookResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\Workspace;
 use App\Services\WebhookService;
-use App\Support\WebhookRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Validation\Rule;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
@@ -37,7 +38,11 @@ class CreateWebhookTool extends Tool
             return $workspace;
         }
 
-        $validated = $request->validate(WebhookRules::store());
+        $validated = $request->validate([
+            'endpoint' => ['required', 'url', 'max:255'],
+            'events' => ['required', 'array', 'min:1'],
+            'events.*' => ['string', Rule::enum(EventType::class)],
+        ]);
 
         try {
             $webhook = CreateWebhook::execute($workspace, $validated, $this->webhooks);
@@ -58,7 +63,7 @@ class CreateWebhookTool extends Tool
         return [
             'endpoint' => $schema->string()->required()->description('HTTPS URL that will receive signed webhook payloads.'),
             'events' => $schema->array()
-                ->items($schema->string()->enum(WebhookRules::eventValues()))
+                ->items($schema->string()->enum(array_column(EventType::cases(), 'value')))
                 ->required()
                 ->description('At least one event to subscribe to: post.created, post.scheduled, post.unscheduled, post.published, post.partially_published, post.failed, post.deleted.'),
         ];

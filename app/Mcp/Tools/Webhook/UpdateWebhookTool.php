@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mcp\Tools\Webhook;
 
 use App\Actions\Webhook\UpdateWebhook;
+use App\Enums\Webhook\EventType;
 use App\Enums\Webhook\Status;
 use App\Http\Resources\Api\WebhookResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
@@ -12,8 +13,8 @@ use App\Mcp\Concerns\ResolvesWorkspaceWebhook;
 use App\Models\Webhook;
 use App\Models\Workspace;
 use App\Services\WebhookService;
-use App\Support\WebhookRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Validation\Rule;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
@@ -43,7 +44,10 @@ class UpdateWebhookTool extends Tool
 
         $validated = $request->validate([
             'webhook_id' => ['required', 'string'],
-            ...WebhookRules::update(),
+            'endpoint' => ['sometimes', 'url', 'max:255'],
+            'events' => ['sometimes', 'array', 'min:1'],
+            'events.*' => ['string', Rule::enum(EventType::class)],
+            'status' => ['sometimes', 'string', Rule::enum(Status::class)->only([Status::Enabled, Status::Disabled])],
         ]);
 
         $webhook = $this->webhookInWorkspace($workspace, data_get($validated, 'webhook_id'));
@@ -74,7 +78,7 @@ class UpdateWebhookTool extends Tool
             'webhook_id' => $schema->string()->required()->description('The webhook ID.'),
             'endpoint' => $schema->string()->description('New HTTPS URL. Omitted fields are left unchanged.'),
             'events' => $schema->array()
-                ->items($schema->string()->enum(WebhookRules::eventValues()))
+                ->items($schema->string()->enum(array_column(EventType::cases(), 'value')))
                 ->description('Replacement event list. Must contain at least one event when provided.'),
             'status' => $schema->string()
                 ->enum([Status::Enabled->value, Status::Disabled->value])
