@@ -15,6 +15,7 @@ import PinterestPreview from './PinterestPreview.vue';
 import TelegramPreview from './TelegramPreview.vue';
 import ThreadsPreview from './ThreadsPreview.vue';
 import TikTokPreview from './TikTokPreview.vue';
+import VkPreview from './VkPreview.vue';
 import XPreview from './XPreview.vue';
 import YouTubePreview from './YouTubePreview.vue';
 
@@ -88,6 +89,8 @@ const previewComponent = computed(() => {
             return TelegramPreview;
         case 'discord':
             return DiscordPreview;
+        case 'vk':
+            return VkPreview;
         default:
             return LinkedInPreview;
     }

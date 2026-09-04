@@ -550,6 +550,10 @@ return [
             'label' => 'Сообщение',
             'description' => 'Сообщение в канал Discord с опциональным медиа и встраиваниями',
         ],
+        'vk_post' => [
+            'label' => 'Пост',
+            'description' => 'Текстовый пост с необязательными медиа',
+        ],
     ],
 
     'platforms' => [
@@ -660,6 +664,7 @@ return [
                 'mastodon_post' => 'Пост Mastodon',
                 'telegram_post' => 'Пост Telegram',
                 'discord_message' => 'Сообщение Discord',
+                'vk_post' => 'Пост VK',
                 'facebook_post' => 'Пост Facebook',
                 'pinterest_pin' => 'Пин Pinterest',
                 'instagram_story' => 'История Instagram',

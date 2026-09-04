@@ -550,6 +550,10 @@ return [
             'label' => 'Message',
             'description' => 'Message to a Discord channel with optional media & embeds',
         ],
+        'vk_post' => [
+            'label' => 'Post',
+            'description' => 'Text post with optional media',
+        ],
     ],
 
     'platforms' => [
@@ -660,6 +664,7 @@ return [
                 'mastodon_post' => 'Mastodon Post',
                 'telegram_post' => 'Telegram Post',
                 'discord_message' => 'Discord Message',
+                'vk_post' => 'VK Post',
                 'facebook_post' => 'Facebook Post',
                 'pinterest_pin' => 'Pinterest Pin',
                 'instagram_story' => 'Instagram Story',

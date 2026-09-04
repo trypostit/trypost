@@ -34,6 +34,7 @@ use App\Http\Controllers\App\WorkspaceInviteController;
 use App\Http\Controllers\App\WorkspaceLabelController;
 use App\Http\Controllers\App\WorkspaceSignatureController;
 use App\Http\Controllers\Auth\BlueskyController;
+use App\Http\Controllers\Auth\VkController;
 use App\Http\Controllers\Auth\DiscordController;
 use App\Http\Controllers\Auth\FacebookController;
 use App\Http\Controllers\Auth\InstagramController;
@@ -107,6 +108,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('connect/pinterest', [PinterestController::class, 'connect'])->name('app.social.pinterest.connect');
         Route::get('connect/bluesky', [BlueskyController::class, 'connect'])->name('app.social.bluesky.connect');
         Route::post('connect/bluesky', [BlueskyController::class, 'store'])->name('app.social.bluesky.store');
+        Route::get('connect/vk', [VkController::class, 'connect'])->name('app.social.vk.connect');
+        Route::post('connect/vk', [VkController::class, 'store'])->name('app.social.vk.store');
         Route::get('connect/mastodon', [MastodonController::class, 'connect'])->name('app.social.mastodon.connect');
         Route::post('connect/mastodon', [MastodonController::class, 'authorizeInstance'])->name('app.social.mastodon.authorize');
         Route::post('connect/telegram', [TelegramController::class, 'connect'])->name('app.social.telegram.connect');

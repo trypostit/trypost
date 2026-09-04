@@ -32,6 +32,7 @@ return [
         'mastodon' => 'Mastodon hesabınızı bağlayın',
         'telegram' => 'Bir Telegram kanalı veya grubu bağlayın',
         'discord' => 'Bir Discord sunucusu bağlayın',
+        'vk' => 'Bir VK topluluğu veya profili bağlayın',
     ],
 
     'disconnect_modal' => [
@@ -50,6 +51,27 @@ return [
         'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
         'app_password_hint' => 'Güvenlik için bir <strong>Uygulama Parolası</strong> kullanın. <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a> adresinden oluşturun.',
         'submit' => 'Bluesky\'i Bağla',
+        'submitting' => 'Bağlanıyor...',
+    ],
+
+    'vk' => [
+        'title' => 'VK\'yı bağla',
+        'description' => 'Bir topluluğa veya kendi duvarınıza gönderi yayınlayın',
+        'access_token' => 'Erişim belirteci',
+        'access_token_placeholder' => 'vk1.a.…',
+        'access_token_hint' => 'Önerilen: <strong>topluluk erişim anahtarı</strong> (topluluk → Yönet → API kullanımı → Erişim anahtarları; fotoğraflar, duvar ve topluluk yönetimi izinlerini verin) — yayınlama her uygulama türüyle çalışır. VK, topluluk anahtarıyla video yüklemeye izin vermez. <em>wall, photos, groups, video, offline</em> izinli bir <strong>kullanıcı anahtarı</strong> da çalışır, ancak VK duvara gönderiyi yalnızca standalone uygulamalara açar.',
+        'pick_target' => 'Nerede yayınlansın',
+        'target_group' => 'Topluluk',
+        'target_profile' => 'Kişisel profil',
+        'invalid_token' => 'VK bu belirteci reddetti.',
+        'invalid_target' => 'Bu duvar, verilen belirteçle yönetilemiyor.',
+        'community' => 'Topluluk',
+        'community_placeholder' => 'vk.com/yourclub',
+        'community_hint' => 'VK bir anahtarın hangi topluluğa ait olduğunu bildirmez; topluluğun adresini veya kısa adını girin — anahtarın aidiyeti ardından doğrulanır.',
+        'invalid_community' => 'Topluluk bulunamadı. vk.com/yourclub biçiminde bir adres girin.',
+        'community_token_mismatch' => 'Bu anahtar başka bir topluluğa ait.',
+        'connection_error' => 'VK\'ya bağlanırken hata oluştu. Lütfen tekrar deneyin.',
+        'submit' => 'VK\'yı bağla',
         'submitting' => 'Bağlanıyor...',
     ],
 

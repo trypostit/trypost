@@ -123,6 +123,21 @@ class SocialAccountFactory extends Factory
         ]);
     }
 
+    public function vk(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'platform' => Platform::Vk,
+            'platform_user_id' => '-123456',
+            'scopes' => Platform::Vk->requiredPublishScopes(),
+            'token_expires_at' => null,
+            'meta' => [
+                'owner_id' => -123456,
+                'is_group' => true,
+                'vk_user_id' => 111,
+            ],
+        ]);
+    }
+
     public function mastodon(): static
     {
         return $this->state(fn (array $attributes) => [

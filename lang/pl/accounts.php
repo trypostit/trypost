@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Połącz swoje konto Mastodon',
         'telegram' => 'Połącz kanał lub grupę na Telegramie',
         'discord' => 'Połącz serwer Discord',
+        'vk' => 'Połącz społeczność lub profil VK',
     ],
 
     'disconnect_modal' => [
@@ -48,6 +49,27 @@ return [
         'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
         'app_password_hint' => 'Ze względów bezpieczeństwa użyj <strong>hasła aplikacji</strong>. Utwórz je na <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a>.',
         'submit' => 'Połącz Bluesky',
+        'submitting' => 'Łączenie...',
+    ],
+
+    'vk' => [
+        'title' => 'Połącz VK',
+        'description' => 'Publikuj w społeczności lub na własnej tablicy',
+        'access_token' => 'Token dostępu',
+        'access_token_placeholder' => 'vk1.a.…',
+        'access_token_hint' => 'Zalecane: <strong>klucz dostępu społeczności</strong> (społeczność → Zarządzanie → Praca z API → Klucze dostępu; zaznacz zdjęcia, tablicę i zarządzanie społecznością) — publikacja działa z każdym typem aplikacji. VK nie pozwala przesyłać wideo kluczem społeczności. Zadziała też <strong>token użytkownika</strong> z uprawnieniami <em>wall, photos, groups, video, offline</em>, ale publikować na tablicy VK pozwala tylko aplikacjom standalone.',
+        'pick_target' => 'Gdzie publikować',
+        'target_group' => 'Społeczność',
+        'target_profile' => 'Profil osobisty',
+        'invalid_token' => 'VK odrzucił ten token.',
+        'invalid_target' => 'Tą tablicą nie można zarządzać podanym tokenem.',
+        'community' => 'Społeczność',
+        'community_placeholder' => 'vk.com/yourclub',
+        'community_hint' => 'VK nie ujawnia, do której społeczności należy klucz, więc podaj jej adres lub krótką nazwę — przynależność klucza zostanie następnie sprawdzona.',
+        'invalid_community' => 'Nie znaleziono społeczności. Podaj adres w formie vk.com/yourclub.',
+        'community_token_mismatch' => 'Ten klucz należy do innej społeczności.',
+        'connection_error' => 'Błąd połączenia z VK. Spróbuj ponownie.',
+        'submit' => 'Połącz VK',
         'submitting' => 'Łączenie...',
     ],
 

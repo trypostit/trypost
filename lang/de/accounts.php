@@ -32,6 +32,7 @@ return [
         'mastodon' => 'Verbinde dein Mastodon-Konto',
         'telegram' => 'Verbinde einen Telegram-Kanal oder eine Telegram-Gruppe',
         'discord' => 'Verbinde einen Discord-Server',
+        'vk' => 'Verbinde eine VK-Community oder ein Profil',
     ],
 
     'disconnect_modal' => [
@@ -51,6 +52,27 @@ return [
         'app_password_hint' => 'Verwende aus Sicherheitsgründen ein <strong>App-Passwort</strong>. Erstelle eines unter <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a>.',
         'submit' => 'Bluesky verbinden',
         'submitting' => 'Verbindung wird hergestellt...',
+    ],
+
+    'vk' => [
+        'title' => 'VK verbinden',
+        'description' => 'In einer Community oder auf deiner Pinnwand veröffentlichen',
+        'access_token' => 'Zugriffstoken',
+        'access_token_placeholder' => 'vk1.a.…',
+        'access_token_hint' => 'Empfohlen: ein <strong>Community-Zugriffstoken</strong> (Community → Verwalten → API-Nutzung → Zugriffstokens; Fotos, Wall und Community-Verwaltung erlauben) — das Veröffentlichen funktioniert mit jedem App-Typ. Video-Upload erlaubt VK mit Community-Tokens nicht. Ein <strong>Benutzer-Zugriffstoken</strong> mit den Berechtigungen <em>wall, photos, groups, video, offline</em> funktioniert ebenfalls, aber Wall-Posts erlaubt VK nur Standalone-Apps.',
+        'pick_target' => 'Wo veröffentlichen?',
+        'target_group' => 'Community',
+        'target_profile' => 'Persönliches Profil',
+        'invalid_token' => 'VK hat dieses Token abgelehnt.',
+        'invalid_target' => 'Diese Pinnwand ist mit dem angegebenen Token nicht verwaltbar.',
+        'community' => 'Community',
+        'community_placeholder' => 'vk.com/yourclub',
+        'community_hint' => 'VK verrät nicht, zu welcher Community ein Schlüssel gehört. Gib daher ihre Adresse oder ihren Kurznamen ein — die Zugehörigkeit wird anschließend geprüft.',
+        'invalid_community' => 'Community nicht gefunden. Gib die Adresse im Format vk.com/yourclub ein.',
+        'community_token_mismatch' => 'Dieser Schlüssel gehört zu einer anderen Community.',
+        'connection_error' => 'Fehler beim Verbinden mit VK. Bitte erneut versuchen.',
+        'submit' => 'VK verbinden',
+        'submitting' => 'Verbinden...',
     ],
 
     'mastodon' => [

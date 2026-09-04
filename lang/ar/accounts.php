@@ -30,6 +30,7 @@ return [
         'mastodon' => 'اربط حسابك على Mastodon',
         'telegram' => 'اربط قناة أو مجموعة على Telegram',
         'discord' => 'اربط خادم Discord',
+        'vk' => 'اربط مجتمع VK أو ملفًا شخصيًا',
     ],
 
     'disconnect_modal' => [
@@ -48,6 +49,27 @@ return [
         'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
         'app_password_hint' => 'استخدم <strong>كلمة مرور التطبيق</strong> لمزيد من الأمان. أنشئ واحدة من <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a>.',
         'submit' => 'ربط Bluesky',
+        'submitting' => 'جارٍ الاتصال...',
+    ],
+
+    'vk' => [
+        'title' => 'ربط VK',
+        'description' => 'انشر في مجتمع أو على حائطك الشخصي',
+        'access_token' => 'رمز الوصول',
+        'access_token_placeholder' => 'vk1.a.…',
+        'access_token_hint' => 'موصى به: <strong>مفتاح وصول المجتمع</strong> (المجتمع ← الإدارة ← استخدام API ← مفاتيح الوصول؛ امنح الصور والحائط وإدارة المجتمع) — يعمل النشر مع أي نوع تطبيق. لا يسمح VK برفع الفيديو بمفاتيح المجتمع. يعمل أيضًا <strong>مفتاح المستخدم</strong> بصلاحيات <em>wall, photos, groups, video, offline</em>، لكن VK يسمح بالنشر على الحائط لتطبيقات standalone فقط.',
+        'pick_target' => 'اختر وجهة النشر',
+        'target_group' => 'مجتمع',
+        'target_profile' => 'ملف شخصي',
+        'invalid_token' => 'رفض VK هذا الرمز.',
+        'invalid_target' => 'لا يمكن إدارة هذا الحائط بالرمز المقدّم.',
+        'community' => 'المجتمع',
+        'community_placeholder' => 'vk.com/yourclub',
+        'community_hint' => 'لا يكشف VK عن المجتمع الذي ينتمي إليه المفتاح، لذا أدخل عنوانه أو اسمه المختصر — ثم يتم التحقق من انتماء المفتاح.',
+        'invalid_community' => 'لم يتم العثور على المجتمع. أدخل عنوانًا مثل vk.com/yourclub.',
+        'community_token_mismatch' => 'هذا المفتاح ينتمي إلى مجتمع آخر.',
+        'connection_error' => 'خطأ في الاتصال بـ VK. حاول مرة أخرى.',
+        'submit' => 'ربط VK',
         'submitting' => 'جارٍ الاتصال...',
     ],
 

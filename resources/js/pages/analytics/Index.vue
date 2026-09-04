@@ -14,6 +14,7 @@ import TikTokAnalytics from '@/components/analytics/TikTokAnalytics.vue';
 import type { AnalyticsAccount } from '@/components/analytics/types';
 import XAnalytics from '@/components/analytics/XAnalytics.vue';
 import YouTubeAnalytics from '@/components/analytics/YouTubeAnalytics.vue';
+import VkAnalytics from '@/components/analytics/VkAnalytics.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import dayjs from '@/dayjs';
@@ -138,6 +139,11 @@ const platformSupportsDateRange = computed(() => {
 
             <TelegramAnalytics
                 v-else-if="selectedAccount?.platform === 'telegram'"
+                :account-id="selectedAccountId"
+            />
+
+            <VkAnalytics
+                v-else-if="selectedAccount?.platform === 'vk'"
                 :account-id="selectedAccountId"
             />
 

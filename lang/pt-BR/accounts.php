@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Conecte sua conta do Mastodon',
         'telegram' => 'Conecte um canal ou grupo do Telegram',
         'discord' => 'Conecte um servidor do Discord',
+        'vk' => 'Conecte uma comunidade ou um perfil do VK',
     ],
 
     'disconnect_modal' => [
@@ -48,6 +49,27 @@ return [
         'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
         'app_password_hint' => 'Use uma <strong>Senha do App</strong> por segurança. Crie uma em <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a>.',
         'submit' => 'Conectar Bluesky',
+        'submitting' => 'Conectando...',
+    ],
+
+    'vk' => [
+        'title' => 'Conectar VK',
+        'description' => 'Publique em uma comunidade ou no seu mural',
+        'access_token' => 'Token de acesso',
+        'access_token_placeholder' => 'vk1.a.…',
+        'access_token_hint' => 'Recomendado: um <strong>token de acesso da comunidade</strong> (comunidade → Gerenciar → Uso da API → Tokens de acesso; conceda fotos, mural e gestão da comunidade) — a publicação funciona com qualquer tipo de app. O VK não permite envio de vídeo com tokens de comunidade. Um <strong>token de usuário</strong> com os escopos <em>wall, photos, groups, video, offline</em> também funciona, mas o VK só permite postar no mural para apps standalone.',
+        'pick_target' => 'Onde publicar',
+        'target_group' => 'Comunidade',
+        'target_profile' => 'Perfil pessoal',
+        'invalid_token' => 'O VK rejeitou este token.',
+        'invalid_target' => 'Este mural não pode ser gerenciado com o token informado.',
+        'community' => 'Comunidade',
+        'community_placeholder' => 'vk.com/yourclub',
+        'community_hint' => 'O VK não informa a qual comunidade uma chave pertence; informe o endereço ou nome curto dela — a chave é então verificada.',
+        'invalid_community' => 'Comunidade não encontrada. Informe um endereço como vk.com/yourclub.',
+        'community_token_mismatch' => 'Esta chave pertence a outra comunidade.',
+        'connection_error' => 'Erro ao conectar ao VK. Tente novamente.',
+        'submit' => 'Conectar VK',
         'submitting' => 'Conectando...',
     ],
 

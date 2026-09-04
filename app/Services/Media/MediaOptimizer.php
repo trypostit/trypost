@@ -354,6 +354,12 @@ class MediaOptimizer
                 'format' => 'image/jpeg',
                 'quality' => 100,
             ],
+            Platform::Vk => [
+                'max_width' => 2560,
+                'max_size' => 50 * 1024 * 1024,
+                'format' => 'image/jpeg',
+                'quality' => 100,
+            ],
         };
     }
 }

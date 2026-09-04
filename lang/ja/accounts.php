@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Mastodon アカウントを接続',
         'telegram' => 'Telegram チャンネルまたはグループを接続',
         'discord' => 'Discord サーバーを接続',
+        'vk' => 'VKのコミュニティまたはプロフィールを連携',
     ],
 
     'disconnect_modal' => [
@@ -48,6 +49,27 @@ return [
         'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
         'app_password_hint' => 'セキュリティのため<strong>アプリパスワード</strong>を使用してください。<a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a> で作成できます。',
         'submit' => 'Bluesky を接続',
+        'submitting' => '接続中...',
+    ],
+
+    'vk' => [
+        'title' => 'VKを連携',
+        'description' => 'コミュニティまたは自分のウォールに投稿します',
+        'access_token' => 'アクセストークン',
+        'access_token_placeholder' => 'vk1.a.…',
+        'access_token_hint' => '推奨: <strong>コミュニティアクセストークン</strong>(コミュニティ → 管理 → API の利用 → アクセストークン。写真・ウォール・コミュニティ管理を許可)— アプリ種別を問わず投稿できます。コミュニティトークンでは VK は動画アップロードを許可していません。<em>wall, photos, groups, video, offline</em> スコープの<strong>ユーザートークン</strong>も使えますが、ウォール投稿は standalone アプリのみ許可されます。',
+        'pick_target' => '投稿先を選択',
+        'target_group' => 'コミュニティ',
+        'target_profile' => '個人プロフィール',
+        'invalid_token' => 'VKがこのトークンを拒否しました。',
+        'invalid_target' => 'このウォールは指定されたトークンでは管理できません。',
+        'community' => 'コミュニティ',
+        'community_placeholder' => 'vk.com/yourclub',
+        'community_hint' => 'VK はキーがどのコミュニティのものか教えてくれないため、コミュニティのアドレスまたはスクリーンネームを入力してください。その後、キーの所属を確認します。',
+        'invalid_community' => 'コミュニティが見つかりません。vk.com/yourclub の形式で入力してください。',
+        'community_token_mismatch' => 'このキーは別のコミュニティのものです。',
+        'connection_error' => 'VKへの接続エラーです。もう一度お試しください。',
+        'submit' => 'VKを連携',
         'submitting' => '接続中...',
     ],
 

@@ -550,6 +550,10 @@ return [
             'label' => 'Wiadomość',
             'description' => 'Wiadomość na kanale Discord z opcjonalnymi multimediami i osadzeniami',
         ],
+        'vk_post' => [
+            'label' => 'Post',
+            'description' => 'Post tekstowy z opcjonalnymi mediami',
+        ],
     ],
 
     'platforms' => [
@@ -660,6 +664,7 @@ return [
                 'mastodon_post' => 'Post na Mastodon',
                 'telegram_post' => 'Post na Telegramie',
                 'discord_message' => 'Wiadomość na Discord',
+                'vk_post' => 'Post VK',
                 'facebook_post' => 'Post na Facebooku',
                 'pinterest_pin' => 'Pin na Pinterest',
                 'instagram_story' => 'Relacja na Instagramie',

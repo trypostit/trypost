@@ -550,6 +550,10 @@ return [
             'label' => 'Message',
             'description' => 'Message vers un salon Discord avec médias et embeds facultatifs',
         ],
+        'vk_post' => [
+            'label' => 'Publication',
+            'description' => 'Publication texte avec médias facultatifs',
+        ],
     ],
 
     'platforms' => [
@@ -660,6 +664,7 @@ return [
                 'mastodon_post' => 'Publication Mastodon',
                 'telegram_post' => 'Publication Telegram',
                 'discord_message' => 'Message Discord',
+                'vk_post' => 'Publication VK',
                 'facebook_post' => 'Publication Facebook',
                 'pinterest_pin' => 'Épingle Pinterest',
                 'instagram_story' => 'Story Instagram',

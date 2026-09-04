@@ -256,6 +256,11 @@ return [
             // Secret-token header Telegram echoes on every webhook call.
             'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
         ],
+        'vk' => [
+            'enabled' => env('VK_ENABLED', true),
+            'api' => env('VK_API', 'https://api.vk.com/method'),
+            'api_version' => env('VK_API_VERSION', '5.199'),
+        ],
         'discord' => [
             'enabled' => env('DISCORD_ENABLED', true),
             // Single shared bot application. OAuth (bot scope) authorizes adding the

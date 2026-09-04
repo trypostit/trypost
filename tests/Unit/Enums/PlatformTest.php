@@ -18,6 +18,7 @@ test('platform has correct labels', function () {
     expect(Platform::Pinterest->label())->toBe('Pinterest');
     expect(Platform::Bluesky->label())->toBe('Bluesky');
     expect(Platform::Mastodon->label())->toBe('Mastodon');
+    expect(Platform::Vk->label())->toBe('VK');
 });
 
 test('platform has correct colors', function () {
@@ -32,6 +33,7 @@ test('platform has correct colors', function () {
     expect(Platform::Pinterest->color())->toBe('#E60023');
     expect(Platform::Bluesky->color())->toBe('#0085FF');
     expect(Platform::Mastodon->color())->toBe('#6364FF');
+    expect(Platform::Vk->color())->toBe('#0077FF');
 });
 
 test('platform has correct allowed media types', function () {

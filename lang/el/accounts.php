@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Συνδέστε τον λογαριασμό σας Mastodon',
         'telegram' => 'Συνδέστε ένα κανάλι ή ομάδα Telegram',
         'discord' => 'Συνδέστε έναν διακομιστή Discord',
+        'vk' => 'Συνδέστε μια κοινότητα ή ένα προφίλ VK',
     ],
 
     'disconnect_modal' => [
@@ -48,6 +49,27 @@ return [
         'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
         'app_password_hint' => 'Χρησιμοποιήστε ένα <strong>App Password</strong> για ασφάλεια. Δημιουργήστε ένα στο <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a>.',
         'submit' => 'Σύνδεση Bluesky',
+        'submitting' => 'Σύνδεση...',
+    ],
+
+    'vk' => [
+        'title' => 'Σύνδεση VK',
+        'description' => 'Δημοσιεύστε σε κοινότητα ή στον τοίχο σας',
+        'access_token' => 'Διακριτικό πρόσβασης',
+        'access_token_placeholder' => 'vk1.a.…',
+        'access_token_hint' => 'Συνιστάται: ένα <strong>διακριτικό πρόσβασης κοινότητας</strong> (κοινότητα → Διαχείριση → Χρήση API → Διακριτικά πρόσβασης, με δικαιώματα φωτογραφιών, τοίχου και διαχείρισης κοινότητας) — η δημοσίευση λειτουργεί με κάθε τύπο εφαρμογής. Το VK δεν επιτρέπει μεταφόρτωση βίντεο με διακριτικά κοινότητας. Λειτουργεί και <strong>διακριτικό χρήστη</strong> με δικαιώματα <em>wall, photos, groups, video, offline</em>, αλλά το VK επιτρέπει δημοσίευση στον τοίχο μόνο σε standalone εφαρμογές.',
+        'pick_target' => 'Πού να δημοσιευτεί',
+        'target_group' => 'Κοινότητα',
+        'target_profile' => 'Προσωπικό προφίλ',
+        'invalid_token' => 'Το VK απέρριψε αυτό το διακριτικό.',
+        'invalid_target' => 'Αυτός ο τοίχος δεν μπορεί να διαχειριστεί με το παρεχόμενο διακριτικό.',
+        'community' => 'Κοινότητα',
+        'community_placeholder' => 'vk.com/yourclub',
+        'community_hint' => 'Το VK δεν αποκαλύπτει σε ποια κοινότητα ανήκει ένα κλειδί, γι’ αυτό εισαγάγετε τη διεύθυνση ή το σύντομο όνομά της — στη συνέχεια ελέγχεται η αντιστοιχία του κλειδιού.',
+        'invalid_community' => 'Η κοινότητα δεν βρέθηκε. Εισαγάγετε διεύθυνση της μορφής vk.com/yourclub.',
+        'community_token_mismatch' => 'Αυτό το κλειδί ανήκει σε άλλη κοινότητα.',
+        'connection_error' => 'Σφάλμα σύνδεσης με το VK. Δοκιμάστε ξανά.',
+        'submit' => 'Σύνδεση VK',
         'submitting' => 'Σύνδεση...',
     ],
 

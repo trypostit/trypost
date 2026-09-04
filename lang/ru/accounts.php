@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Подключите аккаунт Mastodon',
         'telegram' => 'Подключите канал или группу Telegram',
         'discord' => 'Подключите сервер Discord',
+        'vk' => 'Подключите сообщество или профиль VK',
     ],
 
     'disconnect_modal' => [
@@ -48,6 +49,27 @@ return [
         'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
         'app_password_hint' => 'В целях безопасности используйте <strong>пароль приложения</strong>. Создайте его на <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a>.',
         'submit' => 'Подключить Bluesky',
+        'submitting' => 'Подключение...',
+    ],
+
+    'vk' => [
+        'title' => 'Подключить VK',
+        'description' => 'Публикация в сообщество или на свою стену',
+        'access_token' => 'Ключ доступа',
+        'access_token_placeholder' => 'vk1.a.…',
+        'access_token_hint' => 'Рекомендуется <strong>ключ доступа сообщества</strong> (сообщество → Управление → Работа с API → Ключи доступа; отметьте фотографии, стену и управление сообществом) — публикация работает с любым типом приложения. Загрузку видео VK по ключу сообщества не разрешает. Подойдёт и <strong>пользовательский ключ</strong> с правами <em>wall, photos, groups, video, offline</em>, но постить на стену VK разрешает только standalone-приложениям.',
+        'pick_target' => 'Куда публиковать',
+        'target_group' => 'Сообщество',
+        'target_profile' => 'Личная страница',
+        'invalid_token' => 'VK отклонил этот токен.',
+        'invalid_target' => 'Эта стена недоступна для указанного токена.',
+        'community' => 'Сообщество',
+        'community_placeholder' => 'vk.com/yourclub',
+        'community_hint' => 'VK не сообщает, какому сообществу принадлежит ключ, поэтому укажите его адрес или короткое имя — принадлежность ключа будет проверена.',
+        'invalid_community' => 'Сообщество не найдено. Укажите адрес вида vk.com/yourclub.',
+        'community_token_mismatch' => 'Этот ключ принадлежит другому сообществу.',
+        'connection_error' => 'Ошибка подключения к VK. Попробуйте ещё раз.',
+        'submit' => 'Подключить VK',
         'submitting' => 'Подключение...',
     ],
 

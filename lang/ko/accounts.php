@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Mastodon 계정을 연결하세요',
         'telegram' => 'Telegram 채널 또는 그룹을 연결하세요',
         'discord' => 'Discord 서버를 연결하세요',
+        'vk' => 'VK 커뮤니티 또는 프로필 연결',
     ],
 
     'disconnect_modal' => [
@@ -48,6 +49,27 @@ return [
         'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
         'app_password_hint' => '보안을 위해 <strong>앱 비밀번호</strong>를 사용하세요. <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a>에서 생성할 수 있습니다.',
         'submit' => 'Bluesky 연결',
+        'submitting' => '연결 중...',
+    ],
+
+    'vk' => [
+        'title' => 'VK 연결',
+        'description' => '커뮤니티 또는 내 담벼락에 게시합니다',
+        'access_token' => '액세스 토큰',
+        'access_token_placeholder' => 'vk1.a.…',
+        'access_token_hint' => '권장: <strong>커뮤니티 액세스 토큰</strong>(커뮤니티 → 관리 → API 사용 → 액세스 토큰, 사진·담벼락·커뮤니티 관리 권한 부여) — 앱 유형과 무관하게 게시할 수 있습니다. 커뮤니티 토큰으로는 VK가 동영상 업로드를 허용하지 않습니다. <em>wall, photos, groups, video, offline</em> 권한의 <strong>사용자 토큰</strong>도 동작하지만, 담벼락 게시는 standalone 앱에만 허용됩니다.',
+        'pick_target' => '게시 위치 선택',
+        'target_group' => '커뮤니티',
+        'target_profile' => '개인 프로필',
+        'invalid_token' => 'VK가 이 토큰을 거부했습니다.',
+        'invalid_target' => '제공된 토큰으로는 이 담벼락을 관리할 수 없습니다.',
+        'community' => '커뮤니티',
+        'community_placeholder' => 'vk.com/yourclub',
+        'community_hint' => 'VK는 키가 어느 커뮤니티의 것인지 알려주지 않으므로 커뮤니티 주소나 짧은 이름을 입력하세요. 이후 키의 소속이 확인됩니다.',
+        'invalid_community' => '커뮤니티를 찾을 수 없습니다. vk.com/yourclub 형식의 주소를 입력하세요.',
+        'community_token_mismatch' => '이 키는 다른 커뮤니티의 것입니다.',
+        'connection_error' => 'VK 연결 중 오류가 발생했습니다. 다시 시도해 주세요.',
+        'submit' => 'VK 연결',
         'submitting' => '연결 중...',
     ],
 

@@ -13,6 +13,7 @@ import { connect as pinterestConnect } from '@/routes/app/social/pinterest';
 import { connect as threadsConnect } from '@/routes/app/social/threads';
 import { connect as tiktokConnect } from '@/routes/app/social/tiktok';
 import { connect as xConnect } from '@/routes/app/social/x';
+import { connect as vkConnect } from '@/routes/app/social/vk';
 import { connect as youtubeConnect } from '@/routes/app/social/youtube';
 import { Platform } from '@/types/platform';
 
@@ -32,6 +33,7 @@ const CONNECT_ROUTES: Record<string, { url: (options?: { query?: Record<string, 
     [Platform.TikTok]: tiktokConnect,
     [Platform.X]: xConnect,
     [Platform.YouTube]: youtubeConnect,
+    [Platform.Vk]: vkConnect,
 };
 
 export interface SocialOAuthResult {

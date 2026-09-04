@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Koppel je Mastodon-account',
         'telegram' => 'Koppel een Telegram-kanaal of -groep',
         'discord' => 'Koppel een Discord-server',
+        'vk' => 'Verbind een VK-community of -profiel',
     ],
 
     'disconnect_modal' => [
@@ -49,6 +50,27 @@ return [
         'app_password_hint' => 'Gebruik voor de veiligheid een <strong>App-wachtwoord</strong>. Maak er een aan op <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a>.',
         'submit' => 'Bluesky koppelen',
         'submitting' => 'Koppelen...',
+    ],
+
+    'vk' => [
+        'title' => 'VK verbinden',
+        'description' => 'Publiceer in een community of op je eigen prikbord',
+        'access_token' => 'Toegangstoken',
+        'access_token_placeholder' => 'vk1.a.…',
+        'access_token_hint' => 'Aanbevolen: een <strong>community-toegangstoken</strong> (community → Beheren → API-gebruik → Toegangstokens; geef foto\'s, prikbord en communitybeheer) — publiceren werkt met elk app-type. Video-upload staat VK met community-tokens niet toe. Een <strong>gebruikerstoken</strong> met de rechten <em>wall, photos, groups, video, offline</em> werkt ook, maar VK laat alleen standalone-apps op het prikbord posten.',
+        'pick_target' => 'Waar publiceren',
+        'target_group' => 'Community',
+        'target_profile' => 'Persoonlijk profiel',
+        'invalid_token' => 'VK heeft dit token geweigerd.',
+        'invalid_target' => 'Dit prikbord is niet beheerbaar met het opgegeven token.',
+        'community' => 'Community',
+        'community_placeholder' => 'vk.com/yourclub',
+        'community_hint' => 'VK vertelt niet bij welke community een sleutel hoort. Voer daarom het adres of de korte naam in — daarna wordt gecontroleerd of de sleutel erbij hoort.',
+        'invalid_community' => 'Community niet gevonden. Voer een adres in zoals vk.com/yourclub.',
+        'community_token_mismatch' => 'Deze sleutel hoort bij een andere community.',
+        'connection_error' => 'Fout bij verbinden met VK. Probeer het opnieuw.',
+        'submit' => 'VK verbinden',
+        'submitting' => 'Verbinden...',
     ],
 
     'mastodon' => [

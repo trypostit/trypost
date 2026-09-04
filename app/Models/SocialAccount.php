@@ -283,6 +283,9 @@ class SocialAccount extends Model
                         ? rtrim((string) data_get($this->meta, 'instance'), '/')."/@{$username}"
                         : null,
                     SocialPlatform::Telegram => $username ? "https://t.me/{$username}" : null,
+                    SocialPlatform::Vk => $username
+                        ? "https://vk.com/{$username}"
+                        : ($platformUserId ? 'https://vk.com/'.(str_starts_with($platformUserId, '-') ? 'club'.ltrim($platformUserId, '-') : "id{$platformUserId}") : null),
                     default => null,
                 };
             },

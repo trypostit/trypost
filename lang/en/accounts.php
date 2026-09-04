@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Connect your Mastodon account',
         'telegram' => 'Connect a Telegram channel or group',
         'discord' => 'Connect a Discord server',
+        'vk' => 'Connect a VK community or profile',
     ],
 
     'disconnect_modal' => [
@@ -48,6 +49,27 @@ return [
         'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
         'app_password_hint' => 'Use an <strong>App Password</strong> for security. Create one at <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a>.',
         'submit' => 'Connect Bluesky',
+        'submitting' => 'Connecting...',
+    ],
+
+    'vk' => [
+        'title' => 'Connect VK',
+        'description' => 'Publish to a community or your profile wall',
+        'access_token' => 'Access token',
+        'access_token_placeholder' => 'vk1.a.…',
+        'access_token_hint' => 'Recommended: a <strong>community access token</strong> (community → Manage → API usage → Access tokens; grant photos, wall and community management) — publishing works with any app type. VK does not allow video upload with community tokens. A <strong>user access token</strong> with the <em>wall, photos, groups, video, offline</em> scopes also works, but VK only lets standalone apps post to walls.',
+        'pick_target' => 'Choose where to publish',
+        'target_group' => 'Community',
+        'target_profile' => 'Personal profile',
+        'invalid_token' => 'VK rejected this token.',
+        'invalid_target' => 'This wall cannot be managed with the provided token.',
+        'community' => 'Community',
+        'community_placeholder' => 'vk.com/yourclub',
+        'community_hint' => 'VK cannot tell which community a key belongs to, so enter its address or screen name — the key is then checked against it.',
+        'invalid_community' => 'Community not found. Enter its address like vk.com/yourclub.',
+        'community_token_mismatch' => 'This key belongs to a different community.',
+        'connection_error' => 'Error connecting to VK. Please try again.',
+        'submit' => 'Connect VK',
         'submitting' => 'Connecting...',
     ],
 

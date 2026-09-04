@@ -30,6 +30,7 @@ return [
         'mastodon' => 'Collega il tuo account Mastodon',
         'telegram' => 'Collega un canale o gruppo Telegram',
         'discord' => 'Collega un server Discord',
+        'vk' => 'Collega una community o un profilo VK',
     ],
 
     'disconnect_modal' => [
@@ -49,6 +50,27 @@ return [
         'app_password_hint' => 'Usa una <strong>Password per app</strong> per maggiore sicurezza. Creane una su <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a>.',
         'submit' => 'Collega Bluesky',
         'submitting' => 'Collegamento in corso...',
+    ],
+
+    'vk' => [
+        'title' => 'Collega VK',
+        'description' => 'Pubblica in una community o sulla tua bacheca',
+        'access_token' => 'Token di accesso',
+        'access_token_placeholder' => 'vk1.a.…',
+        'access_token_hint' => 'Consigliato: un <strong>token di accesso della community</strong> (community → Gestisci → Utilizzo API → Token di accesso; concedi foto, bacheca e gestione della community) — la pubblicazione funziona con qualsiasi tipo di app. VK non consente il caricamento di video con i token della community. Funziona anche un <strong>token utente</strong> con i permessi <em>wall, photos, groups, video, offline</em>, ma VK consente di pubblicare in bacheca solo alle app standalone.',
+        'pick_target' => 'Dove pubblicare',
+        'target_group' => 'Community',
+        'target_profile' => 'Profilo personale',
+        'invalid_token' => 'VK ha rifiutato questo token.',
+        'invalid_target' => 'Questa bacheca non è gestibile con il token fornito.',
+        'community' => 'Community',
+        'community_placeholder' => 'vk.com/yourclub',
+        'community_hint' => 'VK non indica a quale community appartiene una chiave: inserisci il suo indirizzo o nome breve — l’appartenenza della chiave viene poi verificata.',
+        'invalid_community' => 'Community non trovata. Inserisci un indirizzo come vk.com/yourclub.',
+        'community_token_mismatch' => 'Questa chiave appartiene a un’altra community.',
+        'connection_error' => 'Errore di connessione a VK. Riprova.',
+        'submit' => 'Collega VK',
+        'submitting' => 'Connessione...',
     ],
 
     'mastodon' => [
