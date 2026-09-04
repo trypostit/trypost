@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'Webhooks',
-    'description' => 'Receba notificações em tempo real quando posts forem criados, agendados, publicados ou falharem.',
+    'description' => 'Receba notificações em tempo real quando posts forem criados, agendados, desagendados, publicados ou falharem.',
     'new' => 'Criar webhook',
     'empty_title' => 'Nenhum webhook ainda',
     'empty_description' => 'Crie um webhook para receber notificações de eventos em tempo real.',
@@ -79,7 +79,7 @@ return [
         'no_response' => 'Sem resposta',
         'payload' => 'Payload da mensagem',
         'empty_title' => 'Nenhum evento ainda',
-        'empty_description' => 'Quando posts forem criados, agendados ou publicados, os eventos do webhook aparecem aqui.',
+        'empty_description' => 'Quando posts forem criados, agendados, desagendados ou publicados, os eventos do webhook aparecem aqui.',
     ],
     'events' => [
         'group_posts' => 'Posts',
