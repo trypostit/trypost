@@ -21,31 +21,21 @@ import CreateWebhookDialog from '@/components/webhook/CreateWebhookDialog.vue';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { destroy, show } from '@/routes/app/webhooks';
-import {
-    webhookStatusVariant,
-    type WebhookStatusValue,
-} from '@/types/webhook-status';
-
-interface WebhookItem {
-    id: string;
-    endpoint: string;
-    events: string[];
-    status: WebhookStatusValue;
-    last_sent_at: string | null;
-}
+import type { Webhook } from '@/types/webhook';
+import { webhookStatusVariant } from '@/types/webhook-status';
 
 defineProps<{
-    webhooks: WebhookItem[];
+    webhooks: Webhook[];
 }>();
 
 const createDialogOpen = ref(false);
 const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
-const openWebhook = (webhook: WebhookItem) => {
+const openWebhook = (webhook: Webhook) => {
     router.visit(show.url(webhook));
 };
 
-const handleDelete = (webhook: WebhookItem) => {
+const handleDelete = (webhook: Webhook) => {
     confirmDeleteModal.value?.open({
         url: destroy.url(webhook),
         confirmText: trans('common.confirm_modal.delete_keyword'),
