@@ -19,27 +19,30 @@ const { liveLogs, selectedLog, newLogIds, selectLog } = useWebhookLogs(
 </script>
 
 <template>
-    <div
-        v-if="liveLogs.length > 0"
-        class="grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-2xs lg:h-[calc(100vh-24rem)] lg:grid-cols-3"
-    >
-        <WebhookLogList
-            :logs="liveLogs"
-            :selected-id="selectedLog?.id ?? null"
-            :new-log-ids="newLogIds"
-            @select="selectLog"
-        />
-        <WebhookLogDetail
-            v-if="selectedLog"
-            :webhook-id="webhookId"
-            :log="selectedLog"
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div
+            v-if="liveLogs.length > 0"
+            class="grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-2xs lg:h-[calc(100vh-24rem)] lg:grid-cols-3"
+        >
+            <WebhookLogList
+                :logs="liveLogs"
+                :selected-id="selectedLog?.id ?? null"
+                :new-log-ids="newLogIds"
+                @select="selectLog"
+            />
+            <WebhookLogDetail
+                v-if="selectedLog"
+                :key="selectedLog.id"
+                :webhook-id="webhookId"
+                :log="selectedLog"
+            />
+        </div>
+
+        <EmptyState
+            v-else
+            :icon="IconWebhook"
+            :title="$t('webhooks.show.empty_title')"
+            :description="$t('webhooks.show.empty_description')"
         />
     </div>
-
-    <EmptyState
-        v-else
-        :icon="IconWebhook"
-        :title="$t('webhooks.show.empty_title')"
-        :description="$t('webhooks.show.empty_description')"
-    />
 </template>

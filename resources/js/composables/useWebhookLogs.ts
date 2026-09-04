@@ -85,6 +85,7 @@ export const useWebhookLogs = (
 
             selectedLog.value = stillSelected ?? liveLogs.value[0] ?? null;
         },
+        { deep: true },
     );
 
     const selectLog = (log: WebhookLog): void => {
