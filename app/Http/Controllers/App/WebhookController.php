@@ -122,6 +122,10 @@ class WebhookController extends Controller
 
     public function replay(Webhook $webhook, WebhookLog $webhookLog): RedirectResponse
     {
+        if ($webhookLog->webhook_id !== $webhook->id) {
+            abort(404);
+        }
+
         $this->authorize('replay', [$webhookLog, $webhook]);
 
         ReplayWebhookLog::execute($webhook, $webhookLog);

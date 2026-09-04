@@ -424,7 +424,7 @@ test('replay webhook log', function () {
     });
 });
 
-test('replay of a log from another webhook is forbidden', function () {
+test('replay of a log from another webhook is not found', function () {
     Queue::fake();
 
     $webhook = Webhook::factory()->create([
@@ -444,7 +444,7 @@ test('replay of a log from another webhook is forbidden', function () {
         [],
         ['HTTP_HOST' => 'api.trypost.test']
     )
-        ->assertForbidden();
+        ->assertNotFound();
 
     Queue::assertNothingPushed();
 });

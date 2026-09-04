@@ -101,7 +101,7 @@ test('users cannot replay a webhook log belonging to a different webhook', funct
 
     $this->actingAs($this->user)
         ->post(route('app.webhooks.replay', [$webhook, $log]))
-        ->assertForbidden();
+        ->assertNotFound();
 
     Queue::assertNothingPushed();
 });

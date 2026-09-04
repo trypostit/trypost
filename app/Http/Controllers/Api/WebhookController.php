@@ -111,7 +111,13 @@ class WebhookController extends Controller
 
     public function replay(Request $request, Webhook $webhook, WebhookLog $webhookLog): JsonResponse
     {
-        $this->authorize('replay', [$webhookLog, $this->webhookInWorkspace($request, $webhook)]);
+        $webhook = $this->webhookInWorkspace($request, $webhook);
+
+        if ($webhookLog->webhook_id !== $webhook->id) {
+            abort(Response::HTTP_NOT_FOUND);
+        }
+
+        $this->authorize('replay', [$webhookLog, $webhook]);
 
         ReplayWebhookLog::execute($webhook, $webhookLog);
 
