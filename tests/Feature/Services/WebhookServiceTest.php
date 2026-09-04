@@ -27,17 +27,27 @@ beforeEach(function () {
     $this->service = app(WebhookService::class);
 });
 
-test('ping sends POST request to endpoint', function () {
+test('ping sends a signed POST request to the endpoint', function () {
     Http::fake([
         'https://example.com/hook' => Http::response([], 200),
     ]);
 
-    $this->service->ping('https://example.com/hook');
+    $secret = 'whsec_test_secret';
 
-    Http::assertSent(fn ($request) => $request->url() === 'https://example.com/hook'
-        && $request->method() === 'POST'
-        && $request['type'] === 'webhook.test'
-    );
+    $this->service->ping('https://example.com/hook', $secret);
+
+    Http::assertSent(function ($request) use ($secret) {
+        $body = $request->data();
+        $raw = $request->body();
+
+        return $request->url() === 'https://example.com/hook'
+            && $request->method() === 'POST'
+            && $body['type'] === 'webhook.test'
+            && $body['data'] === []
+            && isset($body['id'], $body['created_at'])
+            && $request->hasHeader('X-Webhook-Signature')
+            && $request->header('X-Webhook-Signature')[0] === hash_hmac('sha256', $raw, $secret);
+    });
 });
 
 test('ping throws when endpoint is unreachable', function () {
@@ -45,7 +55,7 @@ test('ping throws when endpoint is unreachable', function () {
         'https://example.com/unreachable' => Http::throw(fn () => throw new ConnectionException('Connection refused')),
     ]);
 
-    $this->service->ping('https://example.com/unreachable');
+    $this->service->ping('https://example.com/unreachable', 'whsec_test_secret');
 })->throws(RuntimeException::class, 'The endpoint is not reachable.');
 
 test('ping throws when endpoint returns non-200', function () {
@@ -53,11 +63,11 @@ test('ping throws when endpoint returns non-200', function () {
         'https://example.com/hook' => Http::response([], 500),
     ]);
 
-    $this->service->ping('https://example.com/hook');
+    $this->service->ping('https://example.com/hook', 'whsec_test_secret');
 })->throws(RuntimeException::class, 'The endpoint returned HTTP 500.');
 
 test('ping rejects private network endpoints', function () {
-    $this->service->ping('http://127.0.0.1/hook');
+    $this->service->ping('http://127.0.0.1/hook', 'whsec_test_secret');
 })->throws(RuntimeException::class, 'This endpoint is not allowed.');
 
 test('dispatch dispatches DispatchWebhook for matching webhooks', function () {
@@ -149,7 +159,6 @@ test('postPayload includes the post lifecycle fields', function () {
         'author' => [
             'id' => $this->user->id,
             'name' => $this->user->name,
-            'email' => $this->user->email,
         ],
         'workspace' => [
             'id' => $this->workspace->id,
@@ -269,8 +278,8 @@ test('postPayload matches the published webhook example', function () {
         ->and($payload['author'])->toEqual([
             'id' => $this->user->id,
             'name' => $this->user->name,
-            'email' => $this->user->email,
         ])
+        ->and($payload['author'])->not->toHaveKey('email')
         ->and($payload['workspace'])->toEqual([
             'id' => $this->workspace->id,
             'name' => $this->workspace->name,

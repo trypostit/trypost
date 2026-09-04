@@ -234,7 +234,7 @@ test('updating a webhook endpoint pings the new url', function () {
     ]);
 
     $mock = Mockery::mock(WebhookService::class);
-    $mock->shouldReceive('ping')->once()->with('https://updated.com/hook');
+    $mock->shouldReceive('ping')->once()->with('https://updated.com/hook', $webhook->signing_secret);
     $this->app->instance(WebhookService::class, $mock);
 
     $this->actingAs($this->user)

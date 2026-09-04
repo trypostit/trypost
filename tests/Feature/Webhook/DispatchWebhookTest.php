@@ -235,7 +235,9 @@ test('dispatch webhook job sends the published post payload as data', function (
             && $body['type'] === WebhookEvent::PostPublished->value
             && isset($body['created_at'])
             && $body['data'] === $payload
-            && data_get($body, 'data.author.email') === $this->user->email
+            && data_get($body, 'data.author.id') === $this->user->id
+            && data_get($body, 'data.author.name') === $this->user->name
+            && ! array_key_exists('email', data_get($body, 'data.author', []))
             && data_get($body, 'data.workspace.name') === $this->workspace->name
             && data_get($body, 'data.labels.0.name') === 'Launch'
             && data_get($body, 'data.media.0.type') === 'image'

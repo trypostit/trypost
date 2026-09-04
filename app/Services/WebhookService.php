@@ -18,6 +18,7 @@ use App\Models\WorkspaceLabel;
 use App\Services\Brand\SafeHttpFetcher;
 use Exception;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class WebhookService
@@ -25,9 +26,17 @@ class WebhookService
     public function __construct(private SafeHttpFetcher $safeHttp) {}
 
     /**
+     * @param  array<string, mixed>  $body
+     */
+    public function signature(array $body, string $secret): string
+    {
+        return hash_hmac('sha256', json_encode($body), $secret);
+    }
+
+    /**
      * @throws RuntimeException
      */
-    public function ping(string $endpoint): void
+    public function ping(string $endpoint, string $signingSecret): void
     {
         try {
             $this->safeHttp->guardAgainstSsrf($endpoint);
@@ -35,14 +44,22 @@ class WebhookService
             throw new RuntimeException(__('webhooks.errors.endpoint_not_allowed'));
         }
 
+        $body = [
+            'id' => (string) Str::uuid(),
+            'type' => 'webhook.test',
+            'data' => [],
+            'created_at' => now()->toIso8601String(),
+        ];
+
         try {
             $response = Http::timeout(5)
                 ->withUserAgent(config('trypost.user_agent'))
                 ->withOptions(['allow_redirects' => false])
-                ->post($endpoint, [
-                    'type' => 'webhook.test',
-                    'data' => [],
-                ]);
+                ->withHeaders([
+                    'Content-Type' => 'application/json',
+                    'X-Webhook-Signature' => $this->signature($body, $signingSecret),
+                ])
+                ->post($endpoint, $body);
         } catch (Exception) {
             throw new RuntimeException(__('webhooks.errors.endpoint_unreachable'));
         }
@@ -110,7 +127,7 @@ class WebhookService
     }
 
     /**
-     * @return array{id: string, name: string, email: string}|null
+     * @return array{id: string, name: string}|null
      */
     private function authorPayload(?User $user): ?array
     {
@@ -121,7 +138,6 @@ class WebhookService
         return [
             'id' => $user->id,
             'name' => $user->name,
-            'email' => $user->email,
         ];
     }
 

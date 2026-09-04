@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
-use App\Enums\Webhook\EventType;
 use App\Enums\Webhook\Status;
 use App\Http\Requests\App\Webhook\StoreWebhookRequest;
 use App\Http\Requests\App\Webhook\UpdateWebhookRequest;
@@ -34,7 +33,6 @@ class WebhookController extends Controller
 
         return Inertia::render('webhooks/Index', [
             'webhooks' => $webhooks,
-            'eventTypes' => array_column(EventType::cases(), 'value'),
         ]);
     }
 
@@ -47,7 +45,6 @@ class WebhookController extends Controller
             'logs' => Inertia::scroll(
                 fn () => $webhook->logs()->orderByDesc('created_at')->paginate((int) config('app.pagination.default')),
             ),
-            'eventTypes' => array_column(EventType::cases(), 'value'),
         ]);
     }
 
@@ -57,8 +54,10 @@ class WebhookController extends Controller
 
         $this->authorize('create', Webhook::class);
 
+        $signingSecret = 'whsec_'.Str::random(32);
+
         try {
-            $webhookService->ping($request->string('endpoint')->toString());
+            $webhookService->ping($request->string('endpoint')->toString(), $signingSecret);
         } catch (RuntimeException $e) {
             return back()->withErrors([
                 'endpoint' => $e->getMessage(),
@@ -70,7 +69,7 @@ class WebhookController extends Controller
             'endpoint' => $request->string('endpoint')->toString(),
             'events' => $request->validated('events'),
             'status' => Status::Enabled,
-            'signing_secret' => 'whsec_'.Str::random(32),
+            'signing_secret' => $signingSecret,
             'consecutive_failures' => 0,
         ]);
 
@@ -91,7 +90,7 @@ class WebhookController extends Controller
             && $validated['endpoint'] !== $webhook->endpoint
         ) {
             try {
-                $webhookService->ping($validated['endpoint']);
+                $webhookService->ping($validated['endpoint'], $webhook->signing_secret);
             } catch (RuntimeException $e) {
                 return back()->withErrors([
                     'endpoint' => $e->getMessage(),

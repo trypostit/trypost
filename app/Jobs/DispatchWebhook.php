@@ -10,6 +10,7 @@ use App\Mail\WebhookPausedMail;
 use App\Models\Webhook;
 use App\Models\WebhookLog;
 use App\Services\Brand\SafeHttpFetcher;
+use App\Services\WebhookService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -48,7 +49,7 @@ class DispatchWebhook implements ShouldQueue
         $this->logId ??= (string) Str::uuid();
     }
 
-    public function handle(SafeHttpFetcher $safeHttp): void
+    public function handle(SafeHttpFetcher $safeHttp, WebhookService $webhooks): void
     {
         $this->webhook->refresh();
 
@@ -63,7 +64,7 @@ class DispatchWebhook implements ShouldQueue
             'created_at' => now()->toIso8601String(),
         ];
 
-        $signature = hash_hmac('sha256', json_encode($body), $this->webhook->signing_secret);
+        $signature = $webhooks->signature($body, $this->webhook->signing_secret);
 
         $log = WebhookLog::query()->find($this->logId);
 
