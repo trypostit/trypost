@@ -7,6 +7,7 @@ namespace App\Mcp\Tools\Webhook;
 use App\Actions\Webhook\DeleteWebhook;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Mcp\Concerns\ResolvesWorkspaceWebhook;
+use App\Mcp\Requests\Webhook\DeleteWebhookRequest;
 use App\Models\Webhook;
 use App\Models\Workspace;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -36,7 +37,7 @@ class DeleteWebhookTool extends Tool
             return $workspace;
         }
 
-        $validated = $request->validate(['webhook_id' => ['required', 'string']]);
+        $validated = $request->validate(DeleteWebhookRequest::rules());
 
         $webhook = $this->webhookInWorkspace($workspace, data_get($validated, 'webhook_id'));
 

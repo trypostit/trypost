@@ -8,7 +8,6 @@ use App\Enums\Webhook\Status;
 use App\Models\Webhook;
 use App\Models\Workspace;
 use App\Services\WebhookService;
-use RuntimeException;
 
 class CreateWebhook
 {
@@ -17,11 +16,7 @@ class CreateWebhook
      */
     public static function execute(Workspace $workspace, array $data, WebhookService $webhooks): Webhook
     {
-        $endpoint = data_get($data, 'endpoint');
-
-        if (! is_string($endpoint)) {
-            throw new RuntimeException(__('webhooks.errors.endpoint_not_allowed'));
-        }
+        $endpoint = (string) data_get($data, 'endpoint');
 
         $webhooks->assertEndpointAllowed($endpoint);
 

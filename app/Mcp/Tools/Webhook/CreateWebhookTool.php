@@ -8,10 +8,10 @@ use App\Actions\Webhook\CreateWebhook;
 use App\Enums\Webhook\EventType;
 use App\Http\Resources\Api\WebhookResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
+use App\Mcp\Requests\Webhook\CreateWebhookRequest;
 use App\Models\Workspace;
 use App\Services\WebhookService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Illuminate\Validation\Rule;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
@@ -19,7 +19,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 use RuntimeException;
 
-#[Description('Create an outgoing webhook. The signing secret is returned once here and via get-webhook-tool / rotate-webhook-secret-tool. The endpoint is checked for SSRF but is not pinged.')]
+#[Description('Create an outgoing webhook for the current workspace. Returns the signing secret — it can be read later with get-webhook-tool or rotated with rotate-webhook-secret-tool. Private or local endpoints are rejected. Creating does not send a test request.')]
 class CreateWebhookTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -38,11 +38,7 @@ class CreateWebhookTool extends Tool
             return $workspace;
         }
 
-        $validated = $request->validate([
-            'endpoint' => ['required', 'url', 'max:255'],
-            'events' => ['required', 'array', 'min:1'],
-            'events.*' => ['string', Rule::enum(EventType::class)],
-        ]);
+        $validated = $request->validate(CreateWebhookRequest::rules());
 
         try {
             $webhook = CreateWebhook::execute($workspace, $validated, $this->webhooks);
@@ -61,7 +57,7 @@ class CreateWebhookTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'endpoint' => $schema->string()->required()->description('HTTPS URL that will receive signed webhook payloads.'),
+            'endpoint' => $schema->string()->required()->description('Public URL that will receive signed webhook payloads. Private or local addresses are rejected.'),
             'events' => $schema->array()
                 ->items($schema->string()->enum(array_column(EventType::cases(), 'value')))
                 ->required()

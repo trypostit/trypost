@@ -48,10 +48,7 @@ class WebhookController extends Controller
                 $webhookService,
             );
         } catch (RuntimeException $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-                'errors' => ['endpoint' => [$e->getMessage()]],
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->endpointFailure($e);
         }
 
         return (new WebhookResource($webhook->makeVisible('signing_secret')))
@@ -73,10 +70,7 @@ class WebhookController extends Controller
         try {
             $webhook = UpdateWebhook::execute($webhook, $request->validated(), $webhookService);
         } catch (RuntimeException $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-                'errors' => ['endpoint' => [$e->getMessage()]],
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->endpointFailure($e);
         }
 
         return new WebhookResource($webhook);
@@ -89,9 +83,7 @@ class WebhookController extends Controller
         try {
             SendWebhookTest::execute($webhook, $webhookService);
         } catch (RuntimeException $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return $this->endpointFailure($e);
         }
 
         return response()->json(['tested' => true]);
@@ -142,5 +134,13 @@ class WebhookController extends Controller
         }
 
         return $webhook;
+    }
+
+    private function endpointFailure(RuntimeException $e): JsonResponse
+    {
+        return response()->json([
+            'message' => $e->getMessage(),
+            'errors' => ['endpoint' => [$e->getMessage()]],
+        ], Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 }

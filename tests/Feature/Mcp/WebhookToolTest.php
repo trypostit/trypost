@@ -109,6 +109,29 @@ test('create webhook validates required fields', function () {
         ->assertHasErrors();
 });
 
+test('create webhook rejects wildcard events', function () {
+    TryPostServer::actingAs($this->user)
+        ->tool(CreateWebhookTool::class, [
+            'endpoint' => 'https://example.com/webhooks',
+            'events' => ['*'],
+        ])
+        ->assertHasErrors();
+});
+
+test('create webhook does not ping the endpoint', function () {
+    $mock = Mockery::mock(WebhookService::class);
+    $mock->shouldReceive('assertEndpointAllowed')->once();
+    $mock->shouldNotReceive('ping');
+    $this->app->instance(WebhookService::class, $mock);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(CreateWebhookTool::class, [
+            'endpoint' => 'https://example.com/webhooks',
+            'events' => [EventType::PostPublished->value],
+        ])
+        ->assertOk();
+});
+
 test('create webhook fails when the endpoint is not allowed', function () {
     $failingMock = Mockery::mock(WebhookService::class);
     $failingMock->shouldReceive('assertEndpointAllowed')
@@ -143,6 +166,72 @@ test('update webhook', function () {
                 ->missing('signing_secret')
                 ->etc();
         });
+});
+
+test('update webhook cannot set paused status', function () {
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdateWebhookTool::class, [
+            'webhook_id' => $webhook->id,
+            'status' => Status::Paused->value,
+        ])
+        ->assertHasErrors();
+});
+
+test('re-enabling a webhook via mcp resets consecutive failures', function () {
+    $webhook = Webhook::factory()->paused()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdateWebhookTool::class, [
+            'webhook_id' => $webhook->id,
+            'status' => Status::Enabled->value,
+        ])
+        ->assertOk()
+        ->assertStructuredContent(function (AssertableJson $json) {
+            $json->where('status', Status::Enabled->value)
+                ->where('consecutive_failures', 0)
+                ->where('paused_at', null)
+                ->etc();
+        });
+});
+
+test('update webhook rejects wildcard events', function () {
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdateWebhookTool::class, [
+            'webhook_id' => $webhook->id,
+            'events' => ['*'],
+        ])
+        ->assertHasErrors();
+});
+
+test('update webhook fails when the endpoint is not allowed', function () {
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'endpoint' => 'https://old.example.com/hook',
+    ]);
+
+    $failingMock = Mockery::mock(WebhookService::class);
+    $failingMock->shouldReceive('assertEndpointAllowed')
+        ->andThrow(new RuntimeException(__('webhooks.errors.endpoint_not_allowed')));
+    $this->app->instance(WebhookService::class, $failingMock);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdateWebhookTool::class, [
+            'webhook_id' => $webhook->id,
+            'endpoint' => 'http://127.0.0.1/webhooks',
+        ])
+        ->assertHasErrors([__('webhooks.errors.endpoint_not_allowed')]);
+
+    expect($webhook->fresh()->endpoint)->toBe('https://old.example.com/hook');
 });
 
 test('cannot update webhook from another workspace', function () {
@@ -312,6 +401,22 @@ test('cannot delete webhook from another workspace', function () {
     expect($webhook->fresh())->not->toBeNull();
 });
 
+test('cannot send test rotate or list logs for a webhook from another workspace', function () {
+    $webhook = Webhook::factory()->create();
+
+    TryPostServer::actingAs($this->user)
+        ->tool(SendWebhookTestTool::class, ['webhook_id' => $webhook->id])
+        ->assertHasErrors(['Webhook not found.']);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(RotateWebhookSecretTool::class, ['webhook_id' => $webhook->id])
+        ->assertHasErrors(['Webhook not found.']);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(ListWebhookLogsTool::class, ['webhook_id' => $webhook->id])
+        ->assertHasErrors(['Webhook not found.']);
+});
+
 test('members and viewers cannot manage webhooks through mcp', function (Role $role) {
     $teammate = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($teammate->id, ['role' => $role->value]);
@@ -319,6 +424,9 @@ test('members and viewers cannot manage webhooks through mcp', function (Role $r
 
     $webhook = Webhook::factory()->create([
         'workspace_id' => $this->workspace->id,
+    ]);
+    $log = WebhookLog::factory()->create([
+        'webhook_id' => $webhook->id,
     ]);
 
     TryPostServer::actingAs($teammate)
@@ -334,6 +442,36 @@ test('members and viewers cannot manage webhooks through mcp', function (Role $r
 
     TryPostServer::actingAs($teammate)
         ->tool(GetWebhookTool::class, ['webhook_id' => $webhook->id])
+        ->assertHasErrors(['Not authorized to manage webhooks.']);
+
+    TryPostServer::actingAs($teammate)
+        ->tool(UpdateWebhookTool::class, [
+            'webhook_id' => $webhook->id,
+            'status' => Status::Disabled->value,
+        ])
+        ->assertHasErrors(['Not authorized to manage webhooks.']);
+
+    TryPostServer::actingAs($teammate)
+        ->tool(SendWebhookTestTool::class, ['webhook_id' => $webhook->id])
+        ->assertHasErrors(['Not authorized to manage webhooks.']);
+
+    TryPostServer::actingAs($teammate)
+        ->tool(RotateWebhookSecretTool::class, ['webhook_id' => $webhook->id])
+        ->assertHasErrors(['Not authorized to manage webhooks.']);
+
+    TryPostServer::actingAs($teammate)
+        ->tool(ListWebhookLogsTool::class, ['webhook_id' => $webhook->id])
+        ->assertHasErrors(['Not authorized to manage webhooks.']);
+
+    TryPostServer::actingAs($teammate)
+        ->tool(ReplayWebhookLogTool::class, [
+            'webhook_id' => $webhook->id,
+            'log_id' => $log->id,
+        ])
+        ->assertHasErrors(['Not authorized to manage webhooks.']);
+
+    TryPostServer::actingAs($teammate)
+        ->tool(DeleteWebhookTool::class, ['webhook_id' => $webhook->id])
         ->assertHasErrors(['Not authorized to manage webhooks.']);
 
     expect($webhook->fresh())->not->toBeNull();

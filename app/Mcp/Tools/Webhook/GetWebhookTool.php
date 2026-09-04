@@ -7,6 +7,7 @@ namespace App\Mcp\Tools\Webhook;
 use App\Http\Resources\Api\WebhookResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Mcp\Concerns\ResolvesWorkspaceWebhook;
+use App\Mcp\Requests\Webhook\GetWebhookRequest;
 use App\Models\Webhook;
 use App\Models\Workspace;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -18,7 +19,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('Get a webhook by ID, including the signing secret used to verify HMAC-SHA256 signatures.')]
+#[Description('Get a webhook by ID, including the signing secret. Verify deliveries with HMAC-SHA256 of the JSON body; the hex digest is sent as X-Webhook-Signature.')]
 class GetWebhookTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -36,7 +37,7 @@ class GetWebhookTool extends Tool
             return $workspace;
         }
 
-        $validated = $request->validate(['webhook_id' => ['required', 'string']]);
+        $validated = $request->validate(GetWebhookRequest::rules());
 
         $webhook = $this->webhookInWorkspace($workspace, data_get($validated, 'webhook_id'));
 

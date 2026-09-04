@@ -7,6 +7,7 @@ namespace App\Mcp\Tools\Webhook;
 use App\Http\Resources\Api\WebhookLogResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Mcp\Concerns\ResolvesWorkspaceWebhook;
+use App\Mcp\Requests\Webhook\ListWebhookLogsRequest;
 use App\Models\Webhook;
 use App\Models\Workspace;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -18,7 +19,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('List recent delivery logs for a webhook, newest first, including payload and response body.')]
+#[Description('List recent delivery logs for a webhook, newest first, including payload and response body. Use replay-webhook-log-tool with a log id to resend a delivery.')]
 class ListWebhookLogsTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -36,10 +37,7 @@ class ListWebhookLogsTool extends Tool
             return $workspace;
         }
 
-        $validated = $request->validate([
-            'webhook_id' => ['required', 'string'],
-            'limit' => ['sometimes', 'integer', 'min:1', 'max:100'],
-        ]);
+        $validated = $request->validate(ListWebhookLogsRequest::rules());
 
         $webhook = $this->webhookInWorkspace($workspace, data_get($validated, 'webhook_id'));
 

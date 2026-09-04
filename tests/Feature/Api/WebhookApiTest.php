@@ -42,6 +42,27 @@ test('list webhooks omits the signing secret', function () {
     expect($response->json('0'))->not->toHaveKey('signing_secret');
 });
 
+test('list webhooks does not include other workspace webhooks', function () {
+    Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'endpoint' => 'https://own.example.com/hook',
+    ]);
+    Webhook::factory()->create([
+        'endpoint' => 'https://other.example.com/hook',
+    ]);
+
+    $response = $this->withHeaders([
+        'Authorization' => 'Bearer '.$this->plainToken,
+    ])->getJson(
+        route('api.webhooks.index'),
+        ['HTTP_HOST' => 'api.trypost.test']
+    );
+
+    $response->assertOk();
+    $response->assertJsonCount(1);
+    $response->assertJsonPath('0.endpoint', 'https://own.example.com/hook');
+});
+
 test('create webhook returns the signing secret', function () {
     $response = $this->withHeaders([
         'Authorization' => 'Bearer '.$this->plainToken,
@@ -100,6 +121,43 @@ test('create webhook fails when the endpoint is not allowed', function () {
     ]);
 });
 
+test('create webhook does not ping the endpoint', function () {
+    $mock = Mockery::mock(WebhookService::class);
+    $mock->shouldReceive('assertEndpointAllowed')->once();
+    $mock->shouldNotReceive('ping');
+    $this->app->instance(WebhookService::class, $mock);
+
+    $this->withHeaders([
+        'Authorization' => 'Bearer '.$this->plainToken,
+    ])->postJson(
+        route('api.webhooks.store'),
+        [
+            'endpoint' => 'https://example.com/webhooks',
+            'events' => [EventType::PostPublished->value],
+        ],
+        ['HTTP_HOST' => 'api.trypost.test']
+    )
+        ->assertCreated();
+});
+
+test('create webhook rejects wildcard and invalid events', function (array $events) {
+    $this->withHeaders([
+        'Authorization' => 'Bearer '.$this->plainToken,
+    ])->postJson(
+        route('api.webhooks.store'),
+        [
+            'endpoint' => 'https://example.com/webhooks',
+            'events' => $events,
+        ],
+        ['HTTP_HOST' => 'api.trypost.test']
+    )
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['events.0']);
+})->with([
+    [['*']],
+    [['foo.bar']],
+]);
+
 test('show webhook includes the signing secret', function () {
     $webhook = Webhook::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -138,6 +196,70 @@ test('update webhook', function () {
     $response->assertJsonPath('status', Status::Disabled->value);
     expect($response->json())->not->toHaveKey('signing_secret');
 });
+
+test('update webhook fails when the endpoint is not allowed', function () {
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'endpoint' => 'https://old.example.com/hook',
+    ]);
+
+    $failingMock = Mockery::mock(WebhookService::class);
+    $failingMock->shouldReceive('assertEndpointAllowed')
+        ->andThrow(new RuntimeException(__('webhooks.errors.endpoint_not_allowed')));
+    $this->app->instance(WebhookService::class, $failingMock);
+
+    $this->withHeaders([
+        'Authorization' => 'Bearer '.$this->plainToken,
+    ])->putJson(
+        route('api.webhooks.update', $webhook),
+        ['endpoint' => 'http://127.0.0.1/webhooks'],
+        ['HTTP_HOST' => 'api.trypost.test']
+    )
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['endpoint']);
+
+    expect($webhook->fresh()->endpoint)->toBe('https://old.example.com/hook');
+});
+
+test('update webhook does not ping the endpoint', function () {
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'endpoint' => 'https://old.example.com/hook',
+    ]);
+
+    $mock = Mockery::mock(WebhookService::class);
+    $mock->shouldReceive('assertEndpointAllowed')->once()->with('https://updated.example.com/hook');
+    $mock->shouldNotReceive('ping');
+    $this->app->instance(WebhookService::class, $mock);
+
+    $this->withHeaders([
+        'Authorization' => 'Bearer '.$this->plainToken,
+    ])->putJson(
+        route('api.webhooks.update', $webhook),
+        ['endpoint' => 'https://updated.example.com/hook'],
+        ['HTTP_HOST' => 'api.trypost.test']
+    )
+        ->assertOk();
+});
+
+test('update webhook rejects wildcard and invalid events', function (array $events) {
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $this->withHeaders([
+        'Authorization' => 'Bearer '.$this->plainToken,
+    ])->putJson(
+        route('api.webhooks.update', $webhook),
+        ['events' => $events],
+        ['HTTP_HOST' => 'api.trypost.test']
+    )
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['events.0']);
+})->with([
+    [['*']],
+    [['foo.bar']],
+]);
 
 test('update webhook cannot set paused status', function () {
     $webhook = Webhook::factory()->create([
@@ -208,7 +330,8 @@ test('send test failure returns 422', function () {
         ['HTTP_HOST' => 'api.trypost.test']
     )
         ->assertUnprocessable()
-        ->assertJsonPath('message', 'Endpoint unreachable');
+        ->assertJsonPath('message', 'Endpoint unreachable')
+        ->assertJsonValidationErrors(['endpoint']);
 });
 
 test('rotate secret returns a new signing secret', function () {
@@ -350,6 +473,45 @@ test('webhooks from another workspace are not found', function () {
         'Authorization' => 'Bearer '.$this->plainToken,
     ])->deleteJson(
         route('api.webhooks.destroy', $other),
+        [],
+        ['HTTP_HOST' => 'api.trypost.test']
+    )
+        ->assertNotFound();
+
+    $this->withHeaders([
+        'Authorization' => 'Bearer '.$this->plainToken,
+    ])->postJson(
+        route('api.webhooks.send-test', $other),
+        [],
+        ['HTTP_HOST' => 'api.trypost.test']
+    )
+        ->assertNotFound();
+
+    $this->withHeaders([
+        'Authorization' => 'Bearer '.$this->plainToken,
+    ])->postJson(
+        route('api.webhooks.rotate-secret', $other),
+        [],
+        ['HTTP_HOST' => 'api.trypost.test']
+    )
+        ->assertNotFound();
+
+    $this->withHeaders([
+        'Authorization' => 'Bearer '.$this->plainToken,
+    ])->getJson(
+        route('api.webhooks.logs', $other),
+        ['HTTP_HOST' => 'api.trypost.test']
+    )
+        ->assertNotFound();
+
+    $log = WebhookLog::factory()->create([
+        'webhook_id' => $other->id,
+    ]);
+
+    $this->withHeaders([
+        'Authorization' => 'Bearer '.$this->plainToken,
+    ])->postJson(
+        route('api.webhooks.replay', [$other, $log]),
         [],
         ['HTTP_HOST' => 'api.trypost.test']
     )

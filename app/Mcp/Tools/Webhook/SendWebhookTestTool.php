@@ -7,6 +7,7 @@ namespace App\Mcp\Tools\Webhook;
 use App\Actions\Webhook\SendWebhookTest;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Mcp\Concerns\ResolvesWorkspaceWebhook;
+use App\Mcp\Requests\Webhook\SendWebhookTestRequest;
 use App\Models\Webhook;
 use App\Models\Workspace;
 use App\Services\WebhookService;
@@ -40,7 +41,7 @@ class SendWebhookTestTool extends Tool
             return $workspace;
         }
 
-        $validated = $request->validate(['webhook_id' => ['required', 'string']]);
+        $validated = $request->validate(SendWebhookTestRequest::rules());
 
         $webhook = $this->webhookInWorkspace($workspace, data_get($validated, 'webhook_id'));
 

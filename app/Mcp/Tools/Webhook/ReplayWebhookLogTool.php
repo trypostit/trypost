@@ -7,6 +7,7 @@ namespace App\Mcp\Tools\Webhook;
 use App\Actions\Webhook\ReplayWebhookLog;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Mcp\Concerns\ResolvesWorkspaceWebhook;
+use App\Mcp\Requests\Webhook\ReplayWebhookLogRequest;
 use App\Models\Webhook;
 use App\Models\WebhookLog;
 use App\Models\Workspace;
@@ -37,10 +38,7 @@ class ReplayWebhookLogTool extends Tool
             return $workspace;
         }
 
-        $validated = $request->validate([
-            'webhook_id' => ['required', 'string'],
-            'log_id' => ['required', 'string'],
-        ]);
+        $validated = $request->validate(ReplayWebhookLogRequest::rules());
 
         $webhook = $this->webhookInWorkspace($workspace, data_get($validated, 'webhook_id'));
 

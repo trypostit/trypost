@@ -16,7 +16,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('List outgoing webhooks for the current workspace. Signing secrets are omitted — use get-webhook-tool to retrieve a secret.')]
+#[Description('List outgoing webhooks for the current workspace. Signing secrets are omitted — use get-webhook-tool to read a secret.')]
 class ListWebhooksTool extends Tool
 {
     use AuthorizesMcpTool;
