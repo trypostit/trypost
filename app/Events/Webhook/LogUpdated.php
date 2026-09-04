@@ -51,9 +51,7 @@ class LogUpdated implements ShouldBroadcast
         return [
             'id' => $this->log->id,
             'event_type' => $this->log->event_type,
-            'payload' => $this->log->payload,
             'response_status' => $this->log->response_status,
-            'response_body' => $this->log->response_body,
             'delivered_at' => $this->log->delivered_at?->toIso8601String(),
             'failed_at' => $this->log->failed_at?->toIso8601String(),
             'attempts' => $this->log->attempts,
