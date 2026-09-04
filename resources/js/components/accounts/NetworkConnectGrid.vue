@@ -234,19 +234,34 @@ const cards = computed<ConnectCard[]>(() => {
                     </p>
                 </div>
 
-                <Button
+                <div
                     v-if="card.state === 'reconnect' && card.account"
-                    size="sm"
-                    class="mt-auto w-full"
-                    @click="startConnect(card.account.platform, card.account.id)"
+                    class="mt-auto flex w-full flex-col gap-2"
                 >
-                    {{ $t('accounts.reconnect') }}
-                </Button>
+                    <Button
+                        size="sm"
+                        class="w-full"
+                        :data-testid="`reconnect-${card.account.id}`"
+                        @click="startConnect(card.account.platform, card.account.id)"
+                    >
+                        {{ $t('accounts.reconnect') }}
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        class="w-full"
+                        :data-testid="`disconnect-${card.account.id}`"
+                        @click="disconnectAccount(card.account)"
+                    >
+                        {{ $t('accounts.disconnect') }}
+                    </Button>
+                </div>
                 <Button
                     v-else-if="card.state === 'connected' && card.account"
                     variant="destructive"
                     size="sm"
                     class="mt-auto w-full"
+                    :data-testid="`disconnect-${card.account.id}`"
                     @click="disconnectAccount(card.account)"
                 >
                     {{ $t('accounts.disconnect') }}

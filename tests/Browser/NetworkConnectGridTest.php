@@ -71,3 +71,22 @@ test('a taken network offers another card when multiples are allowed', function 
         ->assertVisible('@connect-x')
         ->assertNoJavaScriptErrors();
 });
+
+test('a lost connection offers both reconnect and disconnect', function () {
+    $user = gridOwnerWithLinkedIn();
+
+    $account = SocialAccount::factory()->x()->tokenExpired()->create([
+        'workspace_id' => $user->current_workspace_id,
+        'platform_user_id' => 'x-expired',
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.accounts'));
+
+    waitForGridTestId($page, "disconnect-{$account->id}");
+
+    $page->assertVisible("@reconnect-{$account->id}")
+        ->assertVisible("@disconnect-{$account->id}")
+        ->assertNoJavaScriptErrors();
+});
