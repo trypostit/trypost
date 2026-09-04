@@ -6,29 +6,19 @@ subject: "Changelog v1.0.9 — Introducing webhooks 🎉"
 
 By TryPost Product Team • [Release v1.0.9](https://github.com/trypostit/trypost/releases/tag/v1.0.9)
 
-This week we shipped something I've wanted in TryPost for a while: webhooks.
+Hello! A lot of you asked for webhooks. They're in.
 
 ## Introducing webhooks
 
-Give us a URL. Pick the post events you care about. We POST to that URL the moment they happen.
+New page in the workspace sidebar: Webhooks. Paste a URL, pick your events, and we POST there when a post is created, scheduled, unscheduled, published, published only on some networks, fails, or gets deleted.
 
-A Slack ping when a post goes live. A ticket when Instagram fails. A row in your own database when someone on the team schedules something. Zapier, Make, n8n, or a tiny endpoint you wrote in an afternoon.
+Use it for a Slack ping when something publishes. Or a ticket when Instagram fails. Plenty of people will just point Zapier or n8n at it. A small endpoint on a server you already run works too.
 
-The events you can subscribe to:
+Deliveries are signed, so you can verify they came from us. Send a test, watch the live log, replay a miss. Five failures in a row and we pause it and email you.
 
-- Post created
-- Post scheduled or unscheduled
-- Post published (or only on some networks)
-- Post failed
-- Post deleted
+The same endpoints are on the API and MCP if you manage things that way.
 
-Subscribe to the ones you care about. Skip the rest.
-
-Every delivery is signed, so your endpoint can check it came from us. There's a test button, a live log of each attempt (what we sent, what your server said back), and a Replay if one missed. If the endpoint fails five times in a row we pause it and email you.
-
-You'll find it in the workspace sidebar, under Webhooks. If you build against the API or talk to TryPost from an AI assistant, you can manage the same endpoints from there too.
-
-If you wire something cool, reply to this. I read them. 👋
+Hit reply if you wire one up.
 
 Cheers,
 Paulo from TryPost.it
