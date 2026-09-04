@@ -7,6 +7,7 @@ namespace App\Actions\Webhook;
 use App\Enums\Webhook\Status;
 use App\Models\Webhook;
 use App\Services\WebhookService;
+use Illuminate\Support\Arr;
 
 class UpdateWebhook
 {
@@ -15,18 +16,19 @@ class UpdateWebhook
      */
     public static function execute(Webhook $webhook, array $data, WebhookService $webhooks): Webhook
     {
-        $endpoint = data_get($data, 'endpoint');
+        $attributes = Arr::only($data, ['endpoint', 'events', 'status']);
+        $endpoint = data_get($attributes, 'endpoint');
 
         if (is_string($endpoint) && $endpoint !== $webhook->endpoint) {
             $webhooks->assertEndpointAllowed($endpoint);
         }
 
-        if (data_get($data, 'status') === Status::Enabled->value) {
-            $data['consecutive_failures'] = 0;
-            $data['paused_at'] = null;
+        if (data_get($attributes, 'status') === Status::Enabled->value && $webhook->status !== Status::Enabled) {
+            $attributes['consecutive_failures'] = 0;
+            $attributes['paused_at'] = null;
         }
 
-        $webhook->update($data);
+        $webhook->update($attributes);
 
         return $webhook->refresh();
     }

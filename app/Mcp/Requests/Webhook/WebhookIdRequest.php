@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mcp\Requests\Webhook;
 
-class SendWebhookTestRequest
+class WebhookIdRequest
 {
     /**
      * @return array<string, mixed>

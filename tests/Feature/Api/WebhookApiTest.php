@@ -295,6 +295,23 @@ test('re-enabling a webhook resets consecutive failures', function () {
         ->assertJsonPath('paused_at', null);
 });
 
+test('updating an already enabled webhook does not reset consecutive failures', function () {
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'consecutive_failures' => 3,
+    ]);
+
+    $this->withHeaders([
+        'Authorization' => 'Bearer '.$this->plainToken,
+    ])->putJson(
+        route('api.webhooks.update', $webhook),
+        ['status' => Status::Enabled->value],
+        ['HTTP_HOST' => 'api.trypost.test']
+    )
+        ->assertOk()
+        ->assertJsonPath('consecutive_failures', 3);
+});
+
 test('send test succeeds', function () {
     $webhook = Webhook::factory()->create([
         'workspace_id' => $this->workspace->id,

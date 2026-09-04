@@ -200,6 +200,23 @@ test('re-enabling a webhook via mcp resets consecutive failures', function () {
         });
 });
 
+test('updating an already enabled webhook via mcp does not reset consecutive failures', function () {
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'consecutive_failures' => 3,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdateWebhookTool::class, [
+            'webhook_id' => $webhook->id,
+            'status' => Status::Enabled->value,
+        ])
+        ->assertOk()
+        ->assertStructuredContent(function (AssertableJson $json) {
+            $json->where('consecutive_failures', 3)->etc();
+        });
+});
+
 test('update webhook rejects wildcard events', function () {
     $webhook = Webhook::factory()->create([
         'workspace_id' => $this->workspace->id,

@@ -161,6 +161,21 @@ test('re-enabling a webhook resets consecutive failures', function (string $from
     expect($webhook->paused_at)->toBeNull();
 })->with(['paused', 'disabled']);
 
+test('updating an already enabled webhook does not reset consecutive failures', function () {
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'consecutive_failures' => 3,
+    ]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.webhooks.update', $webhook), [
+            'status' => 'enabled',
+        ])
+        ->assertRedirect();
+
+    expect($webhook->fresh()->consecutive_failures)->toBe(3);
+});
+
 test('webhook endpoint is required', function () {
     $this->actingAs($this->user)
         ->post(route('app.webhooks.store'), [

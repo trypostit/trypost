@@ -15,6 +15,7 @@ use App\Models\Webhook;
 use App\Models\Workspace;
 use App\Services\WebhookService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Support\Arr;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
@@ -53,7 +54,7 @@ class UpdateWebhookTool extends Tool
         try {
             $webhook = UpdateWebhook::execute(
                 $webhook,
-                collect($validated)->except('webhook_id')->all(),
+                Arr::except($validated, ['webhook_id']),
                 $this->webhooks,
             );
         } catch (RuntimeException $e) {

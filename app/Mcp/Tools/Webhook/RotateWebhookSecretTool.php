@@ -8,7 +8,7 @@ use App\Actions\Webhook\RotateWebhookSecret;
 use App\Http\Resources\Api\WebhookResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Mcp\Concerns\ResolvesWorkspaceWebhook;
-use App\Mcp\Requests\Webhook\RotateWebhookSecretRequest;
+use App\Mcp\Requests\Webhook\WebhookIdRequest;
 use App\Models\Webhook;
 use App\Models\Workspace;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -36,7 +36,7 @@ class RotateWebhookSecretTool extends Tool
             return $workspace;
         }
 
-        $validated = $request->validate(RotateWebhookSecretRequest::rules());
+        $validated = $request->validate(WebhookIdRequest::rules());
 
         $webhook = $this->webhookInWorkspace($workspace, data_get($validated, 'webhook_id'));
 
