@@ -6,13 +6,23 @@ subject: "Changelog v1.0.9 — Introducing webhooks 🎉"
 
 By TryPost Product Team • [Release v1.0.9](https://github.com/trypostit/trypost/releases/tag/v1.0.9)
 
-Hello! A lot of you asked for this. The rest of your setup can now react when something happens to a post.
+Hello! Welcome to this week's update. Here's what's new in TryPost.
 
 ## Introducing webhooks
 
-You don't have to sit in TryPost waiting for a publish to finish. When it goes out, Slack can already have the link. When Instagram fails, the ticket can be in your queue before a client notices. When someone schedules a post, your own tools can log it or start the next step.
+You can now connect TryPost to external services like n8n, Zapier, Make, or your own endpoint, and build your own automations.
 
-Same idea if you already run ops through Zapier or n8n. TryPost can talk to that now.
+When something happens to a post, we send the event to the URL you choose. You can subscribe to:
+
+- Post created
+- Post scheduled
+- Post unscheduled
+- Post published
+- Post published on some networks
+- Post failed
+- Post deleted
+
+That's it. Webhooks are in the workspace sidebar. Go plug something in.
 
 Cheers,
 Paulo from TryPost.it
