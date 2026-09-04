@@ -82,7 +82,14 @@ return [
         'empty_description' => 'Once posts are created, scheduled, or published, you will see the webhook events here.',
     ],
     'events' => [
-        'group_posts' => 'Posts',
+        'group_posts' => 'Αναρτήσεις',
+        'post_created' => 'Η ανάρτηση δημιουργήθηκε',
+        'post_scheduled' => 'Η ανάρτηση προγραμματίστηκε',
+        'post_unscheduled' => 'Ακυρώθηκε ο προγραμματισμός',
+        'post_published' => 'Η ανάρτηση δημοσιεύτηκε',
+        'post_partially_published' => 'Μερική δημοσίευση',
+        'post_failed' => 'Η ανάρτηση απέτυχε',
+        'post_deleted' => 'Η ανάρτηση διαγράφηκε',
     ],
     'http_reasons' => [
         'unknown' => 'Unknown',

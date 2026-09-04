@@ -82,7 +82,14 @@ return [
         'empty_description' => 'Once posts are created, scheduled, or published, you will see the webhook events here.',
     ],
     'events' => [
-        'group_posts' => 'Posts',
+        'group_posts' => 'Gönderiler',
+        'post_created' => 'Gönderi oluşturuldu',
+        'post_scheduled' => 'Gönderi zamanlandı',
+        'post_unscheduled' => 'Zamanlama kaldırıldı',
+        'post_published' => 'Gönderi yayınlandı',
+        'post_partially_published' => 'Gönderi kısmen yayınlandı',
+        'post_failed' => 'Gönderi başarısız',
+        'post_deleted' => 'Gönderi silindi',
     ],
     'http_reasons' => [
         'unknown' => 'Unknown',

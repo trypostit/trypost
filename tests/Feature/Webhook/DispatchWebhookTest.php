@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Actions\Post\UpdatePost;
 use App\Enums\Post\CreatedVia;
+use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\Webhook\EventType as WebhookEvent;
@@ -262,9 +264,46 @@ test('webhook signature can be verified with signing secret', function () {
 
     app()->call([$job, 'handle']);
 
+    $decoded = json_decode((string) $capturedBody, true);
     $expectedSignature = hash_hmac('sha256', $capturedBody, $this->webhook->signing_secret);
 
-    expect($capturedSignature)->toBe($expectedSignature);
+    expect($decoded['id'])->toBe($job->logId)
+        ->and($capturedSignature)->toBe($expectedSignature);
+});
+
+test('unscheduling a post delivers the log id on the webhook envelope', function () {
+    Http::fake([
+        'example.com/webhook' => Http::response('OK', 200),
+    ]);
+
+    $this->webhook->update([
+        'events' => [WebhookEvent::PostUnscheduled->value],
+    ]);
+
+    $post = Post::factory()->scheduled()->createQuietly([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'content' => 'Was scheduled',
+    ]);
+
+    UpdatePost::execute($this->workspace, $post, [
+        'status' => PostStatus::Draft->value,
+    ]);
+
+    $log = WebhookLog::query()->where('webhook_id', $this->webhook->id)->first();
+
+    expect($log)->not->toBeNull()
+        ->and($log->event_type)->toBe(WebhookEvent::PostUnscheduled->value)
+        ->and(data_get($log->payload, 'id'))->toBe($log->id);
+
+    Http::assertSent(function ($request) use ($log, $post) {
+        $body = $request->data();
+
+        return $body['id'] === $log->id
+            && $body['type'] === WebhookEvent::PostUnscheduled->value
+            && data_get($body, 'data.id') === $post->id
+            && data_get($body, 'data.status') === PostStatus::Draft->value;
+    });
 });
 
 test('dispatch webhook job marks log as failed on http error', function () {
@@ -512,11 +551,17 @@ test('dispatch webhook job reuses existing log on retry', function () {
 });
 
 test('dispatch webhook job keeps the same log after serialize retry', function () {
-    Http::fake([
-        'example.com/webhook' => Http::sequence()
-            ->push('Server Error', 500)
-            ->push('OK', 200),
-    ]);
+    $sentIds = [];
+
+    Http::fake(function ($request) use (&$sentIds) {
+        $sentIds[] = $request->data()['id'] ?? null;
+
+        if (count($sentIds) === 1) {
+            return Http::response('Server Error', 500);
+        }
+
+        return Http::response('OK', 200);
+    });
 
     $job = new DispatchWebhook(
         $this->webhook,
@@ -535,6 +580,9 @@ test('dispatch webhook job keeps the same log after serialize retry', function (
 
     app()->call([$retried, 'handle']);
 
+    expect($sentIds)->toHaveCount(2)
+        ->and($sentIds[0])->toBe($job->logId)
+        ->and($sentIds[1])->toBe($job->logId);
     expect(WebhookLog::query()->where('webhook_id', $this->webhook->id)->count())->toBe(1);
     expect(WebhookLog::query()->where('webhook_id', $this->webhook->id)->first()?->delivered_at)
         ->not->toBeNull();

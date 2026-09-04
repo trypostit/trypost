@@ -1,3 +1,5 @@
+import { trans } from 'laravel-vue-i18n';
+
 export const webhookEventGroups = [
     {
         labelKey: 'webhooks.events.group_posts',
@@ -12,3 +14,8 @@ export const webhookEventGroups = [
         ],
     },
 ];
+
+export const webhookEventLabelKey = (event: string): string =>
+    `webhooks.events.${event.replaceAll('.', '_')}`;
+
+export const webhookEventLabel = (event: string): string => trans(webhookEventLabelKey(event));

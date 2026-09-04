@@ -82,7 +82,14 @@ return [
         'empty_description' => 'Once posts are created, scheduled, or published, you will see the webhook events here.',
     ],
     'events' => [
-        'group_posts' => 'Posts',
+        'group_posts' => 'Posty',
+        'post_created' => 'Post utworzony',
+        'post_scheduled' => 'Post zaplanowany',
+        'post_unscheduled' => 'Planowanie anulowane',
+        'post_published' => 'Post opublikowany',
+        'post_partially_published' => 'Post częściowo opublikowany',
+        'post_failed' => 'Post nieudany',
+        'post_deleted' => 'Post usunięty',
     ],
     'http_reasons' => [
         'unknown' => 'Unknown',

@@ -82,7 +82,14 @@ return [
         'empty_description' => 'Once posts are created, scheduled, or published, you will see the webhook events here.',
     ],
     'events' => [
-        'group_posts' => 'Posts',
+        'group_posts' => '帖子',
+        'post_created' => '帖子已创建',
+        'post_scheduled' => '帖子已排期',
+        'post_unscheduled' => '已取消排期',
+        'post_published' => '帖子已发布',
+        'post_partially_published' => '帖子部分发布',
+        'post_failed' => '帖子失败',
+        'post_deleted' => '帖子已删除',
     ],
     'http_reasons' => [
         'unknown' => 'Unknown',

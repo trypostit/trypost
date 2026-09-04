@@ -14,6 +14,8 @@ import {
 import { copyToClipboard } from '@/lib/utils';
 import type { WebhookWithSecret } from '@/types/webhook';
 
+import { webhookEventLabel } from './webhook-events';
+
 const props = defineProps<{
     webhook: WebhookWithSecret;
 }>();
@@ -96,7 +98,7 @@ const displaySecret = computed(() => {
             </p>
             <div class="flex flex-wrap gap-1.5">
                 <Badge v-for="event in webhook.events" :key="event" variant="outline">
-                    {{ event }}
+                    {{ webhookEventLabel(event) }}
                 </Badge>
             </div>
         </div>

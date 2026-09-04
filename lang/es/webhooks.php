@@ -83,6 +83,13 @@ return [
     ],
     'events' => [
         'group_posts' => 'Posts',
+        'post_created' => 'Post creado',
+        'post_scheduled' => 'Post programado',
+        'post_unscheduled' => 'Post desprogramado',
+        'post_published' => 'Post publicado',
+        'post_partially_published' => 'Post parcialmente publicado',
+        'post_failed' => 'Post fallido',
+        'post_deleted' => 'Post eliminado',
     ],
     'http_reasons' => [
         'unknown' => 'Unknown',

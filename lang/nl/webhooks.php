@@ -83,6 +83,13 @@ return [
     ],
     'events' => [
         'group_posts' => 'Posts',
+        'post_created' => 'Post aangemaakt',
+        'post_scheduled' => 'Post gepland',
+        'post_unscheduled' => 'Planning opgeheven',
+        'post_published' => 'Post gepubliceerd',
+        'post_partially_published' => 'Post gedeeltelijk gepubliceerd',
+        'post_failed' => 'Post mislukt',
+        'post_deleted' => 'Post verwijderd',
     ],
     'http_reasons' => [
         'unknown' => 'Unknown',

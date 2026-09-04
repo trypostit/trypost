@@ -82,7 +82,14 @@ return [
         'empty_description' => 'Once posts are created, scheduled, or published, you will see the webhook events here.',
     ],
     'events' => [
-        'group_posts' => 'Posts',
+        'group_posts' => 'المنشورات',
+        'post_created' => 'تم إنشاء المنشور',
+        'post_scheduled' => 'تمت جدولة المنشور',
+        'post_unscheduled' => 'ألغيت جدولة المنشور',
+        'post_published' => 'تم نشر المنشور',
+        'post_partially_published' => 'نُشر المنشور جزئيًا',
+        'post_failed' => 'فشل المنشور',
+        'post_deleted' => 'تم حذف المنشور',
     ],
     'http_reasons' => [
         'unknown' => 'Unknown',

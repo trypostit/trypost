@@ -5,6 +5,8 @@ import { IconCheck, IconX } from '@tabler/icons-vue';
 import date from '@/date';
 import type { WebhookLog } from '@/types/webhook';
 
+import { webhookEventLabel } from './webhook-events';
+
 defineProps<{
     logs: WebhookLog[];
     selectedId: string | null;
@@ -50,7 +52,7 @@ const isFailed = (log: WebhookLog): boolean => Boolean(log.failed_at);
                 </div>
                 <div class="min-w-0 flex-1">
                     <p class="truncate text-sm font-bold text-foreground">
-                        {{ log.event_type }}
+                        {{ webhookEventLabel(log.event_type) }}
                     </p>
                     <p class="text-xs font-medium text-foreground/60">
                         {{ date.diffForHumans(log.created_at) }}

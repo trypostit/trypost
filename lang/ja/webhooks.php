@@ -82,7 +82,14 @@ return [
         'empty_description' => 'Once posts are created, scheduled, or published, you will see the webhook events here.',
     ],
     'events' => [
-        'group_posts' => 'Posts',
+        'group_posts' => '投稿',
+        'post_created' => '投稿を作成',
+        'post_scheduled' => '投稿を予約',
+        'post_unscheduled' => '予約を解除',
+        'post_published' => '投稿を公開',
+        'post_partially_published' => '一部公開',
+        'post_failed' => '投稿に失敗',
+        'post_deleted' => '投稿を削除',
     ],
     'http_reasons' => [
         'unknown' => 'Unknown',

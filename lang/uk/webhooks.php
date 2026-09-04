@@ -82,7 +82,14 @@ return [
         'empty_description' => 'Once posts are created, scheduled, or published, you will see the webhook events here.',
     ],
     'events' => [
-        'group_posts' => 'Posts',
+        'group_posts' => 'Пости',
+        'post_created' => 'Пост створено',
+        'post_scheduled' => 'Пост заплановано',
+        'post_unscheduled' => 'Планування скасовано',
+        'post_published' => 'Пост опубліковано',
+        'post_partially_published' => 'Пост частково опубліковано',
+        'post_failed' => 'Помилка публікації',
+        'post_deleted' => 'Пост видалено',
     ],
     'http_reasons' => [
         'unknown' => 'Unknown',

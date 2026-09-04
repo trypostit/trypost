@@ -82,7 +82,14 @@ return [
         'empty_description' => 'Once posts are created, scheduled, or published, you will see the webhook events here.',
     ],
     'events' => [
-        'group_posts' => 'Posts',
+        'group_posts' => '게시물',
+        'post_created' => '게시물 생성됨',
+        'post_scheduled' => '게시물 예약됨',
+        'post_unscheduled' => '예약 취소됨',
+        'post_published' => '게시물 게시됨',
+        'post_partially_published' => '부분 게시됨',
+        'post_failed' => '게시 실패',
+        'post_deleted' => '게시물 삭제됨',
     ],
     'http_reasons' => [
         'unknown' => 'Unknown',

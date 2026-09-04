@@ -11,6 +11,8 @@ import date from '@/date';
 import { replay } from '@/routes/app/webhooks';
 import type { WebhookLog } from '@/types/webhook';
 
+import { webhookEventLabel } from './webhook-events';
+
 const props = defineProps<{
     webhookId: string;
     log: WebhookLog;
@@ -69,7 +71,7 @@ const replayLog = () => {
         <div class="space-y-6 p-5 sm:p-6">
             <div class="flex items-center justify-between gap-3">
                 <Badge variant="default">
-                    {{ log.event_type }}
+                    {{ webhookEventLabel(log.event_type) }}
                 </Badge>
                 <Button
                     variant="outline"

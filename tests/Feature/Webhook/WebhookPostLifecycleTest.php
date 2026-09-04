@@ -201,6 +201,19 @@ test('saving a draft that was never scheduled does not queue post.unscheduled', 
     Queue::assertNotPushed(DispatchWebhook::class);
 });
 
+test('moving a failed post back to draft does not queue post.unscheduled', function () {
+    subscribeToWebhook($this->workspace, [EventType::PostUnscheduled]);
+
+    $post = Post::factory()->failed()->createQuietly([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $post->update(['status' => PostStatus::Draft]);
+
+    Queue::assertNotPushed(DispatchWebhook::class);
+});
+
 test('changing post status through the observer queues the matching webhook', function (PostStatus $status, EventType $event) {
     subscribeToWebhook($this->workspace, [$event]);
 

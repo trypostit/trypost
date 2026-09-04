@@ -170,6 +170,19 @@ test('webhook rejects wildcard events', function () {
         ->assertSessionHasErrors('events.0');
 });
 
+test('webhook accepts the post.unscheduled event', function () {
+    $this->actingAs($this->user)
+        ->post(route('app.webhooks.store'), [
+            'endpoint' => 'https://example.com/webhooks',
+            'events' => [EventType::PostUnscheduled->value],
+        ])
+        ->assertRedirect();
+
+    $webhook = Webhook::query()->where('workspace_id', $this->workspace->id)->first();
+
+    expect($webhook->events)->toEqual([EventType::PostUnscheduled->value]);
+});
+
 test('webhook rejects invalid event names', function () {
     $this->actingAs($this->user)
         ->post(route('app.webhooks.store'), [

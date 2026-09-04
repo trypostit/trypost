@@ -27,5 +27,7 @@ test('fromPostStatus maps publishable statuses and ignores the rest', function (
     [PostStatus::Draft, null],
     [PostStatus::Draft, EventType::PostUnscheduled, PostStatus::Scheduled],
     [PostStatus::Draft, null, PostStatus::Failed],
+    [PostStatus::Draft, null, PostStatus::Publishing],
+    [PostStatus::Draft, null, PostStatus::Published],
     [PostStatus::Publishing, null],
 ]);

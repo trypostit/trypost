@@ -161,6 +161,23 @@ test('changing post status dispatches PostStatusChanged via the observer', funct
     );
 });
 
+test('unscheduling dispatches PostStatusChanged with the previous scheduled status', function () {
+    $post = Post::factory()->scheduled()->createQuietly([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    Event::fake([PostStatusChanged::class]);
+
+    $post->update(['status' => PostStatus::Draft]);
+
+    Event::assertDispatched(
+        PostStatusChanged::class,
+        fn (PostStatusChanged $event) => $event->post->id === $post->id
+            && $event->previousStatus === PostStatus::Scheduled,
+    );
+});
+
 test('deleting a post dispatches the deleted webhook', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
