@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Requests\App\Webhook;
+namespace App\Http\Requests\Api\Webhook;
 
 use App\Support\WebhookRules;
 use Illuminate\Foundation\Http\FormRequest;
@@ -20,17 +20,5 @@ class StoreWebhookRequest extends FormRequest
     public function rules(): array
     {
         return WebhookRules::store();
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    public function attributes(): array
-    {
-        return [
-            'endpoint' => __('webhooks.create.endpoint'),
-            'events' => __('webhooks.create.events'),
-            'events.*' => __('webhooks.create.events'),
-        ];
     }
 }

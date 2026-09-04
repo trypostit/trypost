@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
-use App\Enums\Webhook\Status;
+use App\Actions\Webhook\CreateWebhook;
+use App\Actions\Webhook\DeleteWebhook;
+use App\Actions\Webhook\ReplayWebhookLog;
+use App\Actions\Webhook\RotateWebhookSecret;
+use App\Actions\Webhook\SendWebhookTest;
+use App\Actions\Webhook\UpdateWebhook;
 use App\Http\Requests\App\Webhook\StoreWebhookRequest;
 use App\Http\Requests\App\Webhook\UpdateWebhookRequest;
-use App\Jobs\DispatchWebhook;
 use App\Models\Webhook;
 use App\Models\WebhookLog;
 use App\Services\WebhookService;
@@ -53,20 +57,13 @@ class WebhookController extends Controller
 
         $this->authorize('create', Webhook::class);
 
-        $validated = $request->validated();
-        $endpoint = data_get($validated, 'endpoint');
-
-        if ($error = $this->endpointError($webhookService, $endpoint)) {
-            return $error;
+        try {
+            $webhook = CreateWebhook::execute($workspace, $request->validated(), $webhookService);
+        } catch (RuntimeException $e) {
+            return back()->withErrors([
+                'endpoint' => $e->getMessage(),
+            ]);
         }
-
-        $webhook = Webhook::query()->create([
-            'workspace_id' => $workspace->id,
-            'endpoint' => $endpoint,
-            'events' => data_get($validated, 'events'),
-            'status' => Status::Enabled,
-            'signing_secret' => Webhook::generateSigningSecret(),
-        ]);
 
         session()->flash('flash.banner', __('webhooks.flash.created'));
         session()->flash('flash.bannerStyle', 'success');
@@ -78,19 +75,13 @@ class WebhookController extends Controller
     {
         $this->authorize('update', $webhook);
 
-        $validated = $request->validated();
-        $endpoint = data_get($validated, 'endpoint');
-
-        if ($endpoint !== $webhook->endpoint && ($error = $this->endpointError($webhookService, $endpoint))) {
-            return $error;
+        try {
+            UpdateWebhook::execute($webhook, $request->validated(), $webhookService);
+        } catch (RuntimeException $e) {
+            return back()->withErrors([
+                'endpoint' => $e->getMessage(),
+            ]);
         }
-
-        if (data_get($validated, 'status') === Status::Enabled->value) {
-            $validated['consecutive_failures'] = 0;
-            $validated['paused_at'] = null;
-        }
-
-        $webhook->update($validated);
 
         session()->flash('flash.banner', __('webhooks.flash.updated'));
         session()->flash('flash.bannerStyle', 'success');
@@ -103,7 +94,7 @@ class WebhookController extends Controller
         $this->authorize('update', $webhook);
 
         try {
-            $webhookService->ping($webhook->endpoint, $webhook->signing_secret);
+            SendWebhookTest::execute($webhook, $webhookService);
         } catch (RuntimeException $e) {
             session()->flash('flash.banner', $e->getMessage());
             session()->flash('flash.bannerStyle', 'danger');
@@ -121,9 +112,7 @@ class WebhookController extends Controller
     {
         $this->authorize('update', $webhook);
 
-        $webhook->update([
-            'signing_secret' => Webhook::generateSigningSecret(),
-        ]);
+        RotateWebhookSecret::execute($webhook);
 
         session()->flash('flash.banner', __('webhooks.flash.secret_rotated'));
         session()->flash('flash.bannerStyle', 'success');
@@ -135,12 +124,7 @@ class WebhookController extends Controller
     {
         $this->authorize('replay', [$webhookLog, $webhook]);
 
-        DispatchWebhook::dispatch(
-            $webhook,
-            $webhookLog->event_type,
-            data_get($webhookLog->payload, 'data') ?? [],
-            force: true,
-        );
+        ReplayWebhookLog::execute($webhook, $webhookLog);
 
         session()->flash('flash.banner', __('webhooks.flash.replayed'));
         session()->flash('flash.bannerStyle', 'success');
@@ -152,28 +136,11 @@ class WebhookController extends Controller
     {
         $this->authorize('delete', $webhook);
 
-        $webhook->delete();
+        DeleteWebhook::execute($webhook);
 
         session()->flash('flash.banner', __('webhooks.flash.deleted'));
         session()->flash('flash.bannerStyle', 'success');
 
         return redirect()->route('app.webhooks.index');
-    }
-
-    private function endpointError(WebhookService $webhookService, mixed $endpoint): ?RedirectResponse
-    {
-        if (! is_string($endpoint)) {
-            return null;
-        }
-
-        try {
-            $webhookService->assertEndpointAllowed($endpoint);
-        } catch (RuntimeException $e) {
-            return back()->withErrors([
-                'endpoint' => $e->getMessage(),
-            ]);
-        }
-
-        return null;
     }
 }

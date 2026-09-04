@@ -24,6 +24,8 @@ use App\Mcp\Tools\SocialAccount\ListDiscordChannelsTool;
 use App\Mcp\Tools\SocialAccount\ListPinterestBoardsTool;
 use App\Mcp\Tools\SocialAccount\ListSocialAccountsTool;
 use App\Mcp\Tools\SocialAccount\ToggleSocialAccountTool;
+use App\Mcp\Tools\Webhook\CreateWebhookTool;
+use App\Mcp\Tools\Webhook\ListWebhooksTool;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
@@ -219,4 +221,29 @@ test('admins can toggle social accounts via mcp', function () {
         ->assertOk();
 
     expect($account->fresh()->is_active)->toBeFalse();
+});
+
+test('viewers and members cannot list or create webhooks via mcp', function (Role $role) {
+    $user = $role === Role::Viewer ? $this->viewer : $this->member;
+
+    TryPostServer::actingAs($user)
+        ->tool(ListWebhooksTool::class, [])
+        ->assertHasErrors(['Not authorized to manage webhooks.']);
+
+    TryPostServer::actingAs($user)
+        ->tool(CreateWebhookTool::class, [
+            'endpoint' => 'https://example.com/webhooks',
+            'events' => ['post.published'],
+        ])
+        ->assertHasErrors(['Not authorized to manage webhooks.']);
+})->with([
+    Role::Viewer,
+    Role::Member,
+]);
+
+test('admins can list webhooks via mcp', function () {
+    TryPostServer::actingAs($this->owner)
+        ->tool(ListWebhooksTool::class, [])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json->has('webhooks', 0)->etc());
 });

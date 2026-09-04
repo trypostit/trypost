@@ -34,6 +34,15 @@ use App\Mcp\Tools\SocialAccount\ListDiscordChannelsTool;
 use App\Mcp\Tools\SocialAccount\ListPinterestBoardsTool;
 use App\Mcp\Tools\SocialAccount\ListSocialAccountsTool;
 use App\Mcp\Tools\SocialAccount\ToggleSocialAccountTool;
+use App\Mcp\Tools\Webhook\CreateWebhookTool;
+use App\Mcp\Tools\Webhook\DeleteWebhookTool;
+use App\Mcp\Tools\Webhook\GetWebhookTool;
+use App\Mcp\Tools\Webhook\ListWebhookLogsTool;
+use App\Mcp\Tools\Webhook\ListWebhooksTool;
+use App\Mcp\Tools\Webhook\ReplayWebhookLogTool;
+use App\Mcp\Tools\Webhook\RotateWebhookSecretTool;
+use App\Mcp\Tools\Webhook\SendWebhookTestTool;
+use App\Mcp\Tools\Webhook\UpdateWebhookTool;
 use App\Mcp\Tools\Workspace\GetWorkspaceTool;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Icon;
@@ -44,7 +53,7 @@ use Laravel\Mcp\Server\Attributes\Version;
 #[Name('TryPost')]
 #[Version('1.0.0')]
 #[Icon('images/trypost/icon.png', mimeType: 'image/png')]
-#[Instructions('TryPost is a social media scheduling platform. Use this server to manage posts, the Asset Library, signatures, labels, social accounts, workspaces, and API keys.')]
+#[Instructions('TryPost is a social media scheduling platform. Use this server to manage posts, the Asset Library, signatures, labels, social accounts, workspaces, outgoing webhooks, and API keys.')]
 class TryPostServer extends Server
 {
     public int $defaultPaginationLength = 100;
@@ -88,6 +97,17 @@ class TryPostServer extends Server
         ListPinterestBoardsTool::class,
         ListDiscordChannelsTool::class,
         ToggleSocialAccountTool::class,
+
+        // Webhooks
+        ListWebhooksTool::class,
+        GetWebhookTool::class,
+        CreateWebhookTool::class,
+        UpdateWebhookTool::class,
+        DeleteWebhookTool::class,
+        SendWebhookTestTool::class,
+        RotateWebhookSecretTool::class,
+        ListWebhookLogsTool::class,
+        ReplayWebhookLogTool::class,
 
         // Workspace
         GetWorkspaceTool::class,
