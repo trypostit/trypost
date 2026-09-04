@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { router } from '@inertiajs/vue3';
-import { IconCopy, IconEye, IconEyeOff, IconSend } from '@tabler/icons-vue';
+import { IconCopy, IconEye, IconEyeOff } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
@@ -13,7 +12,6 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { copyToClipboard } from '@/lib/utils';
-import { sendTest } from '@/routes/app/webhooks';
 import type { WebhookWithSecret } from '@/types/webhook';
 
 import { webhookEventLabel } from './webhook-events';
@@ -23,7 +21,6 @@ const props = defineProps<{
 }>();
 
 const secretVisible = ref(false);
-const sendingTest = ref(false);
 
 const displaySecret = computed(() => {
     if (secretVisible.value) {
@@ -32,17 +29,6 @@ const displaySecret = computed(() => {
 
     return `${props.webhook.signing_secret.slice(0, 5)}••••••••••••`;
 });
-
-const sendTestEvent = () => {
-    sendingTest.value = true;
-
-    router.post(sendTest.url(props.webhook), {}, {
-        preserveScroll: true,
-        onFinish: () => {
-            sendingTest.value = false;
-        },
-    });
-};
 </script>
 
 <template>
@@ -104,16 +90,6 @@ const sendTestEvent = () => {
                     </Tooltip>
                 </TooltipProvider>
             </div>
-            <Button
-                variant="outline"
-                class="w-full sm:w-auto"
-                data-testid="send-test-webhook-secret"
-                :loading="sendingTest"
-                @click="sendTestEvent"
-            >
-                <IconSend class="size-4" />
-                {{ $t('webhooks.actions.send_test') }}
-            </Button>
         </div>
 
         <div class="space-y-2">

@@ -90,9 +90,7 @@ class WebhookService
             ->get();
 
         foreach ($webhooks as $webhook) {
-            $events = $webhook->events ?? [];
-
-            if (in_array($event->value, $events, true)) {
+            if (in_array($event->value, $webhook->events ?? [], true)) {
                 DispatchWebhook::dispatch($webhook, $event->value, $payload);
             }
         }

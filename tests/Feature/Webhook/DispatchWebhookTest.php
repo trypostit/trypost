@@ -519,39 +519,6 @@ test('dispatch webhook job runs on the webhooks queue', function () {
     Queue::assertPushedOn('webhooks', DispatchWebhook::class);
 });
 
-test('dispatch webhook job reuses existing log on retry', function () {
-    Http::fake([
-        'example.com/webhook' => Http::response('OK', 200),
-    ]);
-
-    $log = WebhookLog::query()->create([
-        'webhook_id' => $this->webhook->id,
-        'event_type' => WebhookEvent::PostPublished->value,
-        'payload' => ['type' => WebhookEvent::PostPublished->value, 'data' => ['id' => 'test-123']],
-        'attempts' => 1,
-        'failed_at' => now(),
-        'response_status' => 500,
-        'response_body' => 'Server Error',
-    ]);
-
-    $job = new DispatchWebhook(
-        $this->webhook,
-        WebhookEvent::PostPublished->value,
-        ['id' => 'test-123'],
-        $log->id,
-    );
-
-    app()->call([$job, 'handle']);
-
-    $log->refresh();
-
-    expect($log->delivered_at)->not->toBeNull();
-    expect($log->failed_at)->toBeNull();
-    expect($log->response_status)->toBe(200);
-    expect(data_get($log->payload, 'id'))->toBe($log->id);
-    expect(WebhookLog::query()->where('webhook_id', $this->webhook->id)->count())->toBe(1);
-});
-
 test('dispatch webhook job keeps the same log after serialize retry', function () {
     $sentIds = [];
 

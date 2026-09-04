@@ -53,21 +53,19 @@ class WebhookController extends Controller
 
         $this->authorize('create', Webhook::class);
 
-        try {
-            $webhookService->assertEndpointAllowed($request->string('endpoint')->toString());
-        } catch (RuntimeException $e) {
-            return back()->withErrors([
-                'endpoint' => $e->getMessage(),
-            ]);
+        $validated = $request->validated();
+        $endpoint = data_get($validated, 'endpoint');
+
+        if ($error = $this->endpointError($webhookService, $endpoint)) {
+            return $error;
         }
 
         $webhook = Webhook::query()->create([
             'workspace_id' => $workspace->id,
-            'endpoint' => $request->string('endpoint')->toString(),
-            'events' => $request->validated('events'),
+            'endpoint' => $endpoint,
+            'events' => data_get($validated, 'events'),
             'status' => Status::Enabled,
             'signing_secret' => Webhook::generateSigningSecret(),
-            'consecutive_failures' => 0,
         ]);
 
         session()->flash('flash.banner', __('webhooks.flash.created'));
@@ -81,25 +79,13 @@ class WebhookController extends Controller
         $this->authorize('update', $webhook);
 
         $validated = $request->validated();
+        $endpoint = data_get($validated, 'endpoint');
 
-        if (
-            isset($validated['endpoint'])
-            && $validated['endpoint'] !== $webhook->endpoint
-        ) {
-            try {
-                $webhookService->assertEndpointAllowed($validated['endpoint']);
-            } catch (RuntimeException $e) {
-                return back()->withErrors([
-                    'endpoint' => $e->getMessage(),
-                ]);
-            }
+        if ($endpoint !== $webhook->endpoint && ($error = $this->endpointError($webhookService, $endpoint))) {
+            return $error;
         }
 
-        if (
-            isset($validated['status'])
-            && $validated['status'] === Status::Enabled->value
-            && $webhook->status !== Status::Enabled
-        ) {
+        if (data_get($validated, 'status') === Status::Enabled->value) {
             $validated['consecutive_failures'] = 0;
             $validated['paused_at'] = null;
         }
@@ -152,7 +138,7 @@ class WebhookController extends Controller
         DispatchWebhook::dispatch(
             $webhook,
             $webhookLog->event_type,
-            data_get($webhookLog->payload, 'data', $webhookLog->payload) ?? [],
+            data_get($webhookLog->payload, 'data') ?? [],
             force: true,
         );
 
@@ -172,5 +158,22 @@ class WebhookController extends Controller
         session()->flash('flash.bannerStyle', 'success');
 
         return redirect()->route('app.webhooks.index');
+    }
+
+    private function endpointError(WebhookService $webhookService, mixed $endpoint): ?RedirectResponse
+    {
+        if (! is_string($endpoint)) {
+            return null;
+        }
+
+        try {
+            $webhookService->assertEndpointAllowed($endpoint);
+        } catch (RuntimeException $e) {
+            return back()->withErrors([
+                'endpoint' => $e->getMessage(),
+            ]);
+        }
+
+        return null;
     }
 }

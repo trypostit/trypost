@@ -35,6 +35,8 @@ class DispatchWebhook implements ShouldQueue
 
     public int $backoff = 60;
 
+    public string $logId;
+
     /**
      * @param  array<string, mixed>  $payload
      */
@@ -42,11 +44,10 @@ class DispatchWebhook implements ShouldQueue
         public Webhook $webhook,
         public string $eventType,
         public array $payload,
-        public ?string $logId = null,
         public bool $force = false,
     ) {
         $this->onQueue('webhooks');
-        $this->logId ??= (string) Str::uuid();
+        $this->logId = (string) Str::uuid();
     }
 
     public function handle(SafeHttpFetcher $safeHttp, WebhookService $webhooks): void
@@ -106,8 +107,8 @@ class DispatchWebhook implements ShouldQueue
             $response = Http::timeout(10)
                 ->withUserAgent(config('trypost.user_agent'))
                 ->withOptions(['allow_redirects' => false])
+                ->asJson()
                 ->withHeaders([
-                    'Content-Type' => 'application/json',
                     'X-Webhook-Signature' => $signature,
                 ])
                 ->post($this->webhook->endpoint, $body);

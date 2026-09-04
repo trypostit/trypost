@@ -92,6 +92,11 @@ const toggleStatus = () => {
                         : $t('webhooks.actions.enable')
                 }}
             </DropdownMenuItem>
+            <DropdownMenuItem @click="emit('rotate')">
+                <IconRefresh class="size-4" />
+                {{ $t('webhooks.actions.rotate') }}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
                 data-testid="send-test-webhook"
                 :disabled="sendingTest"
@@ -99,10 +104,6 @@ const toggleStatus = () => {
             >
                 <IconSend class="size-4" />
                 {{ $t('webhooks.actions.send_test') }}
-            </DropdownMenuItem>
-            <DropdownMenuItem @click="emit('rotate')">
-                <IconRefresh class="size-4" />
-                {{ $t('webhooks.actions.rotate') }}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
