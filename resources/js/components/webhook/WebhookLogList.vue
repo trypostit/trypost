@@ -8,7 +8,7 @@ import type { WebhookLog } from '@/types/webhook';
 defineProps<{
     logs: WebhookLog[];
     selectedId: string | null;
-    newLogIds: Set<string>;
+    newLogIds: string[];
 }>();
 
 defineEmits<{
@@ -31,7 +31,7 @@ const isFailed = (log: WebhookLog): boolean => Boolean(log.failed_at);
                 @click="$emit('select', log)"
             >
                 <span
-                    v-if="newLogIds.has(log.id)"
+                    v-if="newLogIds.includes(log.id)"
                     class="absolute left-1.5 top-1/2 size-1.5 -translate-y-1/2 animate-pulse rounded-full bg-violet-500"
                 />
                 <div

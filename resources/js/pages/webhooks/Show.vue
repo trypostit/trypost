@@ -54,7 +54,7 @@ const openDelete = () => {
             <WebhookLogViewer
                 :key="webhook.id"
                 :webhook-id="webhook.id"
-                :logs="logs.data"
+                :logs="logs.data ?? []"
             />
 
             <EditWebhookDialog v-model:open="editDialogOpen" :webhook="webhook" />

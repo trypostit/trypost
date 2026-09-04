@@ -1,6 +1,7 @@
-import { reactive, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 import { useWebhookEcho } from '@/composables/echo/useWebhookEcho';
+import dayjs from '@/dayjs';
 import type { WebhookLog } from '@/types/webhook';
 
 type LiveFields = Pick<
@@ -15,6 +16,9 @@ const liveFields = (log: WebhookLog): LiveFields => ({
     failed_at: log.failed_at,
     attempts: log.attempts,
 });
+
+const compareNewestFirst = (left: WebhookLog, right: WebhookLog): number =>
+    dayjs(right.created_at).valueOf() - dayjs(left.created_at).valueOf();
 
 const mergeIncomingLog = (incoming: WebhookLog, local?: WebhookLog): WebhookLog => {
     if (!local) {
@@ -41,24 +45,33 @@ const mergeIncomingLog = (incoming: WebhookLog, local?: WebhookLog): WebhookLog 
     return incoming;
 };
 
+const syncLogs = (incoming: WebhookLog[], local: WebhookLog[]): WebhookLog[] => {
+    const localById = new Map(local.map((log) => [log.id, log]));
+    const incomingIds = new Set(incoming.map((log) => log.id));
+    const merged = incoming.map((log) => mergeIncomingLog(log, localById.get(log.id)));
+    const echoOnly = local.filter((log) => !incomingIds.has(log.id));
+
+    return [...echoOnly, ...merged].sort(compareNewestFirst);
+};
+
 export const useWebhookLogs = (
     webhookId: MaybeRefOrGetter<string>,
     incomingLogs: MaybeRefOrGetter<WebhookLog[]>,
 ) => {
-    const newLogIds = reactive(new Set<string>());
+    const newLogIds = ref<string[]>([]);
     const liveLogs = ref<WebhookLog[]>([...toValue(incomingLogs)]);
     const selectedLog = ref<WebhookLog | null>(liveLogs.value[0] ?? null);
 
     const applyLogUpdate = (incoming: WebhookLog): void => {
-        const index = liveLogs.value.findIndex((log) => log.id === incoming.id);
-        const existing = liveLogs.value[index];
+        const existing = liveLogs.value.find((log) => log.id === incoming.id);
         const next = existing ? { ...existing, ...liveFields(incoming) } : incoming;
 
-        if (existing) {
-            liveLogs.value[index] = next;
-        } else {
-            liveLogs.value.unshift(next);
-            newLogIds.add(next.id);
+        liveLogs.value = existing
+            ? liveLogs.value.map((log) => (log.id === next.id ? next : log))
+            : [next, ...liveLogs.value].sort(compareNewestFirst);
+
+        if (!existing && !newLogIds.value.includes(next.id)) {
+            newLogIds.value = [...newLogIds.value, next.id];
         }
 
         if (!selectedLog.value || selectedLog.value.id === next.id) {
@@ -71,12 +84,7 @@ export const useWebhookLogs = (
     watch(
         () => toValue(incomingLogs),
         (incoming) => {
-            const localById = new Map(liveLogs.value.map((log) => [log.id, log]));
-            const incomingIds = new Set(incoming.map((log) => log.id));
-            const merged = incoming.map((log) => mergeIncomingLog(log, localById.get(log.id)));
-            const echoOnly = liveLogs.value.filter((log) => !incomingIds.has(log.id));
-
-            liveLogs.value = [...echoOnly, ...merged];
+            liveLogs.value = syncLogs(incoming, liveLogs.value);
 
             const selectedId = selectedLog.value?.id;
             const stillSelected = selectedId
@@ -90,7 +98,7 @@ export const useWebhookLogs = (
 
     const selectLog = (log: WebhookLog): void => {
         selectedLog.value = log;
-        newLogIds.delete(log.id);
+        newLogIds.value = newLogIds.value.filter((id) => id !== log.id);
     };
 
     return {
