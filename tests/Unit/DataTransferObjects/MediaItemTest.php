@@ -12,6 +12,16 @@ test('fromArray backfills the mime type from the path extension when missing', f
     expect(MediaItem::fromArray(['path' => 'archive.zip'])->mime_type)->toBeNull();
 });
 
+test('fromArray coerces a numeric media id to a string', function () {
+    $item = MediaItem::fromArray([
+        'id' => 42,
+        'path' => 'generated.png',
+        'url' => 'https://cdn.example.com/generated.png',
+    ]);
+
+    expect($item->id)->toBe('42');
+});
+
 test('fromArray keeps an explicit mime type over the extension', function () {
     $item = MediaItem::fromArray(['path' => 'thing.png', 'mime_type' => 'video/mp4']);
 

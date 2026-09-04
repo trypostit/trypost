@@ -21,12 +21,16 @@ import CreateWebhookDialog from '@/components/webhook/CreateWebhookDialog.vue';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { destroy, show } from '@/routes/app/webhooks';
+import {
+    webhookStatusVariant,
+    type WebhookStatusValue,
+} from '@/types/webhook-status';
 
 interface WebhookItem {
     id: string;
     endpoint: string;
     events: string[];
-    status: string;
+    status: WebhookStatusValue;
     last_sent_at: string | null;
 }
 
@@ -36,18 +40,6 @@ defineProps<{
 
 const createDialogOpen = ref(false);
 const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
-
-const statusVariant = (status: string): 'default' | 'secondary' | 'warning' => {
-    if (status === 'enabled') {
-        return 'default';
-    }
-
-    if (status === 'paused') {
-        return 'warning';
-    }
-
-    return 'secondary';
-};
 
 const openWebhook = (webhook: WebhookItem) => {
     router.visit(show.url(webhook));
@@ -115,7 +107,7 @@ const handleDelete = (webhook: WebhookItem) => {
                                 }}
                             </TableCell>
                             <TableCell>
-                                <Badge :variant="statusVariant(webhook.status)">
+                                <Badge :variant="webhookStatusVariant(webhook.status)">
                                     {{ $t(`webhooks.status.${webhook.status}`) }}
                                 </Badge>
                             </TableCell>

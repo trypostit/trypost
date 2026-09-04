@@ -43,12 +43,17 @@ import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { copyToClipboard } from '@/lib/utils';
 import { destroy, index, replay, update } from '@/routes/app/webhooks';
+import {
+    WebhookStatus,
+    webhookStatusVariant,
+    type WebhookStatusValue,
+} from '@/types/webhook-status';
 
 interface WebhookItem {
     id: string;
     endpoint: string;
     events: string[];
-    status: string;
+    status: WebhookStatusValue;
     signing_secret: string;
     last_sent_at: string | null;
 }
@@ -136,23 +141,12 @@ const displaySecret = computed(() => {
     return `${props.webhook.signing_secret.slice(0, 5)}••••••••••••`;
 });
 
-const statusVariant = (
-    status: string,
-): 'default' | 'secondary' | 'warning' => {
-    if (status === 'enabled') {
-        return 'default';
-    }
-
-    if (status === 'paused') {
-        return 'warning';
-    }
-
-    return 'secondary';
-};
-
 const toggleStatus = () => {
     togglingStatus.value = true;
-    const newStatus = props.webhook.status === 'enabled' ? 'disabled' : 'enabled';
+    const newStatus =
+        props.webhook.status === WebhookStatus.Enabled
+            ? WebhookStatus.Disabled
+            : WebhookStatus.Enabled;
     router.put(
         update.url(props.webhook),
         { status: newStatus },
@@ -308,7 +302,7 @@ const replayLog = (log: WebhookLogItem) => {
                             {{ webhook.endpoint }}
                         </p>
                         <div class="flex flex-wrap items-center gap-2">
-                            <Badge :variant="statusVariant(webhook.status)">
+                            <Badge :variant="webhookStatusVariant(webhook.status)">
                                 {{ $t(`webhooks.status.${webhook.status}`) }}
                             </Badge>
                             <span
@@ -340,10 +334,10 @@ const replayLog = (log: WebhookLogItem) => {
                             {{ $t('webhooks.actions.edit') }}
                         </DropdownMenuItem>
                         <DropdownMenuItem :disabled="togglingStatus" @click="toggleStatus">
-                            <IconPlayerPlay v-if="webhook.status !== 'enabled'" class="size-4" />
+                            <IconPlayerPlay v-if="webhook.status !== WebhookStatus.Enabled" class="size-4" />
                             <IconPlayerPause v-else class="size-4" />
                             {{
-                                webhook.status === 'enabled'
+                                webhook.status === WebhookStatus.Enabled
                                     ? $t('webhooks.actions.disable')
                                     : $t('webhooks.actions.enable')
                             }}

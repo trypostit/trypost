@@ -419,6 +419,26 @@ test('postPayload includes failed platform errors', function () {
         ->and(data_get($payload, 'platforms.0.meta.privacy_level'))->toBe('PUBLIC_TO_EVERYONE');
 });
 
+test('postPayload accepts integer media ids from generated attachments', function () {
+    $post = Post::factory()->published()->createQuietly([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'media' => [
+            [
+                'id' => 42,
+                'path' => 'medias/generated.png',
+                'url' => 'https://cdn.example.com/medias/generated.png',
+                'mime_type' => 'image/png',
+            ],
+        ],
+    ]);
+
+    $payload = $this->service->postPayload($post);
+
+    expect(data_get($payload, 'media.0.id'))->toBe('42')
+        ->and(data_get($payload, 'media.0.type'))->toBe('image');
+});
+
 test('postPayload author is null when the post has no user', function () {
     $post = Post::factory()->published()->createQuietly([
         'workspace_id' => $this->workspace->id,
