@@ -2,15 +2,22 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\CreatedVia;
+use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Platform;
 use App\Enums\Webhook\EventType as WebhookEvent;
 use App\Enums\Webhook\Status;
 use App\Events\Webhook\LogUpdated;
 use App\Jobs\DispatchWebhook;
 use App\Mail\WebhookPausedMail;
+use App\Models\Post;
+use App\Models\PostPlatform;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Webhook;
 use App\Models\WebhookLog;
 use App\Models\Workspace;
+use App\Models\WorkspaceLabel;
 use App\Services\WebhookService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Event;
@@ -163,6 +170,72 @@ test('dispatch webhook job sends correct payload structure', function () {
         return $body['type'] === WebhookEvent::PostPublished->value
             && $body['data']['id'] === 'test-123'
             && isset($body['created_at']);
+    });
+});
+
+test('dispatch webhook job sends the published post payload as data', function () {
+    Http::fake([
+        'example.com/webhook' => Http::response('OK', 200),
+    ]);
+
+    $post = Post::factory()->published()->createQuietly([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'content' => '<p>Launch day. TryPost is live.</p>',
+        'created_via' => CreatedVia::Web,
+        'media' => [
+            [
+                'id' => 'm_01',
+                'path' => 'medias/9f2c-hero.jpg',
+                'url' => 'https://cdn.example.com/medias/9f2c-hero.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'hero.jpg',
+                'source' => 'unsplash',
+                'meta' => ['alt_text' => 'Product screenshot on a laptop'],
+            ],
+        ],
+    ]);
+
+    $label = WorkspaceLabel::factory()->recycle($this->workspace)->create([
+        'name' => 'Launch',
+        'color' => '#7C3AED',
+    ]);
+    $post->labels()->attach($label);
+
+    $account = SocialAccount::factory()->linkedin()->recycle($this->workspace)->create([
+        'display_name' => 'Paulo Castellano',
+        'username' => 'paulocastellano',
+        'avatar_url' => 'avatars/li.jpg',
+    ]);
+    PostPlatform::factory()->published()->recycle($post, $account)->create([
+        'platform' => Platform::LinkedIn,
+        'content_type' => ContentType::LinkedInPost,
+        'meta' => ['document_title' => 'TryPost launch deck'],
+    ]);
+
+    $payload = app(WebhookService::class)->postPayload($post->fresh());
+
+    $job = new DispatchWebhook(
+        $this->webhook,
+        WebhookEvent::PostPublished->value,
+        $payload,
+    );
+
+    app()->call([$job, 'handle']);
+
+    Http::assertSent(function ($request) use ($payload) {
+        $body = $request->data();
+
+        return $body['type'] === WebhookEvent::PostPublished->value
+            && isset($body['created_at'])
+            && $body['data'] === $payload
+            && data_get($body, 'data.author.email') === $this->user->email
+            && data_get($body, 'data.workspace.name') === $this->workspace->name
+            && data_get($body, 'data.labels.0.name') === 'Launch'
+            && data_get($body, 'data.media.0.type') === 'image'
+            && data_get($body, 'data.platforms.0.platform') === Platform::LinkedIn->value
+            && data_get($body, 'data.platforms.0.meta.document_title') === 'TryPost launch deck'
+            && ! array_key_exists('access_token', data_get($body, 'data.platforms.0.social_account', []));
     });
 });
 
