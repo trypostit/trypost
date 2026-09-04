@@ -12,14 +12,23 @@ export interface WebhookWithSecret extends Webhook {
     signing_secret: string;
 }
 
-export interface WebhookLog {
+export interface WebhookLogBroadcast {
     id: string;
     event_type: string;
-    payload: Record<string, unknown> | null;
     response_status: number | null;
-    response_body: string | null;
     delivered_at: string | null;
     failed_at: string | null;
     attempts: number;
     created_at: string;
 }
+
+export interface WebhookLog extends WebhookLogBroadcast {
+    payload: Record<string, unknown> | null;
+    response_body: string | null;
+}
+
+export const webhookLogFromBroadcast = (broadcast: WebhookLogBroadcast): WebhookLog => ({
+    ...broadcast,
+    payload: null,
+    response_body: null,
+});

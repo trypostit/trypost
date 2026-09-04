@@ -3,19 +3,16 @@ import { ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 import { useWebhookEcho } from '@/composables/echo/useWebhookEcho';
 import dayjs from '@/dayjs';
-import type { WebhookLog } from '@/types/webhook';
+import {
+    webhookLogFromBroadcast,
+    type WebhookLog,
+    type WebhookLogBroadcast,
+} from '@/types/webhook';
 
-type WebhookLogBroadcast = Pick<
-    WebhookLog,
-    'id' | 'event_type' | 'response_status' | 'delivered_at' | 'failed_at' | 'attempts' | 'created_at'
->;
-
-type LiveFields = Pick<
-    WebhookLog,
+const liveFields = (log: WebhookLogBroadcast): Pick<
+    WebhookLogBroadcast,
     'response_status' | 'delivered_at' | 'failed_at' | 'attempts'
->;
-
-const liveFields = (log: WebhookLogBroadcast): LiveFields => ({
+> => ({
     response_status: log.response_status,
     delivered_at: log.delivered_at,
     failed_at: log.failed_at,
@@ -71,7 +68,7 @@ export const useWebhookLogs = (
         const existing = liveLogs.value.find((log) => log.id === incoming.id);
         const next = existing
             ? { ...existing, ...liveFields(incoming) }
-            : { ...incoming, payload: null, response_body: null };
+            : webhookLogFromBroadcast(incoming);
 
         liveLogs.value = existing
             ? liveLogs.value.map((log) => (log.id === next.id ? next : log))

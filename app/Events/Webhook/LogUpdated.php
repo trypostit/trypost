@@ -10,6 +10,10 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Lightweight signal that a delivery log changed. Carries only list
+ * metadata — the show page reloads `logs` over HTTP for payload and body.
+ */
 class LogUpdated implements ShouldBroadcast
 {
     use Dispatchable, SerializesModels;
@@ -44,7 +48,15 @@ class LogUpdated implements ShouldBroadcast
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array{
+     *     id: string,
+     *     event_type: string,
+     *     response_status: int|null,
+     *     delivered_at: string|null,
+     *     failed_at: string|null,
+     *     attempts: int,
+     *     created_at: string
+     * }
      */
     public function broadcastWith(): array
     {

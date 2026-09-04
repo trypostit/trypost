@@ -221,6 +221,33 @@ test('webhook rejects invalid event names', function () {
         ->assertSessionHasErrors('events.0');
 });
 
+test('webhook show includes full log payload and response body', function () {
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+    $log = WebhookLog::factory()->create([
+        'webhook_id' => $webhook->id,
+        'payload' => [
+            'id' => 'post-1',
+            'type' => EventType::PostPublished->value,
+            'data' => ['content' => 'Hello'],
+        ],
+        'response_body' => 'OK',
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.webhooks.show', $webhook))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('webhooks/Show')
+            ->has('logs.data', 1)
+            ->where('logs.data.0.id', $log->id)
+            ->where('logs.data.0.payload.id', 'post-1')
+            ->where('logs.data.0.payload.data.content', 'Hello')
+            ->where('logs.data.0.response_body', 'OK')
+        );
+});
+
 test('authenticated users can view a webhook with signing_secret exposed', function () {
     $webhook = Webhook::factory()->create([
         'workspace_id' => $this->workspace->id,

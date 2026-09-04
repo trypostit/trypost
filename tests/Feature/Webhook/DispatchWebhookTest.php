@@ -618,11 +618,11 @@ test('dispatch webhook failed method pauses webhook and sends email after 5 fail
     });
 });
 
-test('dispatch webhook job broadcasts log updates', function () {
+test('dispatch webhook job broadcasts a slim log update', function (int $status) {
     Event::fake([LogUpdated::class]);
 
     Http::fake([
-        'example.com/webhook' => Http::response('OK', 200),
+        'example.com/webhook' => Http::response($status === 200 ? 'OK' : 'Nope', $status),
     ]);
 
     $job = new DispatchWebhook(
@@ -631,7 +631,51 @@ test('dispatch webhook job broadcasts log updates', function () {
         ['id' => 'test-123'],
     );
 
-    app()->call([$job, 'handle']);
+    try {
+        app()->call([$job, 'handle']);
+    } catch (RuntimeException) {
+        // HTTP failures rethrow after the log is persisted.
+    }
 
-    Event::assertDispatched(LogUpdated::class);
+    Event::assertDispatched(LogUpdated::class, function (LogUpdated $event) use ($job): bool {
+        $broadcast = $event->broadcastWith();
+
+        return $event->log->id === $job->logId
+            && array_keys($broadcast) === [
+                'id',
+                'event_type',
+                'response_status',
+                'delivered_at',
+                'failed_at',
+                'attempts',
+                'created_at',
+            ];
+    });
+})->with([
+    'delivered' => 200,
+    'rejected' => 500,
+]);
+
+test('dispatch webhook job broadcasts a slim log update when the endpoint is blocked', function () {
+    Event::fake([LogUpdated::class]);
+
+    $this->webhook->update(['endpoint' => 'http://127.0.0.1/webhook']);
+
+    $job = new DispatchWebhook(
+        $this->webhook,
+        WebhookEvent::PostPublished->value,
+        ['id' => 'test-123'],
+    );
+
+    try {
+        app()->call([$job, 'handle']);
+    } catch (RuntimeException) {
+        // SSRF guard rethrows after the log is persisted.
+    }
+
+    Event::assertDispatched(LogUpdated::class, function (LogUpdated $event) use ($job): bool {
+        return $event->log->id === $job->logId
+            && ! array_key_exists('payload', $event->broadcastWith())
+            && ! array_key_exists('response_body', $event->broadcastWith());
+    });
 });

@@ -44,4 +44,15 @@ class WebhookLogFactory extends Factory
             'failed_at' => now(),
         ]);
     }
+
+    public function pending(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'response_status' => null,
+            'response_body' => null,
+            'delivered_at' => null,
+            'failed_at' => null,
+            'attempts' => 1,
+        ]);
+    }
 }
