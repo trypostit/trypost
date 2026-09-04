@@ -102,6 +102,32 @@ test('SendPostStatusWebhook skips draft status', function () {
     Queue::assertNotPushed(DispatchWebhook::class);
 });
 
+test('SendPostStatusWebhook dispatches post.unscheduled when a scheduled post becomes a draft', function () {
+    $post = Post::factory()->createQuietly([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+
+    app(SendPostStatusWebhook::class)->handle(new PostStatusChanged($post, PostStatus::Scheduled));
+
+    Queue::assertPushed(DispatchWebhook::class, function (DispatchWebhook $job) {
+        return $job->eventType === EventType::PostUnscheduled->value;
+    });
+});
+
+test('SendPostStatusWebhook skips a draft that did not come from scheduled', function () {
+    $post = Post::factory()->createQuietly([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+
+    app(SendPostStatusWebhook::class)->handle(new PostStatusChanged($post, PostStatus::Failed));
+
+    Queue::assertNotPushed(DispatchWebhook::class);
+});
+
 test('creating a post dispatches PostCreated via the observer', function () {
     Event::fake([PostCreated::class]);
 

@@ -45,7 +45,24 @@ class PostObserver
             DispatchPostTriggerAutomationsJob::dispatch($post, $triggerType)->afterCommit();
         }
 
-        DB::afterCommit(fn () => PostStatusChanged::dispatch($post));
+        $previousStatus = $this->previousStatus($post);
+
+        DB::afterCommit(fn () => PostStatusChanged::dispatch($post, $previousStatus));
+    }
+
+    private function previousStatus(Post $post): ?PostStatus
+    {
+        $previous = $post->getRawOriginal('status');
+
+        if ($previous instanceof PostStatus) {
+            return $previous;
+        }
+
+        if (is_string($previous)) {
+            return PostStatus::tryFrom($previous);
+        }
+
+        return null;
     }
 
     /**

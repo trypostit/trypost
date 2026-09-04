@@ -4,6 +4,7 @@ export const webhookEventGroups = [
         events: [
             'post.created',
             'post.scheduled',
+            'post.unscheduled',
             'post.published',
             'post.partially_published',
             'post.failed',

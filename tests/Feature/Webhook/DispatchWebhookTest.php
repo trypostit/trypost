@@ -123,6 +123,8 @@ test('dispatch webhook job creates log and delivers successfully', function () {
     $log = WebhookLog::query()->where('webhook_id', $this->webhook->id)->first();
 
     expect($log)->not->toBeNull();
+    expect($log->id)->toBe($job->logId);
+    expect(data_get($log->payload, 'id'))->toBe($log->id);
     expect($log->event_type)->toBe(WebhookEvent::PostPublished->value);
     expect($log->response_status)->toBe(200);
     expect($log->delivered_at)->not->toBeNull();
@@ -164,10 +166,11 @@ test('dispatch webhook job sends correct payload structure', function () {
 
     app()->call([$job, 'handle']);
 
-    Http::assertSent(function ($request) {
+    Http::assertSent(function ($request) use ($job) {
         $body = $request->data();
 
-        return $body['type'] === WebhookEvent::PostPublished->value
+        return $body['id'] === $job->logId
+            && $body['type'] === WebhookEvent::PostPublished->value
             && $body['data']['id'] === 'test-123'
             && isset($body['created_at']);
     });
@@ -223,10 +226,11 @@ test('dispatch webhook job sends the published post payload as data', function (
 
     app()->call([$job, 'handle']);
 
-    Http::assertSent(function ($request) use ($payload) {
+    Http::assertSent(function ($request) use ($job, $payload) {
         $body = $request->data();
 
-        return $body['type'] === WebhookEvent::PostPublished->value
+        return $body['id'] === $job->logId
+            && $body['type'] === WebhookEvent::PostPublished->value
             && isset($body['created_at'])
             && $body['data'] === $payload
             && data_get($body, 'data.author.email') === $this->user->email
@@ -503,6 +507,7 @@ test('dispatch webhook job reuses existing log on retry', function () {
     expect($log->delivered_at)->not->toBeNull();
     expect($log->failed_at)->toBeNull();
     expect($log->response_status)->toBe(200);
+    expect(data_get($log->payload, 'id'))->toBe($log->id);
     expect(WebhookLog::query()->where('webhook_id', $this->webhook->id)->count())->toBe(1);
 });
 

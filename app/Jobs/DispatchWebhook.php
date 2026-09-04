@@ -57,6 +57,7 @@ class DispatchWebhook implements ShouldQueue
         }
 
         $body = [
+            'id' => $this->logId,
             'type' => $this->eventType,
             'data' => $this->payload,
             'created_at' => now()->toIso8601String(),
@@ -68,6 +69,7 @@ class DispatchWebhook implements ShouldQueue
 
         if ($log) {
             $log->update([
+                'payload' => $body,
                 'attempts' => $this->attempts(),
                 'failed_at' => null,
                 'response_status' => null,

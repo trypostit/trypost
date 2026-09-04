@@ -14,7 +14,7 @@ class SendPostStatusWebhook
 
     public function handle(PostStatusChanged $event): void
     {
-        $webhookEvent = EventType::fromPostStatus($event->post->status);
+        $webhookEvent = EventType::fromPostStatus($event->post->status, $event->previousStatus);
 
         if ($webhookEvent === null) {
             return;

@@ -161,6 +161,46 @@ test('creating a draft does not queue status webhooks', function () {
     Queue::assertPushed(DispatchWebhook::class, fn (DispatchWebhook $job) => $job->eventType === EventType::PostCreated->value);
 });
 
+test('unscheduling a post through UpdatePost queues a post.unscheduled webhook', function () {
+    subscribeToWebhook($this->workspace, [EventType::PostUnscheduled]);
+
+    $post = Post::factory()->createQuietly([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Scheduled,
+        'scheduled_at' => now()->addDay(),
+        'content' => 'Was scheduled',
+    ]);
+
+    UpdatePost::execute($this->workspace, $post, [
+        'status' => PostStatus::Draft->value,
+    ]);
+
+    Queue::assertPushed(DispatchWebhook::class, function (DispatchWebhook $job) use ($post) {
+        return $job->eventType === EventType::PostUnscheduled->value
+            && data_get($job->payload, 'id') === $post->id
+            && data_get($job->payload, 'status') === PostStatus::Draft->value;
+    });
+});
+
+test('saving a draft that was never scheduled does not queue post.unscheduled', function () {
+    subscribeToWebhook($this->workspace, [EventType::PostUnscheduled]);
+
+    $post = Post::factory()->createQuietly([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'content' => 'Still a draft',
+    ]);
+
+    UpdatePost::execute($this->workspace, $post, [
+        'status' => PostStatus::Draft->value,
+        'content' => 'Still a draft, edited',
+    ]);
+
+    Queue::assertNotPushed(DispatchWebhook::class);
+});
+
 test('changing post status through the observer queues the matching webhook', function (PostStatus $status, EventType $event) {
     subscribeToWebhook($this->workspace, [$event]);
 
