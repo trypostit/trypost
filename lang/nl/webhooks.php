@@ -29,6 +29,7 @@ return [
         'enable' => 'Endpoint inschakelen',
         'disable' => 'Endpoint uitschakelen',
         'rotate' => 'Ondertekeningssecret roteren',
+        'send_test' => 'Testgebeurtenis versturen',
         'replay' => 'Opnieuw versturen',
         'reveal_secret' => 'Secret tonen',
         'hide_secret' => 'Secret verbergen',
@@ -126,6 +127,7 @@ return [
         'deleted' => 'Webhook verwijderd.',
         'secret_rotated' => 'Ondertekeningssecret geroteerd.',
         'replayed' => 'Webhookgebeurtenis opnieuw verstuurd.',
+        'tested' => 'Testgebeurtenis verstuurd.',
     ],
     'mail' => [
         'paused_subject' => 'Webhook gepauzeerd: :endpoint',

@@ -29,6 +29,7 @@ return [
         'enable' => '启用 endpoint',
         'disable' => '停用 endpoint',
         'rotate' => '轮换签名密钥',
+        'send_test' => '发送测试事件',
         'replay' => '重新发送',
         'reveal_secret' => '显示密钥',
         'hide_secret' => '隐藏密钥',
@@ -126,6 +127,7 @@ return [
         'deleted' => '已删除 webhook。',
         'secret_rotated' => '已轮换签名密钥。',
         'replayed' => '已重新发送 webhook 事件。',
+        'tested' => '已发送测试事件。',
     ],
     'mail' => [
         'paused_subject' => 'Webhook 已暂停：:endpoint',

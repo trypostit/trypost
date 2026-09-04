@@ -29,6 +29,7 @@ return [
         'enable' => 'تفعيل الـ endpoint',
         'disable' => 'تعطيل الـ endpoint',
         'rotate' => 'تدوير سر التوقيع',
+        'send_test' => 'إرسال حدث تجريبي',
         'replay' => 'إعادة الإرسال',
         'reveal_secret' => 'إظهار السر',
         'hide_secret' => 'إخفاء السر',
@@ -126,6 +127,7 @@ return [
         'deleted' => 'تم حذف الويب هوك.',
         'secret_rotated' => 'تم تدوير سر التوقيع.',
         'replayed' => 'أُعيد إرسال حدث الويب هوك.',
+        'tested' => 'أُرسل الحدث التجريبي.',
     ],
     'mail' => [
         'paused_subject' => 'تم إيقاف الويب هوك مؤقتًا: :endpoint',

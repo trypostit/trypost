@@ -280,6 +280,7 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::post('webhooks', [WebhookController::class, 'store'])->name('app.webhooks.store');
     Route::get('webhooks/{webhook}', [WebhookController::class, 'show'])->name('app.webhooks.show');
     Route::put('webhooks/{webhook}', [WebhookController::class, 'update'])->name('app.webhooks.update');
+    Route::post('webhooks/{webhook}/send-test', [WebhookController::class, 'sendTest'])->name('app.webhooks.send-test');
     Route::post('webhooks/{webhook}/rotate-secret', [WebhookController::class, 'rotateSecret'])->name('app.webhooks.rotate-secret');
     Route::post('webhooks/{webhook}/logs/{webhookLog}/replay', [WebhookController::class, 'replay'])->name('app.webhooks.replay');
     Route::delete('webhooks/{webhook}', [WebhookController::class, 'destroy'])->name('app.webhooks.destroy');

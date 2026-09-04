@@ -29,6 +29,7 @@ return [
         'enable' => 'Ενεργοποίηση endpoint',
         'disable' => 'Απενεργοποίηση endpoint',
         'rotate' => 'Αλλαγή μυστικού υπογραφής',
+        'send_test' => 'Αποστολή δοκιμαστικού συμβάντος',
         'replay' => 'Επανάληψη αποστολής',
         'reveal_secret' => 'Εμφάνιση μυστικού',
         'hide_secret' => 'Απόκρυψη μυστικού',
@@ -126,6 +127,7 @@ return [
         'deleted' => 'Το webhook διαγράφηκε.',
         'secret_rotated' => 'Το μυστικό υπογραφής άλλαξε.',
         'replayed' => 'Το συμβάν του webhook στάλθηκε ξανά.',
+        'tested' => 'Το δοκιμαστικό συμβάν στάλθηκε.',
     ],
     'mail' => [
         'paused_subject' => 'Το webhook τέθηκε σε παύση: :endpoint',

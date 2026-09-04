@@ -29,6 +29,7 @@ return [
         'enable' => 'Ativar endpoint',
         'disable' => 'Desativar endpoint',
         'rotate' => 'Rotacionar secret de assinatura',
+        'send_test' => 'Enviar evento de teste',
         'replay' => 'Reenviar',
         'reveal_secret' => 'Mostrar secret',
         'hide_secret' => 'Ocultar secret',
@@ -126,6 +127,7 @@ return [
         'deleted' => 'Webhook excluído.',
         'secret_rotated' => 'Secret de assinatura rotacionado.',
         'replayed' => 'Evento do webhook reenviado.',
+        'tested' => 'Evento de teste enviado.',
     ],
     'mail' => [
         'paused_subject' => 'Webhook pausado: :endpoint',

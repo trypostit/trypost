@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Webhook extends Model
 {
@@ -46,6 +47,11 @@ class Webhook extends Model
             'paused_at' => 'datetime',
             'last_sent_at' => 'datetime',
         ];
+    }
+
+    public static function generateSigningSecret(): string
+    {
+        return 'whsec_'.Str::random(32);
     }
 
     public function pause(): void

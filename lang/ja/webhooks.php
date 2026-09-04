@@ -29,6 +29,7 @@ return [
         'enable' => 'Endpointを有効化',
         'disable' => 'Endpointを無効化',
         'rotate' => '署名シークレットを更新',
+        'send_test' => 'テストイベントを送信',
         'replay' => '再送信',
         'reveal_secret' => 'シークレットを表示',
         'hide_secret' => 'シークレットを隠す',
@@ -126,6 +127,7 @@ return [
         'deleted' => 'Webhookを削除しました。',
         'secret_rotated' => '署名シークレットを更新しました。',
         'replayed' => 'Webhookイベントを再送信しました。',
+        'tested' => 'テストイベントを送信しました。',
     ],
     'mail' => [
         'paused_subject' => 'Webhookを一時停止しました: :endpoint',

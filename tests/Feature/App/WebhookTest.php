@@ -18,6 +18,7 @@ beforeEach(function () {
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
 
     $mock = Mockery::mock(WebhookService::class);
+    $mock->shouldReceive('assertEndpointAllowed')->andReturnNull();
     $mock->shouldReceive('ping')->andReturnNull();
     $this->app->instance(WebhookService::class, $mock);
 });
@@ -68,6 +69,15 @@ test('authenticated users can create a webhook', function () {
     ]);
 });
 
+test('generateSigningSecret prefixes a 32 character random string', function () {
+    $secret = Webhook::generateSigningSecret();
+
+    expect($secret)
+        ->toStartWith('whsec_')
+        ->and(strlen($secret))->toBe(38)
+        ->and(Webhook::generateSigningSecret())->not->toBe($secret);
+});
+
 test('webhook signing_secret is generated with whsec_ prefix', function () {
     $this->actingAs($this->user)
         ->post(route('app.webhooks.store'), [
@@ -92,21 +102,40 @@ test('webhook signing secret is encrypted at rest', function () {
     expect($webhook->signing_secret)->toBe('whsec_test123');
 });
 
-test('webhook creation fails when ping throws exception', function () {
+test('webhook creation does not ping the endpoint', function () {
+    $mock = Mockery::mock(WebhookService::class);
+    $mock->shouldReceive('assertEndpointAllowed')->once();
+    $mock->shouldNotReceive('ping');
+    $this->app->instance(WebhookService::class, $mock);
+
+    $this->actingAs($this->user)
+        ->post(route('app.webhooks.store'), [
+            'endpoint' => 'https://example.com/webhooks',
+            'events' => [EventType::PostPublished->value],
+        ])
+        ->assertRedirect();
+
+    $this->assertDatabaseHas('webhooks', [
+        'endpoint' => 'https://example.com/webhooks',
+    ]);
+});
+
+test('webhook creation fails when the endpoint is not allowed', function () {
     $failingMock = Mockery::mock(WebhookService::class);
-    $failingMock->shouldReceive('ping')->andThrow(new RuntimeException('Connection refused'));
+    $failingMock->shouldReceive('assertEndpointAllowed')
+        ->andThrow(new RuntimeException(__('webhooks.errors.endpoint_not_allowed')));
     $this->app->instance(WebhookService::class, $failingMock);
 
     $this->actingAs($this->user)
         ->post(route('app.webhooks.store'), [
-            'endpoint' => 'https://unreachable.example.com/webhooks',
+            'endpoint' => 'http://127.0.0.1/webhooks',
             'events' => [EventType::PostPublished->value],
         ])
         ->assertRedirect()
         ->assertSessionHasErrors('endpoint');
 
     $this->assertDatabaseMissing('webhooks', [
-        'endpoint' => 'https://unreachable.example.com/webhooks',
+        'endpoint' => 'http://127.0.0.1/webhooks',
     ]);
 });
 
@@ -227,14 +256,15 @@ test('authenticated users can update a webhook endpoint', function () {
     ]);
 });
 
-test('updating a webhook endpoint pings the new url', function () {
+test('updating a webhook endpoint does not ping the new url', function () {
     $webhook = Webhook::factory()->create([
         'workspace_id' => $this->workspace->id,
         'endpoint' => 'https://old.example.com/hook',
     ]);
 
     $mock = Mockery::mock(WebhookService::class);
-    $mock->shouldReceive('ping')->once()->with('https://updated.com/hook', $webhook->signing_secret);
+    $mock->shouldReceive('assertEndpointAllowed')->once()->with('https://updated.com/hook');
+    $mock->shouldNotReceive('ping');
     $this->app->instance(WebhookService::class, $mock);
 
     $this->actingAs($this->user)
@@ -244,19 +274,20 @@ test('updating a webhook endpoint pings the new url', function () {
         ->assertRedirect();
 });
 
-test('updating a webhook endpoint fails when ping throws exception', function () {
+test('updating a webhook endpoint fails when the endpoint is not allowed', function () {
     $webhook = Webhook::factory()->create([
         'workspace_id' => $this->workspace->id,
         'endpoint' => 'https://old.example.com/hook',
     ]);
 
     $failingMock = Mockery::mock(WebhookService::class);
-    $failingMock->shouldReceive('ping')->andThrow(new RuntimeException('Connection refused'));
+    $failingMock->shouldReceive('assertEndpointAllowed')
+        ->andThrow(new RuntimeException(__('webhooks.errors.endpoint_not_allowed')));
     $this->app->instance(WebhookService::class, $failingMock);
 
     $this->actingAs($this->user)
         ->put(route('app.webhooks.update', $webhook), [
-            'endpoint' => 'https://unreachable.example.com/webhooks',
+            'endpoint' => 'http://127.0.0.1/webhooks',
         ])
         ->assertRedirect()
         ->assertSessionHasErrors('endpoint');
@@ -273,7 +304,8 @@ test('updating a webhook without changing the endpoint does not ping', function 
     ]);
 
     $mock = Mockery::mock(WebhookService::class);
-    $mock->shouldReceive('ping')->never();
+    $mock->shouldNotReceive('assertEndpointAllowed');
+    $mock->shouldNotReceive('ping');
     $this->app->instance(WebhookService::class, $mock);
 
     $this->actingAs($this->user)
@@ -290,7 +322,8 @@ test('updating webhook status does not ping the endpoint', function () {
     ]);
 
     $mock = Mockery::mock(WebhookService::class);
-    $mock->shouldReceive('ping')->never();
+    $mock->shouldNotReceive('assertEndpointAllowed');
+    $mock->shouldNotReceive('ping');
     $this->app->instance(WebhookService::class, $mock);
 
     $this->actingAs($this->user)
@@ -432,6 +465,50 @@ test('users cannot update webhooks from other workspaces', function () {
         ->assertForbidden();
 });
 
+test('authenticated users can send a signed test event', function () {
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'endpoint' => 'https://example.com/hook',
+    ]);
+
+    $mock = Mockery::mock(WebhookService::class);
+    $mock->shouldReceive('ping')->once()->with($webhook->endpoint, $webhook->signing_secret);
+    $this->app->instance(WebhookService::class, $mock);
+
+    $this->actingAs($this->user)
+        ->post(route('app.webhooks.send-test', $webhook))
+        ->assertRedirect()
+        ->assertSessionHas('flash.banner', __('webhooks.flash.tested'));
+});
+
+test('sending a test event flashes the error when ping fails', function () {
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $failingMock = Mockery::mock(WebhookService::class);
+    $failingMock->shouldReceive('ping')->andThrow(new RuntimeException('Connection refused'));
+    $this->app->instance(WebhookService::class, $failingMock);
+
+    $this->actingAs($this->user)
+        ->post(route('app.webhooks.send-test', $webhook))
+        ->assertRedirect()
+        ->assertSessionHas('flash.banner', 'Connection refused')
+        ->assertSessionHas('flash.bannerStyle', 'danger');
+});
+
+test('users cannot send a test event for other workspaces webhooks', function () {
+    $otherUser = User::factory()->create();
+    $otherWorkspace = Workspace::factory()->create(['user_id' => $otherUser->id]);
+    $webhook = Webhook::factory()->create([
+        'workspace_id' => $otherWorkspace->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.webhooks.send-test', $webhook))
+        ->assertForbidden();
+});
+
 test('authenticated users can rotate a webhook signing secret', function () {
     $webhook = Webhook::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -507,6 +584,10 @@ test('workspace admins can manage webhooks', function () {
         ->assertRedirect();
 
     $this->actingAs($admin)
+        ->post(route('app.webhooks.send-test', $webhook))
+        ->assertRedirect();
+
+    $this->actingAs($admin)
         ->post(route('app.webhooks.rotate-secret', $webhook))
         ->assertRedirect();
 
@@ -553,6 +634,10 @@ test('members and viewers cannot manage webhooks', function (Role $role) {
         ->put(route('app.webhooks.update', $webhook), [
             'endpoint' => 'https://stolen.example.com/hook',
         ])
+        ->assertForbidden();
+
+    $this->actingAs($user)
+        ->post(route('app.webhooks.send-test', $webhook))
         ->assertForbidden();
 
     $this->actingAs($user)

@@ -29,6 +29,7 @@ return [
         'enable' => 'Endpointi etkinleştir',
         'disable' => 'Endpointi devre dışı bırak',
         'rotate' => 'İmza secretini yenile',
+        'send_test' => 'Test olayı gönder',
         'replay' => 'Yeniden gönder',
         'reveal_secret' => 'Secreti göster',
         'hide_secret' => 'Secreti gizle',
@@ -126,6 +127,7 @@ return [
         'deleted' => 'Webhook silindi.',
         'secret_rotated' => 'İmza secreti yenilendi.',
         'replayed' => 'Webhook olayı yeniden gönderildi.',
+        'tested' => 'Test olayı gönderildi.',
     ],
     'mail' => [
         'paused_subject' => 'Webhook duraklatıldı: :endpoint',

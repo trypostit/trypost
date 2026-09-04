@@ -43,7 +43,7 @@ test('ping sends a signed POST request to the endpoint', function () {
         return $request->url() === 'https://example.com/hook'
             && $request->method() === 'POST'
             && $body['type'] === 'webhook.test'
-            && $body['data'] === []
+            && str_contains($raw, '"data":{}')
             && isset($body['id'], $body['created_at'])
             && $request->hasHeader('X-Webhook-Signature')
             && $request->header('X-Webhook-Signature')[0] === hash_hmac('sha256', $raw, $secret);
@@ -68,6 +68,10 @@ test('ping throws when endpoint returns non-200', function () {
 
 test('ping rejects private network endpoints', function () {
     $this->service->ping('http://127.0.0.1/hook', 'whsec_test_secret');
+})->throws(RuntimeException::class, 'This endpoint is not allowed.');
+
+test('assertEndpointAllowed rejects private network endpoints', function () {
+    $this->service->assertEndpointAllowed('http://127.0.0.1/hook');
 })->throws(RuntimeException::class, 'This endpoint is not allowed.');
 
 test('dispatch dispatches DispatchWebhook for matching webhooks', function () {

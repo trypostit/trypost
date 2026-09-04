@@ -36,18 +36,26 @@ class WebhookService
     /**
      * @throws RuntimeException
      */
-    public function ping(string $endpoint, string $signingSecret): void
+    public function assertEndpointAllowed(string $endpoint): void
     {
         try {
             $this->safeHttp->guardAgainstSsrf($endpoint);
         } catch (RuntimeException) {
             throw new RuntimeException(__('webhooks.errors.endpoint_not_allowed'));
         }
+    }
+
+    /**
+     * @throws RuntimeException
+     */
+    public function ping(string $endpoint, string $signingSecret): void
+    {
+        $this->assertEndpointAllowed($endpoint);
 
         $body = [
             'id' => (string) Str::uuid(),
             'type' => 'webhook.test',
-            'data' => [],
+            'data' => (object) [],
             'created_at' => now()->toIso8601String(),
         ];
 
@@ -55,8 +63,8 @@ class WebhookService
             $response = Http::timeout(5)
                 ->withUserAgent(config('trypost.user_agent'))
                 ->withOptions(['allow_redirects' => false])
+                ->asJson()
                 ->withHeaders([
-                    'Content-Type' => 'application/json',
                     'X-Webhook-Signature' => $this->signature($body, $signingSecret),
                 ])
                 ->post($endpoint, $body);

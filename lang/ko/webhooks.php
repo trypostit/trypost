@@ -29,6 +29,7 @@ return [
         'enable' => 'Endpoint 사용',
         'disable' => 'Endpoint 사용 안 함',
         'rotate' => '서명 시크릿 교체',
+        'send_test' => '테스트 이벤트 보내기',
         'replay' => '다시 보내기',
         'reveal_secret' => '시크릿 표시',
         'hide_secret' => '시크릿 숨기기',
@@ -126,6 +127,7 @@ return [
         'deleted' => '웹훅을 삭제했습니다.',
         'secret_rotated' => '서명 시크릿을 교체했습니다.',
         'replayed' => '웹훅 이벤트를 다시 보냈습니다.',
+        'tested' => '테스트 이벤트를 보냈습니다.',
     ],
     'mail' => [
         'paused_subject' => '웹훅이 일시정지됨: :endpoint',

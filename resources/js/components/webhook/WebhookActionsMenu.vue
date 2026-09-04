@@ -7,6 +7,7 @@ import {
     IconPlayerPause,
     IconPlayerPlay,
     IconRefresh,
+    IconSend,
     IconTrash,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
@@ -21,7 +22,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { copyToClipboard } from '@/lib/utils';
-import { update } from '@/routes/app/webhooks';
+import { sendTest, update } from '@/routes/app/webhooks';
 import type { Webhook } from '@/types/webhook';
 import { WebhookStatus } from '@/types/webhook-status';
 
@@ -36,6 +37,18 @@ const emit = defineEmits<{
 }>();
 
 const togglingStatus = ref(false);
+const sendingTest = ref(false);
+
+const sendTestEvent = () => {
+    sendingTest.value = true;
+
+    router.post(sendTest.url(props.webhook), {}, {
+        preserveScroll: true,
+        onFinish: () => {
+            sendingTest.value = false;
+        },
+    });
+};
 
 const toggleStatus = () => {
     togglingStatus.value = true;
@@ -78,6 +91,14 @@ const toggleStatus = () => {
                         ? $t('webhooks.actions.disable')
                         : $t('webhooks.actions.enable')
                 }}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                data-testid="send-test-webhook"
+                :disabled="sendingTest"
+                @click="sendTestEvent"
+            >
+                <IconSend class="size-4" />
+                {{ $t('webhooks.actions.send_test') }}
             </DropdownMenuItem>
             <DropdownMenuItem @click="emit('rotate')">
                 <IconRefresh class="size-4" />

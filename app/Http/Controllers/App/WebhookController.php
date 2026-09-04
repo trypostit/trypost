@@ -13,7 +13,6 @@ use App\Models\WebhookLog;
 use App\Services\WebhookService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
@@ -54,10 +53,8 @@ class WebhookController extends Controller
 
         $this->authorize('create', Webhook::class);
 
-        $signingSecret = 'whsec_'.Str::random(32);
-
         try {
-            $webhookService->ping($request->string('endpoint')->toString(), $signingSecret);
+            $webhookService->assertEndpointAllowed($request->string('endpoint')->toString());
         } catch (RuntimeException $e) {
             return back()->withErrors([
                 'endpoint' => $e->getMessage(),
@@ -69,7 +66,7 @@ class WebhookController extends Controller
             'endpoint' => $request->string('endpoint')->toString(),
             'events' => $request->validated('events'),
             'status' => Status::Enabled,
-            'signing_secret' => $signingSecret,
+            'signing_secret' => Webhook::generateSigningSecret(),
             'consecutive_failures' => 0,
         ]);
 
@@ -90,7 +87,7 @@ class WebhookController extends Controller
             && $validated['endpoint'] !== $webhook->endpoint
         ) {
             try {
-                $webhookService->ping($validated['endpoint'], $webhook->signing_secret);
+                $webhookService->assertEndpointAllowed($validated['endpoint']);
             } catch (RuntimeException $e) {
                 return back()->withErrors([
                     'endpoint' => $e->getMessage(),
@@ -115,12 +112,31 @@ class WebhookController extends Controller
         return back();
     }
 
+    public function sendTest(Webhook $webhook, WebhookService $webhookService): RedirectResponse
+    {
+        $this->authorize('update', $webhook);
+
+        try {
+            $webhookService->ping($webhook->endpoint, $webhook->signing_secret);
+        } catch (RuntimeException $e) {
+            session()->flash('flash.banner', $e->getMessage());
+            session()->flash('flash.bannerStyle', 'danger');
+
+            return back();
+        }
+
+        session()->flash('flash.banner', __('webhooks.flash.tested'));
+        session()->flash('flash.bannerStyle', 'success');
+
+        return back();
+    }
+
     public function rotateSecret(Webhook $webhook): RedirectResponse
     {
         $this->authorize('update', $webhook);
 
         $webhook->update([
-            'signing_secret' => 'whsec_'.Str::random(32),
+            'signing_secret' => Webhook::generateSigningSecret(),
         ]);
 
         session()->flash('flash.banner', __('webhooks.flash.secret_rotated'));

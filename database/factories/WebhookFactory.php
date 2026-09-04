@@ -9,7 +9,6 @@ use App\Enums\Webhook\Status;
 use App\Models\Webhook;
 use App\Models\Workspace;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
 
 /**
  * @extends Factory<Webhook>
@@ -28,7 +27,7 @@ class WebhookFactory extends Factory
             'endpoint' => fake()->url(),
             'events' => [EventType::PostPublished->value, EventType::PostFailed->value],
             'status' => Status::Enabled,
-            'signing_secret' => 'whsec_'.Str::random(32),
+            'signing_secret' => Webhook::generateSigningSecret(),
             'consecutive_failures' => 0,
         ];
     }
