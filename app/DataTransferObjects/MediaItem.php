@@ -121,10 +121,8 @@ class MediaItem
         $sourceMeta = data_get($data, 'source_meta');
         $meta = data_get($data, 'meta');
 
-        $id = data_get($data, 'id', '');
-
         return new self(
-            id: is_scalar($id) ? (string) $id : '',
+            id: (string) data_get($data, 'id', ''),
             path: $path,
             url: data_get($data, 'url', ''),
             mime_type: $mimeType,
