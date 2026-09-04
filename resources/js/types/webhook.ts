@@ -23,11 +23,3 @@ export interface WebhookLog {
     attempts: number;
     created_at: string;
 }
-
-export const webhookEndpointHost = (endpoint: string): string => {
-    try {
-        return new URL(endpoint).host;
-    } catch {
-        return endpoint;
-    }
-};

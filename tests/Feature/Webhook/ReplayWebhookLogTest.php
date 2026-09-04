@@ -35,7 +35,8 @@ test('authenticated users can replay a webhook log', function () {
 
     $this->actingAs($this->user)
         ->post(route('app.webhooks.replay', [$webhook, $log]))
-        ->assertRedirect();
+        ->assertRedirect()
+        ->assertSessionHas('flash.banner', __('webhooks.flash.replayed'));
 
     Queue::assertPushed(DispatchWebhook::class, function (DispatchWebhook $job) use ($webhook) {
         return $job->webhook->id === $webhook->id

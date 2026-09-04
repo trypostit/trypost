@@ -22,7 +22,7 @@ const { liveLogs, selectedLog, newLogIds, selectLog } = useWebhookLogs(
     <div class="flex min-h-0 min-w-0 flex-1 flex-col">
         <div
             v-if="liveLogs.length > 0"
-            class="grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-2xs lg:h-[calc(100vh-24rem)] lg:grid-cols-3"
+            class="grid min-h-[28rem] min-w-0 flex-1 grid-cols-1 overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-2xs lg:min-h-0 lg:grid-cols-3"
         >
             <WebhookLogList
                 :logs="liveLogs"

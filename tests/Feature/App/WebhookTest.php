@@ -218,7 +218,8 @@ test('authenticated users can update a webhook endpoint', function () {
         ->put(route('app.webhooks.update', $webhook), [
             'endpoint' => 'https://updated.com/hook',
         ])
-        ->assertRedirect();
+        ->assertRedirect()
+        ->assertSessionHas('flash.banner', __('webhooks.flash.updated'));
 
     $this->assertDatabaseHas('webhooks', [
         'id' => $webhook->id,
@@ -440,7 +441,8 @@ test('authenticated users can rotate a webhook signing secret', function () {
 
     $this->actingAs($this->user)
         ->post(route('app.webhooks.rotate-secret', $webhook))
-        ->assertRedirect();
+        ->assertRedirect()
+        ->assertSessionHas('flash.banner', __('webhooks.flash.secret_rotated'));
 
     $webhook->refresh();
     expect($webhook->signing_secret)
