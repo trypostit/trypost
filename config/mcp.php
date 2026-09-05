@@ -2,11 +2,6 @@
 
 declare(strict_types=1);
 
-$extraCustomSchemes = array_values(array_filter(array_map(
-    'trim',
-    explode(',', (string) env('MCP_CUSTOM_SCHEMES', '')),
-)));
-
 return [
 
     /*
@@ -38,12 +33,9 @@ return [
     | already accepted via redirect_domains. This list is the scheme
     | allowlist for the native-app case.
     |
-    | MCP_CUSTOM_SCHEMES appends extra schemes (comma-separated) without
-    | replacing the defaults.
-    |
     */
 
-    'custom_schemes' => array_values(array_unique([
+    'custom_schemes' => [
         // Desktop IDEs / agent hosts
         'antigravity',
         'cursor',
@@ -78,9 +70,7 @@ return [
         'opencode',
         'raycast',
         'warp',
-
-        ...$extraCustomSchemes,
-    ])),
+    ],
 
     /*
     |--------------------------------------------------------------------------
