@@ -8,6 +8,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\ItemReason;
 use App\Enums\Repurpose\ItemStatus;
 use App\Enums\SocialAccount\Platform;
+use App\Events\PostStatusChanged;
 use App\Exceptions\Repurpose\SourceDownloadException;
 use App\Jobs\PublishPost;
 use App\Jobs\Repurpose\ProcessRepurposeItem;
@@ -22,6 +23,7 @@ use App\Services\Repurpose\CaptionAdapter;
 use App\Services\Social\ContentSanitizer;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
@@ -330,4 +332,16 @@ test('the scheduler claims the repurposed posts, so nothing is dispatched twice'
     Artisan::call('posts:process-scheduled');
 
     Bus::assertDispatchedTimes(PublishPost::class, 2);
+});
+
+test('scheduling the posts announces the status change like any other post', function () {
+    Event::fake([PostStatusChanged::class]);
+    Bus::fake([PublishPost::class]);
+    fakeVideoDownload();
+
+    $item = repurposeWithTwoDestinations();
+
+    processItem($item);
+
+    Event::assertDispatchedTimes(PostStatusChanged::class, 2);
 });

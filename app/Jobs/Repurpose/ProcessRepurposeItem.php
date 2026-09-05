@@ -20,6 +20,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -115,10 +116,11 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        Post::whereKey(collect($posts)->pluck('id'))->update([
-            'status' => PostStatus::Scheduled,
-            'scheduled_at' => now(),
-        ]);
+        DB::transaction(function () use ($posts): void {
+            foreach ($posts as $post) {
+                $post->update(['status' => PostStatus::Scheduled, 'scheduled_at' => now()]);
+            }
+        });
 
         $this->item->update(['status' => ItemStatus::Published, 'reason' => null, 'error' => null]);
     }
