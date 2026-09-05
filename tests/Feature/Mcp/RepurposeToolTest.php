@@ -183,3 +183,16 @@ test('deleting removes the repurpose', function () {
 
     expect(Repurpose::count())->toBe(0);
 });
+
+test('an account from another workspace is rejected as a destination', function () {
+    $stranger = SocialAccount::factory()->create(['platform' => Platform::TikTok]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(CreateRepurposeTool::class, [
+            'source_social_account_id' => $this->source->id,
+            'destinations' => [tiktokDestinationForMcp($stranger)],
+        ])
+        ->assertHasErrors();
+
+    expect(Repurpose::count())->toBe(0);
+});

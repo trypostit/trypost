@@ -11,8 +11,8 @@ class CreateRepurposeRequest
     /**
      * @return array<string, mixed>
      */
-    public static function rules(): array
+    public static function rules(?string $workspaceId = null): array
     {
-        return RepurposeRules::rules();
+        return RepurposeRules::rules($workspaceId);
     }
 }

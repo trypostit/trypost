@@ -19,6 +19,6 @@ class StoreRepurposeRequest extends FormRequest
      */
     public function rules(): array
     {
-        return RepurposeRules::rules();
+        return RepurposeRules::rules($this->user()->currentWorkspace?->id);
     }
 }

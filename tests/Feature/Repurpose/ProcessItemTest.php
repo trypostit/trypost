@@ -49,7 +49,7 @@ function repurposeWithTwoDestinations(): RepurposeItem
 function fakeVideoDownload(): void
 {
     Http::fake([
-        REPURPOSE_VIDEO_URL => Http::response(
+        REPURPOSE_VIDEO_URL => fn () => Http::response(
             file_get_contents(base_path('tests/fixtures/sample.mp4')),
             200,
             ['Content-Type' => 'video/mp4'],
@@ -167,4 +167,38 @@ test('running the job twice creates no extra posts', function () {
     processItem($item->fresh());
 
     expect(Post::where('repurpose_item_id', $item->id)->count())->toBe(2);
+});
+
+test('an interrupted attempt does not leave draft posts behind', function () {
+    Bus::fake([PublishPost::class]);
+    fakeVideoDownload();
+
+    $item = repurposeWithTwoDestinations();
+
+    processItem($item);
+
+    $orphan = Post::where('repurpose_item_id', $item->id)->first();
+    $orphan->update(['status' => PostStatus::Draft]);
+    $item->update(['status' => ItemStatus::Processing]);
+
+    processItem($item->fresh());
+
+    $posts = Post::where('repurpose_item_id', $item->id)->get();
+
+    expect($item->fresh()->status)->toBe(ItemStatus::Published)
+        ->and($posts)->toHaveCount(2)
+        ->and($posts->every(fn (Post $post) => $post->status === PostStatus::Scheduled))->toBeTrue();
+});
+
+test('it still replicates when the repurpose creator is gone', function () {
+    Bus::fake([PublishPost::class]);
+    fakeVideoDownload();
+
+    $item = repurposeWithTwoDestinations();
+    $item->repurpose->update(['user_id' => null]);
+
+    processItem($item->fresh());
+
+    expect($item->fresh()->status)->toBe(ItemStatus::Published)
+        ->and(Post::where('repurpose_item_id', $item->id)->count())->toBe(2);
 });

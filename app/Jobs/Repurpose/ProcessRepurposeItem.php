@@ -29,6 +29,8 @@ class ProcessRepurposeItem implements ShouldQueue
 
     public int $tries = 3;
 
+    public bool $deleteWhenMissingModels = true;
+
     public function __construct(
         public RepurposeItem $item,
         public string $downloadUrl,
@@ -45,13 +47,21 @@ class ProcessRepurposeItem implements ShouldQueue
 
     public function handle(MediaAttacher $media, CaptionAdapter $captions): void
     {
-        if ($this->item->status->isTerminal() || $this->item->posts()->exists()) {
+        if ($this->item->status->isTerminal()) {
             return;
         }
 
         $repurpose = $this->item->repurpose;
         $workspace = $repurpose->workspace;
-        $user = $repurpose->user;
+        $user = $repurpose->user ?? $workspace->owner;
+
+        if ($user === null) {
+            $this->item->update(['status' => ItemStatus::Failed, 'reason' => ItemReason::PostCreationFailed]);
+
+            return;
+        }
+
+        $this->item->posts()->each(fn (Post $post) => $post->forceDelete());
 
         $this->item->update(['status' => ItemStatus::Processing]);
 
@@ -77,7 +87,7 @@ class ProcessRepurposeItem implements ShouldQueue
                 $snapshot = data_get($media->attachFromUrls($post, [['url' => $this->downloadUrl]]), 'attached', []);
 
                 if ($snapshot === []) {
-                    $this->discard($posts + [$post], ItemReason::DownloadFailed);
+                    $this->discard([...$posts, $post], ItemReason::DownloadFailed);
 
                     return;
                 }

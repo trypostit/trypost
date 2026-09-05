@@ -6,6 +6,7 @@ namespace App\Support\Repurpose;
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\SourceFormat;
+use App\Services\Repurpose\SourceFetcherFactory;
 use App\Support\PostPlatformMetaRules;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -15,13 +16,31 @@ class RepurposeRules
     /**
      * @return array<string, mixed>
      */
-    public static function rules(): array
+    public static function rules(?string $workspaceId = null): array
     {
         return [
-            'source_social_account_id' => ['required', 'string', 'uuid'],
+            'source_social_account_id' => [
+                'required',
+                'string',
+                'uuid',
+                Rule::exists('social_accounts', 'id')
+                    ->where('workspace_id', $workspaceId)
+                    ->where('is_active', true)
+                    ->whereIn('platform', array_map(
+                        fn ($platform): string => $platform->value,
+                        SourceFetcherFactory::supportedPlatforms(),
+                    )),
+            ],
             'source_format' => ['sometimes', Rule::enum(SourceFormat::class)],
             'destinations' => ['sometimes', 'array'],
-            'destinations.*.social_account_id' => ['required', 'string', 'uuid'],
+            'destinations.*.social_account_id' => [
+                'required',
+                'string',
+                'uuid',
+                Rule::exists('social_accounts', 'id')
+                    ->where('workspace_id', $workspaceId)
+                    ->where('is_active', true),
+            ],
             'destinations.*.content_type' => [
                 'required',
                 'string',

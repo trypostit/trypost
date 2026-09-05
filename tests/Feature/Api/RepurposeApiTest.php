@@ -179,3 +179,33 @@ test('a repurpose from another workspace is not reachable', function () {
         ->getJson(route('api.repurposes.show', $stranger))
         ->assertForbidden();
 });
+
+test('an account from another workspace is rejected as a source', function () {
+    $stranger = SocialAccount::factory()->create(['platform' => Platform::Instagram]);
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->postJson(route('api.repurposes.store'), ['source_social_account_id' => $stranger->id])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('source_social_account_id');
+});
+
+test('an account from another workspace is rejected as a destination', function () {
+    $stranger = SocialAccount::factory()->create(['platform' => Platform::TikTok]);
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->postJson(route('api.repurposes.store'), [
+            'source_social_account_id' => $this->source->id,
+            'destinations' => [tiktokDestinationPayload($stranger)],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('destinations.0.social_account_id');
+});
+
+test('a network we cannot download from is rejected as a source', function () {
+    $tiktokSource = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::YouTube]);
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->postJson(route('api.repurposes.store'), ['source_social_account_id' => $tiktokSource->id])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('source_social_account_id');
+});

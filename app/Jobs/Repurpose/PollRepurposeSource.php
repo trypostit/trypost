@@ -30,6 +30,8 @@ class PollRepurposeSource implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public bool $deleteWhenMissingModels = true;
+
     public function __construct(public SocialAccount $account)
     {
         $this->onQueue($account->platform->queue());

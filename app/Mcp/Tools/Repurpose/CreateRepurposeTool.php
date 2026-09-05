@@ -30,7 +30,7 @@ class CreateRepurposeTool extends Tool
             return $workspace;
         }
 
-        $validated = $request->validate(CreateRepurposeRequest::rules());
+        $validated = $request->validate(CreateRepurposeRequest::rules($workspace->id));
 
         try {
             $repurpose = CreateRepurpose::execute($workspace, $request->user(), $validated);

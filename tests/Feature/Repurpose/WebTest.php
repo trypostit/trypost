@@ -175,3 +175,48 @@ test('a repurpose from another workspace is not reachable', function () {
         ->get(route('app.repurposes.show', $stranger))
         ->assertForbidden();
 });
+
+test('an account from another workspace cannot become a source', function () {
+    $stranger = SocialAccount::factory()->create(['platform' => Platform::Instagram]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.repurposes.store'), ['source_social_account_id' => $stranger->id])
+        ->assertSessionHasErrors('source_social_account_id');
+
+    expect(Repurpose::count())->toBe(0);
+});
+
+test('an account from another workspace cannot become a destination', function () {
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+    ]);
+
+    $stranger = SocialAccount::factory()->create(['platform' => Platform::TikTok]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.repurposes.update', $repurpose), [
+            'destinations' => [[
+                'social_account_id' => $stranger->id,
+                'content_type' => ContentType::TikTokVideo->value,
+            ]],
+        ])
+        ->assertSessionHasErrors('destinations.0.social_account_id');
+
+    expect($repurpose->fresh()->destinations)->toBe([]);
+});
+
+test('a disconnected account cannot be a destination', function () {
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+    ]);
+
+    $this->tiktok->update(['is_active' => false]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.repurposes.update', $repurpose), [
+            'destinations' => [destinationPayload($this->tiktok)],
+        ])
+        ->assertSessionHasErrors('destinations.0.social_account_id');
+});

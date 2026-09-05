@@ -31,7 +31,7 @@ class UpdateRepurposeTool extends Tool
             return $workspace;
         }
 
-        $validated = $request->validate(UpdateRepurposeRequest::rules());
+        $validated = $request->validate(UpdateRepurposeRequest::rules($workspace->id));
         $repurpose = $this->repurposeInWorkspace($workspace, $validated['repurpose_id']);
 
         if (! $repurpose instanceof Repurpose) {

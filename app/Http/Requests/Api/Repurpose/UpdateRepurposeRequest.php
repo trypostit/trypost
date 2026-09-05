@@ -20,7 +20,7 @@ class UpdateRepurposeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            ...RepurposeRules::rules(),
+            ...RepurposeRules::rules($this->user()->currentWorkspace?->id),
             'source_social_account_id' => ['sometimes', 'string', 'uuid'],
         ];
     }
