@@ -6,7 +6,6 @@ return [
 
     'back' => 'Terug',
 
-
     'confirm_modal' => [
         'cannot_be_undone' => 'Dit kan niet ongedaan worden gemaakt.',
         'type' => 'Typ',

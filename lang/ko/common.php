@@ -6,7 +6,6 @@ return [
 
     'back' => '뒤로',
 
-
     'confirm_modal' => [
         'cannot_be_undone' => '이 작업은 되돌릴 수 없습니다.',
         'type' => '입력',

@@ -6,7 +6,6 @@ return [
 
     'back' => 'Retour',
 
-
     'confirm_modal' => [
         'cannot_be_undone' => 'Cette action est irréversible.',
         'type' => 'Saisissez',

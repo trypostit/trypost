@@ -49,9 +49,8 @@ const props = withDefaults(
         socialAccount: SocialAccount | null;
         meta: Record<string, any>;
         disabled?: boolean;
-        previewOnly?: boolean;
     }>(),
-    { disabled: false, previewOnly: false },
+    { disabled: false },
 );
 
 const emit = defineEmits<{ 'update:meta': [value: Record<string, any>] }>();

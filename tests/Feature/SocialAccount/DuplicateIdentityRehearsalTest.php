@@ -9,6 +9,7 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * A rehearsal rather than a scenario test: build a deliberately messy database
@@ -24,6 +25,14 @@ beforeEach(function () {
     );
 
     $this->migration->down();
+
+    if (! Schema::hasTable('automations')) {
+        (require database_path('migrations/2026_05_22_211640_create_automations_table.php'))->up();
+    }
+});
+
+afterEach(function () {
+    Schema::dropIfExists('automations');
 });
 
 /**

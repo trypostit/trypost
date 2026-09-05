@@ -6,7 +6,6 @@ return [
 
     'back' => 'رجوع',
 
-
     'confirm_modal' => [
         'cannot_be_undone' => 'لا يمكن التراجع عن هذا الإجراء.',
         'type' => 'اكتب',

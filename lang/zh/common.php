@@ -6,7 +6,6 @@ return [
 
     'back' => '返回',
 
-
     'confirm_modal' => [
         'cannot_be_undone' => '此操作无法撤销。',
         'type' => '输入',

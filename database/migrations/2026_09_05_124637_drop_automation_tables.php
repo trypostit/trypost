@@ -19,5 +19,8 @@ return new class extends Migration
         Schema::dropIfExists('automations');
     }
 
-    public function down(): void {}
+    public function down(): void
+    {
+        // Irreversible: the automations module and its data are gone for good.
+    }
 };

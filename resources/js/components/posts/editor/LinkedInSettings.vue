@@ -24,13 +24,11 @@ interface Props {
     media: MediaItem[];
     meta?: Record<string, any>;
     disabled?: boolean;
-    previewOnly?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
     meta: () => ({}),
     disabled: false,
-    previewOnly: false,
 });
 
 const emit = defineEmits<{
@@ -96,7 +94,7 @@ const documentTitle = computed({
                     v-model="documentTitle"
                     type="text"
                     :placeholder="$t('posts.form.linkedin.document_title_placeholder')"
-                    :disabled="disabled || previewOnly"
+                    :disabled="disabled"
                 />
             </div>
         </div>

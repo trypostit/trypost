@@ -16,7 +16,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
-import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
 import { ContentType } from '@/types/content-type';
 
 interface SocialAccount {
@@ -48,7 +47,6 @@ interface Props {
     contentTypeError?: string;
     meta: Record<string, any>;
     disabled?: boolean;
-    previewOnly?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -56,7 +54,6 @@ const props = withDefaults(defineProps<Props>(), {
     videoDurationSec: null,
     contentTypeError: undefined,
     disabled: false,
-    previewOnly: false,
 });
 
 const emit = defineEmits<{
@@ -64,23 +61,11 @@ const emit = defineEmits<{
     'update:contentType': [value: string];
 }>();
 
-const allVariants = [
+const variants = [
     { value: ContentType.TikTokVideo, labelKey: 'posts.form.tiktok.variant.video' },
     { value: ContentType.TikTokPhoto, labelKey: 'posts.form.tiktok.variant.photo' },
 ] as const;
 
-const variants = computed(() => filterImageCapableVariants(allVariants, props.previewOnly));
-
-watch(
-    () => [props.previewOnly, props.contentType, variants.value] as const,
-    () => {
-        const fallback = fallbackImageCapableVariant(props.contentType, variants.value);
-        if (fallback) {
-            emit('update:contentType', fallback);
-        }
-    },
-    { immediate: true },
-);
 
 const pickVariant = (value: string) => {
     if (props.disabled) return;
@@ -301,7 +286,7 @@ watch(
             </div>
 
             <!-- Max duration warning -->
-            <p v-if="isVideoPost && exceedsMaxDuration && !previewOnly" class="flex items-start gap-2 rounded-lg border-2 border-foreground bg-rose-50 p-2 text-xs font-semibold text-rose-700">
+            <p v-if="isVideoPost && exceedsMaxDuration" class="flex items-start gap-2 rounded-lg border-2 border-foreground bg-rose-50 p-2 text-xs font-semibold text-rose-700">
                 <IconAlertTriangle class="mt-0.5 size-3.5 shrink-0" />
                 {{ $t('posts.form.tiktok.max_duration_exceeded', { duration: String(videoDurationSec ?? 0), max: String(maxDurationSec ?? 0) }) }}
             </p>

@@ -6,7 +6,6 @@ return [
 
     'back' => 'Назад',
 
-
     'confirm_modal' => [
         'cannot_be_undone' => 'Цю дію не можна скасувати.',
         'type' => 'Введіть',
