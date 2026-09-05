@@ -8,6 +8,12 @@ export interface SourceFormatOption {
     label: string;
 }
 
+export interface FlowNode {
+    platform: string;
+    label?: string | null;
+    format?: string | null;
+}
+
 export interface DestinationFormat {
     value: string;
     label: string;

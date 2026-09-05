@@ -23,7 +23,7 @@ import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { destroy, show } from '@/routes/app/repurposes';
 import type { ChannelAccount } from '@/types/channel';
-import type { Repurpose, RepurposeTemplate } from '@/types/repurpose';
+import type { FlowNode, Repurpose, RepurposeTemplate } from '@/types/repurpose';
 import { repurposeStatusVariant } from '@/types/repurpose-status';
 
 const props = defineProps<{
@@ -51,11 +51,12 @@ const startBlank = () => {
     createDialogOpen.value = true;
 };
 
-const accountPlatform = (id: string) =>
-    props.destinationAccounts.find((account) => account.id === id)?.platform ?? '';
+const destinationNodes = (repurpose: Repurpose): FlowNode[] =>
+    repurpose.destinations.flatMap((destination) => {
+        const account = props.destinationAccounts.find((item) => item.id === destination.social_account_id);
 
-const destinationPlatforms = (repurpose: Repurpose) =>
-    repurpose.destinations.map((destination) => accountPlatform(destination.social_account_id)).filter(Boolean);
+        return account ? [{ platform: account.platform, label: account.display_name }] : [];
+    });
 
 const handleDelete = (repurpose: Repurpose) => {
     confirmDeleteModal.value?.open({
@@ -116,8 +117,11 @@ const handleDelete = (repurpose: Repurpose) => {
                     >
                         <TableCell>
                             <RepurposeFlow
-                                :source="repurpose.source_account?.platform ?? ''"
-                                :destinations="destinationPlatforms(repurpose)"
+                                :source="{
+                                    platform: repurpose.source_account?.platform ?? '',
+                                    label: repurpose.source_account?.display_name,
+                                }"
+                                :destinations="destinationNodes(repurpose)"
                                 size="sm"
                             />
                         </TableCell>

@@ -20,6 +20,7 @@ import { destroy, update } from '@/routes/app/repurposes';
 import type { ChannelAccount } from '@/types/channel';
 import type {
     DestinationFormat,
+    FlowNode,
     Repurpose,
     RepurposeDestination,
     RepurposeItem,
@@ -45,13 +46,30 @@ const currentFormatLabel = computed(
     () => props.sourceFormats.find((option) => option.value === form.source_format)?.label ?? '',
 );
 
-const selectedPlatforms = computed(() =>
-    form.destinations
-        .map(
-            (destination) =>
-                props.destinationAccounts.find((account) => account.id === destination.social_account_id)?.platform ?? '',
-        )
-        .filter(Boolean),
+const sourceNode = computed<FlowNode>(() => ({
+    platform: props.repurpose.source_account?.platform ?? '',
+    label: props.repurpose.source_account?.display_name,
+    format: currentFormatLabel.value,
+}));
+
+const destinationNodes = computed<FlowNode[]>(() =>
+    form.destinations.flatMap((destination) => {
+        const account = props.destinationAccounts.find((item) => item.id === destination.social_account_id);
+
+        if (!account) {
+            return [];
+        }
+
+        return [
+            {
+                platform: account.platform,
+                label: account.display_name,
+                format: props.destinationFormats[account.id]?.find(
+                    (format) => format.value === destination.content_type,
+                )?.label,
+            },
+        ];
+    }),
 );
 
 const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
@@ -78,11 +96,7 @@ const handleDelete = () => {
                 :description="$t('repurposes.show.description')"
             />
 
-            <RepurposeFlow
-                :source="repurpose.source_account?.platform ?? ''"
-                :destinations="selectedPlatforms"
-                size="lg"
-            />
+            <RepurposeFlow :source="sourceNode" :destinations="destinationNodes" size="lg" />
 
             <Tabs default-value="configuration">
                 <TabsList>

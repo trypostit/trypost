@@ -17,8 +17,8 @@ const emit = defineEmits<{
         class="group relative flex flex-col items-center gap-3 rounded-xl border-2 border-foreground bg-card p-4 text-center shadow-xs transition-shadow hover:shadow-md"
     >
         <RepurposeFlow
-            :source="template.source_platform"
-            :destinations="template.destination_platforms"
+            :source="{ platform: template.source_platform }"
+            :destinations="template.destination_platforms.map((platform) => ({ platform }))"
             size="lg"
         />
 
