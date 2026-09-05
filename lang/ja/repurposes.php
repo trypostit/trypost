@@ -25,6 +25,7 @@ return [
 
     'summary' => [
         'sentence' => ':source に新しい :format を投稿するたびに、:destinations へ再投稿されます。',
+        'no_destinations' => ':source に投稿する新しい :format は、まだ配信先を待っています。',
     ],
 
     'empty' => [
@@ -83,7 +84,7 @@ return [
 
     'destinations' => [
         'title' => '配信先',
-        'description' => 'ソースの新しい動画は、ここで選んだすべてのアカウントに投稿されます。',
+        'description' => '受け取るアカウントを選びます。それぞれ、指定した形式で投稿します。',
         'hint' => 'キャプションは、そのネットワークの上限を超えたときだけ調整されます。',
         'none_available' => 'このワークスペースにはまだ他のアカウントが接続されていません。',
         'save' => '配信先を保存',

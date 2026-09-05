@@ -6,12 +6,11 @@ import { computed, ref } from 'vue';
 
 import ChannelConfigurator from '@/components/ChannelConfigurator.vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
-import PageHeader from '@/components/PageHeader.vue';
-import RepurposeFlow from '@/components/repurpose/RepurposeFlow.vue';
 import RepurposeItemList from '@/components/repurpose/RepurposeItemList.vue';
 import RepurposeStatusCard from '@/components/repurpose/RepurposeStatusCard.vue';
 import RepurposeSummary from '@/components/repurpose/RepurposeSummary.vue';
 import SourceFormatCard from '@/components/repurpose/SourceFormatCard.vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,13 +20,13 @@ import type { PinterestBoard } from '@/types';
 import type { Channel, ChannelAccount, ChannelTikTokCreatorInfo } from '@/types/channel';
 import type {
     DestinationFormat,
-    FlowNode,
     Repurpose,
     RepurposeDestination,
     RepurposeItem,
     RepurposeSourceFormat,
     SourceFormatOption,
 } from '@/types/repurpose';
+import { repurposeStatusVariant } from '@/types/repurpose-status';
 
 const props = defineProps<{
     repurpose: Repurpose;
@@ -109,34 +108,6 @@ const currentFormatLabel = computed(
     () => props.sourceFormats.find((option) => option.value === form.source_format)?.label ?? '',
 );
 
-const sourceNode = computed<FlowNode>(() => ({
-    platform: props.repurpose.source_account?.platform ?? '',
-    label: props.repurpose.source_account?.display_name,
-    username: props.repurpose.source_account?.username,
-    format: currentFormatLabel.value,
-}));
-
-const destinationNodes = computed<FlowNode[]>(() =>
-    form.destinations.flatMap((destination) => {
-        const account = props.destinationAccounts.find((item) => item.id === destination.social_account_id);
-
-        if (!account) {
-            return [];
-        }
-
-        return [
-            {
-                platform: account.platform,
-                label: account.display_name,
-                username: account.username,
-                format: props.destinationFormats[account.id]?.find(
-                    (format) => format.value === destination.content_type,
-                )?.label,
-            },
-        ];
-    }),
-);
-
 const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
 const save = () => {
@@ -156,12 +127,27 @@ const handleDelete = () => {
 
     <AppLayout>
         <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
-            <PageHeader
-                :title="repurpose.source_account?.display_name ?? $t('repurposes.show.title')"
-                :description="$t('repurposes.show.description')"
-            />
+            <header class="space-y-2">
+                <div class="flex flex-wrap items-center gap-3">
+                    <h1
+                        class="text-2xl font-semibold leading-tight text-foreground sm:text-4xl"
+                        style="font-family: var(--font-display)"
+                    >
+                        {{ $t('repurposes.show.title') }}
+                    </h1>
 
-            <RepurposeFlow :source="sourceNode" :destinations="destinationNodes" size="lg" />
+                    <Badge :variant="repurposeStatusVariant(repurpose.status)">
+                        {{ $t(`repurposes.status.${repurpose.status}`) }}
+                    </Badge>
+                </div>
+
+                <RepurposeSummary
+                    :source-account="repurpose.source_account"
+                    :format-label="currentFormatLabel"
+                    :destinations="form.destinations"
+                    :destination-accounts="destinationAccounts"
+                />
+            </header>
 
             <Tabs default-value="configuration">
                 <TabsList>
@@ -193,14 +179,6 @@ const handleDelete = () => {
                         </div>
 
                         <div class="space-y-4">
-                            <RepurposeSummary
-                                :source-account="repurpose.source_account"
-                                :source-format="form.source_format"
-                                :format-label="currentFormatLabel"
-                                :destinations="form.destinations"
-                                :destination-accounts="destinationAccounts"
-                            />
-
                             <Card>
                                 <CardHeader>
                                     <CardTitle>{{ $t('repurposes.destinations.title') }}</CardTitle>
@@ -218,10 +196,9 @@ const handleDelete = () => {
                                 </CardContent>
                             </Card>
 
-                            <!-- The save button trails the destinations it saves,
-                                 and sticks to the bottom so a long list never
-                                 hides it. -->
-                            <div class="sticky bottom-0 -mx-1 flex justify-end border-t-2 border-foreground/10 bg-background/95 px-1 py-3 backdrop-blur">
+                            <!-- Only shown once something changed, so the column
+                                 ends quietly when there is nothing to save. -->
+                            <div v-if="form.isDirty" class="sticky bottom-4 flex justify-end">
                                 <Button data-testid="save-destinations" :disabled="form.processing" @click="save">
                                     {{ $t('repurposes.destinations.save') }}
                                 </Button>

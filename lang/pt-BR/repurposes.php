@@ -25,6 +25,7 @@ return [
 
     'summary' => [
         'sentence' => 'Cada novo :format que você postar no :source é republicado em :destinations.',
+        'no_destinations' => 'Cada novo :format que você postar no :source está esperando um destino.',
     ],
 
     'empty' => [
@@ -83,7 +84,7 @@ return [
 
     'destinations' => [
         'title' => 'Destinos',
-        'description' => 'Cada novo vídeo da origem é publicado em todas as contas selecionadas aqui.',
+        'description' => 'Escolha as contas que vão receber. Cada uma publica no formato que você definir.',
         'hint' => 'A legenda só é adaptada por rede quando ultrapassa o limite daquela rede.',
         'none_available' => 'Nenhuma outra conta está conectada neste workspace.',
         'save' => 'Salvar destinos',

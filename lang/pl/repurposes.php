@@ -25,6 +25,7 @@ return [
 
     'summary' => [
         'sentence' => 'Każdy nowy :format opublikowany na :source jest publikowany ponownie na :destinations.',
+        'no_destinations' => 'Każdy nowy :format opublikowany na :source czeka na cel.',
     ],
 
     'empty' => [
@@ -83,7 +84,7 @@ return [
 
     'destinations' => [
         'title' => 'Cele',
-        'description' => 'Każdy nowy film ze źródła trafia na wszystkie zaznaczone tu konta.',
+        'description' => 'Wybierz konta, które go otrzymają. Każde publikuje w wybranym przez ciebie formacie.',
         'hint' => 'Opis jest dostosowywany do sieci tylko wtedy, gdy przekracza jej limit.',
         'none_available' => 'W tym obszarze roboczym nie ma jeszcze innego połączonego konta.',
         'save' => 'Zapisz cele',

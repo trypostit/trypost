@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'beta' => 'Бета',
 
     'back' => 'Назад',
 

@@ -25,6 +25,7 @@ return [
 
     'summary' => [
         'sentence' => ':source üzerinde paylaştığın her yeni :format, :destinations üzerinde yeniden paylaşılır.',
+        'no_destinations' => ':source üzerinde paylaştığın her yeni :format bir hedef bekliyor.',
     ],
 
     'empty' => [
@@ -83,7 +84,7 @@ return [
 
     'destinations' => [
         'title' => 'Hedefler',
-        'description' => 'Kaynaktaki her yeni video, burada seçtiğin tüm hesaplarda yayınlanır.',
+        'description' => 'Alacak hesapları seç. Her biri senin belirlediğin formatta paylaşır.',
         'hint' => 'Açıklama yalnızca o ağın sınırını aştığında ağa göre uyarlanır.',
         'none_available' => 'Bu çalışma alanında bağlı başka hesap yok.',
         'save' => 'Hedefleri kaydet',

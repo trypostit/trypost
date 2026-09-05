@@ -25,6 +25,7 @@ return [
 
     'summary' => [
         'sentence' => 'Every new :format you post on :source is republished to :destinations.',
+        'no_destinations' => 'Every new :format you post on :source is waiting for a destination.',
     ],
 
     'empty' => [
@@ -83,7 +84,7 @@ return [
 
     'destinations' => [
         'title' => 'Destinations',
-        'description' => 'Every new video from the source is published to each account you select here.',
+        'description' => 'Pick the accounts that receive it. Each one publishes in the format you choose.',
         'hint' => 'Captions are adapted per network only when they exceed that network\'s limit.',
         'none_available' => 'No other account is connected in this workspace yet.',
         'save' => 'Save destinations',

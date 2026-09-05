@@ -25,6 +25,7 @@ return [
 
     'summary' => [
         'sentence' => ':source에 새 :format을 올릴 때마다 :destinations에 다시 게시됩니다.',
+        'no_destinations' => ':source에 올리는 새 :format이 아직 대상을 기다리고 있습니다.',
     ],
 
     'empty' => [
@@ -83,7 +84,7 @@ return [
 
     'destinations' => [
         'title' => '대상',
-        'description' => '소스의 새 영상은 여기서 선택한 모든 계정에 게시됩니다.',
+        'description' => '받을 계정을 고르세요. 각 계정은 지정한 형식으로 게시합니다.',
         'hint' => '캡션은 해당 네트워크의 한도를 넘을 때만 조정됩니다.',
         'none_available' => '이 워크스페이스에 연결된 다른 계정이 아직 없습니다.',
         'save' => '대상 저장',

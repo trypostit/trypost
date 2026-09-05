@@ -25,6 +25,7 @@ return [
 
     'summary' => [
         'sentence' => 'Cada nuevo :format que publiques en :source se republica en :destinations.',
+        'no_destinations' => 'Cada nuevo :format que publiques en :source está esperando un destino.',
     ],
 
     'empty' => [
@@ -83,7 +84,7 @@ return [
 
     'destinations' => [
         'title' => 'Destinos',
-        'description' => 'Cada vídeo nuevo del origen se publica en todas las cuentas que selecciones aquí.',
+        'description' => 'Elige las cuentas que lo recibirán. Cada una publica en el formato que elijas.',
         'hint' => 'El texto solo se adapta por red cuando supera el límite de esa red.',
         'none_available' => 'No hay ninguna otra cuenta conectada en este espacio de trabajo.',
         'save' => 'Guardar destinos',

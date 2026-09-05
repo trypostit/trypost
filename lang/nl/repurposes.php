@@ -25,6 +25,7 @@ return [
 
     'summary' => [
         'sentence' => 'Elke nieuwe :format die je op :source plaatst, wordt opnieuw geplaatst op :destinations.',
+        'no_destinations' => 'Elke nieuwe :format op :source wacht nog op een bestemming.',
     ],
 
     'empty' => [
@@ -83,7 +84,7 @@ return [
 
     'destinations' => [
         'title' => 'Bestemmingen',
-        'description' => 'Elke nieuwe video van de bron wordt geplaatst op elk account dat je hier selecteert.',
+        'description' => 'Kies de accounts die het ontvangen. Elk plaatst in het formaat dat jij kiest.',
         'hint' => 'Het bijschrift wordt alleen per netwerk aangepast als het de limiet van dat netwerk overschrijdt.',
         'none_available' => 'Er is nog geen ander account gekoppeld in deze workspace.',
         'save' => 'Bestemmingen opslaan',

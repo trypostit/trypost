@@ -25,6 +25,7 @@ return [
 
     'summary' => [
         'sentence' => 'Jedes neue :format, das du auf :source postest, wird auf :destinations erneut veröffentlicht.',
+        'no_destinations' => 'Jedes neue :format auf :source wartet noch auf ein Ziel.',
     ],
 
     'empty' => [
@@ -83,7 +84,7 @@ return [
 
     'destinations' => [
         'title' => 'Ziele',
-        'description' => 'Jedes neue Video der Quelle wird auf jedem hier gewählten Konto veröffentlicht.',
+        'description' => 'Wähle die Konten, die es erhalten. Jedes veröffentlicht im Format deiner Wahl.',
         'hint' => 'Der Text wird nur dann pro Netzwerk angepasst, wenn er dessen Limit überschreitet.',
         'none_available' => 'In diesem Workspace ist noch kein weiteres Konto verbunden.',
         'save' => 'Ziele speichern',

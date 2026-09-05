@@ -25,6 +25,7 @@ return [
 
     'summary' => [
         'sentence' => 'Chaque nouveau :format publié sur :source est republié sur :destinations.',
+        'no_destinations' => 'Chaque nouveau :format publié sur :source attend une destination.',
     ],
 
     'empty' => [
@@ -83,7 +84,7 @@ return [
 
     'destinations' => [
         'title' => 'Destinations',
-        'description' => 'Chaque nouvelle vidéo de la source est publiée sur chaque compte sélectionné ici.',
+        'description' => 'Choisissez les comptes qui le reçoivent. Chacun publie dans le format que vous choisissez.',
         'hint' => 'La légende n\'est adaptée par réseau que lorsqu\'elle dépasse la limite de ce réseau.',
         'none_available' => 'Aucun autre compte n\'est connecté dans cet espace de travail.',
         'save' => 'Enregistrer les destinations',

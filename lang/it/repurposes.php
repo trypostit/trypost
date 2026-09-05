@@ -25,6 +25,7 @@ return [
 
     'summary' => [
         'sentence' => 'Ogni nuovo :format che pubblichi su :source viene ripubblicato su :destinations.',
+        'no_destinations' => 'Ogni nuovo :format che pubblichi su :source sta aspettando una destinazione.',
     ],
 
     'empty' => [
@@ -83,7 +84,7 @@ return [
 
     'destinations' => [
         'title' => 'Destinazioni',
-        'description' => 'Ogni nuovo video dell\'origine viene pubblicato su tutti gli account selezionati qui.',
+        'description' => 'Scegli gli account che lo riceveranno. Ognuno pubblica nel formato che imposti.',
         'hint' => 'La didascalia viene adattata per rete solo quando supera il limite di quella rete.',
         'none_available' => 'Nessun altro account è collegato in questo workspace.',
         'save' => 'Salva destinazioni',

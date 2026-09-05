@@ -105,6 +105,7 @@ const mainNavItems = computed<NavItem[]>(() => [
                   title: trans('sidebar.repurposes'),
                   href: repurposes.url(),
                   icon: IconRepeat,
+                  badge: trans('common.beta'),
               },
           ]
         : []),

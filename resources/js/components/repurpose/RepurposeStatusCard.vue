@@ -3,13 +3,11 @@ import { router } from '@inertiajs/vue3';
 import { IconAlertTriangle } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import date from '@/date';
 import { activate, disable, pause, resume } from '@/routes/app/repurposes';
 import type { Repurpose } from '@/types/repurpose';
-import { repurposeStatusVariant } from '@/types/repurpose-status';
 
 const props = defineProps<{
     repurpose: Repurpose;
@@ -27,12 +25,7 @@ const send = (url: string) => {
 <template>
     <Card data-testid="repurpose-status-card">
         <CardHeader>
-            <div class="flex items-center justify-between gap-3">
-                <CardTitle>{{ $t('repurposes.status_card.title') }}</CardTitle>
-                <Badge :variant="repurposeStatusVariant(repurpose.status)">
-                    {{ $t(`repurposes.status.${repurpose.status}`) }}
-                </Badge>
-            </div>
+            <CardTitle>{{ $t('repurposes.status_card.title') }}</CardTitle>
             <CardDescription>{{ $t(`repurposes.status_card.${repurpose.status}_hint`) }}</CardDescription>
         </CardHeader>
 

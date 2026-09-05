@@ -25,6 +25,7 @@ return [
 
     'summary' => [
         'sentence' => '你每次在 :source 发布新的 :format，都会同步到 :destinations。',
+        'no_destinations' => '你在 :source 发布的每条新 :format 还在等待目标。',
     ],
 
     'empty' => [
@@ -83,7 +84,7 @@ return [
 
     'destinations' => [
         'title' => '目标',
-        'description' => '来源的每条新视频都会发布到你在这里选中的所有账号。',
+        'description' => '选择接收的账号。每个账号按你指定的格式发布。',
         'hint' => '只有当文案超出该平台上限时，才会按平台调整。',
         'none_available' => '这个工作区还没有连接其他账号。',
         'save' => '保存目标',

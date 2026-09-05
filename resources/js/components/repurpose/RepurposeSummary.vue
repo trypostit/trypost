@@ -1,22 +1,21 @@
 <script setup lang="ts">
-import { IconSparkles } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import type { ChannelAccount } from '@/types/channel';
-import type { RepurposeDestination, RepurposeSourceFormat } from '@/types/repurpose';
+import type { RepurposeDestination } from '@/types/repurpose';
 
 /**
- * One plain sentence saying exactly what will happen, so the configuration
- * never has to be read back from the controls.
+ * One plain sentence saying exactly what this repurpose does. It doubles as the
+ * page's subtitle: naming the source account is also how you tell one repurpose
+ * from another.
  */
 const props = defineProps<{
     sourceAccount: ChannelAccount | null | undefined;
-    sourceFormat: RepurposeSourceFormat;
+    formatLabel: string;
     destinations: RepurposeDestination[];
     destinationAccounts: ChannelAccount[];
-    formatLabel: string;
 }>();
 
 const destinationLabels = computed(() =>
@@ -29,22 +28,31 @@ const destinationLabels = computed(() =>
         .filter((label): label is string => label !== null),
 );
 
-const sentence = computed(() =>
-    trans('repurposes.summary.sentence', {
-        source: getPlatformLabel(props.sourceAccount?.platform ?? ''),
+const source = computed(() => {
+    const network = getPlatformLabel(props.sourceAccount?.platform ?? '');
+    const handle = props.sourceAccount?.username;
+
+    return handle ? `${network} (@${handle})` : network;
+});
+
+const sentence = computed(() => {
+    if (destinationLabels.value.length === 0) {
+        return trans('repurposes.summary.no_destinations', {
+            format: props.formatLabel,
+            source: source.value,
+        });
+    }
+
+    return trans('repurposes.summary.sentence', {
         format: props.formatLabel,
+        source: source.value,
         destinations: destinationLabels.value.join(', '),
-    }),
-);
+    });
+});
 </script>
 
 <template>
-    <div
-        v-if="destinationLabels.length > 0"
-        class="flex items-start gap-3 rounded-xl border-2 border-foreground bg-emerald-50 p-4"
-        data-testid="repurpose-summary"
-    >
-        <IconSparkles class="mt-0.5 size-5 shrink-0 text-emerald-700" />
-        <p class="text-sm font-semibold text-foreground">{{ sentence }}</p>
-    </div>
+    <p class="max-w-2xl text-sm leading-relaxed text-foreground/70" data-testid="repurpose-summary">
+        {{ sentence }}
+    </p>
 </template>
