@@ -1,0 +1,116 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'title' => 'Repurpose',
+    'description' => '把你在 TryPost 之外发布的视频，自动同步到其他平台。',
+    'new' => '新建 Repurpose',
+
+    'empty' => [
+        'title' => '还没有设置 Repurpose',
+        'description' => '在下面选一个起点。TryPost 会盯着你选的账号，把每条新视频转发到你勾选的平台。',
+    ],
+
+    'table' => [
+        'source' => '来源',
+        'destinations' => '目标',
+        'status' => '状态',
+        'published' => '已同步',
+        'last_polled' => '上次检查',
+    ],
+
+    'status' => [
+        'draft' => '草稿',
+        'active' => '启用中',
+        'paused' => '已暂停',
+        'disabled' => '已停用',
+    ],
+
+    'templates' => [
+        'use' => '使用此模板',
+        'instagram_everywhere' => [
+            'title' => 'Instagram 全平台',
+            'description' => '在 Instagram 发一条 Reels，TryPost 就同步到 TikTok、YouTube Shorts 和 Facebook。',
+        ],
+        'facebook_everywhere' => [
+            'title' => 'Facebook 全平台',
+            'description' => '在 Facebook 主页发一条视频，TryPost 就同步到 Instagram、TikTok 和 YouTube Shorts。',
+        ],
+    ],
+
+    'create' => [
+        'title' => '新建 Repurpose',
+        'description' => '选择 TryPost 要盯着的账号。目标平台在下一屏选择。',
+        'source_label' => '来源账号',
+        'source_placeholder' => '选择账号',
+        'no_accounts' => '请先连接 Instagram 或 Facebook 账号。只有它们能作为来源，因为只有这两个平台允许我们下载视频。',
+        'submit' => '创建',
+    ],
+
+    'show' => [
+        'title' => 'Repurpose',
+        'description' => '这个账号在 TryPost 之外发布的视频，会同步到下面的目标。',
+    ],
+
+    'tabs' => [
+        'configuration' => '配置',
+        'activity' => '动态',
+    ],
+
+    'destinations' => [
+        'title' => '目标',
+        'description' => '来源的每条新视频都会发布到你在这里选中的所有账号。',
+        'hint' => '只有当文案超出该平台上限时，才会按平台调整。',
+        'none_available' => '这个工作区还没有连接其他账号。',
+    ],
+
+    'status_card' => [
+        'title' => '状态',
+        'activate' => '启用',
+        'pause' => '暂停',
+        'resume' => '继续',
+        'disable' => '停用',
+        'watermark' => '开始监控于',
+        'last_polled' => '上次检查',
+        'draft_hint' => '至少选一个目标再启用。只有启用之后发布的视频才会被同步。',
+        'active_hint' => 'TryPost 会定期检查这个账号，并同步每条新视频。',
+        'paused_hint' => '检查已暂停。继续后会从停下的地方接着走，期间发布的内容不会丢失。',
+        'disabled_hint' => '已关闭。再次启用会重新开始：关闭期间发布的内容不会被同步。',
+    ],
+
+    'items' => [
+        'source' => '原视频',
+        'published_at' => '发布于',
+        'status' => '状态',
+        'detail' => '详情',
+        'posts' => '已同步到',
+        'view_original' => '查看原视频',
+        'open_post' => '打开帖子',
+        'statuses' => [
+            'pending' => '排队中',
+            'processing' => '处理中',
+            'published' => '已同步',
+            'skipped' => '已跳过',
+            'failed' => '失败',
+        ],
+        'reasons' => [
+            'published_via_trypost' => '已通过 TryPost 发布',
+            'not_video' => '不是视频',
+            'media_url_missing' => '平台没有提供可下载的文件，通常是因为音频有版权',
+            'download_failed' => '视频下载失败',
+            'post_creation_failed' => '没有可用的目标',
+        ],
+    ],
+
+    'danger' => [
+        'title' => '删除这个 Repurpose',
+        'description' => '检查会立即停止。已创建的帖子会保留在日历中。',
+        'delete' => '删除 Repurpose',
+    ],
+
+    'errors' => [
+        'source_already_used' => '这个账号已经用于另一个 Repurpose，请去编辑那一个。',
+        'destinations_required' => '启用前请至少选择一个目标。',
+    ],
+];

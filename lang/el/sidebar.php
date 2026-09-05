@@ -26,6 +26,7 @@ return [
         'others' => 'Άλλα',
     ],
     'analytics' => 'Στατιστικά',
+    'repurposes' => 'Repurpose',
     'onboarding' => 'Ξεκινώντας',
     'onboarding_hint' => 'Ολοκλήρωση ρύθμισης',
     'posts' => [

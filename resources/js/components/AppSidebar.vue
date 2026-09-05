@@ -6,6 +6,7 @@ import {
     IconBrandDiscord,
     IconCalendar,
     IconChartBar,
+    IconRepeat,
     IconChevronRight,
     IconClock,
     IconFileCheck,
@@ -55,6 +56,7 @@ import { index as assets } from '@/routes/app/assets';
 import { portal } from '@/routes/app/billing';
 import { index as labels } from '@/routes/app/labels';
 import { index as mcp } from '@/routes/app/mcp';
+import { index as repurposes } from '@/routes/app/repurposes';
 import { index as signatures } from '@/routes/app/signatures';
 import { index as webhooks } from '@/routes/app/webhooks';
 import type { NavItem, User } from '@/types';
@@ -79,6 +81,7 @@ const subscriptionPastDue = computed<boolean>(() =>
 
 const {
     canCreatePost,
+    canManageRepurposes,
     canManageAccounts,
     canManageWebhooks,
     canCreateWorkspace,
@@ -96,6 +99,15 @@ const mainNavItems = computed<NavItem[]>(() => [
         href: analytics.url(),
         icon: IconChartBar,
     },
+    ...(canManageRepurposes.value
+        ? [
+              {
+                  title: trans('sidebar.repurposes'),
+                  href: repurposes.url(),
+                  icon: IconRepeat,
+              },
+          ]
+        : []),
 ]);
 
 const postsNavItems = computed<NavItem[]>(() => [

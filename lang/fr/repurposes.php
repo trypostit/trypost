@@ -1,0 +1,116 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'title' => 'Repurpose',
+    'description' => 'Republiez automatiquement sur vos autres réseaux les vidéos que vous postez en dehors de TryPost.',
+    'new' => 'Nouveau repurpose',
+
+    'empty' => [
+        'title' => 'Aucun repurpose configuré',
+        'description' => 'Choisissez un point de départ ci-dessous. TryPost surveille le compte choisi et republie chaque nouvelle vidéo sur les réseaux que vous sélectionnez.',
+    ],
+
+    'table' => [
+        'source' => 'Source',
+        'destinations' => 'Destinations',
+        'status' => 'Statut',
+        'published' => 'Répliquées',
+        'last_polled' => 'Dernière vérification',
+    ],
+
+    'status' => [
+        'draft' => 'Brouillon',
+        'active' => 'Actif',
+        'paused' => 'En pause',
+        'disabled' => 'Désactivé',
+    ],
+
+    'templates' => [
+        'use' => 'Utiliser ce modèle',
+        'instagram_everywhere' => [
+            'title' => 'Instagram partout',
+            'description' => 'Publiez un Reel sur Instagram et TryPost le republie sur TikTok, YouTube Shorts et Facebook.',
+        ],
+        'facebook_everywhere' => [
+            'title' => 'Facebook partout',
+            'description' => 'Publiez une vidéo sur votre Page Facebook et TryPost la republie sur Instagram, TikTok et YouTube Shorts.',
+        ],
+    ],
+
+    'create' => [
+        'title' => 'Nouveau repurpose',
+        'description' => 'Choisissez le compte que TryPost doit surveiller. Les destinations se choisissent à l\'écran suivant.',
+        'source_label' => 'Compte source',
+        'source_placeholder' => 'Sélectionner un compte',
+        'no_accounts' => 'Connectez d\'abord un compte Instagram ou Facebook. Seuls ces réseaux peuvent être source, car ce sont les seuls qui permettent de télécharger la vidéo.',
+        'submit' => 'Créer',
+    ],
+
+    'show' => [
+        'title' => 'Repurpose',
+        'description' => 'Les vidéos publiées sur ce compte en dehors de TryPost sont répliquées vers les destinations ci-dessous.',
+    ],
+
+    'tabs' => [
+        'configuration' => 'Configuration',
+        'activity' => 'Activité',
+    ],
+
+    'destinations' => [
+        'title' => 'Destinations',
+        'description' => 'Chaque nouvelle vidéo de la source est publiée sur chaque compte sélectionné ici.',
+        'hint' => 'La légende n\'est adaptée par réseau que lorsqu\'elle dépasse la limite de ce réseau.',
+        'none_available' => 'Aucun autre compte n\'est connecté dans cet espace de travail.',
+    ],
+
+    'status_card' => [
+        'title' => 'Statut',
+        'activate' => 'Activer',
+        'pause' => 'Mettre en pause',
+        'resume' => 'Reprendre',
+        'disable' => 'Désactiver',
+        'watermark' => 'Surveillé depuis',
+        'last_polled' => 'Dernière vérification',
+        'draft_hint' => 'Choisissez au moins une destination, puis activez. Seules les vidéos publiées après l\'activation sont répliquées.',
+        'active_hint' => 'TryPost vérifie ce compte régulièrement et réplique chaque nouvelle vidéo.',
+        'paused_hint' => 'Les vérifications sont suspendues. La reprise repart là où elle s\'est arrêtée, rien n\'est perdu.',
+        'disabled_hint' => 'Désactivé. Une nouvelle activation repart de zéro : ce que vous avez publié entre-temps reste de côté.',
+    ],
+
+    'items' => [
+        'source' => 'Original',
+        'published_at' => 'Publié',
+        'status' => 'Statut',
+        'detail' => 'Détail',
+        'posts' => 'Répliqué sur',
+        'view_original' => 'Voir l\'original',
+        'open_post' => 'Ouvrir la publication',
+        'statuses' => [
+            'pending' => 'En file d\'attente',
+            'processing' => 'Traitement',
+            'published' => 'Répliqué',
+            'skipped' => 'Ignoré',
+            'failed' => 'Échec',
+        ],
+        'reasons' => [
+            'published_via_trypost' => 'Déjà publié via TryPost',
+            'not_video' => 'Ce n\'est pas une vidéo',
+            'media_url_missing' => 'Le réseau n\'a pas fourni de fichier téléchargeable, généralement à cause d\'un audio protégé par le droit d\'auteur',
+            'download_failed' => 'La vidéo n\'a pas pu être téléchargée',
+            'post_creation_failed' => 'Aucune destination disponible',
+        ],
+    ],
+
+    'danger' => [
+        'title' => 'Supprimer ce repurpose',
+        'description' => 'Les vérifications s\'arrêtent immédiatement. Les publications déjà créées restent dans votre calendrier.',
+        'delete' => 'Supprimer le repurpose',
+    ],
+
+    'errors' => [
+        'source_already_used' => 'Ce compte alimente déjà un autre repurpose. Modifiez celui-là.',
+        'destinations_required' => 'Choisissez au moins une destination avant d\'activer.',
+    ],
+];

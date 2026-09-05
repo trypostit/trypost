@@ -26,6 +26,7 @@ return [
         'others' => 'Overige',
     ],
     'analytics' => 'Statistieken',
+    'repurposes' => 'Repurpose',
     'onboarding' => 'Aan de slag',
     'onboarding_hint' => 'Setup afronden',
     'posts' => [
