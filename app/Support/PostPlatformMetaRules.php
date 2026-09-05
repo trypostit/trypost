@@ -160,6 +160,19 @@ class PostPlatformMetaRules
      *
      * @return array{0: string, 1: string}|null [field, message]
      */
+    /**
+     * The meta a platform needs before anything can be published to it, or null
+     * when it needs none. Callers that hold a platform and its meta outside a
+     * post (a repurpose destination, for one) ask here rather than repeating the
+     * list, so a new requirement lands in one place.
+     *
+     * @return array{0: string, 1: string}|null [field, message]
+     */
+    public static function missingRequiredMeta(?Platform $platform, mixed $meta): ?array
+    {
+        return self::requiredMetaViolation($platform, $meta);
+    }
+
     private static function requiredMetaViolation(?Platform $platform, mixed $meta): ?array
     {
         return match (true) {

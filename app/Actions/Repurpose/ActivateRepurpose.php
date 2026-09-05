@@ -6,6 +6,8 @@ namespace App\Actions\Repurpose;
 
 use App\Enums\Repurpose\Status;
 use App\Models\Repurpose;
+use App\Models\SocialAccount;
+use App\Support\PostPlatformMetaRules;
 use Illuminate\Validation\ValidationException;
 
 class ActivateRepurpose
@@ -24,6 +26,8 @@ class ActivateRepurpose
             ]);
         }
 
+        self::assertDestinationsCanPublish($repurpose);
+
         $repurpose->update([
             'status' => Status::Active,
             'activated_at' => now(),
@@ -32,5 +36,30 @@ class ActivateRepurpose
         ]);
 
         return $repurpose->fresh();
+    }
+
+    /**
+     * TikTok, Pinterest and Discord each need a piece of meta before anything
+     * can reach them. Without this an active repurpose would look healthy and
+     * turn every replicated video into a failed post.
+     */
+    private static function assertDestinationsCanPublish(Repurpose $repurpose): void
+    {
+        foreach ($repurpose->destinations as $destination) {
+            $account = SocialAccount::find(data_get($destination, 'social_account_id'));
+
+            $violation = PostPlatformMetaRules::missingRequiredMeta(
+                $account?->platform,
+                data_get($destination, 'meta'),
+            );
+
+            if ($violation === null) {
+                continue;
+            }
+
+            throw ValidationException::withMessages([
+                'destinations' => $violation[1],
+            ]);
+        }
     }
 }

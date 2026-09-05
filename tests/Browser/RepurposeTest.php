@@ -105,8 +105,6 @@ test('the edit page shows the watched format, the destinations and the settings 
         ->assertVisible('@repurpose-summary')
         ->assertVisible('@repurpose-source-card')
         ->assertVisible('@source-format-select')
-        ->assertVisible('@destination-picker')
-        ->assertVisible("@destination-{$destination->id}")
         ->assertVisible('@tab-settings')
         ->assertNoJavaScriptErrors();
 });

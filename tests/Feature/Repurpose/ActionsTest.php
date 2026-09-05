@@ -115,6 +115,65 @@ test('destination meta survives create and update', function () {
     expect($updated->destinations)->toEqual([$destination]);
 });
 
+test('a destination that cannot publish without meta blocks activation', function () {
+    [$workspace, $user, $account] = repurposeWorkspace();
+
+    foreach ([
+        [Platform::TikTok, ContentType::TikTokVideo],
+        [Platform::Pinterest, ContentType::PinterestVideoPin],
+        [Platform::Discord, ContentType::DiscordMessage],
+    ] as [$platform, $contentType]) {
+        $destination = SocialAccount::factory()->for($workspace)->create(['platform' => $platform]);
+
+        $repurpose = Repurpose::factory()->create([
+            'workspace_id' => $workspace->id,
+            'source_social_account_id' => $account->id,
+            'source_format' => SourceFormat::Reel,
+            'destinations' => [[
+                'social_account_id' => $destination->id,
+                'content_type' => $contentType->value,
+                'meta' => [],
+            ]],
+        ]);
+
+        expect(fn () => ActivateRepurpose::execute($repurpose))
+            ->toThrow(ValidationException::class);
+
+        $repurpose->delete();
+        $destination->delete();
+    }
+});
+
+test('a destination carrying its required meta activates', function () {
+    [$workspace, $user, $account] = repurposeWorkspace();
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $account->id,
+        'destinations' => [tiktokDestination($workspace)],
+    ]);
+
+    expect(ActivateRepurpose::execute($repurpose)->status)->toBe(Status::Active);
+});
+
+test('a destination that needs no meta activates', function () {
+    [$workspace, $user, $account] = repurposeWorkspace();
+
+    $telegram = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Telegram]);
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $account->id,
+        'destinations' => [[
+            'social_account_id' => $telegram->id,
+            'content_type' => ContentType::TelegramPost->value,
+            'meta' => [],
+        ]],
+    ]);
+
+    expect(ActivateRepurpose::execute($repurpose)->status)->toBe(Status::Active);
+});
+
 test('activation requires at least one destination', function () {
     $repurpose = Repurpose::factory()->create();
 

@@ -13,16 +13,22 @@ use App\Actions\Repurpose\ListRepurposes;
 use App\Actions\Repurpose\PauseRepurpose;
 use App\Actions\Repurpose\ResumeRepurpose;
 use App\Actions\Repurpose\UpdateRepurpose;
+use App\Actions\SocialAccount\ListPinterestBoards;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\SourceFormat;
+use App\Enums\SocialAccount\Platform;
 use App\Http\Requests\App\Repurpose\StoreRepurposeRequest;
 use App\Http\Requests\App\Repurpose\UpdateRepurposeRequest;
+use App\Http\Resources\App\PlatformConfigResource;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Repurpose;
+use App\Models\SocialAccount;
 use App\Services\Repurpose\SourceFetcherFactory;
+use App\Services\Social\TikTokCreatorInfo;
 use App\Support\Repurpose\Templates;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -55,6 +61,7 @@ class RepurposeController extends Controller
             'items' => Inertia::scroll(fn () => ListRepurposeItems::execute($repurpose)),
             'sourceFormats' => $this->sourceFormats($repurpose),
             'destinationFormats' => $this->destinationFormats($request, $repurpose->source_format),
+            ...$this->platformSettingsProps($this->connectedAccounts($request)),
         ]);
     }
 
@@ -167,6 +174,42 @@ class RepurposeController extends Controller
         }
 
         return $formats;
+    }
+
+    /**
+     * The same per-network settings data the post editor loads, so a repurpose
+     * destination configures TikTok privacy, a Pinterest board or a Discord
+     * channel through the very components the editor uses.
+     *
+     * @param  Collection<int, SocialAccount>  $accounts
+     * @return array<string, mixed>
+     */
+    private function platformSettingsProps($accounts): array
+    {
+        return [
+            'platformConfigs' => $accounts->mapWithKeys(fn ($account) => [
+                $account->id => new PlatformConfigResource($account),
+            ]),
+            'pinterestBoards' => $accounts
+                ->where('platform', Platform::Pinterest)
+                ->mapWithKeys(fn ($account) => [
+                    $account->id => rescue(
+                        fn () => ListPinterestBoards::execute($account),
+                        ['boards' => [], 'truncated' => false],
+                        report: false,
+                    ),
+                ]),
+            'tiktokCreatorInfos' => $accounts
+                ->where('platform', Platform::TikTok)
+                ->mapWithKeys(fn ($account) => [
+                    $account->id => rescue(
+                        fn () => app(TikTokCreatorInfo::class)->fetch($account),
+                        null,
+                        report: false,
+                    ),
+                ])
+                ->filter(),
+        ];
     }
 
     /**

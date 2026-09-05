@@ -4,9 +4,9 @@ import { IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
+import ChannelConfigurator from '@/components/ChannelConfigurator.vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import PageHeader from '@/components/PageHeader.vue';
-import DestinationPicker from '@/components/repurpose/DestinationPicker.vue';
 import RepurposeFlow from '@/components/repurpose/RepurposeFlow.vue';
 import RepurposeItemList from '@/components/repurpose/RepurposeItemList.vue';
 import RepurposeStatusCard from '@/components/repurpose/RepurposeStatusCard.vue';
@@ -17,7 +17,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { destroy, update } from '@/routes/app/repurposes';
-import type { ChannelAccount } from '@/types/channel';
+import type { PinterestBoard } from '@/types';
+import type { Channel, ChannelAccount, ChannelTikTokCreatorInfo } from '@/types/channel';
 import type {
     DestinationFormat,
     FlowNode,
@@ -35,12 +36,74 @@ const props = defineProps<{
     items: { data: RepurposeItem[] };
     sourceFormats: SourceFormatOption[];
     destinationFormats: Record<string, DestinationFormat[]>;
+    platformConfigs: Record<string, { publishConfig?: Record<string, any> }>;
+    pinterestBoards: Record<string, { boards: PinterestBoard[]; truncated: boolean }>;
+    tiktokCreatorInfos: Record<string, ChannelTikTokCreatorInfo | null>;
 }>();
 
 const form = useForm<{ source_format: RepurposeSourceFormat; destinations: RepurposeDestination[] }>({
     source_format: props.repurpose.source_format,
     destinations: props.repurpose.destinations ?? [],
 });
+
+/**
+ * The destinations reuse the post editor's channel configurator, so every
+ * network's own settings — TikTok privacy, a Pinterest board, a Discord
+ * channel — come from the components that already know how to ask for them.
+ * A repurpose keys its destinations by social account rather than by
+ * post_platform, since no post exists yet.
+ */
+const channels = computed<Channel[]>(() =>
+    props.destinationAccounts.map((account) => {
+        const destination = form.destinations.find((item) => item.social_account_id === account.id);
+
+        return {
+            id: account.id,
+            platform: account.platform,
+            displayName: account.display_name,
+            username: account.username ?? null,
+            avatarUrl: account.avatar_url,
+            socialAccount: account,
+            contentType: destination?.content_type ?? props.destinationFormats[account.id]?.[0]?.value ?? '',
+            meta: destination?.meta ?? {},
+            boards: props.pinterestBoards?.[account.id]?.boards ?? [],
+            boardsTruncated: props.pinterestBoards?.[account.id]?.truncated ?? false,
+            creatorInfo: props.tiktokCreatorInfos?.[account.id] ?? null,
+            publishConfig: props.platformConfigs?.[account.id]?.publishConfig ?? {},
+        } as Channel;
+    }),
+);
+
+const selectedAccountIds = computed(() => form.destinations.map((destination) => destination.social_account_id));
+
+const toggleDestination = (accountId: string) => {
+    if (selectedAccountIds.value.includes(accountId)) {
+        form.destinations = form.destinations.filter((destination) => destination.social_account_id !== accountId);
+
+        return;
+    }
+
+    form.destinations = [
+        ...form.destinations,
+        {
+            social_account_id: accountId,
+            content_type: props.destinationFormats[accountId]?.[0]?.value ?? '',
+            meta: {},
+        },
+    ];
+};
+
+const updateDestination = (accountId: string, changes: Partial<RepurposeDestination>) => {
+    form.destinations = form.destinations.map((destination) =>
+        destination.social_account_id === accountId ? { ...destination, ...changes } : destination,
+    );
+};
+
+const setDestinationContentType = (accountId: string, contentType: string) =>
+    updateDestination(accountId, { content_type: contentType });
+
+const setDestinationMeta = (accountId: string, meta: Record<string, any>) =>
+    updateDestination(accountId, { meta });
 
 const currentFormatLabel = computed(
     () => props.sourceFormats.find((option) => option.value === form.source_format)?.label ?? '',
@@ -137,10 +200,12 @@ const handleDelete = () => {
                         </CardHeader>
 
                         <CardContent class="space-y-4">
-                            <DestinationPicker
-                                v-model="form.destinations"
-                                :accounts="destinationAccounts"
-                                :formats="destinationFormats"
+                            <ChannelConfigurator
+                                :channels="channels"
+                                :selected-ids="selectedAccountIds"
+                                @toggle="toggleDestination"
+                                @update:content-type="setDestinationContentType"
+                                @update:meta="setDestinationMeta"
                             />
 
                             <Button data-testid="save-destinations" :disabled="form.processing" @click="save">
