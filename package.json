@@ -16,8 +16,6 @@
         "@laravel/vite-plugin-wayfinder": "^0.1.3",
         "@tailwindcss/vite": "^4.1.11",
         "@types/node": "^22.13.5",
-        "@unovis/ts": "^1.6.4",
-        "@unovis/vue": "^1.6.4",
         "@vitejs/plugin-vue": "^6.0.0",
         "@vue/eslint-config-typescript": "^14.3.0",
         "chokidar": "^5.0.0",
