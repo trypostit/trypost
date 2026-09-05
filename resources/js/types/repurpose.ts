@@ -44,7 +44,7 @@ export interface Repurpose {
 
 export interface RepurposeItemPost {
     id: string;
-    status: string;
+    platform: string | null;
 }
 
 export interface RepurposeItem {

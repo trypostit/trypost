@@ -11,6 +11,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import { edit } from '@/routes/app/posts';
 import type { RepurposeItem } from '@/types/repurpose';
@@ -26,17 +27,17 @@ defineProps<{
         <Table data-testid="repurpose-items-table">
         <TableHeader>
             <TableRow>
-                <TableHead>{{ $t('repurposes.items.source') }}</TableHead>
-                <TableHead>{{ $t('repurposes.items.published_at') }}</TableHead>
-                <TableHead>{{ $t('repurposes.items.status') }}</TableHead>
-                <TableHead>{{ $t('repurposes.items.detail') }}</TableHead>
-                <TableHead>{{ $t('repurposes.items.posts') }}</TableHead>
+                <TableHead class="whitespace-nowrap">{{ $t('repurposes.items.source') }}</TableHead>
+                <TableHead class="whitespace-nowrap">{{ $t('repurposes.items.published_at') }}</TableHead>
+                <TableHead class="whitespace-nowrap">{{ $t('repurposes.items.status') }}</TableHead>
+                <TableHead class="w-full min-w-[16rem]">{{ $t('repurposes.items.detail') }}</TableHead>
+                <TableHead class="whitespace-nowrap">{{ $t('repurposes.items.posts') }}</TableHead>
             </TableRow>
         </TableHeader>
 
         <TableBody id="repurpose-items-body">
             <TableRow v-for="item in items" :key="item.id" :data-testid="`repurpose-item-${item.id}`">
-                <TableCell>
+                <TableCell class="whitespace-nowrap">
                     <a
                         v-if="item.source_permalink"
                         :href="item.source_permalink"
@@ -50,31 +51,43 @@ defineProps<{
                     <span v-else class="text-muted-foreground">{{ item.source_media_id }}</span>
                 </TableCell>
 
-                <TableCell>
+                <TableCell class="whitespace-nowrap">
                     {{ item.source_created_at ? date.formatDateTime(item.source_created_at) : '—' }}
                 </TableCell>
 
-                <TableCell>
+                <TableCell class="whitespace-nowrap">
                     <Badge :variant="repurposeItemStatusVariant(item.status)">
                         {{ $t(`repurposes.items.statuses.${item.status}`) }}
                     </Badge>
                 </TableCell>
 
-                <TableCell class="text-sm text-muted-foreground">
-                    <span v-if="item.reason">{{ $t(`repurposes.items.reasons.${item.reason}`) }}</span>
-                    <span v-else-if="item.error">{{ item.error }}</span>
+                <TableCell class="w-full min-w-[16rem] text-sm text-muted-foreground">
+                    <p
+                        v-if="item.reason"
+                        class="line-clamp-3 max-w-prose whitespace-normal"
+                        :title="item.error ?? undefined"
+                    >
+                        {{ $t(`repurposes.items.reasons.${item.reason}`) }}
+                    </p>
+                    <p
+                        v-else-if="item.error"
+                        class="line-clamp-3 max-w-prose whitespace-normal break-words"
+                        :title="item.error"
+                    >
+                        {{ item.error }}
+                    </p>
                     <span v-else>—</span>
                 </TableCell>
 
-                <TableCell>
-                    <div class="flex flex-wrap gap-2">
+                <TableCell class="whitespace-nowrap">
+                    <div class="flex flex-wrap gap-x-3 gap-y-1">
                         <a
                             v-for="post in item.posts ?? []"
                             :key="post.id"
                             :href="edit.url(post.id)"
                             class="text-sm underline"
                         >
-                            {{ $t('repurposes.items.open_post') }}
+                            {{ post.platform ? getPlatformLabel(post.platform) : $t('repurposes.items.open_post') }}
                         </a>
                         <span v-if="(item.posts ?? []).length === 0" class="text-muted-foreground">—</span>
                     </div>
