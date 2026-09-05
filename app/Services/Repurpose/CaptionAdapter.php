@@ -23,7 +23,6 @@ class CaptionAdapter
         ?User $user,
         string $caption,
         Platform $platform,
-        ?string $postId,
     ): string {
         $overflow = $platform->contentOverflow($this->sanitizer->displayText($caption, $platform));
 
@@ -37,7 +36,7 @@ class CaptionAdapter
             return $this->truncate($caption, $limit);
         }
 
-        return $this->shorten($workspace, $user, $caption, $platform, $postId, $limit)
+        return $this->shorten($workspace, $user, $caption, $platform, $limit)
             ?? $this->truncate($caption, $limit);
     }
 
@@ -46,7 +45,6 @@ class CaptionAdapter
         ?User $user,
         string $caption,
         Platform $platform,
-        ?string $postId,
         int $limit,
     ): ?string {
         try {
@@ -65,7 +63,6 @@ class CaptionAdapter
                 provider: (string) $result->meta->provider,
                 model: (string) $result->meta->model,
                 userId: $user?->id,
-                postId: $postId,
                 metadata: ['agent' => 'post_shortener'],
             );
 

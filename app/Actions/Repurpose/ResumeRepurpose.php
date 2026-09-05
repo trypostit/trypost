@@ -20,6 +20,7 @@ class ResumeRepurpose
 
         $repurpose->update([
             'status' => Status::Active,
+            'activated_at' => $repurpose->activated_at ?? now(),
             'next_poll_at' => null,
         ]);
 

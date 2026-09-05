@@ -12,7 +12,6 @@ use App\Enums\Repurpose\ItemStatus;
 use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\RepurposeItem;
-use App\Models\SocialAccount;
 use App\Services\Post\MediaAttacher;
 use App\Services\Repurpose\CaptionAdapter;
 use Illuminate\Bus\Queueable;
@@ -22,6 +21,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Str;
+use RuntimeException;
 use Throwable;
 
 class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
@@ -83,14 +83,14 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
         $snapshot = null;
 
         foreach ($repurpose->destinations as $destination) {
-            $account = SocialAccount::find(data_get($destination, 'social_account_id'));
+            $account = $workspace->socialAccounts()->find(data_get($destination, 'social_account_id'));
 
             if ($account === null || ! $account->is_active) {
                 continue;
             }
 
             $post = CreatePost::execute($workspace, $user, [
-                'content' => e($captions->adapt($workspace, $user, $this->caption, $account->platform, null)),
+                'content' => e($captions->adapt($workspace, $user, $this->caption, $account->platform)),
                 'created_via' => CreatedVia::Repurpose,
                 'platforms' => [$destination],
             ]);
@@ -101,9 +101,7 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
                 $snapshot = data_get($media->attachFromUrls($post, [['url' => $this->downloadUrl]]), 'attached', []);
 
                 if ($snapshot === []) {
-                    $this->discard([...$posts, $post], ItemReason::DownloadFailed);
-
-                    return;
+                    $this->failDownload([...$posts, $post]);
                 }
             } else {
                 $post->appendMedia($snapshot);
@@ -136,14 +134,20 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
     }
 
     /**
+     * Throws so the job's own retries get a chance at it: a source video that is
+     * not downloadable right now usually is minutes later. The reason is stored
+     * before the throw, so {@see self::failed()} keeps it once the tries run out.
+     *
      * @param  array<int, Post>  $posts
      */
-    private function discard(array $posts, ItemReason $reason): void
+    private function failDownload(array $posts): void
     {
         foreach ($posts as $post) {
             $post->forceDelete();
         }
 
-        $this->item->update(['status' => ItemStatus::Failed, 'reason' => $reason]);
+        $this->item->update(['reason' => ItemReason::DownloadFailed]);
+
+        throw new RuntimeException("Could not download the source video for repurpose item {$this->item->id}.");
     }
 }

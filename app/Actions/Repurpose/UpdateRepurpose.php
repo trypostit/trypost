@@ -7,6 +7,7 @@ namespace App\Actions\Repurpose;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Models\Repurpose;
+use Illuminate\Support\Facades\DB;
 
 class UpdateRepurpose
 {
@@ -33,13 +34,15 @@ class UpdateRepurpose
             $attributes['destinations'] = $destinations;
         }
 
-        $repurpose->update($attributes);
-        $repurpose = $repurpose->fresh();
+        return DB::transaction(function () use ($repurpose, $attributes): Repurpose {
+            $repurpose->update($attributes);
+            $repurpose = $repurpose->fresh();
 
-        if ($repurpose->status === Status::Active) {
-            ActivateRepurpose::assertPublishable($repurpose);
-        }
+            if ($repurpose->status === Status::Active) {
+                ActivateRepurpose::assertPublishable($repurpose);
+            }
 
-        return $repurpose;
+            return $repurpose;
+        });
     }
 }

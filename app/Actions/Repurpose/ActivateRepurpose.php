@@ -14,6 +14,12 @@ class ActivateRepurpose
 {
     public static function execute(Repurpose $repurpose): Repurpose
     {
+        if (! in_array($repurpose->status, [Status::Draft, Status::Disabled], true)) {
+            throw ValidationException::withMessages([
+                'status' => __('repurposes.errors.only_idle_activates'),
+            ]);
+        }
+
         self::assertPublishable($repurpose);
 
         $repurpose->update([

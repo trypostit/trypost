@@ -15,6 +15,7 @@ use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
 use App\Services\Repurpose\SourceFetcherFactory;
 use App\Services\Repurpose\SourceMedia;
+use App\Services\Social\TokenRedactor;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -180,15 +181,17 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
     {
         $throttled = $exception instanceof SourceFetchException && $exception->isTransient();
 
+        $message = Str::limit(TokenRedactor::redact($exception->getMessage()), 1000);
+
         Repurpose::whereKey($repurposes->modelKeys())->update([
-            'last_error' => Str::limit($exception->getMessage(), 1000),
+            'last_error' => $message,
             'last_polled_at' => now(),
             'next_poll_at' => now()->addMinutes($throttled ? $this->backoff() : $this->interval()),
         ]);
 
         Log::warning('Repurpose polling failed', [
             'social_account_id' => $this->account->id,
-            'message' => $exception->getMessage(),
+            'message' => $message,
         ]);
     }
 

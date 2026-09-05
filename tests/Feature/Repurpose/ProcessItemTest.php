@@ -143,19 +143,56 @@ test('a caption over a destination limit is shortened for that post only', funct
         ->toBeGreaterThan(mb_strlen($captions[Platform::YouTube->value]));
 });
 
-test('a failed download marks the item failed and leaves no post', function () {
+test('a failed download throws so the job retries, leaving no post behind', function () {
     Bus::fake([PublishPost::class]);
     Http::fake([REPURPOSE_VIDEO_URL => Http::response('', 404)]);
 
     $item = repurposeWithTwoDestinations();
 
-    processItem($item);
+    expect(fn () => processItem($item))->toThrow(RuntimeException::class);
 
-    expect($item->fresh()->status)->toBe(ItemStatus::Failed)
-        ->and($item->fresh()->reason)->toBe(ItemReason::DownloadFailed)
+    expect($item->fresh()->reason)->toBe(ItemReason::DownloadFailed)
+        ->and($item->fresh()->status)->not->toBe(ItemStatus::Failed)
         ->and(Post::where('repurpose_item_id', $item->id)->count())->toBe(0);
 
     Bus::assertNotDispatched(PublishPost::class);
+});
+
+test('a download that never recovers ends as failed once the tries run out', function () {
+    Bus::fake([PublishPost::class]);
+    Http::fake([REPURPOSE_VIDEO_URL => Http::response('', 404)]);
+
+    $item = repurposeWithTwoDestinations();
+    $job = new ProcessRepurposeItem($item, REPURPOSE_VIDEO_URL, 'My caption');
+
+    try {
+        $job->handle(app(MediaAttacher::class), app(CaptionAdapter::class));
+    } catch (RuntimeException $exception) {
+        $job->failed($exception);
+    }
+
+    expect($item->fresh()->status)->toBe(ItemStatus::Failed)
+        ->and($item->fresh()->reason)->toBe(ItemReason::DownloadFailed)
+        ->and($item->fresh()->error)->toContain('Could not download');
+});
+
+test('a retried download that succeeds publishes normally', function () {
+    Bus::fake([PublishPost::class]);
+    Http::fake([
+        REPURPOSE_VIDEO_URL => Http::sequence()
+            ->push('', 404)
+            ->push(file_get_contents(base_path('tests/fixtures/sample.mp4')), 200, ['Content-Type' => 'video/mp4']),
+    ]);
+
+    $item = repurposeWithTwoDestinations();
+
+    expect(fn () => processItem($item))->toThrow(RuntimeException::class);
+
+    processItem($item);
+
+    expect($item->fresh()->status)->toBe(ItemStatus::Published)
+        ->and($item->fresh()->reason)->toBeNull()
+        ->and(Post::where('repurpose_item_id', $item->id)->count())->toBe(2);
 });
 
 test('running the job twice creates no extra posts', function () {
@@ -251,4 +288,25 @@ test('a destination switched off is skipped instead of publishing nowhere', func
 
     expect($posts)->toHaveCount(1)
         ->and($posts->first()->postPlatforms()->enabled()->count())->toBe(1);
+});
+
+test('a destination pointing outside the workspace is skipped, never published to', function () {
+    Bus::fake([PublishPost::class]);
+    fakeVideoDownload();
+
+    $item = repurposeWithTwoDestinations();
+    $repurpose = $item->repurpose;
+
+    $stranger = SocialAccount::factory()
+        ->for(Workspace::factory()->create())
+        ->create(['platform' => Platform::TikTok]);
+
+    $repurpose->update(['destinations' => [
+        ...$repurpose->destinations,
+        ['social_account_id' => $stranger->id, 'content_type' => ContentType::TikTokVideo->value, 'meta' => []],
+    ]]);
+
+    processItem($item);
+
+    expect(Post::where('repurpose_item_id', $item->id)->count())->toBe(2);
 });

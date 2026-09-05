@@ -290,3 +290,68 @@ test('a repurpose can only be resumed from paused', function () {
 
     expect(fn () => ResumeRepurpose::execute($repurpose))->toThrow(ValidationException::class);
 });
+
+test('a draft cannot be paused, so resuming can never start from a blank watermark', function () {
+    $repurpose = Repurpose::factory()->create(['status' => Status::Draft]);
+
+    expect(fn () => PauseRepurpose::execute($repurpose))->toThrow(ValidationException::class);
+
+    expect($repurpose->fresh()->status)->toBe(Status::Draft);
+});
+
+test('resuming stamps a watermark when the repurpose somehow lacks one', function () {
+    $repurpose = Repurpose::factory()->create([
+        'status' => Status::Paused,
+        'activated_at' => null,
+    ]);
+
+    $resumed = ResumeRepurpose::execute($repurpose);
+
+    expect($resumed->status)->toBe(Status::Active)
+        ->and($resumed->activated_at)->not->toBeNull();
+});
+
+test('an already active repurpose cannot be activated again over its watermark', function () {
+    [$workspace, $user, $account] = repurposeWorkspace();
+
+    $repurpose = Repurpose::factory()->active()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $account->id,
+        'destinations' => [tiktokDestination($workspace)],
+        'activated_at' => now()->subDays(5),
+    ]);
+
+    expect(fn () => ActivateRepurpose::execute($repurpose))->toThrow(ValidationException::class);
+
+    expect($repurpose->fresh()->activated_at->isSameDay(now()->subDays(5)))->toBeTrue();
+});
+
+test('a draft cannot be turned off', function () {
+    $repurpose = Repurpose::factory()->create(['status' => Status::Draft]);
+
+    expect(fn () => DisableRepurpose::execute($repurpose))->toThrow(ValidationException::class);
+
+    expect($repurpose->fresh()->status)->toBe(Status::Draft);
+});
+
+test('an update the activation rules reject leaves the stored destinations untouched', function () {
+    [$workspace, $user, $account] = repurposeWorkspace();
+
+    $destination = tiktokDestination($workspace);
+
+    $repurpose = Repurpose::factory()->active()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $account->id,
+        'destinations' => [$destination],
+    ]);
+
+    $pinterest = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Pinterest]);
+
+    expect(fn () => UpdateRepurpose::execute($repurpose, ['destinations' => [[
+        'social_account_id' => $pinterest->id,
+        'content_type' => ContentType::PinterestPin->value,
+        'meta' => [],
+    ]]]))->toThrow(ValidationException::class);
+
+    expect($repurpose->fresh()->destinations)->toEqual([$destination]);
+});

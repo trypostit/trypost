@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Ai\Agents\PostContentShortener;
 use App\Enums\SocialAccount\Platform;
+use App\Models\AiUsageLog;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Repurpose\CaptionAdapter;
 
@@ -10,7 +13,7 @@ test('a caption that fits is returned untouched', function () {
     $workspace = Workspace::factory()->create();
     $caption = 'Short and sweet';
 
-    expect(app(CaptionAdapter::class)->adapt($workspace, null, $caption, Platform::TikTok, null))
+    expect(app(CaptionAdapter::class)->adapt($workspace, null, $caption, Platform::TikTok))
         ->toBe($caption);
 });
 
@@ -20,7 +23,7 @@ test('a caption that does not fit is truncated at a word boundary when ai is una
 
     expect(Platform::TikTok->contentOverflow($caption))->toBeGreaterThan(0);
 
-    $result = app(CaptionAdapter::class)->adapt($workspace, null, $caption, Platform::TikTok, null);
+    $result = app(CaptionAdapter::class)->adapt($workspace, null, $caption, Platform::TikTok);
 
     expect(Platform::TikTok->contentOverflow($result))->toBe(0)
         ->and($result)->not->toEndWith('palavr')
@@ -31,8 +34,34 @@ test('truncation respects the tightest limit we support', function () {
     $workspace = Workspace::factory()->create();
     $caption = 'A really long YouTube Short caption that keeps going well past one hundred characters so it has to be cut somewhere sensible.';
 
-    $result = app(CaptionAdapter::class)->adapt($workspace, null, $caption, Platform::YouTube, null);
+    $result = app(CaptionAdapter::class)->adapt($workspace, null, $caption, Platform::YouTube);
 
     expect(Platform::YouTube->contentOverflow($result))->toBe(0)
         ->and($result)->toStartWith('A really long YouTube Short caption');
+});
+
+test('ai shortens the caption and the workspace is billed for it', function () {
+    config()->set('trypost.self_hosted', true);
+    PostContentShortener::fake(['A tight caption that fits.']);
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
+
+    $result = app(CaptionAdapter::class)->adapt($workspace, $user, str_repeat('palavra ', 2000), Platform::YouTube);
+
+    expect($result)->toBe('A tight caption that fits.')
+        ->and(AiUsageLog::where('workspace_id', $workspace->id)->count())->toBe(1);
+});
+
+test('a shortened caption that still overflows falls back to truncation', function () {
+    config()->set('trypost.self_hosted', true);
+    PostContentShortener::fake([str_repeat('ainda enorme ', 200)]);
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
+
+    $result = app(CaptionAdapter::class)->adapt($workspace, $user, str_repeat('palavra ', 2000), Platform::YouTube);
+
+    expect(Platform::YouTube->contentOverflow($result))->toBe(0)
+        ->and($result)->toStartWith('palavra');
 });

@@ -274,3 +274,22 @@ test('a business rate limit backs off even without the english wording', functio
 
     expect(now()->diffInMinutes($repurpose->fresh()->next_poll_at, absolute: true))->toBeGreaterThan(30);
 });
+
+test('a token echoed back by the source never lands in the stored error', function () {
+    Bus::fake();
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/*' => Http::response(
+            'Invalid OAuth request: access_token=EAAG-super-secret',
+            400,
+        ),
+    ]);
+
+    $account = instagramAccount();
+    $repurpose = activeRepurposeOn($account);
+
+    poll($account);
+
+    expect($repurpose->fresh()->last_error)
+        ->toContain('[REDACTED]')
+        ->not->toContain('EAAG-super-secret');
+});
