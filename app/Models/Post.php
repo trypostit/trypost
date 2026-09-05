@@ -36,6 +36,7 @@ class Post extends Model
         'media',
         'status',
         'created_via',
+        'repurpose_item_id',
         'scheduled_at',
         'published_at',
     ];
