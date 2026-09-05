@@ -141,7 +141,7 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
      *
      * @param  array<int, Post>  $posts
      */
-    private function failDownload(array $posts): void
+    private function failDownload(array $posts): never
     {
         foreach ($posts as $post) {
             $post->forceDelete();
