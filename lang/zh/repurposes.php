@@ -7,12 +7,17 @@ return [
     'description' => '把你在 TryPost 之外发布的视频，自动同步到其他平台。',
     'new' => '新建 Repurpose',
 
+    'flow' => [
+        'no_destinations' => '还没有目标',
+    ],
+
     'empty' => [
         'title' => '还没有设置 Repurpose',
         'description' => '在下面选一个起点。TryPost 会盯着你选的账号，把每条新视频转发到你勾选的平台。',
     ],
 
     'table' => [
+        'flow' => '流程',
         'source' => '来源',
         'destinations' => '目标',
         'status' => '状态',
@@ -46,6 +51,7 @@ return [
         'source_placeholder' => '选择账号',
         'no_accounts' => '请先连接 Instagram 或 Facebook 账号。只有它们能作为来源，因为只有这两个平台允许我们下载视频。',
         'submit' => '创建',
+        'connect' => '连接账号',
     ],
 
     'show' => [
@@ -63,6 +69,7 @@ return [
         'description' => '来源的每条新视频都会发布到你在这里选中的所有账号。',
         'hint' => '只有当文案超出该平台上限时，才会按平台调整。',
         'none_available' => '这个工作区还没有连接其他账号。',
+        'save' => '保存目标',
     ],
 
     'status_card' => [

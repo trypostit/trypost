@@ -7,12 +7,17 @@ return [
     'description' => 'Videos, die du außerhalb von TryPost postest, automatisch auf deinen anderen Netzwerken wiederveröffentlichen.',
     'new' => 'Neues Repurpose',
 
+    'flow' => [
+        'no_destinations' => 'Noch kein Ziel',
+    ],
+
     'empty' => [
         'title' => 'Noch kein Repurpose eingerichtet',
         'description' => 'Wähle unten einen Startpunkt. TryPost beobachtet das gewählte Konto und veröffentlicht jedes neue Video erneut auf den Netzwerken deiner Wahl.',
     ],
 
     'table' => [
+        'flow' => 'Ablauf',
         'source' => 'Quelle',
         'destinations' => 'Ziele',
         'status' => 'Status',
@@ -46,6 +51,7 @@ return [
         'source_placeholder' => 'Konto auswählen',
         'no_accounts' => 'Verbinde zuerst ein Instagram- oder Facebook-Konto. Nur diese können Quelle sein, weil nur sie den Download des Videos erlauben.',
         'submit' => 'Erstellen',
+        'connect' => 'Konto verbinden',
     ],
 
     'show' => [
@@ -63,6 +69,7 @@ return [
         'description' => 'Jedes neue Video der Quelle wird auf jedem hier gewählten Konto veröffentlicht.',
         'hint' => 'Der Text wird nur dann pro Netzwerk angepasst, wenn er dessen Limit überschreitet.',
         'none_available' => 'In diesem Workspace ist noch kein weiteres Konto verbunden.',
+        'save' => 'Ziele speichern',
     ],
 
     'status_card' => [

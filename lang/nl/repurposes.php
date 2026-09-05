@@ -7,12 +7,17 @@ return [
     'description' => 'Publiceer video\'s die je buiten TryPost post automatisch opnieuw op je andere netwerken.',
     'new' => 'Nieuwe repurpose',
 
+    'flow' => [
+        'no_destinations' => 'Nog geen bestemming',
+    ],
+
     'empty' => [
         'title' => 'Nog geen repurpose ingesteld',
         'description' => 'Kies hieronder een startpunt. TryPost volgt het gekozen account en plaatst elke nieuwe video opnieuw op de netwerken die je aanvinkt.',
     ],
 
     'table' => [
+        'flow' => 'Stroom',
         'source' => 'Bron',
         'destinations' => 'Bestemmingen',
         'status' => 'Status',
@@ -46,6 +51,7 @@ return [
         'source_placeholder' => 'Selecteer een account',
         'no_accounts' => 'Koppel eerst een Instagram- of Facebook-account. Alleen die kunnen bron zijn, want alleen zij laten ons de video downloaden.',
         'submit' => 'Aanmaken',
+        'connect' => 'Account koppelen',
     ],
 
     'show' => [
@@ -63,6 +69,7 @@ return [
         'description' => 'Elke nieuwe video van de bron wordt geplaatst op elk account dat je hier selecteert.',
         'hint' => 'Het bijschrift wordt alleen per netwerk aangepast als het de limiet van dat netwerk overschrijdt.',
         'none_available' => 'Er is nog geen ander account gekoppeld in deze workspace.',
+        'save' => 'Bestemmingen opslaan',
     ],
 
     'status_card' => [

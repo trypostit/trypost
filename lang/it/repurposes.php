@@ -7,12 +7,17 @@ return [
     'description' => 'Ripubblica automaticamente sulle altre reti i video che pubblichi fuori da TryPost.',
     'new' => 'Nuovo repurpose',
 
+    'flow' => [
+        'no_destinations' => 'Nessuna destinazione',
+    ],
+
     'empty' => [
         'title' => 'Nessun repurpose configurato',
         'description' => 'Scegli un punto di partenza qui sotto. TryPost tiene d\'occhio l\'account scelto e ripubblica ogni nuovo video sulle reti che selezioni.',
     ],
 
     'table' => [
+        'flow' => 'Flusso',
         'source' => 'Origine',
         'destinations' => 'Destinazioni',
         'status' => 'Stato',
@@ -46,6 +51,7 @@ return [
         'source_placeholder' => 'Seleziona un account',
         'no_accounts' => 'Collega prima un account Instagram o Facebook. Solo questi possono essere origine, perché sono le uniche reti che permettono di scaricare il video.',
         'submit' => 'Crea',
+        'connect' => 'Collega un account',
     ],
 
     'show' => [
@@ -63,6 +69,7 @@ return [
         'description' => 'Ogni nuovo video dell\'origine viene pubblicato su tutti gli account selezionati qui.',
         'hint' => 'La didascalia viene adattata per rete solo quando supera il limite di quella rete.',
         'none_available' => 'Nessun altro account è collegato in questo workspace.',
+        'save' => 'Salva destinazioni',
     ],
 
     'status_card' => [

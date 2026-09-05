@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { IconCheck } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
+import PlatformLogo from '@/components/repurpose/PlatformLogo.vue';
+import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import type { ChannelAccount } from '@/types/channel';
 import type { RepurposeDestination } from '@/types/repurpose';
 
@@ -43,31 +44,43 @@ const toggle = (account: ChannelAccount) => {
 
 <template>
     <div class="space-y-3" data-testid="destination-picker">
-        <p v-if="supported.length === 0" class="text-sm text-muted-foreground">
+        <p v-if="supported.length === 0" class="rounded-lg border-2 border-dashed border-foreground/20 p-4 text-sm text-muted-foreground">
             {{ $t('repurposes.destinations.none_available') }}
         </p>
 
         <div v-else class="grid gap-3 sm:grid-cols-2">
-            <label
+            <button
                 v-for="account in supported"
                 :key="account.id"
-                class="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-foreground/10 p-3 transition hover:border-foreground/30"
+                type="button"
+                class="group relative flex items-center gap-3 rounded-xl border-2 border-foreground p-3 text-left shadow-xs transition-shadow hover:shadow-md"
+                :class="
+                    selectedIds.includes(account.id)
+                        ? 'bg-emerald-50'
+                        : 'bg-card'
+                "
                 :data-testid="`destination-${account.id}`"
+                @click="toggle(account)"
             >
-                <Checkbox
-                    :model-value="selectedIds.includes(account.id)"
-                    @update:model-value="toggle(account)"
-                />
+                <PlatformLogo :platform="account.platform" />
 
-                <span class="min-w-0">
-                    <span class="block truncate text-sm font-semibold">{{ account.display_label }}</span>
-                    <span class="block truncate text-xs text-muted-foreground">{{ account.platform }}</span>
+                <span class="min-w-0 flex-1">
+                    <span class="block truncate text-sm font-bold">{{ account.display_name }}</span>
+                    <span class="block truncate text-xs text-muted-foreground">
+                        {{ getPlatformLabel(account.platform) }}
+                    </span>
                 </span>
-            </label>
+
+                <span
+                    v-if="selectedIds.includes(account.id)"
+                    class="absolute -top-2 -right-2 inline-flex size-6 items-center justify-center rounded-full border-2 border-foreground bg-emerald-200 text-emerald-700 shadow-2xs"
+                    aria-hidden="true"
+                >
+                    <IconCheck class="size-3.5" stroke-width="3" />
+                </span>
+            </button>
         </div>
 
-        <Label class="text-xs text-muted-foreground">
-            {{ $t('repurposes.destinations.hint') }}
-        </Label>
+        <p class="text-xs text-muted-foreground">{{ $t('repurposes.destinations.hint') }}</p>
     </div>
 </template>

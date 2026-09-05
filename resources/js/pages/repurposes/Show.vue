@@ -2,11 +2,12 @@
 import { Head, useForm } from '@inertiajs/vue3';
 import { IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import DestinationPicker from '@/components/repurpose/DestinationPicker.vue';
+import RepurposeFlow from '@/components/repurpose/RepurposeFlow.vue';
 import RepurposeItemList from '@/components/repurpose/RepurposeItemList.vue';
 import RepurposeStatusCard from '@/components/repurpose/RepurposeStatusCard.vue';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,15 @@ const form = useForm<{ destinations: RepurposeDestination[] }>({
     destinations: props.repurpose.destinations ?? [],
 });
 
+const selectedPlatforms = computed(() =>
+    form.destinations
+        .map(
+            (destination) =>
+                props.destinationAccounts.find((account) => account.id === destination.social_account_id)?.platform ?? '',
+        )
+        .filter(Boolean),
+);
+
 const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
 const save = () => {
@@ -60,8 +70,14 @@ const handleDelete = () => {
     <AppLayout>
         <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
             <PageHeader
-                :title="repurpose.source_account?.display_label ?? $t('repurposes.show.title')"
+                :title="repurpose.source_account?.display_name ?? $t('repurposes.show.title')"
                 :description="$t('repurposes.show.description')"
+            />
+
+            <RepurposeFlow
+                :source="repurpose.source_account?.platform ?? ''"
+                :destinations="selectedPlatforms"
+                size="lg"
             />
 
             <Tabs default-value="configuration">
@@ -91,7 +107,7 @@ const handleDelete = () => {
                             />
 
                             <Button data-testid="save-destinations" :disabled="form.processing" @click="save">
-                                {{ $t('common.save') }}
+                                {{ $t('repurposes.destinations.save') }}
                             </Button>
                         </CardContent>
                     </Card>

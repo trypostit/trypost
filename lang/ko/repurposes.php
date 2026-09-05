@@ -7,12 +7,17 @@ return [
     'description' => 'TryPost 외부에서 올린 영상을 다른 네트워크에 자동으로 다시 게시합니다.',
     'new' => '새 Repurpose',
 
+    'flow' => [
+        'no_destinations' => '아직 대상이 없습니다',
+    ],
+
     'empty' => [
         'title' => '아직 설정된 Repurpose가 없습니다',
         'description' => '아래에서 시작점을 고르세요. TryPost가 선택한 계정을 지켜보다가 새 영상을 선택한 네트워크에 다시 게시합니다.',
     ],
 
     'table' => [
+        'flow' => '흐름',
         'source' => '소스',
         'destinations' => '대상',
         'status' => '상태',
@@ -46,6 +51,7 @@ return [
         'source_placeholder' => '계정 선택',
         'no_accounts' => '먼저 Instagram이나 Facebook 계정을 연결하세요. 영상을 내려받을 수 있는 네트워크는 이 둘뿐이라 소스도 이 둘만 가능합니다.',
         'submit' => '만들기',
+        'connect' => '계정 연결',
     ],
 
     'show' => [
@@ -63,6 +69,7 @@ return [
         'description' => '소스의 새 영상은 여기서 선택한 모든 계정에 게시됩니다.',
         'hint' => '캡션은 해당 네트워크의 한도를 넘을 때만 조정됩니다.',
         'none_available' => '이 워크스페이스에 연결된 다른 계정이 아직 없습니다.',
+        'save' => '대상 저장',
     ],
 
     'status_card' => [

@@ -7,12 +7,17 @@ return [
     'description' => 'TryPost の外で投稿した動画を、他のネットワークへ自動で再投稿します。',
     'new' => '新しい Repurpose',
 
+    'flow' => [
+        'no_destinations' => '配信先はまだありません',
+    ],
+
     'empty' => [
         'title' => 'Repurpose はまだ設定されていません',
         'description' => '下から出発点を選んでください。TryPost が選んだアカウントを見張り、新しい動画をチェックしたネットワークへ再投稿します。',
     ],
 
     'table' => [
+        'flow' => 'フロー',
         'source' => 'ソース',
         'destinations' => '配信先',
         'status' => 'ステータス',
@@ -46,6 +51,7 @@ return [
         'source_placeholder' => 'アカウントを選択',
         'no_accounts' => '先に Instagram か Facebook のアカウントを接続してください。動画をダウンロードできるのはこの 2 つだけなので、ソースになれるのもこの 2 つだけです。',
         'submit' => '作成',
+        'connect' => 'アカウントを接続',
     ],
 
     'show' => [
@@ -63,6 +69,7 @@ return [
         'description' => 'ソースの新しい動画は、ここで選んだすべてのアカウントに投稿されます。',
         'hint' => 'キャプションは、そのネットワークの上限を超えたときだけ調整されます。',
         'none_available' => 'このワークスペースにはまだ他のアカウントが接続されていません。',
+        'save' => '配信先を保存',
     ],
 
     'status_card' => [

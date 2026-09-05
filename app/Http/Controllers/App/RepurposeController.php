@@ -36,6 +36,7 @@ class RepurposeController extends Controller
             'repurposes' => ListRepurposes::execute($workspace),
             'templates' => Templates::all(),
             'sourceAccounts' => SocialAccountResource::collection($this->sourceAccounts($request)),
+            'destinationAccounts' => SocialAccountResource::collection($this->connectedAccounts($request)),
         ]);
     }
 
@@ -46,7 +47,9 @@ class RepurposeController extends Controller
         return Inertia::render('repurposes/Show', [
             'repurpose' => $repurpose->load('sourceAccount'),
             'sourceAccounts' => SocialAccountResource::collection($this->sourceAccounts($request)),
-            'destinationAccounts' => SocialAccountResource::collection($this->destinationAccounts($request, $repurpose)),
+            'destinationAccounts' => SocialAccountResource::collection(
+                $this->connectedAccounts($request)->whereNotIn('id', [$repurpose->source_social_account_id])->values(),
+            ),
             'items' => Inertia::scroll(fn () => ListRepurposeItems::execute($repurpose)),
         ]);
     }
@@ -135,12 +138,11 @@ class RepurposeController extends Controller
      * Accounts, not networks: a workspace may hold two Instagram accounts and
      * both are valid destinations.
      */
-    private function destinationAccounts(Request $request, Repurpose $repurpose)
+    private function connectedAccounts(Request $request)
     {
         return $request->user()->currentWorkspace
             ->socialAccounts()
             ->active()
-            ->whereKeyNot($repurpose->source_social_account_id)
             ->get();
     }
 }

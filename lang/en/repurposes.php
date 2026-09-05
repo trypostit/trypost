@@ -7,12 +7,17 @@ return [
     'description' => 'Replicate videos you post outside TryPost to your other networks, automatically.',
     'new' => 'New repurpose',
 
+    'flow' => [
+        'no_destinations' => 'No destination yet',
+    ],
+
     'empty' => [
         'title' => 'No repurpose set up yet',
         'description' => 'Pick a starting point below. TryPost watches the account you choose and republishes every new video to the networks you pick.',
     ],
 
     'table' => [
+        'flow' => 'Flow',
         'source' => 'Source',
         'destinations' => 'Destinations',
         'status' => 'Status',
@@ -46,6 +51,7 @@ return [
         'source_placeholder' => 'Select an account',
         'no_accounts' => 'Connect an Instagram or Facebook account first. Only these can be a source, because they are the only networks that let us download the video.',
         'submit' => 'Create',
+        'connect' => 'Connect an account',
     ],
 
     'show' => [
@@ -63,6 +69,7 @@ return [
         'description' => 'Every new video from the source is published to each account you select here.',
         'hint' => 'Captions are adapted per network only when they exceed that network\'s limit.',
         'none_available' => 'No other account is connected in this workspace yet.',
+        'save' => 'Save destinations',
     ],
 
     'status_card' => [

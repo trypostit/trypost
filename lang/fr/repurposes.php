@@ -7,12 +7,17 @@ return [
     'description' => 'Republiez automatiquement sur vos autres réseaux les vidéos que vous postez en dehors de TryPost.',
     'new' => 'Nouveau repurpose',
 
+    'flow' => [
+        'no_destinations' => 'Aucune destination',
+    ],
+
     'empty' => [
         'title' => 'Aucun repurpose configuré',
         'description' => 'Choisissez un point de départ ci-dessous. TryPost surveille le compte choisi et republie chaque nouvelle vidéo sur les réseaux que vous sélectionnez.',
     ],
 
     'table' => [
+        'flow' => 'Flux',
         'source' => 'Source',
         'destinations' => 'Destinations',
         'status' => 'Statut',
@@ -46,6 +51,7 @@ return [
         'source_placeholder' => 'Sélectionner un compte',
         'no_accounts' => 'Connectez d\'abord un compte Instagram ou Facebook. Seuls ces réseaux peuvent être source, car ce sont les seuls qui permettent de télécharger la vidéo.',
         'submit' => 'Créer',
+        'connect' => 'Connecter un compte',
     ],
 
     'show' => [
@@ -63,6 +69,7 @@ return [
         'description' => 'Chaque nouvelle vidéo de la source est publiée sur chaque compte sélectionné ici.',
         'hint' => 'La légende n\'est adaptée par réseau que lorsqu\'elle dépasse la limite de ce réseau.',
         'none_available' => 'Aucun autre compte n\'est connecté dans cet espace de travail.',
+        'save' => 'Enregistrer les destinations',
     ],
 
     'status_card' => [

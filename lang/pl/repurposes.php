@@ -7,12 +7,17 @@ return [
     'description' => 'Automatycznie publikuj w pozostałych sieciach filmy, które wrzucasz poza TryPost.',
     'new' => 'Nowy repurpose',
 
+    'flow' => [
+        'no_destinations' => 'Brak celu',
+    ],
+
     'empty' => [
         'title' => 'Nie skonfigurowano jeszcze repurpose',
         'description' => 'Wybierz punkt startowy poniżej. TryPost obserwuje wybrane konto i publikuje każdy nowy film w sieciach, które zaznaczysz.',
     ],
 
     'table' => [
+        'flow' => 'Przepływ',
         'source' => 'Źródło',
         'destinations' => 'Cele',
         'status' => 'Status',
@@ -46,6 +51,7 @@ return [
         'source_placeholder' => 'Wybierz konto',
         'no_accounts' => 'Najpierw połącz konto Instagrama lub Facebooka. Tylko one mogą być źródłem, bo tylko te sieci pozwalają pobrać film.',
         'submit' => 'Utwórz',
+        'connect' => 'Połącz konto',
     ],
 
     'show' => [
@@ -63,6 +69,7 @@ return [
         'description' => 'Każdy nowy film ze źródła trafia na wszystkie zaznaczone tu konta.',
         'hint' => 'Opis jest dostosowywany do sieci tylko wtedy, gdy przekracza jej limit.',
         'none_available' => 'W tym obszarze roboczym nie ma jeszcze innego połączonego konta.',
+        'save' => 'Zapisz cele',
     ],
 
     'status_card' => [

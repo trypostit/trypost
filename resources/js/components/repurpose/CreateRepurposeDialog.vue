@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { useForm } from '@inertiajs/vue3';
+import { Link, useForm } from '@inertiajs/vue3';
+import { IconPlugConnected } from '@tabler/icons-vue';
 import { computed, watch } from 'vue';
 
 import InputError from '@/components/InputError.vue';
+import PlatformLogo from '@/components/repurpose/PlatformLogo.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -12,14 +14,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import { accounts } from '@/routes/app';
 import { store } from '@/routes/app/repurposes';
 import type { ChannelAccount } from '@/types/channel';
 
@@ -54,6 +50,10 @@ watch(open, (isOpen) => {
     form.source_social_account_id = selectableAccounts.value[0]?.id ?? '';
 });
 
+const select = (account: ChannelAccount) => {
+    form.source_social_account_id = account.id;
+};
+
 const submit = () => {
     form.post(store.url(), {
         onSuccess: () => {
@@ -71,30 +71,56 @@ const submit = () => {
                 <DialogDescription>{{ $t('repurposes.create.description') }}</DialogDescription>
             </DialogHeader>
 
-            <form class="space-y-4" @submit.prevent="submit">
-                <div class="space-y-2">
-                    <Label for="repurpose-source">{{ $t('repurposes.create.source_label') }}</Label>
-
-                    <Select v-model="form.source_social_account_id">
-                        <SelectTrigger id="repurpose-source" data-testid="repurpose-source-select">
-                            <SelectValue :placeholder="$t('repurposes.create.source_placeholder')" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem
-                                v-for="account in selectableAccounts"
-                                :key="account.id"
-                                :value="account.id"
-                            >
-                                {{ account.display_label }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-
-                    <InputError :message="form.errors.source_social_account_id" />
-
-                    <p v-if="selectableAccounts.length === 0" class="text-sm text-muted-foreground">
+            <div v-if="selectableAccounts.length === 0" class="space-y-4 py-2">
+                <div class="flex items-start gap-3 rounded-lg border-2 border-dashed border-foreground/20 p-4">
+                    <IconPlugConnected class="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+                    <p class="text-sm text-muted-foreground">
                         {{ $t('repurposes.create.no_accounts') }}
                     </p>
+                </div>
+
+                <DialogFooter>
+                    <Button as-child data-testid="connect-account-cta">
+                        <Link :href="accounts.url()">{{ $t('repurposes.create.connect') }}</Link>
+                    </Button>
+                    <Button type="button" variant="ghost" @click="open = false">
+                        {{ $t('common.cancel') }}
+                    </Button>
+                </DialogFooter>
+            </div>
+
+            <form v-else class="space-y-4" @submit.prevent="submit">
+                <div class="space-y-2">
+                    <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">
+                        {{ $t('repurposes.create.source_label') }}
+                    </p>
+
+                    <div class="grid gap-2">
+                        <button
+                            v-for="account in selectableAccounts"
+                            :key="account.id"
+                            type="button"
+                            class="group flex items-center gap-3 rounded-xl border-2 border-foreground p-3 text-left shadow-xs transition-shadow hover:shadow-md"
+                            :class="
+                                form.source_social_account_id === account.id
+                                    ? 'bg-emerald-50'
+                                    : 'bg-card'
+                            "
+                            :data-testid="`source-account-${account.id}`"
+                            @click="select(account)"
+                        >
+                            <PlatformLogo :platform="account.platform" />
+
+                            <span class="min-w-0">
+                                <span class="block truncate text-sm font-bold">{{ account.display_name }}</span>
+                                <span class="block truncate text-xs text-muted-foreground">
+                                    {{ getPlatformLabel(account.platform) }}
+                                </span>
+                            </span>
+                        </button>
+                    </div>
+
+                    <InputError :message="form.errors.source_social_account_id" />
                 </div>
 
                 <DialogFooter>

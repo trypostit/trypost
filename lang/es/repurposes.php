@@ -7,12 +7,17 @@ return [
     'description' => 'Replica automáticamente en tus otras redes los vídeos que publicas fuera de TryPost.',
     'new' => 'Nuevo repurpose',
 
+    'flow' => [
+        'no_destinations' => 'Aún sin destino',
+    ],
+
     'empty' => [
         'title' => 'Aún no hay ningún repurpose',
         'description' => 'Elige un punto de partida abajo. TryPost vigila la cuenta que elijas y republica cada vídeo nuevo en las redes que marques.',
     ],
 
     'table' => [
+        'flow' => 'Flujo',
         'source' => 'Origen',
         'destinations' => 'Destinos',
         'status' => 'Estado',
@@ -46,6 +51,7 @@ return [
         'source_placeholder' => 'Selecciona una cuenta',
         'no_accounts' => 'Conecta antes una cuenta de Instagram o Facebook. Solo ellas pueden ser origen, porque son las únicas redes que permiten descargar el vídeo.',
         'submit' => 'Crear',
+        'connect' => 'Conectar una cuenta',
     ],
 
     'show' => [
@@ -63,6 +69,7 @@ return [
         'description' => 'Cada vídeo nuevo del origen se publica en todas las cuentas que selecciones aquí.',
         'hint' => 'El texto solo se adapta por red cuando supera el límite de esa red.',
         'none_available' => 'No hay ninguna otra cuenta conectada en este espacio de trabajo.',
+        'save' => 'Guardar destinos',
     ],
 
     'status_card' => [

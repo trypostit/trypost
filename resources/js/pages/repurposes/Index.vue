@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { IconRepeat, IconTrash } from '@tabler/icons-vue';
+import { IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { ref } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
-import EmptyState from '@/components/EmptyState.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import CreateRepurposeDialog from '@/components/repurpose/CreateRepurposeDialog.vue';
+import RepurposeFlow from '@/components/repurpose/RepurposeFlow.vue';
 import RepurposeTemplateCard from '@/components/repurpose/RepurposeTemplateCard.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,10 +26,11 @@ import type { ChannelAccount } from '@/types/channel';
 import type { Repurpose, RepurposeTemplate } from '@/types/repurpose';
 import { repurposeStatusVariant } from '@/types/repurpose-status';
 
-defineProps<{
+const props = defineProps<{
     repurposes: Repurpose[];
     templates: RepurposeTemplate[];
     sourceAccounts: ChannelAccount[];
+    destinationAccounts: ChannelAccount[];
 }>();
 
 const createDialogOpen = ref(false);
@@ -49,6 +50,12 @@ const startBlank = () => {
     activeTemplate.value = null;
     createDialogOpen.value = true;
 };
+
+const accountPlatform = (id: string) =>
+    props.destinationAccounts.find((account) => account.id === id)?.platform ?? '';
+
+const destinationPlatforms = (repurpose: Repurpose) =>
+    repurpose.destinations.map((destination) => accountPlatform(destination.social_account_id)).filter(Boolean);
 
 const handleDelete = (repurpose: Repurpose) => {
     confirmDeleteModal.value?.open({
@@ -71,14 +78,13 @@ const handleDelete = (repurpose: Repurpose) => {
                 </Button>
             </div>
 
-            <div v-if="repurposes.length === 0" class="space-y-6">
-                <EmptyState
-                    :icon="IconRepeat"
-                    :title="$t('repurposes.empty.title')"
-                    :description="$t('repurposes.empty.description')"
-                />
+            <div v-if="repurposes.length === 0" class="space-y-4">
+                <div>
+                    <p class="text-sm font-bold text-foreground">{{ $t('repurposes.empty.title') }}</p>
+                    <p class="text-sm text-foreground/60">{{ $t('repurposes.empty.description') }}</p>
+                </div>
 
-                <div class="grid gap-4 sm:grid-cols-2">
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <RepurposeTemplateCard
                         v-for="template in templates"
                         :key="template.key"
@@ -91,8 +97,8 @@ const handleDelete = (repurpose: Repurpose) => {
             <Table v-else data-testid="repurposes-table">
                 <TableHeader>
                     <TableRow>
+                        <TableHead>{{ $t('repurposes.table.flow') }}</TableHead>
                         <TableHead>{{ $t('repurposes.table.source') }}</TableHead>
-                        <TableHead>{{ $t('repurposes.table.destinations') }}</TableHead>
                         <TableHead>{{ $t('repurposes.table.status') }}</TableHead>
                         <TableHead>{{ $t('repurposes.table.published') }}</TableHead>
                         <TableHead>{{ $t('repurposes.table.last_polled') }}</TableHead>
@@ -108,8 +114,16 @@ const handleDelete = (repurpose: Repurpose) => {
                         :data-testid="`repurpose-row-${repurpose.id}`"
                         @click="openRepurpose(repurpose)"
                     >
-                        <TableCell>{{ repurpose.source_account?.display_label }}</TableCell>
-                        <TableCell>{{ repurpose.destinations.length }}</TableCell>
+                        <TableCell>
+                            <RepurposeFlow
+                                :source="repurpose.source_account?.platform ?? ''"
+                                :destinations="destinationPlatforms(repurpose)"
+                                size="sm"
+                            />
+                        </TableCell>
+                        <TableCell>
+                            <span class="text-sm font-semibold">{{ repurpose.source_account?.display_name }}</span>
+                        </TableCell>
                         <TableCell>
                             <Badge :variant="repurposeStatusVariant(repurpose.status)">
                                 {{ $t(`repurposes.status.${repurpose.status}`) }}

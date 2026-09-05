@@ -7,12 +7,17 @@ return [
     'description' => 'TryPost dışında paylaştığın videoları diğer ağlarında otomatik olarak yeniden yayınla.',
     'new' => 'Yeni repurpose',
 
+    'flow' => [
+        'no_destinations' => 'Henüz hedef yok',
+    ],
+
     'empty' => [
         'title' => 'Henüz repurpose kurulmadı',
         'description' => 'Aşağıdan bir başlangıç noktası seç. TryPost seçtiğin hesabı izler ve her yeni videoyu işaretlediğin ağlarda yeniden yayınlar.',
     ],
 
     'table' => [
+        'flow' => 'Akış',
         'source' => 'Kaynak',
         'destinations' => 'Hedefler',
         'status' => 'Durum',
@@ -46,6 +51,7 @@ return [
         'source_placeholder' => 'Bir hesap seç',
         'no_accounts' => 'Önce bir Instagram veya Facebook hesabı bağla. Yalnızca bunlar kaynak olabilir, çünkü videoyu indirmemize izin veren tek ağlar bunlar.',
         'submit' => 'Oluştur',
+        'connect' => 'Hesap bağla',
     ],
 
     'show' => [
@@ -63,6 +69,7 @@ return [
         'description' => 'Kaynaktaki her yeni video, burada seçtiğin tüm hesaplarda yayınlanır.',
         'hint' => 'Açıklama yalnızca o ağın sınırını aştığında ağa göre uyarlanır.',
         'none_available' => 'Bu çalışma alanında bağlı başka hesap yok.',
+        'save' => 'Hedefleri kaydet',
     ],
 
     'status_card' => [
