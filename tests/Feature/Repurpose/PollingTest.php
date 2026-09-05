@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Repurpose\ItemReason;
 use App\Enums\Repurpose\ItemStatus;
+use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Repurpose\PollRepurposeSource;
@@ -22,11 +23,12 @@ function fakeInstagramMedia(array $rows): void
     Http::fake([config('trypost.platforms.instagram.graph_api').'/*' => Http::response(['data' => $rows])]);
 }
 
-function instagramVideoRow(string $id = 'm1', ?string $url = 'https://cdn.example.com/v.mp4'): array
+function mediaRow(string $id = 'm1', string $productType = 'REELS', ?string $url = 'https://cdn.example.com/v.mp4'): array
 {
     return array_filter([
         'id' => $id,
         'media_type' => 'VIDEO',
+        'media_product_type' => $productType,
         'media_url' => $url,
         'caption' => 'Hi',
         'permalink' => 'https://instagram.com/p/1',
@@ -34,61 +36,87 @@ function instagramVideoRow(string $id = 'm1', ?string $url = 'https://cdn.exampl
     ], fn ($value) => $value !== null);
 }
 
-function activeRepurpose(): Repurpose
+function instagramAccount(): SocialAccount
 {
     $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
 
+    return SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
+}
+
+function activeRepurposeOn(SocialAccount $account, SourceFormat $format = SourceFormat::Reel): Repurpose
+{
     return Repurpose::factory()->active()->create([
-        'workspace_id' => $workspace->id,
+        'workspace_id' => $account->workspace_id,
         'source_social_account_id' => $account->id,
+        'source_format' => $format,
+        'activated_at' => now()->subYear(),
     ]);
 }
 
-function poll(Repurpose $repurpose): void
+function poll(SocialAccount $account): void
 {
-    (new PollRepurposeSource($repurpose))->handle(app(SourceFetcherFactory::class));
+    (new PollRepurposeSource($account))->handle(app(SourceFetcherFactory::class));
 }
 
-test('a new video creates a pending item and dispatches processing', function () {
+test('a new video of the watched format creates a pending item and dispatches processing', function () {
     Bus::fake();
-    fakeInstagramMedia([instagramVideoRow()]);
+    fakeInstagramMedia([mediaRow()]);
 
-    $repurpose = activeRepurpose();
-    poll($repurpose);
+    $account = instagramAccount();
+    $repurpose = activeRepurposeOn($account);
+
+    poll($account);
 
     $item = $repurpose->items()->sole();
 
     expect($item->status)->toBe(ItemStatus::Pending)
         ->and($item->source_media_id)->toBe('m1')
-        ->and($item->source_permalink)->toBe('https://instagram.com/p/1')
         ->and($repurpose->fresh()->last_polled_at)->not->toBeNull()
         ->and($repurpose->fresh()->next_poll_at)->not->toBeNull();
 
     Bus::assertDispatched(ProcessRepurposeItem::class);
 });
 
-test('an image is skipped as not a video', function () {
+test('a format the repurpose does not watch is ignored entirely', function () {
     Bus::fake();
-    fakeInstagramMedia([['id' => 'm2', 'media_type' => 'IMAGE', 'media_url' => 'https://cdn.example.com/i.jpg', 'caption' => '', 'timestamp' => '2026-09-04T10:00:00+0000']]);
+    fakeInstagramMedia([mediaRow('feed-1', 'FEED')]);
 
-    $repurpose = activeRepurpose();
-    poll($repurpose);
+    $account = instagramAccount();
+    $repurpose = activeRepurposeOn($account, SourceFormat::Reel);
 
-    $item = $repurpose->items()->sole();
+    poll($account);
 
-    expect($item->status)->toBe(ItemStatus::Skipped)
-        ->and($item->reason)->toBe(ItemReason::NotVideo);
+    expect($repurpose->items()->count())->toBe(0);
 
     Bus::assertNotDispatched(ProcessRepurposeItem::class);
 });
 
+test('two repurposes on one account share a single round of calls', function () {
+    Bus::fake();
+    fakeInstagramMedia([mediaRow('r1', 'REELS'), mediaRow('f1', 'FEED')]);
+
+    $account = instagramAccount();
+    $reels = activeRepurposeOn($account, SourceFormat::Reel);
+    $videos = activeRepurposeOn($account, SourceFormat::Video);
+
+    poll($account);
+
+    Http::assertSentCount(1);
+
+    expect($reels->items()->sole()->source_media_id)->toBe('r1')
+        ->and($videos->items()->sole()->source_media_id)->toBe('f1');
+
+    Bus::assertDispatchedTimes(ProcessRepurposeItem::class, 2);
+});
+
 test('a video without a download url is skipped', function () {
     Bus::fake();
-    fakeInstagramMedia([instagramVideoRow('m3', null)]);
+    fakeInstagramMedia([mediaRow('m3', 'REELS', null)]);
 
-    $repurpose = activeRepurpose();
-    poll($repurpose);
+    $account = instagramAccount();
+    $repurpose = activeRepurposeOn($account);
+
+    poll($account);
 
     expect($repurpose->items()->sole()->reason)->toBe(ItemReason::MediaUrlMissing);
 
@@ -97,56 +125,62 @@ test('a video without a download url is skipped', function () {
 
 test('media already published through trypost is skipped', function () {
     Bus::fake();
-    fakeInstagramMedia([instagramVideoRow('known-1')]);
+    fakeInstagramMedia([mediaRow('known-1')]);
 
-    $repurpose = activeRepurpose();
-    $post = Post::factory()->create(['workspace_id' => $repurpose->workspace_id]);
+    $account = instagramAccount();
+    $repurpose = activeRepurposeOn($account);
+
+    $post = Post::factory()->create(['workspace_id' => $account->workspace_id]);
     PostPlatform::factory()->for($post)->create(['platform_post_id' => 'known-1']);
 
-    poll($repurpose);
+    poll($account);
 
     expect($repurpose->items()->sole()->reason)->toBe(ItemReason::PublishedViaTrypost);
 
     Bus::assertNotDispatched(ProcessRepurposeItem::class);
 });
 
-test('media published by another workspace does not count as ours', function () {
+test('media published before the watermark is ignored', function () {
     Bus::fake();
-    fakeInstagramMedia([instagramVideoRow('known-2')]);
+    fakeInstagramMedia([mediaRow()]);
 
-    $repurpose = activeRepurpose();
-    $foreignPost = Post::factory()->create();
-    PostPlatform::factory()->for($foreignPost)->create(['platform_post_id' => 'known-2']);
+    $account = instagramAccount();
+    $repurpose = activeRepurposeOn($account);
+    $repurpose->update(['activated_at' => now()]);
 
-    poll($repurpose);
+    poll($account);
 
-    expect($repurpose->items()->sole()->status)->toBe(ItemStatus::Pending);
-
-    Bus::assertDispatched(ProcessRepurposeItem::class);
+    expect($repurpose->items()->count())->toBe(0);
 });
 
 test('polling twice logs the same media once', function () {
     Bus::fake();
-    fakeInstagramMedia([instagramVideoRow()]);
+    fakeInstagramMedia([mediaRow()]);
 
-    $repurpose = activeRepurpose();
-    poll($repurpose);
-    poll($repurpose->fresh());
+    $account = instagramAccount();
+    $repurpose = activeRepurposeOn($account);
+
+    poll($account);
+    poll($account->fresh());
 
     expect($repurpose->items()->count())->toBe(1);
 
     Bus::assertDispatchedTimes(ProcessRepurposeItem::class, 1);
 });
 
-test('an api error is recorded without throwing', function () {
+test('an api error is recorded on every repurpose of the account', function () {
     Bus::fake();
     Http::fake([config('trypost.platforms.instagram.graph_api').'/*' => Http::response(['error' => ['message' => 'Invalid token']], 401)]);
 
-    $repurpose = activeRepurpose();
-    poll($repurpose);
+    $account = instagramAccount();
+    $first = activeRepurposeOn($account, SourceFormat::Reel);
+    $second = activeRepurposeOn($account, SourceFormat::Video);
 
-    expect($repurpose->fresh()->last_error)->toContain('Invalid token')
-        ->and($repurpose->items()->count())->toBe(0);
+    poll($account);
+
+    expect($first->fresh()->last_error)->toContain('Invalid token')
+        ->and($second->fresh()->last_error)->toContain('Invalid token')
+        ->and($first->items()->count())->toBe(0);
 });
 
 test('a rate limited source backs off instead of retrying next tick', function () {
@@ -155,8 +189,10 @@ test('a rate limited source backs off instead of retrying next tick', function (
     config()->set('trypost.repurpose.poll_interval_minutes', 15);
     Http::fake([config('trypost.platforms.instagram.graph_api').'/*' => Http::response(['error' => ['code' => 4, 'message' => 'Application request limit reached']], 400)]);
 
-    $repurpose = activeRepurpose();
-    poll($repurpose);
+    $account = instagramAccount();
+    $repurpose = activeRepurposeOn($account);
+
+    poll($account);
 
     $repurpose = $repurpose->fresh();
 
@@ -168,19 +204,23 @@ test('a disconnected source is not polled', function () {
     Bus::fake();
     Http::fake();
 
-    $repurpose = activeRepurpose();
-    $repurpose->sourceAccount->update(['disconnected_at' => now()]);
+    $account = instagramAccount();
+    $repurpose = activeRepurposeOn($account);
+    $account->update(['disconnected_at' => now()]);
 
-    poll($repurpose);
+    poll($account->fresh());
 
     Http::assertNothingSent();
     expect($repurpose->items()->count())->toBe(0);
 });
 
-test('the command only dispatches for due active repurposes', function () {
+test('the command dispatches one job per due account, not per repurpose', function () {
     Bus::fake();
 
-    activeRepurpose();
+    $account = instagramAccount();
+    activeRepurposeOn($account, SourceFormat::Reel);
+    activeRepurposeOn($account, SourceFormat::Video);
+
     Repurpose::factory()->create();
     Repurpose::factory()->paused()->create();
     Repurpose::factory()->disabled()->create();
@@ -190,10 +230,11 @@ test('the command only dispatches for due active repurposes', function () {
     Bus::assertDispatchedTimes(PollRepurposeSource::class, 1);
 });
 
-test('a repurpose that is not due yet is not dispatched', function () {
+test('an account that is not due yet is not dispatched', function () {
     Bus::fake();
 
-    activeRepurpose()->update(['next_poll_at' => now()->addMinutes(10)]);
+    $account = instagramAccount();
+    activeRepurposeOn($account)->update(['next_poll_at' => now()->addMinutes(10)]);
 
     $this->artisan('repurpose:poll')->assertSuccessful();
 

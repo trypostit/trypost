@@ -11,6 +11,22 @@ return [
         'no_destinations' => 'لا توجد وجهة بعد',
     ],
 
+    'formats' => [
+        'reel' => 'Reels',
+        'video' => 'مقاطع الفيديو',
+        'story' => 'Stories',
+    ],
+
+    'source' => [
+        'title' => 'المصدر',
+        'description' => 'يراقب TryPost هذا الحساب بحثًا عن مقاطع فيديو جديدة بالصيغة أدناه.',
+        'watch_label' => 'المراقبة',
+    ],
+
+    'summary' => [
+        'sentence' => 'كل :format جديد تنشره على :source يُعاد نشره على :destinations.',
+    ],
+
     'empty' => [
         'title' => 'لم يتم إعداد أي repurpose بعد',
         'description' => 'اختر نقطة بداية بالأسفل. يراقب TryPost الحساب الذي تختاره ويعيد نشر كل فيديو جديد على الشبكات التي تحددها.',
@@ -70,6 +86,7 @@ return [
         'hint' => 'يُعدَّل النص لكل شبكة فقط عندما يتجاوز حد تلك الشبكة.',
         'none_available' => 'لا يوجد حساب آخر متصل في مساحة العمل هذه بعد.',
         'save' => 'حفظ الوجهات',
+        'publish_as' => 'النشر كـ',
     ],
 
     'status_card' => [
@@ -119,5 +136,6 @@ return [
     'errors' => [
         'source_already_used' => 'هذا الحساب يغذّي بالفعل repurpose آخر. عدّل ذلك بدلًا منه.',
         'destinations_required' => 'اختر وجهة واحدة على الأقل قبل التفعيل.',
+        'destination_needs_video' => 'هذه الصيغة لا تقبل الفيديو.',
     ],
 ];

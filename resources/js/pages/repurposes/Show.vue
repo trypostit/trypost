@@ -10,36 +10,40 @@ import DestinationPicker from '@/components/repurpose/DestinationPicker.vue';
 import RepurposeFlow from '@/components/repurpose/RepurposeFlow.vue';
 import RepurposeItemList from '@/components/repurpose/RepurposeItemList.vue';
 import RepurposeStatusCard from '@/components/repurpose/RepurposeStatusCard.vue';
+import RepurposeSummary from '@/components/repurpose/RepurposeSummary.vue';
+import SourceFormatCard from '@/components/repurpose/SourceFormatCard.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { destroy, update } from '@/routes/app/repurposes';
 import type { ChannelAccount } from '@/types/channel';
-import type { Repurpose, RepurposeDestination, RepurposeItem } from '@/types/repurpose';
+import type {
+    DestinationFormat,
+    Repurpose,
+    RepurposeDestination,
+    RepurposeItem,
+    RepurposeSourceFormat,
+    SourceFormatOption,
+} from '@/types/repurpose';
 
 const props = defineProps<{
     repurpose: Repurpose;
     sourceAccounts: ChannelAccount[];
     destinationAccounts: ChannelAccount[];
     items: { data: RepurposeItem[] };
+    sourceFormats: SourceFormatOption[];
+    destinationFormats: Record<string, DestinationFormat[]>;
 }>();
 
-/**
- * Only one short-video type per network is publishable, so the content type is
- * decided here rather than asked of the user.
- */
-const contentTypes: Record<string, string> = {
-    instagram: 'instagram_reel',
-    'instagram-facebook': 'instagram_reel',
-    facebook: 'facebook_reel',
-    tiktok: 'tiktok_video',
-    youtube: 'youtube_short',
-};
-
-const form = useForm<{ destinations: RepurposeDestination[] }>({
+const form = useForm<{ source_format: RepurposeSourceFormat; destinations: RepurposeDestination[] }>({
+    source_format: props.repurpose.source_format,
     destinations: props.repurpose.destinations ?? [],
 });
+
+const currentFormatLabel = computed(
+    () => props.sourceFormats.find((option) => option.value === form.source_format)?.label ?? '',
+);
 
 const selectedPlatforms = computed(() =>
     form.destinations
@@ -91,7 +95,21 @@ const handleDelete = () => {
                 </TabsList>
 
                 <TabsContent value="configuration" class="space-y-6">
+                    <RepurposeSummary
+                        :source-account="repurpose.source_account"
+                        :source-format="form.source_format"
+                        :format-label="currentFormatLabel"
+                        :destinations="form.destinations"
+                        :destination-accounts="destinationAccounts"
+                    />
+
                     <RepurposeStatusCard :repurpose="repurpose" />
+
+                    <SourceFormatCard
+                        v-model="form.source_format"
+                        :account="repurpose.source_account"
+                        :formats="sourceFormats"
+                    />
 
                     <Card>
                         <CardHeader>
@@ -103,7 +121,7 @@ const handleDelete = () => {
                             <DestinationPicker
                                 v-model="form.destinations"
                                 :accounts="destinationAccounts"
-                                :content-types="contentTypes"
+                                :formats="destinationFormats"
                             />
 
                             <Button data-testid="save-destinations" :disabled="form.processing" @click="save">

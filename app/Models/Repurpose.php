@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use Database\Factories\RepurposeFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -21,6 +22,7 @@ class Repurpose extends Model
         'workspace_id',
         'user_id',
         'source_social_account_id',
+        'source_format',
         'destinations',
         'status',
         'activated_at',
@@ -37,6 +39,7 @@ class Repurpose extends Model
     {
         return [
             'destinations' => 'array',
+            'source_format' => SourceFormat::class,
             'status' => Status::class,
             'activated_at' => 'datetime',
             'last_polled_at' => 'datetime',

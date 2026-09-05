@@ -11,6 +11,22 @@ return [
         'no_destinations' => '아직 대상이 없습니다',
     ],
 
+    'formats' => [
+        'reel' => '릴스',
+        'video' => '동영상',
+        'story' => '스토리',
+    ],
+
+    'source' => [
+        'title' => '소스',
+        'description' => 'TryPost가 이 계정에서 아래 형식의 새 영상을 지켜봅니다.',
+        'watch_label' => '감시할 형식',
+    ],
+
+    'summary' => [
+        'sentence' => ':source에 새 :format을 올릴 때마다 :destinations에 다시 게시됩니다.',
+    ],
+
     'empty' => [
         'title' => '아직 설정된 Repurpose가 없습니다',
         'description' => '아래에서 시작점을 고르세요. TryPost가 선택한 계정을 지켜보다가 새 영상을 선택한 네트워크에 다시 게시합니다.',
@@ -70,6 +86,7 @@ return [
         'hint' => '캡션은 해당 네트워크의 한도를 넘을 때만 조정됩니다.',
         'none_available' => '이 워크스페이스에 연결된 다른 계정이 아직 없습니다.',
         'save' => '대상 저장',
+        'publish_as' => '게시 형식',
     ],
 
     'status_card' => [
@@ -119,5 +136,6 @@ return [
     'errors' => [
         'source_already_used' => '이 계정은 이미 다른 Repurpose에 쓰이고 있습니다. 그것을 수정하세요.',
         'destinations_required' => '활성화하기 전에 대상을 하나 이상 고르세요.',
+        'destination_needs_video' => '그 형식은 영상을 담을 수 없습니다.',
     ],
 ];

@@ -7,6 +7,7 @@ namespace App\Console\Commands\Repurpose;
 use App\Enums\Repurpose\Status;
 use App\Jobs\Repurpose\PollRepurposeSource;
 use App\Models\Repurpose;
+use App\Models\SocialAccount;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -18,20 +19,26 @@ class PollRepurposes extends Command
 
     public function handle(): int
     {
-        $dispatched = 0;
-
-        Repurpose::query()
+        $accountIds = Repurpose::query()
             ->where('status', Status::Active)
             ->where(fn (Builder $query) => $query->whereNull('next_poll_at')->orWhere('next_poll_at', '<=', now()))
-            ->with('sourceAccount')
-            ->chunkById(100, function ($repurposes) use (&$dispatched): void {
-                foreach ($repurposes as $repurpose) {
-                    PollRepurposeSource::dispatch($repurpose);
+            ->distinct()
+            ->pluck('source_social_account_id');
+
+        // One job per account, not per repurpose: two repurposes watching the
+        // same Instagram for different formats share a single round of calls.
+        $dispatched = 0;
+
+        SocialAccount::query()
+            ->whereKey($accountIds)
+            ->chunkById(100, function ($accounts) use (&$dispatched): void {
+                foreach ($accounts as $account) {
+                    PollRepurposeSource::dispatch($account);
                     $dispatched++;
                 }
             });
 
-        $this->info("Dispatched {$dispatched} repurpose poll(s).");
+        $this->info("Dispatched {$dispatched} repurpose source poll(s).");
 
         return self::SUCCESS;
     }

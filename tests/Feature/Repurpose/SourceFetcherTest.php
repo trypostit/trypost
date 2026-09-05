@@ -2,89 +2,131 @@
 
 declare(strict_types=1);
 
+use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use App\Services\Repurpose\SourceFetcherFactory;
 use Illuminate\Support\Facades\Http;
 
-test('the instagram fetcher returns only videos with their download url and caption', function () {
-    $graph = config('trypost.platforms.instagram.graph_api');
+function instagramGraph(): string
+{
+    return config('trypost.platforms.instagram.graph_api');
+}
 
+function facebookGraph(): string
+{
+    return config('trypost.platforms.facebook.graph_api');
+}
+
+function fetchFor(SocialAccount $account, array $formats, $since = null): array
+{
+    return app(SourceFetcherFactory::class)->for($account)->fetch($account, $since, $formats);
+}
+
+test('instagram tags reels and feed videos apart by product type', function () {
     Http::fake([
-        "{$graph}/*" => Http::response(['data' => [
-            ['id' => 'm1', 'media_type' => 'VIDEO', 'media_url' => 'https://cdn.example.com/v1.mp4', 'caption' => 'Hello', 'permalink' => 'https://instagram.com/p/1', 'timestamp' => '2026-09-01T10:00:00+0000'],
-            ['id' => 'm2', 'media_type' => 'IMAGE', 'media_url' => 'https://cdn.example.com/i.jpg', 'caption' => 'Pic', 'permalink' => 'https://instagram.com/p/2', 'timestamp' => '2026-09-01T11:00:00+0000'],
-            ['id' => 'm3', 'media_type' => 'VIDEO', 'caption' => 'Copyrighted', 'permalink' => 'https://instagram.com/p/3', 'timestamp' => '2026-09-01T12:00:00+0000'],
+        instagramGraph().'/*/media*' => Http::response(['data' => [
+            ['id' => 'r1', 'media_type' => 'VIDEO', 'media_product_type' => 'REELS', 'media_url' => 'https://cdn.example.com/r.mp4', 'caption' => 'Reel', 'permalink' => 'https://instagram.com/p/1', 'timestamp' => '2026-09-01T10:00:00+0000'],
+            ['id' => 'f1', 'media_type' => 'VIDEO', 'media_product_type' => 'FEED', 'media_url' => 'https://cdn.example.com/f.mp4', 'caption' => 'Feed', 'permalink' => 'https://instagram.com/p/2', 'timestamp' => '2026-09-01T11:00:00+0000'],
+            ['id' => 'i1', 'media_type' => 'IMAGE', 'media_product_type' => 'FEED', 'media_url' => 'https://cdn.example.com/i.jpg', 'caption' => 'Pic', 'timestamp' => '2026-09-01T12:00:00+0000'],
         ]]),
     ]);
 
     $account = SocialAccount::factory()->create(['platform' => Platform::Instagram]);
 
-    $media = app(SourceFetcherFactory::class)->for($account)->fetch($account, null);
+    $media = fetchFor($account, [SourceFormat::Reel, SourceFormat::Video]);
 
     expect($media)->toHaveCount(3)
-        ->and($media[0]->id)->toBe('m1')
-        ->and($media[0]->isVideo)->toBeTrue()
-        ->and($media[0]->downloadUrl)->toBe('https://cdn.example.com/v1.mp4')
-        ->and($media[0]->caption)->toBe('Hello')
-        ->and($media[0]->permalink)->toBe('https://instagram.com/p/1')
-        ->and($media[0]->createdAt?->toDateString())->toBe('2026-09-01')
-        ->and($media[1]->isVideo)->toBeFalse()
-        ->and($media[2]->isVideo)->toBeTrue()
-        ->and($media[2]->downloadUrl)->toBeNull();
+        ->and($media[0]->format)->toBe(SourceFormat::Reel)
+        ->and($media[1]->format)->toBe(SourceFormat::Video)
+        ->and($media[2]->format)->toBeNull()
+        ->and($media[2]->isVideo())->toBeFalse();
+});
+
+test('instagram only calls the stories edge when stories are watched', function () {
+    Http::fake([instagramGraph().'/*' => Http::response(['data' => []])]);
+
+    $account = SocialAccount::factory()->create(['platform' => Platform::Instagram]);
+
+    fetchFor($account, [SourceFormat::Reel]);
+
+    Http::assertSentCount(1);
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/stories'));
+
+    fetchFor($account, [SourceFormat::Story]);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/stories'));
 });
 
 test('an instagram account connected through facebook uses the facebook graph host', function () {
     $graph = config('trypost.platforms.instagram-facebook.graph_api');
-
     Http::fake(["{$graph}/*" => Http::response(['data' => []])]);
 
     $account = SocialAccount::factory()->create(['platform' => Platform::InstagramFacebook]);
 
-    app(SourceFetcherFactory::class)->for($account)->fetch($account, null);
+    fetchFor($account, [SourceFormat::Reel]);
 
     Http::assertSent(fn ($request) => str_starts_with($request->url(), $graph));
 });
 
-test('the facebook fetcher maps page videos', function () {
-    $graph = config('trypost.platforms.facebook.graph_api');
-
+test('facebook reads reels and videos from their own edges and drops the overlap', function () {
     Http::fake([
-        "{$graph}/*" => Http::response(['data' => [
-            ['id' => 'v1', 'source' => 'https://cdn.example.com/v1.mp4', 'description' => 'Reel', 'permalink_url' => '/watch/1', 'created_time' => '2026-09-02T10:00:00+0000'],
+        facebookGraph().'/*/video_reels*' => Http::response(['data' => [
+            ['id' => 'v1', 'source' => 'https://cdn.example.com/r.mp4', 'description' => 'Reel', 'permalink_url' => '/watch/1', 'created_time' => '2026-09-02T10:00:00+0000'],
+        ]]),
+        facebookGraph().'/*/videos*' => Http::response(['data' => [
+            ['id' => 'v1', 'source' => 'https://cdn.example.com/r.mp4', 'description' => 'Reel', 'permalink_url' => '/watch/1', 'created_time' => '2026-09-02T10:00:00+0000'],
+            ['id' => 'v2', 'source' => 'https://cdn.example.com/v.mp4', 'description' => 'Video', 'permalink_url' => '/watch/2', 'created_time' => '2026-09-02T11:00:00+0000'],
         ]]),
     ]);
 
     $account = SocialAccount::factory()->create(['platform' => Platform::Facebook]);
 
-    $media = app(SourceFetcherFactory::class)->for($account)->fetch($account, null);
+    $media = fetchFor($account, [SourceFormat::Reel, SourceFormat::Video]);
+
+    expect($media)->toHaveCount(2)
+        ->and($media[0]->id)->toBe('v1')
+        ->and($media[0]->format)->toBe(SourceFormat::Reel)
+        ->and($media[1]->id)->toBe('v2')
+        ->and($media[1]->format)->toBe(SourceFormat::Video);
+});
+
+test('facebook stories resolve the downloadable file behind each story', function () {
+    Http::fake([
+        facebookGraph().'/*/stories*' => Http::response(['data' => [
+            ['post_id' => 's1', 'status' => 'PUBLISHED', 'media_type' => 'video', 'media_id' => 'vid-1', 'url' => 'https://facebook.com/stories/1', 'creation_time' => '2026-09-03T10:00:00+0000'],
+            ['post_id' => 's2', 'status' => 'PUBLISHED', 'media_type' => 'photo', 'media_id' => 'pic-1', 'url' => 'https://facebook.com/stories/2', 'creation_time' => '2026-09-03T11:00:00+0000'],
+        ]]),
+        facebookGraph().'/vid-1*' => Http::response(['source' => 'https://cdn.example.com/story.mp4']),
+    ]);
+
+    $account = SocialAccount::factory()->create(['platform' => Platform::Facebook]);
+
+    $media = fetchFor($account, [SourceFormat::Story]);
 
     expect($media)->toHaveCount(1)
-        ->and($media[0]->id)->toBe('v1')
-        ->and($media[0]->isVideo)->toBeTrue()
-        ->and($media[0]->downloadUrl)->toBe('https://cdn.example.com/v1.mp4')
-        ->and($media[0]->caption)->toBe('Reel');
+        ->and($media[0]->id)->toBe('s1')
+        ->and($media[0]->format)->toBe(SourceFormat::Story)
+        ->and($media[0]->downloadUrl)->toBe('https://cdn.example.com/story.mp4');
 });
 
 test('a since timestamp is sent to the api', function () {
-    $graph = config('trypost.platforms.instagram.graph_api');
-    Http::fake(["{$graph}/*" => Http::response(['data' => []])]);
+    Http::fake([instagramGraph().'/*' => Http::response(['data' => []])]);
 
     $account = SocialAccount::factory()->create(['platform' => Platform::Instagram]);
     $since = now()->subDay();
 
-    app(SourceFetcherFactory::class)->for($account)->fetch($account, $since);
+    fetchFor($account, [SourceFormat::Reel], $since);
 
     Http::assertSent(fn ($request) => str_contains($request->url(), 'since='.$since->getTimestamp()));
 });
 
 test('a failed response throws so the caller can record it', function () {
-    $graph = config('trypost.platforms.instagram.graph_api');
-    Http::fake(["{$graph}/*" => Http::response(['error' => ['message' => 'Invalid token']], 401)]);
+    Http::fake([instagramGraph().'/*' => Http::response(['error' => ['message' => 'Invalid token']], 401)]);
 
     $account = SocialAccount::factory()->create(['platform' => Platform::Instagram]);
 
-    expect(fn () => app(SourceFetcherFactory::class)->for($account)->fetch($account, null))
+    expect(fn () => fetchFor($account, [SourceFormat::Reel]))
         ->toThrow(RuntimeException::class, 'Invalid token');
 });
 

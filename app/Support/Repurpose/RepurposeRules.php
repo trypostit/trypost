@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Repurpose;
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\Repurpose\SourceFormat;
 use App\Support\PostPlatformMetaRules;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -26,9 +27,19 @@ class RepurposeRules
     {
         return [
             'source_social_account_id' => ['required', 'string', 'uuid'],
+            'source_format' => ['sometimes', Rule::enum(SourceFormat::class)],
             'destinations' => ['sometimes', 'array'],
             'destinations.*.social_account_id' => ['required', 'string', 'uuid'],
-            'destinations.*.content_type' => ['required', 'string', Rule::enum(ContentType::class)],
+            'destinations.*.content_type' => [
+                'required',
+                'string',
+                Rule::enum(ContentType::class),
+                // The module only moves video, so a destination format that
+                // cannot carry one is never valid.
+                fn (string $attribute, mixed $value, callable $fail) => ContentType::tryFrom((string) $value)?->supportsVideo() === false
+                    ? $fail(__('repurposes.errors.destination_needs_video'))
+                    : null,
+            ],
             ...self::destinationMetaRules(),
         ];
     }

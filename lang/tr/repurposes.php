@@ -11,6 +11,22 @@ return [
         'no_destinations' => 'Henüz hedef yok',
     ],
 
+    'formats' => [
+        'reel' => 'Reels',
+        'video' => 'Videolar',
+        'story' => 'Hikayeler',
+    ],
+
+    'source' => [
+        'title' => 'Kaynak',
+        'description' => 'TryPost bu hesabı aşağıdaki formattaki yeni videolar için izler.',
+        'watch_label' => 'İzle',
+    ],
+
+    'summary' => [
+        'sentence' => ':source üzerinde paylaştığın her yeni :format, :destinations üzerinde yeniden paylaşılır.',
+    ],
+
     'empty' => [
         'title' => 'Henüz repurpose kurulmadı',
         'description' => 'Aşağıdan bir başlangıç noktası seç. TryPost seçtiğin hesabı izler ve her yeni videoyu işaretlediğin ağlarda yeniden yayınlar.',
@@ -70,6 +86,7 @@ return [
         'hint' => 'Açıklama yalnızca o ağın sınırını aştığında ağa göre uyarlanır.',
         'none_available' => 'Bu çalışma alanında bağlı başka hesap yok.',
         'save' => 'Hedefleri kaydet',
+        'publish_as' => 'Şu olarak paylaş',
     ],
 
     'status_card' => [
@@ -119,5 +136,6 @@ return [
     'errors' => [
         'source_already_used' => 'Bu hesap zaten başka bir repurpose\'u besliyor. Onu düzenle.',
         'destinations_required' => 'Etkinleştirmeden önce en az bir hedef seç.',
+        'destination_needs_video' => 'Bu format video taşıyamaz.',
     ],
 ];

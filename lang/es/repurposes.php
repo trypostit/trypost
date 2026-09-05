@@ -11,6 +11,22 @@ return [
         'no_destinations' => 'Aún sin destino',
     ],
 
+    'formats' => [
+        'reel' => 'Reels',
+        'video' => 'Vídeos',
+        'story' => 'Stories',
+    ],
+
+    'source' => [
+        'title' => 'Origen',
+        'description' => 'TryPost vigila esta cuenta en busca de vídeos nuevos del formato de abajo.',
+        'watch_label' => 'Vigilar',
+    ],
+
+    'summary' => [
+        'sentence' => 'Cada nuevo :format que publiques en :source se republica en :destinations.',
+    ],
+
     'empty' => [
         'title' => 'Aún no hay ningún repurpose',
         'description' => 'Elige un punto de partida abajo. TryPost vigila la cuenta que elijas y republica cada vídeo nuevo en las redes que marques.',
@@ -70,6 +86,7 @@ return [
         'hint' => 'El texto solo se adapta por red cuando supera el límite de esa red.',
         'none_available' => 'No hay ninguna otra cuenta conectada en este espacio de trabajo.',
         'save' => 'Guardar destinos',
+        'publish_as' => 'Publicar como',
     ],
 
     'status_card' => [
@@ -119,5 +136,6 @@ return [
     'errors' => [
         'source_already_used' => 'Esta cuenta ya alimenta otro repurpose. Edita ese.',
         'destinations_required' => 'Elige al menos un destino antes de activar.',
+        'destination_needs_video' => 'Ese formato no admite vídeo.',
     ],
 ];

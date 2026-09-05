@@ -10,6 +10,7 @@ use App\Actions\Repurpose\PauseRepurpose;
 use App\Actions\Repurpose\ResumeRepurpose;
 use App\Actions\Repurpose\UpdateRepurpose;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
@@ -52,13 +53,38 @@ test('a repurpose is created as a draft with its source account', function () {
         ->and($repurpose->activated_at)->toBeNull();
 });
 
-test('a second repurpose for the same source account is rejected', function () {
+test('a second repurpose for the same source account and format is rejected', function () {
     [$workspace, $user, $account] = repurposeWorkspace();
 
     CreateRepurpose::execute($workspace, $user, ['source_social_account_id' => $account->id]);
 
     expect(fn () => CreateRepurpose::execute($workspace, $user, ['source_social_account_id' => $account->id]))
         ->toThrow(ValidationException::class);
+});
+
+test('one account can feed one repurpose per watched format', function () {
+    [$workspace, $user, $account] = repurposeWorkspace();
+
+    foreach ([SourceFormat::Reel, SourceFormat::Video, SourceFormat::Story] as $format) {
+        CreateRepurpose::execute($workspace, $user, [
+            'source_social_account_id' => $account->id,
+            'source_format' => $format->value,
+        ]);
+    }
+
+    expect(Repurpose::where('source_social_account_id', $account->id)->count())->toBe(3);
+});
+
+test('changing the watched format resets the watermark', function () {
+    $repurpose = Repurpose::factory()->active()->create([
+        'source_format' => SourceFormat::Reel,
+        'activated_at' => now()->subMonth(),
+    ]);
+
+    $updated = UpdateRepurpose::execute($repurpose, ['source_format' => SourceFormat::Story->value]);
+
+    expect($updated->source_format)->toBe(SourceFormat::Story)
+        ->and($updated->activated_at->isToday())->toBeTrue();
 });
 
 test('two accounts on the same network each get their own repurpose', function () {

@@ -11,6 +11,22 @@ return [
         'no_destinations' => 'Nog geen bestemming',
     ],
 
+    'formats' => [
+        'reel' => 'Reels',
+        'video' => 'Video\'s',
+        'story' => 'Stories',
+    ],
+
+    'source' => [
+        'title' => 'Bron',
+        'description' => 'TryPost volgt dit account op nieuwe video\'s van het formaat hieronder.',
+        'watch_label' => 'Volgen',
+    ],
+
+    'summary' => [
+        'sentence' => 'Elke nieuwe :format die je op :source plaatst, wordt opnieuw geplaatst op :destinations.',
+    ],
+
     'empty' => [
         'title' => 'Nog geen repurpose ingesteld',
         'description' => 'Kies hieronder een startpunt. TryPost volgt het gekozen account en plaatst elke nieuwe video opnieuw op de netwerken die je aanvinkt.',
@@ -70,6 +86,7 @@ return [
         'hint' => 'Het bijschrift wordt alleen per netwerk aangepast als het de limiet van dat netwerk overschrijdt.',
         'none_available' => 'Er is nog geen ander account gekoppeld in deze workspace.',
         'save' => 'Bestemmingen opslaan',
+        'publish_as' => 'Plaatsen als',
     ],
 
     'status_card' => [
@@ -119,5 +136,6 @@ return [
     'errors' => [
         'source_already_used' => 'Dit account voedt al een andere repurpose. Bewerk die in plaats daarvan.',
         'destinations_required' => 'Kies minstens één bestemming voordat je activeert.',
+        'destination_needs_video' => 'Dat formaat kan geen video bevatten.',
     ],
 ];

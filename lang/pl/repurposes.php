@@ -11,6 +11,22 @@ return [
         'no_destinations' => 'Brak celu',
     ],
 
+    'formats' => [
+        'reel' => 'Reels',
+        'video' => 'Filmy',
+        'story' => 'Stories',
+    ],
+
+    'source' => [
+        'title' => 'Źródło',
+        'description' => 'TryPost obserwuje to konto w poszukiwaniu nowych filmów w formacie poniżej.',
+        'watch_label' => 'Obserwuj',
+    ],
+
+    'summary' => [
+        'sentence' => 'Każdy nowy :format opublikowany na :source jest publikowany ponownie na :destinations.',
+    ],
+
     'empty' => [
         'title' => 'Nie skonfigurowano jeszcze repurpose',
         'description' => 'Wybierz punkt startowy poniżej. TryPost obserwuje wybrane konto i publikuje każdy nowy film w sieciach, które zaznaczysz.',
@@ -70,6 +86,7 @@ return [
         'hint' => 'Opis jest dostosowywany do sieci tylko wtedy, gdy przekracza jej limit.',
         'none_available' => 'W tym obszarze roboczym nie ma jeszcze innego połączonego konta.',
         'save' => 'Zapisz cele',
+        'publish_as' => 'Publikuj jako',
     ],
 
     'status_card' => [
@@ -119,5 +136,6 @@ return [
     'errors' => [
         'source_already_used' => 'To konto zasila już inny repurpose. Edytuj tamten.',
         'destinations_required' => 'Wybierz co najmniej jeden cel przed aktywacją.',
+        'destination_needs_video' => 'Ten format nie przyjmuje filmu.',
     ],
 ];

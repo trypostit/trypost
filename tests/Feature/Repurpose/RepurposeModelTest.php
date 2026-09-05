@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Repurpose\ItemStatus;
+use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
@@ -40,13 +41,16 @@ test('the same source media id cannot be logged twice for one repurpose', functi
         ->toThrow(QueryException::class);
 });
 
-test('a workspace cannot have two repurposes for the same source account', function () {
-    $repurpose = Repurpose::factory()->create();
+test('one source account can feed a repurpose per watched format', function () {
+    $repurpose = Repurpose::factory()->create(['source_format' => SourceFormat::Reel]);
 
-    expect(fn () => Repurpose::factory()->create([
+    Repurpose::factory()->create([
         'workspace_id' => $repurpose->workspace_id,
         'source_social_account_id' => $repurpose->source_social_account_id,
-    ]))->toThrow(QueryException::class);
+        'source_format' => SourceFormat::Story,
+    ]);
+
+    expect(Repurpose::where('source_social_account_id', $repurpose->source_social_account_id)->count())->toBe(2);
 });
 
 test('a workspace can have one repurpose per connected account of the same network', function () {

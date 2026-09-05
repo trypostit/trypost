@@ -11,6 +11,22 @@ return [
         'no_destinations' => '配信先はまだありません',
     ],
 
+    'formats' => [
+        'reel' => 'リール',
+        'video' => '動画',
+        'story' => 'ストーリーズ',
+    ],
+
+    'source' => [
+        'title' => 'ソース',
+        'description' => 'TryPost がこのアカウントを見張り、下で選んだ形式の新しい動画を探します。',
+        'watch_label' => '監視する形式',
+    ],
+
+    'summary' => [
+        'sentence' => ':source に新しい :format を投稿するたびに、:destinations へ再投稿されます。',
+    ],
+
     'empty' => [
         'title' => 'Repurpose はまだ設定されていません',
         'description' => '下から出発点を選んでください。TryPost が選んだアカウントを見張り、新しい動画をチェックしたネットワークへ再投稿します。',
@@ -70,6 +86,7 @@ return [
         'hint' => 'キャプションは、そのネットワークの上限を超えたときだけ調整されます。',
         'none_available' => 'このワークスペースにはまだ他のアカウントが接続されていません。',
         'save' => '配信先を保存',
+        'publish_as' => '投稿形式',
     ],
 
     'status_card' => [
@@ -119,5 +136,6 @@ return [
     'errors' => [
         'source_already_used' => 'このアカウントはすでに別の Repurpose で使われています。そちらを編集してください。',
         'destinations_required' => '有効にする前に配信先を 1 つ以上選んでください。',
+        'destination_needs_video' => 'その形式は動画に対応していません。',
     ],
 ];

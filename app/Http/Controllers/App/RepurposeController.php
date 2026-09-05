@@ -13,6 +13,8 @@ use App\Actions\Repurpose\ListRepurposes;
 use App\Actions\Repurpose\PauseRepurpose;
 use App\Actions\Repurpose\ResumeRepurpose;
 use App\Actions\Repurpose\UpdateRepurpose;
+use App\Enums\PostPlatform\ContentType;
+use App\Enums\Repurpose\SourceFormat;
 use App\Http\Requests\App\Repurpose\StoreRepurposeRequest;
 use App\Http\Requests\App\Repurpose\UpdateRepurposeRequest;
 use App\Http\Resources\App\SocialAccountResource;
@@ -51,6 +53,8 @@ class RepurposeController extends Controller
                 $this->connectedAccounts($request)->whereNotIn('id', [$repurpose->source_social_account_id])->values(),
             ),
             'items' => Inertia::scroll(fn () => ListRepurposeItems::execute($repurpose)),
+            'sourceFormats' => $this->sourceFormats($repurpose),
+            'destinationFormats' => $this->destinationFormats($request, $repurpose->source_format),
         ]);
     }
 
@@ -58,8 +62,9 @@ class RepurposeController extends Controller
     {
         $workspace = $request->user()->currentWorkspace;
         $sourceAccountId = (string) $request->validated('source_social_account_id');
+        $sourceFormat = SourceFormat::tryFrom((string) $request->validated('source_format')) ?? SourceFormat::Reel;
 
-        $existing = CreateRepurpose::existingFor($workspace, $sourceAccountId);
+        $existing = CreateRepurpose::existingFor($workspace, $sourceAccountId, $sourceFormat);
 
         if ($existing !== null) {
             return redirect()->route('app.repurposes.show', $existing);
@@ -120,6 +125,48 @@ class RepurposeController extends Controller
         DeleteRepurpose::execute($repurpose);
 
         return redirect()->route('app.repurposes.index');
+    }
+
+    /**
+     * Formats the source network can be watched for. A repurpose watches one,
+     * so replicating Reels and Stories means two repurposes on one account.
+     *
+     * @return array<int, array{value: string, label: string}>
+     */
+    private function sourceFormats(Repurpose $repurpose): array
+    {
+        $platform = $repurpose->sourceAccount?->platform;
+
+        return array_map(
+            fn (SourceFormat $format): array => ['value' => $format->value, 'label' => $format->label()],
+            $platform === null ? [] : SourceFormat::forPlatform($platform),
+        );
+    }
+
+    /**
+     * Publishable video formats per connected destination account. Anything
+     * that cannot carry a video is never offered, and the closest match to what
+     * the source watches comes first so a newly picked destination opens on it.
+     *
+     * @return array<string, array<int, array{value: string, label: string}>>
+     */
+    private function destinationFormats(Request $request, SourceFormat $sourceFormat): array
+    {
+        $formats = [];
+
+        foreach ($this->connectedAccounts($request) as $account) {
+            $recommended = $sourceFormat->defaultContentTypeFor($account->platform);
+
+            $contentTypes = collect(SourceFormat::videoContentTypesFor($account->platform))
+                ->sortByDesc(fn (ContentType $contentType): bool => $contentType === $recommended)
+                ->values();
+
+            $formats[$account->id] = $contentTypes
+                ->map(fn (ContentType $contentType): array => ['value' => $contentType->value, 'label' => $contentType->label()])
+                ->all();
+        }
+
+        return $formats;
     }
 
     /**

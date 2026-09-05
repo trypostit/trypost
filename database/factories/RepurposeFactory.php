@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
@@ -27,6 +28,7 @@ class RepurposeFactory extends Factory
             'workspace_id' => Workspace::factory(),
             'user_id' => User::factory(),
             'source_social_account_id' => SocialAccount::factory(),
+            'source_format' => SourceFormat::Reel,
             'destinations' => [],
             'status' => Status::Draft,
         ];

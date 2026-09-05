@@ -11,6 +11,22 @@ return [
         'no_destinations' => 'No destination yet',
     ],
 
+    'formats' => [
+        'reel' => 'Reels',
+        'video' => 'Videos',
+        'story' => 'Stories',
+    ],
+
+    'source' => [
+        'title' => 'Source',
+        'description' => 'TryPost watches this account for new videos of the format below.',
+        'watch_label' => 'Watch for',
+    ],
+
+    'summary' => [
+        'sentence' => 'Every new :format you post on :source is republished to :destinations.',
+    ],
+
     'empty' => [
         'title' => 'No repurpose set up yet',
         'description' => 'Pick a starting point below. TryPost watches the account you choose and republishes every new video to the networks you pick.',
@@ -70,6 +86,7 @@ return [
         'hint' => 'Captions are adapted per network only when they exceed that network\'s limit.',
         'none_available' => 'No other account is connected in this workspace yet.',
         'save' => 'Save destinations',
+        'publish_as' => 'Publish as',
     ],
 
     'status_card' => [
@@ -119,5 +136,6 @@ return [
     'errors' => [
         'source_already_used' => 'This account already feeds another repurpose. Edit that one instead.',
         'destinations_required' => 'Pick at least one destination before activating.',
+        'destination_needs_video' => 'That format cannot carry a video.',
     ],
 ];

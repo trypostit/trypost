@@ -25,6 +25,7 @@ class StoreRepurposeRequest extends FormRequest
     {
         return [
             'source_social_account_id' => RepurposeRules::rules()['source_social_account_id'],
+            'source_format' => RepurposeRules::rules()['source_format'],
             'template' => ['sometimes', 'nullable', 'string'],
         ];
     }

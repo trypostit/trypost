@@ -11,6 +11,22 @@ return [
         'no_destinations' => 'Nessuna destinazione',
     ],
 
+    'formats' => [
+        'reel' => 'Reels',
+        'video' => 'Video',
+        'story' => 'Storie',
+    ],
+
+    'source' => [
+        'title' => 'Origine',
+        'description' => 'TryPost tiene d\'occhio questo account per i nuovi video del formato qui sotto.',
+        'watch_label' => 'Osserva',
+    ],
+
+    'summary' => [
+        'sentence' => 'Ogni nuovo :format che pubblichi su :source viene ripubblicato su :destinations.',
+    ],
+
     'empty' => [
         'title' => 'Nessun repurpose configurato',
         'description' => 'Scegli un punto di partenza qui sotto. TryPost tiene d\'occhio l\'account scelto e ripubblica ogni nuovo video sulle reti che selezioni.',
@@ -70,6 +86,7 @@ return [
         'hint' => 'La didascalia viene adattata per rete solo quando supera il limite di quella rete.',
         'none_available' => 'Nessun altro account è collegato in questo workspace.',
         'save' => 'Salva destinazioni',
+        'publish_as' => 'Pubblica come',
     ],
 
     'status_card' => [
@@ -119,5 +136,6 @@ return [
     'errors' => [
         'source_already_used' => 'Questo account alimenta già un altro repurpose. Modifica quello.',
         'destinations_required' => 'Scegli almeno una destinazione prima di attivare.',
+        'destination_needs_video' => 'Quel formato non accetta video.',
     ],
 ];

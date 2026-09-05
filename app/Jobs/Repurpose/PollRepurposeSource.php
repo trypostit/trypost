@@ -6,15 +6,19 @@ namespace App\Jobs\Repurpose;
 
 use App\Enums\Repurpose\ItemReason;
 use App\Enums\Repurpose\ItemStatus;
+use App\Enums\Repurpose\SourceFormat;
+use App\Enums\Repurpose\Status;
 use App\Models\PostPlatform;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
+use App\Models\SocialAccount;
 use App\Services\Repurpose\SourceFetcherFactory;
 use App\Services\Repurpose\SourceMedia;
 use App\Services\Social\Meta\GraphError;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -22,50 +26,106 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
+/**
+ * Polls one source account for every active repurpose watching it.
+ *
+ * The job takes an account rather than a repurpose because a creator who wants
+ * their Reels and their Stories replicated has two repurposes on the same
+ * Instagram. Grouping keeps that at one round of calls, which matters: the
+ * Instagram quota is an app-wide pool and this feature's user configures it
+ * once and stops opening TryPost, spending quota without feeding it.
+ */
 class PollRepurposeSource implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(public Repurpose $repurpose)
+    public function __construct(public SocialAccount $account)
     {
-        $this->onQueue($repurpose->sourceAccount->platform->queue());
+        $this->onQueue($account->platform->queue());
     }
 
     public function handle(SourceFetcherFactory $fetchers): void
     {
-        $account = $this->repurpose->sourceAccount;
+        if ($this->account->disconnected_at !== null) {
+            return;
+        }
 
-        if ($account === null || $account->disconnected_at !== null) {
+        $repurposes = $this->activeRepurposes();
+
+        if ($repurposes->isEmpty()) {
             return;
         }
 
         try {
-            $media = $fetchers->for($account)->fetch($account, $this->repurpose->activated_at);
+            $media = $fetchers->for($this->account)->fetch(
+                $this->account,
+                $this->earliestWatermark($repurposes),
+                $this->watchedFormats($repurposes),
+            );
         } catch (Throwable $exception) {
-            $this->recordFailure($exception);
+            $this->recordFailure($repurposes, $exception);
 
             return;
         }
 
-        $this->logMedia($media);
+        foreach ($repurposes as $repurpose) {
+            $this->logMedia($repurpose, $media);
+        }
 
-        $this->repurpose->update([
-            'last_error' => null,
-            'last_polled_at' => now(),
-            'next_poll_at' => now()->addMinutes($this->interval()),
-        ]);
+        $this->markPolled($repurposes, $this->interval());
+    }
+
+    /**
+     * @return Collection<int, Repurpose>
+     */
+    private function activeRepurposes(): Collection
+    {
+        return Repurpose::query()
+            ->where('source_social_account_id', $this->account->id)
+            ->where('status', Status::Active)
+            ->get();
+    }
+
+    /**
+     * @param  Collection<int, Repurpose>  $repurposes
+     * @return array<int, SourceFormat>
+     */
+    private function watchedFormats(Collection $repurposes): array
+    {
+        return $repurposes->pluck('source_format')->unique()->values()->all();
+    }
+
+    /**
+     * The oldest watermark among the repurposes sharing this account, so one
+     * request covers all of them; each then filters what is new to itself.
+     *
+     * @param  Collection<int, Repurpose>  $repurposes
+     */
+    private function earliestWatermark(Collection $repurposes): mixed
+    {
+        return $repurposes->pluck('activated_at')->filter()->min();
     }
 
     /**
      * @param  array<int, SourceMedia>  $media
      */
-    private function logMedia(array $media): void
+    private function logMedia(Repurpose $repurpose, array $media): void
     {
-        $publishedByUs = $this->idsPublishedByTryPost($media);
+        $matching = array_values(array_filter(
+            $media,
+            fn (SourceMedia $entry): bool => $entry->format === $repurpose->source_format
+                && ($repurpose->activated_at === null || $entry->createdAt === null || $entry->createdAt->greaterThan($repurpose->activated_at)),
+        ));
 
-        foreach ($media as $entry) {
+        if ($matching === []) {
+            return;
+        }
+
+        $publishedByUs = $this->idsPublishedByTryPost($repurpose, $matching);
+
+        foreach ($matching as $entry) {
             $item = RepurposeItem::firstOrCreate(
-                ['repurpose_id' => $this->repurpose->id, 'source_media_id' => $entry->id],
+                ['repurpose_id' => $repurpose->id, 'source_media_id' => $entry->id],
                 [
                     'status' => ItemStatus::Pending,
                     'source_permalink' => $entry->permalink,
@@ -77,10 +137,14 @@ class PollRepurposeSource implements ShouldQueue
                 continue;
             }
 
-            $reason = $this->skipReason($entry, $publishedByUs);
+            if (in_array($entry->id, $publishedByUs, true)) {
+                $item->update(['status' => ItemStatus::Skipped, 'reason' => ItemReason::PublishedViaTrypost]);
 
-            if ($reason !== null) {
-                $item->update(['status' => ItemStatus::Skipped, 'reason' => $reason]);
+                continue;
+            }
+
+            if (blank($entry->downloadUrl)) {
+                $item->update(['status' => ItemStatus::Skipped, 'reason' => ItemReason::MediaUrlMissing]);
 
                 continue;
             }
@@ -90,36 +154,19 @@ class PollRepurposeSource implements ShouldQueue
     }
 
     /**
-     * @param  array<int, string>  $publishedByUs
-     */
-    private function skipReason(SourceMedia $media, array $publishedByUs): ?ItemReason
-    {
-        return match (true) {
-            ! $media->isVideo => ItemReason::NotVideo,
-            in_array($media->id, $publishedByUs, true) => ItemReason::PublishedViaTrypost,
-            blank($media->downloadUrl) => ItemReason::MediaUrlMissing,
-            default => null,
-        };
-    }
-
-    /**
      * Media this workspace published through TryPost, which must never be
      * replicated again.
      *
      * @param  array<int, SourceMedia>  $media
      * @return array<int, string>
      */
-    private function idsPublishedByTryPost(array $media): array
+    private function idsPublishedByTryPost(Repurpose $repurpose, array $media): array
     {
         $ids = array_map(fn (SourceMedia $entry): string => $entry->id, $media);
 
-        if ($ids === []) {
-            return [];
-        }
-
         return PostPlatform::query()
             ->whereIn('platform_post_id', $ids)
-            ->whereHas('post', fn (Builder $query) => $query->where('workspace_id', $this->repurpose->workspace_id))
+            ->whereHas('post', fn (Builder $query) => $query->where('workspace_id', $repurpose->workspace_id))
             ->pluck('platform_post_id')
             ->all();
     }
@@ -127,21 +174,35 @@ class PollRepurposeSource implements ShouldQueue
     /**
      * A throttled source waits longer than the usual interval, so a workspace
      * that hit Meta's app-wide quota does not keep spending it.
+     *
+     * @param  Collection<int, Repurpose>  $repurposes
      */
-    private function recordFailure(Throwable $exception): void
+    private function recordFailure(Collection $repurposes, Throwable $exception): void
     {
         $throttled = GraphError::isTransient(['error' => ['message' => $exception->getMessage()]])
             || Str::contains($exception->getMessage(), 'request limit', ignoreCase: true);
 
-        $this->repurpose->update([
+        Repurpose::whereKey($repurposes->modelKeys())->update([
             'last_error' => Str::limit($exception->getMessage(), 1000),
             'last_polled_at' => now(),
             'next_poll_at' => now()->addMinutes($throttled ? $this->backoff() : $this->interval()),
         ]);
 
         Log::warning('Repurpose polling failed', [
-            'repurpose_id' => $this->repurpose->id,
+            'social_account_id' => $this->account->id,
             'message' => $exception->getMessage(),
+        ]);
+    }
+
+    /**
+     * @param  Collection<int, Repurpose>  $repurposes
+     */
+    private function markPolled(Collection $repurposes, int $minutes): void
+    {
+        Repurpose::whereKey($repurposes->modelKeys())->update([
+            'last_error' => null,
+            'last_polled_at' => now(),
+            'next_poll_at' => now()->addMinutes($minutes),
         ]);
     }
 

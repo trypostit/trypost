@@ -11,6 +11,22 @@ return [
         'no_destinations' => '还没有目标',
     ],
 
+    'formats' => [
+        'reel' => 'Reels',
+        'video' => '视频',
+        'story' => '快拍',
+    ],
+
+    'source' => [
+        'title' => '来源',
+        'description' => 'TryPost 会盯着这个账号，寻找下面所选格式的新视频。',
+        'watch_label' => '监控格式',
+    ],
+
+    'summary' => [
+        'sentence' => '你每次在 :source 发布新的 :format，都会同步到 :destinations。',
+    ],
+
     'empty' => [
         'title' => '还没有设置 Repurpose',
         'description' => '在下面选一个起点。TryPost 会盯着你选的账号，把每条新视频转发到你勾选的平台。',
@@ -70,6 +86,7 @@ return [
         'hint' => '只有当文案超出该平台上限时，才会按平台调整。',
         'none_available' => '这个工作区还没有连接其他账号。',
         'save' => '保存目标',
+        'publish_as' => '发布为',
     ],
 
     'status_card' => [
@@ -119,5 +136,6 @@ return [
     'errors' => [
         'source_already_used' => '这个账号已经用于另一个 Repurpose，请去编辑那一个。',
         'destinations_required' => '启用前请至少选择一个目标。',
+        'destination_needs_video' => '该格式不支持视频。',
     ],
 ];

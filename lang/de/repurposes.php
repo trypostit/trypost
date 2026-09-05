@@ -11,6 +11,22 @@ return [
         'no_destinations' => 'Noch kein Ziel',
     ],
 
+    'formats' => [
+        'reel' => 'Reels',
+        'video' => 'Videos',
+        'story' => 'Stories',
+    ],
+
+    'source' => [
+        'title' => 'Quelle',
+        'description' => 'TryPost beobachtet dieses Konto auf neue Videos im unten gewählten Format.',
+        'watch_label' => 'Beobachten',
+    ],
+
+    'summary' => [
+        'sentence' => 'Jedes neue :format, das du auf :source postest, wird auf :destinations erneut veröffentlicht.',
+    ],
+
     'empty' => [
         'title' => 'Noch kein Repurpose eingerichtet',
         'description' => 'Wähle unten einen Startpunkt. TryPost beobachtet das gewählte Konto und veröffentlicht jedes neue Video erneut auf den Netzwerken deiner Wahl.',
@@ -70,6 +86,7 @@ return [
         'hint' => 'Der Text wird nur dann pro Netzwerk angepasst, wenn er dessen Limit überschreitet.',
         'none_available' => 'In diesem Workspace ist noch kein weiteres Konto verbunden.',
         'save' => 'Ziele speichern',
+        'publish_as' => 'Veröffentlichen als',
     ],
 
     'status_card' => [
@@ -119,5 +136,6 @@ return [
     'errors' => [
         'source_already_used' => 'Dieses Konto speist bereits ein anderes Repurpose. Bearbeite stattdessen jenes.',
         'destinations_required' => 'Wähle vor dem Aktivieren mindestens ein Ziel.',
+        'destination_needs_video' => 'Dieses Format kann kein Video tragen.',
     ],
 ];

@@ -1,6 +1,18 @@
 import type { ChannelAccount } from '@/types/channel';
 import type { RepurposeItemStatus, RepurposeStatus } from '@/types/repurpose-status';
 
+export type RepurposeSourceFormat = 'reel' | 'video' | 'story';
+
+export interface SourceFormatOption {
+    value: RepurposeSourceFormat;
+    label: string;
+}
+
+export interface DestinationFormat {
+    value: string;
+    label: string;
+}
+
 export interface RepurposeDestination {
     social_account_id: string;
     content_type: string;
@@ -10,6 +22,7 @@ export interface RepurposeDestination {
 export interface Repurpose {
     id: string;
     source_social_account_id: string;
+    source_format: RepurposeSourceFormat;
     source_account?: ChannelAccount | null;
     destinations: RepurposeDestination[];
     status: RepurposeStatus;
