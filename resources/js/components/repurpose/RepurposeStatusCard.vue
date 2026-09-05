@@ -42,18 +42,18 @@ const send = (url: string) => {
                 {{ repurpose.last_error }}
             </p>
 
-            <dl class="grid gap-2 text-sm sm:grid-cols-2">
-                <div>
+            <dl class="space-y-2 text-sm">
+                <div class="flex items-baseline justify-between gap-3">
                     <dt class="text-xs uppercase tracking-wide text-muted-foreground">
                         {{ $t('repurposes.status_card.watermark') }}
                     </dt>
-                    <dd>{{ repurpose.activated_at ? date.formatDateTime(repurpose.activated_at) : '—' }}</dd>
+                    <dd class="text-right">{{ repurpose.activated_at ? date.formatDateTime(repurpose.activated_at) : '—' }}</dd>
                 </div>
-                <div>
+                <div class="flex items-baseline justify-between gap-3">
                     <dt class="text-xs uppercase tracking-wide text-muted-foreground">
                         {{ $t('repurposes.status_card.last_polled') }}
                     </dt>
-                    <dd>{{ repurpose.last_polled_at ? date.diffForHumans(repurpose.last_polled_at) : '—' }}</dd>
+                    <dd class="text-right">{{ repurpose.last_polled_at ? date.diffForHumans(repurpose.last_polled_at) : '—' }}</dd>
                 </div>
             </dl>
 

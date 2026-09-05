@@ -176,44 +176,58 @@ const handleDelete = () => {
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="configuration" class="space-y-6">
-                    <RepurposeSummary
-                        :source-account="repurpose.source_account"
-                        :source-format="form.source_format"
-                        :format-label="currentFormatLabel"
-                        :destinations="form.destinations"
-                        :destination-accounts="destinationAccounts"
-                    />
-
-                    <RepurposeStatusCard :repurpose="repurpose" />
-
-                    <SourceFormatCard
-                        v-model="form.source_format"
-                        :account="repurpose.source_account"
-                        :formats="sourceFormats"
-                    />
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>{{ $t('repurposes.destinations.title') }}</CardTitle>
-                            <CardDescription>{{ $t('repurposes.destinations.description') }}</CardDescription>
-                        </CardHeader>
-
-                        <CardContent class="space-y-4">
-                            <ChannelConfigurator
-                                :channels="channels"
-                                :selected-ids="selectedAccountIds"
-                                @toggle="toggleDestination"
-                                @update:content-type="setDestinationContentType"
-                                @update:meta="setDestinationMeta"
+                <!-- Two columns on a wide screen: the source and its status are
+                     short and rarely change, so they stay put on the left while
+                     the destinations, which grow with every network and its
+                     settings, scroll on the right. -->
+                <TabsContent value="configuration">
+                    <div class="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
+                        <div class="space-y-4 lg:sticky lg:top-6">
+                            <SourceFormatCard
+                                v-model="form.source_format"
+                                :account="repurpose.source_account"
+                                :formats="sourceFormats"
                             />
 
-                            <Button data-testid="save-destinations" :disabled="form.processing" @click="save">
-                                {{ $t('repurposes.destinations.save') }}
-                            </Button>
-                        </CardContent>
-                    </Card>
+                            <RepurposeStatusCard :repurpose="repurpose" />
+                        </div>
 
+                        <div class="space-y-4">
+                            <RepurposeSummary
+                                :source-account="repurpose.source_account"
+                                :source-format="form.source_format"
+                                :format-label="currentFormatLabel"
+                                :destinations="form.destinations"
+                                :destination-accounts="destinationAccounts"
+                            />
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>{{ $t('repurposes.destinations.title') }}</CardTitle>
+                                    <CardDescription>{{ $t('repurposes.destinations.description') }}</CardDescription>
+                                </CardHeader>
+
+                                <CardContent>
+                                    <ChannelConfigurator
+                                        :channels="channels"
+                                        :selected-ids="selectedAccountIds"
+                                        @toggle="toggleDestination"
+                                        @update:content-type="setDestinationContentType"
+                                        @update:meta="setDestinationMeta"
+                                    />
+                                </CardContent>
+                            </Card>
+
+                            <!-- The save button trails the destinations it saves,
+                                 and sticks to the bottom so a long list never
+                                 hides it. -->
+                            <div class="sticky bottom-0 -mx-1 flex justify-end border-t-2 border-foreground/10 bg-background/95 px-1 py-3 backdrop-blur">
+                                <Button data-testid="save-destinations" :disabled="form.processing" @click="save">
+                                    {{ $t('repurposes.destinations.save') }}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
                 </TabsContent>
 
                 <TabsContent value="activity">
