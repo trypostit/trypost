@@ -136,3 +136,36 @@ test('an unsupported platform cannot be a source', function () {
     expect(fn () => app(SourceFetcherFactory::class)->for($account))
         ->toThrow(InvalidArgumentException::class);
 });
+
+test('a standalone instagram video with no product type still counts as a reel', function () {
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/*' => Http::response(['data' => [
+            ['id' => '1', 'media_type' => 'VIDEO', 'media_url' => 'https://cdn/v.mp4', 'caption' => 'Hi'],
+            ['id' => '2', 'media_type' => 'IMAGE', 'media_url' => 'https://cdn/i.jpg'],
+        ]]),
+    ]);
+
+    $account = SocialAccount::factory()->create(['platform' => Platform::Instagram]);
+
+    $media = app(SourceFetcherFactory::class)->for($account)->fetch($account, null, [SourceFormat::Reel]);
+
+    expect($media)->toHaveCount(2)
+        ->and($media[0]->format)->toBe(SourceFormat::Reel)
+        ->and($media[1]->format)->toBeNull();
+});
+
+test('a story is a story because of the edge it came from, not a field', function () {
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/*/media*' => Http::response(['data' => []]),
+        config('trypost.platforms.instagram.graph_api').'/*/stories*' => Http::response(['data' => [
+            ['id' => 's1', 'media_type' => 'VIDEO', 'media_url' => 'https://cdn/s.mp4'],
+        ]]),
+    ]);
+
+    $account = SocialAccount::factory()->create(['platform' => Platform::Instagram]);
+
+    $media = app(SourceFetcherFactory::class)->for($account)->fetch($account, null, [SourceFormat::Story]);
+
+    expect($media)->toHaveCount(1)
+        ->and($media[0]->format)->toBe(SourceFormat::Story);
+});

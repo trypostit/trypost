@@ -23,14 +23,20 @@ class InstagramSourceFetcher extends MetaSourceFetcher
         $media = [];
 
         if (in_array(SourceFormat::Reel, $formats, true) || in_array(SourceFormat::Video, $formats, true)) {
-            $media = $this->request($account, 'media', $since);
+            $media = array_map(
+                fn (array $row): SourceMedia => $this->toSourceMedia($row, null),
+                $this->request($account, 'media', $since),
+            );
         }
 
         if (in_array(SourceFormat::Story, $formats, true)) {
-            $media = [...$media, ...$this->request($account, 'stories', null)];
+            $media = [...$media, ...array_map(
+                fn (array $row): SourceMedia => $this->toSourceMedia($row, SourceFormat::Story),
+                $this->request($account, 'stories', null),
+            )];
         }
 
-        return array_map($this->toSourceMedia(...), $media);
+        return $media;
     }
 
     /**
@@ -48,11 +54,11 @@ class InstagramSourceFetcher extends MetaSourceFetcher
     /**
      * @param  array<string, mixed>  $row
      */
-    private function toSourceMedia(array $row): SourceMedia
+    private function toSourceMedia(array $row, ?SourceFormat $edgeFormat): SourceMedia
     {
         return new SourceMedia(
             id: (string) data_get($row, 'id'),
-            format: $this->format($row),
+            format: $this->format($row, $edgeFormat),
             downloadUrl: data_get($row, 'media_url'),
             caption: (string) data_get($row, 'caption', ''),
             permalink: data_get($row, 'permalink'),
@@ -61,19 +67,29 @@ class InstagramSourceFetcher extends MetaSourceFetcher
     }
 
     /**
+     * Meta documents media_product_type as available to the Facebook-login API
+     * only, and our standalone Instagram accounts talk to graph.instagram.com.
+     * The surface is therefore taken from the edge that returned the row where
+     * it is unambiguous, and a video off /media with no product type is read as
+     * a Reel, which is what Instagram serves new feed video as.
+     *
      * @param  array<string, mixed>  $row
      */
-    private function format(array $row): ?SourceFormat
+    private function format(array $row, ?SourceFormat $edgeFormat): ?SourceFormat
     {
         if (data_get($row, 'media_type') !== 'VIDEO') {
             return null;
+        }
+
+        if ($edgeFormat !== null) {
+            return $edgeFormat;
         }
 
         return match (data_get($row, 'media_product_type')) {
             'REELS' => SourceFormat::Reel,
             'FEED' => SourceFormat::Video,
             'STORY' => SourceFormat::Story,
-            default => null,
+            default => SourceFormat::Reel,
         };
     }
 
