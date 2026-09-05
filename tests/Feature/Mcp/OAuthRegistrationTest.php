@@ -26,18 +26,63 @@ test('dynamic oauth client registration is rate limited', function () {
     $this->postJson('/oauth/register', $payload)->assertTooManyRequests();
 });
 
-test('dynamic oauth registration rejects custom callback schemes', function (string $redirectUri) {
+test('dynamic oauth registration accepts native agent custom callback schemes', function (string $redirectUri) {
     $this->postJson('/oauth/register', [
         'client_name' => 'Native MCP Client',
         'redirect_uris' => [$redirectUri],
         'grant_types' => ['authorization_code'],
         'response_types' => ['code'],
         'token_endpoint_auth_method' => 'none',
-    ])->assertBadRequest();
+    ])->assertCreated();
 })->with([
+    'cursor documented' => 'cursor://anysphere.cursor-mcp/oauth/callback',
     'cursor' => 'cursor://oauth/callback',
     'vscode' => 'vscode://oauth/callback',
+    'vscode-insiders' => 'vscode-insiders://oauth/callback',
+    'claude' => 'claude://oauth/callback',
+    'claude-desktop' => 'claude-desktop://oauth/callback',
+    'claude-code' => 'claude-code://oauth/callback',
+    'windsurf' => 'windsurf://oauth/callback',
+    'zed' => 'zed://oauth/callback',
+    'raycast' => 'raycast://oauth',
+    'grok' => 'grok://oauth/callback',
+    'hermes' => 'hermes://oauth/callback',
+    'opencode' => 'opencode://oauth/callback',
+    'continue' => 'continue://oauth/callback',
+    'codex' => 'codex://oauth/callback',
 ]);
+
+test('dynamic oauth registration rejects unknown and unsafe callback schemes', function (string $redirectUri) {
+    $this->postJson('/oauth/register', [
+        'client_name' => 'Native MCP Client',
+        'redirect_uris' => [$redirectUri],
+        'grant_types' => ['authorization_code'],
+        'response_types' => ['code'],
+        'token_endpoint_auth_method' => 'none',
+    ])
+        ->assertBadRequest()
+        ->assertJson([
+            'error' => 'invalid_redirect_uri',
+        ]);
+})->with([
+    'javascript' => 'javascript:alert(1)',
+    'data' => 'data:text/html,hi',
+    'file' => 'file:///etc/passwd',
+    'unknown' => 'notanagent://oauth/callback',
+    'cursor missing host' => 'cursor:/callback',
+]);
+
+test('dynamic oauth registration accepts extra custom schemes from config', function () {
+    config()->set('mcp.custom_schemes', [...config('mcp.custom_schemes'), 'myagent']);
+
+    $this->postJson('/oauth/register', [
+        'client_name' => 'Custom Agent',
+        'redirect_uris' => ['myagent://oauth/callback'],
+        'grant_types' => ['authorization_code'],
+        'response_types' => ['code'],
+        'token_endpoint_auth_method' => 'none',
+    ])->assertCreated();
+});
 
 test('mcp oauth consent page is available for workspace viewers', function () {
     $account = Account::factory()->create();
