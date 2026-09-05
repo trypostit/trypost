@@ -79,7 +79,7 @@ const send = (url: string) => {
 
                 <Button
                     v-if="repurpose.status !== 'disabled' && repurpose.status !== 'draft'"
-                    variant="ghost"
+                    variant="destructive"
                     data-testid="disable-repurpose"
                     @click="send(disable.url(repurpose.id))"
                 >

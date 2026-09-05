@@ -142,12 +142,14 @@ const handleDelete = (repurpose: Repurpose) => {
                         </TableCell>
                         <TableCell class="text-right">
                             <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                :aria-label="$t('common.delete')"
+                                variant="outline"
+                                size="icon"
+                                class="size-8 bg-rose-100 hover:bg-rose-200"
+                                :aria-label="$t('repurposes.danger.delete')"
+                                data-testid="delete-repurpose-button"
                                 @click.stop="handleDelete(repurpose)"
                             >
-                                <IconTrash class="size-4" />
+                                <IconTrash class="size-4 text-rose-700" />
                             </Button>
                         </TableCell>
                     </TableRow>
