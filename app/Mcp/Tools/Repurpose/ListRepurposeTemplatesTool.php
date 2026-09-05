@@ -13,8 +13,10 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[Description('Ready-made repurpose starting points and the video formats a source can be watched for. Use this before create-repurpose-tool to suggest a sensible source and destination combination.')]
+#[IsReadOnly]
 class ListRepurposeTemplatesTool extends Tool
 {
     use AuthorizesMcpTool;

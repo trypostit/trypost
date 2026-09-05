@@ -16,8 +16,10 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[Description('Read one repurpose, including the format it watches, its destinations and the last polling error.')]
+#[IsReadOnly]
 class GetRepurposeTool extends Tool
 {
     use AuthorizesMcpTool, ResolvesWorkspaceRepurpose;

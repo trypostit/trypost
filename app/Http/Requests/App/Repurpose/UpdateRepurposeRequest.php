@@ -24,4 +24,20 @@ class UpdateRepurposeRequest extends FormRequest
 
         return $rules;
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return RepurposeRules::messages();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return RepurposeRules::attributes();
+    }
 }

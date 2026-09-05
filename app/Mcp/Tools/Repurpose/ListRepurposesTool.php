@@ -13,8 +13,10 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[Description('List the repurposes of the current workspace. A repurpose watches one source account for one video format and republishes every new video to its destinations. Videos published through TryPost are never replicated.')]
+#[IsReadOnly]
 class ListRepurposesTool extends Tool
 {
     use AuthorizesMcpTool;

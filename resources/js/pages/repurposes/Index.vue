@@ -160,7 +160,6 @@ const handleDelete = (repurpose: Repurpose) => {
         <CreateRepurposeDialog
             v-model:open="createDialogOpen"
             :source-accounts="sourceAccounts"
-            :template="activeTemplate?.key ?? null"
             :locked-platform="activeTemplate?.source_platform ?? null"
         />
 

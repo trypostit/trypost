@@ -71,8 +71,10 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        $publishedByUs = $this->idsPublishedByTryPost($media);
+
         foreach ($repurposes as $repurpose) {
-            $this->logMedia($repurpose, $media);
+            $this->logMedia($repurpose, $media, $publishedByUs);
         }
 
         $this->markPolled($repurposes, $this->interval());
@@ -108,8 +110,9 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
 
     /**
      * @param  array<int, SourceMedia>  $media
+     * @param  array<int, string>  $publishedByUs
      */
-    private function logMedia(Repurpose $repurpose, array $media): void
+    private function logMedia(Repurpose $repurpose, array $media, array $publishedByUs): void
     {
         $matching = array_values(array_filter(
             $media,
@@ -120,8 +123,6 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
         if ($matching === []) {
             return;
         }
-
-        $publishedByUs = $this->idsPublishedByTryPost($repurpose, $matching);
 
         foreach ($matching as $entry) {
             $item = RepurposeItem::firstOrCreate(
@@ -157,13 +158,17 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
      * @param  array<int, SourceMedia>  $media
      * @return array<int, string>
      */
-    private function idsPublishedByTryPost(Repurpose $repurpose, array $media): array
+    private function idsPublishedByTryPost(array $media): array
     {
         $ids = array_map(fn (SourceMedia $entry): string => $entry->id, $media);
 
+        if ($ids === []) {
+            return [];
+        }
+
         return PostPlatform::query()
             ->whereIn('platform_post_id', $ids)
-            ->whereHas('post', fn (Builder $query) => $query->where('workspace_id', $repurpose->workspace_id))
+            ->whereHas('post', fn (Builder $query) => $query->where('workspace_id', $this->account->workspace_id))
             ->pluck('platform_post_id')
             ->all();
     }

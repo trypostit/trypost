@@ -140,6 +140,23 @@ test('media already published through trypost is skipped', function () {
     Bus::assertNotDispatched(ProcessRepurposeItem::class);
 });
 
+test('another workspace publishing the same media id does not skip ours', function () {
+    Bus::fake();
+    fakeInstagramMedia([mediaRow('known-1')]);
+
+    $account = instagramAccount();
+    $repurpose = activeRepurposeOn($account);
+
+    $post = Post::factory()->create(['workspace_id' => Workspace::factory()->create()->id]);
+    PostPlatform::factory()->for($post)->create(['platform_post_id' => 'known-1']);
+
+    poll($account);
+
+    expect($repurpose->items()->sole()->reason)->toBeNull();
+
+    Bus::assertDispatched(ProcessRepurposeItem::class);
+});
+
 test('media published before the watermark is ignored', function () {
     Bus::fake();
     fakeInstagramMedia([mediaRow()]);

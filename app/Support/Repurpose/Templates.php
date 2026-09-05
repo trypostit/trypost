@@ -34,9 +34,4 @@ class Templates
             ],
         ];
     }
-
-    public static function find(?string $key): ?array
-    {
-        return collect(self::all())->firstWhere('key', $key);
-    }
 }

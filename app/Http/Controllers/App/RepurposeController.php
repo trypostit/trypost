@@ -41,12 +41,13 @@ class RepurposeController extends Controller
         $this->authorize('viewAny', Repurpose::class);
 
         $workspace = $request->user()->currentWorkspace;
+        $accounts = $this->connectedAccounts($request);
 
         return Inertia::render('repurposes/Index', [
             'repurposes' => ListRepurposes::execute($workspace),
             'templates' => Templates::all(),
-            'sourceAccounts' => SocialAccountResource::collection($this->sourceAccounts($request)),
-            'destinationAccounts' => SocialAccountResource::collection($this->connectedAccounts($request)),
+            'sourceAccounts' => SocialAccountResource::collection($this->sourceAccounts($accounts)),
+            'destinationAccounts' => SocialAccountResource::collection($accounts),
         ]);
     }
 
@@ -54,16 +55,16 @@ class RepurposeController extends Controller
     {
         $this->authorize('view', $repurpose);
 
+        $accounts = $this->connectedAccounts($request);
+        $destinations = $accounts->whereNotIn('id', [$repurpose->source_social_account_id])->values();
+
         return Inertia::render('repurposes/Show', [
             'repurpose' => new RepurposeResource($repurpose->load('sourceAccount')),
-            'sourceAccounts' => SocialAccountResource::collection($this->sourceAccounts($request)),
-            'destinationAccounts' => SocialAccountResource::collection(
-                $this->connectedAccounts($request)->whereNotIn('id', [$repurpose->source_social_account_id])->values(),
-            ),
+            'destinationAccounts' => SocialAccountResource::collection($destinations),
             'items' => Inertia::scroll(fn () => RepurposeItemResource::collection(ListRepurposeItems::execute($repurpose))),
             'sourceFormats' => $this->sourceFormats($repurpose),
-            'destinationFormats' => $this->destinationFormats($request, $repurpose->source_format),
-            ...$this->platformSettingsProps($this->connectedAccounts($request)),
+            'destinationFormats' => $this->destinationFormats($destinations, $repurpose->source_format),
+            ...$this->platformSettingsProps($destinations),
         ]);
     }
 
@@ -150,13 +151,14 @@ class RepurposeController extends Controller
     }
 
     /**
+     * @param  Collection<int, SocialAccount>  $accounts
      * @return array<string, array<int, array{value: string, label: string}>>
      */
-    private function destinationFormats(Request $request, SourceFormat $sourceFormat): array
+    private function destinationFormats(Collection $accounts, SourceFormat $sourceFormat): array
     {
         $formats = [];
 
-        foreach ($this->connectedAccounts($request) as $account) {
+        foreach ($accounts as $account) {
             $recommended = $sourceFormat->defaultContentTypeFor($account->platform);
 
             $contentTypes = collect(SourceFormat::videoContentTypesFor($account->platform))
@@ -175,24 +177,24 @@ class RepurposeController extends Controller
      * @param  Collection<int, SocialAccount>  $accounts
      * @return array<string, mixed>
      */
-    private function platformSettingsProps($accounts): array
+    private function platformSettingsProps(Collection $accounts): array
     {
         return [
-            'platformConfigs' => $accounts->mapWithKeys(fn ($account) => [
+            'platformConfigs' => fn () => $accounts->mapWithKeys(fn (SocialAccount $account): array => [
                 $account->id => new PlatformConfigResource($account),
             ]),
-            'pinterestBoards' => $accounts
+            'pinterestBoards' => fn () => $accounts
                 ->where('platform', Platform::Pinterest)
-                ->mapWithKeys(fn ($account) => [
+                ->mapWithKeys(fn (SocialAccount $account): array => [
                     $account->id => rescue(
                         fn () => ListPinterestBoards::execute($account),
                         ['boards' => [], 'truncated' => false],
                         report: false,
                     ),
                 ]),
-            'tiktokCreatorInfos' => $accounts
+            'tiktokCreatorInfos' => fn () => $accounts
                 ->where('platform', Platform::TikTok)
-                ->mapWithKeys(fn ($account) => [
+                ->mapWithKeys(fn (SocialAccount $account): array => [
                     $account->id => rescue(
                         fn () => app(TikTokCreatorInfo::class)->fetch($account),
                         null,
@@ -203,20 +205,22 @@ class RepurposeController extends Controller
         ];
     }
 
-    private function sourceAccounts(Request $request)
+    /**
+     * @param  Collection<int, SocialAccount>  $accounts
+     * @return Collection<int, SocialAccount>
+     */
+    private function sourceAccounts(Collection $accounts): Collection
     {
-        return $request->user()->currentWorkspace
-            ->socialAccounts()
-            ->active()
-            ->whereIn('platform', array_map(fn ($platform) => $platform->value, SourceFetcherFactory::supportedPlatforms()))
-            ->get();
+        return $accounts
+            ->whereIn('platform', SourceFetcherFactory::supportedPlatforms())
+            ->values();
     }
 
-    private function connectedAccounts(Request $request)
+    /**
+     * @return Collection<int, SocialAccount>
+     */
+    private function connectedAccounts(Request $request): Collection
     {
-        return $request->user()->currentWorkspace
-            ->socialAccounts()
-            ->active()
-            ->get();
+        return $request->user()->currentWorkspace->socialAccounts()->active()->get();
     }
 }

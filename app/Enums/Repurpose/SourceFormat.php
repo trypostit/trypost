@@ -29,15 +29,6 @@ enum SourceFormat: string
         };
     }
 
-    public function instagramProductType(): string
-    {
-        return match ($this) {
-            self::Reel => 'REELS',
-            self::Video => 'FEED',
-            self::Story => 'STORY',
-        };
-    }
-
     public function defaultContentTypeFor(Platform $platform): ?ContentType
     {
         $candidates = match ($this) {

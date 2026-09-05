@@ -10,6 +10,8 @@ use App\Models\Repurpose;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Http;
+use Inertia\Inertia;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
@@ -247,4 +249,59 @@ test('an account from another workspace cannot be set as the source on update', 
         ->assertSessionHasErrors('source_social_account_id');
 
     expect($repurpose->fresh()->source_social_account_id)->toBe($this->source->id);
+});
+
+test('destination meta errors read as friendly names, not raw array paths', function () {
+    $pinterest = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::Pinterest]);
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->from(route('app.repurposes.show', $repurpose))
+        ->put(route('app.repurposes.update', $repurpose), [
+            'source_social_account_id' => $this->source->id,
+            'destinations' => [[
+                'social_account_id' => $pinterest->id,
+                'content_type' => ContentType::PinterestPin->value,
+                'meta' => ['board_id' => 'board-1', 'title' => str_repeat('a', 101), 'link' => 'not-a-url'],
+            ]],
+        ])
+        ->assertSessionHasErrors([
+            'destinations.0.meta.title' => __('posts.form.pinterest.title_max'),
+            'destinations.0.meta.link' => __('posts.form.pinterest.link_invalid'),
+        ]);
+});
+
+test('the destination settings props load once and stay out of scroll pages', function () {
+    Http::fake(['*' => Http::response(['data' => []])]);
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.repurposes.show', $repurpose))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('platformConfigs')
+            ->has('pinterestBoards')
+            ->has('tiktokCreatorInfos'));
+
+    $partial = $this->actingAs($this->user)
+        ->withHeaders([
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => Inertia::getVersion(),
+            'X-Inertia-Partial-Component' => 'repurposes/Show',
+            'X-Inertia-Partial-Data' => 'items',
+        ])
+        ->get(route('app.repurposes.show', $repurpose))
+        ->assertOk();
+
+    expect($partial->json('props'))->toHaveKey('items')
+        ->not->toHaveKey('platformConfigs')
+        ->not->toHaveKey('pinterestBoards')
+        ->not->toHaveKey('tiktokCreatorInfos');
 });

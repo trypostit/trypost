@@ -5,14 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Repurpose;
 
 use App\Enums\Repurpose\SourceFormat;
-use App\Exceptions\Repurpose\SourceFetchException;
 use App\Models\SocialAccount;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
-use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Http;
 
-class FacebookSourceFetcher implements SourceFetcher
+class FacebookSourceFetcher extends MetaSourceFetcher
 {
     private const VIDEO_FIELDS = 'id,source,description,permalink_url,created_time';
 
@@ -50,14 +47,11 @@ class FacebookSourceFetcher implements SourceFetcher
      */
     private function videos(SocialAccount $account, string $edge, ?CarbonInterface $since, SourceFormat $format): array
     {
-        $response = Http::withToken($account->access_token)
-            ->get("{$this->graphApi()}/{$account->platform_user_id}/{$edge}", array_filter([
-                'fields' => self::VIDEO_FIELDS,
-                'limit' => 50,
-                'since' => $since?->getTimestamp(),
-            ]));
-
-        $this->assertSucceeded($response);
+        $rows = $this->rows($account, "{$this->graphApi()}/{$account->platform_user_id}/{$edge}", [
+            'fields' => self::VIDEO_FIELDS,
+            'limit' => 50,
+            'since' => $since?->getTimestamp(),
+        ]);
 
         return array_map(
             fn (array $row): SourceMedia => new SourceMedia(
@@ -68,7 +62,7 @@ class FacebookSourceFetcher implements SourceFetcher
                 permalink: data_get($row, 'permalink_url'),
                 createdAt: ($createdTime = data_get($row, 'created_time')) ? Carbon::parse($createdTime) : null,
             ),
-            (array) $response->json('data', []),
+            $rows,
         );
     }
 
@@ -77,17 +71,14 @@ class FacebookSourceFetcher implements SourceFetcher
      */
     private function stories(SocialAccount $account): array
     {
-        $response = Http::withToken($account->access_token)
-            ->get("{$this->graphApi()}/{$account->platform_user_id}/stories", [
-                'fields' => 'post_id,status,creation_time,media_type,media_id,url',
-                'limit' => 50,
-            ]);
-
-        $this->assertSucceeded($response);
+        $rows = $this->rows($account, "{$this->graphApi()}/{$account->platform_user_id}/stories", [
+            'fields' => 'post_id,status,creation_time,media_type,media_id,url',
+            'limit' => 50,
+        ]);
 
         $stories = [];
 
-        foreach ((array) $response->json('data', []) as $row) {
+        foreach ($rows as $row) {
             if (data_get($row, 'media_type') !== 'video' || data_get($row, 'status') !== 'PUBLISHED') {
                 continue;
             }
@@ -113,17 +104,9 @@ class FacebookSourceFetcher implements SourceFetcher
             return null;
         }
 
-        $response = Http::withToken($account->access_token)
-            ->get("{$this->graphApi()}/{$videoId}", ['fields' => 'source']);
+        $response = $this->http($account)->get("{$this->graphApi()}/{$videoId}", ['fields' => 'source']);
 
         return $response->successful() ? $response->json('source') : null;
-    }
-
-    private function assertSucceeded(Response $response): void
-    {
-        if ($response->failed()) {
-            throw new SourceFetchException($response);
-        }
     }
 
     private function graphApi(): string

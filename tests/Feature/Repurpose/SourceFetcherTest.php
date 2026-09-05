@@ -40,7 +40,7 @@ test('instagram tags reels and feed videos apart by product type', function () {
         ->and($media[0]->format)->toBe(SourceFormat::Reel)
         ->and($media[1]->format)->toBe(SourceFormat::Video)
         ->and($media[2]->format)->toBeNull()
-        ->and($media[2]->isVideo())->toBeFalse();
+        ->and($media[2]->format)->toBeNull();
 });
 
 test('instagram only calls the stories edge when stories are watched', function () {

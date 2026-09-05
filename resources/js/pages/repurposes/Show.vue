@@ -31,7 +31,6 @@ import { repurposeStatusVariant } from '@/types/repurpose-status';
 
 const props = defineProps<{
     repurpose: Repurpose;
-    sourceAccounts: ChannelAccount[];
     destinationAccounts: ChannelAccount[];
     items: { data: RepurposeItem[] };
     sourceFormats: SourceFormatOption[];

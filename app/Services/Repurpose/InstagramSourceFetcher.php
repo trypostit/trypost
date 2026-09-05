@@ -6,14 +6,11 @@ namespace App\Services\Repurpose;
 
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
-use App\Exceptions\Repurpose\SourceFetchException;
 use App\Models\SocialAccount;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
-use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Http;
 
-class InstagramSourceFetcher implements SourceFetcher
+class InstagramSourceFetcher extends MetaSourceFetcher
 {
     private const FIELDS = 'id,media_type,media_product_type,media_url,caption,permalink,timestamp';
 
@@ -41,16 +38,11 @@ class InstagramSourceFetcher implements SourceFetcher
      */
     private function request(SocialAccount $account, string $edge, ?CarbonInterface $since): array
     {
-        $response = Http::withToken($account->access_token)
-            ->get("{$this->graphApi($account)}/{$account->platform_user_id}/{$edge}", array_filter([
-                'fields' => self::FIELDS,
-                'limit' => 50,
-                'since' => $since?->getTimestamp(),
-            ]));
-
-        $this->assertSucceeded($response);
-
-        return (array) $response->json('data', []);
+        return $this->rows($account, "{$this->graphApi($account)}/{$account->platform_user_id}/{$edge}", [
+            'fields' => self::FIELDS,
+            'limit' => 50,
+            'since' => $since?->getTimestamp(),
+        ]);
     }
 
     /**
@@ -83,13 +75,6 @@ class InstagramSourceFetcher implements SourceFetcher
             'STORY' => SourceFormat::Story,
             default => null,
         };
-    }
-
-    private function assertSucceeded(Response $response): void
-    {
-        if ($response->failed()) {
-            throw new SourceFetchException($response);
-        }
     }
 
     private function graphApi(SocialAccount $account): string

@@ -51,25 +51,42 @@ class RepurposeRules
                     ? $fail(__('repurposes.errors.destination_needs_video'))
                     : null,
             ],
-            ...self::destinationMetaRules(),
+            ...self::forDestinations(PostPlatformMetaRules::rules()),
         ];
     }
 
     /**
+     * @return array<string, string>
+     */
+    public static function messages(): array
+    {
+        return self::forDestinations(PostPlatformMetaRules::messages());
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function attributes(): array
+    {
+        return self::forDestinations(PostPlatformMetaRules::attributes());
+    }
+
+    /**
+     * @param  array<string, mixed>  $entries
      * @return array<string, mixed>
      */
-    private static function destinationMetaRules(): array
+    private static function forDestinations(array $entries): array
     {
-        $rules = [];
+        $destinations = [];
 
-        foreach (PostPlatformMetaRules::rules() as $key => $rule) {
+        foreach ($entries as $key => $entry) {
             if (! Str::startsWith($key, 'platforms.*.meta')) {
                 continue;
             }
 
-            $rules[Str::replaceFirst('platforms.*.', 'destinations.*.', $key)] = $rule;
+            $destinations[Str::replaceFirst('platforms.*.', 'destinations.*.', $key)] = $entry;
         }
 
-        return $rules;
+        return $destinations;
     }
 }

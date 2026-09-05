@@ -16,8 +16,10 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[Description('List every source video a repurpose has seen, with why each was skipped when it was: already published through TryPost, no downloadable file, or a failed download. This is where to look when a video was not replicated.')]
+#[IsReadOnly]
 class ListRepurposeItemsTool extends Tool
 {
     use AuthorizesMcpTool, ResolvesWorkspaceRepurpose;
@@ -40,11 +42,12 @@ class ListRepurposeItemsTool extends Tool
         $items = $repurpose->items()
             ->with('posts.postPlatforms:id,post_id,platform,enabled')
             ->latest()
-            ->paginate(15, page: (int) data_get($validated, 'page', 1));
+            ->paginate((int) config('app.pagination.default'), page: (int) data_get($validated, 'page', 1));
 
         return Response::structured([
             'items' => RepurposeItemResource::collection($items->items())->resolve(),
             'total' => $items->total(),
+            'per_page' => $items->perPage(),
             'current_page' => $items->currentPage(),
             'last_page' => $items->lastPage(),
         ]);
@@ -57,7 +60,7 @@ class ListRepurposeItemsTool extends Tool
     {
         return [
             'repurpose_id' => $schema->string()->required()->description('The repurpose whose activity to read.'),
-            'page' => $schema->integer()->description('Page number, 15 items per page.'),
+            'page' => $schema->integer()->description('Page number.'),
         ];
     }
 }

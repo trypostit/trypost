@@ -123,7 +123,6 @@ return [
         ],
         'reasons' => [
             'published_via_trypost' => 'Zaten TryPost ile yayınlandı',
-            'not_video' => 'Video değil',
             'media_url_missing' => 'Ağ indirilebilir bir dosya paylaşmadı, genellikle telif hakkı korumalı ses nedeniyle',
             'download_failed' => 'Video indirilemedi',
             'post_creation_failed' => 'Uygun hedef yok',

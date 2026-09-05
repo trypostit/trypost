@@ -123,7 +123,6 @@ return [
         ],
         'reasons' => [
             'published_via_trypost' => 'Al gepubliceerd via TryPost',
-            'not_video' => 'Geen video',
             'media_url_missing' => 'Het netwerk deelde geen downloadbaar bestand, meestal door auteursrechtelijk beschermde audio',
             'download_failed' => 'De video kon niet worden gedownload',
             'post_creation_failed' => 'Geen bestemming beschikbaar',

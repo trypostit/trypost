@@ -123,7 +123,6 @@ return [
         ],
         'reasons' => [
             'published_via_trypost' => 'Już opublikowane przez TryPost',
-            'not_video' => 'To nie jest film',
             'media_url_missing' => 'Sieć nie udostępniła pliku do pobrania, zwykle z powodu dźwięku chronionego prawem autorskim',
             'download_failed' => 'Nie udało się pobrać filmu',
             'post_creation_failed' => 'Brak dostępnego celu',

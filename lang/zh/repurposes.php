@@ -123,7 +123,6 @@ return [
         ],
         'reasons' => [
             'published_via_trypost' => '已通过 TryPost 发布',
-            'not_video' => '不是视频',
             'media_url_missing' => '平台没有提供可下载的文件，通常是因为音频有版权',
             'download_failed' => '视频下载失败',
             'post_creation_failed' => '没有可用的目标',

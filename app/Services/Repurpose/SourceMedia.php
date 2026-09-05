@@ -17,9 +17,4 @@ readonly class SourceMedia
         public ?string $permalink,
         public ?CarbonInterface $createdAt,
     ) {}
-
-    public function isVideo(): bool
-    {
-        return $this->format !== null;
-    }
 }

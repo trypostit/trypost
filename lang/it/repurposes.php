@@ -123,7 +123,6 @@ return [
         ],
         'reasons' => [
             'published_via_trypost' => 'Già pubblicato tramite TryPost',
-            'not_video' => 'Non è un video',
             'media_url_missing' => 'La rete non ha fornito un file scaricabile, di solito per audio protetto da copyright',
             'download_failed' => 'Non è stato possibile scaricare il video',
             'post_creation_failed' => 'Nessuna destinazione disponibile',

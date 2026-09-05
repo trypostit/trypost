@@ -21,7 +21,6 @@ import type { ChannelAccount } from '@/types/channel';
 
 const props = defineProps<{
     sourceAccounts: ChannelAccount[];
-    template?: string | null;
     lockedPlatform?: string | null;
 }>();
 
@@ -29,7 +28,6 @@ const open = defineModel<boolean>('open', { default: false });
 
 const form = useForm({
     source_social_account_id: '',
-    template: null as string | null,
 });
 
 const selectableAccounts = computed(() =>
@@ -46,7 +44,6 @@ watch(open, (isOpen) => {
         return;
     }
 
-    form.template = props.template ?? null;
     form.source_social_account_id = selectableAccounts.value[0]?.id ?? '';
 });
 

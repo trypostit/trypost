@@ -23,6 +23,7 @@ use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Testing\Fluent\AssertableJson;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -73,20 +74,40 @@ test('destination meta survives a read back through the get tool', function () {
         ->assertSee('PUBLIC_TO_EVERYONE');
 });
 
-test('the list tool returns the workspace repurposes', function () {
-    foreach ([SourceFormat::Reel, SourceFormat::Story] as $format) {
-        Repurpose::factory()->create([
-            'workspace_id' => $this->workspace->id,
-            'source_social_account_id' => $this->source->id,
-            'source_format' => $format,
-        ]);
-    }
+test('the list tool returns the workspace repurposes and nobody else\'s', function () {
+    $reel = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+        'source_format' => SourceFormat::Reel,
+        'created_at' => now()->subHour(),
+    ]);
+
+    $story = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+        'source_format' => SourceFormat::Story,
+        'created_at' => now(),
+    ]);
+
+    $otherWorkspace = Workspace::factory()->create();
+    Repurpose::factory()->create([
+        'workspace_id' => $otherWorkspace->id,
+        'source_social_account_id' => SocialAccount::factory()->create([
+            'workspace_id' => $otherWorkspace->id,
+            'platform' => Platform::Instagram,
+        ])->id,
+    ]);
 
     TryPostServer::actingAs($this->user)
         ->tool(ListRepurposesTool::class, [])
-        ->assertOk();
-
-    expect(Repurpose::where('workspace_id', $this->workspace->id)->count())->toBe(2);
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json
+            ->has('repurposes', 2)
+            ->where('repurposes.0.id', $story->id)
+            ->where('repurposes.0.source_format', SourceFormat::Story->value)
+            ->where('repurposes.1.id', $reel->id)
+            ->where('repurposes.1.source_format', SourceFormat::Reel->value)
+            ->etc());
 });
 
 test('updating replaces the destinations and the watched format', function () {

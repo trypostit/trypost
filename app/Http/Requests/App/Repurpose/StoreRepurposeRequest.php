@@ -25,7 +25,22 @@ class StoreRepurposeRequest extends FormRequest
         return [
             'source_social_account_id' => $rules['source_social_account_id'],
             'source_format' => $rules['source_format'],
-            'template' => ['sometimes', 'nullable', 'string'],
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return RepurposeRules::messages();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return RepurposeRules::attributes();
     }
 }
