@@ -22,8 +22,6 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
-// A public IP literal lets SafeHttpFetcher's SSRF guard pass without a real DNS
-// lookup; Http::fake intercepts the request before any network I/O.
 const REPURPOSE_VIDEO_URL = 'https://93.184.216.34/v.mp4';
 
 function repurposeWithTwoDestinations(): RepurposeItem

@@ -25,12 +25,10 @@ class InstagramSourceFetcher implements SourceFetcher
     {
         $media = [];
 
-        // Reels and feed videos share the /media edge, so one call covers both.
         if (in_array(SourceFormat::Reel, $formats, true) || in_array(SourceFormat::Video, $formats, true)) {
             $media = $this->request($account, 'media', $since);
         }
 
-        // Stories are excluded from /media and live on their own edge for 24h.
         if (in_array(SourceFormat::Story, $formats, true)) {
             $media = [...$media, ...$this->request($account, 'stories', null)];
         }
@@ -94,10 +92,6 @@ class InstagramSourceFetcher implements SourceFetcher
         }
     }
 
-    /**
-     * A direct Instagram login talks to the Instagram graph host; an account
-     * connected through a Facebook Page talks to the Facebook one.
-     */
     private function graphApi(SocialAccount $account): string
     {
         return $account->platform === Platform::InstagramFacebook

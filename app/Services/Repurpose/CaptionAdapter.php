@@ -14,14 +14,6 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-/**
- * Fits a caption written for one network into another network's hard limit.
- *
- * The caption is left alone whenever it already fits, so the author's own
- * words survive in the common case. AI is only spent on a real overflow, and
- * a workspace without AI access still publishes: it falls back to a clean cut
- * rather than failing the post.
- */
 class CaptionAdapter
 {
     public function __construct(private readonly ContentSanitizer $sanitizer) {}
@@ -104,10 +96,6 @@ class CaptionAdapter
         return Gate::forUser($user)->allows('useAi', $workspace->account);
     }
 
-    /**
-     * Cuts on the last word boundary that fits, so the caption never ends
-     * mid-word.
-     */
     private function truncate(string $caption, int $limit): string
     {
         $trimmed = rtrim(mb_substr($caption, 0, $limit));

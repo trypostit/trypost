@@ -10,10 +10,6 @@ use App\Models\Repurpose;
 class UpdateRepurpose
 {
     /**
-     * Changing the source account or the watched format resets the watermark:
-     * the media the repurpose now looks at is unrelated to what it saw before,
-     * and without the reset the whole back catalogue would look new.
-     *
      * @param  array<string, mixed>  $data
      */
     public static function execute(Repurpose $repurpose, array $data): Repurpose

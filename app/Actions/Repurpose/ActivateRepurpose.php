@@ -12,12 +12,6 @@ use Illuminate\Validation\ValidationException;
 
 class ActivateRepurpose
 {
-    /**
-     * Activation stamps the watermark: only media published after this instant
-     * is replicated, so turning a repurpose on never floods the destinations
-     * with a back catalogue. A repurpose resuming from `paused` keeps the
-     * watermark it already had.
-     */
     public static function execute(Repurpose $repurpose): Repurpose
     {
         if ($repurpose->destinations === []) {
@@ -38,11 +32,6 @@ class ActivateRepurpose
         return $repurpose->fresh();
     }
 
-    /**
-     * TikTok, Pinterest and Discord each need a piece of meta before anything
-     * can reach them. Without this an active repurpose would look healthy and
-     * turn every replicated video into a failed post.
-     */
     private static function assertDestinationsCanPublish(Repurpose $repurpose): void
     {
         foreach ($repurpose->destinations as $destination) {

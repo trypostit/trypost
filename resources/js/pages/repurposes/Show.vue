@@ -45,13 +45,6 @@ const form = useForm<{ source_format: RepurposeSourceFormat; destinations: Repur
     destinations: props.repurpose.destinations ?? [],
 });
 
-/**
- * The destinations reuse the post editor's channel configurator, so every
- * network's own settings — TikTok privacy, a Pinterest board, a Discord
- * channel — come from the components that already know how to ask for them.
- * A repurpose keys its destinations by social account rather than by
- * post_platform, since no post exists yet.
- */
 const channels = computed<Channel[]>(() =>
     props.destinationAccounts.map((account) => {
         const destination = form.destinations.find((item) => item.social_account_id === account.id);
@@ -162,10 +155,6 @@ const handleDelete = () => {
                     </TabsTrigger>
                 </TabsList>
 
-                <!-- Two columns on a wide screen: the source and its status are
-                     short and rarely change, so they stay put on the left while
-                     the destinations, which grow with every network and its
-                     settings, scroll on the right. -->
                 <TabsContent value="configuration">
                     <div class="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
                         <div class="space-y-4 lg:sticky lg:top-6">
@@ -196,8 +185,6 @@ const handleDelete = () => {
                                 </CardContent>
                             </Card>
 
-                            <!-- Only shown once something changed, so the column
-                                 ends quietly when there is nothing to save. -->
                             <div v-if="form.isDirty" class="sticky bottom-4 flex justify-end">
                                 <Button data-testid="save-destinations" :disabled="form.processing" @click="save">
                                     {{ $t('repurposes.destinations.save') }}

@@ -11,10 +11,6 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
-/**
- * Wait for a data-testid element to mount and lay out. Pest browser `@`
- * selectors resolve to data-testid, and assertions do not auto-wait on SPA paint.
- */
 function waitForRepurposeTestId(mixed $page, string $testId): void
 {
     $page->script(<<<JS

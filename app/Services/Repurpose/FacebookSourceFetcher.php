@@ -12,11 +12,6 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
-/**
- * A Facebook Page splits its video across three edges: `/video_reels` for
- * Reels, `/videos` for everything else, and `/stories` for Stories. Only the
- * edges the caller actually watches are requested.
- */
 class FacebookSourceFetcher implements SourceFetcher
 {
     private const VIDEO_FIELDS = 'id,source,description,permalink_url,created_time';
@@ -39,8 +34,6 @@ class FacebookSourceFetcher implements SourceFetcher
             ? $this->stories($account)
             : [];
 
-        // `/videos` also lists Reels, so anything already seen as a Reel is
-        // dropped from the plain-video list rather than replicated twice.
         if ($reels !== [] && $videos !== []) {
             $reelIds = array_map(fn (SourceMedia $media): string => $media->id, $reels);
             $videos = array_values(array_filter(
@@ -80,10 +73,6 @@ class FacebookSourceFetcher implements SourceFetcher
     }
 
     /**
-     * The stories edge returns the story's media id and its Facebook URL but no
-     * downloadable file, so the video behind each published story is resolved
-     * in a second request.
-     *
      * @return array<int, SourceMedia>
      */
     private function stories(SocialAccount $account): array

@@ -6,13 +6,6 @@ namespace App\Support\Repurpose;
 
 use App\Enums\SocialAccount\Platform;
 
-/**
- * Ready-made starting points offered in the UI and over the API/MCP.
- *
- * These are presets, not rows: adding a network later is a new entry here plus
- * a fetcher, with no migration. Labels live in the `repurposes` translations,
- * keyed by `key`, so they are never hardcoded in PHP.
- */
 class Templates
 {
     /**

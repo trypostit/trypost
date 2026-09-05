@@ -6,11 +6,6 @@ import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import type { ChannelAccount } from '@/types/channel';
 import type { RepurposeDestination } from '@/types/repurpose';
 
-/**
- * One plain sentence saying exactly what this repurpose does. It doubles as the
- * page's subtitle: naming the source account is also how you tell one repurpose
- * from another.
- */
 const props = defineProps<{
     sourceAccount: ChannelAccount | null | undefined;
     formatLabel: string;

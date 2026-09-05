@@ -6,12 +6,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import type { FlowNode } from '@/types/repurpose';
 
-/**
- * The one-glance summary of a repurpose: where the video comes from and where
- * it lands. Each logo names its account on hover, because a workspace can hold
- * several accounts on the same network and the logos alone would not say which
- * one is in the flow.
- */
 withDefaults(
     defineProps<{
         source: FlowNode;

@@ -16,9 +16,6 @@ class StoreRepurposeRequest extends FormRequest
     }
 
     /**
-     * Creation only asks for the source account; destinations are chosen on the
-     * edit screen, where there is room for each network's options.
-     *
      * @return array<string, mixed>
      */
     public function rules(): array

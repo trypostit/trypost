@@ -23,17 +23,6 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Str;
 use Throwable;
 
-/**
- * Turns one video published outside TryPost into posts on the configured
- * destinations.
- *
- * A post carries a single caption that every publisher reads, so one post is
- * created per destination instead of one post with many platforms. That keeps
- * each caption adapted to its own network — a Reel keeps its 2,200 characters
- * even when a YouTube Short in the same repurpose is capped at 100 — without
- * touching the publishing core. The video itself is downloaded once and the
- * same stored file is shared by every post.
- */
 class ProcessRepurposeItem implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;

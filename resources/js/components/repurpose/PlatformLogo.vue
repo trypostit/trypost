@@ -3,10 +3,6 @@ import { computed } from 'vue';
 
 import { getPlatformLabel, getPlatformTheme } from '@/composables/usePlatformLogo';
 
-/**
- * The same network tile the accounts screen uses: the network's colour, a
- * slight tilt that straightens on hover, and a hard border.
- */
 const props = withDefaults(
     defineProps<{
         platform: string;

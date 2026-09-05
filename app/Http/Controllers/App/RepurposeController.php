@@ -59,8 +59,6 @@ class RepurposeController extends Controller
             'destinationAccounts' => SocialAccountResource::collection(
                 $this->connectedAccounts($request)->whereNotIn('id', [$repurpose->source_social_account_id])->values(),
             ),
-            // Through the same resource the API uses, so both surfaces describe
-            // an item the same way.
             'items' => Inertia::scroll(fn () => RepurposeItemResource::collection(ListRepurposeItems::execute($repurpose))),
             'sourceFormats' => $this->sourceFormats($repurpose),
             'destinationFormats' => $this->destinationFormats($request, $repurpose->source_format),
@@ -138,9 +136,6 @@ class RepurposeController extends Controller
     }
 
     /**
-     * Formats the source network can be watched for. A repurpose watches one,
-     * so replicating Reels and Stories means two repurposes on one account.
-     *
      * @return array<int, array{value: string, label: string}>
      */
     private function sourceFormats(Repurpose $repurpose): array
@@ -154,10 +149,6 @@ class RepurposeController extends Controller
     }
 
     /**
-     * Publishable video formats per connected destination account. Anything
-     * that cannot carry a video is never offered, and the closest match to what
-     * the source watches comes first so a newly picked destination opens on it.
-     *
      * @return array<string, array<int, array{value: string, label: string}>>
      */
     private function destinationFormats(Request $request, SourceFormat $sourceFormat): array
@@ -180,10 +171,6 @@ class RepurposeController extends Controller
     }
 
     /**
-     * The same per-network settings data the post editor loads, so a repurpose
-     * destination configures TikTok privacy, a Pinterest board or a Discord
-     * channel through the very components the editor uses.
-     *
      * @param  Collection<int, SocialAccount>  $accounts
      * @return array<string, mixed>
      */
@@ -215,9 +202,6 @@ class RepurposeController extends Controller
         ];
     }
 
-    /**
-     * Only networks TryPost can both list and download from can be a source.
-     */
     private function sourceAccounts(Request $request)
     {
         return $request->user()->currentWorkspace
@@ -227,10 +211,6 @@ class RepurposeController extends Controller
             ->get();
     }
 
-    /**
-     * Accounts, not networks: a workspace may hold two Instagram accounts and
-     * both are valid destinations.
-     */
     private function connectedAccounts(Request $request)
     {
         return $request->user()->currentWorkspace

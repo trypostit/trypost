@@ -14,10 +14,6 @@ use Illuminate\Validation\ValidationException;
 class CreateRepurpose
 {
     /**
-     * A repurpose watches one format, so a creator replicating both their Reels
-     * and their Stories has two on the same account. Only the same account and
-     * the same format together are a duplicate.
-     *
      * @param  array<string, mixed>  $data
      */
     public static function execute(Workspace $workspace, User $user, array $data): Repurpose

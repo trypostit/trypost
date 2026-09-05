@@ -26,15 +26,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
-/**
- * Polls one source account for every active repurpose watching it.
- *
- * The job takes an account rather than a repurpose because a creator who wants
- * their Reels and their Stories replicated has two repurposes on the same
- * Instagram. Grouping keeps that at one round of calls, which matters: the
- * Instagram quota is an app-wide pool and this feature's user configures it
- * once and stops opening TryPost, spending quota without feeding it.
- */
 class PollRepurposeSource implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -96,9 +87,6 @@ class PollRepurposeSource implements ShouldQueue
     }
 
     /**
-     * The oldest watermark among the repurposes sharing this account, so one
-     * request covers all of them; each then filters what is new to itself.
-     *
      * @param  Collection<int, Repurpose>  $repurposes
      */
     private function earliestWatermark(Collection $repurposes): mixed
@@ -154,9 +142,6 @@ class PollRepurposeSource implements ShouldQueue
     }
 
     /**
-     * Media this workspace published through TryPost, which must never be
-     * replicated again.
-     *
      * @param  array<int, SourceMedia>  $media
      * @return array<int, string>
      */
@@ -172,9 +157,6 @@ class PollRepurposeSource implements ShouldQueue
     }
 
     /**
-     * A throttled source waits longer than the usual interval, so a workspace
-     * that hit Meta's app-wide quota does not keep spending it.
-     *
      * @param  Collection<int, Repurpose>  $repurposes
      */
     private function recordFailure(Collection $repurposes, Throwable $exception): void

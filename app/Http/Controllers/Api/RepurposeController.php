@@ -101,9 +101,6 @@ class RepurposeController extends Controller
         return response()->json(null, Response::HTTP_NO_CONTENT);
     }
 
-    /**
-     * The public API keeps its own fixed page size as a stable contract.
-     */
     public function items(Request $request, Repurpose $repurpose): AnonymousResourceCollection
     {
         $this->authorize('view', $repurpose);

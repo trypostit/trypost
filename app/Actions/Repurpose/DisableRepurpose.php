@@ -9,10 +9,6 @@ use App\Models\Repurpose;
 
 class DisableRepurpose
 {
-    /**
-     * Disabling clears the watermark. Re-activating later stamps a fresh one,
-     * so whatever the creator published while it was off stays off.
-     */
     public static function execute(Repurpose $repurpose): Repurpose
     {
         $repurpose->update([

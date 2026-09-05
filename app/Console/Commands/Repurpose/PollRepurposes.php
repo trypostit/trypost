@@ -25,8 +25,6 @@ class PollRepurposes extends Command
             ->distinct()
             ->pluck('source_social_account_id');
 
-        // One job per account, not per repurpose: two repurposes watching the
-        // same Instagram for different formats share a single round of calls.
         $dispatched = 0;
 
         SocialAccount::query()

@@ -7,14 +7,6 @@ namespace App\Enums\Repurpose;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 
-/**
- * Which kind of video a repurpose watches for on its source account.
- *
- * A repurpose watches exactly one format. Someone who wants both their Reels
- * and their Stories replicated creates one repurpose per format, which is why
- * a source account is not limited to a single repurpose. Polling groups by
- * account, so two repurposes on one account still cost one round of calls.
- */
 enum SourceFormat: string
 {
     case Reel = 'reel';
@@ -27,8 +19,6 @@ enum SourceFormat: string
     }
 
     /**
-     * Formats a source platform can be watched for.
-     *
      * @return array<int, self>
      */
     public static function forPlatform(Platform $platform): array
@@ -39,10 +29,6 @@ enum SourceFormat: string
         };
     }
 
-    /**
-     * Instagram reports `VIDEO` as the media type for a Reel and a feed video
-     * alike, so the product type is the only thing telling them apart.
-     */
     public function instagramProductType(): string
     {
         return match ($this) {
@@ -52,10 +38,6 @@ enum SourceFormat: string
         };
     }
 
-    /**
-     * The content type a destination defaults to when this format lands on it,
-     * so a picker can open on the closest match rather than on nothing.
-     */
     public function defaultContentTypeFor(Platform $platform): ?ContentType
     {
         $candidates = match ($this) {
@@ -73,9 +55,6 @@ enum SourceFormat: string
     }
 
     /**
-     * Destination content types that accept a video on a platform. The module
-     * only moves video, so anything else is never offered.
-     *
      * @return array<int, ContentType>
      */
     public static function videoContentTypesFor(Platform $platform): array
