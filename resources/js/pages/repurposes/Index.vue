@@ -55,7 +55,9 @@ const destinationNodes = (repurpose: Repurpose): FlowNode[] =>
     repurpose.destinations.flatMap((destination) => {
         const account = props.destinationAccounts.find((item) => item.id === destination.social_account_id);
 
-        return account ? [{ platform: account.platform, label: account.display_name }] : [];
+        return account
+            ? [{ platform: account.platform, label: account.display_name, username: account.username }]
+            : [];
     });
 
 const handleDelete = (repurpose: Repurpose) => {
@@ -120,6 +122,7 @@ const handleDelete = (repurpose: Repurpose) => {
                                 :source="{
                                     platform: repurpose.source_account?.platform ?? '',
                                     label: repurpose.source_account?.display_name,
+                                    username: repurpose.source_account?.username,
                                 }"
                                 :destinations="destinationNodes(repurpose)"
                                 size="sm"

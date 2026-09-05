@@ -31,8 +31,12 @@ withDefaults(
                 </span>
             </TooltipTrigger>
             <TooltipContent>
-                <span class="font-semibold">{{ getPlatformLabel(source.platform) }}</span>
-                <span v-if="source.label"> — {{ source.label }}</span>
+                <div class="space-y-0.5 text-xs">
+                    <p class="font-semibold">
+                        {{ source.label }}<span v-if="source.username" class="font-normal opacity-80">&nbsp;·&nbsp;@{{ source.username }}</span>
+                    </p>
+                    <p class="opacity-70">{{ getPlatformLabel(source.platform) }}</p>
+                </div>
             </TooltipContent>
         </Tooltip>
 
@@ -46,11 +50,14 @@ withDefaults(
                     </span>
                 </TooltipTrigger>
                 <TooltipContent>
-                    <span class="font-semibold">{{ getPlatformLabel(destination.platform) }}</span>
-                    <span v-if="destination.label"> — {{ destination.label }}</span>
-                    <span v-if="destination.format" class="block text-xs opacity-80">
-                        {{ destination.format }}
-                    </span>
+                    <div class="space-y-0.5 text-xs">
+                        <p class="font-semibold">
+                            {{ destination.label }}<span v-if="destination.username" class="font-normal opacity-80">&nbsp;·&nbsp;@{{ destination.username }}</span>
+                        </p>
+                        <p class="opacity-70">
+                            {{ getPlatformLabel(destination.platform) }}<span v-if="destination.format">&nbsp;·&nbsp;{{ destination.format }}</span>
+                        </p>
+                    </div>
                 </TooltipContent>
             </Tooltip>
         </div>

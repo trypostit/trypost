@@ -11,6 +11,7 @@ export interface SourceFormatOption {
 export interface FlowNode {
     platform: string;
     label?: string | null;
+    username?: string | null;
     format?: string | null;
 }
 

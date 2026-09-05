@@ -49,6 +49,7 @@ const currentFormatLabel = computed(
 const sourceNode = computed<FlowNode>(() => ({
     platform: props.repurpose.source_account?.platform ?? '',
     label: props.repurpose.source_account?.display_name,
+    username: props.repurpose.source_account?.username,
     format: currentFormatLabel.value,
 }));
 
@@ -64,6 +65,7 @@ const destinationNodes = computed<FlowNode[]>(() =>
             {
                 platform: account.platform,
                 label: account.display_name,
+                username: account.username,
                 format: props.destinationFormats[account.id]?.find(
                     (format) => format.value === destination.content_type,
                 )?.label,
