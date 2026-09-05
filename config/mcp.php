@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
 
     /*
@@ -17,8 +19,6 @@ return [
 
     'redirect_domains' => [
         '*',
-        // 'https://example.com',
-        // 'http://localhost',
     ],
 
     /*
