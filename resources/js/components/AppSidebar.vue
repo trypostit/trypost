@@ -3,7 +3,6 @@ import { Link, usePage } from '@inertiajs/vue3';
 import {
     IconAffiliate,
     IconAlertTriangle,
-    IconBolt,
     IconBrandDiscord,
     IconCalendar,
     IconChartBar,
@@ -53,7 +52,6 @@ import WorkspaceMenuContent from '@/components/WorkspaceMenuContent.vue';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import { accounts, analytics, calendar } from '@/routes/app';
 import { index as assets } from '@/routes/app/assets';
-import { index as automations } from '@/routes/app/automations';
 import { portal } from '@/routes/app/billing';
 import { index as labels } from '@/routes/app/labels';
 import { index as mcp } from '@/routes/app/mcp';
@@ -83,7 +81,6 @@ const {
     canCreatePost,
     canManageAccounts,
     canManageWebhooks,
-    canManageAutomations,
     canCreateWorkspace,
 } = useWorkspaceRole();
 const { isMobile } = useSidebar();
@@ -99,16 +96,6 @@ const mainNavItems = computed<NavItem[]>(() => [
         href: analytics.url(),
         icon: IconChartBar,
     },
-    ...(canManageAutomations.value
-        ? [
-              {
-                  title: trans('sidebar.automations'),
-                  href: automations.url(),
-                  icon: IconBolt,
-                  badge: trans('common.beta'),
-              },
-          ]
-        : []),
 ]);
 
 const postsNavItems = computed<NavItem[]>(() => [

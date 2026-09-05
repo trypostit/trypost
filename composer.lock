@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0a41ea1ff205782a01973b2ad02fd76c",
+    "content-hash": "ef65b49279941f3458f444863f0ce6e4",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -7243,87 +7243,6 @@
                 "source": "https://github.com/sendkitdev/sendkit-php/tree/1.1.4"
             },
             "time": "2026-03-20T00:53:21+00:00"
-        },
-        {
-            "name": "simplepie/simplepie",
-            "version": "1.9.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/simplepie/simplepie.git",
-                "reference": "76cccb1b2c5dcaf44f304c925ab30c0f48643992"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/simplepie/simplepie/zipball/76cccb1b2c5dcaf44f304c925ab30c0f48643992",
-                "reference": "76cccb1b2c5dcaf44f304c925ab30c0f48643992",
-                "shasum": ""
-            },
-            "require": {
-                "ext-pcre": "*",
-                "ext-xml": "*",
-                "ext-xmlreader": "*",
-                "php": ">=7.2.0"
-            },
-            "require-dev": {
-                "donatj/mock-webserver": "^2.7",
-                "friendsofphp/php-cs-fixer": "^2.19 || ^3.8",
-                "mf2/mf2": "^0.5.0",
-                "phpstan/phpstan": "~1.12.2",
-                "phpunit/phpunit": "^8 || ^9 || ^10",
-                "psr/http-client": "^1.0",
-                "psr/http-factory": "^1.0",
-                "psr/simple-cache": "^1 || ^2 || ^3"
-            },
-            "suggest": {
-                "ext-curl": "",
-                "ext-iconv": "",
-                "ext-intl": "",
-                "ext-mbstring": "",
-                "mf2/mf2": "Microformat module that allows for parsing HTML for microformats"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-0": {
-                    "SimplePie": "library"
-                },
-                "psr-4": {
-                    "SimplePie\\": "src"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "BSD-3-Clause"
-            ],
-            "authors": [
-                {
-                    "name": "Ryan Parman",
-                    "homepage": "http://ryanparman.com/",
-                    "role": "Creator, alumnus developer"
-                },
-                {
-                    "name": "Sam Sneddon",
-                    "homepage": "https://gsnedders.com/",
-                    "role": "Alumnus developer"
-                },
-                {
-                    "name": "Ryan McCue",
-                    "email": "me@ryanmccue.info",
-                    "homepage": "http://ryanmccue.info/",
-                    "role": "Developer"
-                }
-            ],
-            "description": "A simple Atom/RSS parsing library for PHP",
-            "homepage": "http://simplepie.org/",
-            "keywords": [
-                "atom",
-                "feeds",
-                "rss"
-            ],
-            "support": {
-                "issues": "https://github.com/simplepie/simplepie/issues",
-                "source": "https://github.com/simplepie/simplepie/tree/1.9.0"
-            },
-            "time": "2025-09-12T06:34:27+00:00"
         },
         {
             "name": "socialiteproviders/facebook",

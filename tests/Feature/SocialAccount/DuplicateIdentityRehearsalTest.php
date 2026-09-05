@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform;
-use App\Models\Automation;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -81,20 +80,6 @@ function rehearsalDatabase(): array
                 }
             }
 
-            Automation::factory()->for($workspace)->create([
-                'nodes' => [
-                    [
-                        'id' => "node-{$w}-{$p}",
-                        'type' => 'generate',
-                        'config' => $next(2) === 0
-                            ? ['accounts' => $accounts->map(fn (SocialAccount $a) => [
-                                'social_account_id' => $a->id,
-                                'content_type' => 'pinterest_pin',
-                            ])->all()]
-                            : ['social_account_ids' => $accounts->pluck('id')->all()],
-                    ],
-                ],
-            ]);
         }
     }
 
@@ -162,25 +147,6 @@ test('the rehearsal leaves no post platform pointing at a deleted account', func
         ->count();
 
     expect($orphans)->toBe(0);
-});
-
-test('the rehearsal leaves no automation pointing at a deleted account', function () {
-    ['accountIds' => $accountIds] = rehearsalDatabase();
-
-    $this->migration->up();
-
-    $surviving = DB::table('social_accounts')->pluck('id')->all();
-    $gone = array_values(array_diff($accountIds, $surviving));
-
-    expect($gone)->not->toBeEmpty();
-
-    foreach (Automation::all() as $automation) {
-        $json = json_encode($automation->nodes);
-
-        foreach ($gone as $id) {
-            expect($json)->not->toContain($id);
-        }
-    }
 });
 
 test('the rehearsal keeps the newest row of each identity', function () {

@@ -176,6 +176,10 @@ return new class extends Migration
      */
     private function repointAutomations(string $workspaceId, array $droppedIds, string $keepId): void
     {
+        if (! Schema::hasTable('automations')) {
+            return;
+        }
+
         $automations = DB::table('automations')
             ->where('workspace_id', $workspaceId)
             ->whereNotNull('nodes')

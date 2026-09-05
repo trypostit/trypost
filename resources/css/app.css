@@ -1,7 +1,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'vue-sonner/style.css';
-@import './automations.css';
 @import './json-viewer.css';
 @plugin '@tailwindcss/typography';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';

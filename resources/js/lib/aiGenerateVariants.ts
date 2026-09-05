@@ -1,9 +1,9 @@
 import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 
 /**
- * The automation Generate node (and AI wizard) only produce images. When
- * `imageOnly` is true (previewOnly / generate context), drop video-only
- * content types so they can't be selected.
+ * The AI wizard only produces images. When `imageOnly` is true
+ * (previewOnly / generate context), drop video-only content types so they
+ * can't be selected.
  */
 export const filterImageCapableVariants = <T extends { value: string }>(
     variants: readonly T[],

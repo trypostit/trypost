@@ -26,7 +26,6 @@ return [
         'others' => 'その他',
     ],
     'analytics' => 'アナリティクス',
-    'automations' => 'オートメーション',
     'onboarding' => 'はじめに',
     'onboarding_hint' => 'セットアップを完了',
     'posts' => [

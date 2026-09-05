@@ -21,10 +21,9 @@ export interface ChannelTikTokCreatorInfo {
 }
 
 /**
- * One selectable publishing channel, shared by the post editor's channels tab
- * and the automation Generate node. `id` is the selection/update key (a
- * post_platform id in the editor, a social account id in automations);
- * `socialAccount` is what the per-platform Settings components consume.
+ * One selectable publishing channel for the post editor's channels tab. `id`
+ * is the selection/update key (a post_platform id); `socialAccount` is what
+ * the per-platform Settings components consume.
  */
 export interface Channel {
     id: string;

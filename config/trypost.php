@@ -145,9 +145,9 @@ return [
     | Outbound User-Agent
     |--------------------------------------------------------------------------
     |
-    | Branded User-Agent applied to outbound HTTP from automation nodes
-    | (http_request) and workspace webhooks so recipients know the request came from
-    | TryPost.it. Self-hosters can override it.
+    | Branded User-Agent applied to outbound HTTP from workspace webhooks so
+    | recipients know the request came from TryPost.it. Self-hosters can
+    | override it.
     |
     */
 

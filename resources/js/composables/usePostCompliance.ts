@@ -71,7 +71,7 @@ const PLATFORM_META_RULES: Record<string, MetaRule> = {
 
 /**
  * Evaluates a platform's publish-time meta requirements. Single source of truth
- * shared by the post editor's compliance gate and the automation Generate node.
+ * for the post editor's compliance gate.
  */
 export const evaluatePlatformMeta = (
     platform: string,

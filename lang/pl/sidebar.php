@@ -26,7 +26,6 @@ return [
         'others' => 'Inne',
     ],
     'analytics' => 'Analityka',
-    'automations' => 'Automatyzacje',
     'onboarding' => 'Pierwsze kroki',
     'onboarding_hint' => 'Dokończ konfigurację',
     'posts' => [
