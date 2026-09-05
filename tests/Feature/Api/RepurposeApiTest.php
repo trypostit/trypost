@@ -99,10 +99,13 @@ test('a destination format that cannot carry a video is rejected', function () {
 });
 
 test('the index lists the workspace repurposes', function () {
-    Repurpose::factory()->count(2)->create([
-        'workspace_id' => $this->workspace->id,
-        'source_social_account_id' => $this->source->id,
-    ]);
+    foreach ([SourceFormat::Reel, SourceFormat::Story] as $format) {
+        Repurpose::factory()->create([
+            'workspace_id' => $this->workspace->id,
+            'source_social_account_id' => $this->source->id,
+            'source_format' => $format,
+        ]);
+    }
 
     $this->withHeaders(apiHeaders($this->token))
         ->getJson(route('api.repurposes.index'))
@@ -208,4 +211,17 @@ test('a network we cannot download from is rejected as a source', function () {
         ->postJson(route('api.repurposes.store'), ['source_social_account_id' => $tiktokSource->id])
         ->assertUnprocessable()
         ->assertJsonValidationErrors('source_social_account_id');
+});
+
+test('a content type from another network is rejected for a destination', function () {
+    $this->withHeaders(apiHeaders($this->token))
+        ->postJson(route('api.repurposes.store'), [
+            'source_social_account_id' => $this->source->id,
+            'destinations' => [[
+                'social_account_id' => $this->tiktok->id,
+                'content_type' => ContentType::YouTubeShort->value,
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('destinations.0.content_type');
 });

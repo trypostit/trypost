@@ -88,6 +88,7 @@ return [
         'hint' => 'Het bijschrift wordt alleen per netwerk aangepast als het de limiet van dat netwerk overschrijdt.',
         'none_available' => 'Er is nog geen ander account gekoppeld in deze workspace.',
         'save' => 'Bestemmingen opslaan',
+        'saved' => 'Bestemmingen opgeslagen',
         'publish_as' => 'Plaatsen als',
     ],
 
@@ -139,5 +140,8 @@ return [
         'source_already_used' => 'Dit account voedt al een andere repurpose. Bewerk die in plaats daarvan.',
         'destinations_required' => 'Kies minstens één bestemming voordat je activeert.',
         'destination_needs_video' => 'Dat formaat kan geen video bevatten.',
+        'only_paused_resumes' => 'Alleen een gepauzeerde repurpose kan worden hervat.',
+        'destination_unavailable' => 'Dat bestemmingsaccount is niet meer beschikbaar.',
+        'action_failed' => 'Er ging iets mis. Controleer het formulier en probeer opnieuw.',
     ],
 ];

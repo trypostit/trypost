@@ -38,7 +38,7 @@ class ListRepurposeItemsTool extends Tool
         }
 
         $items = $repurpose->items()
-            ->with('posts.postPlatforms:id,post_id,platform')
+            ->with('posts.postPlatforms:id,post_id,platform,enabled')
             ->latest()
             ->paginate(15, page: (int) data_get($validated, 'page', 1));
 

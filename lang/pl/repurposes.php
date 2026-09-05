@@ -88,6 +88,7 @@ return [
         'hint' => 'Opis jest dostosowywany do sieci tylko wtedy, gdy przekracza jej limit.',
         'none_available' => 'W tym obszarze roboczym nie ma jeszcze innego połączonego konta.',
         'save' => 'Zapisz cele',
+        'saved' => 'Cele zapisane',
         'publish_as' => 'Publikuj jako',
     ],
 
@@ -139,5 +140,8 @@ return [
         'source_already_used' => 'To konto zasila już inny repurpose. Edytuj tamten.',
         'destinations_required' => 'Wybierz co najmniej jeden cel przed aktywacją.',
         'destination_needs_video' => 'Ten format nie przyjmuje filmu.',
+        'only_paused_resumes' => 'Wznowić można tylko wstrzymany repurpose.',
+        'destination_unavailable' => 'To konto docelowe nie jest już dostępne.',
+        'action_failed' => 'Coś poszło nie tak. Sprawdź formularz i spróbuj ponownie.',
     ],
 ];

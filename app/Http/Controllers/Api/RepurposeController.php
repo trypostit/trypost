@@ -106,7 +106,7 @@ class RepurposeController extends Controller
         $this->authorize('view', $repurpose);
 
         return RepurposeItemResource::collection(
-            $repurpose->items()->with('posts.postPlatforms:id,post_id,platform')->latest()->paginate(15),
+            $repurpose->items()->with('posts.postPlatforms:id,post_id,platform,enabled')->latest()->paginate(15),
         );
     }
 

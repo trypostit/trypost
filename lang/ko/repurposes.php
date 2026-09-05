@@ -88,6 +88,7 @@ return [
         'hint' => '캡션은 해당 네트워크의 한도를 넘을 때만 조정됩니다.',
         'none_available' => '이 워크스페이스에 연결된 다른 계정이 아직 없습니다.',
         'save' => '대상 저장',
+        'saved' => '대상을 저장했습니다',
         'publish_as' => '게시 형식',
     ],
 
@@ -139,5 +140,8 @@ return [
         'source_already_used' => '이 계정은 이미 다른 Repurpose에 쓰이고 있습니다. 그것을 수정하세요.',
         'destinations_required' => '활성화하기 전에 대상을 하나 이상 고르세요.',
         'destination_needs_video' => '그 형식은 영상을 담을 수 없습니다.',
+        'only_paused_resumes' => '일시중지된 Repurpose만 재개할 수 있습니다.',
+        'destination_unavailable' => '해당 대상 계정을 더 이상 사용할 수 없습니다.',
+        'action_failed' => '문제가 발생했습니다. 입력을 확인하고 다시 시도하세요.',
     ],
 ];

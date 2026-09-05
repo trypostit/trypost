@@ -8,14 +8,15 @@ use App\Enums\Repurpose\ItemReason;
 use App\Enums\Repurpose\ItemStatus;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
+use App\Exceptions\Repurpose\SourceFetchException;
 use App\Models\PostPlatform;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
 use App\Services\Repurpose\SourceFetcherFactory;
 use App\Services\Repurpose\SourceMedia;
-use App\Services\Social\Meta\GraphError;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -26,8 +27,10 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
-class PollRepurposeSource implements ShouldQueue
+class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
 {
+    public int $uniqueFor = 600;
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public bool $deleteWhenMissingModels = true;
@@ -37,15 +40,22 @@ class PollRepurposeSource implements ShouldQueue
         $this->onQueue($account->platform->queue());
     }
 
+    public function uniqueId(): string
+    {
+        return $this->account->id;
+    }
+
     public function handle(SourceFetcherFactory $fetchers): void
     {
-        if ($this->account->disconnected_at !== null) {
-            return;
-        }
-
         $repurposes = $this->activeRepurposes();
 
         if ($repurposes->isEmpty()) {
+            return;
+        }
+
+        if ($this->account->disconnected_at !== null || $this->account->is_active === false) {
+            $this->markPolled($repurposes, $this->interval());
+
             return;
         }
 
@@ -163,8 +173,7 @@ class PollRepurposeSource implements ShouldQueue
      */
     private function recordFailure(Collection $repurposes, Throwable $exception): void
     {
-        $throttled = GraphError::isTransient(['error' => ['message' => $exception->getMessage()]])
-            || Str::contains($exception->getMessage(), 'request limit', ignoreCase: true);
+        $throttled = $exception instanceof SourceFetchException && $exception->isTransient();
 
         Repurpose::whereKey($repurposes->modelKeys())->update([
             'last_error' => Str::limit($exception->getMessage(), 1000),

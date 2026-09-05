@@ -3,6 +3,7 @@ import { Head, useForm } from '@inertiajs/vue3';
 import { IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
+import { toast } from 'vue-sonner';
 
 import ChannelConfigurator from '@/components/ChannelConfigurator.vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
@@ -104,7 +105,11 @@ const currentFormatLabel = computed(
 const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
 const save = () => {
-    form.put(update.url(props.repurpose.id), { preserveScroll: true });
+    form.put(update.url(props.repurpose.id), {
+        preserveScroll: true,
+        onSuccess: () => toast.success(trans('repurposes.destinations.saved')),
+        onError: (errors) => toast.error(Object.values(errors)[0] ?? trans('repurposes.errors.action_failed')),
+    });
 };
 
 const handleDelete = () => {

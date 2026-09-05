@@ -74,10 +74,13 @@ test('destination meta survives a read back through the get tool', function () {
 });
 
 test('the list tool returns the workspace repurposes', function () {
-    Repurpose::factory()->count(2)->create([
-        'workspace_id' => $this->workspace->id,
-        'source_social_account_id' => $this->source->id,
-    ]);
+    foreach ([SourceFormat::Reel, SourceFormat::Story] as $format) {
+        Repurpose::factory()->create([
+            'workspace_id' => $this->workspace->id,
+            'source_social_account_id' => $this->source->id,
+            'source_format' => $format,
+        ]);
+    }
 
     TryPostServer::actingAs($this->user)
         ->tool(ListRepurposesTool::class, [])

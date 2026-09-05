@@ -88,6 +88,7 @@ return [
         'hint' => 'キャプションは、そのネットワークの上限を超えたときだけ調整されます。',
         'none_available' => 'このワークスペースにはまだ他のアカウントが接続されていません。',
         'save' => '配信先を保存',
+        'saved' => '配信先を保存しました',
         'publish_as' => '投稿形式',
     ],
 
@@ -139,5 +140,8 @@ return [
         'source_already_used' => 'このアカウントはすでに別の Repurpose で使われています。そちらを編集してください。',
         'destinations_required' => '有効にする前に配信先を 1 つ以上選んでください。',
         'destination_needs_video' => 'その形式は動画に対応していません。',
+        'only_paused_resumes' => '再開できるのは一時停止中の Repurpose だけです。',
+        'destination_unavailable' => 'その配信先アカウントは利用できなくなりました。',
+        'action_failed' => '問題が発生しました。入力内容を確認してもう一度お試しください。',
     ],
 ];

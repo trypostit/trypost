@@ -240,3 +240,20 @@ test('an account that is not due yet is not dispatched', function () {
 
     Bus::assertNotDispatched(PollRepurposeSource::class);
 });
+
+test('a business rate limit backs off even without the english wording', function () {
+    Bus::fake();
+    config()->set('trypost.repurpose.backoff_minutes', 60);
+    config()->set('trypost.repurpose.poll_interval_minutes', 15);
+
+    Http::fake([config('trypost.platforms.instagram.graph_api').'/*' => Http::response([
+        'error' => ['code' => 80002, 'message' => 'There have been too many calls from this Instagram Business Account'],
+    ], 400)]);
+
+    $account = instagramAccount();
+    $repurpose = activeRepurposeOn($account);
+
+    poll($account);
+
+    expect(now()->diffInMinutes($repurpose->fresh()->next_poll_at, absolute: true))->toBeGreaterThan(30);
+});

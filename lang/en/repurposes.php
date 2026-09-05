@@ -88,6 +88,7 @@ return [
         'hint' => 'Captions are adapted per network only when they exceed that network\'s limit.',
         'none_available' => 'No other account is connected in this workspace yet.',
         'save' => 'Save destinations',
+        'saved' => 'Destinations saved',
         'publish_as' => 'Publish as',
     ],
 
@@ -139,5 +140,8 @@ return [
         'source_already_used' => 'This account already feeds another repurpose. Edit that one instead.',
         'destinations_required' => 'Pick at least one destination before activating.',
         'destination_needs_video' => 'That format cannot carry a video.',
+        'only_paused_resumes' => 'Only a paused repurpose can be resumed.',
+        'destination_unavailable' => 'That destination account is no longer available.',
+        'action_failed' => 'Something went wrong. Check the form and try again.',
     ],
 ];

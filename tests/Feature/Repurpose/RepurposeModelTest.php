@@ -65,3 +65,13 @@ test('a workspace can have one repurpose per connected account of the same netwo
 
     expect(Repurpose::where('workspace_id', $workspace->id)->count())->toBe(2);
 });
+
+test('the database refuses a duplicate source and format for one workspace', function () {
+    $repurpose = Repurpose::factory()->create(['source_format' => SourceFormat::Reel]);
+
+    expect(fn () => Repurpose::factory()->create([
+        'workspace_id' => $repurpose->workspace_id,
+        'source_social_account_id' => $repurpose->source_social_account_id,
+        'source_format' => SourceFormat::Reel,
+    ]))->toThrow(QueryException::class);
+});

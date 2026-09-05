@@ -88,6 +88,7 @@ return [
         'hint' => 'El texto solo se adapta por red cuando supera el límite de esa red.',
         'none_available' => 'No hay ninguna otra cuenta conectada en este espacio de trabajo.',
         'save' => 'Guardar destinos',
+        'saved' => 'Destinos guardados',
         'publish_as' => 'Publicar como',
     ],
 
@@ -139,5 +140,8 @@ return [
         'source_already_used' => 'Esta cuenta ya alimenta otro repurpose. Edita ese.',
         'destinations_required' => 'Elige al menos un destino antes de activar.',
         'destination_needs_video' => 'Ese formato no admite vídeo.',
+        'only_paused_resumes' => 'Solo se puede reanudar un repurpose en pausa.',
+        'destination_unavailable' => 'Esa cuenta de destino ya no está disponible.',
+        'action_failed' => 'Algo salió mal. Revisa el formulario e inténtalo de nuevo.',
     ],
 ];

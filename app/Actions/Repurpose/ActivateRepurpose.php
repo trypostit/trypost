@@ -14,13 +14,7 @@ class ActivateRepurpose
 {
     public static function execute(Repurpose $repurpose): Repurpose
     {
-        if ($repurpose->destinations === []) {
-            throw ValidationException::withMessages([
-                'destinations' => __('repurposes.errors.destinations_required'),
-            ]);
-        }
-
-        self::assertDestinationsCanPublish($repurpose);
+        self::assertPublishable($repurpose);
 
         $repurpose->update([
             'status' => Status::Active,
@@ -32,23 +26,31 @@ class ActivateRepurpose
         return $repurpose->fresh();
     }
 
-    private static function assertDestinationsCanPublish(Repurpose $repurpose): void
+    public static function assertPublishable(Repurpose $repurpose): void
     {
+        if ($repurpose->destinations === []) {
+            throw ValidationException::withMessages([
+                'destinations' => __('repurposes.errors.destinations_required'),
+            ]);
+        }
+
         foreach ($repurpose->destinations as $destination) {
-            $account = SocialAccount::find(data_get($destination, 'social_account_id'));
+            $account = SocialAccount::query()
+                ->where('workspace_id', $repurpose->workspace_id)
+                ->where('is_active', true)
+                ->find(data_get($destination, 'social_account_id'));
 
-            $violation = PostPlatformMetaRules::missingRequiredMeta(
-                $account?->platform,
-                data_get($destination, 'meta'),
-            );
-
-            if ($violation === null) {
-                continue;
+            if ($account === null) {
+                throw ValidationException::withMessages([
+                    'destinations' => __('repurposes.errors.destination_unavailable'),
+                ]);
             }
 
-            throw ValidationException::withMessages([
-                'destinations' => $violation[1],
-            ]);
+            $violation = PostPlatformMetaRules::missingRequiredMeta($account->platform, data_get($destination, 'meta'));
+
+            if ($violation !== null) {
+                throw ValidationException::withMessages(['destinations' => $violation[1]]);
+            }
         }
     }
 }

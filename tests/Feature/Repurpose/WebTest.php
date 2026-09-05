@@ -220,3 +220,31 @@ test('a disconnected account cannot be a destination', function () {
         ])
         ->assertSessionHasErrors('destinations.0.social_account_id');
 });
+
+test('the source account token never reaches the page', function () {
+    $this->source->update(['meta' => ['user_token' => 'EAAG-secret-token', 'page_id' => '1']]);
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+    ]);
+
+    foreach ([route('app.repurposes.index'), route('app.repurposes.show', $repurpose)] as $url) {
+        $this->actingAs($this->user)->get($url)->assertOk()->assertDontSee('EAAG-secret-token');
+    }
+});
+
+test('an account from another workspace cannot be set as the source on update', function () {
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+    ]);
+
+    $stranger = SocialAccount::factory()->create(['platform' => Platform::Instagram]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.repurposes.update', $repurpose), ['source_social_account_id' => $stranger->id])
+        ->assertSessionHasErrors('source_social_account_id');
+
+    expect($repurpose->fresh()->source_social_account_id)->toBe($this->source->id);
+});

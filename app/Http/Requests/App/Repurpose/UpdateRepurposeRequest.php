@@ -19,9 +19,9 @@ class UpdateRepurposeRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            ...RepurposeRules::rules($this->user()->current_workspace_id),
-            'source_social_account_id' => ['sometimes', 'string', 'uuid'],
-        ];
+        $rules = RepurposeRules::rules($this->user()->current_workspace_id);
+        $rules['source_social_account_id'] = ['sometimes', ...array_slice($rules['source_social_account_id'], 1)];
+
+        return $rules;
     }
 }

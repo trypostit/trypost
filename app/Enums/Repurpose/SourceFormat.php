@@ -45,13 +45,15 @@ enum SourceFormat: string
             self::Story => [ContentType::InstagramStory, ContentType::FacebookStory, ContentType::TikTokVideo, ContentType::YouTubeShort],
         };
 
+        $available = self::videoContentTypesFor($platform);
+
         foreach ($candidates as $contentType) {
-            if ($contentType->platform()->network() === $platform->network()) {
+            if (in_array($contentType, $available, true)) {
                 return $contentType;
             }
         }
 
-        return self::videoContentTypesFor($platform)[0] ?? null;
+        return $available[0] ?? ContentType::defaultFor($platform);
     }
 
     /**
@@ -60,9 +62,8 @@ enum SourceFormat: string
     public static function videoContentTypesFor(Platform $platform): array
     {
         return array_values(array_filter(
-            ContentType::cases(),
-            fn (ContentType $contentType): bool => $contentType->platform()->network() === $platform->network()
-                && $contentType->supportsVideo(),
+            ContentType::forPlatform($platform),
+            fn (ContentType $contentType): bool => $contentType->supportsVideo(),
         ));
     }
 }

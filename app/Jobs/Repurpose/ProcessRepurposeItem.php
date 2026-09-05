@@ -16,6 +16,7 @@ use App\Models\SocialAccount;
 use App\Services\Post\MediaAttacher;
 use App\Services\Repurpose\CaptionAdapter;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -23,8 +24,10 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Str;
 use Throwable;
 
-class ProcessRepurposeItem implements ShouldQueue
+class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
 {
+    public int $uniqueFor = 3600;
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
@@ -45,6 +48,11 @@ class ProcessRepurposeItem implements ShouldQueue
         return [60, 300, 900];
     }
 
+    public function uniqueId(): string
+    {
+        return $this->item->id;
+    }
+
     public function handle(MediaAttacher $media, CaptionAdapter $captions): void
     {
         if ($this->item->status->isTerminal()) {
@@ -61,6 +69,12 @@ class ProcessRepurposeItem implements ShouldQueue
             return;
         }
 
+        if ($this->item->posts()->where('status', '!=', PostStatus::Draft)->exists()) {
+            $this->item->update(['status' => ItemStatus::Published]);
+
+            return;
+        }
+
         $this->item->posts()->each(fn (Post $post) => $post->forceDelete());
 
         $this->item->update(['status' => ItemStatus::Processing]);
@@ -71,12 +85,12 @@ class ProcessRepurposeItem implements ShouldQueue
         foreach ($repurpose->destinations as $destination) {
             $account = SocialAccount::find(data_get($destination, 'social_account_id'));
 
-            if ($account === null || $account->disconnected_at !== null) {
+            if ($account === null || ! $account->is_active) {
                 continue;
             }
 
             $post = CreatePost::execute($workspace, $user, [
-                'content' => $captions->adapt($workspace, $user, $this->caption, $account->platform, null),
+                'content' => e($captions->adapt($workspace, $user, $this->caption, $account->platform, null)),
                 'created_via' => CreatedVia::Repurpose,
                 'platforms' => [$destination],
             ]);

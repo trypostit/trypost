@@ -18,6 +18,7 @@ use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\Post\MediaAttacher;
 use App\Services\Repurpose\CaptionAdapter;
+use App\Services\Social\ContentSanitizer;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -177,8 +178,7 @@ test('an interrupted attempt does not leave draft posts behind', function () {
 
     processItem($item);
 
-    $orphan = Post::where('repurpose_item_id', $item->id)->first();
-    $orphan->update(['status' => PostStatus::Draft]);
+    Post::where('repurpose_item_id', $item->id)->update(['status' => PostStatus::Draft]);
     $item->update(['status' => ItemStatus::Processing]);
 
     processItem($item->fresh());
@@ -201,4 +201,54 @@ test('it still replicates when the repurpose creator is gone', function () {
 
     expect($item->fresh()->status)->toBe(ItemStatus::Published)
         ->and(Post::where('repurpose_item_id', $item->id)->count())->toBe(2);
+});
+
+test('a retry never destroys posts that are already publishing', function () {
+    Bus::fake([PublishPost::class]);
+    fakeVideoDownload();
+
+    $item = repurposeWithTwoDestinations();
+
+    processItem($item);
+
+    $ids = Post::where('repurpose_item_id', $item->id)->pluck('id');
+    $item->update(['status' => ItemStatus::Processing]);
+
+    processItem($item->fresh());
+
+    expect(Post::whereIn('id', $ids)->count())->toBe(2)
+        ->and(Post::where('repurpose_item_id', $item->id)->count())->toBe(2)
+        ->and($item->fresh()->status)->toBe(ItemStatus::Published);
+
+    Bus::assertDispatchedTimes(PublishPost::class, 2);
+});
+
+test('a caption survives characters the sanitizer would treat as markup', function () {
+    Bus::fake([PublishPost::class]);
+    fakeVideoDownload();
+
+    $item = repurposeWithTwoDestinations();
+
+    processItem($item, 'Fiz isso com meu time <3 link na bio');
+
+    $post = Post::where('repurpose_item_id', $item->id)->first();
+
+    expect(app(ContentSanitizer::class)->sanitize($post->content, Platform::TikTok))
+        ->toContain('link na bio');
+});
+
+test('a destination switched off is skipped instead of publishing nowhere', function () {
+    Bus::fake([PublishPost::class]);
+    fakeVideoDownload();
+
+    $item = repurposeWithTwoDestinations();
+    $tiktokId = data_get($item->repurpose->destinations, '0.social_account_id');
+    SocialAccount::whereKey($tiktokId)->update(['is_active' => false]);
+
+    processItem($item->fresh());
+
+    $posts = Post::where('repurpose_item_id', $item->id)->get();
+
+    expect($posts)->toHaveCount(1)
+        ->and($posts->first()->postPlatforms()->enabled()->count())->toBe(1);
 });

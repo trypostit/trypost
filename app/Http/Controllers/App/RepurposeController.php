@@ -20,6 +20,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Http\Requests\App\Repurpose\StoreRepurposeRequest;
 use App\Http\Requests\App\Repurpose\UpdateRepurposeRequest;
 use App\Http\Resources\Api\RepurposeItemResource;
+use App\Http\Resources\Api\RepurposeResource;
 use App\Http\Resources\App\PlatformConfigResource;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Repurpose;
@@ -54,7 +55,7 @@ class RepurposeController extends Controller
         $this->authorize('view', $repurpose);
 
         return Inertia::render('repurposes/Show', [
-            'repurpose' => $repurpose->load('sourceAccount'),
+            'repurpose' => new RepurposeResource($repurpose->load('sourceAccount')),
             'sourceAccounts' => SocialAccountResource::collection($this->sourceAccounts($request)),
             'destinationAccounts' => SocialAccountResource::collection(
                 $this->connectedAccounts($request)->whereNotIn('id', [$repurpose->source_social_account_id])->values(),

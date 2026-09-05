@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
 import { IconAlertTriangle } from '@tabler/icons-vue';
+import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
+import { toast } from 'vue-sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,11 +16,16 @@ const props = defineProps<{
 }>();
 
 const canActivate = computed(
-    () => props.repurpose.status !== 'active' && props.repurpose.destinations.length > 0,
+    () =>
+        ['draft', 'disabled'].includes(props.repurpose.status) &&
+        props.repurpose.destinations.length > 0,
 );
 
 const send = (url: string) => {
-    router.post(url, {}, { preserveScroll: true });
+    router.post(url, {}, {
+        preserveScroll: true,
+        onError: (errors) => toast.error(Object.values(errors)[0] ?? trans('repurposes.errors.action_failed')),
+    });
 };
 </script>
 

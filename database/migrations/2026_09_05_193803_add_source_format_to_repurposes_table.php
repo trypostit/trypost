@@ -16,7 +16,10 @@ return new class extends Migration
         });
 
         Schema::table('repurposes', function (Blueprint $table) {
-            $table->index(['workspace_id', 'source_social_account_id'], 'repurposes_workspace_source_index');
+            $table->unique(
+                ['workspace_id', 'source_social_account_id', 'source_format'],
+                'repurposes_source_format_unique',
+            );
         });
 
         Schema::table('repurposes', function (Blueprint $table) {
@@ -31,7 +34,7 @@ return new class extends Migration
         });
 
         Schema::table('repurposes', function (Blueprint $table) {
-            $table->dropIndex('repurposes_workspace_source_index');
+            $table->dropUnique('repurposes_source_format_unique');
         });
 
         Schema::table('repurposes', function (Blueprint $table) {

@@ -13,10 +13,10 @@ class UpdateRepurposeRequest
      */
     public static function rules(?string $workspaceId = null): array
     {
-        return [
-            'repurpose_id' => ['required', 'string'],
-            ...RepurposeRules::rules($workspaceId),
-            'source_social_account_id' => ['sometimes', 'string', 'uuid'],
-        ];
+        $rules = RepurposeRules::rules($workspaceId);
+        $rules['repurpose_id'] = ['required', 'string', 'uuid'];
+        $rules['source_social_account_id'] = ['sometimes', ...array_slice($rules['source_social_account_id'], 1)];
+
+        return $rules;
     }
 }

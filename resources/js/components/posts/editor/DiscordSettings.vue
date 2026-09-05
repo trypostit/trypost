@@ -52,20 +52,6 @@ interface EmbedDraft {
  */
 const DISCORD_BLURPLE = '#5865f2';
 
-const toEmbedColor = (value: string | null): string | undefined => {
-    if (!value) {
-        return undefined;
-    }
-
-    const digits = value.replace('#', '');
-
-    if (digits.length === 3) {
-        return `#${digits.split('').map((digit) => digit + digit).join('')}`;
-    }
-
-    return `#${digits.slice(0, 6)}`;
-};
-
 const props = withDefaults(
     defineProps<{
         socialAccount: SocialAccount | null;
@@ -347,7 +333,7 @@ const updateEmbed = (index: number, patch: Partial<EmbedDraft>) =>
                             :model-value="embed.color || DISCORD_BLURPLE"
                             :disabled="disabled"
                             :placeholder="DISCORD_BLURPLE"
-                            @update:model-value="(value) => updateEmbed(index, { color: toEmbedColor(value) })"
+                            @update:model-value="(value) => updateEmbed(index, { color: value ?? undefined })"
                         />
                     </div>
                 </div>

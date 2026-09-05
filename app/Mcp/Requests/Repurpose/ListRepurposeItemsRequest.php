@@ -12,7 +12,7 @@ class ListRepurposeItemsRequest
     public static function rules(): array
     {
         return [
-            'repurpose_id' => ['required', 'string'],
+            'repurpose_id' => ['required', 'string', 'uuid'],
             'page' => ['sometimes', 'integer', 'min:1'],
         ];
     }

@@ -16,7 +16,7 @@ class ListRepurposeItems
     public static function execute(Repurpose $repurpose): LengthAwarePaginator
     {
         return $repurpose->items()
-            ->with('posts.postPlatforms:id,post_id,platform')
+            ->with('posts.postPlatforms:id,post_id,platform,enabled')
             ->latest()
             ->paginate((int) config('app.pagination.default'));
     }

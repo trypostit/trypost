@@ -19,7 +19,6 @@ use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 function repurposeWorkspace(): array
@@ -76,8 +75,13 @@ test('one account can feed one repurpose per watched format', function () {
 });
 
 test('changing the watched format resets the watermark', function () {
+    [$workspace, $user, $account] = repurposeWorkspace();
+
     $repurpose = Repurpose::factory()->active()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $account->id,
         'source_format' => SourceFormat::Reel,
+        'destinations' => [tiktokDestination($workspace)],
         'activated_at' => now()->subMonth(),
     ]);
 
@@ -211,8 +215,12 @@ test('pausing keeps the watermark and resuming does not move it', function () {
 });
 
 test('disabling clears the watermark so re-activation starts fresh', function () {
+    [$workspace, $user, $account] = repurposeWorkspace();
+
     $repurpose = Repurpose::factory()->active()->create([
-        'destinations' => [['social_account_id' => (string) Str::uuid(), 'content_type' => ContentType::TikTokVideo->value, 'meta' => []]],
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $account->id,
+        'destinations' => [tiktokDestination($workspace)],
     ]);
 
     $disabled = DisableRepurpose::execute($repurpose);
@@ -228,8 +236,15 @@ test('disabling clears the watermark so re-activation starts fresh', function ()
 test('changing the source account resets the watermark', function () {
     config()->set('trypost.allow_multiple_social_accounts', true);
 
-    $repurpose = Repurpose::factory()->active()->create(['activated_at' => now()->subMonth()]);
-    $newAccount = SocialAccount::factory()->create(['workspace_id' => $repurpose->workspace_id]);
+    [$workspace, $user, $account] = repurposeWorkspace();
+
+    $repurpose = Repurpose::factory()->active()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $account->id,
+        'destinations' => [tiktokDestination($workspace)],
+        'activated_at' => now()->subMonth(),
+    ]);
+    $newAccount = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
 
     $updated = UpdateRepurpose::execute($repurpose, ['source_social_account_id' => $newAccount->id]);
 
@@ -247,4 +262,31 @@ test('deleting a repurpose removes its items but keeps the posts it created', fu
     expect(RepurposeItem::whereKey($item->id)->exists())->toBeFalse()
         ->and(Post::whereKey($post->id)->exists())->toBeTrue()
         ->and($post->fresh()->repurpose_item_id)->toBeNull();
+});
+
+test('an active repurpose cannot be updated into a state it could not be activated in', function () {
+    [$workspace, $user, $account] = repurposeWorkspace();
+
+    $repurpose = Repurpose::factory()->active()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $account->id,
+        'destinations' => [tiktokDestination($workspace)],
+    ]);
+
+    expect(fn () => UpdateRepurpose::execute($repurpose, ['destinations' => []]))
+        ->toThrow(ValidationException::class);
+
+    $discord = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Discord]);
+
+    expect(fn () => UpdateRepurpose::execute($repurpose, ['destinations' => [[
+        'social_account_id' => $discord->id,
+        'content_type' => ContentType::DiscordMessage->value,
+        'meta' => [],
+    ]]]))->toThrow(ValidationException::class);
+});
+
+test('a repurpose can only be resumed from paused', function () {
+    $repurpose = Repurpose::factory()->disabled()->create();
+
+    expect(fn () => ResumeRepurpose::execute($repurpose))->toThrow(ValidationException::class);
 });

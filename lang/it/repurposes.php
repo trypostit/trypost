@@ -88,6 +88,7 @@ return [
         'hint' => 'La didascalia viene adattata per rete solo quando supera il limite di quella rete.',
         'none_available' => 'Nessun altro account è collegato in questo workspace.',
         'save' => 'Salva destinazioni',
+        'saved' => 'Destinazioni salvate',
         'publish_as' => 'Pubblica come',
     ],
 
@@ -139,5 +140,8 @@ return [
         'source_already_used' => 'Questo account alimenta già un altro repurpose. Modifica quello.',
         'destinations_required' => 'Scegli almeno una destinazione prima di attivare.',
         'destination_needs_video' => 'Quel formato non accetta video.',
+        'only_paused_resumes' => 'Solo un repurpose in pausa può essere ripreso.',
+        'destination_unavailable' => 'Quell\'account di destinazione non è più disponibile.',
+        'action_failed' => 'Qualcosa è andato storto. Controlla il modulo e riprova.',
     ],
 ];

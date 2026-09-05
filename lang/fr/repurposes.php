@@ -88,6 +88,7 @@ return [
         'hint' => 'La légende n\'est adaptée par réseau que lorsqu\'elle dépasse la limite de ce réseau.',
         'none_available' => 'Aucun autre compte n\'est connecté dans cet espace de travail.',
         'save' => 'Enregistrer les destinations',
+        'saved' => 'Destinations enregistrées',
         'publish_as' => 'Publier comme',
     ],
 
@@ -139,5 +140,8 @@ return [
         'source_already_used' => 'Ce compte alimente déjà un autre repurpose. Modifiez celui-là.',
         'destinations_required' => 'Choisissez au moins une destination avant d\'activer.',
         'destination_needs_video' => 'Ce format n\'accepte pas de vidéo.',
+        'only_paused_resumes' => 'Seul un repurpose en pause peut être repris.',
+        'destination_unavailable' => 'Ce compte de destination n\'est plus disponible.',
+        'action_failed' => 'Une erreur est survenue. Vérifiez le formulaire et réessayez.',
     ],
 ];

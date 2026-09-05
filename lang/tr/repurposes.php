@@ -88,6 +88,7 @@ return [
         'hint' => 'Açıklama yalnızca o ağın sınırını aştığında ağa göre uyarlanır.',
         'none_available' => 'Bu çalışma alanında bağlı başka hesap yok.',
         'save' => 'Hedefleri kaydet',
+        'saved' => 'Hedefler kaydedildi',
         'publish_as' => 'Şu olarak paylaş',
     ],
 
@@ -139,5 +140,8 @@ return [
         'source_already_used' => 'Bu hesap zaten başka bir repurpose\'u besliyor. Onu düzenle.',
         'destinations_required' => 'Etkinleştirmeden önce en az bir hedef seç.',
         'destination_needs_video' => 'Bu format video taşıyamaz.',
+        'only_paused_resumes' => 'Yalnızca duraklatılmış bir repurpose sürdürülebilir.',
+        'destination_unavailable' => 'O hedef hesap artık kullanılabilir değil.',
+        'action_failed' => 'Bir şeyler ters gitti. Formu kontrol edip tekrar dene.',
     ],
 ];

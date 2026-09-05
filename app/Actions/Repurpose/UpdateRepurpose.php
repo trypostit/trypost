@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Repurpose;
 
 use App\Enums\Repurpose\SourceFormat;
+use App\Enums\Repurpose\Status;
 use App\Models\Repurpose;
 
 class UpdateRepurpose
@@ -33,7 +34,12 @@ class UpdateRepurpose
         }
 
         $repurpose->update($attributes);
+        $repurpose = $repurpose->fresh();
 
-        return $repurpose->fresh();
+        if ($repurpose->status === Status::Active) {
+            ActivateRepurpose::assertPublishable($repurpose);
+        }
+
+        return $repurpose;
     }
 }

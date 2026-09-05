@@ -6,12 +6,12 @@ namespace App\Services\Repurpose;
 
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Repurpose\SourceFetchException;
 use App\Models\SocialAccount;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
-use RuntimeException;
 
 class InstagramSourceFetcher implements SourceFetcher
 {
@@ -88,7 +88,7 @@ class InstagramSourceFetcher implements SourceFetcher
     private function assertSucceeded(Response $response): void
     {
         if ($response->failed()) {
-            throw new RuntimeException((string) data_get($response->json(), 'error.message', $response->body()));
+            throw new SourceFetchException($response);
         }
     }
 

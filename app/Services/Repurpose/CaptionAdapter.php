@@ -98,7 +98,7 @@ class CaptionAdapter
 
     private function truncate(string $caption, int $limit): string
     {
-        $trimmed = rtrim(mb_substr($caption, 0, $limit));
+        $trimmed = rtrim(mb_substr($caption, 0, max(1, $limit)));
 
         $lastSpace = mb_strrpos($trimmed, ' ');
 

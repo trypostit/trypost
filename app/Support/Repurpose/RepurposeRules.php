@@ -6,6 +6,7 @@ namespace App\Support\Repurpose;
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\SourceFormat;
+use App\Rules\ContentTypeMatchesPlatform;
 use App\Services\Repurpose\SourceFetcherFactory;
 use App\Support\PostPlatformMetaRules;
 use Illuminate\Support\Str;
@@ -45,6 +46,7 @@ class RepurposeRules
                 'required',
                 'string',
                 Rule::enum(ContentType::class),
+                new ContentTypeMatchesPlatform,
                 fn (string $attribute, mixed $value, callable $fail) => ContentType::tryFrom((string) $value)?->supportsVideo() === false
                     ? $fail(__('repurposes.errors.destination_needs_video'))
                     : null,

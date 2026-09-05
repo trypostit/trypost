@@ -88,6 +88,7 @@ return [
         'hint' => 'Der Text wird nur dann pro Netzwerk angepasst, wenn er dessen Limit überschreitet.',
         'none_available' => 'In diesem Workspace ist noch kein weiteres Konto verbunden.',
         'save' => 'Ziele speichern',
+        'saved' => 'Ziele gespeichert',
         'publish_as' => 'Veröffentlichen als',
     ],
 
@@ -139,5 +140,8 @@ return [
         'source_already_used' => 'Dieses Konto speist bereits ein anderes Repurpose. Bearbeite stattdessen jenes.',
         'destinations_required' => 'Wähle vor dem Aktivieren mindestens ein Ziel.',
         'destination_needs_video' => 'Dieses Format kann kein Video tragen.',
+        'only_paused_resumes' => 'Nur ein pausiertes Repurpose kann fortgesetzt werden.',
+        'destination_unavailable' => 'Dieses Zielkonto ist nicht mehr verfügbar.',
+        'action_failed' => 'Etwas ist schiefgelaufen. Prüfe das Formular und versuche es erneut.',
     ],
 ];

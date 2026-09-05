@@ -88,6 +88,7 @@ return [
         'hint' => 'A legenda só é adaptada por rede quando ultrapassa o limite daquela rede.',
         'none_available' => 'Nenhuma outra conta está conectada neste workspace.',
         'save' => 'Salvar destinos',
+        'saved' => 'Destinos salvos',
         'publish_as' => 'Publicar como',
     ],
 
@@ -139,5 +140,8 @@ return [
         'source_already_used' => 'Esta conta já alimenta outro repurpose. Edite aquele.',
         'destinations_required' => 'Escolha ao menos um destino antes de ativar.',
         'destination_needs_video' => 'Esse formato não aceita vídeo.',
+        'only_paused_resumes' => 'Só um repurpose pausado pode ser retomado.',
+        'destination_unavailable' => 'Essa conta de destino não está mais disponível.',
+        'action_failed' => 'Algo deu errado. Confira o formulário e tente de novo.',
     ],
 ];

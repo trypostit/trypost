@@ -88,6 +88,7 @@ return [
         'hint' => '只有当文案超出该平台上限时，才会按平台调整。',
         'none_available' => '这个工作区还没有连接其他账号。',
         'save' => '保存目标',
+        'saved' => '目标已保存',
         'publish_as' => '发布为',
     ],
 
@@ -139,5 +140,8 @@ return [
         'source_already_used' => '这个账号已经用于另一个 Repurpose，请去编辑那一个。',
         'destinations_required' => '启用前请至少选择一个目标。',
         'destination_needs_video' => '该格式不支持视频。',
+        'only_paused_resumes' => '只有已暂停的 Repurpose 才能继续。',
+        'destination_unavailable' => '该目标账号已不可用。',
+        'action_failed' => '出了点问题。请检查表单后重试。',
     ],
 ];

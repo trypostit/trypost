@@ -25,7 +25,7 @@ class RepurposeItemResource extends JsonResource
             'error' => $this->error,
             'posts' => $this->whenLoaded('posts', fn () => $this->posts->map(fn ($post) => [
                 'id' => $post->id,
-                'platform' => $post->postPlatforms->first()?->platform?->value,
+                'platform' => $post->postPlatforms->firstWhere('enabled', true)?->platform?->value,
             ])->values()),
             'created_at' => $this->created_at->toIso8601String(),
             'updated_at' => $this->updated_at->toIso8601String(),
