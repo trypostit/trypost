@@ -6,7 +6,6 @@ return [
 
     'back' => 'Voltar',
 
-    'beta' => 'Beta',
 
     'confirm_modal' => [
         'cannot_be_undone' => 'Esta ação não pode ser desfeita.',

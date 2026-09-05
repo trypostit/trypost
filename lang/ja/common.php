@@ -6,7 +6,6 @@ return [
 
     'back' => '戻る',
 
-    'beta' => 'ベータ',
 
     'confirm_modal' => [
         'cannot_be_undone' => 'この操作は取り消せません。',
