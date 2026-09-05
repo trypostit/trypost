@@ -27,20 +27,4 @@ class StoreRepurposeRequest extends FormRequest
             'source_format' => $rules['source_format'],
         ];
     }
-
-    /**
-     * @return array<string, string>
-     */
-    public function messages(): array
-    {
-        return RepurposeRules::messages();
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    public function attributes(): array
-    {
-        return RepurposeRules::attributes();
-    }
 }

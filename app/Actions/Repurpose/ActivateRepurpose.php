@@ -52,7 +52,7 @@ class ActivateRepurpose
                 ]);
             }
 
-            $violation = PostPlatformMetaRules::missingRequiredMeta($account->platform, data_get($destination, 'meta'));
+            $violation = PostPlatformMetaRules::requiredMetaViolation($account->platform, data_get($destination, 'meta'));
 
             if ($violation !== null) {
                 throw ValidationException::withMessages(['destinations' => $violation[1]]);

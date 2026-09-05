@@ -9,7 +9,7 @@ use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\Repurpose\ItemReason;
 use App\Enums\Repurpose\ItemStatus;
-use App\Jobs\PublishPost;
+use App\Exceptions\Repurpose\SourceDownloadException;
 use App\Models\Post;
 use App\Models\RepurposeItem;
 use App\Services\Post\MediaAttacher;
@@ -21,7 +21,6 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Str;
-use RuntimeException;
 use Throwable;
 
 class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
@@ -116,11 +115,10 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        foreach ($posts as $post) {
-            $post->update(['status' => PostStatus::Scheduled, 'scheduled_at' => now()]);
-
-            PublishPost::dispatch($post);
-        }
+        Post::whereKey(collect($posts)->pluck('id'))->update([
+            'status' => PostStatus::Scheduled,
+            'scheduled_at' => now(),
+        ]);
 
         $this->item->update(['status' => ItemStatus::Published, 'reason' => null, 'error' => null]);
     }
@@ -129,14 +127,15 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
     {
         $this->item->update([
             'status' => ItemStatus::Failed,
+            'reason' => $exception instanceof SourceDownloadException ? ItemReason::DownloadFailed : $this->item->reason,
             'error' => Str::limit($exception->getMessage(), 1000),
         ]);
     }
 
     /**
      * Throws so the job's own retries get a chance at it: a source video that is
-     * not downloadable right now usually is minutes later. The reason is stored
-     * before the throw, so {@see self::failed()} keeps it once the tries run out.
+     * not downloadable right now usually is minutes later. {@see self::failed()}
+     * turns the exhausted attempt into the stored reason.
      *
      * @param  array<int, Post>  $posts
      */
@@ -146,8 +145,6 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
             $post->forceDelete();
         }
 
-        $this->item->update(['reason' => ItemReason::DownloadFailed]);
-
-        throw new RuntimeException("Could not download the source video for repurpose item {$this->item->id}.");
+        throw new SourceDownloadException("Could not download the source video for repurpose item {$this->item->id}.");
     }
 }

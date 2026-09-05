@@ -155,20 +155,12 @@ class PostPlatformMetaRules
     }
 
     /**
-     * @return array{0: string, 1: string}|null [field, message]
-     */
-    public static function missingRequiredMeta(?Platform $platform, mixed $meta): ?array
-    {
-        return self::requiredMetaViolation($platform, $meta);
-    }
-
-    /**
      * The missing required meta field for a platform about to publish, or null when
      * nothing is missing. Single source of "what each platform requires to publish".
      *
      * @return array{0: string, 1: string}|null [field, message]
      */
-    private static function requiredMetaViolation(?Platform $platform, mixed $meta): ?array
+    public static function requiredMetaViolation(?Platform $platform, mixed $meta): ?array
     {
         return match (true) {
             $platform === Platform::TikTok && blank(data_get($meta, 'privacy_level')) => ['privacy_level', trans('posts.form.tiktok.privacy_required')],

@@ -10,6 +10,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
+use Symfony\Component\HttpFoundation\Response;
 
 beforeEach(function () {
     ['plain_token' => $this->token, 'workspace' => $this->workspace] = createApiTestToken();
@@ -224,4 +225,36 @@ test('a content type from another network is rejected for a destination', functi
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors('destinations.0.content_type');
+});
+
+test('the api refuses a transition the interface would never offer', function () {
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+        'destinations' => [tiktokDestinationPayload($this->tiktok)],
+    ]);
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->postJson(route('api.repurposes.pause', $repurpose))
+        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->postJson(route('api.repurposes.disable', $repurpose))
+        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->postJson(route('api.repurposes.activate', $repurpose))
+        ->assertOk();
+
+    $watermark = $repurpose->fresh()->activated_at;
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->postJson(route('api.repurposes.activate', $repurpose))
+        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
+
+    expect($repurpose->fresh()->activated_at->equalTo($watermark))->toBeTrue();
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->postJson(route('api.repurposes.resume', $repurpose))
+        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
 });

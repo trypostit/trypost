@@ -8,6 +8,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\ItemReason;
 use App\Enums\Repurpose\ItemStatus;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Repurpose\SourceDownloadException;
 use App\Jobs\PublishPost;
 use App\Jobs\Repurpose\ProcessRepurposeItem;
 use App\Models\Post;
@@ -19,6 +20,7 @@ use App\Models\Workspace;
 use App\Services\Post\MediaAttacher;
 use App\Services\Repurpose\CaptionAdapter;
 use App\Services\Social\ContentSanitizer;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -84,7 +86,9 @@ test('it creates one post per destination and publishes each', function () {
             ->and($post->postPlatforms()->enabled()->count())->toBe(1);
     }
 
-    Bus::assertDispatchedTimes(PublishPost::class, 2);
+    expect(Post::query()->due()->whereIn('id', $posts->pluck('id'))->count())->toBe(2);
+
+    Bus::assertNotDispatched(PublishPost::class);
 });
 
 test('the video is downloaded once and reused by every post', function () {
@@ -149,9 +153,9 @@ test('a failed download throws so the job retries, leaving no post behind', func
 
     $item = repurposeWithTwoDestinations();
 
-    expect(fn () => processItem($item))->toThrow(RuntimeException::class);
+    expect(fn () => processItem($item))->toThrow(SourceDownloadException::class);
 
-    expect($item->fresh()->reason)->toBe(ItemReason::DownloadFailed)
+    expect($item->fresh()->reason)->toBeNull()
         ->and($item->fresh()->status)->not->toBe(ItemStatus::Failed)
         ->and(Post::where('repurpose_item_id', $item->id)->count())->toBe(0);
 
@@ -167,7 +171,7 @@ test('a download that never recovers ends as failed once the tries run out', fun
 
     try {
         $job->handle(app(MediaAttacher::class), app(CaptionAdapter::class));
-    } catch (RuntimeException $exception) {
+    } catch (SourceDownloadException $exception) {
         $job->failed($exception);
     }
 
@@ -186,7 +190,7 @@ test('a retried download that succeeds publishes normally', function () {
 
     $item = repurposeWithTwoDestinations();
 
-    expect(fn () => processItem($item))->toThrow(RuntimeException::class);
+    expect(fn () => processItem($item))->toThrow(SourceDownloadException::class);
 
     processItem($item);
 
@@ -257,7 +261,7 @@ test('a retry never destroys posts that are already publishing', function () {
         ->and(Post::where('repurpose_item_id', $item->id)->count())->toBe(2)
         ->and($item->fresh()->status)->toBe(ItemStatus::Published);
 
-    Bus::assertDispatchedTimes(PublishPost::class, 2);
+    Bus::assertNotDispatched(PublishPost::class);
 });
 
 test('a caption survives characters the sanitizer would treat as markup', function () {
@@ -309,4 +313,21 @@ test('a destination pointing outside the workspace is skipped, never published t
     processItem($item);
 
     expect(Post::where('repurpose_item_id', $item->id)->count())->toBe(2);
+});
+
+test('the scheduler claims the repurposed posts, so nothing is dispatched twice', function () {
+    Bus::fake([PublishPost::class]);
+    fakeVideoDownload();
+
+    $item = repurposeWithTwoDestinations();
+
+    processItem($item);
+
+    Artisan::call('posts:process-scheduled');
+
+    Bus::assertDispatchedTimes(PublishPost::class, 2);
+
+    Artisan::call('posts:process-scheduled');
+
+    Bus::assertDispatchedTimes(PublishPost::class, 2);
 });
