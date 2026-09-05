@@ -144,6 +144,7 @@ return [
         'only_running_disables' => '無効にできるのは稼働中のリパーパスだけです。',
         'only_idle_activates' => '有効にできるのは下書きまたは無効なリパーパスだけです。',
         'destination_unavailable' => 'その配信先アカウントは利用できなくなりました。',
+        'source_unavailable' => 'そのソースアカウントは利用できなくなりました。',
         'action_failed' => '問題が発生しました。入力内容を確認してもう一度お試しください。',
     ],
 ];

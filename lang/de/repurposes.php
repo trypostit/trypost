@@ -144,6 +144,7 @@ return [
         'only_running_disables' => 'Nur ein laufendes Repurpose kann deaktiviert werden.',
         'only_idle_activates' => 'Nur ein Entwurf oder ein deaktiviertes Repurpose kann aktiviert werden.',
         'destination_unavailable' => 'Dieses Zielkonto ist nicht mehr verfügbar.',
+        'source_unavailable' => 'Dieses Quellkonto ist nicht mehr verfügbar.',
         'action_failed' => 'Etwas ist schiefgelaufen. Prüfe das Formular und versuche es erneut.',
     ],
 ];

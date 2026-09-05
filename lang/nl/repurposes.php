@@ -144,6 +144,7 @@ return [
         'only_running_disables' => 'Alleen een lopende repurpose kan worden uitgeschakeld.',
         'only_idle_activates' => 'Alleen een concept of uitgeschakelde repurpose kan worden geactiveerd.',
         'destination_unavailable' => 'Dat bestemmingsaccount is niet meer beschikbaar.',
+        'source_unavailable' => 'Dat bronaccount is niet langer beschikbaar.',
         'action_failed' => 'Er ging iets mis. Controleer het formulier en probeer opnieuw.',
     ],
 ];

@@ -24,20 +24,16 @@ class CaptionAdapter
         string $caption,
         Platform $platform,
     ): string {
-        $overflow = $platform->contentOverflow($this->sanitizer->displayText($caption, $platform));
-
-        if ($overflow === 0) {
+        if ($platform->contentOverflow($this->sanitizer->displayText($caption, $platform)) === 0) {
             return $caption;
         }
 
-        $limit = mb_strlen($caption) - $overflow;
-
         if (! $this->canUseAi($workspace, $user)) {
-            return $this->truncate($caption, $limit);
+            return $this->truncate($caption, $platform);
         }
 
-        return $this->shorten($workspace, $user, $caption, $platform, $limit)
-            ?? $this->truncate($caption, $limit);
+        return $this->shorten($workspace, $user, $caption, $platform, $platform->maxContentLength())
+            ?? $this->truncate($caption, $platform);
     }
 
     private function shorten(
@@ -93,7 +89,34 @@ class CaptionAdapter
         return Gate::forUser($user)->allows('useAi', $workspace->account);
     }
 
-    private function truncate(string $caption, int $limit): string
+    /**
+     * Cuts the caption down until the text the publisher actually sends fits.
+     * The limit cannot be applied to the raw caption: sanitizing shrinks it
+     * (HTML comes off) or grows it (X rewrites every dot of a host), so each
+     * pass rescales the cut by how far the sanitized form still overshoots.
+     */
+    private function truncate(string $caption, Platform $platform): string
+    {
+        $trimmed = $caption;
+
+        while ($trimmed !== '') {
+            $sanitized = $this->sanitizer->displayText($trimmed, $platform);
+            $overflow = $platform->contentOverflow($sanitized);
+
+            if ($overflow === 0) {
+                return $trimmed;
+            }
+
+            $length = mb_strlen($trimmed);
+            $ratio = ($sanitized === '') ? 0.0 : ($platform->maxContentLength() / mb_strlen($sanitized));
+
+            $trimmed = $this->cutAtWord($trimmed, min((int) floor($length * $ratio), $length - 1));
+        }
+
+        return '';
+    }
+
+    private function cutAtWord(string $caption, int $limit): string
     {
         $trimmed = rtrim(mb_substr($caption, 0, max(1, $limit)));
 

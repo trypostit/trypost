@@ -305,3 +305,33 @@ test('the destination settings props load once and stay out of scroll pages', fu
         ->not->toHaveKey('pinterestBoards')
         ->not->toHaveKey('tiktokCreatorInfos');
 });
+
+test('a destination whose account was switched off does not lock the page', function () {
+    $destination = destinationPayload($this->tiktok);
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+        'destinations' => [$destination],
+    ]);
+
+    $this->tiktok->update(['is_active' => false]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.repurposes.update', $repurpose), [
+            'source_social_account_id' => $this->source->id,
+            'destinations' => [$destination],
+        ])
+        ->assertSessionHasErrors([
+            'destinations.0.social_account_id' => __('repurposes.errors.destination_unavailable'),
+        ]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.repurposes.update', $repurpose), [
+            'source_social_account_id' => $this->source->id,
+            'destinations' => [],
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($repurpose->fresh()->destinations)->toBe([]);
+});

@@ -144,6 +144,7 @@ return [
         'only_running_disables' => 'Yalnızca çalışan bir repurpose kapatılabilir.',
         'only_idle_activates' => 'Yalnızca taslak veya kapatılmış bir repurpose etkinleştirilebilir.',
         'destination_unavailable' => 'O hedef hesap artık kullanılabilir değil.',
+        'source_unavailable' => 'Bu kaynak hesap artık kullanılamıyor.',
         'action_failed' => 'Bir şeyler ters gitti. Formu kontrol edip tekrar dene.',
     ],
 ];

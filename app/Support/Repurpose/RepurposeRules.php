@@ -60,7 +60,11 @@ class RepurposeRules
      */
     public static function messages(): array
     {
-        return self::forDestinations(PostPlatformMetaRules::messages());
+        return [
+            'destinations.*.social_account_id.exists' => __('repurposes.errors.destination_unavailable'),
+            'source_social_account_id.exists' => __('repurposes.errors.source_unavailable'),
+            ...self::forDestinations(PostPlatformMetaRules::messages()),
+        ];
     }
 
     /**
@@ -68,7 +72,12 @@ class RepurposeRules
      */
     public static function attributes(): array
     {
-        return self::forDestinations(PostPlatformMetaRules::attributes());
+        return [
+            'destinations.*.social_account_id' => __('repurposes.destinations.title'),
+            'destinations.*.content_type' => __('repurposes.destinations.publish_as'),
+            'source_social_account_id' => __('repurposes.source.title'),
+            ...self::forDestinations(PostPlatformMetaRules::attributes()),
+        ];
     }
 
     /**

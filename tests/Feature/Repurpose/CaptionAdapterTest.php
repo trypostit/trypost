@@ -8,6 +8,7 @@ use App\Models\AiUsageLog;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Repurpose\CaptionAdapter;
+use App\Services\Social\ContentSanitizer;
 
 test('a caption that fits is returned untouched', function () {
     $workspace = Workspace::factory()->create();
@@ -64,4 +65,27 @@ test('a shortened caption that still overflows falls back to truncation', functi
 
     expect(Platform::YouTube->contentOverflow($result))->toBe(0)
         ->and($result)->toStartWith('palavra');
+});
+
+test('truncation targets the text the publisher sends, not the raw caption', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+
+    $workspace = Workspace::factory()->create();
+    $caption = str_repeat('a.b.c.d.e.f.g.h.com ', 40);
+
+    $result = app(CaptionAdapter::class)->adapt($workspace, null, $caption, Platform::X);
+    $sent = app(ContentSanitizer::class)->displayText($result, Platform::X);
+
+    expect(Platform::X->contentOverflow($sent))->toBe(0)
+        ->and(mb_strlen($sent))->toBeGreaterThan(200);
+});
+
+test('a caption keeps almost the whole allowance when nothing rewrites it', function () {
+    $workspace = Workspace::factory()->create();
+    $caption = str_repeat('palavra ', 300);
+
+    $result = app(CaptionAdapter::class)->adapt($workspace, null, $caption, Platform::TikTok);
+
+    expect(Platform::TikTok->contentOverflow($result))->toBe(0)
+        ->and(mb_strlen($result))->toBeGreaterThan(Platform::TikTok->maxContentLength() - 10);
 });

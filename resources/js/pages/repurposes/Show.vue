@@ -40,9 +40,13 @@ const props = defineProps<{
     tiktokCreatorInfos: Record<string, ChannelTikTokCreatorInfo | null>;
 }>();
 
+const availableAccountIds = new Set(props.destinationAccounts.map((account) => account.id));
+
 const form = useForm<{ source_format: RepurposeSourceFormat; destinations: RepurposeDestination[] }>({
     source_format: props.repurpose.source_format,
-    destinations: props.repurpose.destinations ?? [],
+    destinations: (props.repurpose.destinations ?? []).filter((destination) =>
+        availableAccountIds.has(destination.social_account_id),
+    ),
 });
 
 const channels = computed<Channel[]>(() =>

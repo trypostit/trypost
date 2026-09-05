@@ -144,6 +144,7 @@ return [
         'only_running_disables' => 'Solo se puede desactivar un repurpose en marcha.',
         'only_idle_activates' => 'Solo se puede activar un borrador o un repurpose desactivado.',
         'destination_unavailable' => 'Esa cuenta de destino ya no está disponible.',
+        'source_unavailable' => 'Esa cuenta de origen ya no está disponible.',
         'action_failed' => 'Algo salió mal. Revisa el formulario e inténtalo de nuevo.',
     ],
 ];
