@@ -39,13 +39,13 @@ const format = defineModel<RepurposeSourceFormat>({ required: true });
                 </span>
             </div>
 
-            <div class="max-w-sm space-y-1">
+            <div class="space-y-1 sm:max-w-xs">
                 <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">
                     {{ $t('repurposes.source.watch_label') }}
                 </p>
 
                 <Select v-model="format">
-                    <SelectTrigger data-testid="source-format-select">
+                    <SelectTrigger class="w-full" data-testid="source-format-select">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

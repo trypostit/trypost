@@ -92,6 +92,9 @@ const handleDelete = () => {
                     <TabsTrigger value="activity" data-testid="tab-activity">
                         {{ $t('repurposes.tabs.activity') }}
                     </TabsTrigger>
+                    <TabsTrigger value="settings" data-testid="tab-settings">
+                        {{ $t('repurposes.tabs.settings') }}
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="configuration" class="space-y-6">
@@ -130,6 +133,13 @@ const handleDelete = () => {
                         </CardContent>
                     </Card>
 
+                </TabsContent>
+
+                <TabsContent value="activity">
+                    <RepurposeItemList :items="items.data ?? []" />
+                </TabsContent>
+
+                <TabsContent value="settings">
                     <Card>
                         <CardHeader>
                             <CardTitle>{{ $t('repurposes.danger.title') }}</CardTitle>
@@ -143,10 +153,6 @@ const handleDelete = () => {
                             </Button>
                         </CardContent>
                     </Card>
-                </TabsContent>
-
-                <TabsContent value="activity">
-                    <RepurposeItemList :items="items.data ?? []" />
                 </TabsContent>
             </Tabs>
         </div>

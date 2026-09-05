@@ -68,7 +68,7 @@ const setContentType = (accountId: string, contentType: string) => {
             {{ $t('repurposes.destinations.none_available') }}
         </p>
 
-        <div v-else class="grid gap-3 sm:grid-cols-2">
+        <div v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div
                 v-for="account in supported"
                 :key="account.id"
@@ -108,7 +108,7 @@ const setContentType = (accountId: string, contentType: string) => {
                         :model-value="contentTypeFor(account.id)"
                         @update:model-value="(value) => setContentType(account.id, String(value))"
                     >
-                        <SelectTrigger :data-testid="`destination-format-${account.id}`">
+                        <SelectTrigger class="w-full" :data-testid="`destination-format-${account.id}`">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

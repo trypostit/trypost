@@ -78,6 +78,7 @@ return [
     'tabs' => [
         'configuration' => 'Yapılandırma',
         'activity' => 'Etkinlik',
+        'settings' => 'Ayarlar',
     ],
 
     'destinations' => [

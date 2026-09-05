@@ -78,6 +78,7 @@ return [
     'tabs' => [
         'configuration' => '설정',
         'activity' => '활동',
+        'settings' => '설정',
     ],
 
     'destinations' => [

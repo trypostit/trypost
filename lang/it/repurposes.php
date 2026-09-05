@@ -78,6 +78,7 @@ return [
     'tabs' => [
         'configuration' => 'Configurazione',
         'activity' => 'Attività',
+        'settings' => 'Impostazioni',
     ],
 
     'destinations' => [

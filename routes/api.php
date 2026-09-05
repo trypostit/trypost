@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\LabelController;
 use App\Http\Controllers\Api\PlatformController;
 use App\Http\Controllers\Api\PostController;
+use App\Http\Controllers\Api\RepurposeController;
 use App\Http\Controllers\Api\SignatureController;
 use App\Http\Controllers\Api\SocialAccountController;
 use App\Http\Controllers\Api\UploadController;
@@ -63,6 +64,19 @@ Route::middleware(['auth:api', 'workspace.token', 'throttle:api'])->group(functi
     Route::get('/social-accounts/{account}/channels', [SocialAccountController::class, 'channels'])
         ->middleware('throttle:60,1')
         ->name('api.social-accounts.channels');
+
+    // Repurpose
+    Route::get('/repurpose-templates', [RepurposeController::class, 'templates'])->name('api.repurpose-templates.index');
+    Route::get('/repurposes', [RepurposeController::class, 'index'])->name('api.repurposes.index');
+    Route::post('/repurposes', [RepurposeController::class, 'store'])->name('api.repurposes.store');
+    Route::get('/repurposes/{repurpose}', [RepurposeController::class, 'show'])->name('api.repurposes.show');
+    Route::put('/repurposes/{repurpose}', [RepurposeController::class, 'update'])->name('api.repurposes.update');
+    Route::get('/repurposes/{repurpose}/items', [RepurposeController::class, 'items'])->name('api.repurposes.items');
+    Route::post('/repurposes/{repurpose}/activate', [RepurposeController::class, 'activate'])->name('api.repurposes.activate');
+    Route::post('/repurposes/{repurpose}/pause', [RepurposeController::class, 'pause'])->name('api.repurposes.pause');
+    Route::post('/repurposes/{repurpose}/resume', [RepurposeController::class, 'resume'])->name('api.repurposes.resume');
+    Route::post('/repurposes/{repurpose}/disable', [RepurposeController::class, 'disable'])->name('api.repurposes.disable');
+    Route::delete('/repurposes/{repurpose}', [RepurposeController::class, 'destroy'])->name('api.repurposes.destroy');
 
     // Webhooks
     Route::get('/webhooks', [WebhookController::class, 'index'])->name('api.webhooks.index');

@@ -78,6 +78,7 @@ return [
     'tabs' => [
         'configuration' => '配置',
         'activity' => '动态',
+        'settings' => '设置',
     ],
 
     'destinations' => [
