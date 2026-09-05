@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 return [
 
     /*
@@ -19,6 +17,8 @@ return [
 
     'redirect_domains' => [
         '*',
+        // 'https://example.com',
+        // 'http://localhost',
     ],
 
     /*
@@ -26,50 +26,40 @@ return [
     | Allowed Custom Schemes
     |--------------------------------------------------------------------------
     |
-    | Native desktop OAuth clients use private-use URI schemes (RFC 8252)
-    | for redirect callbacks — e.g. Cursor registers
-    | cursor://anysphere.cursor-mcp/oauth/callback. HTTP(S) and loopback
-    | redirects (Claude.ai, ChatGPT, Hermes, OpenCode, Codex CLI, …) are
-    | already accepted via redirect_domains. This list is the scheme
-    | allowlist for the native-app case.
+    | Native desktop OAuth clients like Cursor and VS Code use private-use URI
+    | schemes (RFC 8252) for redirect callbacks instead of standard schemes
+    | like HTTPS. Here, you may list which custom schemes you will allow.
     |
     */
 
     'custom_schemes' => [
-        // Desktop IDEs / agent hosts
         'antigravity',
-        'cursor',
-        'jetbrains',
-        'kiro',
-        'trae',
-        'vscode',
-        'vscode-insiders',
-        'windsurf',
-        'zed',
-
-        // Anthropic
+        'chatgpt',
         'claude',
         'claude-cli',
         'claude-code',
         'claude-desktop',
         'claudeai',
-
-        // OpenAI / xAI
-        'chatgpt',
         'codex',
-        'grok',
-        'xai',
-
-        // Agent CLIs and hosts
         'codium',
         'continue',
+        'cursor',
         'devin',
         'goose',
+        'grok',
         'hermes',
+        'jetbrains',
+        'kiro',
         'lmstudio',
         'opencode',
         'raycast',
+        'trae',
+        'vscode',
+        'vscode-insiders',
         'warp',
+        'windsurf',
+        'xai',
+        'zed',
     ],
 
     /*
@@ -84,5 +74,21 @@ return [
     */
 
     'authorization_server' => null,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Tool Search
+    |--------------------------------------------------------------------------
+    |
+    | Here you may configure the limits enforced during tool search. The maximum
+    | number of tool calls limits how many tools each search request can run
+    | while the maximum output bytes value caps the size of every result.
+    |
+    */
+
+    'tool_search' => [
+        'max_tool_calls' => 10,
+        'max_output_bytes' => 65_536,
+    ],
 
 ];
