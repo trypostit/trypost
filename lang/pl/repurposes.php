@@ -155,7 +155,8 @@ return [
             'published_via_trypost' => 'Już opublikowane przez TryPost',
             'media_url_missing' => 'Sieć nie udostępniła pliku do pobrania, zwykle z powodu dźwięku chronionego prawem autorskim',
             'download_failed' => 'Nie udało się pobrać filmu',
-            'post_creation_failed' => 'Brak dostępnego celu',
+            'post_creation_failed' => 'Nie udało się utworzyć postów',
+            'no_usable_destinations' => 'Wszystkie miejsca docelowe usunięto lub wyłączono',
         ],
     ],
 

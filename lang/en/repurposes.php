@@ -155,7 +155,8 @@ return [
             'published_via_trypost' => 'Already published through TryPost',
             'media_url_missing' => 'The network did not share a downloadable file, usually because of copyrighted audio',
             'download_failed' => 'The video could not be downloaded',
-            'post_creation_failed' => 'No destination was available',
+            'post_creation_failed' => 'Could not create the posts',
+            'no_usable_destinations' => 'Every destination was removed or switched off',
         ],
     ],
 

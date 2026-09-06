@@ -155,7 +155,8 @@ return [
             'published_via_trypost' => '이미 TryPost로 게시됨',
             'media_url_missing' => '네트워크가 내려받을 수 있는 파일을 제공하지 않았습니다. 보통 저작권 오디오 때문입니다',
             'download_failed' => '영상을 내려받지 못했습니다',
-            'post_creation_failed' => '사용할 수 있는 대상이 없습니다',
+            'post_creation_failed' => '게시물을 만들지 못했습니다',
+            'no_usable_destinations' => '모든 대상이 제거되었거나 비활성화되었습니다',
         ],
     ],
 

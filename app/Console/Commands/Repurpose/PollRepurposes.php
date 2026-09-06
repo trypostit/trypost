@@ -23,7 +23,8 @@ class PollRepurposes extends Command
             ->where('status', Status::Active)
             ->where(fn (Builder $query) => $query->whereNull('next_poll_at')->orWhere('next_poll_at', '<=', now()))
             ->distinct()
-            ->pluck('source_social_account_id');
+            ->pluck('source_social_account_id')
+            ->filter();
 
         $dispatched = 0;
 

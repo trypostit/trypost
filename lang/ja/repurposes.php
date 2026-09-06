@@ -155,7 +155,8 @@ return [
             'published_via_trypost' => 'すでに TryPost から投稿済み',
             'media_url_missing' => 'ネットワークがダウンロード可能なファイルを返しませんでした。多くは著作権付き音源が原因です',
             'download_failed' => '動画をダウンロードできませんでした',
-            'post_creation_failed' => '利用できる配信先がありません',
+            'post_creation_failed' => '投稿を作成できませんでした',
+            'no_usable_destinations' => 'すべての配信先が削除または無効化されました',
         ],
     ],
 

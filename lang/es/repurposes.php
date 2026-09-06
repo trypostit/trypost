@@ -155,7 +155,8 @@ return [
             'published_via_trypost' => 'Ya publicado con TryPost',
             'media_url_missing' => 'La red no compartió un archivo descargable, normalmente por audio con derechos de autor',
             'download_failed' => 'No se pudo descargar el vídeo',
-            'post_creation_failed' => 'No había ningún destino disponible',
+            'post_creation_failed' => 'No se pudieron crear las publicaciones',
+            'no_usable_destinations' => 'Todos los destinos fueron eliminados o desactivados',
         ],
     ],
 

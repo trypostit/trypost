@@ -118,7 +118,9 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
         }
 
         if ($posts === []) {
-            $this->item->update(['status' => ItemStatus::Failed, 'reason' => ItemReason::PostCreationFailed]);
+            // Not PostCreationFailed: nothing was attempted. Every destination
+            // resolved to an account that is gone or switched off.
+            $this->item->update(['status' => ItemStatus::Failed, 'reason' => ItemReason::NoUsableDestinations]);
 
             return;
         }

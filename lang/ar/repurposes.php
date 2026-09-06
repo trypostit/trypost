@@ -155,7 +155,8 @@ return [
             'published_via_trypost' => 'تم نشره بالفعل عبر TryPost',
             'media_url_missing' => 'لم توفّر الشبكة ملفًا قابلًا للتنزيل، عادةً بسبب صوت محمي بحقوق النشر',
             'download_failed' => 'تعذّر تنزيل الفيديو',
-            'post_creation_failed' => 'لا توجد وجهة متاحة',
+            'post_creation_failed' => 'تعذّر إنشاء المنشورات',
+            'no_usable_destinations' => 'تمت إزالة جميع الوجهات أو إيقافها',
         ],
     ],
 

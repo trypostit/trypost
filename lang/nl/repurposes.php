@@ -155,7 +155,8 @@ return [
             'published_via_trypost' => 'Al gepubliceerd via TryPost',
             'media_url_missing' => 'Het netwerk deelde geen downloadbaar bestand, meestal door auteursrechtelijk beschermde audio',
             'download_failed' => 'De video kon niet worden gedownload',
-            'post_creation_failed' => 'Geen bestemming beschikbaar',
+            'post_creation_failed' => 'Kon de berichten niet aanmaken',
+            'no_usable_destinations' => 'Alle bestemmingen zijn verwijderd of uitgeschakeld',
         ],
     ],
 

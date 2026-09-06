@@ -10,4 +10,5 @@ enum ItemReason: string
     case MediaUrlMissing = 'media_url_missing';
     case DownloadFailed = 'download_failed';
     case PostCreationFailed = 'post_creation_failed';
+    case NoUsableDestinations = 'no_usable_destinations';
 }

@@ -155,7 +155,8 @@ return [
             'published_via_trypost' => 'Zaten TryPost ile yayınlandı',
             'media_url_missing' => 'Ağ indirilebilir bir dosya paylaşmadı, genellikle telif hakkı korumalı ses nedeniyle',
             'download_failed' => 'Video indirilemedi',
-            'post_creation_failed' => 'Uygun hedef yok',
+            'post_creation_failed' => 'Gönderiler oluşturulamadı',
+            'no_usable_destinations' => 'Tüm hedefler kaldırıldı veya kapatıldı',
         ],
     ],
 

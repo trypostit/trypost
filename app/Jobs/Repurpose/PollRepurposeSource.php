@@ -55,8 +55,8 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
         }
 
         if ($this->account->disconnected_at !== null || $this->account->is_active === false) {
-            $this->markPolled($repurposes, $this->interval());
-
+            // The observer is pausing these; do not overwrite the recorded
+            // error or push the schedule out on the way past.
             return;
         }
 

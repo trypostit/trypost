@@ -7,7 +7,9 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\ItemReason;
 use App\Enums\Repurpose\ItemStatus;
+use App\Enums\Repurpose\PauseReason;
 use App\Enums\Repurpose\PublishMode;
+use App\Enums\Repurpose\Status as RepurposeStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Events\PostStatusChanged;
 use App\Exceptions\Repurpose\SourceDownloadException;
@@ -385,4 +387,49 @@ test('a draft run is not repeated when the job runs again', function () {
 
     expect(Post::where('repurpose_item_id', $item->id)->count())->toBe(2)
         ->and($item->fresh()->status)->toBe(ItemStatus::Drafted);
+});
+
+test('an item with no usable destination records why', function () {
+    Storage::fake();
+
+    $workspace = Workspace::factory()->create();
+    $source = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
+    $off = SocialAccount::factory()->for($workspace)->create([
+        'platform' => Platform::TikTok,
+        'is_active' => false,
+    ]);
+
+    $repurpose = Repurpose::factory()->active()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $source->id,
+        'destinations' => [
+            ['social_account_id' => $off->id, 'content_type' => ContentType::TikTokVideo->value, 'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE']],
+        ],
+    ]);
+
+    $item = RepurposeItem::factory()->for($repurpose)->create();
+
+    fakeVideoDownload();
+
+    (new ProcessRepurposeItem($item, REPURPOSE_VIDEO_URL, 'caption'))
+        ->handle(app(MediaAttacher::class), app(CaptionAdapter::class));
+
+    expect($item->fresh()->status)->toBe(ItemStatus::Failed)
+        ->and($item->fresh()->reason)->toBe(ItemReason::NoUsableDestinations);
+});
+
+test('an item already in flight still runs after its repurpose is paused', function () {
+    $item = repurposeWithTwoDestinations();
+    $item->repurpose->update([
+        'publish_mode' => PublishMode::Draft,
+        'status' => RepurposeStatus::Paused,
+        'paused_reason' => PauseReason::SourceUnavailable,
+    ]);
+
+    fakeVideoDownload();
+
+    (new ProcessRepurposeItem($item, REPURPOSE_VIDEO_URL, 'caption'))
+        ->handle(app(MediaAttacher::class), app(CaptionAdapter::class));
+
+    expect($item->fresh()->status)->toBe(ItemStatus::Drafted);
 });
