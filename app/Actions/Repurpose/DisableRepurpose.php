@@ -19,6 +19,7 @@ class DisableRepurpose
             fn (Repurpose $locked) => $locked->update([
                 'status' => Status::Disabled,
                 'activated_at' => null,
+                'paused_reason' => null,
                 'next_poll_at' => null,
             ]),
         );

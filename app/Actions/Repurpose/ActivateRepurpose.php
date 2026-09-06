@@ -27,6 +27,7 @@ class ActivateRepurpose
                 $locked->update([
                     'status' => Status::Active,
                     'activated_at' => now(),
+                    'paused_reason' => null,
                     'next_poll_at' => null,
                     'last_error' => null,
                 ]);

@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Actions\Repurpose\ActivateRepurpose;
+use App\Actions\Repurpose\ResumeRepurpose;
 use App\Actions\Repurpose\UpdateRepurpose;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\Repurpose\PauseReason;
 use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
@@ -176,4 +178,52 @@ test('editing an active repurpose is not blocked by a deactivated destination', 
     $updated = UpdateRepurpose::execute($repurpose, ['publish_mode' => PublishMode::Draft->value]);
 
     expect($updated->publish_mode)->toBe(PublishMode::Draft);
+});
+
+test('resuming a user pause keeps the watermark', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+    $watermark = now()->subDays(3);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Paused,
+        'paused_reason' => null,
+        'activated_at' => $watermark,
+        'destinations' => [healthDestination($workspace)],
+    ]);
+
+    expect(ResumeRepurpose::execute($repurpose)->activated_at->timestamp)
+        ->toBe($watermark->timestamp);
+});
+
+test('resuming a system pause starts from now and clears the reason', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Paused,
+        'paused_reason' => PauseReason::SourceUnavailable,
+        'activated_at' => now()->subDays(3),
+        'destinations' => [healthDestination($workspace)],
+    ]);
+
+    $resumed = ResumeRepurpose::execute($repurpose);
+
+    expect($resumed->activated_at->isToday())->toBeTrue()
+        ->and($resumed->paused_reason)->toBeNull()
+        ->and($resumed->next_poll_at)->toBeNull();
+});
+
+test('resuming is refused while the source is still unusable', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+    $source->update(['is_active' => false]);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Paused,
+        'paused_reason' => PauseReason::SourceUnavailable,
+        'destinations' => [healthDestination($workspace)],
+    ]);
+
+    expect(fn () => ResumeRepurpose::execute($repurpose))->toThrow(ValidationException::class);
 });

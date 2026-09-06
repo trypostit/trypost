@@ -201,7 +201,15 @@ test('activation stamps the watermark', function () {
 });
 
 test('pausing keeps the watermark and resuming does not move it', function () {
-    $repurpose = Repurpose::factory()->active()->create();
+    [$workspace, $user, $account] = repurposeWorkspace();
+
+    // Resuming runs the same health gates as activating, so the repurpose needs
+    // a usable source and destination for this watermark test to reach them.
+    $repurpose = Repurpose::factory()->active()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $account->id,
+        'destinations' => [tiktokDestination($workspace)],
+    ]);
     $watermark = $repurpose->activated_at;
 
     $paused = PauseRepurpose::execute($repurpose);
@@ -301,7 +309,12 @@ test('a draft cannot be paused, so resuming can never start from a blank waterma
 });
 
 test('resuming stamps a watermark when the repurpose somehow lacks one', function () {
+    [$workspace, $user, $account] = repurposeWorkspace();
+
     $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $account->id,
+        'destinations' => [tiktokDestination($workspace)],
         'status' => Status::Paused,
         'activated_at' => null,
     ]);
