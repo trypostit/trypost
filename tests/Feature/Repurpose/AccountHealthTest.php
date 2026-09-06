@@ -393,3 +393,56 @@ test('a deactivated destination is left in place', function () {
     expect($repurpose->fresh()->destinations)->toHaveCount(1)
         ->and($repurpose->fresh()->status)->toBe(Status::Active);
 });
+
+test('reconnecting the source resumes the repurpose from now', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+    $source->update(['status' => AccountStatus::TokenExpired]);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Paused,
+        'paused_reason' => PauseReason::SourceUnavailable,
+        'activated_at' => now()->subDays(2),
+        'destinations' => [healthDestination($workspace)],
+    ]);
+
+    $source->update(['status' => AccountStatus::Connected]);
+
+    $fresh = $repurpose->fresh();
+
+    expect($fresh->status)->toBe(Status::Active)
+        ->and($fresh->paused_reason)->toBeNull()
+        ->and($fresh->activated_at->isToday())->toBeTrue();
+});
+
+test('a user pause is never auto-resumed', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+    $source->update(['is_active' => false]);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Paused,
+        'paused_reason' => null,
+        'destinations' => [healthDestination($workspace)],
+    ]);
+
+    $source->update(['is_active' => true]);
+
+    expect($repurpose->fresh()->status)->toBe(Status::Paused);
+});
+
+test('a repurpose with no destinations left is not auto-resumed', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+    $source->update(['status' => AccountStatus::TokenExpired]);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Paused,
+        'paused_reason' => PauseReason::NoDestinations,
+        'destinations' => [],
+    ]);
+
+    $source->update(['status' => AccountStatus::Connected]);
+
+    expect($repurpose->fresh()->status)->toBe(Status::Paused);
+});

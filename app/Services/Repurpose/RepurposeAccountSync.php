@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Repurpose;
 
+use App\Actions\Repurpose\ActivateRepurpose;
+use App\Actions\Repurpose\ResumeRepurpose;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\PauseReason;
 use App\Enums\Repurpose\Status;
@@ -14,6 +16,7 @@ use App\Support\Repurpose\RepurposeTransition;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
@@ -50,6 +53,8 @@ class RepurposeAccountSync
             }
 
             if ($this->isUsable($account)) {
+                $this->resumeRecovered($account);
+
                 return;
             }
 
@@ -59,9 +64,21 @@ class RepurposeAccountSync
         }, $account);
     }
 
+    /**
+     * Read from the database, not from the instance. The observer receives
+     * whatever model the caller happened to be holding, and a column it never
+     * loaded — is_active is not in SocialAccountFactory, so a freshly created
+     * account has no such attribute in memory — reads back as null rather than
+     * throwing, because strict mode exempts recently-created models. That turns
+     * a healthy account into a false negative and silently skips auto-resume.
+     */
     private function isUsable(SocialAccount $account): bool
     {
-        return $account->is_active && $account->status === AccountStatus::Connected;
+        return SocialAccount::query()
+            ->whereKey($account->id)
+            ->where('is_active', true)
+            ->where('status', AccountStatus::Connected)
+            ->exists();
     }
 
     /**
@@ -77,6 +94,37 @@ class RepurposeAccountSync
             ->where('source_social_account_id', $account->id)
             ->where('status', Status::Active)
             ->get();
+    }
+
+    /**
+     * Only SourceUnavailable can auto-resume. SourceRemoved and NoDestinations
+     * describe state no account event restores — a reconnection after a delete
+     * is a new row, and a pruned destination is gone from the JSON — so both
+     * wait for the user.
+     *
+     * Eligibility is checked before calling Resume, not discovered from its
+     * exception: it throws on both a wrong status and a failed health gate, and
+     * driving normal control flow through exceptions inside an observer would
+     * fill the log with expected failures on every verification sweep.
+     */
+    private function resumeRecovered(SocialAccount $account): void
+    {
+        $candidates = Repurpose::query()
+            ->where('source_social_account_id', $account->id)
+            ->where('status', Status::Paused)
+            ->where('paused_reason', PauseReason::SourceUnavailable)
+            ->get();
+
+        foreach ($candidates as $repurpose) {
+            try {
+                ActivateRepurpose::assertSourceUsable($repurpose);
+                ActivateRepurpose::assertDestinationsPublishable($repurpose);
+            } catch (ValidationException) {
+                continue;
+            }
+
+            ResumeRepurpose::execute($repurpose);
+        }
     }
 
     /**
