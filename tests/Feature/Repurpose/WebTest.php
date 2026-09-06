@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
@@ -388,4 +389,20 @@ test('every per-platform meta key the web surface accepts is stored, not strippe
         ->assertSessionHasNoErrors();
 
     expect(data_get($repurpose->fresh()->destinations, '0.meta'))->toEqual($meta);
+});
+
+test('each destination is told which content type to start on', function () {
+    $youtube = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::YouTube]);
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+        'source_format' => SourceFormat::Reel,
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.repurposes.show', $repurpose))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where("recommendedFormats.{$this->tiktok->id}", ContentType::TikTokVideo->value)
+            ->where("recommendedFormats.{$youtube->id}", ContentType::YouTubeShort->value));
 });

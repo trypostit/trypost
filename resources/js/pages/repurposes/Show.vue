@@ -21,7 +21,6 @@ import { destroy, update } from '@/routes/app/repurposes';
 import type { PinterestBoard } from '@/types';
 import type { Channel, ChannelAccount, ChannelTikTokCreatorInfo } from '@/types/channel';
 import type {
-    DestinationFormat,
     Repurpose,
     RepurposeDestination,
     RepurposeItem,
@@ -35,7 +34,7 @@ const props = defineProps<{
     destinationAccounts: ChannelAccount[];
     items: { data: RepurposeItem[] };
     sourceFormats: SourceFormatOption[];
-    destinationFormats: Record<string, DestinationFormat[]>;
+    recommendedFormats: Record<string, string>;
     platformConfigs: Record<string, { publishConfig?: Record<string, any> }>;
     pinterestBoards: Record<string, { boards: PinterestBoard[]; truncated: boolean }>;
     tiktokCreatorInfos: Record<string, ChannelTikTokCreatorInfo | null>;
@@ -64,14 +63,14 @@ const channels = computed<Channel[]>(() =>
             username: account.username ?? null,
             avatarUrl: account.avatar_url,
             socialAccount: account,
-            contentType: destination?.content_type ?? props.destinationFormats[account.id]?.[0]?.value ?? '',
+            contentType: destination?.content_type ?? props.recommendedFormats[account.id] ?? '',
             meta: destination?.meta ?? {},
             boards: props.pinterestBoards?.[account.id]?.boards ?? [],
             boardsTruncated: props.pinterestBoards?.[account.id]?.truncated ?? false,
             creatorInfo: props.tiktokCreatorInfos?.[account.id] ?? null,
             publishConfig: props.platformConfigs?.[account.id]?.publishConfig ?? {},
             contentTypeError: errors.value[`destinations.${index}.content_type`],
-        } as Channel;
+        };
     }),
 );
 
@@ -88,7 +87,7 @@ const toggleDestination = (accountId: string) => {
         ...form.destinations,
         {
             social_account_id: accountId,
-            content_type: props.destinationFormats[accountId]?.[0]?.value ?? '',
+            content_type: props.recommendedFormats[accountId] ?? '',
             meta: {},
         },
     ];

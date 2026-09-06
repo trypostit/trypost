@@ -14,7 +14,6 @@ use App\Actions\Repurpose\PauseRepurpose;
 use App\Actions\Repurpose\ResumeRepurpose;
 use App\Actions\Repurpose\UpdateRepurpose;
 use App\Actions\SocialAccount\ListPinterestBoards;
-use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
 use App\Http\Requests\App\Repurpose\StoreRepurposeRequest;
@@ -63,7 +62,7 @@ class RepurposeController extends Controller
             'destinationAccounts' => SocialAccountResource::collection($destinations),
             'items' => Inertia::scroll(fn () => RepurposeItemResource::collection(ListRepurposeItems::execute($repurpose))),
             'sourceFormats' => $this->sourceFormats($repurpose),
-            'destinationFormats' => $this->destinationFormats($destinations, $repurpose->source_format),
+            'recommendedFormats' => $this->recommendedFormats($destinations, $repurpose->source_format),
             ...$this->platformSettingsProps($destinations),
         ]);
     }
@@ -151,26 +150,24 @@ class RepurposeController extends Controller
     }
 
     /**
+     * The content type a destination starts on: what the watched format maps to
+     * on that network, or its first video type when the two do not line up.
+     *
      * @param  Collection<int, SocialAccount>  $accounts
-     * @return array<string, array<int, array{value: string, label: string}>>
+     * @return array<string, string>
      */
-    private function destinationFormats(Collection $accounts, SourceFormat $sourceFormat): array
+    private function recommendedFormats(Collection $accounts, SourceFormat $sourceFormat): array
     {
-        $formats = [];
+        return $accounts
+            ->mapWithKeys(function (SocialAccount $account) use ($sourceFormat): array {
+                $contentType = $sourceFormat->defaultContentTypeFor($account->platform)
+                    ?? SourceFormat::videoContentTypesFor($account->platform)[0]
+                    ?? null;
 
-        foreach ($accounts as $account) {
-            $recommended = $sourceFormat->defaultContentTypeFor($account->platform);
-
-            $contentTypes = collect(SourceFormat::videoContentTypesFor($account->platform))
-                ->sortByDesc(fn (ContentType $contentType): bool => $contentType === $recommended)
-                ->values();
-
-            $formats[$account->id] = $contentTypes
-                ->map(fn (ContentType $contentType): array => ['value' => $contentType->value, 'label' => $contentType->label()])
-                ->all();
-        }
-
-        return $formats;
+                return [$account->id => $contentType?->value];
+            })
+            ->filter()
+            ->all();
     }
 
     /**

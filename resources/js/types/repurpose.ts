@@ -15,11 +15,6 @@ export interface FlowNode {
     format?: string | null;
 }
 
-export interface DestinationFormat {
-    value: string;
-    label: string;
-}
-
 export interface RepurposeDestination {
     social_account_id: string;
     content_type: string;
