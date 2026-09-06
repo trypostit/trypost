@@ -7,9 +7,9 @@ import { toast } from 'vue-sonner';
 import InstagramConnectDialog from '@/components/accounts/InstagramConnectDialog.vue';
 import TelegramConnectDialog from '@/components/accounts/TelegramConnectDialog.vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
+import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Button } from '@/components/ui/button';
 import { oauthConnectUrl, useOAuthPopup } from '@/composables/useOAuthPopup';
-import { getPlatformTheme } from '@/composables/usePlatformLogo';
 import { disconnect } from '@/routes/app/accounts';
 import { Platform } from '@/types/platform';
 import {
@@ -110,7 +110,6 @@ interface ConnectCard {
     key: string;
     platform: AvailablePlatform;
     account?: ConnectedAccount;
-    theme: ReturnType<typeof getPlatformTheme>;
     title: string;
     state: 'connected' | 'reconnect' | 'connect';
     extra: boolean;
@@ -123,7 +122,6 @@ const cards = computed<ConnectCard[]>(() => {
 
     return props.platforms.flatMap((platform) => {
         const accounts = props.connectedAccounts.filter((account) => account.network === platform.network);
-        const theme = getPlatformTheme(platform.value);
         const title = platform.label.split('(')[0].trim();
 
         const connected: ConnectCard[] = accounts.map((account) => {
@@ -135,7 +133,6 @@ const cards = computed<ConnectCard[]>(() => {
                 key: account.id,
                 platform,
                 account,
-                theme,
                 title,
                 state: lost ? 'reconnect' : 'connected',
                 extra: false,
@@ -146,7 +143,6 @@ const cards = computed<ConnectCard[]>(() => {
             connected.push({
                 key: `${platform.value}-connect`,
                 platform,
-                theme,
                 title,
                 state: 'connect',
                 extra: accounts.length > 0,
@@ -195,20 +191,7 @@ const cards = computed<ConnectCard[]>(() => {
                     />
                 </span>
 
-                <div
-                    :class="[
-                        card.theme.bg,
-                        card.theme.rotate,
-                        'inline-flex size-16 items-center justify-center rounded-2xl border-2 border-foreground shadow-sm transition-transform group-hover:!rotate-0',
-                    ]"
-                >
-                    <img
-                        :src="card.theme.image"
-                        :alt="card.platform.label"
-                        class="size-9 rounded-lg"
-                        loading="lazy"
-                    />
-                </div>
+                <PlatformLogo :platform="card.platform.value" size="lg" />
 
                 <div class="w-full min-w-0 flex-1">
                     <span class="block truncate text-sm font-semibold text-foreground">

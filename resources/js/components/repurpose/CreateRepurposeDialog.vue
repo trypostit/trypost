@@ -4,7 +4,7 @@ import { IconPlugConnected } from '@tabler/icons-vue';
 import { computed, watch } from 'vue';
 
 import InputError from '@/components/InputError.vue';
-import PlatformLogo from '@/components/repurpose/PlatformLogo.vue';
+import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,

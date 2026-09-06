@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { IconArrowRight } from '@tabler/icons-vue';
 
-import PlatformLogo from '@/components/repurpose/PlatformLogo.vue';
+import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import type { FlowNode } from '@/types/repurpose';

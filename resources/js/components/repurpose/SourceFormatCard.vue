@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import PlatformLogo from '@/components/repurpose/PlatformLogo.vue';
+import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Select,
