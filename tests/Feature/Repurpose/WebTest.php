@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
@@ -405,4 +406,28 @@ test('each destination is told which content type to start on', function () {
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where("recommendedFormats.{$this->tiktok->id}", ContentType::TikTokVideo->value)
             ->where("recommendedFormats.{$youtube->id}", ContentType::YouTubeShort->value));
+});
+
+test('the publishing mode is offered on the page and saved', function () {
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.repurposes.show', $repurpose))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('publishModes', 2)
+            ->where('publishModes.0.value', PublishMode::Publish->value)
+            ->where('repurpose.publish_mode', PublishMode::Publish->value));
+
+    $this->actingAs($this->user)
+        ->put(route('app.repurposes.update', $repurpose), [
+            'source_social_account_id' => $this->source->id,
+            'publish_mode' => PublishMode::Draft->value,
+            'destinations' => [destinationPayload($this->tiktok)],
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($repurpose->fresh()->publish_mode)->toBe(PublishMode::Draft);
 });

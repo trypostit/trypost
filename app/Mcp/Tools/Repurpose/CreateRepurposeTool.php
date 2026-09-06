@@ -49,6 +49,7 @@ class CreateRepurposeTool extends Tool
         return [
             'source_social_account_id' => $schema->string()->required()->description('Instagram or Facebook account to watch.'),
             'source_format' => $schema->string()->description('Which video format to watch: reel, video or story. Defaults to reel.'),
+            'publish_mode' => $schema->string()->description('publish to schedule each replicated video straight away, or draft to leave it in TryPost for review. Defaults to publish.'),
             'destinations' => $schema->array()->description('Accounts to republish to, each with a content_type that accepts video and optional per-platform meta.'),
         ];
     }

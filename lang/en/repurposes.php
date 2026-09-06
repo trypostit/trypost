@@ -11,6 +11,26 @@ return [
         'no_destinations' => 'No destination yet',
     ],
 
+    'publish_mode' => [
+
+        'title' => 'Publishing',
+
+        'description' => 'What happens when a new video shows up.',
+
+    ],
+
+    'publish_modes' => [
+
+        'publish' => 'Publish automatically',
+
+        'publish_hint' => 'Each new video is scheduled the moment it is found.',
+
+        'draft' => 'Create as draft',
+
+        'draft_hint' => 'Each new video becomes a draft here for you to review and publish.',
+
+    ],
+
     'formats' => [
         'reel' => 'Reels',
         'video' => 'Videos',
@@ -118,6 +138,7 @@ return [
             'pending' => 'Queued',
             'processing' => 'Processing',
             'published' => 'Replicated',
+            'drafted' => 'Drafted',
             'skipped' => 'Skipped',
             'failed' => 'Failed',
         ],

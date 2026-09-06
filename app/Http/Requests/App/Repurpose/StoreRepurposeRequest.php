@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\App\Repurpose;
 
+use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Repurpose;
@@ -37,6 +38,7 @@ class StoreRepurposeRequest extends FormRequest
                     )),
             ],
             'source_format' => ['sometimes', Rule::enum(SourceFormat::class)],
+            'publish_mode' => ['sometimes', Rule::enum(PublishMode::class)],
         ];
     }
 }

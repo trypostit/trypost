@@ -11,6 +11,26 @@ return [
         'no_destinations' => 'Aún sin destino',
     ],
 
+    'publish_mode' => [
+
+        'title' => 'Publicación',
+
+        'description' => 'Qué ocurre cuando aparece un vídeo nuevo.',
+
+    ],
+
+    'publish_modes' => [
+
+        'publish' => 'Publicar automáticamente',
+
+        'publish_hint' => 'Cada vídeo nuevo se programa en cuanto se encuentra.',
+
+        'draft' => 'Crear como borrador',
+
+        'draft_hint' => 'Cada vídeo nuevo se convierte en un borrador para que lo revises y publiques.',
+
+    ],
+
     'formats' => [
         'reel' => 'Reels',
         'video' => 'Vídeos',
@@ -118,6 +138,7 @@ return [
             'pending' => 'En cola',
             'processing' => 'Procesando',
             'published' => 'Replicado',
+            'drafted' => 'Borrador',
             'skipped' => 'Omitido',
             'failed' => 'Falló',
         ],

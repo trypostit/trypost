@@ -11,6 +11,26 @@ return [
         'no_destinations' => '还没有目标',
     ],
 
+    'publish_mode' => [
+
+        'title' => '发布',
+
+        'description' => '发现新视频时会发生什么。',
+
+    ],
+
+    'publish_modes' => [
+
+        'publish' => '自动发布',
+
+        'publish_hint' => '每个新视频一被发现就会排入发布计划。',
+
+        'draft' => '创建为草稿',
+
+        'draft_hint' => '每个新视频都会在这里生成草稿，供你检查后发布。',
+
+    ],
+
     'formats' => [
         'reel' => 'Reels',
         'video' => '视频',
@@ -118,6 +138,7 @@ return [
             'pending' => '排队中',
             'processing' => '处理中',
             'published' => '已同步',
+            'drafted' => '草稿',
             'skipped' => '已跳过',
             'failed' => '失败',
         ],

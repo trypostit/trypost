@@ -9,6 +9,7 @@ use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\Repurpose\ItemReason;
 use App\Enums\Repurpose\ItemStatus;
+use App\Enums\Repurpose\PublishMode;
 use App\Exceptions\Repurpose\SourceDownloadException;
 use App\Models\Post;
 use App\Models\RepurposeItem;
@@ -69,6 +70,12 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        if ($repurpose->publish_mode === PublishMode::Draft && $this->item->posts()->exists()) {
+            $this->item->update(['status' => ItemStatus::Drafted]);
+
+            return;
+        }
+
         if ($this->item->posts()->where('status', '!=', PostStatus::Draft)->exists()) {
             $this->item->update(['status' => ItemStatus::Published]);
 
@@ -112,6 +119,12 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
 
         if ($posts === []) {
             $this->item->update(['status' => ItemStatus::Failed, 'reason' => ItemReason::PostCreationFailed]);
+
+            return;
+        }
+
+        if ($repurpose->publish_mode === PublishMode::Draft) {
+            $this->item->update(['status' => ItemStatus::Drafted, 'reason' => null, 'error' => null]);
 
             return;
         }

@@ -3,6 +3,14 @@ import type { RepurposeItemStatusValue, RepurposeStatusValue } from '@/types/rep
 
 export type RepurposeSourceFormat = 'reel' | 'video' | 'story';
 
+export type RepurposePublishMode = 'publish' | 'draft';
+
+export interface PublishModeOption {
+    value: RepurposePublishMode;
+    label: string;
+    description: string;
+}
+
 export interface SourceFormatOption {
     value: RepurposeSourceFormat;
     label: string;
@@ -25,6 +33,7 @@ export interface Repurpose {
     id: string;
     source_social_account_id: string;
     source_format: RepurposeSourceFormat;
+    publish_mode: RepurposePublishMode;
     source_account?: ChannelAccount | null;
     destinations: RepurposeDestination[];
     status: RepurposeStatusValue;

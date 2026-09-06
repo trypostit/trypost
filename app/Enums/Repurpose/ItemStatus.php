@@ -9,11 +9,12 @@ enum ItemStatus: string
     case Pending = 'pending';
     case Processing = 'processing';
     case Published = 'published';
+    case Drafted = 'drafted';
     case Skipped = 'skipped';
     case Failed = 'failed';
 
     public function isTerminal(): bool
     {
-        return in_array($this, [self::Published, self::Skipped, self::Failed], true);
+        return in_array($this, [self::Published, self::Drafted, self::Skipped, self::Failed], true);
     }
 }

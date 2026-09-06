@@ -52,6 +52,7 @@ class UpdateRepurposeTool extends Tool
             'repurpose_id' => $schema->string()->required()->description('The repurpose to update.'),
             'source_social_account_id' => $schema->string()->description('Move the repurpose to another source account.'),
             'source_format' => $schema->string()->description('Which video format to watch: reel, video or story.'),
+            'publish_mode' => $schema->string()->description('publish to schedule each replicated video straight away, or draft to leave it in TryPost for review.'),
             'destinations' => $schema->array()->description('Replaces the destination list.'),
         ];
     }

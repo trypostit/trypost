@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Repurpose;
 
+use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Models\Repurpose;
@@ -28,6 +29,10 @@ class UpdateRepurpose
             && $format !== $repurpose->source_format) {
             $attributes['source_format'] = $format;
             $attributes['activated_at'] = $repurpose->activated_at === null ? null : now();
+        }
+
+        if (($publishMode = PublishMode::tryFrom((string) data_get($data, 'publish_mode'))) !== null) {
+            $attributes['publish_mode'] = $publishMode;
         }
 
         if (($destinations = data_get($data, 'destinations')) !== null) {

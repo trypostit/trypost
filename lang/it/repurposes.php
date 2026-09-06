@@ -11,6 +11,26 @@ return [
         'no_destinations' => 'Nessuna destinazione',
     ],
 
+    'publish_mode' => [
+
+        'title' => 'Pubblicazione',
+
+        'description' => 'Cosa succede quando compare un nuovo video.',
+
+    ],
+
+    'publish_modes' => [
+
+        'publish' => 'Pubblica automaticamente',
+
+        'publish_hint' => 'Ogni nuovo video viene programmato appena viene trovato.',
+
+        'draft' => 'Crea come bozza',
+
+        'draft_hint' => 'Ogni nuovo video diventa una bozza da rivedere e pubblicare qui.',
+
+    ],
+
     'formats' => [
         'reel' => 'Reels',
         'video' => 'Video',
@@ -118,6 +138,7 @@ return [
             'pending' => 'In coda',
             'processing' => 'In elaborazione',
             'published' => 'Replicato',
+            'drafted' => 'Bozza',
             'skipped' => 'Ignorato',
             'failed' => 'Non riuscito',
         ],

@@ -11,6 +11,26 @@ return [
         'no_destinations' => '아직 대상이 없습니다',
     ],
 
+    'publish_mode' => [
+
+        'title' => '게시',
+
+        'description' => '새 영상이 나타났을 때의 동작.',
+
+    ],
+
+    'publish_modes' => [
+
+        'publish' => '자동으로 게시',
+
+        'publish_hint' => '새 영상은 발견되는 즉시 예약됩니다.',
+
+        'draft' => '초안으로 만들기',
+
+        'draft_hint' => '새 영상은 여기에서 초안이 되어 검토 후 게시할 수 있습니다.',
+
+    ],
+
     'formats' => [
         'reel' => '릴스',
         'video' => '동영상',
@@ -118,6 +138,7 @@ return [
             'pending' => '대기 중',
             'processing' => '처리 중',
             'published' => '복제됨',
+            'drafted' => '초안',
             'skipped' => '건너뜀',
             'failed' => '실패',
         ],

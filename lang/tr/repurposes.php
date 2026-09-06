@@ -11,6 +11,26 @@ return [
         'no_destinations' => 'Henüz hedef yok',
     ],
 
+    'publish_mode' => [
+
+        'title' => 'Yayınlama',
+
+        'description' => 'Yeni bir video göründüğünde ne olur.',
+
+    ],
+
+    'publish_modes' => [
+
+        'publish' => 'Otomatik yayınla',
+
+        'publish_hint' => 'Her yeni video bulunduğu anda planlanır.',
+
+        'draft' => 'Taslak olarak oluştur',
+
+        'draft_hint' => 'Her yeni video, gözden geçirip yayınlaman için burada taslak olur.',
+
+    ],
+
     'formats' => [
         'reel' => 'Reels',
         'video' => 'Videolar',
@@ -118,6 +138,7 @@ return [
             'pending' => 'Sırada',
             'processing' => 'İşleniyor',
             'published' => 'Kopyalandı',
+            'drafted' => 'Taslak',
             'skipped' => 'Atlandı',
             'failed' => 'Başarısız',
         ],

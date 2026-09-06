@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Repurpose;
 
+use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Models\Repurpose;
@@ -32,6 +33,7 @@ class CreateRepurpose
             'user_id' => $user->id,
             'source_social_account_id' => $sourceAccountId,
             'source_format' => $sourceFormat,
+            'publish_mode' => PublishMode::tryFrom((string) data_get($data, 'publish_mode')) ?? PublishMode::Publish,
             'destinations' => data_get($data, 'destinations', []),
             'status' => Status::Draft,
         ]);

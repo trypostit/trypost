@@ -7,6 +7,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\ItemReason;
 use App\Enums\Repurpose\ItemStatus;
+use App\Enums\Repurpose\PublishMode;
 use App\Enums\SocialAccount\Platform;
 use App\Events\PostStatusChanged;
 use App\Exceptions\Repurpose\SourceDownloadException;
@@ -344,4 +345,44 @@ test('scheduling the posts announces the status change like any other post', fun
     processItem($item);
 
     Event::assertDispatchedTimes(PostStatusChanged::class, 2);
+});
+
+test('a repurpose set to draft creates the posts and stops there', function () {
+    Bus::fake([PublishPost::class]);
+    fakeVideoDownload();
+
+    $item = repurposeWithTwoDestinations();
+    $item->repurpose->update(['publish_mode' => PublishMode::Draft]);
+
+    processItem($item->fresh());
+
+    $posts = Post::where('repurpose_item_id', $item->id)->get();
+
+    expect($posts)->toHaveCount(2)
+        ->and($item->fresh()->status)->toBe(ItemStatus::Drafted);
+
+    foreach ($posts as $post) {
+        expect($post->status)->toBe(PostStatus::Draft)
+            ->and($post->scheduled_at)->toBeNull()
+            ->and($post->media)->toHaveCount(1);
+    }
+
+    Artisan::call('posts:process-scheduled');
+
+    Bus::assertNotDispatched(PublishPost::class);
+});
+
+test('a draft run is not repeated when the job runs again', function () {
+    Bus::fake([PublishPost::class]);
+    fakeVideoDownload();
+
+    $item = repurposeWithTwoDestinations();
+    $item->repurpose->update(['publish_mode' => PublishMode::Draft]);
+
+    processItem($item->fresh());
+    $item->update(['status' => ItemStatus::Processing]);
+    processItem($item->fresh());
+
+    expect(Post::where('repurpose_item_id', $item->id)->count())->toBe(2)
+        ->and($item->fresh()->status)->toBe(ItemStatus::Drafted);
 });

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\ItemStatus;
+use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
@@ -251,4 +252,19 @@ test('the list tool pages instead of returning everything at once', function () 
             ->has('repurposes', 1)
             ->where('current_page', 2)
             ->etc());
+});
+
+test('the publishing mode is settable through mcp', function () {
+    TryPostServer::actingAs($this->user)
+        ->tool(CreateRepurposeTool::class, [
+            'source_social_account_id' => $this->source->id,
+            'publish_mode' => PublishMode::Draft->value,
+        ])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json
+            ->where('publish_mode', PublishMode::Draft->value)
+            ->etc());
+
+    expect(Repurpose::where('workspace_id', $this->workspace->id)->sole()->publish_mode)
+        ->toBe(PublishMode::Draft);
 });

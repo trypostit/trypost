@@ -11,6 +11,26 @@ return [
         'no_destinations' => 'Nog geen bestemming',
     ],
 
+    'publish_mode' => [
+
+        'title' => 'Publiceren',
+
+        'description' => 'Wat er gebeurt als er een nieuwe video verschijnt.',
+
+    ],
+
+    'publish_modes' => [
+
+        'publish' => 'Automatisch publiceren',
+
+        'publish_hint' => 'Elke nieuwe video wordt ingepland zodra die gevonden is.',
+
+        'draft' => 'Als concept aanmaken',
+
+        'draft_hint' => 'Elke nieuwe video wordt hier een concept om na te kijken en te publiceren.',
+
+    ],
+
     'formats' => [
         'reel' => 'Reels',
         'video' => 'Video\'s',
@@ -118,6 +138,7 @@ return [
             'pending' => 'In wachtrij',
             'processing' => 'Bezig',
             'published' => 'Gerepliceerd',
+            'drafted' => 'Concept',
             'skipped' => 'Overgeslagen',
             'failed' => 'Mislukt',
         ],

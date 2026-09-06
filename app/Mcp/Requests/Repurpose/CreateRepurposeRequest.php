@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mcp\Requests\Repurpose;
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
 use App\Rules\ContentTypeMatchesPlatform;
@@ -33,6 +34,7 @@ class CreateRepurposeRequest
                     )),
             ],
             'source_format' => ['sometimes', Rule::enum(SourceFormat::class)],
+            'publish_mode' => ['sometimes', Rule::enum(PublishMode::class)],
             'destinations' => ['sometimes', 'array'],
             'destinations.*.social_account_id' => [
                 'required',

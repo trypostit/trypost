@@ -11,6 +11,26 @@ return [
         'no_destinations' => 'Aucune destination',
     ],
 
+    'publish_mode' => [
+
+        'title' => 'Publication',
+
+        'description' => 'Ce qui se passe quand une nouvelle vidéo apparaît.',
+
+    ],
+
+    'publish_modes' => [
+
+        'publish' => 'Publier automatiquement',
+
+        'publish_hint' => 'Chaque nouvelle vidéo est programmée dès qu\'elle est trouvée.',
+
+        'draft' => 'Créer en brouillon',
+
+        'draft_hint' => 'Chaque nouvelle vidéo devient un brouillon à relire et publier ici.',
+
+    ],
+
     'formats' => [
         'reel' => 'Reels',
         'video' => 'Vidéos',
@@ -118,6 +138,7 @@ return [
             'pending' => 'En file d\'attente',
             'processing' => 'Traitement',
             'published' => 'Répliqué',
+            'drafted' => 'Brouillon',
             'skipped' => 'Ignoré',
             'failed' => 'Échec',
         ],

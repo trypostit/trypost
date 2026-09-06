@@ -11,6 +11,26 @@ return [
         'no_destinations' => '配信先はまだありません',
     ],
 
+    'publish_mode' => [
+
+        'title' => '公開',
+
+        'description' => '新しい動画が見つかったときの動作。',
+
+    ],
+
+    'publish_modes' => [
+
+        'publish' => '自動的に公開',
+
+        'publish_hint' => '新しい動画は見つかった時点で予約されます。',
+
+        'draft' => '下書きとして作成',
+
+        'draft_hint' => '新しい動画はここで下書きになり、確認してから公開できます。',
+
+    ],
+
     'formats' => [
         'reel' => 'リール',
         'video' => '動画',
@@ -118,6 +138,7 @@ return [
             'pending' => '待機中',
             'processing' => '処理中',
             'published' => '再投稿済み',
+            'drafted' => '下書き',
             'skipped' => 'スキップ',
             'failed' => '失敗',
         ],

@@ -7,6 +7,7 @@ import { toast } from 'vue-sonner';
 
 import ChannelConfigurator from '@/components/ChannelConfigurator.vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
+import PublishModeCard from '@/components/repurpose/PublishModeCard.vue';
 import RepurposeItemList from '@/components/repurpose/RepurposeItemList.vue';
 import RepurposeStatusCard from '@/components/repurpose/RepurposeStatusCard.vue';
 import RepurposeSummary from '@/components/repurpose/RepurposeSummary.vue';
@@ -21,9 +22,11 @@ import { destroy, update } from '@/routes/app/repurposes';
 import type { PinterestBoard } from '@/types';
 import type { Channel, ChannelAccount, ChannelTikTokCreatorInfo } from '@/types/channel';
 import type {
+    PublishModeOption,
     Repurpose,
     RepurposeDestination,
     RepurposeItem,
+    RepurposePublishMode,
     RepurposeSourceFormat,
     SourceFormatOption,
 } from '@/types/repurpose';
@@ -34,6 +37,7 @@ const props = defineProps<{
     destinationAccounts: ChannelAccount[];
     items: { data: RepurposeItem[] };
     sourceFormats: SourceFormatOption[];
+    publishModes: PublishModeOption[];
     recommendedFormats: Record<string, string>;
     platformConfigs: Record<string, { publishConfig?: Record<string, any> }>;
     pinterestBoards: Record<string, { boards: PinterestBoard[]; truncated: boolean }>;
@@ -42,8 +46,13 @@ const props = defineProps<{
 
 const availableAccountIds = new Set(props.destinationAccounts.map((account) => account.id));
 
-const form = useForm<{ source_format: RepurposeSourceFormat; destinations: RepurposeDestination[] }>({
+const form = useForm<{
+    source_format: RepurposeSourceFormat;
+    publish_mode: RepurposePublishMode;
+    destinations: RepurposeDestination[];
+}>({
     source_format: props.repurpose.source_format,
+    publish_mode: props.repurpose.publish_mode,
     destinations: (props.repurpose.destinations ?? []).filter((destination) =>
         availableAccountIds.has(destination.social_account_id),
     ),
@@ -175,6 +184,8 @@ const handleDelete = () => {
                                 :account="repurpose.source_account"
                                 :formats="sourceFormats"
                             />
+
+                            <PublishModeCard v-model="form.publish_mode" :modes="publishModes" />
 
                             <RepurposeStatusCard :repurpose="repurpose" />
                         </div>

@@ -11,6 +11,26 @@ return [
         'no_destinations' => 'Brak celu',
     ],
 
+    'publish_mode' => [
+
+        'title' => 'Publikowanie',
+
+        'description' => 'Co się dzieje, gdy pojawia się nowy film.',
+
+    ],
+
+    'publish_modes' => [
+
+        'publish' => 'Publikuj automatycznie',
+
+        'publish_hint' => 'Każdy nowy film jest planowany zaraz po znalezieniu.',
+
+        'draft' => 'Utwórz jako wersję roboczą',
+
+        'draft_hint' => 'Każdy nowy film trafia tu jako wersja robocza do sprawdzenia i publikacji.',
+
+    ],
+
     'formats' => [
         'reel' => 'Reels',
         'video' => 'Filmy',
@@ -118,6 +138,7 @@ return [
             'pending' => 'W kolejce',
             'processing' => 'Przetwarzanie',
             'published' => 'Zreplikowano',
+            'drafted' => 'Wersja robocza',
             'skipped' => 'Pominięto',
             'failed' => 'Niepowodzenie',
         ],

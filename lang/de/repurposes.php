@@ -11,6 +11,26 @@ return [
         'no_destinations' => 'Noch kein Ziel',
     ],
 
+    'publish_mode' => [
+
+        'title' => 'Veröffentlichung',
+
+        'description' => 'Was passiert, wenn ein neues Video auftaucht.',
+
+    ],
+
+    'publish_modes' => [
+
+        'publish' => 'Automatisch veröffentlichen',
+
+        'publish_hint' => 'Jedes neue Video wird eingeplant, sobald es gefunden wird.',
+
+        'draft' => 'Als Entwurf anlegen',
+
+        'draft_hint' => 'Jedes neue Video wird hier zum Entwurf, den du prüfen und veröffentlichen kannst.',
+
+    ],
+
     'formats' => [
         'reel' => 'Reels',
         'video' => 'Videos',
@@ -118,6 +138,7 @@ return [
             'pending' => 'In Warteschlange',
             'processing' => 'Wird verarbeitet',
             'published' => 'Repliziert',
+            'drafted' => 'Entwurf',
             'skipped' => 'Übersprungen',
             'failed' => 'Fehlgeschlagen',
         ],

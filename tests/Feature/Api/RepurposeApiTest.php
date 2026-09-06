@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\ItemStatus;
+use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
@@ -258,5 +259,26 @@ test('the api refuses a transition the interface would never offer', function ()
 
     $this->withHeaders(apiHeaders($this->token))
         ->postJson(route('api.repurposes.resume', $repurpose))
+        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
+});
+
+test('the publishing mode round-trips through the api', function () {
+    $created = $this->withHeaders(apiHeaders($this->token))
+        ->postJson(route('api.repurposes.store'), [
+            'source_social_account_id' => $this->source->id,
+            'publish_mode' => PublishMode::Draft->value,
+        ])
+        ->assertStatus(Response::HTTP_CREATED)
+        ->assertJsonPath('publish_mode', PublishMode::Draft->value);
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->putJson(route('api.repurposes.update', $created->json('id')), [
+            'publish_mode' => PublishMode::Publish->value,
+        ])
+        ->assertOk()
+        ->assertJsonPath('publish_mode', PublishMode::Publish->value);
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->putJson(route('api.repurposes.update', $created->json('id')), ['publish_mode' => 'whenever'])
         ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
 });

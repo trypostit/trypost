@@ -14,6 +14,7 @@ use App\Actions\Repurpose\PauseRepurpose;
 use App\Actions\Repurpose\ResumeRepurpose;
 use App\Actions\Repurpose\UpdateRepurpose;
 use App\Actions\SocialAccount\ListPinterestBoards;
+use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
 use App\Http\Requests\App\Repurpose\StoreRepurposeRequest;
@@ -62,6 +63,14 @@ class RepurposeController extends Controller
             'destinationAccounts' => SocialAccountResource::collection($destinations),
             'items' => Inertia::scroll(fn () => RepurposeItemResource::collection(ListRepurposeItems::execute($repurpose))),
             'sourceFormats' => $this->sourceFormats($repurpose),
+            'publishModes' => array_map(
+                fn (PublishMode $mode): array => [
+                    'value' => $mode->value,
+                    'label' => $mode->label(),
+                    'description' => $mode->description(),
+                ],
+                PublishMode::cases(),
+            ),
             'recommendedFormats' => $this->recommendedFormats($destinations, $repurpose->source_format),
             ...$this->platformSettingsProps($destinations),
         ]);

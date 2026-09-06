@@ -11,6 +11,7 @@ export const RepurposeItemStatus = {
     Pending: 'pending',
     Processing: 'processing',
     Published: 'published',
+    Drafted: 'drafted',
     Skipped: 'skipped',
     Failed: 'failed',
 } as const;
@@ -30,6 +31,7 @@ const itemStatusVariants = {
     [RepurposeItemStatus.Pending]: 'outline',
     [RepurposeItemStatus.Processing]: 'outline',
     [RepurposeItemStatus.Published]: 'default',
+    [RepurposeItemStatus.Drafted]: 'outline',
     [RepurposeItemStatus.Skipped]: 'secondary',
     [RepurposeItemStatus.Failed]: 'destructive',
 } as const satisfies Record<RepurposeItemStatusValue, BadgeVariant>;
