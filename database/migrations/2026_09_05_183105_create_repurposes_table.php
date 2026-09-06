@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -17,6 +18,7 @@ return new class extends Migration
             $table->foreignUuid('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignUuid('source_social_account_id')->constrained('social_accounts')->cascadeOnDelete();
             $table->string('source_format')->default(SourceFormat::Reel->value);
+            $table->string('publish_mode')->default(PublishMode::Publish->value);
             $table->json('destinations');
             $table->string('status');
             $table->timestamp('activated_at')->nullable();
