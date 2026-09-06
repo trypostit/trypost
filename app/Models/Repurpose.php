@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\Repurpose\PauseReason;
 use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
@@ -27,6 +28,7 @@ class Repurpose extends Model
         'publish_mode',
         'destinations',
         'status',
+        'paused_reason',
         'activated_at',
         'last_polled_at',
         'next_poll_at',
@@ -44,6 +46,7 @@ class Repurpose extends Model
             'source_format' => SourceFormat::class,
             'publish_mode' => PublishMode::class,
             'status' => Status::class,
+            'paused_reason' => PauseReason::class,
             'activated_at' => 'datetime',
             'last_polled_at' => 'datetime',
             'next_poll_at' => 'datetime',

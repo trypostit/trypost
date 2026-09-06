@@ -22,6 +22,7 @@ class RepurposeResource extends JsonResource
             'publish_mode' => $this->publish_mode->value,
             'destinations' => $this->destinations,
             'status' => $this->status->value,
+            'paused_reason' => $this->paused_reason?->value,
             'activated_at' => $this->activated_at?->toIso8601String(),
             'last_polled_at' => $this->last_polled_at?->toIso8601String(),
             'next_poll_at' => $this->next_poll_at?->toIso8601String(),
