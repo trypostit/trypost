@@ -7,7 +7,6 @@ import { toast } from 'vue-sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { firstError } from '@/composables/usePageErrors';
 import date from '@/date';
 import { activate, disable, pause, resume } from '@/routes/app/repurposes';
 import type { Repurpose } from '@/types/repurpose';
@@ -28,7 +27,8 @@ const canActivate = computed(() => isIdle.value && props.repurpose.destinations.
 const send = (url: string) =>
     router.post(url, {}, {
         preserveScroll: true,
-        onError: (errors) => toast.error(firstError(errors) ?? trans('repurposes.errors.action_failed')),
+        onError: (errors) =>
+            toast.error(errors.status ?? errors.destinations ?? trans('repurposes.errors.action_failed')),
     });
 </script>
 

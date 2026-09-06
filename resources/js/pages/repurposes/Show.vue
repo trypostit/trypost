@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { firstError } from '@/composables/usePageErrors';
+import { usePageErrors } from '@/composables/usePageErrors';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { destroy, update } from '@/routes/app/repurposes';
 import type { PinterestBoard } from '@/types';
@@ -50,9 +50,12 @@ const form = useForm<{ source_format: RepurposeSourceFormat; destinations: Repur
     ),
 });
 
+const errors = usePageErrors();
+
 const channels = computed<Channel[]>(() =>
     props.destinationAccounts.map((account) => {
-        const destination = form.destinations.find((item) => item.social_account_id === account.id);
+        const index = form.destinations.findIndex((item) => item.social_account_id === account.id);
+        const destination = form.destinations[index];
 
         return {
             id: account.id,
@@ -67,6 +70,7 @@ const channels = computed<Channel[]>(() =>
             boardsTruncated: props.pinterestBoards?.[account.id]?.truncated ?? false,
             creatorInfo: props.tiktokCreatorInfos?.[account.id] ?? null,
             publishConfig: props.platformConfigs?.[account.id]?.publishConfig ?? {},
+            contentTypeError: errors.value[`destinations.${index}.content_type`],
         } as Channel;
     }),
 );
@@ -112,7 +116,7 @@ const save = () => {
     form.put(update.url(props.repurpose.id), {
         preserveScroll: true,
         onSuccess: () => toast.success(trans('repurposes.destinations.saved')),
-        onError: (errors) => toast.error(firstError(errors) ?? trans('repurposes.errors.action_failed')),
+        onError: () => toast.error(trans('repurposes.errors.action_failed')),
     });
 };
 
