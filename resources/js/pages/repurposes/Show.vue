@@ -18,9 +18,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePageErrors } from '@/composables/usePageErrors';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { MediaType } from '@/lib/mediaType';
 import { destroy, update } from '@/routes/app/repurposes';
 import type { PinterestBoard } from '@/types';
 import type { Channel, ChannelAccount, ChannelTikTokCreatorInfo } from '@/types/channel';
+import type { MediaItem } from '@/types/media';
 import type {
     PublishModeOption,
     Repurpose,
@@ -59,6 +61,15 @@ const form = useForm<{
 });
 
 const errors = usePageErrors();
+
+/**
+ * The destinations are configured before there is anything to publish, so the
+ * media rules would read "no files" and warn about every video-only format. A
+ * repurpose always attaches exactly one video, which is what they get to judge.
+ */
+const plannedMedia = computed<MediaItem[]>(() => [
+    { id: 'repurpose-video', url: '', type: MediaType.Video },
+]);
 
 const channels = computed<Channel[]>(() =>
     props.destinationAccounts.map((account) => {
@@ -200,6 +211,7 @@ const handleDelete = () => {
                                 <CardContent>
                                     <ChannelConfigurator
                                         :channels="channels"
+                                        :media="plannedMedia"
                                         :selected-ids="selectedAccountIds"
                                         @toggle="toggleDestination"
                                         @update:content-type="setDestinationContentType"

@@ -110,3 +110,33 @@ test('the edit page shows the watched format, the destinations and the settings 
         ->assertVisible('@tab-settings')
         ->assertNoJavaScriptErrors();
 });
+
+test('a destination is not warned about missing media before there is any', function () {
+    [$user, $workspace, $source] = repurposeOwnerWithAccounts();
+
+    $facebook = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Facebook]);
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $source->id,
+        'destinations' => [[
+            'social_account_id' => $facebook->id,
+            'content_type' => ContentType::FacebookReel->value,
+            'meta' => [],
+        ]],
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.repurposes.show', $repurpose));
+
+    waitForRepurposeTestId($page, 'facebook-settings-toggle');
+
+    $page->click('@facebook-settings-toggle');
+
+    usleep(300000);
+
+    $page->assertDontSee('requires_media')
+        ->assertDontSee(trans('posts.form.warnings.requires_media'))
+        ->assertNoJavaScriptErrors();
+});
