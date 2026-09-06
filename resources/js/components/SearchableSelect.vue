@@ -49,7 +49,7 @@ const select = (option: TOption) => {
                 :class="invalid ? 'border-rose-500' : ''"
             >
                 <span v-if="selected" class="flex min-w-0 items-center gap-2 text-foreground">
-                    <slot name="option" :option="selected">{{ selected.label }}</slot>
+                    <slot name="option" :option="selected" :compact="true">{{ selected.label }}</slot>
                 </span>
                 <span v-else class="text-foreground/50">{{ placeholder }}</span>
                 <IconChevronDown class="ml-2 size-4 shrink-0 opacity-50" />
@@ -69,7 +69,7 @@ const select = (option: TOption) => {
                             @select="select(option)"
                         >
                             <span class="flex min-w-0 items-center gap-2">
-                                <slot name="option" :option="option">{{ option.label }}</slot>
+                                <slot name="option" :option="option" :compact="false">{{ option.label }}</slot>
                             </span>
                             <IconCheck :class="cn('ml-auto size-4', value === option.value ? 'opacity-100' : 'opacity-0')" />
                         </CommandItem>

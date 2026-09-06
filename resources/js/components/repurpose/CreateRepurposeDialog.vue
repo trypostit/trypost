@@ -15,7 +15,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import { accounts } from '@/routes/app';
 import { store } from '@/routes/app/repurposes';
 import type { ChannelAccount } from '@/types/channel';
@@ -106,10 +106,22 @@ const submit = () => {
                             :empty-text="$t('repurposes.create.source_empty')"
                             :invalid="Boolean(form.errors.source_social_account_id)"
                         >
-                            <template #option="{ option }">
-                                <PlatformLogo :platform="option.platform" size="sm" data-testid="source-account-option" />
+                            <template #option="{ option, compact }">
+                                <img
+                                    v-if="compact"
+                                    :src="getPlatformLogo(option.platform)"
+                                    :alt="getPlatformLabel(option.platform)"
+                                    class="size-4 shrink-0 rounded-sm"
+                                />
+                                <PlatformLogo
+                                    v-else
+                                    :platform="option.platform"
+                                    size="sm"
+                                    data-testid="source-account-option"
+                                />
 
-                                <span class="min-w-0 text-left">
+                                <span v-if="compact" class="truncate">{{ option.label }}</span>
+                                <span v-else class="min-w-0 text-left">
                                     <span class="block truncate text-sm font-bold">{{ option.label }}</span>
                                     <span class="block truncate text-xs text-muted-foreground">
                                         {{ getPlatformLabel(option.platform) }}
