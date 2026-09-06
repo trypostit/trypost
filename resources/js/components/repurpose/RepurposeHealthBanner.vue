@@ -5,6 +5,7 @@ import { computed } from 'vue';
 import type { ChannelAccount } from '@/types/channel';
 import type { Repurpose } from '@/types/repurpose';
 import { RepurposeStatus } from '@/types/repurpose-status';
+import { SocialAccountStatus } from '@/types/social-account-status';
 
 const props = defineProps<{
     repurpose: Repurpose;
@@ -28,7 +29,7 @@ const state = computed<'source_missing' | 'source_unusable' | 'no_destinations' 
 
     const source = props.accounts.find((account) => account.id === props.repurpose.source_social_account_id);
 
-    if (!source || !source.is_active || source.status !== 'connected') {
+    if (!source || !source.is_active || source.status !== SocialAccountStatus.Connected) {
         return 'source_unusable';
     }
 
