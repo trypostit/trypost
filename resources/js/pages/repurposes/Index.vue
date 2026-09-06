@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { Head, InfiniteScroll, router } from '@inertiajs/vue3';
-import { IconTrash } from '@tabler/icons-vue';
+import { IconRepeat, IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { ref } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import CreateRepurposeDialog from '@/components/repurpose/CreateRepurposeDialog.vue';
 import RepurposeFlow from '@/components/repurpose/RepurposeFlow.vue';
@@ -81,21 +82,23 @@ const handleDelete = (repurpose: Repurpose) => {
                 </Button>
             </div>
 
-            <div v-if="repurposes.data.length === 0" class="space-y-4">
-                <div>
-                    <p class="text-sm font-bold text-foreground">{{ $t('repurposes.empty.title') }}</p>
-                    <p class="text-sm text-foreground/60">{{ $t('repurposes.empty.description') }}</p>
-                </div>
-
-                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <RepurposeTemplateCard
-                        v-for="template in templates"
-                        :key="template.key"
-                        :template="template"
-                        @use="startFromTemplate"
-                    />
-                </div>
-            </div>
+            <EmptyState
+                v-if="repurposes.data.length === 0"
+                :icon="IconRepeat"
+                :title="$t('repurposes.empty.title')"
+                :description="$t('repurposes.empty.description')"
+            >
+                <template #action>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <RepurposeTemplateCard
+                            v-for="template in templates"
+                            :key="template.key"
+                            :template="template"
+                            @use="startFromTemplate"
+                        />
+                    </div>
+                </template>
+            </EmptyState>
 
             <InfiniteScroll v-else data="repurposes" items-element="#repurposes-body" preserve-url>
             <Table data-testid="repurposes-table">
