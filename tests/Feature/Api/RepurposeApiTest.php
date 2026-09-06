@@ -111,7 +111,9 @@ test('the index lists the workspace repurposes', function () {
     $this->withHeaders(apiHeaders($this->token))
         ->getJson(route('api.repurposes.index'))
         ->assertOk()
-        ->assertJsonCount(2);
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('meta.per_page', 15)
+        ->assertJsonPath('data.0.source_account.id', $this->source->id);
 });
 
 test('the status transitions are exposed', function () {

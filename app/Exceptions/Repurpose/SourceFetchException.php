@@ -19,4 +19,14 @@ class SourceFetchException extends RuntimeException
     {
         return GraphError::isTransientFailure($this->response);
     }
+
+    /**
+     * Graph rejects the whole read when one requested field is not available to
+     * the token's login type, which is how it answers for the fields Meta marks
+     * as Facebook-login only.
+     */
+    public function isUnknownField(): bool
+    {
+        return (int) data_get($this->response->json(), 'error.code') === 100;
+    }
 }

@@ -8,10 +8,10 @@ use App\Actions\Repurpose\ActivateRepurpose;
 use App\Actions\Repurpose\CreateRepurpose;
 use App\Actions\Repurpose\DeleteRepurpose;
 use App\Actions\Repurpose\DisableRepurpose;
-use App\Actions\Repurpose\ListRepurposes;
 use App\Actions\Repurpose\PauseRepurpose;
 use App\Actions\Repurpose\ResumeRepurpose;
 use App\Actions\Repurpose\UpdateRepurpose;
+use App\Enums\Repurpose\ItemStatus;
 use App\Enums\Repurpose\SourceFormat;
 use App\Http\Requests\Api\Repurpose\StoreRepurposeRequest;
 use App\Http\Requests\Api\Repurpose\UpdateRepurposeRequest;
@@ -31,7 +31,12 @@ class RepurposeController extends Controller
         $this->authorize('viewAny', Repurpose::class);
 
         return RepurposeResource::collection(
-            ListRepurposes::execute($request->user()->currentWorkspace),
+            $request->user()->currentWorkspace
+                ->repurposes()
+                ->with('sourceAccount')
+                ->withCount(['items as published_items_count' => fn ($query) => $query->where('status', ItemStatus::Published)])
+                ->latest()
+                ->paginate(15),
         );
     }
 

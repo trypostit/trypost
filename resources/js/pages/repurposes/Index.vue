@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, InfiniteScroll, router } from '@inertiajs/vue3';
 import { IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { ref } from 'vue';
@@ -27,7 +27,7 @@ import type { FlowNode, Repurpose, RepurposeTemplate } from '@/types/repurpose';
 import { repurposeStatusVariant } from '@/types/repurpose-status';
 
 const props = defineProps<{
-    repurposes: Repurpose[];
+    repurposes: { data: Repurpose[] };
     templates: RepurposeTemplate[];
     sourceAccounts: ChannelAccount[];
     destinationAccounts: ChannelAccount[];
@@ -81,7 +81,7 @@ const handleDelete = (repurpose: Repurpose) => {
                 </Button>
             </div>
 
-            <div v-if="repurposes.length === 0" class="space-y-4">
+            <div v-if="repurposes.data.length === 0" class="space-y-4">
                 <div>
                     <p class="text-sm font-bold text-foreground">{{ $t('repurposes.empty.title') }}</p>
                     <p class="text-sm text-foreground/60">{{ $t('repurposes.empty.description') }}</p>
@@ -97,7 +97,8 @@ const handleDelete = (repurpose: Repurpose) => {
                 </div>
             </div>
 
-            <Table v-else data-testid="repurposes-table">
+            <InfiniteScroll v-else data="repurposes" items-element="#repurposes-body" preserve-url>
+            <Table data-testid="repurposes-table">
                 <TableHeader>
                     <TableRow>
                         <TableHead>{{ $t('repurposes.table.flow') }}</TableHead>
@@ -109,9 +110,9 @@ const handleDelete = (repurpose: Repurpose) => {
                     </TableRow>
                 </TableHeader>
 
-                <TableBody>
+                <TableBody id="repurposes-body">
                     <TableRow
-                        v-for="repurpose in repurposes"
+                        v-for="repurpose in repurposes.data"
                         :key="repurpose.id"
                         class="cursor-pointer"
                         :data-testid="`repurpose-row-${repurpose.id}`"
@@ -155,6 +156,7 @@ const handleDelete = (repurpose: Repurpose) => {
                     </TableRow>
                 </TableBody>
             </Table>
+            </InfiniteScroll>
         </div>
 
         <CreateRepurposeDialog

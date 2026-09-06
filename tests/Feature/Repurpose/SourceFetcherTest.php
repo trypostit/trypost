@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Repurpose\SourceFetchException;
 use App\Models\SocialAccount;
 use App\Services\Repurpose\SourceFetcherFactory;
 use Illuminate\Support\Facades\Http;
@@ -168,4 +169,48 @@ test('a story is a story because of the edge it came from, not a field', functio
 
     expect($media)->toHaveCount(1)
         ->and($media[0]->format)->toBe(SourceFormat::Story);
+});
+
+test('a field the token cannot read costs the caption, not the whole source', function () {
+    $responses = [
+        Http::response(['error' => ['code' => 100, 'message' => '(#100) Tried accessing nonexistent field (caption)']], 400),
+        Http::response(['data' => [
+            ['id' => '1', 'media_type' => 'VIDEO', 'media_url' => 'https://cdn/v.mp4', 'permalink' => 'https://instagram.com/p/1'],
+        ]]),
+    ];
+
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/*' => function () use (&$responses) {
+            return array_shift($responses);
+        },
+    ]);
+
+    $account = SocialAccount::factory()->create(['platform' => Platform::Instagram]);
+
+    $media = app(SourceFetcherFactory::class)->for($account)->fetch($account, null, [SourceFormat::Reel]);
+
+    expect($media)->toHaveCount(1)
+        ->and($media[0]->format)->toBe(SourceFormat::Reel)
+        ->and($media[0]->downloadUrl)->toBe('https://cdn/v.mp4')
+        ->and($media[0]->caption)->toBe('');
+
+    Http::assertSent(fn ($request) => str_contains((string) $request->url(), 'media_product_type'));
+    Http::assertSent(fn ($request) => ! str_contains((string) $request->url(), 'media_product_type')
+        && str_contains((string) $request->url(), 'media_type'));
+});
+
+test('an error that is not about fields is not retried', function () {
+    Http::fake([
+        config('trypost.platforms.instagram.graph_api').'/*' => Http::response(
+            ['error' => ['code' => 190, 'message' => 'Invalid OAuth access token']],
+            401,
+        ),
+    ]);
+
+    $account = SocialAccount::factory()->create(['platform' => Platform::Instagram]);
+
+    expect(fn () => app(SourceFetcherFactory::class)->for($account)->fetch($account, null, [SourceFormat::Reel]))
+        ->toThrow(SourceFetchException::class);
+
+    Http::assertSentCount(1);
 });

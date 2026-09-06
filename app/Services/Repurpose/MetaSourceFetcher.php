@@ -23,6 +23,28 @@ abstract class MetaSourceFetcher implements SourceFetcher
     }
 
     /**
+     * Meta marks some fields as available to one login type only, and asking for
+     * one the token cannot have fails the whole read rather than omitting it.
+     * The reduced set is what every token can read, so the source keeps working
+     * with less detail instead of going dark.
+     *
+     * @param  array<string, mixed>  $query
+     * @return array<int, array<string, mixed>>
+     */
+    protected function rowsWithFallback(SocialAccount $account, string $url, array $query, string $fallbackFields): array
+    {
+        try {
+            return $this->rows($account, $url, $query);
+        } catch (SourceFetchException $exception) {
+            if (! $exception->isUnknownField()) {
+                throw $exception;
+            }
+        }
+
+        return $this->rows($account, $url, [...$query, 'fields' => $fallbackFields]);
+    }
+
+    /**
      * @param  array<string, mixed>  $query
      * @return array<int, array<string, mixed>>
      */

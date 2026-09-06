@@ -13,6 +13,9 @@ class FacebookSourceFetcher extends MetaSourceFetcher
 {
     private const VIDEO_FIELDS = 'id,source,description,permalink_url,created_time';
 
+    /** The Video node's documented readable fields, without the permalink. */
+    private const PUBLIC_VIDEO_FIELDS = 'id,source,description,created_time';
+
     /**
      * @param  array<int, SourceFormat>  $formats
      * @return array<int, SourceMedia>
@@ -47,11 +50,12 @@ class FacebookSourceFetcher extends MetaSourceFetcher
      */
     private function videos(SocialAccount $account, string $edge, ?CarbonInterface $since, SourceFormat $format): array
     {
-        $rows = $this->rows($account, "{$this->graphApi()}/{$account->platform_user_id}/{$edge}", [
-            'fields' => self::VIDEO_FIELDS,
-            'limit' => 50,
-            'since' => $since?->getTimestamp(),
-        ]);
+        $rows = $this->rowsWithFallback(
+            $account,
+            "{$this->graphApi()}/{$account->platform_user_id}/{$edge}",
+            ['fields' => self::VIDEO_FIELDS, 'limit' => 50, 'since' => $since?->getTimestamp()],
+            self::PUBLIC_VIDEO_FIELDS,
+        );
 
         return array_map(
             fn (array $row): SourceMedia => new SourceMedia(

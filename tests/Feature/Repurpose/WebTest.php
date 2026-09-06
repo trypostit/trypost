@@ -46,7 +46,8 @@ test('the index lists repurposes and the ready-made templates', function () {
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('repurposes/Index')
-            ->has('repurposes', 1)
+            ->has('repurposes.data', 1)
+            ->where('repurposes.data.0.source_account.id', $this->source->id)
             ->has('templates', 2)
             ->has('sourceAccounts', 1));
 });
@@ -334,4 +335,29 @@ test('a destination whose account was switched off does not lock the page', func
         ->assertSessionHasNoErrors();
 
     expect($repurpose->fresh()->destinations)->toBe([]);
+});
+
+test('the index scrolls instead of loading every repurpose at once', function () {
+    config()->set('app.pagination.default', 1);
+
+    $second = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::Facebook]);
+
+    Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+        'created_at' => now()->subHour(),
+    ]);
+
+    Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $second->id,
+        'created_at' => now(),
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.repurposes.index'))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('repurposes.data', 1)
+            ->where('repurposes.meta.per_page', 1)
+            ->where('repurposes.meta.total', 2));
 });

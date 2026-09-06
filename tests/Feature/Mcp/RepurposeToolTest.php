@@ -103,6 +103,7 @@ test('the list tool returns the workspace repurposes and nobody else\'s', functi
         ->assertOk()
         ->assertStructuredContent(fn (AssertableJson $json) => $json
             ->has('repurposes', 2)
+            ->where('total', 2)
             ->where('repurposes.0.id', $story->id)
             ->where('repurposes.0.source_format', SourceFormat::Story->value)
             ->where('repurposes.1.id', $reel->id)
@@ -219,4 +220,35 @@ test('an account from another workspace is rejected as a destination', function 
         ->assertHasErrors();
 
     expect(Repurpose::count())->toBe(0);
+});
+
+test('the list tool pages instead of returning everything at once', function () {
+    config()->set('app.pagination.default', 1);
+
+    foreach ([SourceFormat::Reel, SourceFormat::Story] as $format) {
+        Repurpose::factory()->create([
+            'workspace_id' => $this->workspace->id,
+            'source_social_account_id' => $this->source->id,
+            'source_format' => $format,
+        ]);
+    }
+
+    TryPostServer::actingAs($this->user)
+        ->tool(ListRepurposesTool::class, [])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json
+            ->has('repurposes', 1)
+            ->where('total', 2)
+            ->where('per_page', 1)
+            ->where('current_page', 1)
+            ->where('last_page', 2)
+            ->etc());
+
+    TryPostServer::actingAs($this->user)
+        ->tool(ListRepurposesTool::class, ['page' => 2])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json
+            ->has('repurposes', 1)
+            ->where('current_page', 2)
+            ->etc());
 });

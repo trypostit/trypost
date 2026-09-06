@@ -44,7 +44,7 @@ class RepurposeController extends Controller
         $accounts = $this->connectedAccounts($request);
 
         return Inertia::render('repurposes/Index', [
-            'repurposes' => ListRepurposes::execute($workspace),
+            'repurposes' => Inertia::scroll(fn () => RepurposeResource::collection(ListRepurposes::execute($workspace))),
             'templates' => Templates::all(),
             'sourceAccounts' => SocialAccountResource::collection($this->sourceAccounts($accounts)),
             'destinationAccounts' => SocialAccountResource::collection($accounts),

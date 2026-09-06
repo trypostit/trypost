@@ -14,6 +14,9 @@ class InstagramSourceFetcher extends MetaSourceFetcher
 {
     private const FIELDS = 'id,media_type,media_product_type,media_url,caption,permalink,timestamp';
 
+    /** Everything Meta marks as public, so any Instagram token can read it. */
+    private const PUBLIC_FIELDS = 'id,media_type,media_url,permalink,timestamp';
+
     /**
      * @param  array<int, SourceFormat>  $formats
      * @return array<int, SourceMedia>
@@ -44,11 +47,12 @@ class InstagramSourceFetcher extends MetaSourceFetcher
      */
     private function request(SocialAccount $account, string $edge, ?CarbonInterface $since): array
     {
-        return $this->rows($account, "{$this->graphApi($account)}/{$account->platform_user_id}/{$edge}", [
-            'fields' => self::FIELDS,
-            'limit' => 50,
-            'since' => $since?->getTimestamp(),
-        ]);
+        return $this->rowsWithFallback(
+            $account,
+            "{$this->graphApi($account)}/{$account->platform_user_id}/{$edge}",
+            ['fields' => self::FIELDS, 'limit' => 50, 'since' => $since?->getTimestamp()],
+            self::PUBLIC_FIELDS,
+        );
     }
 
     /**

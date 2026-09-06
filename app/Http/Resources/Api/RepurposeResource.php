@@ -17,6 +17,7 @@ class RepurposeResource extends JsonResource
         return [
             'id' => $this->id,
             'source_social_account_id' => $this->source_social_account_id,
+            'source_account' => $this->whenLoaded('sourceAccount', fn () => new SocialAccountResource($this->sourceAccount)),
             'source_format' => $this->source_format->value,
             'destinations' => $this->destinations,
             'status' => $this->status->value,
