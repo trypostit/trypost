@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Repurpose;
 
+use App\Enums\Facebook\StoryMediaType;
+use App\Enums\Facebook\StoryStatus;
 use App\Enums\Repurpose\SourceFormat;
 use App\Models\SocialAccount;
 use Carbon\Carbon;
@@ -12,6 +14,14 @@ use Carbon\CarbonInterface;
 class FacebookSourceFetcher extends MetaSourceFetcher
 {
     private const VIDEO_FIELDS = 'id,source,description,permalink_url,created_time';
+
+    /**
+     * Not a quota lever: a page of rows costs the same single call whatever its
+     * size. It bounds how far back a poll can catch up after an outage, and on
+     * the stories edge — where resolving each row's file costs its own call —
+     * how many of those a single poll can fire.
+     */
+    private const PAGE_SIZE = 25;
 
     /** The Video node's documented readable fields, without the permalink. */
     private const PUBLIC_VIDEO_FIELDS = 'id,source,description,created_time';
@@ -31,7 +41,7 @@ class FacebookSourceFetcher extends MetaSourceFetcher
             : [];
 
         $stories = in_array(SourceFormat::Story, $formats, true)
-            ? $this->stories($account)
+            ? $this->stories($account, $since)
             : [];
 
         if ($reels !== [] && $videos !== []) {
@@ -53,7 +63,7 @@ class FacebookSourceFetcher extends MetaSourceFetcher
         $rows = $this->rowsWithFallback(
             $account,
             "{$this->graphApi()}/{$account->platform_user_id}/{$edge}",
-            ['fields' => self::VIDEO_FIELDS, 'limit' => 50, 'since' => $since?->getTimestamp()],
+            ['fields' => self::VIDEO_FIELDS, 'limit' => self::PAGE_SIZE, 'since' => $since?->getTimestamp()],
             self::PUBLIC_VIDEO_FIELDS,
         );
 
@@ -73,17 +83,21 @@ class FacebookSourceFetcher extends MetaSourceFetcher
     /**
      * @return array<int, SourceMedia>
      */
-    private function stories(SocialAccount $account): array
+    private function stories(SocialAccount $account, ?CarbonInterface $since): array
     {
         $rows = $this->rows($account, "{$this->graphApi()}/{$account->platform_user_id}/stories", [
             'fields' => 'post_id,status,creation_time,media_type,media_id,url',
-            'limit' => 50,
+            'limit' => self::PAGE_SIZE,
+            'since' => $since?->getTimestamp(),
         ]);
 
         $stories = [];
 
         foreach ($rows as $row) {
-            if (data_get($row, 'media_type') !== 'video' || data_get($row, 'status') !== 'PUBLISHED') {
+            $mediaType = StoryMediaType::tryFrom((string) data_get($row, 'media_type'));
+            $status = StoryStatus::tryFrom((string) data_get($row, 'status'));
+
+            if ($mediaType !== StoryMediaType::Video || $status !== StoryStatus::Published) {
                 continue;
             }
 

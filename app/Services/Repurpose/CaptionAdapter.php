@@ -18,39 +18,42 @@ class CaptionAdapter
 {
     public function __construct(private readonly ContentSanitizer $sanitizer) {}
 
-    public function adapt(
-        Workspace $workspace,
-        ?User $user,
-        string $caption,
-        Platform $platform,
-    ): string {
-        if ($platform->contentOverflow($this->sanitizer->displayText($caption, $platform)) === 0) {
+    public function adapt(Workspace $workspace, ?User $user, string $caption, Platform $platform): string
+    {
+        if ($this->overflow($caption, $platform) === 0) {
             return $caption;
         }
 
-        if (! $this->canUseAi($workspace, $user)) {
-            return $this->truncate($caption, $platform);
-        }
-
-        return $this->shorten($workspace, $user, $caption, $platform, $platform->maxContentLength())
+        return $this->shorten($workspace, $user, $caption, $platform)
             ?? $this->truncate($caption, $platform);
     }
 
-    private function shorten(
-        Workspace $workspace,
-        ?User $user,
-        string $caption,
-        Platform $platform,
-        int $limit,
-    ): ?string {
+    /**
+     * How far past the limit the text the publisher actually sends is. Sanitizing
+     * moves the length both ways — HTML comes off, X rewrites every dot of a host
+     * — so the raw caption is never the thing to measure.
+     */
+    private function overflow(string $caption, Platform $platform): int
+    {
+        return $platform->contentOverflow($this->sanitizer->displayText($caption, $platform));
+    }
+
+    /**
+     * Null whenever the workspace cannot buy a rewrite or the model does not
+     * deliver one that fits, which sends the caller to plain truncation.
+     */
+    private function shorten(Workspace $workspace, ?User $user, string $caption, Platform $platform): ?string
+    {
+        if ($user === null || Gate::forUser($user)->denies('useAi', $workspace->account)) {
+            return null;
+        }
+
         try {
-            $agent = new PostContentShortener(
+            $result = (new PostContentShortener(
                 workspace: $workspace,
                 platformLabel: $platform->label(),
-                limit: $limit,
-            );
-
-            $result = $agent->prompt($caption);
+                limit: $platform->maxContentLength(),
+            ))->prompt($caption);
 
             RecordAiUsage::recordText(
                 workspace: $workspace,
@@ -58,17 +61,9 @@ class CaptionAdapter
                 completionTokens: $result->usage->completionTokens,
                 provider: (string) $result->meta->provider,
                 model: (string) $result->meta->model,
-                userId: $user?->id,
+                userId: $user->id,
                 metadata: ['agent' => 'post_shortener'],
             );
-
-            $shortened = trim((string) $result->text);
-
-            if ($shortened === '' || $platform->contentOverflow($this->sanitizer->displayText($shortened, $platform)) > 0) {
-                return null;
-            }
-
-            return $shortened;
         } catch (Throwable $exception) {
             Log::warning('Caption shortening failed, falling back to truncation', [
                 'workspace_id' => $workspace->id,
@@ -78,22 +73,16 @@ class CaptionAdapter
 
             return null;
         }
-    }
 
-    private function canUseAi(Workspace $workspace, ?User $user): bool
-    {
-        if ($user === null) {
-            return false;
-        }
+        $shortened = trim((string) $result->text);
 
-        return Gate::forUser($user)->allows('useAi', $workspace->account);
+        return $shortened !== '' && $this->overflow($shortened, $platform) === 0 ? $shortened : null;
     }
 
     /**
-     * Cuts the caption down until the text the publisher actually sends fits.
-     * The limit cannot be applied to the raw caption: sanitizing shrinks it
-     * (HTML comes off) or grows it (X rewrites every dot of a host), so each
-     * pass rescales the cut by how far the sanitized form still overshoots.
+     * Shrinks the caption until the sanitized form fits, rescaling each pass by
+     * how far it still overshoots. Cutting to the raw limit would miss by exactly
+     * the amount sanitizing changes.
      */
     private function truncate(string $caption, Platform $platform): string
     {
@@ -101,16 +90,15 @@ class CaptionAdapter
 
         while ($trimmed !== '') {
             $sanitized = $this->sanitizer->displayText($trimmed, $platform);
-            $overflow = $platform->contentOverflow($sanitized);
 
-            if ($overflow === 0) {
+            if ($platform->contentOverflow($sanitized) === 0) {
                 return $trimmed;
             }
 
             $length = mb_strlen($trimmed);
-            $ratio = ($sanitized === '') ? 0.0 : ($platform->maxContentLength() / mb_strlen($sanitized));
+            $target = (int) floor($length * $platform->maxContentLength() / mb_strlen($sanitized));
 
-            $trimmed = $this->cutAtWord($trimmed, min((int) floor($length * $ratio), $length - 1));
+            $trimmed = $this->cutAtWord($trimmed, min($target, $length - 1));
         }
 
         return '';
@@ -119,13 +107,8 @@ class CaptionAdapter
     private function cutAtWord(string $caption, int $limit): string
     {
         $trimmed = rtrim(mb_substr($caption, 0, max(1, $limit)));
-
         $lastSpace = mb_strrpos($trimmed, ' ');
 
-        if ($lastSpace !== false && $lastSpace > 0) {
-            $trimmed = mb_substr($trimmed, 0, $lastSpace);
-        }
-
-        return rtrim($trimmed);
+        return $lastSpace > 0 ? rtrim(mb_substr($trimmed, 0, $lastSpace)) : $trimmed;
     }
 }

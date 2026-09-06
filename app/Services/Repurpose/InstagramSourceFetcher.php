@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Repurpose;
 
+use App\Enums\Instagram\MediaProductType;
+use App\Enums\Instagram\MediaType;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
@@ -16,6 +18,12 @@ class InstagramSourceFetcher extends MetaSourceFetcher
 
     /** Everything Meta marks as public, so any Instagram token can read it. */
     private const PUBLIC_FIELDS = 'id,media_type,media_url,permalink,timestamp';
+
+    /**
+     * Not a quota lever: a page of rows costs the same single call whatever its
+     * size. It bounds how far back a poll can catch up after an outage.
+     */
+    private const PAGE_SIZE = 25;
 
     /**
      * @param  array<int, SourceFormat>  $formats
@@ -50,7 +58,7 @@ class InstagramSourceFetcher extends MetaSourceFetcher
         return $this->rowsWithFallback(
             $account,
             "{$this->graphApi($account)}/{$account->platform_user_id}/{$edge}",
-            ['fields' => self::FIELDS, 'limit' => 50, 'since' => $since?->getTimestamp()],
+            ['fields' => self::FIELDS, 'limit' => self::PAGE_SIZE, 'since' => $since?->getTimestamp()],
             self::PUBLIC_FIELDS,
         );
     }
@@ -81,7 +89,7 @@ class InstagramSourceFetcher extends MetaSourceFetcher
      */
     private function format(array $row, ?SourceFormat $edgeFormat): ?SourceFormat
     {
-        if (data_get($row, 'media_type') !== 'VIDEO') {
+        if (MediaType::tryFrom((string) data_get($row, 'media_type')) !== MediaType::Video) {
             return null;
         }
 
@@ -89,10 +97,9 @@ class InstagramSourceFetcher extends MetaSourceFetcher
             return $edgeFormat;
         }
 
-        return match (data_get($row, 'media_product_type')) {
-            'REELS' => SourceFormat::Reel,
-            'FEED' => SourceFormat::Video,
-            'STORY' => SourceFormat::Story,
+        return match (MediaProductType::tryFrom((string) data_get($row, 'media_product_type'))) {
+            MediaProductType::Feed => SourceFormat::Video,
+            MediaProductType::Story => SourceFormat::Story,
             default => SourceFormat::Reel,
         };
     }

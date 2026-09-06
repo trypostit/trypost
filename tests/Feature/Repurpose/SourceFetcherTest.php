@@ -214,3 +214,36 @@ test('an error that is not about fields is not retried', function () {
 
     Http::assertSentCount(1);
 });
+
+test('facebook only resolves the file for a published video story', function () {
+    Http::fake([
+        config('trypost.platforms.facebook.graph_api').'/*/stories*' => Http::response(['data' => [
+            ['post_id' => 'p1', 'status' => 'PUBLISHED', 'media_type' => 'video', 'media_id' => 'v1', 'url' => 'https://fb/1'],
+            ['post_id' => 'p2', 'status' => 'PUBLISHED', 'media_type' => 'photo', 'media_id' => 'ph1', 'url' => 'https://fb/2'],
+            ['post_id' => 'p3', 'status' => 'ARCHIVED', 'media_type' => 'video', 'media_id' => 'v2', 'url' => 'https://fb/3'],
+        ]]),
+        config('trypost.platforms.facebook.graph_api').'/v1*' => Http::response(['source' => 'https://cdn/v1.mp4']),
+    ]);
+
+    $account = SocialAccount::factory()->create(['platform' => Platform::Facebook]);
+
+    $media = app(SourceFetcherFactory::class)->for($account)->fetch($account, null, [SourceFormat::Story]);
+
+    expect($media)->toHaveCount(1)
+        ->and($media[0]->id)->toBe('p1')
+        ->and($media[0]->downloadUrl)->toBe('https://cdn/v1.mp4');
+
+    Http::assertSentCount(2);
+});
+
+test('the story listing is bounded and filtered by the watermark', function () {
+    Http::fake([config('trypost.platforms.facebook.graph_api').'/*' => Http::response(['data' => []])]);
+
+    $account = SocialAccount::factory()->create(['platform' => Platform::Facebook]);
+    $since = now()->subDay();
+
+    app(SourceFetcherFactory::class)->for($account)->fetch($account, $since, [SourceFormat::Story]);
+
+    Http::assertSent(fn ($request) => str_contains((string) $request->url(), 'limit=25')
+        && str_contains((string) $request->url(), 'since='.$since->getTimestamp()));
+});
