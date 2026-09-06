@@ -12,3 +12,11 @@ export const usePageErrors = (): ComputedRef<Record<string, string>> => {
     const page = usePage();
     return computed(() => (page.props.errors ?? {}) as Record<string, string>);
 };
+
+/**
+ * The message a flow should surface when it reports one failure instead of
+ * rendering errors inline — the first of the bag, in the order the validator
+ * produced it.
+ */
+export const firstError = (errors: Record<string, string>): string | undefined =>
+    Object.values(errors)[0];

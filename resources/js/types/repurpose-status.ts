@@ -1,26 +1,40 @@
-export type RepurposeStatus = 'draft' | 'active' | 'paused' | 'disabled';
+export const RepurposeStatus = {
+    Draft: 'draft',
+    Active: 'active',
+    Paused: 'paused',
+    Disabled: 'disabled',
+} as const;
 
-export type RepurposeItemStatus = 'pending' | 'processing' | 'published' | 'skipped' | 'failed';
+export type RepurposeStatusValue = (typeof RepurposeStatus)[keyof typeof RepurposeStatus];
+
+export const RepurposeItemStatus = {
+    Pending: 'pending',
+    Processing: 'processing',
+    Published: 'published',
+    Skipped: 'skipped',
+    Failed: 'failed',
+} as const;
+
+export type RepurposeItemStatusValue = (typeof RepurposeItemStatus)[keyof typeof RepurposeItemStatus];
 
 type BadgeVariant = 'default' | 'secondary' | 'warning' | 'destructive' | 'outline';
 
-const STATUS_VARIANTS: Record<RepurposeStatus, BadgeVariant> = {
-    draft: 'outline',
-    active: 'default',
-    paused: 'warning',
-    disabled: 'secondary',
-};
+const statusVariants = {
+    [RepurposeStatus.Draft]: 'outline',
+    [RepurposeStatus.Active]: 'default',
+    [RepurposeStatus.Paused]: 'warning',
+    [RepurposeStatus.Disabled]: 'secondary',
+} as const satisfies Record<RepurposeStatusValue, BadgeVariant>;
 
-const ITEM_STATUS_VARIANTS: Record<RepurposeItemStatus, BadgeVariant> = {
-    pending: 'outline',
-    processing: 'outline',
-    published: 'default',
-    skipped: 'secondary',
-    failed: 'destructive',
-};
+const itemStatusVariants = {
+    [RepurposeItemStatus.Pending]: 'outline',
+    [RepurposeItemStatus.Processing]: 'outline',
+    [RepurposeItemStatus.Published]: 'default',
+    [RepurposeItemStatus.Skipped]: 'secondary',
+    [RepurposeItemStatus.Failed]: 'destructive',
+} as const satisfies Record<RepurposeItemStatusValue, BadgeVariant>;
 
-export const repurposeStatusVariant = (status: RepurposeStatus): BadgeVariant =>
-    STATUS_VARIANTS[status] ?? 'outline';
+export const repurposeStatusVariant = (status: RepurposeStatusValue): BadgeVariant => statusVariants[status];
 
-export const repurposeItemStatusVariant = (status: RepurposeItemStatus): BadgeVariant =>
-    ITEM_STATUS_VARIANTS[status] ?? 'outline';
+export const repurposeItemStatusVariant = (status: RepurposeItemStatusValue): BadgeVariant =>
+    itemStatusVariants[status];

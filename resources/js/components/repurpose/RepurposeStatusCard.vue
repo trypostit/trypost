@@ -7,26 +7,29 @@ import { toast } from 'vue-sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { firstError } from '@/composables/usePageErrors';
 import date from '@/date';
 import { activate, disable, pause, resume } from '@/routes/app/repurposes';
 import type { Repurpose } from '@/types/repurpose';
+import { RepurposeStatus } from '@/types/repurpose-status';
 
 const props = defineProps<{
     repurpose: Repurpose;
 }>();
 
-const canActivate = computed(
-    () =>
-        ['draft', 'disabled'].includes(props.repurpose.status) &&
-        props.repurpose.destinations.length > 0,
+const status = computed(() => props.repurpose.status);
+
+const isIdle = computed(
+    () => status.value === RepurposeStatus.Draft || status.value === RepurposeStatus.Disabled,
 );
 
-const send = (url: string) => {
+const canActivate = computed(() => isIdle.value && props.repurpose.destinations.length > 0);
+
+const send = (url: string) =>
     router.post(url, {}, {
         preserveScroll: true,
-        onError: (errors) => toast.error(Object.values(errors)[0] ?? trans('repurposes.errors.action_failed')),
+        onError: (errors) => toast.error(firstError(errors) ?? trans('repurposes.errors.action_failed')),
     });
-};
 </script>
 
 <template>
@@ -67,7 +70,7 @@ const send = (url: string) => {
                 </Button>
 
                 <Button
-                    v-if="repurpose.status === 'active'"
+                    v-if="status === RepurposeStatus.Active"
                     variant="outline"
                     data-testid="pause-repurpose"
                     @click="send(pause.url(repurpose.id))"
@@ -76,7 +79,7 @@ const send = (url: string) => {
                 </Button>
 
                 <Button
-                    v-if="repurpose.status === 'paused'"
+                    v-if="status === RepurposeStatus.Paused"
                     variant="outline"
                     data-testid="resume-repurpose"
                     @click="send(resume.url(repurpose.id))"
@@ -85,7 +88,7 @@ const send = (url: string) => {
                 </Button>
 
                 <Button
-                    v-if="repurpose.status !== 'disabled' && repurpose.status !== 'draft'"
+                    v-if="!isIdle"
                     variant="destructive"
                     data-testid="disable-repurpose"
                     @click="send(disable.url(repurpose.id))"

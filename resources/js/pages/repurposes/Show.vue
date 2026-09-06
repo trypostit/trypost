@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { firstError } from '@/composables/usePageErrors';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { destroy, update } from '@/routes/app/repurposes';
 import type { PinterestBoard } from '@/types';
@@ -111,7 +112,7 @@ const save = () => {
     form.put(update.url(props.repurpose.id), {
         preserveScroll: true,
         onSuccess: () => toast.success(trans('repurposes.destinations.saved')),
-        onError: (errors) => toast.error(Object.values(errors)[0] ?? trans('repurposes.errors.action_failed')),
+        onError: (errors) => toast.error(firstError(errors) ?? trans('repurposes.errors.action_failed')),
     });
 };
 

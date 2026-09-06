@@ -1,5 +1,5 @@
 import type { ChannelAccount } from '@/types/channel';
-import type { RepurposeItemStatus, RepurposeStatus } from '@/types/repurpose-status';
+import type { RepurposeItemStatusValue, RepurposeStatusValue } from '@/types/repurpose-status';
 
 export type RepurposeSourceFormat = 'reel' | 'video' | 'story';
 
@@ -32,7 +32,7 @@ export interface Repurpose {
     source_format: RepurposeSourceFormat;
     source_account?: ChannelAccount | null;
     destinations: RepurposeDestination[];
-    status: RepurposeStatus;
+    status: RepurposeStatusValue;
     activated_at: string | null;
     last_polled_at: string | null;
     next_poll_at: string | null;
@@ -52,7 +52,7 @@ export interface RepurposeItem {
     source_media_id: string;
     source_permalink: string | null;
     source_created_at: string | null;
-    status: RepurposeItemStatus;
+    status: RepurposeItemStatusValue;
     reason: string | null;
     error: string | null;
     posts?: RepurposeItemPost[];
