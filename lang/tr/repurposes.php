@@ -173,6 +173,8 @@ return [
 
     'errors' => [
         'source_already_used' => 'Bu hesap zaten başka bir repurpose\'u besliyor. Onu düzenle.',
+        'source_missing' => 'Bu otomasyonu başlatmadan önce izlenecek bir hesap seçin.',
+        'source_unusable' => 'Bu otomasyonu başlatmadan önce izlenen hesabı yeniden bağlayın.',
         'destinations_required' => 'Etkinleştirmeden önce en az bir hedef seç.',
         'destination_needs_video' => 'Bu format video taşıyamaz.',
         'only_paused_resumes' => 'Yalnızca duraklatılmış bir repurpose sürdürülebilir.',

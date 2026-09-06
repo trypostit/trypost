@@ -173,6 +173,8 @@ return [
 
     'errors' => [
         'source_already_used' => 'To konto zasila już inny repurpose. Edytuj tamten.',
+        'source_missing' => 'Wybierz konto do monitorowania przed uruchomieniem tej automatyzacji.',
+        'source_unusable' => 'Połącz ponownie monitorowane konto przed uruchomieniem tej automatyzacji.',
         'destinations_required' => 'Wybierz co najmniej jeden cel przed aktywacją.',
         'destination_needs_video' => 'Ten format nie przyjmuje filmu.',
         'only_paused_resumes' => 'Wznowić można tylko wstrzymany repurpose.',

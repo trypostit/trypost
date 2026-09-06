@@ -173,6 +173,8 @@ return [
 
     'errors' => [
         'source_already_used' => 'Dieses Konto speist bereits ein anderes Repurpose. Bearbeite stattdessen jenes.',
+        'source_missing' => 'Wähle ein Konto zur Überwachung aus, bevor du diese Automatisierung startest.',
+        'source_unusable' => 'Verbinde das überwachte Konto erneut, bevor du diese Automatisierung startest.',
         'destinations_required' => 'Wähle vor dem Aktivieren mindestens ein Ziel.',
         'destination_needs_video' => 'Dieses Format kann kein Video tragen.',
         'only_paused_resumes' => 'Nur ein pausiertes Repurpose kann fortgesetzt werden.',

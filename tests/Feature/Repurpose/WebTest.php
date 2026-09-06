@@ -212,7 +212,7 @@ test('an account from another workspace cannot become a destination', function (
     expect($repurpose->fresh()->destinations)->toBe([]);
 });
 
-test('a disconnected account cannot be a destination', function () {
+test('a switched-off account is accepted as a destination and skipped at publish time', function () {
     $repurpose = Repurpose::factory()->create([
         'workspace_id' => $this->workspace->id,
         'source_social_account_id' => $this->source->id,
@@ -220,11 +220,16 @@ test('a disconnected account cannot be a destination', function () {
 
     $this->tiktok->update(['is_active' => false]);
 
+    // This used to be rejected. Switching an account off means "don't post
+    // here", not "this repurpose is invalid" — ProcessRepurposeItem skips such
+    // a destination, and activation still demands one usable destination.
     $this->actingAs($this->user)
         ->put(route('app.repurposes.update', $repurpose), [
             'destinations' => [destinationPayload($this->tiktok)],
         ])
-        ->assertSessionHasErrors('destinations.0.social_account_id');
+        ->assertSessionHasNoErrors();
+
+    expect($repurpose->fresh()->destinations)->toHaveCount(1);
 });
 
 test('the source account token never reaches the page', function () {
@@ -310,7 +315,7 @@ test('the destination settings props load once and stay out of scroll pages', fu
         ->not->toHaveKey('tiktokCreatorInfos');
 });
 
-test('a destination whose account was switched off does not lock the page', function () {
+test('a destination whose account was switched off is kept, not rejected', function () {
     $destination = destinationPayload($this->tiktok);
 
     $repurpose = Repurpose::factory()->create([
@@ -321,14 +326,17 @@ test('a destination whose account was switched off does not lock the page', func
 
     $this->tiktok->update(['is_active' => false]);
 
+    // Switching an account off means "don't post here", which the job already
+    // honours by skipping it. Rejecting the payload instead would stop the user
+    // saving any edit at all, because the editor round-trips the whole list.
     $this->actingAs($this->user)
         ->put(route('app.repurposes.update', $repurpose), [
             'source_social_account_id' => $this->source->id,
             'destinations' => [$destination],
         ])
-        ->assertSessionHasErrors([
-            'destinations.0.social_account_id' => __('repurposes.errors.destination_unavailable'),
-        ]);
+        ->assertSessionHasNoErrors();
+
+    expect($repurpose->fresh()->destinations)->toHaveCount(1);
 
     $this->actingAs($this->user)
         ->put(route('app.repurposes.update', $repurpose), [

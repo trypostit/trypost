@@ -173,6 +173,8 @@ return [
 
     'errors' => [
         'source_already_used' => 'هذا الحساب يغذّي بالفعل repurpose آخر. عدّل ذلك بدلًا منه.',
+        'source_missing' => 'اختر حسابًا للمراقبة قبل بدء هذه الأتمتة.',
+        'source_unusable' => 'أعد ربط الحساب الذي تراقبه هذه الأتمتة قبل بدئها.',
         'destinations_required' => 'اختر وجهة واحدة على الأقل قبل التفعيل.',
         'destination_needs_video' => 'هذه الصيغة لا تقبل الفيديو.',
         'only_paused_resumes' => 'لا يمكن استئناف سوى repurpose متوقف مؤقتًا.',

@@ -173,6 +173,8 @@ return [
 
     'errors' => [
         'source_already_used' => '이 계정은 이미 다른 Repurpose에 쓰이고 있습니다. 그것을 수정하세요.',
+        'source_missing' => '이 자동화를 시작하기 전에 모니터링할 계정을 선택하세요.',
+        'source_unusable' => '이 자동화를 시작하기 전에 모니터링 중인 계정을 다시 연결하세요.',
         'destinations_required' => '활성화하기 전에 대상을 하나 이상 고르세요.',
         'destination_needs_video' => '그 형식은 영상을 담을 수 없습니다.',
         'only_paused_resumes' => '일시중지된 Repurpose만 재개할 수 있습니다.',

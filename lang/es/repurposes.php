@@ -173,6 +173,8 @@ return [
 
     'errors' => [
         'source_already_used' => 'Esta cuenta ya alimenta otro repurpose. Edita ese.',
+        'source_missing' => 'Elige una cuenta para monitorear antes de iniciar esta automatización.',
+        'source_unusable' => 'Vuelve a conectar la cuenta que observa esta automatización antes de iniciarla.',
         'destinations_required' => 'Elige al menos un destino antes de activar.',
         'destination_needs_video' => 'Ese formato no admite vídeo.',
         'only_paused_resumes' => 'Solo se puede reanudar un repurpose en pausa.',

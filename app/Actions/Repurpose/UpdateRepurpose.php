@@ -37,7 +37,11 @@ class UpdateRepurpose
                 $locked = $locked->fresh();
 
                 if ($locked->status === Status::Active) {
-                    ActivateRepurpose::assertPublishable($locked);
+                    // Destinations only. The source's health is not this
+                    // request's business, and checking it here would fail an
+                    // unrelated edit during any window where the source is
+                    // briefly unhealthy and the observer has not caught up.
+                    ActivateRepurpose::assertDestinationsPublishable($locked);
                 }
 
                 return $locked;

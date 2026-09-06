@@ -173,6 +173,8 @@ return [
 
     'errors' => [
         'source_already_used' => 'Dit account voedt al een andere repurpose. Bewerk die in plaats daarvan.',
+        'source_missing' => 'Kies een account om te volgen voordat je deze automatisering start.',
+        'source_unusable' => 'Verbind het gevolgde account opnieuw voordat je deze automatisering start.',
         'destinations_required' => 'Kies minstens één bestemming voordat je activeert.',
         'destination_needs_video' => 'Dat formaat kan geen video bevatten.',
         'only_paused_resumes' => 'Alleen een gepauzeerde repurpose kan worden hervat.',

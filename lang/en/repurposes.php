@@ -173,6 +173,8 @@ return [
 
     'errors' => [
         'source_already_used' => 'This account already feeds another repurpose. Edit that one instead.',
+        'source_missing' => 'Pick an account to watch before starting this repurpose.',
+        'source_unusable' => 'Reconnect the account this repurpose watches before starting it.',
         'destinations_required' => 'Pick at least one destination before activating.',
         'destination_needs_video' => 'That format cannot carry a video.',
         'only_paused_resumes' => 'Only a paused repurpose can be resumed.',

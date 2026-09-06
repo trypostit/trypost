@@ -79,8 +79,11 @@ class UpdateRepurposeRequest extends FormRequest
                 'string',
                 'uuid',
                 Rule::exists('social_accounts', 'id')
-                    ->where('workspace_id', $this->workspaceId())
-                    ->where('is_active', true),
+                    // No is_active clause: switching an account off means
+                    // "don't post here", and the job already skips it. Rejecting
+                    // the payload would stop the user saving any edit, because
+                    // the editor round-trips the whole destination list.
+                    ->where('workspace_id', $this->workspaceId()),
                 new NotTheSourceAccount($this->sourceAccountId()),
             ],
             'destinations.*.content_type' => [

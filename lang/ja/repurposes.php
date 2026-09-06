@@ -173,6 +173,8 @@ return [
 
     'errors' => [
         'source_already_used' => 'このアカウントはすでに別の Repurpose で使われています。そちらを編集してください。',
+        'source_missing' => 'この自動化を開始する前に、監視するアカウントを選択してください。',
+        'source_unusable' => 'この自動化を開始する前に、監視対象のアカウントを再接続してください。',
         'destinations_required' => '有効にする前に配信先を 1 つ以上選んでください。',
         'destination_needs_video' => 'その形式は動画に対応していません。',
         'only_paused_resumes' => '再開できるのは一時停止中の Repurpose だけです。',

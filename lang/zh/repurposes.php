@@ -173,6 +173,8 @@ return [
 
     'errors' => [
         'source_already_used' => '这个账号已经用于另一个 Repurpose，请去编辑那一个。',
+        'source_missing' => '开始此自动化之前，请选择要监控的账号。',
+        'source_unusable' => '开始此自动化之前，请重新连接此自动化监控的账号。',
         'destinations_required' => '启用前请至少选择一个目标。',
         'destination_needs_video' => '该格式不支持视频。',
         'only_paused_resumes' => '只有已暂停的 Repurpose 才能继续。',
