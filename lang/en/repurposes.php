@@ -40,6 +40,7 @@ return [
     'source' => [
         'title' => 'Source',
         'description' => 'TryPost watches this account for new videos of the format below.',
+        'account_label' => 'Account',
         'watch_label' => 'Watch for',
     ],
 

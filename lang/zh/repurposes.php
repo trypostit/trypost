@@ -40,6 +40,7 @@ return [
     'source' => [
         'title' => '来源',
         'description' => 'TryPost 会盯着这个账号，寻找下面所选格式的新视频。',
+        'account_label' => '账号',
         'watch_label' => '监控格式',
     ],
 

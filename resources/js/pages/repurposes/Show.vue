@@ -2,7 +2,7 @@
 import { Head, useForm } from '@inertiajs/vue3';
 import { IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import ChannelConfigurator from '@/components/ChannelConfigurator.vue';
@@ -36,6 +36,7 @@ import { repurposeStatusVariant } from '@/types/repurpose-status';
 
 const props = defineProps<{
     repurpose: Repurpose;
+    sourceAccounts: ChannelAccount[];
     destinationAccounts: ChannelAccount[];
     items: { data: RepurposeItem[] };
     sourceFormats: SourceFormatOption[];
@@ -49,10 +50,12 @@ const props = defineProps<{
 const availableAccountIds = new Set(props.destinationAccounts.map((account) => account.id));
 
 const form = useForm<{
+    source_social_account_id: string;
     source_format: RepurposeSourceFormat;
     publish_mode: RepurposePublishMode;
     destinations: RepurposeDestination[];
 }>({
+    source_social_account_id: props.repurpose.source_social_account_id,
     source_format: props.repurpose.source_format,
     publish_mode: props.repurpose.publish_mode,
     destinations: (props.repurpose.destinations ?? []).filter((destination) =>
@@ -71,8 +74,22 @@ const plannedMedia = computed<MediaItem[]>(() => [
     { id: 'repurpose-video', url: '', type: MediaType.Video },
 ]);
 
+/** Whatever the source becomes cannot also receive, so it leaves the list. */
+const destinationAccounts = computed(() =>
+    props.destinationAccounts.filter((account) => account.id !== form.source_social_account_id),
+);
+
+watch(
+    () => form.source_social_account_id,
+    (accountId) => {
+        form.destinations = form.destinations.filter(
+            (destination) => destination.social_account_id !== accountId,
+        );
+    },
+);
+
 const channels = computed<Channel[]>(() =>
-    props.destinationAccounts.map((account) => {
+    destinationAccounts.value.map((account) => {
         const index = form.destinations.findIndex((item) => item.social_account_id === account.id);
         const destination = form.destinations[index];
 
@@ -191,9 +208,11 @@ const handleDelete = () => {
                     <div class="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
                         <div class="space-y-4 lg:sticky lg:top-6">
                             <SourceFormatCard
-                                v-model="form.source_format"
-                                :account="repurpose.source_account"
+                                v-model:account="form.source_social_account_id"
+                                v-model:format="form.source_format"
+                                :accounts="sourceAccounts"
                                 :formats="sourceFormats"
+                                :error="form.errors.source_social_account_id"
                             />
 
                             <PublishModeCard v-model="form.publish_mode" :modes="publishModes" />

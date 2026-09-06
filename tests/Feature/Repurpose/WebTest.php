@@ -431,3 +431,45 @@ test('the publishing mode is offered on the page and saved', function () {
 
     expect($repurpose->fresh()->publish_mode)->toBe(PublishMode::Draft);
 });
+
+test('the source account can be changed from the edit page', function () {
+    config()->set('trypost.allow_multiple_social_accounts', true);
+
+    $other = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::Facebook]);
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+        'activated_at' => now()->subDays(3),
+        'status' => Status::Paused,
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.repurposes.show', $repurpose))
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('sourceAccounts', 2));
+
+    $this->actingAs($this->user)
+        ->put(route('app.repurposes.update', $repurpose), [
+            'source_social_account_id' => $other->id,
+            'destinations' => [destinationPayload($this->tiktok)],
+        ])
+        ->assertSessionHasNoErrors();
+
+    $fresh = $repurpose->fresh();
+
+    expect($fresh->source_social_account_id)->toBe($other->id)
+        ->and($fresh->activated_at->isToday())->toBeTrue();
+});
+
+test('the edit page does not offer an account we cannot download from as a source', function () {
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.repurposes.show', $repurpose))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('sourceAccounts', 1)
+            ->where('sourceAccounts.0.id', $this->source->id));
+});

@@ -40,6 +40,7 @@ return [
     'source' => [
         'title' => '소스',
         'description' => 'TryPost가 이 계정에서 아래 형식의 새 영상을 지켜봅니다.',
+        'account_label' => '계정',
         'watch_label' => '감시할 형식',
     ],
 

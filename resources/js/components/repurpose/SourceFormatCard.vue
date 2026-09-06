@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+
 import PlatformLogo from '@/components/PlatformLogo.vue';
+import SearchableSelect from '@/components/SearchableSelect.vue';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Select,
@@ -8,16 +11,26 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import type { ChannelAccount } from '@/types/channel';
 import type { RepurposeSourceFormat, SourceFormatOption } from '@/types/repurpose';
 
-defineProps<{
-    account: ChannelAccount | null | undefined;
+const props = defineProps<{
+    accounts: ChannelAccount[];
     formats: SourceFormatOption[];
+    error?: string;
 }>();
 
-const format = defineModel<RepurposeSourceFormat>({ required: true });
+const account = defineModel<string>('account', { required: true });
+const format = defineModel<RepurposeSourceFormat>('format', { required: true });
+
+const accountOptions = computed(() =>
+    props.accounts.map((item) => ({
+        value: item.id,
+        label: item.display_name,
+        platform: item.platform,
+    })),
+);
 </script>
 
 <template>
@@ -28,15 +41,41 @@ const format = defineModel<RepurposeSourceFormat>({ required: true });
         </CardHeader>
 
         <CardContent class="space-y-4">
-            <div class="group flex items-center gap-3">
-                <PlatformLogo :platform="account?.platform ?? ''" />
+            <div class="space-y-1">
+                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">
+                    {{ $t('repurposes.source.account_label') }}
+                </p>
 
-                <span class="min-w-0">
-                    <span class="block truncate text-sm font-bold">{{ account?.display_name }}</span>
-                    <span class="block truncate text-xs text-muted-foreground">
-                        {{ getPlatformLabel(account?.platform ?? '') }}
-                    </span>
-                </span>
+                <div data-testid="source-account-select">
+                    <SearchableSelect
+                        v-model="account"
+                        :options="accountOptions"
+                        :placeholder="$t('repurposes.create.source_placeholder')"
+                        :search-placeholder="$t('repurposes.create.source_search')"
+                        :empty-text="$t('repurposes.create.source_empty')"
+                        :invalid="Boolean(error)"
+                    >
+                        <template #option="{ option, compact }">
+                            <img
+                                v-if="compact"
+                                :src="getPlatformLogo(option.platform)"
+                                :alt="getPlatformLabel(option.platform)"
+                                class="size-4 shrink-0 rounded-sm"
+                            />
+                            <PlatformLogo v-else :platform="option.platform" size="sm" />
+
+                            <span v-if="compact" class="truncate">{{ option.label }}</span>
+                            <span v-else class="min-w-0 text-left">
+                                <span class="block truncate text-sm font-bold">{{ option.label }}</span>
+                                <span class="block truncate text-xs text-muted-foreground">
+                                    {{ getPlatformLabel(option.platform) }}
+                                </span>
+                            </span>
+                        </template>
+                    </SearchableSelect>
+                </div>
+
+                <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
             </div>
 
             <div class="space-y-1 sm:max-w-xs">

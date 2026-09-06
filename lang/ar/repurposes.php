@@ -40,6 +40,7 @@ return [
     'source' => [
         'title' => 'المصدر',
         'description' => 'يراقب TryPost هذا الحساب بحثًا عن مقاطع فيديو جديدة بالصيغة أدناه.',
+        'account_label' => 'الحساب',
         'watch_label' => 'المراقبة',
     ],
 

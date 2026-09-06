@@ -40,6 +40,7 @@ return [
     'source' => [
         'title' => 'Bron',
         'description' => 'TryPost volgt dit account op nieuwe video\'s van het formaat hieronder.',
+        'account_label' => 'Account',
         'watch_label' => 'Volgen',
     ],
 

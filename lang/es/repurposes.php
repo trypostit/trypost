@@ -40,6 +40,7 @@ return [
     'source' => [
         'title' => 'Origen',
         'description' => 'TryPost vigila esta cuenta en busca de vídeos nuevos del formato de abajo.',
+        'account_label' => 'Cuenta',
         'watch_label' => 'Vigilar',
     ],
 

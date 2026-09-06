@@ -60,6 +60,7 @@ class RepurposeController extends Controller
 
         return Inertia::render('repurposes/Show', [
             'repurpose' => new RepurposeResource($repurpose->load('sourceAccount')),
+            'sourceAccounts' => SocialAccountResource::collection($this->sourceAccounts($accounts)),
             'destinationAccounts' => SocialAccountResource::collection($destinations),
             'items' => Inertia::scroll(fn () => RepurposeItemResource::collection(ListRepurposeItems::execute($repurpose))),
             'sourceFormats' => $this->sourceFormats($repurpose),

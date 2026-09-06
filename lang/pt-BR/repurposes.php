@@ -40,6 +40,7 @@ return [
     'source' => [
         'title' => 'Origem',
         'description' => 'O TryPost acompanha esta conta em busca de novos vídeos do formato abaixo.',
+        'account_label' => 'Conta',
         'watch_label' => 'Observar',
     ],
 

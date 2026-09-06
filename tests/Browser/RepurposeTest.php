@@ -140,3 +140,26 @@ test('a destination is not warned about missing media before there is any', func
         ->assertDontSee(trans('posts.form.warnings.requires_media'))
         ->assertNoJavaScriptErrors();
 });
+
+test('the source account is picked from a searchable list on the edit page', function () {
+    [$user, $workspace, $source] = repurposeOwnerWithAccounts();
+
+    config()->set('trypost.allow_multiple_social_accounts', true);
+
+    $other = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Facebook]);
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $source->id,
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.repurposes.show', $repurpose));
+
+    waitForRepurposeTestId($page, 'source-account-select');
+
+    $page->click('@source-account-select')
+        ->assertSee($other->display_name)
+        ->assertNoJavaScriptErrors();
+});

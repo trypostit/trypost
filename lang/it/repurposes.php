@@ -40,6 +40,7 @@ return [
     'source' => [
         'title' => 'Origine',
         'description' => 'TryPost tiene d\'occhio questo account per i nuovi video del formato qui sotto.',
+        'account_label' => 'Account',
         'watch_label' => 'Osserva',
     ],
 

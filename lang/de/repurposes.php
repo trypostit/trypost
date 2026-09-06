@@ -40,6 +40,7 @@ return [
     'source' => [
         'title' => 'Quelle',
         'description' => 'TryPost beobachtet dieses Konto auf neue Videos im unten gewählten Format.',
+        'account_label' => 'Konto',
         'watch_label' => 'Beobachten',
     ],
 

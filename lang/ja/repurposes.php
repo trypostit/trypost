@@ -40,6 +40,7 @@ return [
     'source' => [
         'title' => 'ソース',
         'description' => 'TryPost がこのアカウントを見張り、下で選んだ形式の新しい動画を探します。',
+        'account_label' => 'アカウント',
         'watch_label' => '監視する形式',
     ],
 
