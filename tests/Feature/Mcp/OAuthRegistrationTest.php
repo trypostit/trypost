@@ -10,6 +10,42 @@ use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
+/**
+ * @return list<string>
+ */
+function mcpNativeAgentSchemes(): array
+{
+    return [
+        'antigravity',
+        'chatgpt',
+        'claude',
+        'claude-cli',
+        'claude-code',
+        'claude-desktop',
+        'claudeai',
+        'codex',
+        'codium',
+        'continue',
+        'cursor',
+        'devin',
+        'goose',
+        'grok',
+        'hermes',
+        'jetbrains',
+        'kiro',
+        'lmstudio',
+        'opencode',
+        'raycast',
+        'trae',
+        'vscode',
+        'vscode-insiders',
+        'warp',
+        'windsurf',
+        'xai',
+        'zed',
+    ];
+}
+
 test('dynamic oauth client registration is rate limited', function () {
     $payload = [
         'client_name' => 'MCP Client',
@@ -26,18 +62,72 @@ test('dynamic oauth client registration is rate limited', function () {
     $this->postJson('/oauth/register', $payload)->assertTooManyRequests();
 });
 
-test('dynamic oauth registration rejects custom callback schemes', function (string $redirectUri) {
+test('mcp custom schemes config lists every supported native agent', function () {
+    expect(config('mcp.custom_schemes'))->toEqual(mcpNativeAgentSchemes());
+});
+
+test('dynamic oauth registration accepts every configured custom callback scheme', function (string $scheme) {
+    $this->postJson('/oauth/register', [
+        'client_name' => 'Native MCP Client',
+        'redirect_uris' => ["{$scheme}://oauth/callback"],
+        'grant_types' => ['authorization_code'],
+        'response_types' => ['code'],
+        'token_endpoint_auth_method' => 'none',
+    ])->assertCreated();
+})->with(mcpNativeAgentSchemes());
+
+test('dynamic oauth registration accepts documented native and loopback callbacks', function (string $redirectUri) {
     $this->postJson('/oauth/register', [
         'client_name' => 'Native MCP Client',
         'redirect_uris' => [$redirectUri],
         'grant_types' => ['authorization_code'],
         'response_types' => ['code'],
         'token_endpoint_auth_method' => 'none',
-    ])->assertBadRequest();
+    ])->assertCreated();
 })->with([
-    'cursor' => 'cursor://oauth/callback',
-    'vscode' => 'vscode://oauth/callback',
+    'cursor anysphere' => 'cursor://anysphere.cursor-mcp/oauth/callback',
+    'cursor mcp host' => 'cursor://cursor.mcp/oauth/callback',
+    'raycast oauth' => 'raycast://oauth',
+    'cursor loopback' => 'http://localhost:8787/callback',
+    'opencode loopback' => 'http://127.0.0.1:19876/mcp/oauth/callback',
+    'hermes loopback' => 'http://127.0.0.1:8765/callback',
+    'claude https' => 'https://claude.ai/api/mcp/auth_callback',
+    'chatgpt https' => 'https://chatgpt.com/aip/mcp/oauth/callback',
+    'cursor web' => 'https://www.cursor.com/agents/mcp/oauth/callback',
+    'antigravity https' => 'https://antigravity.google/oauth-callback',
 ]);
+
+test('dynamic oauth registration rejects unknown and unsafe callback schemes', function (string $redirectUri) {
+    $this->postJson('/oauth/register', [
+        'client_name' => 'Native MCP Client',
+        'redirect_uris' => [$redirectUri],
+        'grant_types' => ['authorization_code'],
+        'response_types' => ['code'],
+        'token_endpoint_auth_method' => 'none',
+    ])
+        ->assertBadRequest()
+        ->assertJson([
+            'error' => 'invalid_redirect_uri',
+        ]);
+})->with([
+    'javascript' => 'javascript:alert(1)',
+    'data' => 'data:text/html,hi',
+    'file' => 'file:///etc/passwd',
+    'unknown' => 'notanagent://oauth/callback',
+    'cursor missing host' => 'cursor:/callback',
+]);
+
+test('dynamic oauth registration accepts extra custom schemes from config', function () {
+    config()->set('mcp.custom_schemes', [...config('mcp.custom_schemes'), 'myagent']);
+
+    $this->postJson('/oauth/register', [
+        'client_name' => 'Custom Agent',
+        'redirect_uris' => ['myagent://oauth/callback'],
+        'grant_types' => ['authorization_code'],
+        'response_types' => ['code'],
+        'token_endpoint_auth_method' => 'none',
+    ])->assertCreated();
+});
 
 test('mcp oauth consent page is available for workspace viewers', function () {
     $account = Account::factory()->create();
