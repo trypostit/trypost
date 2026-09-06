@@ -165,6 +165,7 @@ return [
         'only_running_disables' => 'Only a running repurpose can be turned off.',
         'only_idle_activates' => 'Only a draft or turned-off repurpose can be activated.',
         'destination_unavailable' => 'That destination account is no longer available.',
+        'destination_is_source' => 'That destination is the account this repurpose watches.',
         'source_unavailable' => 'That source account is no longer available.',
         'action_failed' => 'Something went wrong. Check the form and try again.',
     ],

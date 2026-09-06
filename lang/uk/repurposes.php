@@ -165,6 +165,7 @@ return [
         'only_running_disables' => 'Вимкнути можна лише той repurpose, що працює.',
         'only_idle_activates' => 'Активувати можна лише чернетку або вимкнений repurpose.',
         'destination_unavailable' => 'Цей акаунт-отримувач більше недоступний.',
+        'destination_is_source' => 'Це призначення — той самий обліковий запис, за яким стежить цей repurpose.',
         'source_unavailable' => 'Цей обліковий запис-джерело більше недоступний.',
         'action_failed' => 'Щось пішло не так. Перевірте форму та спробуйте ще раз.',
     ],

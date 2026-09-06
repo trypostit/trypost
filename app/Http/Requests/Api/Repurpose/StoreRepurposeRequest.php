@@ -9,6 +9,8 @@ use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
 use App\Rules\ContentTypeMatchesPlatform;
+use App\Rules\Repurpose\NotTheSourceAccount;
+use App\Rules\Repurpose\SourceIsFree;
 use App\Services\Repurpose\SourceFetcherFactory;
 use App\Support\Repurpose\DestinationMetaRules;
 use Illuminate\Foundation\Http\FormRequest;
@@ -19,6 +21,23 @@ class StoreRepurposeRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    private function workspaceId(): ?string
+    {
+        return $this->user()->currentWorkspace?->id;
+    }
+
+    private function sourceAccountId(): ?string
+    {
+        $id = $this->input('source_social_account_id');
+
+        return is_string($id) ? $id : null;
+    }
+
+    private function sourceFormat(): SourceFormat
+    {
+        return SourceFormat::tryFrom((string) $this->input('source_format')) ?? SourceFormat::Reel;
     }
 
     /**
@@ -32,12 +51,13 @@ class StoreRepurposeRequest extends FormRequest
                 'string',
                 'uuid',
                 Rule::exists('social_accounts', 'id')
-                    ->where('workspace_id', $this->user()->currentWorkspace?->id)
+                    ->where('workspace_id', $this->workspaceId())
                     ->where('is_active', true)
                     ->whereIn('platform', array_map(
                         fn (Platform $platform): string => $platform->value,
                         SourceFetcherFactory::supportedPlatforms(),
                     )),
+                new SourceIsFree($this->workspaceId(), $this->sourceFormat()),
             ],
             'source_format' => ['sometimes', Rule::enum(SourceFormat::class)],
             'publish_mode' => ['sometimes', Rule::enum(PublishMode::class)],
@@ -47,8 +67,9 @@ class StoreRepurposeRequest extends FormRequest
                 'string',
                 'uuid',
                 Rule::exists('social_accounts', 'id')
-                    ->where('workspace_id', $this->user()->currentWorkspace?->id)
+                    ->where('workspace_id', $this->workspaceId())
                     ->where('is_active', true),
+                new NotTheSourceAccount($this->sourceAccountId()),
             ],
             'destinations.*.content_type' => [
                 'required',

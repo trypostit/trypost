@@ -165,6 +165,7 @@ return [
         'only_running_disables' => 'Seul un repurpose en cours peut être désactivé.',
         'only_idle_activates' => 'Seul un brouillon ou un repurpose désactivé peut être activé.',
         'destination_unavailable' => 'Ce compte de destination n\'est plus disponible.',
+        'destination_is_source' => 'Cette destination est le compte que ce repurpose surveille.',
         'source_unavailable' => 'Ce compte source n\'est plus disponible.',
         'action_failed' => 'Une erreur est survenue. Vérifiez le formulaire et réessayez.',
     ],

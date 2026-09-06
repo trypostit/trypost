@@ -165,6 +165,7 @@ return [
         'only_running_disables' => 'Só um repurpose em execução pode ser desativado.',
         'only_idle_activates' => 'Só um rascunho ou repurpose desativado pode ser ativado.',
         'destination_unavailable' => 'Essa conta de destino não está mais disponível.',
+        'destination_is_source' => 'Esse destino é a própria conta que este repurpose observa.',
         'source_unavailable' => 'Essa conta de origem não está mais disponível.',
         'action_failed' => 'Algo deu errado. Confira o formulário e tente de novo.',
     ],

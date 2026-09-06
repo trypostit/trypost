@@ -165,6 +165,7 @@ return [
         'only_running_disables' => 'Отключить можно только работающий repurpose.',
         'only_idle_activates' => 'Активировать можно только черновик или отключённый repurpose.',
         'destination_unavailable' => 'Этот аккаунт-получатель больше недоступен.',
+        'destination_is_source' => 'Это назначение — тот же аккаунт, за которым следит этот repurpose.',
         'source_unavailable' => 'Этот исходный аккаунт больше недоступен.',
         'action_failed' => 'Что-то пошло не так. Проверьте форму и повторите.',
     ],

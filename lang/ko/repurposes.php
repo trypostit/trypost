@@ -165,6 +165,7 @@ return [
         'only_running_disables' => '실행 중인 리퍼포즈만 사용 중지할 수 있습니다.',
         'only_idle_activates' => '초안이거나 사용 중지된 리퍼포즈만 활성화할 수 있습니다.',
         'destination_unavailable' => '해당 대상 계정을 더 이상 사용할 수 없습니다.',
+        'destination_is_source' => '해당 대상은 이 리퍼포즈가 감시 중인 계정입니다.',
         'source_unavailable' => '해당 소스 계정은 더 이상 사용할 수 없습니다.',
         'action_failed' => '문제가 발생했습니다. 입력을 확인하고 다시 시도하세요.',
     ],

@@ -8,6 +8,7 @@ use App\Actions\Repurpose\UpdateRepurpose;
 use App\Http\Resources\Api\RepurposeResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Mcp\Concerns\ResolvesWorkspaceRepurpose;
+use App\Mcp\Requests\Repurpose\RepurposeIdRequest;
 use App\Mcp\Requests\Repurpose\UpdateRepurposeRequest;
 use App\Models\Repurpose;
 use App\Models\Workspace;
@@ -31,12 +32,14 @@ class UpdateRepurposeTool extends Tool
             return $workspace;
         }
 
-        $validated = $request->validate(UpdateRepurposeRequest::rules($workspace->id));
-        $repurpose = $this->repurposeInWorkspace($workspace, $validated['repurpose_id']);
+        $identified = $request->validate(RepurposeIdRequest::rules());
+        $repurpose = $this->repurposeInWorkspace($workspace, $identified['repurpose_id']);
 
         if (! $repurpose instanceof Repurpose) {
             return $repurpose;
         }
+
+        $validated = $request->validate(UpdateRepurposeRequest::rules($workspace->id, $repurpose, $request->all()));
 
         return Response::structured(
             (new RepurposeResource(UpdateRepurpose::execute($repurpose, $validated)))->resolve(),

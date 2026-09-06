@@ -165,6 +165,7 @@ return [
         'only_running_disables' => 'Tylko działający repurpose można wyłączyć.',
         'only_idle_activates' => 'Tylko wersję roboczą lub wyłączony repurpose można aktywować.',
         'destination_unavailable' => 'To konto docelowe nie jest już dostępne.',
+        'destination_is_source' => 'Ten cel to konto obserwowane przez ten repurpose.',
         'source_unavailable' => 'To konto źródłowe nie jest już dostępne.',
         'action_failed' => 'Coś poszło nie tak. Sprawdź formularz i spróbuj ponownie.',
     ],

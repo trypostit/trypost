@@ -6,8 +6,10 @@ namespace App\Actions\Repurpose;
 
 use App\Enums\Repurpose\Status;
 use App\Models\Repurpose;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class UpdateRepurpose
 {
@@ -27,18 +29,24 @@ class UpdateRepurpose
             $attributes['activated_at'] = $repurpose->activated_at === null ? null : now();
         }
 
-        return DB::transaction(function () use ($repurpose, $attributes): Repurpose {
-            $locked = Repurpose::query()->whereKey($repurpose->id)->lockForUpdate()->firstOrFail();
+        try {
+            return DB::transaction(function () use ($repurpose, $attributes): Repurpose {
+                $locked = Repurpose::query()->whereKey($repurpose->id)->lockForUpdate()->firstOrFail();
 
-            $locked->update($attributes);
-            $locked = $locked->fresh();
+                $locked->update($attributes);
+                $locked = $locked->fresh();
 
-            if ($locked->status === Status::Active) {
-                ActivateRepurpose::assertPublishable($locked);
-            }
+                if ($locked->status === Status::Active) {
+                    ActivateRepurpose::assertPublishable($locked);
+                }
 
-            return $locked;
-        });
+                return $locked;
+            });
+        } catch (UniqueConstraintViolationException) {
+            throw ValidationException::withMessages([
+                'source_social_account_id' => __('repurposes.errors.source_already_used'),
+            ]);
+        }
     }
 
     /**

@@ -10,6 +10,7 @@ use App\Enums\Repurpose\Status;
 use App\Models\Repurpose;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Validation\ValidationException;
 
 class CreateRepurpose
@@ -28,15 +29,21 @@ class CreateRepurpose
             ]);
         }
 
-        return Repurpose::query()->create([
-            'workspace_id' => $workspace->id,
-            'user_id' => $user->id,
-            'source_social_account_id' => $sourceAccountId,
-            'source_format' => $sourceFormat,
-            'publish_mode' => PublishMode::tryFrom((string) data_get($data, 'publish_mode')) ?? PublishMode::Publish,
-            'destinations' => data_get($data, 'destinations', []),
-            'status' => Status::Draft,
-        ]);
+        try {
+            return Repurpose::query()->create([
+                'workspace_id' => $workspace->id,
+                'user_id' => $user->id,
+                'source_social_account_id' => $sourceAccountId,
+                'source_format' => $sourceFormat,
+                'publish_mode' => PublishMode::tryFrom((string) data_get($data, 'publish_mode')) ?? PublishMode::Publish,
+                'destinations' => data_get($data, 'destinations', []),
+                'status' => Status::Draft,
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            throw ValidationException::withMessages([
+                'source_social_account_id' => __('repurposes.errors.source_already_used'),
+            ]);
+        }
     }
 
     public static function existingFor(Workspace $workspace, string $sourceAccountId, SourceFormat $format): ?Repurpose

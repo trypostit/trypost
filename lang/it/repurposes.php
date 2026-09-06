@@ -165,6 +165,7 @@ return [
         'only_running_disables' => 'Solo un repurpose in esecuzione può essere disattivato.',
         'only_idle_activates' => 'Solo una bozza o un repurpose disattivato può essere attivato.',
         'destination_unavailable' => 'Quell\'account di destinazione non è più disponibile.',
+        'destination_is_source' => 'Quella destinazione è l\'account che questo repurpose osserva.',
         'source_unavailable' => 'Quell\'account di origine non è più disponibile.',
         'action_failed' => 'Qualcosa è andato storto. Controlla il modulo e riprova.',
     ],

@@ -165,6 +165,7 @@ return [
         'only_running_disables' => '只有正在运行的转发规则才能停用。',
         'only_idle_activates' => '只有草稿或已停用的转发规则才能启用。',
         'destination_unavailable' => '该目标账号已不可用。',
+        'destination_is_source' => '该目标就是此转发规则正在监视的账号。',
         'source_unavailable' => '该来源账号已不可用。',
         'action_failed' => '出了点问题。请检查表单后重试。',
     ],
