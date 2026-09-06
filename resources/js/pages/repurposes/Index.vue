@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, InfiniteScroll, router } from '@inertiajs/vue3';
-import { IconRepeat, IconTrash } from '@tabler/icons-vue';
+import { IconAlertTriangle, IconRepeat, IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { ref } from 'vue';
 
@@ -136,9 +136,20 @@ const handleDelete = (repurpose: Repurpose) => {
                             <span class="text-sm font-semibold">{{ repurpose.source_account?.display_name }}</span>
                         </TableCell>
                         <TableCell>
-                            <Badge :variant="repurposeStatusVariant(repurpose.status)">
-                                {{ $t(`repurposes.status.${repurpose.status}`) }}
-                            </Badge>
+                            <div class="flex items-center gap-1.5">
+                                <Badge :variant="repurposeStatusVariant(repurpose.status)">
+                                    {{ $t(`repurposes.status.${repurpose.status}`) }}
+                                </Badge>
+
+                                <!-- A pause the system imposed reads the same as one the
+                                     user chose without this: both are just "Paused". -->
+                                <IconAlertTriangle
+                                    v-if="repurpose.paused_reason"
+                                    class="size-4 text-amber-500"
+                                    :title="$t('repurposes.health.stopped_itself')"
+                                    data-testid="repurpose-stopped-itself"
+                                />
+                            </div>
                         </TableCell>
                         <TableCell>{{ repurpose.published_items_count ?? 0 }}</TableCell>
                         <TableCell>

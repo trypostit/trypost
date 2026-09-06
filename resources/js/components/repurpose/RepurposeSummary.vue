@@ -31,6 +31,10 @@ const source = computed(() => {
 });
 
 const sentence = computed(() => {
+    if (!props.sourceAccount) {
+        return trans('repurposes.summary.no_source');
+    }
+
     if (destinationLabels.value.length === 0) {
         return trans('repurposes.summary.no_destinations', {
             format: props.formatLabel,

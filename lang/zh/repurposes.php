@@ -47,6 +47,7 @@ return [
     'summary' => [
         'sentence' => '你每次在 :source 发布新的 :format，都会同步到 :destinations。',
         'no_destinations' => '你在 :source 发布的每条新 :format 还在等待目标。',
+        'no_source' => '此自动化没有来源账号。请选择一个以重新启动。',
     ],
 
     'empty' => [
@@ -170,6 +171,14 @@ return [
         'title' => '删除这个 Repurpose',
         'description' => '检查会立即停止。已创建的帖子会保留在日历中。',
         'delete' => '删除 Repurpose',
+    ],
+
+    'health' => [
+        'stopped_itself' => '已自动停止 — 打开查看原因',
+        'source_missing' => '复制已暂停：此自动化没有来源账号。请选择一个后再继续。',
+        'source_unusable' => '复制已暂停：此自动化监控的账号需要重新连接。',
+        'no_destinations' => '复制已暂停：没有可用的目标账号。请添加一个后再继续。',
+        'ready' => '问题已解决。继续此自动化即可重新开始复制。',
     ],
 
     'errors' => [

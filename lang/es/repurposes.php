@@ -47,6 +47,7 @@ return [
     'summary' => [
         'sentence' => 'Cada nuevo :format que publiques en :source se republica en :destinations.',
         'no_destinations' => 'Cada nuevo :format que publiques en :source está esperando un destino.',
+        'no_source' => 'Esta automatización no tiene cuenta de origen. Elige una para reactivarla.',
     ],
 
     'empty' => [
@@ -170,6 +171,14 @@ return [
         'title' => 'Eliminar este repurpose',
         'description' => 'Las comprobaciones se detienen de inmediato. Las publicaciones ya creadas siguen en tu calendario.',
         'delete' => 'Eliminar repurpose',
+    ],
+
+    'health' => [
+        'stopped_itself' => 'Se detuvo sola: ábrela para ver por qué',
+        'source_missing' => 'La replicación está detenida: esta automatización no tiene cuenta de origen. Elige una y reanúdala.',
+        'source_unusable' => 'La replicación está detenida: la cuenta que observa esta automatización debe reconectarse.',
+        'no_destinations' => 'La replicación está detenida: no hay ningún destino disponible. Añade uno y reanúdala.',
+        'ready' => 'El problema está resuelto. Reanuda esta automatización para volver a replicar.',
     ],
 
     'errors' => [

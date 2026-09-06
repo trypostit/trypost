@@ -34,7 +34,12 @@ const send = (url: string) =>
     router.post(url, {}, {
         preserveScroll: true,
         onError: (errors) =>
-            toast.error(errors.status ?? errors.destinations ?? trans('repurposes.errors.action_failed')),
+            toast.error(
+                errors.status
+                    ?? errors.source_social_account_id
+                    ?? errors.destinations
+                    ?? trans('repurposes.errors.action_failed'),
+            ),
     });
 </script>
 

@@ -47,6 +47,7 @@ return [
     'summary' => [
         'sentence' => ':source에 새 :format을 올릴 때마다 :destinations에 다시 게시됩니다.',
         'no_destinations' => ':source에 올리는 새 :format이 아직 대상을 기다리고 있습니다.',
+        'no_source' => '이 자동화에는 소스 계정이 없습니다. 다시 시작하려면 계정을 선택하세요.',
     ],
 
     'empty' => [
@@ -170,6 +171,14 @@ return [
         'title' => '이 Repurpose 삭제',
         'description' => '확인이 즉시 중단됩니다. 이미 만들어진 게시물은 캘린더에 남습니다.',
         'delete' => 'Repurpose 삭제',
+    ],
+
+    'health' => [
+        'stopped_itself' => '자동으로 중단되었습니다 — 열어서 이유를 확인하세요',
+        'source_missing' => '복제가 중단되었습니다. 이 자동화에는 소스 계정이 없습니다. 계정을 선택한 뒤 재개하세요.',
+        'source_unusable' => '복제가 중단되었습니다. 모니터링 중인 계정을 다시 연결해야 합니다.',
+        'no_destinations' => '복제가 중단되었습니다. 사용 가능한 대상이 없습니다. 대상을 추가한 뒤 재개하세요.',
+        'ready' => '문제가 해결되었습니다. 이 자동화를 재개하면 복제가 다시 시작됩니다.',
     ],
 
     'errors' => [

@@ -47,6 +47,7 @@ return [
     'summary' => [
         'sentence' => 'Elke nieuwe :format die je op :source plaatst, wordt opnieuw geplaatst op :destinations.',
         'no_destinations' => 'Elke nieuwe :format op :source wacht nog op een bestemming.',
+        'no_source' => 'Deze automatisering heeft geen bronaccount. Kies er een om opnieuw te starten.',
     ],
 
     'empty' => [
@@ -170,6 +171,14 @@ return [
         'title' => 'Deze repurpose verwijderen',
         'description' => 'De controles stoppen onmiddellijk. Al gemaakte posts blijven in je kalender staan.',
         'delete' => 'Repurpose verwijderen',
+    ],
+
+    'health' => [
+        'stopped_itself' => 'Vanzelf gestopt — open om te zien waarom',
+        'source_missing' => 'Replicatie staat stil: deze automatisering heeft geen bronaccount. Kies er een en hervat.',
+        'source_unusable' => 'Replicatie staat stil: het gevolgde account moet opnieuw worden verbonden.',
+        'no_destinations' => 'Replicatie staat stil: geen bestemming beschikbaar. Voeg er een toe en hervat.',
+        'ready' => 'Het probleem is opgelost. Hervat deze automatisering om weer te repliceren.',
     ],
 
     'errors' => [

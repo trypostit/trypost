@@ -47,6 +47,7 @@ return [
     'summary' => [
         'sentence' => 'Chaque nouveau :format publié sur :source est republié sur :destinations.',
         'no_destinations' => 'Chaque nouveau :format publié sur :source attend une destination.',
+        'no_source' => 'Cette automatisation n\'a plus de compte source. Choisissez-en un pour la relancer.',
     ],
 
     'empty' => [
@@ -170,6 +171,14 @@ return [
         'title' => 'Supprimer ce repurpose',
         'description' => 'Les vérifications s\'arrêtent immédiatement. Les publications déjà créées restent dans votre calendrier.',
         'delete' => 'Supprimer le repurpose',
+    ],
+
+    'health' => [
+        'stopped_itself' => 'Arrêtée d\'elle-même — ouvrez-la pour voir pourquoi',
+        'source_missing' => 'La réplication est en pause : cette automatisation n\'a pas de compte source. Choisissez-en un, puis reprenez.',
+        'source_unusable' => 'La réplication est en pause : le compte surveillé doit être reconnecté.',
+        'no_destinations' => 'La réplication est en pause : aucune destination disponible. Ajoutez-en une, puis reprenez.',
+        'ready' => 'Le problème est résolu. Reprenez cette automatisation pour recommencer à répliquer.',
     ],
 
     'errors' => [

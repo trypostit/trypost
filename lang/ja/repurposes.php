@@ -47,6 +47,7 @@ return [
     'summary' => [
         'sentence' => ':source に新しい :format を投稿するたびに、:destinations へ再投稿されます。',
         'no_destinations' => ':source に投稿する新しい :format は、まだ配信先を待っています。',
+        'no_source' => 'この自動化にはソースアカウントがありません。再開するには選択してください。',
     ],
 
     'empty' => [
@@ -170,6 +171,14 @@ return [
         'title' => 'この Repurpose を削除',
         'description' => 'チェックはすぐに止まります。作成済みの投稿はカレンダーに残ります。',
         'delete' => 'Repurpose を削除',
+    ],
+
+    'health' => [
+        'stopped_itself' => '自動的に停止しました。開いて理由を確認してください',
+        'source_missing' => '複製は停止中です。この自動化にはソースアカウントがありません。選択してから再開してください。',
+        'source_unusable' => '複製は停止中です。監視対象のアカウントを再接続してください。',
+        'no_destinations' => '複製は停止中です。利用できる配信先がありません。追加してから再開してください。',
+        'ready' => '問題は解消しました。この自動化を再開すると複製が再び始まります。',
     ],
 
     'errors' => [

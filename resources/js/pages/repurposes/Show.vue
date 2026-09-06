@@ -10,6 +10,7 @@ import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import PublishModeCard from '@/components/repurpose/PublishModeCard.vue';
 import RepurposeFlow from '@/components/repurpose/RepurposeFlow.vue';
+import RepurposeHealthBanner from '@/components/repurpose/RepurposeHealthBanner.vue';
 import RepurposeItemList from '@/components/repurpose/RepurposeItemList.vue';
 import RepurposeLifecycle from '@/components/repurpose/RepurposeLifecycle.vue';
 import RepurposeSummary from '@/components/repurpose/RepurposeSummary.vue';
@@ -53,7 +54,9 @@ const props = defineProps<{
 const availableAccountIds = new Set(props.destinationAccounts.map((account) => account.id));
 
 const form = useForm<{
-    source_social_account_id: string;
+    // Nullable: a repurpose whose source account was deleted keeps its history
+    // and waits here for the user to pick a new one.
+    source_social_account_id: string | null;
     source_format: RepurposeSourceFormat;
     publish_mode: RepurposePublishMode;
     destinations: RepurposeDestination[];
@@ -221,6 +224,8 @@ const handleDelete = () => {
 
                     <RepurposeLifecycle :repurpose="repurpose" @delete="handleDelete" />
                 </div>
+
+                <RepurposeHealthBanner :repurpose="repurpose" :accounts="destinationAccounts" />
 
                 <p
                     v-if="repurpose.last_error"

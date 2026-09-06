@@ -47,6 +47,7 @@ return [
     'summary' => [
         'sentence' => ':source üzerinde paylaştığın her yeni :format, :destinations üzerinde yeniden paylaşılır.',
         'no_destinations' => ':source üzerinde paylaştığın her yeni :format bir hedef bekliyor.',
+        'no_source' => 'Bu otomasyonun kaynak hesabı yok. Yeniden başlatmak için bir hesap seçin.',
     ],
 
     'empty' => [
@@ -170,6 +171,14 @@ return [
         'title' => 'Bu repurpose\'u sil',
         'description' => 'Kontroller hemen durur. Oluşturulmuş gönderiler takviminde kalır.',
         'delete' => 'Repurpose\'u sil',
+    ],
+
+    'health' => [
+        'stopped_itself' => 'Kendiliğinden durdu — nedenini görmek için açın',
+        'source_missing' => 'Çoğaltma duraklatıldı: bu otomasyonun kaynak hesabı yok. Bir hesap seçip devam ettirin.',
+        'source_unusable' => 'Çoğaltma duraklatıldı: izlenen hesabın yeniden bağlanması gerekiyor.',
+        'no_destinations' => 'Çoğaltma duraklatıldı: kullanılabilir hedef yok. Bir hedef ekleyip devam ettirin.',
+        'ready' => 'Sorun çözüldü. Yeniden çoğaltmaya başlamak için bu otomasyonu devam ettirin.',
     ],
 
     'errors' => [

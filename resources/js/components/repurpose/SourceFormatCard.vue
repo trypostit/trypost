@@ -21,8 +21,21 @@ const props = defineProps<{
     error?: string;
 }>();
 
-const account = defineModel<string>('account', { required: true });
+// Nullable: a repurpose whose source account was deleted arrives here with none,
+// and this card is where the user picks a replacement.
+const account = defineModel<string | null>('account', { required: true });
 const format = defineModel<RepurposeSourceFormat>('format', { required: true });
+
+/**
+ * SearchableSelect speaks string | undefined; the repurpose stores null when its
+ * source account was deleted. Bridge the two here rather than widening either.
+ */
+const selectedAccount = computed({
+    get: () => account.value ?? undefined,
+    set: (value: string | undefined) => {
+        account.value = value ?? null;
+    },
+});
 
 const accountOptions = computed(() =>
     props.accounts.map((item) => ({
@@ -48,7 +61,7 @@ const accountOptions = computed(() =>
 
                 <div data-testid="source-account-select">
                     <SearchableSelect
-                        v-model="account"
+                        v-model="selectedAccount"
                         :options="accountOptions"
                         :placeholder="$t('repurposes.create.source_placeholder')"
                         :search-placeholder="$t('repurposes.create.source_search')"

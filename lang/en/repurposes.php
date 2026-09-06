@@ -47,6 +47,7 @@ return [
     'summary' => [
         'sentence' => 'Every new :format you post on :source is republished to :destinations.',
         'no_destinations' => 'Every new :format you post on :source is waiting for a destination.',
+        'no_source' => 'This repurpose has no source account. Pick one to start it again.',
     ],
 
     'empty' => [
@@ -170,6 +171,14 @@ return [
         'title' => 'Delete this repurpose',
         'description' => 'Checks stop immediately. Posts already created stay in your calendar.',
         'delete' => 'Delete repurpose',
+    ],
+
+    'health' => [
+        'stopped_itself' => 'Stopped on its own — open it to see why',
+        'source_missing' => 'Replication is on hold: this repurpose has no source account. Pick one, then resume it.',
+        'source_unusable' => 'Replication is on hold: the account this repurpose watches needs to be reconnected.',
+        'no_destinations' => 'Replication is on hold: no destination is available. Add one, then resume it.',
+        'ready' => 'The problem is fixed. Resume this repurpose to start replicating again.',
     ],
 
     'errors' => [

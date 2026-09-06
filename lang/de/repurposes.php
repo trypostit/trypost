@@ -47,6 +47,7 @@ return [
     'summary' => [
         'sentence' => 'Jedes neue :format, das du auf :source postest, wird auf :destinations erneut veröffentlicht.',
         'no_destinations' => 'Jedes neue :format auf :source wartet noch auf ein Ziel.',
+        'no_source' => 'Diese Automatisierung hat kein Quellkonto mehr. Wähle eines aus, um sie neu zu starten.',
     ],
 
     'empty' => [
@@ -170,6 +171,14 @@ return [
         'title' => 'Dieses Repurpose löschen',
         'description' => 'Die Prüfungen stoppen sofort. Bereits erstellte Beiträge bleiben in deinem Kalender.',
         'delete' => 'Repurpose löschen',
+    ],
+
+    'health' => [
+        'stopped_itself' => 'Von selbst gestoppt – öffnen, um zu sehen warum',
+        'source_missing' => 'Die Replikation pausiert: Diese Automatisierung hat kein Quellkonto. Wähle eines und setze sie fort.',
+        'source_unusable' => 'Die Replikation pausiert: Das überwachte Konto muss neu verbunden werden.',
+        'no_destinations' => 'Die Replikation pausiert: Kein Ziel verfügbar. Füge eines hinzu und setze sie fort.',
+        'ready' => 'Das Problem ist behoben. Setze diese Automatisierung fort, um wieder zu replizieren.',
     ],
 
     'errors' => [

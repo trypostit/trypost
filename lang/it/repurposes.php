@@ -47,6 +47,7 @@ return [
     'summary' => [
         'sentence' => 'Ogni nuovo :format che pubblichi su :source viene ripubblicato su :destinations.',
         'no_destinations' => 'Ogni nuovo :format che pubblichi su :source sta aspettando una destinazione.',
+        'no_source' => 'Questa automazione non ha un account di origine. Scegline uno per riavviarla.',
     ],
 
     'empty' => [
@@ -170,6 +171,14 @@ return [
         'title' => 'Elimina questo repurpose',
         'description' => 'I controlli si fermano subito. I post già creati restano nel tuo calendario.',
         'delete' => 'Elimina repurpose',
+    ],
+
+    'health' => [
+        'stopped_itself' => 'Si è fermata da sola: aprila per vedere perché',
+        'source_missing' => 'La replica è in pausa: questa automazione non ha un account di origine. Scegline uno e riprendila.',
+        'source_unusable' => 'La replica è in pausa: l\'account monitorato deve essere ricollegato.',
+        'no_destinations' => 'La replica è in pausa: nessuna destinazione disponibile. Aggiungine una e riprendila.',
+        'ready' => 'Il problema è risolto. Riprendi questa automazione per ricominciare a replicare.',
     ],
 
     'errors' => [

@@ -47,6 +47,7 @@ return [
     'summary' => [
         'sentence' => 'Cada novo :format que você postar no :source é republicado em :destinations.',
         'no_destinations' => 'Cada novo :format que você postar no :source está esperando um destino.',
+        'no_source' => 'Esta automação está sem conta de origem. Escolha uma para reativá-la.',
     ],
 
     'empty' => [
@@ -170,6 +171,14 @@ return [
         'title' => 'Excluir este repurpose',
         'description' => 'As verificações param na hora. Os posts já criados continuam no seu calendário.',
         'delete' => 'Excluir repurpose',
+    ],
+
+    'health' => [
+        'stopped_itself' => 'Parou sozinha — abra para ver o motivo',
+        'source_missing' => 'A replicação está parada: esta automação está sem conta de origem. Escolha uma e retome.',
+        'source_unusable' => 'A replicação está parada: a conta monitorada por esta automação precisa ser reconectada.',
+        'no_destinations' => 'A replicação está parada: nenhum destino disponível. Adicione um e retome.',
+        'ready' => 'O problema foi resolvido. Retome esta automação para voltar a replicar.',
     ],
 
     'errors' => [

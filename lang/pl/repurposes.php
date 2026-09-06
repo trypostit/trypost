@@ -47,6 +47,7 @@ return [
     'summary' => [
         'sentence' => 'Każdy nowy :format opublikowany na :source jest publikowany ponownie na :destinations.',
         'no_destinations' => 'Każdy nowy :format opublikowany na :source czeka na cel.',
+        'no_source' => 'Ta automatyzacja nie ma konta źródłowego. Wybierz jedno, aby ją wznowić.',
     ],
 
     'empty' => [
@@ -170,6 +171,14 @@ return [
         'title' => 'Usuń ten repurpose',
         'description' => 'Sprawdzanie zatrzyma się natychmiast. Utworzone już posty pozostaną w kalendarzu.',
         'delete' => 'Usuń repurpose',
+    ],
+
+    'health' => [
+        'stopped_itself' => 'Zatrzymała się sama — otwórz, aby zobaczyć dlaczego',
+        'source_missing' => 'Replikacja wstrzymana: ta automatyzacja nie ma konta źródłowego. Wybierz jedno i wznów.',
+        'source_unusable' => 'Replikacja wstrzymana: monitorowane konto wymaga ponownego połączenia.',
+        'no_destinations' => 'Replikacja wstrzymana: brak dostępnego miejsca docelowego. Dodaj jedno i wznów.',
+        'ready' => 'Problem został rozwiązany. Wznów tę automatyzację, aby znowu replikować.',
     ],
 
     'errors' => [
