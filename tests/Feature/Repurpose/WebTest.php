@@ -361,3 +361,31 @@ test('the index scrolls instead of loading every repurpose at once', function ()
             ->where('repurposes.meta.per_page', 1)
             ->where('repurposes.meta.total', 2));
 });
+
+test('every per-platform meta key the web surface accepts is stored, not stripped', function () {
+    $discord = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::Discord]);
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+    ]);
+
+    $meta = [
+        'channel_id' => '9001',
+        'channel_name' => 'reels',
+        'embeds' => [['title' => 'Watch', 'url' => 'https://trypost.it', 'color' => '#ff8800']],
+    ];
+
+    $this->actingAs($this->user)
+        ->put(route('app.repurposes.update', $repurpose), [
+            'source_social_account_id' => $this->source->id,
+            'destinations' => [[
+                'social_account_id' => $discord->id,
+                'content_type' => ContentType::DiscordMessage->value,
+                'meta' => $meta,
+            ]],
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect(data_get($repurpose->fresh()->destinations, '0.meta'))->toEqual($meta);
+});
