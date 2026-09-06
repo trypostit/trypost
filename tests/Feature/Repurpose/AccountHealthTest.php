@@ -227,3 +227,90 @@ test('resuming is refused while the source is still unusable', function () {
 
     expect(fn () => ResumeRepurpose::execute($repurpose))->toThrow(ValidationException::class);
 });
+
+test('deleting the source account pauses the repurpose', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Active,
+        'destinations' => [healthDestination($workspace)],
+    ]);
+
+    $source->delete();
+
+    expect($repurpose->fresh()->status)->toBe(Status::Paused)
+        ->and($repurpose->fresh()->paused_reason)->toBe(PauseReason::SourceRemoved);
+});
+
+test('a source going token expired pauses the repurpose', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Active,
+        'destinations' => [healthDestination($workspace)],
+    ]);
+
+    $source->update(['status' => AccountStatus::TokenExpired]);
+
+    expect($repurpose->fresh()->paused_reason)->toBe(PauseReason::SourceUnavailable);
+});
+
+test('deactivating the source pauses the repurpose', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Active,
+        'destinations' => [healthDestination($workspace)],
+    ]);
+
+    $source->update(['is_active' => false]);
+
+    expect($repurpose->fresh()->paused_reason)->toBe(PauseReason::SourceUnavailable);
+});
+
+test('a draft repurpose is left alone when its source dies', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Draft,
+        'destinations' => [healthDestination($workspace)],
+    ]);
+
+    $source->update(['is_active' => false]);
+
+    expect($repurpose->fresh()->status)->toBe(Status::Draft)
+        ->and($repurpose->fresh()->paused_reason)->toBeNull();
+});
+
+test('a repurpose the user paused does not acquire a system reason', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Paused,
+        'paused_reason' => null,
+        'destinations' => [healthDestination($workspace)],
+    ]);
+
+    $source->update(['is_active' => false]);
+
+    expect($repurpose->fresh()->paused_reason)->toBeNull();
+});
+
+test('an unrelated account update does not touch the repurpose', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Active,
+        'destinations' => [healthDestination($workspace)],
+    ]);
+
+    $source->update(['last_used_at' => now()]);
+
+    expect($repurpose->fresh()->status)->toBe(Status::Active);
+});
