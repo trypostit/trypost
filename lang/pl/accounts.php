@@ -123,6 +123,8 @@ return [
     ],
 
     'flash' => [
+        'disconnected_paused_repurposes' => 'Konto odłączone. Wstrzymano :count automatyzację.|Konto odłączone. Wstrzymano :count automatyzacje.',
+        'deactivated_paused_repurposes' => 'Konto wyłączone. Wstrzymano :count automatyzację.|Konto wyłączone. Wstrzymano :count automatyzacje.',
         'disconnected' => 'Konto zostało pomyślnie rozłączone!',
         'connected' => 'Konto zostało pomyślnie połączone!',
         'session_expired' => 'Sesja wygasła. Spróbuj ponownie.',

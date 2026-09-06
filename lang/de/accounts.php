@@ -125,6 +125,8 @@ return [
     ],
 
     'flash' => [
+        'disconnected_paused_repurposes' => 'Konto getrennt. :count Automatisierung pausiert.|Konto getrennt. :count Automatisierungen pausiert.',
+        'deactivated_paused_repurposes' => 'Konto deaktiviert. :count Automatisierung pausiert.|Konto deaktiviert. :count Automatisierungen pausiert.',
         'disconnected' => 'Konto erfolgreich getrennt!',
         'connected' => 'Konto erfolgreich verbunden!',
         'session_expired' => 'Sitzung abgelaufen. Bitte versuche es erneut.',

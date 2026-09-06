@@ -123,6 +123,8 @@ return [
     ],
 
     'flash' => [
+        'disconnected_paused_repurposes' => 'アカウントを切断しました。:count 件の自動化を停止しました。|アカウントを切断しました。:count 件の自動化を停止しました。',
+        'deactivated_paused_repurposes' => 'アカウントを無効にしました。:count 件の自動化を停止しました。|アカウントを無効にしました。:count 件の自動化を停止しました。',
         'disconnected' => 'アカウントの接続を解除しました！',
         'connected' => 'アカウントを接続しました！',
         'session_expired' => 'セッションの有効期限が切れました。もう一度お試しください。',

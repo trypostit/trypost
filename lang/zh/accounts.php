@@ -123,6 +123,8 @@ return [
     ],
 
     'flash' => [
+        'disconnected_paused_repurposes' => '账号已断开连接。已暂停 :count 个自动化。|账号已断开连接。已暂停 :count 个自动化。',
+        'deactivated_paused_repurposes' => '账号已关闭。已暂停 :count 个自动化。|账号已关闭。已暂停 :count 个自动化。',
         'disconnected' => '账号已成功断开连接！',
         'connected' => '账号连接成功！',
         'session_expired' => '会话已过期，请重试。',

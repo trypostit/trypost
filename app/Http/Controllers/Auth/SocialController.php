@@ -6,16 +6,19 @@ namespace App\Http\Controllers\Auth;
 
 use App\Actions\SocialAccount\ToggleSocialAccount;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
+use App\Enums\Repurpose\Status as RepurposeStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\ConnectPopupException;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\App\SocialAccountResource;
+use App\Models\Repurpose;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -71,10 +74,11 @@ class SocialController extends Controller
             ->where('status', PostPlatformStatus::Pending->value)
             ->delete();
 
+        $affected = $this->repurposeIdsFor($account);
+
         $account->delete();
 
-        session()->flash('flash.banner', __('accounts.flash.disconnected'));
-        session()->flash('flash.bannerStyle', 'success');
+        $this->flashAccountChange('disconnected', $affected);
 
         return back();
     }
@@ -89,11 +93,11 @@ class SocialController extends Controller
             abort(403);
         }
 
+        $affected = $account->is_active ? $this->repurposeIdsFor($account) : collect();
+
         ToggleSocialAccount::execute($account);
 
-        $status = $account->is_active ? 'activated' : 'deactivated';
-        session()->flash('flash.banner', __("accounts.flash.{$status}"));
-        session()->flash('flash.bannerStyle', 'success');
+        $this->flashAccountChange($account->is_active ? 'activated' : 'deactivated', $affected);
 
         return back();
     }
@@ -293,5 +297,43 @@ class SocialController extends Controller
             'platform' => $platform,
             'onboardingProgress' => false,
         ]);
+    }
+
+    /**
+     * Captured before the account goes away: the source FK is nullOnDelete, so
+     * afterwards there is nothing left linking the two.
+     *
+     * @return Collection<int, string>
+     */
+    private function repurposeIdsFor(SocialAccount $account): Collection
+    {
+        return Repurpose::query()
+            ->where('source_social_account_id', $account->id)
+            ->where('status', RepurposeStatus::Active)
+            ->pluck('id');
+    }
+
+    /**
+     * The observer has already stopped whatever it was going to stop by now, so
+     * this counts what actually happened rather than predicting it.
+     *
+     * With no email in this flow — the user did this deliberately, so an email
+     * would be noise — the flash is the only notice that an automation stopped,
+     * and it happens on the accounts page rather than where the repurpose lives.
+     *
+     * @param  Collection<int, string>  $affected
+     */
+    private function flashAccountChange(string $action, Collection $affected): void
+    {
+        $paused = $affected->isEmpty() ? 0 : Repurpose::query()
+            ->whereKey($affected)
+            ->where('status', RepurposeStatus::Paused)
+            ->whereNotNull('paused_reason')
+            ->count();
+
+        session()->flash('flash.banner', $paused > 0
+            ? trans_choice("accounts.flash.{$action}_paused_repurposes", $paused, ['count' => $paused])
+            : __("accounts.flash.{$action}"));
+        session()->flash('flash.bannerStyle', 'success');
     }
 }

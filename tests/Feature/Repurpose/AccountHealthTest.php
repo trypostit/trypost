@@ -446,3 +446,63 @@ test('a repurpose with no destinations left is not auto-resumed', function () {
 
     expect($repurpose->fresh()->status)->toBe(Status::Paused);
 });
+
+test('disconnecting an account says how many automations it paused', function () {
+    // Full HTTP setup, not healthWorkspace(): this route authorises
+    // manageAccounts on the current workspace, so the workspace needs the
+    // user's account_id and the user needs current_workspace_id.
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $source = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
+
+    Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Active,
+        'destinations' => [healthDestination($workspace)],
+    ]);
+
+    $this->actingAs($user)
+        ->delete(route('app.accounts.disconnect', $source))
+        ->assertSessionHas('flash.banner', trans_choice('accounts.flash.disconnected_paused_repurposes', 1, ['count' => 1]));
+});
+
+test('disconnecting an account with no automations keeps the plain message', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $account = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
+
+    $this->actingAs($user)
+        ->delete(route('app.accounts.disconnect', $account))
+        ->assertSessionHas('flash.banner', __('accounts.flash.disconnected'));
+});
+
+test('switching an account off says how many automations it paused', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $source = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
+
+    Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Active,
+        'destinations' => [healthDestination($workspace)],
+    ]);
+
+    $this->actingAs($user)
+        ->put(route('app.accounts.toggle', $source))
+        ->assertSessionHas('flash.banner', trans_choice('accounts.flash.deactivated_paused_repurposes', 1, ['count' => 1]));
+});

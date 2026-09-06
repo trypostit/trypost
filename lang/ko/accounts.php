@@ -123,6 +123,8 @@ return [
     ],
 
     'flash' => [
+        'disconnected_paused_repurposes' => '계정 연결을 해제했습니다. 자동화 :count개를 중단했습니다.|계정 연결을 해제했습니다. 자동화 :count개를 중단했습니다.',
+        'deactivated_paused_repurposes' => '계정을 껐습니다. 자동화 :count개를 중단했습니다.|계정을 껐습니다. 자동화 :count개를 중단했습니다.',
         'disconnected' => '계정 연결이 해제되었습니다!',
         'connected' => '계정이 연결되었습니다!',
         'session_expired' => '세션이 만료되었습니다. 다시 시도해 주세요.',

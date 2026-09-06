@@ -123,6 +123,8 @@ return [
     ],
 
     'flash' => [
+        'disconnected_paused_repurposes' => 'Account disconnected. :count automation paused.|Account disconnected. :count automations paused.',
+        'deactivated_paused_repurposes' => 'Account switched off. :count automation paused.|Account switched off. :count automations paused.',
         'disconnected' => 'Account disconnected successfully!',
         'connected' => 'Account connected successfully!',
         'session_expired' => 'Session expired. Please try again.',
