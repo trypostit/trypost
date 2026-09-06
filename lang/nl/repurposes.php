@@ -137,6 +137,11 @@ return [
         'detail' => 'Detail',
         'posts' => 'Gerepliceerd naar',
         'view_original' => 'Origineel bekijken',
+        'original_from' => 'origineel van :date',
+        'empty' => [
+            'title' => 'Nog niets',
+            'description' => 'Video\'s die dit account buiten TryPost plaatst, verschijnen hier.',
+        ],
         'open_post' => 'Post openen',
         'statuses' => [
             'pending' => 'In wachtrij',

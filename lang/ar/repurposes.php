@@ -137,6 +137,11 @@ return [
         'detail' => 'التفاصيل',
         'posts' => 'نُسخ إلى',
         'view_original' => 'عرض الأصل',
+        'original_from' => 'الأصل بتاريخ :date',
+        'empty' => [
+            'title' => 'لا شيء بعد',
+            'description' => 'ستظهر هنا مقاطع الفيديو التي ينشرها هذا الحساب خارج TryPost.',
+        ],
         'open_post' => 'فتح المنشور',
         'statuses' => [
             'pending' => 'في الانتظار',

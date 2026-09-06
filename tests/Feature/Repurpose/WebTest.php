@@ -9,6 +9,7 @@ use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Repurpose;
+use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -488,4 +489,46 @@ test('every connected account is sent so the page can exclude whichever becomes 
             expect($ids)->toContain($this->source->id)
                 ->and($ids)->toContain($this->tiktok->id);
         });
+});
+
+test('activity is ordered by when the original was posted, which is what it shows', function () {
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+    ]);
+
+    $older = RepurposeItem::factory()->for($repurpose)->create([
+        'source_created_at' => now()->subDays(2),
+        'created_at' => now(),
+    ]);
+
+    $newer = RepurposeItem::factory()->for($repurpose)->create([
+        'source_created_at' => now()->subHour(),
+        'created_at' => now()->subDay(),
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.repurposes.show', $repurpose))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('items.data.0.id', $newer->id)
+            ->where('items.data.1.id', $older->id));
+});
+
+test('the activity item carries both the moment we acted and the original date', function () {
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+    ]);
+
+    $item = RepurposeItem::factory()->for($repurpose)->create([
+        'source_created_at' => now()->subDays(5),
+        'created_at' => now()->subMinutes(20),
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.repurposes.show', $repurpose))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('items.data.0.id', $item->id)
+            ->where('items.data.0.created_at', $item->created_at->toIso8601String())
+            ->where('items.data.0.source_created_at', $item->source_created_at->toIso8601String()));
 });

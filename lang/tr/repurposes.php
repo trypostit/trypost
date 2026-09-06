@@ -137,6 +137,11 @@ return [
         'detail' => 'Ayrıntı',
         'posts' => 'Kopyalandığı yer',
         'view_original' => 'Orijinali gör',
+        'original_from' => ':date tarihli özgün gönderi',
+        'empty' => [
+            'title' => 'Henüz bir şey yok',
+            'description' => 'Bu hesabın TryPost dışında paylaştığı videolar burada görünür.',
+        ],
         'open_post' => 'Gönderiyi aç',
         'statuses' => [
             'pending' => 'Sırada',

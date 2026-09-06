@@ -137,6 +137,11 @@ return [
         'detail' => 'Dettaglio',
         'posts' => 'Replicato su',
         'view_original' => 'Vedi originale',
+        'original_from' => 'originale del :date',
+        'empty' => [
+            'title' => 'Ancora niente',
+            'description' => 'I video che questo account pubblica fuori da TryPost appariranno qui.',
+        ],
         'open_post' => 'Apri post',
         'statuses' => [
             'pending' => 'In coda',

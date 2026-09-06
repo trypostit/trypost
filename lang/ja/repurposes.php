@@ -137,6 +137,11 @@ return [
         'detail' => '詳細',
         'posts' => '再投稿先',
         'view_original' => 'オリジナルを見る',
+        'original_from' => '元投稿 :date',
+        'empty' => [
+            'title' => 'まだ何もありません',
+            'description' => 'このアカウントが TryPost の外で投稿した動画がここに表示されます。',
+        ],
         'open_post' => '投稿を開く',
         'statuses' => [
             'pending' => '待機中',

@@ -137,6 +137,11 @@ return [
         'detail' => 'Szczegół',
         'posts' => 'Zreplikowano do',
         'view_original' => 'Zobacz oryginał',
+        'original_from' => 'oryginał z :date',
+        'empty' => [
+            'title' => 'Jeszcze nic',
+            'description' => 'Filmy publikowane przez to konto poza TryPost pojawią się tutaj.',
+        ],
         'open_post' => 'Otwórz post',
         'statuses' => [
             'pending' => 'W kolejce',

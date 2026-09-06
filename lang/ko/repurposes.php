@@ -137,6 +137,11 @@ return [
         'detail' => '상세',
         'posts' => '복제 대상',
         'view_original' => '원본 보기',
+        'original_from' => '원본 :date',
+        'empty' => [
+            'title' => '아직 없음',
+            'description' => '이 계정이 TryPost 밖에서 올린 영상이 여기에 표시됩니다.',
+        ],
         'open_post' => '게시물 열기',
         'statuses' => [
             'pending' => '대기 중',

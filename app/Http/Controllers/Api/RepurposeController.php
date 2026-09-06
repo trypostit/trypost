@@ -22,6 +22,7 @@ use App\Support\Repurpose\Templates;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class RepurposeController extends Controller
@@ -111,7 +112,10 @@ class RepurposeController extends Controller
         $this->authorize('view', $repurpose);
 
         return RepurposeItemResource::collection(
-            $repurpose->items()->with('posts.postPlatforms:id,post_id,platform,enabled')->latest()->paginate(15),
+            $repurpose->items()
+                ->with('posts.postPlatforms:id,post_id,platform,enabled')
+                ->orderByDesc(DB::raw('coalesce(source_created_at, created_at)'))
+                ->paginate(15),
         );
     }
 

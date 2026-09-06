@@ -7,6 +7,7 @@ namespace App\Actions\Repurpose;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class ListRepurposeItems
 {
@@ -17,7 +18,7 @@ class ListRepurposeItems
     {
         return $repurpose->items()
             ->with('posts.postPlatforms:id,post_id,platform,enabled')
-            ->latest()
+            ->orderByDesc(DB::raw('coalesce(source_created_at, created_at)'))
             ->paginate((int) config('app.pagination.default'));
     }
 }

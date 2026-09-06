@@ -137,6 +137,11 @@ return [
         'detail' => 'Детали',
         'posts' => 'Скопировано в',
         'view_original' => 'Открыть оригинал',
+        'original_from' => 'оригинал от :date',
+        'empty' => [
+            'title' => 'Пока ничего',
+            'description' => 'Видео, опубликованные этим аккаунтом вне TryPost, появятся здесь.',
+        ],
         'open_post' => 'Открыть пост',
         'statuses' => [
             'pending' => 'В очереди',

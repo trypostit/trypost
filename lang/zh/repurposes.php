@@ -137,6 +137,11 @@ return [
         'detail' => '详情',
         'posts' => '已同步到',
         'view_original' => '查看原视频',
+        'original_from' => '原帖发布于 :date',
+        'empty' => [
+            'title' => '暂无内容',
+            'description' => '该账号在 TryPost 之外发布的视频会显示在这里。',
+        ],
         'open_post' => '打开帖子',
         'statuses' => [
             'pending' => '排队中',

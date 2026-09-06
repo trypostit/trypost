@@ -3,10 +3,13 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\Repurpose\ItemReason;
+use App\Enums\Repurpose\ItemStatus;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Repurpose;
+use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -220,5 +223,35 @@ test('deleting sits behind the menu instead of on the page', function () {
     usleep(400000);
 
     $page->assertVisible('@delete-repurpose')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the activity list reads as what happened, never as a database id', function () {
+    [$user, $workspace, $source] = repurposeOwnerWithAccounts();
+
+    $repurpose = Repurpose::factory()->active()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $source->id,
+    ]);
+
+    $withoutLink = RepurposeItem::factory()->for($repurpose)->create([
+        'status' => ItemStatus::Skipped,
+        'reason' => ItemReason::MediaUrlMissing,
+        'source_permalink' => null,
+        'source_created_at' => now()->subHour(),
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.repurposes.show', $repurpose));
+
+    waitForRepurposeTestId($page, 'tab-activity');
+
+    $page->click('@tab-activity');
+
+    usleep(500000);
+
+    $page->assertVisible("@repurpose-item-{$withoutLink->id}")
+        ->assertDontSee($withoutLink->source_media_id)
         ->assertNoJavaScriptErrors();
 });

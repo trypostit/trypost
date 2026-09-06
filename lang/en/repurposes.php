@@ -137,6 +137,11 @@ return [
         'detail' => 'Detail',
         'posts' => 'Replicated to',
         'view_original' => 'View original',
+        'original_from' => 'original from :date',
+        'empty' => [
+            'title' => 'Nothing yet',
+            'description' => 'Videos this account posts outside TryPost will show up here.',
+        ],
         'open_post' => 'Open post',
         'statuses' => [
             'pending' => 'Queued',

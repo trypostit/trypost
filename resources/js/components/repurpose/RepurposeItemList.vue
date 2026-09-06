@@ -1,99 +1,111 @@
 <script setup lang="ts">
 import { InfiniteScroll } from '@inertiajs/vue3';
-import { IconExternalLink } from '@tabler/icons-vue';
-
-import { Badge } from '@/components/ui/badge';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import { getPlatformLabel } from '@/composables/usePlatformLogo';
+    IconAlertTriangle,
+    IconCheck,
+    IconClock,
+    IconExternalLink,
+    IconMinus,
+    IconPencil,
+} from '@tabler/icons-vue';
+import type { Component } from 'vue';
+
+import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import { edit } from '@/routes/app/posts';
 import type { RepurposeItem } from '@/types/repurpose';
-import { repurposeItemStatusVariant } from '@/types/repurpose-status';
+import { RepurposeItemStatus, type RepurposeItemStatusValue } from '@/types/repurpose-status';
 
 defineProps<{
     items: RepurposeItem[];
 }>();
+
+const marks: Record<RepurposeItemStatusValue, { icon: Component; class: string }> = {
+    [RepurposeItemStatus.Published]: { icon: IconCheck, class: 'bg-emerald-100 text-emerald-700' },
+    [RepurposeItemStatus.Drafted]: { icon: IconPencil, class: 'bg-violet-100 text-violet-700' },
+    [RepurposeItemStatus.Pending]: { icon: IconClock, class: 'bg-foreground/5 text-foreground/60' },
+    [RepurposeItemStatus.Processing]: { icon: IconClock, class: 'bg-foreground/5 text-foreground/60' },
+    [RepurposeItemStatus.Skipped]: { icon: IconMinus, class: 'bg-foreground/5 text-foreground/60' },
+    [RepurposeItemStatus.Failed]: { icon: IconAlertTriangle, class: 'bg-rose-100 text-rose-700' },
+};
+
+const detail = (item: RepurposeItem): string | null => item.error ?? null;
 </script>
 
 <template>
     <InfiniteScroll data="items" items-element="#repurpose-items-body" preserve-url>
-        <Table data-testid="repurpose-items-table">
-        <TableHeader>
-            <TableRow>
-                <TableHead class="whitespace-nowrap">{{ $t('repurposes.items.source') }}</TableHead>
-                <TableHead class="whitespace-nowrap">{{ $t('repurposes.items.published_at') }}</TableHead>
-                <TableHead class="whitespace-nowrap">{{ $t('repurposes.items.status') }}</TableHead>
-                <TableHead class="w-full min-w-[16rem]">{{ $t('repurposes.items.detail') }}</TableHead>
-                <TableHead class="whitespace-nowrap">{{ $t('repurposes.items.posts') }}</TableHead>
-            </TableRow>
-        </TableHeader>
+        <ul id="repurpose-items-body" class="divide-y-2 divide-dashed divide-foreground/15">
+            <li
+                v-for="item in items"
+                :key="item.id"
+                class="flex flex-wrap items-start gap-3 py-4 first:pt-0 last:pb-0"
+                :data-testid="`repurpose-item-${item.id}`"
+            >
+                <span
+                    class="inline-flex size-8 shrink-0 items-center justify-center rounded-full"
+                    :class="marks[item.status].class"
+                >
+                    <component :is="marks[item.status].icon" class="size-4" stroke-width="2.5" />
+                </span>
 
-        <TableBody id="repurpose-items-body">
-            <TableRow v-for="item in items" :key="item.id" :data-testid="`repurpose-item-${item.id}`">
-                <TableCell class="whitespace-nowrap">
+                <div class="min-w-0 flex-1 space-y-1">
+                    <p class="text-sm font-bold text-foreground">
+                        {{
+                            item.reason
+                                ? $t(`repurposes.items.reasons.${item.reason}`)
+                                : $t(`repurposes.items.statuses.${item.status}`)
+                        }}
+                    </p>
+
+                    <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                        <span :title="date.formatDateTime(item.created_at)">
+                            {{ date.diffForHumans(item.created_at) }}
+                        </span>
+
+                        <template v-if="item.source_created_at">
+                            <span aria-hidden="true">·</span>
+
+                            <a
+                                v-if="item.source_permalink"
+                                :href="item.source_permalink"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                :title="date.formatDateTime(item.source_created_at)"
+                                class="inline-flex items-center gap-1 underline"
+                            >
+                                {{ $t('repurposes.items.original_from', { date: date.formatDate(item.source_created_at) }) }}
+                                <IconExternalLink class="size-3" />
+                            </a>
+
+                            <span v-else :title="date.formatDateTime(item.source_created_at)">
+                                {{ $t('repurposes.items.original_from', { date: date.formatDate(item.source_created_at) }) }}
+                            </span>
+                        </template>
+                    </p>
+
+                    <p v-if="detail(item)" class="max-w-prose text-xs break-words text-rose-700">
+                        {{ detail(item) }}
+                    </p>
+                </div>
+
+                <div v-if="(item.posts ?? []).length > 0" class="flex flex-wrap items-center gap-1">
                     <a
-                        v-if="item.source_permalink"
-                        :href="item.source_permalink"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="inline-flex items-center gap-1 underline"
+                        v-for="post in item.posts"
+                        :key="post.id"
+                        :href="edit.url(post.id)"
+                        :title="post.platforms.map(getPlatformLabel).join(', ')"
+                        class="inline-flex items-center gap-1 rounded-lg p-1.5 transition-colors hover:bg-foreground/5"
                     >
-                        {{ $t('repurposes.items.view_original') }}
-                        <IconExternalLink class="size-3.5" />
+                        <img
+                            v-for="platform in post.platforms"
+                            :key="platform"
+                            :src="getPlatformLogo(platform)"
+                            :alt="getPlatformLabel(platform)"
+                            class="size-5 rounded-md"
+                        />
                     </a>
-                    <span v-else class="text-muted-foreground">{{ item.source_media_id }}</span>
-                </TableCell>
-
-                <TableCell class="whitespace-nowrap">
-                    {{ item.source_created_at ? date.formatDateTime(item.source_created_at) : '—' }}
-                </TableCell>
-
-                <TableCell class="whitespace-nowrap">
-                    <Badge :variant="repurposeItemStatusVariant(item.status)">
-                        {{ $t(`repurposes.items.statuses.${item.status}`) }}
-                    </Badge>
-                </TableCell>
-
-                <TableCell class="w-full min-w-[16rem] text-sm text-muted-foreground">
-                    <p
-                        v-if="item.reason"
-                        class="line-clamp-3 max-w-prose whitespace-normal"
-                        :title="item.error ?? undefined"
-                    >
-                        {{ $t(`repurposes.items.reasons.${item.reason}`) }}
-                    </p>
-                    <p
-                        v-else-if="item.error"
-                        class="line-clamp-3 max-w-prose whitespace-normal break-words"
-                        :title="item.error"
-                    >
-                        {{ item.error }}
-                    </p>
-                    <span v-else>—</span>
-                </TableCell>
-
-                <TableCell class="whitespace-nowrap">
-                    <div class="flex flex-wrap gap-x-3 gap-y-1">
-                        <a
-                            v-for="post in item.posts ?? []"
-                            :key="post.id"
-                            :href="edit.url(post.id)"
-                            class="text-sm underline"
-                        >
-                            {{ post.platform ? getPlatformLabel(post.platform) : $t('repurposes.items.open_post') }}
-                        </a>
-                        <span v-if="(item.posts ?? []).length === 0" class="text-muted-foreground">—</span>
-                    </div>
-                </TableCell>
-            </TableRow>
-        </TableBody>
-        </Table>
+                </div>
+            </li>
+        </ul>
     </InfiniteScroll>
 </template>

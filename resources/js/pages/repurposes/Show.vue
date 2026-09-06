@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { IconAlertTriangle } from '@tabler/icons-vue';
+import { IconAlertTriangle, IconHistory } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import ChannelConfigurator from '@/components/ChannelConfigurator.vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import PublishModeCard from '@/components/repurpose/PublishModeCard.vue';
 import RepurposeFlow from '@/components/repurpose/RepurposeFlow.vue';
 import RepurposeItemList from '@/components/repurpose/RepurposeItemList.vue';
@@ -289,7 +290,18 @@ const handleDelete = () => {
                 </TabsContent>
 
                 <TabsContent value="activity">
-                    <RepurposeItemList :items="items.data ?? []" />
+                    <EmptyState
+                        v-if="(items.data ?? []).length === 0"
+                        :icon="IconHistory"
+                        :title="$t('repurposes.items.empty.title')"
+                        :description="$t('repurposes.items.empty.description')"
+                    />
+
+                    <Card v-else>
+                        <CardContent>
+                            <RepurposeItemList :items="items.data ?? []" />
+                        </CardContent>
+                    </Card>
                 </TabsContent>
 
 

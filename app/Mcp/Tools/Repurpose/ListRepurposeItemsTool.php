@@ -11,6 +11,7 @@ use App\Mcp\Requests\Repurpose\ListRepurposeItemsRequest;
 use App\Models\Repurpose;
 use App\Models\Workspace;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Support\Facades\DB;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
@@ -41,7 +42,7 @@ class ListRepurposeItemsTool extends Tool
 
         $items = $repurpose->items()
             ->with('posts.postPlatforms:id,post_id,platform,enabled')
-            ->latest()
+            ->orderByDesc(DB::raw('coalesce(source_created_at, created_at)'))
             ->paginate((int) config('app.pagination.default'), page: (int) data_get($validated, 'page', 1));
 
         return Response::structured([
