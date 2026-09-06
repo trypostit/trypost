@@ -3,6 +3,7 @@ import { InfiniteScroll } from '@inertiajs/vue3';
 import {
     IconAlertTriangle,
     IconCheck,
+    IconChevronRight,
     IconClock,
     IconExternalLink,
     IconMinus,
@@ -88,21 +89,24 @@ const detail = (item: RepurposeItem): string | null => item.error ?? null;
                     </p>
                 </div>
 
-                <div v-if="(item.posts ?? []).length > 0" class="flex flex-wrap items-center gap-1">
+                <div v-if="(item.posts ?? []).length > 0" class="flex flex-wrap items-center gap-1.5">
                     <a
                         v-for="post in item.posts"
                         :key="post.id"
                         :href="edit.url(post.id)"
-                        :title="post.platforms.map(getPlatformLabel).join(', ')"
-                        class="inline-flex items-center gap-1 rounded-lg p-1.5 transition-colors hover:bg-foreground/5"
+                        class="group/post inline-flex items-center gap-1.5 rounded-lg bg-foreground/5 py-1 pr-1.5 pl-2 text-xs font-medium text-foreground transition-colors hover:bg-foreground/10"
                     >
                         <img
                             v-for="platform in post.platforms"
                             :key="platform"
                             :src="getPlatformLogo(platform)"
                             :alt="getPlatformLabel(platform)"
-                            class="size-5 rounded-md"
+                            class="size-4 rounded-sm"
                         />
+
+                        {{ post.platforms.map(getPlatformLabel).join(', ') }}
+
+                        <IconChevronRight class="size-3.5 text-foreground/40 transition-colors group-hover/post:text-foreground" />
                     </a>
                 </div>
             </li>
