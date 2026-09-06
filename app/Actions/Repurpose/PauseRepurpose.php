@@ -6,20 +6,17 @@ namespace App\Actions\Repurpose;
 
 use App\Enums\Repurpose\Status;
 use App\Models\Repurpose;
-use Illuminate\Validation\ValidationException;
+use App\Support\Repurpose\RepurposeTransition;
 
 class PauseRepurpose
 {
     public static function execute(Repurpose $repurpose): Repurpose
     {
-        if ($repurpose->status !== Status::Active) {
-            throw ValidationException::withMessages([
-                'status' => __('repurposes.errors.only_active_pauses'),
-            ]);
-        }
-
-        $repurpose->update(['status' => Status::Paused]);
-
-        return $repurpose->fresh();
+        return RepurposeTransition::apply(
+            $repurpose,
+            [Status::Active],
+            __('repurposes.errors.only_active_pauses'),
+            fn (Repurpose $locked) => $locked->update(['status' => Status::Paused]),
+        );
     }
 }

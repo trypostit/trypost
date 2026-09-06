@@ -355,3 +355,14 @@ test('an update the activation rules reject leaves the stored destinations untou
 
     expect($repurpose->fresh()->destinations)->toEqual([$destination]);
 });
+
+test('a transition reads the stored status, not the copy the caller is holding', function () {
+    $repurpose = Repurpose::factory()->active()->create();
+
+    Repurpose::query()->whereKey($repurpose->id)->update(['status' => Status::Paused]);
+
+    expect($repurpose->status)->toBe(Status::Active)
+        ->and(fn () => PauseRepurpose::execute($repurpose))->toThrow(ValidationException::class);
+
+    expect($repurpose->fresh()->status)->toBe(Status::Paused);
+});

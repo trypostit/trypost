@@ -8,28 +8,28 @@ use App\Enums\Repurpose\Status;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
 use App\Support\PostPlatformMetaRules;
+use App\Support\Repurpose\RepurposeTransition;
 use Illuminate\Validation\ValidationException;
 
 class ActivateRepurpose
 {
     public static function execute(Repurpose $repurpose): Repurpose
     {
-        if (! in_array($repurpose->status, [Status::Draft, Status::Disabled], true)) {
-            throw ValidationException::withMessages([
-                'status' => __('repurposes.errors.only_idle_activates'),
-            ]);
-        }
+        return RepurposeTransition::apply(
+            $repurpose,
+            [Status::Draft, Status::Disabled],
+            __('repurposes.errors.only_idle_activates'),
+            function (Repurpose $locked): void {
+                self::assertPublishable($locked);
 
-        self::assertPublishable($repurpose);
-
-        $repurpose->update([
-            'status' => Status::Active,
-            'activated_at' => now(),
-            'next_poll_at' => null,
-            'last_error' => null,
-        ]);
-
-        return $repurpose->fresh();
+                $locked->update([
+                    'status' => Status::Active,
+                    'activated_at' => now(),
+                    'next_poll_at' => null,
+                    'last_error' => null,
+                ]);
+            },
+        );
     }
 
     public static function assertPublishable(Repurpose $repurpose): void

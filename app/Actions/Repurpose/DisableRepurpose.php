@@ -6,24 +6,21 @@ namespace App\Actions\Repurpose;
 
 use App\Enums\Repurpose\Status;
 use App\Models\Repurpose;
-use Illuminate\Validation\ValidationException;
+use App\Support\Repurpose\RepurposeTransition;
 
 class DisableRepurpose
 {
     public static function execute(Repurpose $repurpose): Repurpose
     {
-        if (! in_array($repurpose->status, [Status::Active, Status::Paused], true)) {
-            throw ValidationException::withMessages([
-                'status' => __('repurposes.errors.only_running_disables'),
-            ]);
-        }
-
-        $repurpose->update([
-            'status' => Status::Disabled,
-            'activated_at' => null,
-            'next_poll_at' => null,
-        ]);
-
-        return $repurpose->fresh();
+        return RepurposeTransition::apply(
+            $repurpose,
+            [Status::Active, Status::Paused],
+            __('repurposes.errors.only_running_disables'),
+            fn (Repurpose $locked) => $locked->update([
+                'status' => Status::Disabled,
+                'activated_at' => null,
+                'next_poll_at' => null,
+            ]),
+        );
     }
 }

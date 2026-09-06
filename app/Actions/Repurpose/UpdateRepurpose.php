@@ -35,14 +35,16 @@ class UpdateRepurpose
         }
 
         return DB::transaction(function () use ($repurpose, $attributes): Repurpose {
-            $repurpose->update($attributes);
-            $repurpose = $repurpose->fresh();
+            $locked = Repurpose::query()->whereKey($repurpose->id)->lockForUpdate()->firstOrFail();
 
-            if ($repurpose->status === Status::Active) {
-                ActivateRepurpose::assertPublishable($repurpose);
+            $locked->update($attributes);
+            $locked = $locked->fresh();
+
+            if ($locked->status === Status::Active) {
+                ActivateRepurpose::assertPublishable($locked);
             }
 
-            return $repurpose;
+            return $locked;
         });
     }
 }
