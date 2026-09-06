@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Repurpose;
 
-use App\Enums\Repurpose\PublishMode;
-use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Models\Repurpose;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
 class UpdateRepurpose
@@ -17,26 +16,15 @@ class UpdateRepurpose
      */
     public static function execute(Repurpose $repurpose, array $data): Repurpose
     {
-        $attributes = [];
+        $attributes = Arr::only($data, [
+            'source_social_account_id',
+            'source_format',
+            'publish_mode',
+            'destinations',
+        ]);
 
-        if (($sourceAccountId = data_get($data, 'source_social_account_id')) !== null
-            && $sourceAccountId !== $repurpose->source_social_account_id) {
-            $attributes['source_social_account_id'] = $sourceAccountId;
+        if (self::watchesSomethingElse($repurpose, $attributes)) {
             $attributes['activated_at'] = $repurpose->activated_at === null ? null : now();
-        }
-
-        if (($format = SourceFormat::tryFrom((string) data_get($data, 'source_format'))) !== null
-            && $format !== $repurpose->source_format) {
-            $attributes['source_format'] = $format;
-            $attributes['activated_at'] = $repurpose->activated_at === null ? null : now();
-        }
-
-        if (($publishMode = PublishMode::tryFrom((string) data_get($data, 'publish_mode'))) !== null) {
-            $attributes['publish_mode'] = $publishMode;
-        }
-
-        if (($destinations = data_get($data, 'destinations')) !== null) {
-            $attributes['destinations'] = $destinations;
         }
 
         return DB::transaction(function () use ($repurpose, $attributes): Repurpose {
@@ -51,5 +39,18 @@ class UpdateRepurpose
 
             return $locked;
         });
+    }
+
+    /**
+     * A repurpose aimed at another account or another format has a back catalogue
+     * behind it that was never meant for these destinations, so the watermark
+     * moves to now instead of replaying it.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    private static function watchesSomethingElse(Repurpose $repurpose, array $attributes): bool
+    {
+        return data_get($attributes, 'source_social_account_id', $repurpose->source_social_account_id) !== $repurpose->source_social_account_id
+            || data_get($attributes, 'source_format', $repurpose->source_format->value) !== $repurpose->source_format->value;
     }
 }

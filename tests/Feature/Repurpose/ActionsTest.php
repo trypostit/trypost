@@ -10,6 +10,7 @@ use App\Actions\Repurpose\PauseRepurpose;
 use App\Actions\Repurpose\ResumeRepurpose;
 use App\Actions\Repurpose\UpdateRepurpose;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
@@ -365,4 +366,29 @@ test('a transition reads the stored status, not the copy the caller is holding',
         ->and(fn () => PauseRepurpose::execute($repurpose))->toThrow(ValidationException::class);
 
     expect($repurpose->fresh()->status)->toBe(Status::Paused);
+});
+
+test('an update that repeats the current source and format leaves the watermark alone', function () {
+    [$workspace, $user, $account] = repurposeWorkspace();
+
+    $repurpose = Repurpose::factory()->active()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $account->id,
+        'source_format' => SourceFormat::Reel,
+        'destinations' => [tiktokDestination($workspace)],
+        'activated_at' => now()->subDays(3),
+    ]);
+
+    $watermark = $repurpose->activated_at;
+
+    UpdateRepurpose::execute($repurpose, [
+        'source_social_account_id' => $repurpose->source_social_account_id,
+        'source_format' => SourceFormat::Reel->value,
+        'publish_mode' => PublishMode::Draft->value,
+    ]);
+
+    $fresh = $repurpose->fresh();
+
+    expect($fresh->activated_at->equalTo($watermark))->toBeTrue()
+        ->and($fresh->publish_mode)->toBe(PublishMode::Draft);
 });
