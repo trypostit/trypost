@@ -34,4 +34,29 @@ class RepurposeTransition
             return $locked->fresh();
         });
     }
+
+    /**
+     * The system's transition. A status that moved on since the caller read it
+     * is an outcome, not an error — two accounts of one repurpose dying in the
+     * same sweep would otherwise throw out of an observer and take the sweep
+     * with it. Returning null also makes the pause idempotent, so a repurpose
+     * that is already stopped is left exactly as it was.
+     *
+     * @param  array<int, Status>  $from
+     * @param  callable(Repurpose): void  $change
+     */
+    public static function applyIfPossible(Repurpose $repurpose, array $from, callable $change): ?Repurpose
+    {
+        return DB::transaction(function () use ($repurpose, $from, $change): ?Repurpose {
+            $locked = Repurpose::query()->whereKey($repurpose->id)->lockForUpdate()->first();
+
+            if ($locked === null || ! in_array($locked->status, $from, true)) {
+                return null;
+            }
+
+            $change($locked);
+
+            return $locked->fresh();
+        });
+    }
 }
