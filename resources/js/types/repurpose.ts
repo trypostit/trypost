@@ -46,9 +46,14 @@ export interface Repurpose {
     updated_at: string;
 }
 
+export interface RepurposeItemPlatform {
+    platform: string;
+    status: string | null;
+}
+
 export interface RepurposeItemPost {
     id: string;
-    platforms: string[];
+    platforms: RepurposeItemPlatform[];
 }
 
 export interface RepurposeItem {

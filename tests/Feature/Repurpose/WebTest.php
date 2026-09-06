@@ -3,11 +3,14 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
+use App\Models\Post;
+use App\Models\PostPlatform;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
@@ -539,4 +542,41 @@ test('the activity item carries both the moment we acted and the original date',
             ->where('items.data.0.id', $item->id)
             ->where('items.data.0.created_at', $item->created_at->toIso8601String())
             ->where('items.data.0.source_created_at', $item->source_created_at->toIso8601String()));
+});
+
+test('the activity list exposes each replicated post status', function () {
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+        'destinations' => [destinationPayload($this->tiktok)],
+    ]);
+
+    $item = RepurposeItem::factory()->for($repurpose)->create();
+
+    $published = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'repurpose_item_id' => $item->id,
+    ]);
+    PostPlatform::factory()->for($published)->create([
+        'platform' => Platform::Mastodon,
+        'enabled' => true,
+        'status' => PostPlatformStatus::Published,
+    ]);
+
+    $failed = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'repurpose_item_id' => $item->id,
+    ]);
+    PostPlatform::factory()->for($failed)->create([
+        'platform' => Platform::Threads,
+        'enabled' => true,
+        'status' => PostPlatformStatus::Failed,
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.repurposes.show', $repurpose))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('items.data.0.posts', 2)
+            ->where('items.data.0.posts.0.platforms.0.status', PostPlatformStatus::Published->value)
+            ->where('items.data.0.posts.1.platforms.0.status', PostPlatformStatus::Failed->value));
 });
