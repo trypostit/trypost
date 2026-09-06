@@ -21,7 +21,7 @@ class CaptionAdapter
 
     public function adapt(Workspace $workspace, ?User $user, string $caption, Platform $platform): string
     {
-        if ($this->overflow($caption, $platform) === 0) {
+        if ($this->fits($caption, $platform)) {
             return $caption;
         }
 
@@ -30,13 +30,18 @@ class CaptionAdapter
     }
 
     /**
-     * How far past the limit the text the publisher actually sends is. Sanitizing
-     * moves the length both ways — HTML comes off, X rewrites every dot of a host
-     * — so the raw caption is never the thing to measure.
+     * What the publisher actually puts on the network. Sanitizing moves the length
+     * both ways — HTML comes off, X rewrites every dot of a host — so the raw
+     * caption is never the thing to measure a limit against.
      */
-    private function overflow(string $caption, Platform $platform): int
+    private function sent(string $caption, Platform $platform): string
     {
-        return $platform->contentOverflow($this->sanitizer->displayText($caption, $platform));
+        return $this->sanitizer->displayText($caption, $platform);
+    }
+
+    private function fits(string $caption, Platform $platform): bool
+    {
+        return $platform->contentOverflow($this->sent($caption, $platform)) === 0;
     }
 
     /**
@@ -77,38 +82,36 @@ class CaptionAdapter
 
         $shortened = trim((string) $result->text);
 
-        return $shortened !== '' && $this->overflow($shortened, $platform) === 0 ? $shortened : null;
+        return $shortened !== '' && $this->fits($shortened, $platform) ? $shortened : null;
     }
 
-    /** Shrinks the caption until it fits, scaling each cut by how far it still overshoots. */
     private function truncate(string $caption, Platform $platform): string
     {
-        $trimmed = $caption;
-
-        while ($trimmed !== '') {
-            $overflow = $this->overflow($trimmed, $platform);
-
-            if ($overflow === 0) {
-                return $trimmed;
-            }
-
-            $limit = $platform->maxContentLength();
-            $length = mb_strlen($trimmed);
-
-            $trimmed = $this->cutAtWord($trimmed, min(
-                (int) floor($length * $limit / ($limit + $overflow)),
-                $length - 1,
-            ));
+        while (! $this->fits($caption, $platform)) {
+            $caption = $this->cutAtWord($caption, $this->fittingLength($caption, $platform));
         }
 
-        return '';
+        return $caption;
+    }
+
+    /**
+     * How many raw characters to try next: the current length scaled by how much
+     * the sent text has to shrink, and always at least one shorter so the cut
+     * cannot stall on a caption that sanitizes to something longer.
+     */
+    private function fittingLength(string $caption, Platform $platform): int
+    {
+        $length = mb_strlen($caption);
+        $scaled = $length * $platform->maxContentLength() / mb_strlen($this->sent($caption, $platform));
+
+        return min((int) $scaled, $length - 1);
     }
 
     private function cutAtWord(string $caption, int $limit): string
     {
-        $trimmed = rtrim(mb_substr($caption, 0, max(1, $limit)));
-        $atBoundary = rtrim(Str::beforeLast($trimmed, ' '));
+        $cut = rtrim(mb_substr($caption, 0, $limit));
+        $boundary = rtrim(Str::beforeLast($cut, ' '));
 
-        return $atBoundary === '' ? $trimmed : $atBoundary;
+        return $boundary === '' ? $cut : $boundary;
     }
 }

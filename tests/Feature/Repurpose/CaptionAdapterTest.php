@@ -99,3 +99,12 @@ test('truncation keeps the line breaks the caption was written with', function (
     expect(Platform::TikTok->contentOverflow($result))->toBe(0)
         ->and($result)->toStartWith("Linha um\nLinha dois\n\n");
 });
+
+test('a caption with no word boundary is cut hard rather than emptied', function () {
+    $workspace = Workspace::factory()->create();
+
+    $result = app(CaptionAdapter::class)->adapt($workspace, null, str_repeat('a', 500), Platform::YouTube);
+
+    expect($result)->not->toBe('')
+        ->and(Platform::YouTube->contentOverflow($result))->toBe(0);
+});
