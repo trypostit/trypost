@@ -6,15 +6,20 @@ use App\Actions\Repurpose\ActivateRepurpose;
 use App\Actions\Repurpose\ResumeRepurpose;
 use App\Actions\Repurpose\UpdateRepurpose;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\Repurpose\ItemReason;
 use App\Enums\Repurpose\PauseReason;
 use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
+use App\Jobs\Repurpose\ProcessRepurposeItem;
 use App\Models\Repurpose;
+use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Post\MediaAttacher;
+use App\Services\Repurpose\CaptionAdapter;
 use App\Support\Repurpose\RepurposeTransition;
 use Illuminate\Validation\ValidationException;
 
@@ -530,4 +535,99 @@ test('switching an account back on says how many automations resumed', function 
     $this->actingAs($user)
         ->put(route('app.accounts.toggle', $source))
         ->assertSessionHas('flash.banner', trans_choice('accounts.flash.activated_resumed_repurposes', 1, ['count' => 1]));
+});
+
+test('deleting the last destination account also reports the automation it paused', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $source = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
+    $only = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Threads]);
+
+    Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Active,
+        'destinations' => [
+            ['social_account_id' => $only->id, 'content_type' => ContentType::ThreadsPost->value, 'meta' => []],
+        ],
+    ]);
+
+    // The account being disconnected is a destination, not the source — the
+    // repurpose still stops, so the flash has to say so.
+    $this->actingAs($user)
+        ->delete(route('app.accounts.disconnect', $only))
+        ->assertSessionHas('flash.banner', trans_choice('accounts.flash.disconnected_paused_repurposes', 1, ['count' => 1]));
+});
+
+test('pruning a destination from a draft repurpose does not pause it', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+    $only = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Threads]);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Draft,
+        'destinations' => [
+            ['social_account_id' => $only->id, 'content_type' => ContentType::ThreadsPost->value, 'meta' => []],
+        ],
+    ]);
+
+    $only->delete();
+
+    expect($repurpose->fresh()->destinations)->toBe([])
+        ->and($repurpose->fresh()->status)->toBe(Status::Draft)
+        ->and($repurpose->fresh()->paused_reason)->toBeNull();
+});
+
+test('a supported content type survives a platform change untouched', function () {
+    // healthWorkspace() already seats an Instagram as the source, and the
+    // one-account-per-network rule would refuse a second one.
+    config()->set('trypost.allow_multiple_social_accounts', true);
+
+    [$workspace, $user, $source] = healthWorkspace();
+
+    $instagram = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Active,
+        'destinations' => [
+            ['social_account_id' => $instagram->id, 'content_type' => ContentType::InstagramReel->value, 'meta' => []],
+        ],
+    ]);
+
+    // Instagram and Instagram-via-Facebook share their content types, so the
+    // stored one is still valid and must not be rewritten to the default.
+    $instagram->update(['platform' => Platform::InstagramFacebook]);
+
+    expect(data_get($repurpose->fresh()->destinations, '0.content_type'))
+        ->toBe(ContentType::InstagramReel->value);
+});
+
+test('an item whose destination account was deleted records no usable destination', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+    $gone = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Threads]);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Draft,
+        'destinations' => [
+            ['social_account_id' => $gone->id, 'content_type' => ContentType::ThreadsPost->value, 'meta' => []],
+        ],
+    ]);
+
+    $item = RepurposeItem::factory()->for($repurpose)->create();
+
+    // Straight to the job with the destination still stored but the account
+    // gone: the pruning path and the job's own guard are separate defences.
+    $repurpose->update(['destinations' => $repurpose->destinations]);
+    $gone->forceDelete();
+
+    (new ProcessRepurposeItem($item, 'https://example.com/v.mp4', 'caption'))
+        ->handle(app(MediaAttacher::class), app(CaptionAdapter::class));
+
+    expect($item->fresh()->reason)->toBe(ItemReason::NoUsableDestinations);
 });

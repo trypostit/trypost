@@ -302,16 +302,26 @@ class SocialController extends Controller
     }
 
     /**
-     * Status per repurpose, captured before the account changes. Taken before
-     * the delete because the source FK is nullOnDelete, and used as the
-     * baseline for what the observer went on to change.
+     * Status per repurpose that depends on this account, either as its source
+     * or as one of its destinations. Captured before the account changes —
+     * before a delete especially, since the source FK is nullOnDelete — and used
+     * as the baseline for whatever the observer goes on to change.
+     *
+     * Destinations are matched in PHP: they live in a JSON array of objects, and
+     * partial-object containment needs a different candidate shape on PostgreSQL
+     * than on MySQL. The row count is bounded by connected accounts times source
+     * formats.
      *
      * @return Collection<string, RepurposeStatus>
      */
     private function repurposeStatesFor(SocialAccount $account): Collection
     {
         return Repurpose::query()
-            ->where('source_social_account_id', $account->id)
+            ->where('workspace_id', $account->workspace_id)
+            ->get()
+            ->filter(fn (Repurpose $repurpose): bool => $repurpose->source_social_account_id === $account->id
+                || collect($repurpose->destinations)
+                    ->contains(fn (array $destination): bool => data_get($destination, 'social_account_id') === $account->id))
             ->pluck('status', 'id');
     }
 
