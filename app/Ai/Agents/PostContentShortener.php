@@ -27,6 +27,7 @@ class PostContentShortener implements Agent
             'brand_voice_traits' => $this->workspace->brand_voice_traits ?? [],
             'platform_label' => $this->platformLabel,
             'limit' => $this->limit,
+            'target' => max(1, (int) floor($this->limit * 0.95)),
         ])->render();
     }
 }

@@ -108,3 +108,41 @@ test('a caption with no word boundary is cut hard rather than emptied', function
     expect($result)->not->toBe('')
         ->and(Platform::YouTube->contentOverflow($result))->toBe(0);
 });
+
+test('the shortener prompt leaves out brand context the workspace does not have', function () {
+    $bare = new PostContentShortener(
+        workspace: Workspace::factory()->make(['name' => '', 'brand_voice_traits' => []]),
+        platformLabel: 'YouTube Shorts',
+        limit: 100,
+    );
+
+    expect($bare->instructions())
+        ->not->toContain('the brand ""')
+        ->not->toContain('Brand voice')
+        ->toContain('100 characters')
+        ->toContain('95 characters');
+
+    $branded = new PostContentShortener(
+        workspace: Workspace::factory()->make(['name' => 'Acme', 'brand_voice_traits' => ['casual']]),
+        platformLabel: 'TikTok',
+        limit: 2200,
+    );
+
+    expect($branded->instructions())
+        ->toContain('the brand "Acme"')
+        ->toContain('Keep a casual, relaxed register.');
+});
+
+test('a self-hosted install with no ai configured still gets a caption that fits', function () {
+    config()->set('trypost.self_hosted', true);
+    config()->set('ai.providers.openai.key', null);
+    config()->set('ai.providers.openai.url', 'http://127.0.0.1:9/v1');
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
+
+    $result = app(CaptionAdapter::class)->adapt($workspace, $user, str_repeat('palavra ', 300), Platform::YouTube);
+
+    expect($result)->not->toBe('')
+        ->and(Platform::YouTube->contentOverflow($result))->toBe(0);
+});
