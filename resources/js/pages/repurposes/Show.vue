@@ -144,10 +144,17 @@ const setDestinationContentType = (accountId: string, contentType: string) =>
 const setDestinationMeta = (accountId: string, meta: Record<string, any>) =>
     updateDestination(accountId, { meta });
 
+/** The account the header describes is the one being chosen, not the saved one. */
+const selectedSourceAccount = computed(
+    () =>
+        props.sourceAccounts.find((account) => account.id === form.source_social_account_id)
+        ?? props.repurpose.source_account,
+);
+
 const flowSource = computed<FlowNode>(() => ({
-    platform: props.repurpose.source_account?.platform ?? '',
-    label: props.repurpose.source_account?.display_name,
-    username: props.repurpose.source_account?.username,
+    platform: selectedSourceAccount.value?.platform ?? '',
+    label: selectedSourceAccount.value?.display_name,
+    username: selectedSourceAccount.value?.username,
 }));
 
 const flowDestinations = computed<FlowNode[]>(() =>
@@ -204,7 +211,7 @@ const handleDelete = () => {
                         </div>
 
                         <RepurposeSummary
-                            :source-account="repurpose.source_account"
+                            :source-account="selectedSourceAccount"
                             :format-label="currentFormatLabel"
                             :destinations="form.destinations"
                             :destination-accounts="destinationAccounts"

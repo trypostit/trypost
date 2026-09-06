@@ -184,6 +184,7 @@ test('switching the source hands the old one back to the destinations before sav
 
     $page->assertVisible("@channel-{$facebook->id}")
         ->assertMissing("@channel-{$source->id}")
+        ->assertVisible('@flow-source-instagram')
         ->click('@source-account-select');
 
     usleep(300000);
@@ -194,6 +195,8 @@ test('switching the source hands the old one back to the destinations before sav
 
     $page->assertVisible("@channel-{$source->id}")
         ->assertMissing("@channel-{$facebook->id}")
+        ->assertVisible('@flow-source-facebook')
+        ->assertMissing('@flow-source-instagram')
         ->assertNoJavaScriptErrors();
 });
 

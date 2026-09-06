@@ -20,7 +20,7 @@ withDefaults(
     <div class="flex items-center justify-center gap-3">
         <Tooltip>
             <TooltipTrigger as-child>
-                <span>
+                <span :data-testid="`flow-source-${source.platform}`">
                     <PlatformLogo :platform="source.platform" :size="size" />
                 </span>
             </TooltipTrigger>
