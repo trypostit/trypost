@@ -12,6 +12,7 @@ use App\Services\Ai\RecordAiUsage;
 use App\Services\Social\ContentSanitizer;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 class CaptionAdapter
@@ -79,26 +80,25 @@ class CaptionAdapter
         return $shortened !== '' && $this->overflow($shortened, $platform) === 0 ? $shortened : null;
     }
 
-    /**
-     * Shrinks the caption until the sanitized form fits, rescaling each pass by
-     * how far it still overshoots. Cutting to the raw limit would miss by exactly
-     * the amount sanitizing changes.
-     */
+    /** Shrinks the caption until it fits, scaling each cut by how far it still overshoots. */
     private function truncate(string $caption, Platform $platform): string
     {
         $trimmed = $caption;
 
         while ($trimmed !== '') {
-            $sanitized = $this->sanitizer->displayText($trimmed, $platform);
+            $overflow = $this->overflow($trimmed, $platform);
 
-            if ($platform->contentOverflow($sanitized) === 0) {
+            if ($overflow === 0) {
                 return $trimmed;
             }
 
+            $limit = $platform->maxContentLength();
             $length = mb_strlen($trimmed);
-            $target = (int) floor($length * $platform->maxContentLength() / mb_strlen($sanitized));
 
-            $trimmed = $this->cutAtWord($trimmed, min($target, $length - 1));
+            $trimmed = $this->cutAtWord($trimmed, min(
+                (int) floor($length * $limit / ($limit + $overflow)),
+                $length - 1,
+            ));
         }
 
         return '';
@@ -107,8 +107,8 @@ class CaptionAdapter
     private function cutAtWord(string $caption, int $limit): string
     {
         $trimmed = rtrim(mb_substr($caption, 0, max(1, $limit)));
-        $lastSpace = mb_strrpos($trimmed, ' ');
+        $atBoundary = rtrim(Str::beforeLast($trimmed, ' '));
 
-        return $lastSpace > 0 ? rtrim(mb_substr($trimmed, 0, $lastSpace)) : $trimmed;
+        return $atBoundary === '' ? $trimmed : $atBoundary;
     }
 }

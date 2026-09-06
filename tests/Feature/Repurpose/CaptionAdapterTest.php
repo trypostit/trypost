@@ -89,3 +89,13 @@ test('a caption keeps almost the whole allowance when nothing rewrites it', func
     expect(Platform::TikTok->contentOverflow($result))->toBe(0)
         ->and(mb_strlen($result))->toBeGreaterThan(Platform::TikTok->maxContentLength() - 10);
 });
+
+test('truncation keeps the line breaks the caption was written with', function () {
+    $workspace = Workspace::factory()->create();
+    $caption = "Linha um\nLinha dois\n\n".str_repeat('palavra ', 300);
+
+    $result = app(CaptionAdapter::class)->adapt($workspace, null, $caption, Platform::TikTok);
+
+    expect(Platform::TikTok->contentOverflow($result))->toBe(0)
+        ->and($result)->toStartWith("Linha um\nLinha dois\n\n");
+});
