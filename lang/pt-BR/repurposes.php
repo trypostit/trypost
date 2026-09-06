@@ -111,7 +111,7 @@ return [
         'description' => 'Escolha as contas que vão receber. Cada uma publica no formato que você definir.',
         'hint' => 'A legenda só é adaptada por rede quando ultrapassa o limite daquela rede.',
         'none_available' => 'Nenhuma outra conta está conectada neste workspace.',
-        'save' => 'Salvar destinos',
+        'save' => 'Salvar alterações',
         'saved' => 'Destinos salvos',
         'publish_as' => 'Publicar como',
     ],
@@ -152,6 +152,12 @@ return [
             'download_failed' => 'Não foi possível baixar o vídeo',
             'post_creation_failed' => 'Nenhum destino disponível',
         ],
+    ],
+
+    'menu' => [
+
+        'label' => 'Mais ações',
+
     ],
 
     'danger' => [

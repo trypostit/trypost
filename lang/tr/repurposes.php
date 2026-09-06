@@ -111,7 +111,7 @@ return [
         'description' => 'Alacak hesapları seç. Her biri senin belirlediğin formatta paylaşır.',
         'hint' => 'Açıklama yalnızca o ağın sınırını aştığında ağa göre uyarlanır.',
         'none_available' => 'Bu çalışma alanında bağlı başka hesap yok.',
-        'save' => 'Hedefleri kaydet',
+        'save' => 'Değişiklikleri kaydet',
         'saved' => 'Hedefler kaydedildi',
         'publish_as' => 'Şu olarak paylaş',
     ],
@@ -152,6 +152,12 @@ return [
             'download_failed' => 'Video indirilemedi',
             'post_creation_failed' => 'Uygun hedef yok',
         ],
+    ],
+
+    'menu' => [
+
+        'label' => 'Diğer işlemler',
+
     ],
 
     'danger' => [

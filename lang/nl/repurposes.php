@@ -111,7 +111,7 @@ return [
         'description' => 'Kies de accounts die het ontvangen. Elk plaatst in het formaat dat jij kiest.',
         'hint' => 'Het bijschrift wordt alleen per netwerk aangepast als het de limiet van dat netwerk overschrijdt.',
         'none_available' => 'Er is nog geen ander account gekoppeld in deze workspace.',
-        'save' => 'Bestemmingen opslaan',
+        'save' => 'Wijzigingen opslaan',
         'saved' => 'Bestemmingen opgeslagen',
         'publish_as' => 'Plaatsen als',
     ],
@@ -152,6 +152,12 @@ return [
             'download_failed' => 'De video kon niet worden gedownload',
             'post_creation_failed' => 'Geen bestemming beschikbaar',
         ],
+    ],
+
+    'menu' => [
+
+        'label' => 'Meer acties',
+
     ],
 
     'danger' => [

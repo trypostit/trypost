@@ -111,7 +111,7 @@ return [
         'description' => 'Wybierz konta, które go otrzymają. Każde publikuje w wybranym przez ciebie formacie.',
         'hint' => 'Opis jest dostosowywany do sieci tylko wtedy, gdy przekracza jej limit.',
         'none_available' => 'W tym obszarze roboczym nie ma jeszcze innego połączonego konta.',
-        'save' => 'Zapisz cele',
+        'save' => 'Zapisz zmiany',
         'saved' => 'Cele zapisane',
         'publish_as' => 'Publikuj jako',
     ],
@@ -152,6 +152,12 @@ return [
             'download_failed' => 'Nie udało się pobrać filmu',
             'post_creation_failed' => 'Brak dostępnego celu',
         ],
+    ],
+
+    'menu' => [
+
+        'label' => 'Więcej akcji',
+
     ],
 
     'danger' => [

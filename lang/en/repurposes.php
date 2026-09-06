@@ -111,7 +111,7 @@ return [
         'description' => 'Pick the accounts that receive it. Each one publishes in the format you choose.',
         'hint' => 'Captions are adapted per network only when they exceed that network\'s limit.',
         'none_available' => 'No other account is connected in this workspace yet.',
-        'save' => 'Save destinations',
+        'save' => 'Save changes',
         'saved' => 'Destinations saved',
         'publish_as' => 'Publish as',
     ],
@@ -152,6 +152,12 @@ return [
             'download_failed' => 'The video could not be downloaded',
             'post_creation_failed' => 'No destination was available',
         ],
+    ],
+
+    'menu' => [
+
+        'label' => 'More actions',
+
     ],
 
     'danger' => [

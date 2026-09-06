@@ -111,7 +111,7 @@ return [
         'description' => 'Scegli gli account che lo riceveranno. Ognuno pubblica nel formato che imposti.',
         'hint' => 'La didascalia viene adattata per rete solo quando supera il limite di quella rete.',
         'none_available' => 'Nessun altro account è collegato in questo workspace.',
-        'save' => 'Salva destinazioni',
+        'save' => 'Salva modifiche',
         'saved' => 'Destinazioni salvate',
         'publish_as' => 'Pubblica come',
     ],
@@ -152,6 +152,12 @@ return [
             'download_failed' => 'Non è stato possibile scaricare il video',
             'post_creation_failed' => 'Nessuna destinazione disponibile',
         ],
+    ],
+
+    'menu' => [
+
+        'label' => 'Altre azioni',
+
     ],
 
     'danger' => [

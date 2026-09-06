@@ -107,7 +107,7 @@ test('the edit page shows the watched format, the destinations and the settings 
         ->assertVisible('@repurpose-summary')
         ->assertVisible('@repurpose-source-card')
         ->assertVisible('@source-format-select')
-        ->assertVisible('@tab-settings')
+        ->assertVisible('@repurpose-lifecycle')
         ->assertNoJavaScriptErrors();
 });
 
@@ -194,5 +194,28 @@ test('switching the source hands the old one back to the destinations before sav
 
     $page->assertVisible("@channel-{$source->id}")
         ->assertMissing("@channel-{$facebook->id}")
+        ->assertNoJavaScriptErrors();
+});
+
+test('deleting sits behind the menu instead of on the page', function () {
+    [$user, $workspace, $source] = repurposeOwnerWithAccounts();
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $source->id,
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.repurposes.show', $repurpose));
+
+    waitForRepurposeTestId($page, 'repurpose-menu');
+
+    $page->assertMissing('@delete-repurpose')
+        ->click('@repurpose-menu');
+
+    usleep(400000);
+
+    $page->assertVisible('@delete-repurpose')
         ->assertNoJavaScriptErrors();
 });

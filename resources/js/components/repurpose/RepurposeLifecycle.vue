@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
-import { IconAlertTriangle } from '@tabler/icons-vue';
+import { IconDots, IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 import { toast } from 'vue-sonner';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import date from '@/date';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { activate, disable, pause, resume } from '@/routes/app/repurposes';
 import type { Repurpose } from '@/types/repurpose';
 import { RepurposeStatus } from '@/types/repurpose-status';
@@ -15,6 +19,8 @@ import { RepurposeStatus } from '@/types/repurpose-status';
 const props = defineProps<{
     repurpose: Repurpose;
 }>();
+
+const emit = defineEmits<{ delete: [] }>();
 
 const status = computed(() => props.repurpose.status);
 
@@ -33,34 +39,22 @@ const send = (url: string) =>
 </script>
 
 <template>
-    <Card data-testid="repurpose-status-card">
-        <CardHeader>
-            <CardTitle>{{ $t('repurposes.status_card.title') }}</CardTitle>
-            <CardDescription>{{ $t(`repurposes.status_card.${repurpose.status}_hint`) }}</CardDescription>
-        </CardHeader>
+    <div class="flex flex-wrap items-center gap-2" data-testid="repurpose-lifecycle">
+        <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+                <Button variant="outline" size="icon" data-testid="repurpose-menu" :aria-label="$t('repurposes.menu.label')">
+                    <IconDots class="size-4" />
+                </Button>
+            </DropdownMenuTrigger>
 
-        <CardContent class="space-y-4">
-            <p v-if="repurpose.last_error" class="flex items-start gap-2 rounded-lg border-2 border-foreground bg-rose-50 p-2 text-xs font-semibold text-rose-700">
-                <IconAlertTriangle class="mt-0.5 size-3.5 shrink-0" />
-                {{ repurpose.last_error }}
-            </p>
+            <DropdownMenuContent align="start">
+                <DropdownMenuItem variant="destructive" data-testid="delete-repurpose" @select="emit('delete')">
+                    <IconTrash class="size-4" />
+                    {{ $t('repurposes.danger.delete') }}
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
 
-            <dl class="space-y-2 text-sm">
-                <div class="flex items-baseline justify-between gap-3">
-                    <dt class="text-xs uppercase tracking-wide text-muted-foreground">
-                        {{ $t('repurposes.status_card.watermark') }}
-                    </dt>
-                    <dd class="text-right">{{ repurpose.activated_at ? date.formatDateTime(repurpose.activated_at) : '—' }}</dd>
-                </div>
-                <div class="flex items-baseline justify-between gap-3">
-                    <dt class="text-xs uppercase tracking-wide text-muted-foreground">
-                        {{ $t('repurposes.status_card.last_polled') }}
-                    </dt>
-                    <dd class="text-right">{{ repurpose.last_polled_at ? date.diffForHumans(repurpose.last_polled_at) : '—' }}</dd>
-                </div>
-            </dl>
-
-            <div class="flex flex-wrap gap-2">
                 <Button
                     v-if="canActivate"
                     data-testid="activate-repurpose"
@@ -95,7 +89,5 @@ const send = (url: string) =>
                 >
                     {{ $t('repurposes.status_card.disable') }}
                 </Button>
-            </div>
-        </CardContent>
-    </Card>
+    </div>
 </template>

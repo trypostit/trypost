@@ -111,7 +111,7 @@ return [
         'description' => 'Wähle die Konten, die es erhalten. Jedes veröffentlicht im Format deiner Wahl.',
         'hint' => 'Der Text wird nur dann pro Netzwerk angepasst, wenn er dessen Limit überschreitet.',
         'none_available' => 'In diesem Workspace ist noch kein weiteres Konto verbunden.',
-        'save' => 'Ziele speichern',
+        'save' => 'Änderungen speichern',
         'saved' => 'Ziele gespeichert',
         'publish_as' => 'Veröffentlichen als',
     ],
@@ -152,6 +152,12 @@ return [
             'download_failed' => 'Das Video konnte nicht heruntergeladen werden',
             'post_creation_failed' => 'Kein Ziel verfügbar',
         ],
+    ],
+
+    'menu' => [
+
+        'label' => 'Weitere Aktionen',
+
     ],
 
     'danger' => [

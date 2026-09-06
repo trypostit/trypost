@@ -111,7 +111,7 @@ return [
         'description' => '选择接收的账号。每个账号按你指定的格式发布。',
         'hint' => '只有当文案超出该平台上限时，才会按平台调整。',
         'none_available' => '这个工作区还没有连接其他账号。',
-        'save' => '保存目标',
+        'save' => '保存更改',
         'saved' => '目标已保存',
         'publish_as' => '发布为',
     ],
@@ -152,6 +152,12 @@ return [
             'download_failed' => '视频下载失败',
             'post_creation_failed' => '没有可用的目标',
         ],
+    ],
+
+    'menu' => [
+
+        'label' => '更多操作',
+
     ],
 
     'danger' => [

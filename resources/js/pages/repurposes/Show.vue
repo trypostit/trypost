@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { IconTrash } from '@tabler/icons-vue';
+import { IconAlertTriangle } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
@@ -8,8 +8,9 @@ import { toast } from 'vue-sonner';
 import ChannelConfigurator from '@/components/ChannelConfigurator.vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import PublishModeCard from '@/components/repurpose/PublishModeCard.vue';
+import RepurposeFlow from '@/components/repurpose/RepurposeFlow.vue';
 import RepurposeItemList from '@/components/repurpose/RepurposeItemList.vue';
-import RepurposeStatusCard from '@/components/repurpose/RepurposeStatusCard.vue';
+import RepurposeLifecycle from '@/components/repurpose/RepurposeLifecycle.vue';
 import RepurposeSummary from '@/components/repurpose/RepurposeSummary.vue';
 import SourceFormatCard from '@/components/repurpose/SourceFormatCard.vue';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +25,7 @@ import type { PinterestBoard } from '@/types';
 import type { Channel, ChannelAccount, ChannelTikTokCreatorInfo } from '@/types/channel';
 import type { MediaItem } from '@/types/media';
 import type {
+    FlowNode,
     PublishModeOption,
     Repurpose,
     RepurposeDestination,
@@ -142,6 +144,22 @@ const setDestinationContentType = (accountId: string, contentType: string) =>
 const setDestinationMeta = (accountId: string, meta: Record<string, any>) =>
     updateDestination(accountId, { meta });
 
+const flowSource = computed<FlowNode>(() => ({
+    platform: props.repurpose.source_account?.platform ?? '',
+    label: props.repurpose.source_account?.display_name,
+    username: props.repurpose.source_account?.username,
+}));
+
+const flowDestinations = computed<FlowNode[]>(() =>
+    form.destinations.flatMap((destination) => {
+        const account = props.destinationAccounts.find((item) => item.id === destination.social_account_id);
+
+        return account
+            ? [{ platform: account.platform, label: account.display_name, username: account.username }]
+            : [];
+    }),
+);
+
 const currentFormatLabel = computed(
     () => props.sourceFormats.find((option) => option.value === form.source_format)?.label ?? '',
 );
@@ -169,26 +187,46 @@ const handleDelete = () => {
 
     <AppLayout>
         <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
-            <header class="space-y-2">
-                <div class="flex flex-wrap items-center gap-3">
-                    <h1
-                        class="text-2xl font-semibold leading-tight text-foreground sm:text-4xl"
-                        style="font-family: var(--font-display)"
-                    >
-                        {{ $t('repurposes.show.title') }}
-                    </h1>
+            <header class="space-y-4">
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                    <div class="space-y-2">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <h1
+                                class="text-2xl font-semibold leading-tight text-foreground sm:text-4xl"
+                                style="font-family: var(--font-display)"
+                            >
+                                {{ $t('repurposes.show.title') }}
+                            </h1>
 
-                    <Badge :variant="repurposeStatusVariant(repurpose.status)">
-                        {{ $t(`repurposes.status.${repurpose.status}`) }}
-                    </Badge>
+                            <Badge :variant="repurposeStatusVariant(repurpose.status)">
+                                {{ $t(`repurposes.status.${repurpose.status}`) }}
+                            </Badge>
+                        </div>
+
+                        <RepurposeSummary
+                            :source-account="repurpose.source_account"
+                            :format-label="currentFormatLabel"
+                            :destinations="form.destinations"
+                            :destination-accounts="destinationAccounts"
+                        />
+                    </div>
+
+                    <RepurposeLifecycle :repurpose="repurpose" @delete="handleDelete" />
                 </div>
 
-                <RepurposeSummary
-                    :source-account="repurpose.source_account"
-                    :format-label="currentFormatLabel"
-                    :destinations="form.destinations"
-                    :destination-accounts="destinationAccounts"
-                />
+                <p
+                    v-if="repurpose.last_error"
+                    class="flex items-start gap-2 rounded-lg border-2 border-foreground bg-rose-50 p-2 text-xs font-semibold text-rose-700"
+                >
+                    <IconAlertTriangle class="mt-0.5 size-3.5 shrink-0" />
+                    {{ repurpose.last_error }}
+                </p>
+
+                <Card>
+                    <CardContent class="py-6">
+                        <RepurposeFlow :source="flowSource" :destinations="flowDestinations" size="lg" />
+                    </CardContent>
+                </Card>
             </header>
 
             <Tabs default-value="configuration">
@@ -198,9 +236,6 @@ const handleDelete = () => {
                     </TabsTrigger>
                     <TabsTrigger value="activity" data-testid="tab-activity">
                         {{ $t('repurposes.tabs.activity') }}
-                    </TabsTrigger>
-                    <TabsTrigger value="settings" data-testid="tab-settings">
-                        {{ $t('repurposes.tabs.settings') }}
                     </TabsTrigger>
                 </TabsList>
 
@@ -216,8 +251,6 @@ const handleDelete = () => {
                             />
 
                             <PublishModeCard v-model="form.publish_mode" :modes="publishModes" />
-
-                            <RepurposeStatusCard :repurpose="repurpose" />
                         </div>
 
                         <div class="space-y-4">
@@ -252,21 +285,7 @@ const handleDelete = () => {
                     <RepurposeItemList :items="items.data ?? []" />
                 </TabsContent>
 
-                <TabsContent value="settings">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>{{ $t('repurposes.danger.title') }}</CardTitle>
-                            <CardDescription>{{ $t('repurposes.danger.description') }}</CardDescription>
-                        </CardHeader>
 
-                        <CardContent>
-                            <Button variant="destructive" data-testid="delete-repurpose" @click="handleDelete">
-                                <IconTrash class="size-4" />
-                                {{ $t('repurposes.danger.delete') }}
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
             </Tabs>
         </div>
 

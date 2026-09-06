@@ -111,7 +111,7 @@ return [
         'description' => 'Choisissez les comptes qui le reçoivent. Chacun publie dans le format que vous choisissez.',
         'hint' => 'La légende n\'est adaptée par réseau que lorsqu\'elle dépasse la limite de ce réseau.',
         'none_available' => 'Aucun autre compte n\'est connecté dans cet espace de travail.',
-        'save' => 'Enregistrer les destinations',
+        'save' => 'Enregistrer',
         'saved' => 'Destinations enregistrées',
         'publish_as' => 'Publier comme',
     ],
@@ -152,6 +152,12 @@ return [
             'download_failed' => 'La vidéo n\'a pas pu être téléchargée',
             'post_creation_failed' => 'Aucune destination disponible',
         ],
+    ],
+
+    'menu' => [
+
+        'label' => 'Plus d\'actions',
+
     ],
 
     'danger' => [

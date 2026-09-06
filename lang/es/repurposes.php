@@ -111,7 +111,7 @@ return [
         'description' => 'Elige las cuentas que lo recibirán. Cada una publica en el formato que elijas.',
         'hint' => 'El texto solo se adapta por red cuando supera el límite de esa red.',
         'none_available' => 'No hay ninguna otra cuenta conectada en este espacio de trabajo.',
-        'save' => 'Guardar destinos',
+        'save' => 'Guardar cambios',
         'saved' => 'Destinos guardados',
         'publish_as' => 'Publicar como',
     ],
@@ -152,6 +152,12 @@ return [
             'download_failed' => 'No se pudo descargar el vídeo',
             'post_creation_failed' => 'No había ningún destino disponible',
         ],
+    ],
+
+    'menu' => [
+
+        'label' => 'Más acciones',
+
     ],
 
     'danger' => [
