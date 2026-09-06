@@ -749,3 +749,26 @@ test('a billed fallback check counts as a verification like any other', function
     // that away means the pre-publish check pays to ask again minutes later.
     expect($this->account->fresh()->last_verified_at)->not->toBeNull();
 });
+
+test('a successful refresh promotes a token-expired account back to connected', function () {
+    $this->account->update(['status' => Status::TokenExpired, 'disconnected_at' => now()]);
+
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('refreshToken')->once()->andReturnTrue();
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    (new RefreshSocialToken($this->account))->handle($verifier);
+
+    expect($this->account->fresh()->status)->toBe(Status::Connected)
+        ->and($this->account->fresh()->disconnected_at)->toBeNull();
+});
+
+test('a successful refresh leaves an already connected account alone', function () {
+    $verifier = mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('refreshToken')->once()->andReturnTrue();
+    app()->instance(ConnectionVerifier::class, $verifier);
+
+    (new RefreshSocialToken($this->account))->handle($verifier);
+
+    expect($this->account->fresh()->status)->toBe(Status::Connected);
+});
