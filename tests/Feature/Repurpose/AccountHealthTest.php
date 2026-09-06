@@ -314,3 +314,82 @@ test('an unrelated account update does not touch the repurpose', function () {
 
     expect($repurpose->fresh()->status)->toBe(Status::Active);
 });
+
+test('deleting a destination account prunes it from the repurpose', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+
+    $keep = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Mastodon]);
+    $drop = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Threads]);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Active,
+        'destinations' => [
+            ['social_account_id' => $keep->id, 'content_type' => ContentType::MastodonPost->value, 'meta' => []],
+            ['social_account_id' => $drop->id, 'content_type' => ContentType::ThreadsPost->value, 'meta' => []],
+        ],
+    ]);
+
+    $drop->delete();
+
+    $destinations = $repurpose->fresh()->destinations;
+
+    expect($destinations)->toHaveCount(1)
+        ->and(data_get($destinations, '0.social_account_id'))->toBe($keep->id)
+        ->and($repurpose->fresh()->status)->toBe(Status::Active);
+});
+
+test('deleting the last destination pauses the repurpose', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+    $only = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Threads]);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Active,
+        'destinations' => [
+            ['social_account_id' => $only->id, 'content_type' => ContentType::ThreadsPost->value, 'meta' => []],
+        ],
+    ]);
+
+    $only->delete();
+
+    expect($repurpose->fresh()->destinations)->toBe([])
+        ->and($repurpose->fresh()->paused_reason)->toBe(PauseReason::NoDestinations);
+});
+
+test('reconnecting a LinkedIn destination as a page realigns its content type', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+
+    $linkedin = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::LinkedIn]);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Active,
+        'destinations' => [
+            ['social_account_id' => $linkedin->id, 'content_type' => ContentType::LinkedInPost->value, 'meta' => []],
+        ],
+    ]);
+
+    $linkedin->update(['platform' => Platform::LinkedInPage]);
+
+    expect(data_get($repurpose->fresh()->destinations, '0.content_type'))
+        ->toBe(ContentType::LinkedInPagePost->value);
+});
+
+test('a deactivated destination is left in place', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+    $off = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Threads]);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Active,
+        'destinations' => [
+            ['social_account_id' => $off->id, 'content_type' => ContentType::ThreadsPost->value, 'meta' => []],
+        ],
+    ]);
+
+    $off->update(['is_active' => false]);
+
+    expect($repurpose->fresh()->destinations)->toHaveCount(1)
+        ->and($repurpose->fresh()->status)->toBe(Status::Active);
+});
