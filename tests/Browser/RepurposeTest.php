@@ -71,8 +71,14 @@ test('using a template opens the dialog with only the matching source account', 
     waitForRepurposeTestId($page, 'create-repurpose-dialog');
 
     $page->assertVisible('@create-repurpose-dialog')
-        ->assertVisible("@source-account-{$source->id}")
-        ->assertVisible('@create-repurpose-submit')
+        ->assertVisible('@source-account-select')
+        ->assertVisible('@create-repurpose-submit');
+
+    $page->click('@source-account-select');
+
+    waitForRepurposeTestId($page, 'source-account-option');
+
+    $page->assertSee($source->display_name)
         ->assertNoJavaScriptErrors();
 });
 

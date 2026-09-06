@@ -5,6 +5,7 @@ import { computed, watch } from 'vue';
 
 import InputError from '@/components/InputError.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
+import SearchableSelect from '@/components/SearchableSelect.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -36,6 +37,14 @@ const selectableAccounts = computed(() =>
         : props.sourceAccounts,
 );
 
+const accountOptions = computed(() =>
+    selectableAccounts.value.map((account) => ({
+        value: account.id,
+        label: account.display_name,
+        platform: account.platform,
+    })),
+);
+
 watch(open, (isOpen) => {
     if (!isOpen) {
         form.reset();
@@ -46,10 +55,6 @@ watch(open, (isOpen) => {
 
     form.source_social_account_id = selectableAccounts.value[0]?.id ?? '';
 });
-
-const select = (account: ChannelAccount) => {
-    form.source_social_account_id = account.id;
-};
 
 const submit = () => {
     form.post(store.url(), {
@@ -92,29 +97,26 @@ const submit = () => {
                         {{ $t('repurposes.create.source_label') }}
                     </p>
 
-                    <div class="grid gap-2">
-                        <button
-                            v-for="account in selectableAccounts"
-                            :key="account.id"
-                            type="button"
-                            class="group flex items-center gap-3 rounded-xl border-2 border-foreground p-3 text-left shadow-xs transition-shadow hover:shadow-md"
-                            :class="
-                                form.source_social_account_id === account.id
-                                    ? 'bg-emerald-50'
-                                    : 'bg-card'
-                            "
-                            :data-testid="`source-account-${account.id}`"
-                            @click="select(account)"
+                    <div data-testid="source-account-select">
+                        <SearchableSelect
+                            v-model="form.source_social_account_id"
+                            :options="accountOptions"
+                            :placeholder="$t('repurposes.create.source_placeholder')"
+                            :search-placeholder="$t('repurposes.create.source_search')"
+                            :empty-text="$t('repurposes.create.source_empty')"
+                            :invalid="Boolean(form.errors.source_social_account_id)"
                         >
-                            <PlatformLogo :platform="account.platform" />
+                            <template #option="{ option }">
+                                <PlatformLogo :platform="option.platform" size="sm" data-testid="source-account-option" />
 
-                            <span class="min-w-0">
-                                <span class="block truncate text-sm font-bold">{{ account.display_name }}</span>
-                                <span class="block truncate text-xs text-muted-foreground">
-                                    {{ getPlatformLabel(account.platform) }}
+                                <span class="min-w-0 text-left">
+                                    <span class="block truncate text-sm font-bold">{{ option.label }}</span>
+                                    <span class="block truncate text-xs text-muted-foreground">
+                                        {{ getPlatformLabel(option.platform) }}
+                                    </span>
                                 </span>
-                            </span>
-                        </button>
+                            </template>
+                        </SearchableSelect>
                     </div>
 
                     <InputError :message="form.errors.source_social_account_id" />
