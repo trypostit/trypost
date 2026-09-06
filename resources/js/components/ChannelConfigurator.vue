@@ -55,6 +55,7 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                                 !channel.issue ? 'opacity-100 hover:opacity-90' : '',
                             ]"
                             :disabled="Boolean(channel.issue) && !isSelected(channel.id)"
+                            :data-testid="`channel-${channel.id}`"
                             @click="emit('toggle', channel.id)"
                         >
                             <div class="relative">

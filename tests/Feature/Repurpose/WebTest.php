@@ -98,7 +98,7 @@ test('the show page renders the repurpose, its destinations and its items', func
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('repurposes/Show')
             ->where('repurpose.id', $repurpose->id)
-            ->has('destinationAccounts', 1)
+            ->has('destinationAccounts', 2)
             ->has('items'));
 });
 
@@ -472,4 +472,20 @@ test('the edit page does not offer an account we cannot download from as a sourc
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->has('sourceAccounts', 1)
             ->where('sourceAccounts.0.id', $this->source->id));
+});
+
+test('every connected account is sent so the page can exclude whichever becomes the source', function () {
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.repurposes.show', $repurpose))
+        ->assertInertia(function (AssertableInertia $page) {
+            $ids = collect($page->toArray()['props']['destinationAccounts'])->pluck('id');
+
+            expect($ids)->toContain($this->source->id)
+                ->and($ids)->toContain($this->tiktok->id);
+        });
 });

@@ -163,3 +163,36 @@ test('the source account is picked from a searchable list on the edit page', fun
         ->assertSee($other->display_name)
         ->assertNoJavaScriptErrors();
 });
+
+test('switching the source hands the old one back to the destinations before saving', function () {
+    [$user, $workspace, $source] = repurposeOwnerWithAccounts();
+
+    config()->set('trypost.allow_multiple_social_accounts', true);
+
+    $facebook = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Facebook]);
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $source->id,
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.repurposes.show', $repurpose));
+
+    waitForRepurposeTestId($page, 'source-account-select');
+
+    $page->assertVisible("@channel-{$facebook->id}")
+        ->assertMissing("@channel-{$source->id}")
+        ->click('@source-account-select');
+
+    usleep(300000);
+
+    $page->click("@source-option-{$facebook->id}");
+
+    usleep(400000);
+
+    $page->assertVisible("@channel-{$source->id}")
+        ->assertMissing("@channel-{$facebook->id}")
+        ->assertNoJavaScriptErrors();
+});

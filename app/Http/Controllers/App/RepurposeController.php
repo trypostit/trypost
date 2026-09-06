@@ -56,12 +56,11 @@ class RepurposeController extends Controller
         $this->authorize('view', $repurpose);
 
         $accounts = $this->connectedAccounts($request);
-        $destinations = $accounts->whereNotIn('id', [$repurpose->source_social_account_id])->values();
 
         return Inertia::render('repurposes/Show', [
             'repurpose' => new RepurposeResource($repurpose->load('sourceAccount')),
             'sourceAccounts' => SocialAccountResource::collection($this->sourceAccounts($accounts)),
-            'destinationAccounts' => SocialAccountResource::collection($destinations),
+            'destinationAccounts' => SocialAccountResource::collection($accounts),
             'items' => Inertia::scroll(fn () => RepurposeItemResource::collection(ListRepurposeItems::execute($repurpose))),
             'sourceFormats' => $this->sourceFormats($repurpose),
             'publishModes' => array_map(
@@ -72,8 +71,8 @@ class RepurposeController extends Controller
                 ],
                 PublishMode::cases(),
             ),
-            'recommendedFormats' => $this->recommendedFormats($destinations, $repurpose->source_format),
-            ...$this->platformSettingsProps($destinations),
+            'recommendedFormats' => $this->recommendedFormats($accounts, $repurpose->source_format),
+            ...$this->platformSettingsProps($accounts),
         ]);
     }
 

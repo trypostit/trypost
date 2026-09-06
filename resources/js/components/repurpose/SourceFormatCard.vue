@@ -62,7 +62,12 @@ const accountOptions = computed(() =>
                                 :alt="getPlatformLabel(option.platform)"
                                 class="size-4 shrink-0 rounded-sm"
                             />
-                            <PlatformLogo v-else :platform="option.platform" size="sm" />
+                            <PlatformLogo
+                                v-else
+                                :platform="option.platform"
+                                size="sm"
+                                :data-testid="`source-option-${option.value}`"
+                            />
 
                             <span v-if="compact" class="truncate">{{ option.label }}</span>
                             <span v-else class="min-w-0 text-left">
