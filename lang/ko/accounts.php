@@ -123,6 +123,7 @@ return [
     ],
 
     'flash' => [
+        'activated_resumed_repurposes' => '계정을 켰습니다. 자동화 :count개를 재개했습니다.|계정을 켰습니다. 자동화 :count개를 재개했습니다.',
         'disconnected_paused_repurposes' => '계정 연결을 해제했습니다. 자동화 :count개를 중단했습니다.|계정 연결을 해제했습니다. 자동화 :count개를 중단했습니다.',
         'deactivated_paused_repurposes' => '계정을 껐습니다. 자동화 :count개를 중단했습니다.|계정을 껐습니다. 자동화 :count개를 중단했습니다.',
         'disconnected' => '계정 연결이 해제되었습니다!',

@@ -123,6 +123,7 @@ return [
     ],
 
     'flash' => [
+        'activated_resumed_repurposes' => 'Compte activé. :count automatisation reprise.|Compte activé. :count automatisations reprises.',
         'disconnected_paused_repurposes' => 'Compte déconnecté. :count automatisation en pause.|Compte déconnecté. :count automatisations en pause.',
         'deactivated_paused_repurposes' => 'Compte désactivé. :count automatisation en pause.|Compte désactivé. :count automatisations en pause.',
         'disconnected' => 'Compte déconnecté avec succès !',

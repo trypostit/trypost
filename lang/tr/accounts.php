@@ -125,6 +125,7 @@ return [
     ],
 
     'flash' => [
+        'activated_resumed_repurposes' => 'Hesap açıldı. :count otomasyon devam ediyor.|Hesap açıldı. :count otomasyon devam ediyor.',
         'disconnected_paused_repurposes' => 'Hesap bağlantısı kesildi. :count otomasyon duraklatıldı.|Hesap bağlantısı kesildi. :count otomasyon duraklatıldı.',
         'deactivated_paused_repurposes' => 'Hesap kapatıldı. :count otomasyon duraklatıldı.|Hesap kapatıldı. :count otomasyon duraklatıldı.',
         'disconnected' => 'Hesap bağlantısı başarıyla kesildi!',

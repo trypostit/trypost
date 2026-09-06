@@ -157,7 +157,7 @@ return [
             'media_url_missing' => 'A rede não disponibilizou o arquivo para download, normalmente por causa de áudio com direitos autorais',
             'download_failed' => 'Não foi possível baixar o vídeo',
             'post_creation_failed' => 'Não foi possível criar os posts',
-            'no_usable_destinations' => 'Todos os destinos foram removidos ou desativados',
+            'no_usable_destinations' => 'Nenhum destino estava disponível para publicar',
         ],
     ],
 

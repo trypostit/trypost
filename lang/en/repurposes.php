@@ -157,7 +157,7 @@ return [
             'media_url_missing' => 'The network did not share a downloadable file, usually because of copyrighted audio',
             'download_failed' => 'The video could not be downloaded',
             'post_creation_failed' => 'Could not create the posts',
-            'no_usable_destinations' => 'Every destination was removed or switched off',
+            'no_usable_destinations' => 'No destination was available to publish to',
         ],
     ],
 

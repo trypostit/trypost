@@ -506,3 +506,28 @@ test('switching an account off says how many automations it paused', function ()
         ->put(route('app.accounts.toggle', $source))
         ->assertSessionHas('flash.banner', trans_choice('accounts.flash.deactivated_paused_repurposes', 1, ['count' => 1]));
 });
+
+test('switching an account back on says how many automations resumed', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $source = SocialAccount::factory()->for($workspace)->create([
+        'platform' => Platform::Instagram,
+        'is_active' => false,
+    ]);
+
+    Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Paused,
+        'paused_reason' => PauseReason::SourceUnavailable,
+        'destinations' => [healthDestination($workspace)],
+    ]);
+
+    $this->actingAs($user)
+        ->put(route('app.accounts.toggle', $source))
+        ->assertSessionHas('flash.banner', trans_choice('accounts.flash.activated_resumed_repurposes', 1, ['count' => 1]));
+});

@@ -157,7 +157,7 @@ return [
             'media_url_missing' => '平台没有提供可下载的文件，通常是因为音频有版权',
             'download_failed' => '视频下载失败',
             'post_creation_failed' => '无法创建帖子',
-            'no_usable_destinations' => '所有目标账号已被移除或关闭',
+            'no_usable_destinations' => '没有可发布的目标账号',
         ],
     ],
 

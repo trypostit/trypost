@@ -157,7 +157,7 @@ return [
             'media_url_missing' => 'La rete non ha fornito un file scaricabile, di solito per audio protetto da copyright',
             'download_failed' => 'Non è stato possibile scaricare il video',
             'post_creation_failed' => 'Impossibile creare i post',
-            'no_usable_destinations' => 'Tutte le destinazioni sono state rimosse o disattivate',
+            'no_usable_destinations' => 'Nessuna destinazione era disponibile per pubblicare',
         ],
     ],
 

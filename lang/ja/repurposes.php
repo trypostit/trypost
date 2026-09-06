@@ -157,7 +157,7 @@ return [
             'media_url_missing' => 'ネットワークがダウンロード可能なファイルを返しませんでした。多くは著作権付き音源が原因です',
             'download_failed' => '動画をダウンロードできませんでした',
             'post_creation_failed' => '投稿を作成できませんでした',
-            'no_usable_destinations' => 'すべての配信先が削除または無効化されました',
+            'no_usable_destinations' => '公開できる配信先がありませんでした',
         ],
     ],
 

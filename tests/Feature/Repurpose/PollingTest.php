@@ -293,3 +293,27 @@ test('a token echoed back by the source never lands in the stored error', functi
         ->toContain('[REDACTED]')
         ->not->toContain('EAAG-super-secret');
 });
+
+test('a skipped poll reschedules without erasing the recorded error', function () {
+    $workspace = Workspace::factory()->create();
+    $source = SocialAccount::factory()->for($workspace)->create([
+        'platform' => Platform::Instagram,
+        'is_active' => false,
+    ]);
+
+    $repurpose = Repurpose::factory()->active()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $source->id,
+        'last_error' => 'Instagram rejected the request',
+        'next_poll_at' => now()->subHour(),
+    ]);
+
+    (new PollRepurposeSource($source))->handle(app(SourceFetcherFactory::class));
+
+    $fresh = $repurpose->fresh();
+
+    // The error is what tells the user why it stopped, so it survives. The
+    // schedule still moves, or the scheduler re-dispatches this on every tick.
+    expect($fresh->last_error)->toBe('Instagram rejected the request')
+        ->and($fresh->next_poll_at->isFuture())->toBeTrue();
+});

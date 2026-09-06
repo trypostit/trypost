@@ -157,7 +157,7 @@ return [
             'media_url_missing' => 'Le réseau n\'a pas fourni de fichier téléchargeable, généralement à cause d\'un audio protégé par le droit d\'auteur',
             'download_failed' => 'La vidéo n\'a pas pu être téléchargée',
             'post_creation_failed' => 'Impossible de créer les publications',
-            'no_usable_destinations' => 'Toutes les destinations ont été supprimées ou désactivées',
+            'no_usable_destinations' => 'Aucune destination n\'était disponible pour publier',
         ],
     ],
 

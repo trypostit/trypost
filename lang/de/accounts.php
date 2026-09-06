@@ -125,6 +125,7 @@ return [
     ],
 
     'flash' => [
+        'activated_resumed_repurposes' => 'Konto aktiviert. :count Automatisierung fortgesetzt.|Konto aktiviert. :count Automatisierungen fortgesetzt.',
         'disconnected_paused_repurposes' => 'Konto getrennt. :count Automatisierung pausiert.|Konto getrennt. :count Automatisierungen pausiert.',
         'deactivated_paused_repurposes' => 'Konto deaktiviert. :count Automatisierung pausiert.|Konto deaktiviert. :count Automatisierungen pausiert.',
         'disconnected' => 'Konto erfolgreich getrennt!',

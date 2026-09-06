@@ -157,7 +157,7 @@ return [
             'media_url_missing' => 'Ağ indirilebilir bir dosya paylaşmadı, genellikle telif hakkı korumalı ses nedeniyle',
             'download_failed' => 'Video indirilemedi',
             'post_creation_failed' => 'Gönderiler oluşturulamadı',
-            'no_usable_destinations' => 'Tüm hedefler kaldırıldı veya kapatıldı',
+            'no_usable_destinations' => 'Yayınlanacak uygun bir hedef yoktu',
         ],
     ],
 

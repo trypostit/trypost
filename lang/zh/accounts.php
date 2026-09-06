@@ -123,6 +123,7 @@ return [
     ],
 
     'flash' => [
+        'activated_resumed_repurposes' => '账号已开启。已恢复 :count 个自动化。|账号已开启。已恢复 :count 个自动化。',
         'disconnected_paused_repurposes' => '账号已断开连接。已暂停 :count 个自动化。|账号已断开连接。已暂停 :count 个自动化。',
         'deactivated_paused_repurposes' => '账号已关闭。已暂停 :count 个自动化。|账号已关闭。已暂停 :count 个自动化。',
         'disconnected' => '账号已成功断开连接！',

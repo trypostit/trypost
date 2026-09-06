@@ -157,7 +157,7 @@ return [
             'media_url_missing' => 'لم توفّر الشبكة ملفًا قابلًا للتنزيل، عادةً بسبب صوت محمي بحقوق النشر',
             'download_failed' => 'تعذّر تنزيل الفيديو',
             'post_creation_failed' => 'تعذّر إنشاء المنشورات',
-            'no_usable_destinations' => 'تمت إزالة جميع الوجهات أو إيقافها',
+            'no_usable_destinations' => 'لم تتوفر أي وجهة للنشر',
         ],
     ],
 

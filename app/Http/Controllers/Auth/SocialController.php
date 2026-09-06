@@ -74,11 +74,11 @@ class SocialController extends Controller
             ->where('status', PostPlatformStatus::Pending->value)
             ->delete();
 
-        $affected = $this->repurposeIdsFor($account);
+        $before = $this->repurposeStatesFor($account);
 
         $account->delete();
 
-        $this->flashAccountChange('disconnected', $affected);
+        $this->flashAccountChange('disconnected', $before);
 
         return back();
     }
@@ -93,11 +93,13 @@ class SocialController extends Controller
             abort(403);
         }
 
-        $affected = $account->is_active ? $this->repurposeIdsFor($account) : collect();
+        // Captured regardless of direction, and never from $account->is_active:
+        // reading a column off the instance is what silently broke isUsable().
+        $before = $this->repurposeStatesFor($account);
 
         ToggleSocialAccount::execute($account);
 
-        $this->flashAccountChange($account->is_active ? 'activated' : 'deactivated', $affected);
+        $this->flashAccountChange($account->is_active ? 'activated' : 'deactivated', $before);
 
         return back();
     }
@@ -300,40 +302,49 @@ class SocialController extends Controller
     }
 
     /**
-     * Captured before the account goes away: the source FK is nullOnDelete, so
-     * afterwards there is nothing left linking the two.
+     * Status per repurpose, captured before the account changes. Taken before
+     * the delete because the source FK is nullOnDelete, and used as the
+     * baseline for what the observer went on to change.
      *
-     * @return Collection<int, string>
+     * @return Collection<string, RepurposeStatus>
      */
-    private function repurposeIdsFor(SocialAccount $account): Collection
+    private function repurposeStatesFor(SocialAccount $account): Collection
     {
         return Repurpose::query()
             ->where('source_social_account_id', $account->id)
-            ->where('status', RepurposeStatus::Active)
-            ->pluck('id');
+            ->pluck('status', 'id');
     }
 
     /**
-     * The observer has already stopped whatever it was going to stop by now, so
-     * this counts what actually happened rather than predicting it.
+     * The observer has already done whatever it was going to do by now, so this
+     * compares before and after rather than predicting either.
      *
      * With no email in this flow — the user did this deliberately, so an email
-     * would be noise — the flash is the only notice that an automation stopped,
-     * and it happens on the accounts page rather than where the repurpose lives.
+     * would be noise — the flash is the only notice that an automation stopped
+     * or started, and it happens on the accounts page rather than where the
+     * repurpose lives.
      *
-     * @param  Collection<int, string>  $affected
+     * @param  Collection<string, RepurposeStatus>  $before
      */
-    private function flashAccountChange(string $action, Collection $affected): void
+    private function flashAccountChange(string $action, Collection $before): void
     {
-        $paused = $affected->isEmpty() ? 0 : Repurpose::query()
-            ->whereKey($affected)
-            ->where('status', RepurposeStatus::Paused)
-            ->whereNotNull('paused_reason')
+        $after = Repurpose::query()->whereKey($before->keys())->pluck('status', 'id');
+
+        $paused = $before
+            ->filter(fn (RepurposeStatus $status, string $id): bool => $status !== RepurposeStatus::Paused
+                && $after->get($id) === RepurposeStatus::Paused)
             ->count();
 
-        session()->flash('flash.banner', $paused > 0
-            ? trans_choice("accounts.flash.{$action}_paused_repurposes", $paused, ['count' => $paused])
-            : __("accounts.flash.{$action}"));
+        $resumed = $before
+            ->filter(fn (RepurposeStatus $status, string $id): bool => $status === RepurposeStatus::Paused
+                && $after->get($id) === RepurposeStatus::Active)
+            ->count();
+
+        session()->flash('flash.banner', match (true) {
+            $paused > 0 => trans_choice("accounts.flash.{$action}_paused_repurposes", $paused, ['count' => $paused]),
+            $resumed > 0 => trans_choice("accounts.flash.{$action}_resumed_repurposes", $resumed, ['count' => $resumed]),
+            default => __("accounts.flash.{$action}"),
+        });
         session()->flash('flash.bannerStyle', 'success');
     }
 }

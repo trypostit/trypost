@@ -157,7 +157,7 @@ return [
             'media_url_missing' => 'Das Netzwerk hat keine herunterladbare Datei bereitgestellt, meist wegen urheberrechtlich geschütztem Audio',
             'download_failed' => 'Das Video konnte nicht heruntergeladen werden',
             'post_creation_failed' => 'Die Beiträge konnten nicht erstellt werden',
-            'no_usable_destinations' => 'Alle Ziele wurden entfernt oder deaktiviert',
+            'no_usable_destinations' => 'Kein Ziel war zum Veröffentlichen verfügbar',
         ],
     ],
 

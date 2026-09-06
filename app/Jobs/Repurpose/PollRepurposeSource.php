@@ -55,8 +55,11 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
         }
 
         if ($this->account->disconnected_at !== null || $this->account->is_active === false) {
-            // The observer is pausing these; do not overwrite the recorded
-            // error or push the schedule out on the way past.
+            // The observer is pausing these. Keep last_error — it is what tells
+            // the user why replication stopped — but still move the schedule, or
+            // the scheduler re-dispatches this on every tick.
+            $this->reschedule($repurposes, $this->interval());
+
             return;
         }
 
@@ -192,6 +195,19 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
         Log::warning('Repurpose polling failed', [
             'social_account_id' => $this->account->id,
             'message' => $message,
+        ]);
+    }
+
+    /**
+     * Moves the schedule and nothing else. markPolled() additionally clears
+     * last_error, which is only right after a poll that actually succeeded.
+     *
+     * @param  Collection<int, Repurpose>  $repurposes
+     */
+    private function reschedule(Collection $repurposes, int $minutes): void
+    {
+        Repurpose::whereKey($repurposes->modelKeys())->update([
+            'next_poll_at' => now()->addMinutes($minutes),
         ]);
     }
 
