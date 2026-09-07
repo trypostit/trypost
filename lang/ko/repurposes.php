@@ -53,7 +53,7 @@ return [
 
     'empty' => [
         'title' => '아직 설정된 Repurpose가 없습니다',
-        'description' => '아래에서 시작점을 고르세요. TryPost가 선택한 계정을 지켜보다가 새 영상을 선택한 네트워크에 다시 게시합니다.',
+        'description' => 'TryPost가 선택한 계정을 지켜보고 새 영상을 지정한 네트워크에 다시 게시합니다.',
     ],
 
     'table' => [

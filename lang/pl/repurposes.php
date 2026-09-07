@@ -53,7 +53,7 @@ return [
 
     'empty' => [
         'title' => 'Nie skonfigurowano jeszcze repurpose',
-        'description' => 'Wybierz punkt startowy poniżej. TryPost obserwuje wybrane konto i publikuje każdy nowy film w sieciach, które zaznaczysz.',
+        'description' => 'TryPost obserwuje wybrane konto i publikuje każde nowe wideo w zaznaczonych sieciach.',
     ],
 
     'table' => [

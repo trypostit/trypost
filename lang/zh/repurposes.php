@@ -53,7 +53,7 @@ return [
 
     'empty' => [
         'title' => '还没有设置 Repurpose',
-        'description' => '在下面选一个起点。TryPost 会盯着你选的账号，把每条新视频转发到你勾选的平台。',
+        'description' => 'TryPost 会监控你选择的账号，并将每个新视频重新发布到你勾选的网络。',
     ],
 
     'table' => [

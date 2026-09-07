@@ -53,7 +53,7 @@ return [
 
     'empty' => [
         'title' => 'Aún no hay ningún repurpose',
-        'description' => 'Elige un punto de partida abajo. TryPost vigila la cuenta que elijas y republica cada vídeo nuevo en las redes que marques.',
+        'description' => 'TryPost sigue la cuenta que elijas y republica cada vídeo nuevo en las redes que marques.',
     ],
 
     'table' => [

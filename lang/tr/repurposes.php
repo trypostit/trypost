@@ -53,7 +53,7 @@ return [
 
     'empty' => [
         'title' => 'Henüz repurpose kurulmadı',
-        'description' => 'Aşağıdan bir başlangıç noktası seç. TryPost seçtiğin hesabı izler ve her yeni videoyu işaretlediğin ağlarda yeniden yayınlar.',
+        'description' => 'TryPost seçtiğiniz hesabı izler ve her yeni videoyu işaretlediğiniz ağlarda yeniden paylaşır.',
     ],
 
     'table' => [

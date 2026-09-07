@@ -53,7 +53,7 @@ return [
 
     'empty' => [
         'title' => 'Noch kein Repurpose eingerichtet',
-        'description' => 'Wähle unten einen Startpunkt. TryPost beobachtet das gewählte Konto und veröffentlicht jedes neue Video erneut auf den Netzwerken deiner Wahl.',
+        'description' => 'TryPost beobachtet das gewählte Konto und veröffentlicht jedes neue Video auf den ausgewählten Netzwerken erneut.',
     ],
 
     'table' => [

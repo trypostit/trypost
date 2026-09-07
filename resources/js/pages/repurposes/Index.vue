@@ -79,14 +79,7 @@ const handleDelete = (repurpose: Repurpose) => {
                 :icon="IconRepeat"
                 :title="$t('repurposes.empty.title')"
                 :description="$t('repurposes.empty.description')"
-            >
-                <template #action>
-                    <Button data-testid="create-repurpose-empty" @click="startBlank">
-                        <IconPlus class="size-4" />
-                        {{ $t('repurposes.new') }}
-                    </Button>
-                </template>
-            </EmptyState>
+            />
 
             <InfiniteScroll v-else data="repurposes" items-element="#repurposes-body" preserve-url>
             <Table data-testid="repurposes-table">

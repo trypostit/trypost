@@ -214,16 +214,3 @@ test('the activity list reads as what happened, never as a database id', functio
         ->assertDontSee($withoutLink->source_media_id)
         ->assertNoJavaScriptErrors();
 });
-
-test('the empty state offers a way to create the first repurpose', function () {
-    [$user] = repurposeOwnerWithAccounts();
-
-    $this->actingAs($user);
-
-    $page = visit(route('app.repurposes.index'));
-
-    waitForRepurposeTestId($page, 'create-repurpose-empty');
-
-    $page->assertPresent('@create-repurpose-empty')
-        ->assertNoJavaScriptErrors();
-});

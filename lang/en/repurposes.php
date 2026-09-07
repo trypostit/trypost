@@ -53,7 +53,7 @@ return [
 
     'empty' => [
         'title' => 'No repurpose set up yet',
-        'description' => 'Pick a starting point below. TryPost watches the account you choose and republishes every new video to the networks you pick.',
+        'description' => 'TryPost watches the account you choose and republishes every new video to the networks you pick.',
     ],
 
     'table' => [
