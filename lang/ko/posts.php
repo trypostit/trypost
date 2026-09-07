@@ -142,6 +142,21 @@ return [
             'document_title' => '문서 제목',
             'document_title_placeholder' => 'PDF 문서 게시물에 표시됩니다',
         ],
+        'youtube' => [
+            'settings' => 'YouTube 설정',
+            'posting_to' => '게시 위치',
+            'description' => '설명',
+            'description_placeholder' => '동영상 전체 설명: 정보, 링크, 해시태그…',
+            'description_hint' => '최대 5000자, 링크는 클릭 가능합니다. 비워두면 게시물 텍스트가 사용됩니다.',
+            'description_max' => '설명은 5000자를 초과할 수 없습니다.',
+        ],
+        'first_comment' => [
+            'label' => '첫 댓글',
+            'placeholder' => '첫 댓글에 넣을 링크와 추가 내용…',
+            'hint' => '동영상 게시 직후 채널 명의로 작성됩니다.',
+            'hint_instagram' => '게시 직후 작성됩니다 — Instagram 캡션에서 클릭되지 않는 링크를 넣는 고전적인 방법입니다. 댓글 권한을 부여하려면 계정을 한 번 다시 연결하세요.',
+            'max' => '첫 댓글은 2200자를 초과할 수 없습니다.',
+        ],
         'pinterest' => [
             'settings' => 'Pinterest 설정',
             'posting_to' => '게시 대상',

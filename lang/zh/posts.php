@@ -142,6 +142,21 @@ return [
             'document_title' => '文档标题',
             'document_title_placeholder' => '显示在你的 PDF 文档帖子上',
         ],
+        'youtube' => [
+            'settings' => 'YouTube 设置',
+            'posting_to' => '发布到',
+            'description' => '描述',
+            'description_placeholder' => '视频完整描述:信息、链接、话题标签…',
+            'description_hint' => '最多 5000 个字符,链接可点击。留空则使用帖子文本。',
+            'description_max' => '描述不能超过 5000 个字符。',
+        ],
+        'first_comment' => [
+            'label' => '首条评论',
+            'placeholder' => '首条评论中的链接和补充内容…',
+            'hint' => '视频发布后立即以频道名义发表。',
+            'hint_instagram' => '发布后立即评论——这是放置 Instagram 描述中无法点击的链接的经典位置。需重新连接一次账号以授予评论权限。',
+            'max' => '首条评论不能超过 2200 个字符。',
+        ],
         'pinterest' => [
             'settings' => 'Pinterest 设置',
             'posting_to' => '发布到',

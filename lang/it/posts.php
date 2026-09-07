@@ -142,6 +142,21 @@ return [
             'document_title' => 'Titolo del documento',
             'document_title_placeholder' => 'Mostrato sul tuo post con documento PDF',
         ],
+        'youtube' => [
+            'settings' => 'Impostazioni YouTube',
+            'posting_to' => 'Pubblicazione su',
+            'description' => 'Descrizione',
+            'description_placeholder' => 'Descrizione completa del video: dettagli, link, hashtag…',
+            'description_hint' => 'Fino a 5000 caratteri, i link sono cliccabili. Se vuoto, viene usato il testo del post.',
+            'description_max' => 'La descrizione non può superare i 5000 caratteri.',
+        ],
+        'first_comment' => [
+            'label' => 'Primo commento',
+            'placeholder' => 'Link ed extra per il primo commento…',
+            'hint' => 'Pubblicato dal tuo canale subito dopo la pubblicazione del video.',
+            'hint_instagram' => 'Pubblicato subito dopo il post: il posto classico per i link che le didascalie di Instagram non rendono cliccabili. Ricollega l\'account una volta per concedere il permesso sui commenti.',
+            'max' => 'Il primo commento non può superare i 2200 caratteri.',
+        ],
         'pinterest' => [
             'settings' => 'Impostazioni Pinterest',
             'posting_to' => 'Pubblicazione su',

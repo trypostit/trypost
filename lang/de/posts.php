@@ -144,6 +144,21 @@ return [
             'document_title' => 'Dokumenttitel',
             'document_title_placeholder' => 'Wird bei deinem PDF-Dokument-Beitrag angezeigt',
         ],
+        'youtube' => [
+            'settings' => 'YouTube-Einstellungen',
+            'posting_to' => 'Veröffentlichen auf',
+            'description' => 'Beschreibung',
+            'description_placeholder' => 'Vollständige Videobeschreibung: Fakten, Links, Hashtags…',
+            'description_hint' => 'Bis zu 5000 Zeichen, Links sind klickbar. Wenn leer, wird der Beitragstext verwendet.',
+            'description_max' => 'Die Beschreibung darf 5000 Zeichen nicht überschreiten.',
+        ],
+        'first_comment' => [
+            'label' => 'Erster Kommentar',
+            'placeholder' => 'Link und Extras für den ersten Kommentar…',
+            'hint' => 'Wird direkt nach der Veröffentlichung vom Kanal gepostet.',
+            'hint_instagram' => 'Wird direkt nach dem Beitrag gepostet — der klassische Ort für Links, die in Instagram-Beschreibungen nicht klickbar sind. Konto einmal neu verbinden, um die Kommentar-Berechtigung zu erteilen.',
+            'max' => 'Der erste Kommentar darf 2200 Zeichen nicht überschreiten.',
+        ],
         'pinterest' => [
             'settings' => 'Pinterest-Einstellungen',
             'posting_to' => 'Veröffentlichen auf',

@@ -142,6 +142,21 @@ return [
             'document_title' => 'Titre du document',
             'document_title_placeholder' => 'Affiché sur votre publication de document PDF',
         ],
+        'youtube' => [
+            'settings' => 'Paramètres YouTube',
+            'posting_to' => 'Publication sur',
+            'description' => 'Description',
+            'description_placeholder' => 'Description complète de la vidéo : infos, liens, hashtags…',
+            'description_hint' => 'Jusqu\'à 5000 caractères, les liens sont cliquables. Si vide, le texte de la publication est utilisé.',
+            'description_max' => 'La description ne peut pas dépasser 5000 caractères.',
+        ],
+        'first_comment' => [
+            'label' => 'Premier commentaire',
+            'placeholder' => 'Lien et compléments pour le premier commentaire…',
+            'hint' => 'Publié par votre chaîne juste après la mise en ligne de la vidéo.',
+            'hint_instagram' => 'Publié juste après la publication — l\'endroit classique pour les liens que les légendes Instagram ne rendent pas cliquables. Reconnectez le compte une fois pour accorder l\'autorisation de commenter.',
+            'max' => 'Le premier commentaire ne peut pas dépasser 2200 caractères.',
+        ],
         'pinterest' => [
             'settings' => 'Paramètres Pinterest',
             'posting_to' => 'Publier sur',

@@ -93,7 +93,7 @@ class YouTubePublisher
         }
 
         $title = $this->buildTitle($content);
-        $description = $content;
+        $description = $this->resolveDescription($postPlatform, $content);
 
         $tempFile = tempnam(sys_get_temp_dir(), 'yt_upload_');
         $handle = null;
@@ -219,6 +219,18 @@ class YouTubePublisher
         }
 
         return $title.$shortsTag;
+    }
+
+    /**
+     * The video description: the per-platform `meta.description` when the user
+     * provided one (YouTube allows 5000 chars and renders links clickable),
+     * otherwise the post content — the pre-meta behavior.
+     */
+    private function resolveDescription(PostPlatform $postPlatform, string $content): string
+    {
+        $description = trim((string) data_get($postPlatform->meta, 'description'));
+
+        return $description !== '' ? $description : $content;
     }
 
     private function handleGoogleError(Exception $e): never
