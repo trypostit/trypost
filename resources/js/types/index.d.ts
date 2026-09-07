@@ -136,10 +136,6 @@ export interface PinterestBoardsPayload {
     truncated: boolean;
 }
 
-/**
- * A UI locale offered by the language switcher, as serialized by
- * App\Enums\User\Locale::options().
- */
 export interface Language {
     code: string;
     name: string;

@@ -14,29 +14,22 @@ beforeEach(fn () => config()->set('trypost.self_hosted', false));
 /**
  * @param  array<string, string>  $overrides
  */
-function registerWithLocale(array $overrides = [], array $headers = []): TestResponse
+function registerWithLocale(array $overrides = []): TestResponse
 {
     return test()->post(route('register.store'), array_merge([
         'name' => 'Test User',
         'email' => 'test@example.com',
         'password' => 'Password123!',
         'locale' => 'en',
-    ], $overrides), $headers);
+    ], $overrides));
 }
 
-test('the register screen offers the negotiated locale as the starting point', function () {
-    $this->withHeader('Accept-Language', 'pt-BR,pt;q=0.9,en;q=0.8')
-        ->get(route('register'))
+test('the register screen starts the switcher on the default locale', function () {
+    $this->get(route('register'))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('auth/Register')
-            ->where('locale', 'pt-BR')
+            ->where('locale', Locale::DEFAULT->value)
         );
-});
-
-test('the register screen falls back to the default locale for an unsupported language', function () {
-    $this->withHeader('Accept-Language', 'sv-SE,sv;q=0.9')
-        ->get(route('register'))
-        ->assertInertia(fn (AssertableInertia $page) => $page->where('locale', Locale::DEFAULT->value));
 });
 
 test('registering stores the picked locale on the user', function () {
@@ -86,8 +79,7 @@ test('social registration always stores the default locale', function (string $p
 
     $mock->shouldReceive('user')->andReturn($socialiteUser);
 
-    $this->withHeader('Accept-Language', 'pt-BR,pt;q=0.9')
-        ->get(route("auth.{$provider}.callback"));
+    $this->get(route("auth.{$provider}.callback"));
 
     expect(User::where('email', "{$provider}-locale@example.com")->first()->locale)
         ->toBe(Locale::DEFAULT);

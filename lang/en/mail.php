@@ -2,16 +2,6 @@
 
 declare(strict_types=1);
 
-/*
-|--------------------------------------------------------------------------
-| Email Translations
-|--------------------------------------------------------------------------
-|
-| One block per Maizzle template, keyed by its slug with dashes as underscores
-| (`post-published.html` => `post_published`). `layout` holds the shared chrome.
-|
-*/
-
 return [
 
     'layout' => [

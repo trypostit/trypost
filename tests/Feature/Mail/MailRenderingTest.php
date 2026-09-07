@@ -17,10 +17,6 @@ use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Notification as BaseNotification;
 use Illuminate\Support\Facades\Mail;
 
-/**
- * Copy now lives in the Blade view, so a variable the Mailable stopped passing
- * only surfaces when the view is rendered. These four are rendered nowhere else.
- */
 test('the workspace invite renders in the requested locale', function () {
     $account = Account::factory()->create(['name' => 'Acme Co']);
     $invite = Invite::factory()->create([
@@ -72,11 +68,6 @@ test('the disconnected-connections digest renders every account and reason', fun
     }
 });
 
-/**
- * Going through the real notification sender is the point: it is what reads
- * `preferredLocale()`, so calling `toMail()` by hand would pass with no
- * localization at all.
- */
 function sentNotificationHtml(User $user, BaseNotification $notification): string
 {
     Mail::mailer()->getSymfonyTransport()->messages()->take(0);

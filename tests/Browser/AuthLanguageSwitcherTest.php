@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Models\User;
 
-/** Assertions do not auto-wait on SPA paint, so wait for the element to lay out. */
 function waitForAuthLanguageTestId(mixed $page, string $testId): void
 {
     $page->script(<<<JS

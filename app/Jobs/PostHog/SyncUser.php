@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Jobs\PostHog;
 
-use App\Enums\User\Locale;
 use App\Models\User;
 use App\Services\PostHogService;
 use App\Support\AttributionKeys;
@@ -47,7 +46,7 @@ class SyncUser implements ShouldQueue
         $postHog->identify($user->id, [
             '$email' => $user->email,
             '$name' => $user->name,
-            'locale' => ($user->locale ?? Locale::DEFAULT)->value,
+            'locale' => $user->locale->value,
             '$set_once' => [
                 'signed_up_at' => $user->created_at?->toIso8601String(),
                 ...$attribution,

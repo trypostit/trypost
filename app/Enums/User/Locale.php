@@ -4,12 +4,6 @@ declare(strict_types=1);
 
 namespace App\Enums\User;
 
-/**
- * The single source of truth for the UI locales: the `users.locale` column, the
- * switcher options, request validation and `Accept-Language` negotiation all
- * derive from it. Every case needs a matching `lang/<value>` directory —
- * `LocalizationParityTest` fails when one is missing.
- */
 enum Locale: string
 {
     case English = 'en';
@@ -53,11 +47,6 @@ enum Locale: string
         };
     }
 
-    /**
-     * The flag file in `public/images/flags` to show next to the language. A
-     * flag is a country, not a language, so these are the most recognisable
-     * stand-in rather than a claim about where the language is spoken.
-     */
     public function flag(): string
     {
         return match ($this) {
@@ -80,86 +69,9 @@ enum Locale: string
         };
     }
 
-    /** Only Arabic is written right to left. */
     public function direction(): string
     {
         return $this === self::Arabic ? 'rtl' : 'ltr';
-    }
-
-    /**
-     * Resolve a BCP 47 tag ("pt-PT", "zh-Hans", "en_US") to a supported locale,
-     * preferring an exact match and falling back to the primary subtag.
-     */
-    public static function fromTag(string $tag): ?self
-    {
-        $normalized = str_replace('_', '-', trim($tag));
-
-        foreach (self::cases() as $locale) {
-            if (strcasecmp($locale->value, $normalized) === 0) {
-                return $locale;
-            }
-        }
-
-        $subtag = self::primarySubtag($normalized);
-
-        if (strlen($subtag) < 2) {
-            return null;
-        }
-
-        foreach (self::cases() as $locale) {
-            if (self::primarySubtag($locale->value) === $subtag) {
-                return $locale;
-            }
-        }
-
-        return null;
-    }
-
-    /** Negotiate "pt-BR,pt;q=0.9,en;q=0.8" down to the best supported locale. */
-    public static function fromAcceptLanguage(?string $header): ?self
-    {
-        if (blank($header)) {
-            return null;
-        }
-
-        $candidates = [];
-
-        foreach (explode(',', $header) as $position => $part) {
-            $segments = explode(';', $part);
-            $tag = trim($segments[0]);
-
-            if ($tag === '' || $tag === '*') {
-                continue;
-            }
-
-            $quality = 1.0;
-
-            foreach (array_slice($segments, 1) as $parameter) {
-                [$key, $value] = array_pad(explode('=', $parameter, 2), 2, null);
-
-                if (strtolower(trim((string) $key)) === 'q') {
-                    $quality = (float) $value;
-                }
-            }
-
-            $candidates[] = ['tag' => $tag, 'quality' => $quality, 'position' => $position];
-        }
-
-        usort($candidates, fn (array $a, array $b) => [$b['quality'], $a['position']] <=> [$a['quality'], $b['position']]);
-
-        foreach ($candidates as $candidate) {
-            if ($locale = self::fromTag($candidate['tag'])) {
-                return $locale;
-            }
-        }
-
-        return null;
-    }
-
-    /** "pt-BR" => "pt" */
-    private static function primarySubtag(string $tag): string
-    {
-        return strtolower(explode('-', trim($tag), 2)[0]);
     }
 
     /**

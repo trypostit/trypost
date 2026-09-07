@@ -4,18 +4,13 @@ import { computed, ref } from 'vue';
 
 import type { Language } from '@/types';
 
-/**
- * At module scope so the choice survives Inertia navigation between the auth
- * screens. Every auth form submits it as a hidden `locale` field: LocaleResolver
- * reads that for the validation messages, and register also stores it.
- */
 const chosen = ref<string | null>(null);
 
 export const useGuestLocale = () => {
     const page = usePage();
 
     const languages = computed<Language[]>(
-        () => (page.props.languages ?? []) as Language[],
+        () => page.props.languages as Language[],
     );
 
     const locale = computed<string>({

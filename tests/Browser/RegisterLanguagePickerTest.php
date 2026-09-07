@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-/** Assertions do not auto-wait on SPA paint, so wait for the element to lay out. */
 function waitForRegisterLanguageTestId(mixed $page, string $testId): void
 {
     $page->script(<<<JS

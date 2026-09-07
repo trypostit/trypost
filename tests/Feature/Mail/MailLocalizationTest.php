@@ -134,8 +134,3 @@ test('a paused webhook is reported in the account owner locale', function () {
         fn (WebhookPausedMail $mail) => $mail->locale === Locale::Turkish->value,
     );
 });
-
-test('an unsaved user without a locale falls back to the default', function () {
-    expect(User::factory()->make(['locale' => null])->preferredLocale())
-        ->toBe(Locale::DEFAULT->value);
-});
