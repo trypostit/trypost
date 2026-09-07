@@ -23,7 +23,7 @@ class MastodonPublisher
     {
         $this->validateContentLength($postPlatform);
 
-        $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
+        $content = $postPlatform->resolvedContent() ? app(ContentSanitizer::class)->sanitize($postPlatform->resolvedContent(), $postPlatform->platform) : null;
 
         $account = $postPlatform->socialAccount;
         $instance = $account->meta['instance'] ?? config('trypost.platforms.mastodon.default_instance');
@@ -33,7 +33,7 @@ class MastodonPublisher
 
         // Upload media first (max 4)
         foreach ($medias->take(4) as $media) {
-            $mediaId = $this->uploadMedia($account, $instance, $media->url, $media->original_filename, $media->isImage() ? $media->altTextFor(Platform::Mastodon) : null);
+            $mediaId = $this->uploadMedia($account, $instance, $media->url, $media->original_filename, $media->altTextFor(Platform::Mastodon));
             if ($mediaId) {
                 $mediaIds[] = $mediaId;
             }

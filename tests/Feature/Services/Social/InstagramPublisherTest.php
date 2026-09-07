@@ -2035,3 +2035,31 @@ test('instagram publisher keeps links intact', function () {
         && ! str_contains($request->url(), 'media_publish')
         && data_get($request->data(), 'caption') === 'New post: https://acme.com/blog');
 });
+
+test('instagram publisher tags the container with the meta location', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+    $this->postPlatform->update(['meta' => ['location_id' => '106190712750250']]);
+    $this->postPlatform->refresh();
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'container-123'], 200),
+        'https://graph.instagram.com/v25.0/container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response(['id' => 'media-789'], 200),
+        'https://graph.instagram.com/v25.0/media-789*' => Http::response(['permalink' => 'https://instagram.com/p/x'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        return str_ends_with(parse_url($request->url(), PHP_URL_PATH), '/ig_123456789/media')
+            && ($request['location_id'] ?? null) === '106190712750250';
+    });
+});

@@ -42,8 +42,8 @@ class PinterestPublisher
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
-        $content = $postPlatform->post->content
-            ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform)
+        $content = $postPlatform->resolvedContent()
+            ? app(ContentSanitizer::class)->sanitize($postPlatform->resolvedContent(), $postPlatform->platform)
             : null;
 
         return match ($postPlatform->content_type) {

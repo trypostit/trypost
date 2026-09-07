@@ -22,7 +22,7 @@ trait HasSocialHttpClient
      */
     protected function validateContentLength(PostPlatform $postPlatform): void
     {
-        $raw = $postPlatform->post->content ?? '';
+        $raw = $postPlatform->resolvedContent() ?? '';
         $content = app(ContentSanitizer::class)->displayText($raw, $postPlatform->platform);
 
         if ($postPlatform->platform->contentOverflow($content) === 0) {

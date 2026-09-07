@@ -84,7 +84,7 @@ const openPreview = (item: MediaItem) => {
         media.value.map((m) => ({
             url: m.url,
             type: classify(m) ?? MediaType.Image,
-            altText: isImage(m) ? m.meta?.alt_text : undefined,
+            altText: isImage(m) || isVideo(m) ? m.meta?.alt_text : undefined,
         })),
         idx,
     );
@@ -304,7 +304,7 @@ const onAltTextSave = (alt: string): void => {
                                 {{ date.formatClock(item.meta.duration) }}
                             </span>
                             <span
-                                v-if="isImage(item) && item.meta?.alt_text"
+                                v-if="(isImage(item) || isVideo(item)) && item.meta?.alt_text"
                                 class="inline-block max-w-full truncate rounded-md bg-black/65 px-1.5 py-0.5 backdrop-blur-sm"
                                 data-testid="alt-text-badge"
                             >
@@ -350,7 +350,7 @@ const onAltTextSave = (alt: string): void => {
                         </button>
 
                         <button
-                            v-if="!readOnly && isImage(item)"
+                            v-if="!readOnly && (isImage(item) || isVideo(item))"
                             type="button"
                             :title="$t('posts.edit.alt_text.edit')"
                             :aria-label="$t('posts.edit.alt_text.edit')"
