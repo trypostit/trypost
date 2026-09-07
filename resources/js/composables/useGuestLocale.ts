@@ -16,14 +16,20 @@ export const useGuestLocale = () => {
     const locale = computed<string>({
         get: () => chosen.value ?? (page.props.locale as string),
         set: (value) => {
-            chosen.value = value;
+            const language = languages.value.find(
+                (candidate) => candidate.code === value,
+            );
 
-            void loadLanguageAsync(value);
+            if (!language) {
+                return;
+            }
 
-            document.documentElement.lang = value;
-            document.documentElement.dir =
-                languages.value.find((language) => language.code === value)
-                    ?.dir ?? 'ltr';
+            chosen.value = language.code;
+
+            void loadLanguageAsync(language.code);
+
+            document.documentElement.lang = language.code;
+            document.documentElement.dir = language.dir;
         },
     });
 

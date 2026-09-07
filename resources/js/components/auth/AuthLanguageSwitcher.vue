@@ -28,13 +28,14 @@ const current = computed(() =>
                 class="h-8 gap-1.5 px-2 font-normal text-muted-foreground hover:text-foreground"
                 data-testid="language-picker"
             >
-                <img
-                    v-if="current"
-                    :src="current.flag"
-                    :alt="current.name"
-                    class="h-3.5 w-5 rounded-xs object-cover ring-1 ring-border"
-                />
-                <span>{{ current?.name }}</span>
+                <template v-if="current">
+                    <img
+                        :src="current.flag"
+                        :alt="current.name"
+                        class="h-3.5 w-5 rounded-xs object-cover ring-1 ring-border"
+                    />
+                    <span>{{ current.name }}</span>
+                </template>
                 <IconChevronDown class="size-3.5 opacity-60" />
             </Button>
         </DropdownMenuTrigger>

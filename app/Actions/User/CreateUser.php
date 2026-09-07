@@ -48,7 +48,7 @@ class CreateUser
                 'email_verified_at' => data_get($data, 'email_verified_at', $isInviteRegistration ? now() : null),
                 'account_id' => $account->id,
                 'registration_ip' => data_get($data, 'registration_ip'),
-                'locale' => Locale::tryFrom((string) data_get($data, 'locale')) ?? Locale::DEFAULT,
+                'locale' => Locale::from(data_get($data, 'locale', Locale::DEFAULT->value)),
             ], $attributionParameters));
 
             $account->update(['owner_id' => $user->id]);
