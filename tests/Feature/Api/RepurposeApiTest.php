@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\Repurpose\ItemStatus;
 use App\Enums\Repurpose\PauseReason;
 use App\Enums\Repurpose\PublishMode;
@@ -10,6 +11,8 @@ use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
+use App\Models\Post;
+use App\Models\PostPlatform;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
@@ -321,4 +324,27 @@ test('the api accepts a switched-off account as a destination', function () {
         ->assertOk();
 
     expect($repurpose->fresh()->destinations)->toHaveCount(1);
+});
+
+test('the api activity list carries each replicated post status', function () {
+    $repurpose = Repurpose::factory()->for($this->workspace)->create([
+        'source_social_account_id' => $this->source->id,
+    ]);
+
+    $item = RepurposeItem::factory()->for($repurpose)->create();
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'repurpose_item_id' => $item->id,
+    ]);
+    PostPlatform::factory()->for($post)->create([
+        'platform' => Platform::TikTok,
+        'enabled' => true,
+        'status' => PostPlatformStatus::Published,
+    ]);
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->getJson(route('api.repurposes.items', $repurpose))
+        ->assertOk()
+        ->assertJsonPath('data.0.posts.0.platforms.0.status', PostPlatformStatus::Published->value);
 });

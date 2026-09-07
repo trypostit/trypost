@@ -8,6 +8,7 @@ use App\Actions\Repurpose\ActivateRepurpose;
 use App\Actions\Repurpose\CreateRepurpose;
 use App\Actions\Repurpose\DeleteRepurpose;
 use App\Actions\Repurpose\DisableRepurpose;
+use App\Actions\Repurpose\ListRepurposeItems;
 use App\Actions\Repurpose\PauseRepurpose;
 use App\Actions\Repurpose\ResumeRepurpose;
 use App\Actions\Repurpose\UpdateRepurpose;
@@ -22,11 +23,13 @@ use App\Support\Repurpose\Templates;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class RepurposeController extends Controller
 {
+    /** The public API's page size is a documented contract, not the app default. */
+    private const PAGE_SIZE = 15;
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Repurpose::class);
@@ -37,7 +40,7 @@ class RepurposeController extends Controller
                 ->with('sourceAccount')
                 ->withCount(['items as published_items_count' => fn ($query) => $query->where('status', ItemStatus::Published)])
                 ->latest()
-                ->paginate(15),
+                ->paginate(self::PAGE_SIZE),
         );
     }
 
@@ -112,10 +115,7 @@ class RepurposeController extends Controller
         $this->authorize('view', $repurpose);
 
         return RepurposeItemResource::collection(
-            $repurpose->items()
-                ->with('posts.postPlatforms:id,post_id,platform,enabled')
-                ->orderByDesc(DB::raw('coalesce(source_created_at, created_at)'))
-                ->paginate(15),
+            ListRepurposeItems::execute($repurpose, perPage: self::PAGE_SIZE),
         );
     }
 

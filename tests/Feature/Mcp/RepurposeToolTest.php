@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\Repurpose\ItemStatus;
 use App\Enums\Repurpose\PauseReason;
 use App\Enums\Repurpose\PublishMode;
@@ -21,6 +22,8 @@ use App\Mcp\Tools\Repurpose\ListRepurposesTool;
 use App\Mcp\Tools\Repurpose\ListRepurposeTemplatesTool;
 use App\Mcp\Tools\Repurpose\PauseRepurposeTool;
 use App\Mcp\Tools\Repurpose\UpdateRepurposeTool;
+use App\Models\Post;
+use App\Models\PostPlatform;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
@@ -301,4 +304,30 @@ test('activating through the tool is refused while the source is unusable', func
         ->assertHasErrors();
 
     expect($repurpose->fresh()->status)->toBe(Status::Draft);
+});
+
+test('the items tool carries each replicated post status', function () {
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+    ]);
+
+    $item = RepurposeItem::factory()->for($repurpose)->create();
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'repurpose_item_id' => $item->id,
+    ]);
+    PostPlatform::factory()->for($post)->create([
+        'platform' => Platform::TikTok,
+        'enabled' => true,
+        'status' => PostPlatformStatus::Published,
+    ]);
+
+    // Shares ListRepurposeItems with the web and the API, so the eager load can
+    // no longer drift out of step with what the resource reads.
+    TryPostServer::actingAs($this->user)
+        ->tool(ListRepurposeItemsTool::class, ['repurpose_id' => $repurpose->id])
+        ->assertOk()
+        ->assertSee(PostPlatformStatus::Published->value);
 });
