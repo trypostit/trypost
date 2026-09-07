@@ -57,10 +57,12 @@ class UpdateRepurposeTool extends Tool
             data_get($validated, 'source_social_account_id', $repurpose->source_social_account_id),
         );
 
-        DestinationMetaRules::assertRequired(
-            (array) data_get($validated, 'destinations', []),
-            $workspace->id,
-        );
+        if (DestinationMetaRules::enforcedFor($repurpose)) {
+            DestinationMetaRules::assertRequired(
+                (array) data_get($validated, 'destinations', []),
+                $workspace->id,
+            );
+        }
 
         return Response::structured(
             (new RepurposeResource(UpdateRepurpose::execute($repurpose, $validated)))->resolve(),

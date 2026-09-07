@@ -88,6 +88,8 @@ return [
     'show' => [
         'title' => 'Repurpose',
         'description' => 'Filmy opublikowane na tym koncie poza TryPost są replikowane do celów poniżej.',
+        'saving' => 'Zapisywanie...',
+        'saved' => 'Zapisano',
     ],
 
     'tabs' => [
@@ -102,8 +104,6 @@ return [
         'description' => 'Wybierz konta, które go otrzymają. Każde publikuje w wybranym przez ciebie formacie.',
         'hint' => 'Opis jest dostosowywany do sieci tylko wtedy, gdy przekracza jej limit.',
         'none_available' => 'W tym obszarze roboczym nie ma jeszcze innego połączonego konta.',
-        'save' => 'Zapisz zmiany',
-        'saved' => 'Cele zapisane',
         'publish_as' => 'Publikuj jako',
     ],
 

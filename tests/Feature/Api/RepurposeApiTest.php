@@ -90,6 +90,54 @@ test('destination meta survives a round trip through the api', function () {
         ->assertJsonPath('destinations.0.meta.privacy_level', 'PUBLIC_TO_EVERYONE');
 });
 
+test('a draft accepts a destination that is still missing its required meta', function () {
+    $id = $this->withHeaders(apiHeaders($this->token))
+        ->postJson(route('api.repurposes.store'), [
+            'source_social_account_id' => $this->source->id,
+            'destinations' => [[
+                'social_account_id' => $this->tiktok->id,
+                'content_type' => ContentType::TikTokVideo->value,
+                'meta' => [],
+            ]],
+        ])
+        ->assertCreated()
+        ->json('id');
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->putJson(route('api.repurposes.update', $id), [
+            'destinations' => [[
+                'social_account_id' => $this->tiktok->id,
+                'content_type' => ContentType::TikTokVideo->value,
+                'meta' => [],
+            ]],
+        ])
+        ->assertOk();
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->postJson(route('api.repurposes.activate', $id))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('destinations');
+});
+
+test('an active repurpose cannot drop the meta its destination needs to publish', function () {
+    $repurpose = Repurpose::factory()->for($this->workspace)->create([
+        'source_social_account_id' => $this->source->id,
+        'status' => Status::Active,
+        'destinations' => [tiktokDestinationPayload($this->tiktok)],
+    ]);
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->putJson(route('api.repurposes.update', $repurpose), [
+            'destinations' => [[
+                'social_account_id' => $this->tiktok->id,
+                'content_type' => ContentType::TikTokVideo->value,
+                'meta' => [],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('destinations.0.meta.privacy_level');
+});
+
 test('a destination format that cannot carry a video is rejected', function () {
     $pinterest = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::Pinterest]);
 

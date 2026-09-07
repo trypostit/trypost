@@ -88,6 +88,8 @@ return [
     'show' => [
         'title' => 'Repurpose',
         'description' => '这个账号在 TryPost 之外发布的视频，会同步到下面的目标。',
+        'saving' => '保存中…',
+        'saved' => '已保存',
     ],
 
     'tabs' => [
@@ -102,8 +104,6 @@ return [
         'description' => '选择接收的账号。每个账号按你指定的格式发布。',
         'hint' => '只有当文案超出该平台上限时，才会按平台调整。',
         'none_available' => '这个工作区还没有连接其他账号。',
-        'save' => '保存更改',
-        'saved' => '目标已保存',
         'publish_as' => '发布为',
     ],
 

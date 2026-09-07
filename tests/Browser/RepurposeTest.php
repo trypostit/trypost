@@ -214,3 +214,34 @@ test('the activity list reads as what happened, never as a database id', functio
         ->assertDontSee($withoutLink->source_media_id)
         ->assertNoJavaScriptErrors();
 });
+
+test('a destination missing its required meta saves anyway but blocks activating', function () {
+    [$user, $workspace, $source, $tiktok] = repurposeOwnerWithAccounts();
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'source_social_account_id' => $source->id,
+        'destinations' => [],
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.repurposes.show', $repurpose));
+
+    waitForRepurposeTestId($page, 'activate-repurpose');
+
+    $page->assertVisible('@activate-repurpose')
+        ->assertMissing('@save-destinations')
+        ->click("@channel-{$tiktok->id}");
+
+    waitForRepurposeTestId($page, 'repurpose-saved');
+
+    $saved = $repurpose->fresh()->destinations;
+
+    expect($saved)->toHaveCount(1)
+        ->and(data_get($saved, '0.social_account_id'))->toBe($tiktok->id)
+        ->and($page->script('document.querySelector(\'[data-testid="activate-repurpose"]\').disabled'))->toBeTrue();
+
+    $page->assertNoJavaScriptErrors();
+});

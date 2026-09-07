@@ -88,6 +88,8 @@ return [
     'show' => [
         'title' => 'Repurpose',
         'description' => 'Videos published on this account outside TryPost are replicated to the destinations below.',
+        'saving' => 'Saving...',
+        'saved' => 'Saved',
     ],
 
     'tabs' => [
@@ -102,8 +104,6 @@ return [
         'description' => 'Pick the accounts that receive it. Each one publishes in the format you choose.',
         'hint' => 'Captions are adapted per network only when they exceed that network\'s limit.',
         'none_available' => 'No other account is connected in this workspace yet.',
-        'save' => 'Save changes',
-        'saved' => 'Destinations saved',
         'publish_as' => 'Publish as',
     ],
 

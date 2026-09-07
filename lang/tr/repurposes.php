@@ -88,6 +88,8 @@ return [
     'show' => [
         'title' => 'Repurpose',
         'description' => 'Bu hesapta TryPost dışında yayınlanan videolar aşağıdaki hedeflere kopyalanır.',
+        'saving' => 'Kaydediliyor...',
+        'saved' => 'Kaydedildi',
     ],
 
     'tabs' => [
@@ -102,8 +104,6 @@ return [
         'description' => 'Alacak hesapları seç. Her biri senin belirlediğin formatta paylaşır.',
         'hint' => 'Açıklama yalnızca o ağın sınırını aştığında ağa göre uyarlanır.',
         'none_available' => 'Bu çalışma alanında bağlı başka hesap yok.',
-        'save' => 'Değişiklikleri kaydet',
-        'saved' => 'Hedefler kaydedildi',
         'publish_as' => 'Şu olarak paylaş',
     ],
 

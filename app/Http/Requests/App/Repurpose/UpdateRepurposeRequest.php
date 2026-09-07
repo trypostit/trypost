@@ -124,6 +124,10 @@ class UpdateRepurposeRequest extends FormRequest
                 $sourceAccountId,
             );
 
+            if (! DestinationMetaRules::enforcedFor($this->repurpose())) {
+                return;
+            }
+
             DestinationMetaRules::addRequiredErrors(
                 $validator,
                 (array) $this->input('destinations', []),

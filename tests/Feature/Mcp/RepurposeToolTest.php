@@ -1,3 +1,57 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Enums\PostPlatform\ContentType;
+use App\Enums\PostPlatform\Status as PostPlatformStatus;
+use App\Enums\Repurpose\ItemStatus;
+use App\Enums\Repurpose\PauseReason;
+use App\Enums\Repurpose\PublishMode;
+use App\Enums\Repurpose\SourceFormat;
+use App\Enums\Repurpose\Status;
+use App\Enums\SocialAccount\Platform;
+use App\Enums\SocialAccount\Status as AccountStatus;
+use App\Enums\UserWorkspace\Role;
+use App\Mcp\Servers\TryPostServer;
+use App\Mcp\Tools\Repurpose\ActivateRepurposeTool;
+use App\Mcp\Tools\Repurpose\CreateRepurposeTool;
+use App\Mcp\Tools\Repurpose\DeleteRepurposeTool;
+use App\Mcp\Tools\Repurpose\GetRepurposeTool;
+use App\Mcp\Tools\Repurpose\ListRepurposeItemsTool;
+use App\Mcp\Tools\Repurpose\ListRepurposeSourceFormatsTool;
+use App\Mcp\Tools\Repurpose\ListRepurposesTool;
+use App\Mcp\Tools\Repurpose\PauseRepurposeTool;
+use App\Mcp\Tools\Repurpose\UpdateRepurposeTool;
+use App\Models\Post;
+use App\Models\PostPlatform;
+use App\Models\Repurpose;
+use App\Models\RepurposeItem;
+use App\Models\SocialAccount;
+use App\Models\User;
+use App\Models\Workspace;
+use Illuminate\Testing\Fluent\AssertableJson;
+
+beforeEach(function () {
+    $this->user = User::factory()->create();
+    $this->workspace = Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+    $this->workspace->members()->attach($this->user->id, ['role' => Role::Admin->value]);
+    $this->user->update(['current_workspace_id' => $this->workspace->id]);
+
+    $this->source = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::Instagram]);
+    $this->tiktok = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::TikTok]);
+});
+
+function tiktokDestinationForMcp(SocialAccount $account): array
+{
+    return [
+        'social_account_id' => $account->id,
+        'content_type' => ContentType::TikTokVideo->value,
+        'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE'],
+    ];
+}
 
 test('a repurpose is created with its watched format and destination meta', function () {
     $response = TryPostServer::actingAs($this->user)
@@ -290,7 +344,7 @@ test('the update tool accepts a switched-off account as a destination', function
     expect($repurpose->fresh()->destinations)->toHaveCount(1);
 });
 
-test('the update tool refuses a pinterest destination without a board', function () {
+test('the update tool keeps a draft destination that is still missing its board', function () {
     $pinterest = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::Pinterest]);
 
     $repurpose = Repurpose::factory()->create([
@@ -307,9 +361,42 @@ test('the update tool refuses a pinterest destination without a board', function
                 'meta' => [],
             ]],
         ])
+        ->assertOk();
+
+    expect($repurpose->fresh()->destinations)->toHaveCount(1);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(ActivateRepurposeTool::class, ['repurpose_id' => $repurpose->id])
         ->assertHasErrors();
 
-    expect($repurpose->fresh()->destinations)->toBe([]);
+    expect($repurpose->fresh()->status)->toBe(Status::Draft);
+});
+
+test('the update tool refuses to drop the board an active repurpose publishes with', function () {
+    $pinterest = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::Pinterest]);
+
+    $repurpose = Repurpose::factory()->active()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+        'destinations' => [[
+            'social_account_id' => $pinterest->id,
+            'content_type' => ContentType::PinterestVideoPin->value,
+            'meta' => ['board_id' => 'board-1'],
+        ]],
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdateRepurposeTool::class, [
+            'repurpose_id' => $repurpose->id,
+            'destinations' => [[
+                'social_account_id' => $pinterest->id,
+                'content_type' => ContentType::PinterestVideoPin->value,
+                'meta' => [],
+            ]],
+        ])
+        ->assertHasErrors();
+
+    expect(data_get($repurpose->fresh()->destinations, '0.meta.board_id'))->toBe('board-1');
 });
 
 test('the source formats tool lists what a repurpose can watch', function () {

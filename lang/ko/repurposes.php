@@ -88,6 +88,8 @@ return [
     'show' => [
         'title' => 'Repurpose',
         'description' => '이 계정에서 TryPost 외부로 게시된 영상이 아래 대상으로 복제됩니다.',
+        'saving' => '저장 중...',
+        'saved' => '저장됨',
     ],
 
     'tabs' => [
@@ -102,8 +104,6 @@ return [
         'description' => '받을 계정을 고르세요. 각 계정은 지정한 형식으로 게시합니다.',
         'hint' => '캡션은 해당 네트워크의 한도를 넘을 때만 조정됩니다.',
         'none_available' => '이 워크스페이스에 연결된 다른 계정이 아직 없습니다.',
-        'save' => '변경사항 저장',
-        'saved' => '대상을 저장했습니다',
         'publish_as' => '게시 형식',
     ],
 

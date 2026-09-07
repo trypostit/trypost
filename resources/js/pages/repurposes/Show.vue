@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { IconAlertTriangle, IconHistory } from '@tabler/icons-vue';
+import { IconAlertTriangle, IconCircleCheck, IconHistory, IconLoader2 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, ref, watch } from 'vue';
-import { toast } from 'vue-sonner';
+import { computed, onUnmounted, ref, watch } from 'vue';
 
 import ChannelConfigurator from '@/components/ChannelConfigurator.vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
@@ -16,10 +15,11 @@ import RepurposeLifecycle from '@/components/repurpose/RepurposeLifecycle.vue';
 import RepurposeSummary from '@/components/repurpose/RepurposeSummary.vue';
 import SourceFormatCard from '@/components/repurpose/SourceFormatCard.vue';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePageErrors } from '@/composables/usePageErrors';
+import { getPlatformMetaIssue } from '@/composables/usePostCompliance';
+import debounce from '@/debounce';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { MediaType } from '@/lib/mediaType';
 import { destroy, update } from '@/routes/app/repurposes';
@@ -94,6 +94,7 @@ const channels = computed<Channel[]>(() =>
         return {
             id: account.id,
             platform: account.platform,
+            issue: index === -1 ? null : getPlatformMetaIssue(account.platform, destination.meta ?? {}),
             displayName: account.display_name,
             username: account.username ?? null,
             avatarUrl: account.avatar_url,
@@ -174,13 +175,53 @@ const currentFormatLabel = computed(
 
 const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
+const isSaving = ref(false);
+const showSaved = ref(false);
+
 const save = () => {
+    if (isSaving.value) {
+        debouncedSave();
+
+        return;
+    }
+
+    isSaving.value = true;
+    showSaved.value = false;
+
     form.put(update.url(props.repurpose.id), {
         preserveScroll: true,
-        onSuccess: () => toast.success(trans('repurposes.destinations.saved')),
-        onError: () => toast.error(trans('repurposes.errors.action_failed')),
+        onSuccess: () => {
+            showSaved.value = true;
+            setTimeout(() => { showSaved.value = false; }, 2000);
+        },
+        onFinish: () => { isSaving.value = false; },
     });
 };
+
+const debouncedSave = debounce(save, 1500);
+
+watch(
+    () => [form.source_social_account_id, form.source_format, form.publish_mode, form.destinations],
+    () => {
+        showSaved.value = false;
+        debouncedSave();
+    },
+    { deep: true },
+);
+
+onUnmounted(() => debouncedSave.cancel());
+
+const blockedReason = computed<string | null>(() => {
+    if (form.destinations.length === 0) {
+        return trans('repurposes.errors.destinations_required');
+    }
+
+    const issues = channels.value
+        .filter((channel) => selectedAccountIds.value.includes(channel.id) && channel.issue)
+        .map((channel) => `${channel.displayName}: ${channel.issue}`);
+
+    return issues.length > 0 ? issues.join('\n') : null;
+});
 
 const handleDelete = () => {
     confirmDeleteModal.value?.open({
@@ -219,7 +260,30 @@ const handleDelete = () => {
                         />
                     </div>
 
-                    <RepurposeLifecycle :repurpose="repurpose" @delete="handleDelete" />
+                    <div class="flex items-center gap-3">
+                        <span
+                            v-if="isSaving"
+                            class="flex items-center gap-1.5 text-xs font-semibold text-foreground/70"
+                            data-testid="repurpose-saving"
+                        >
+                            <IconLoader2 class="size-3.5 animate-spin" />
+                            {{ $t('repurposes.show.saving') }}
+                        </span>
+                        <span
+                            v-else-if="showSaved"
+                            class="flex items-center gap-1.5 text-xs font-semibold text-emerald-700"
+                            data-testid="repurpose-saved"
+                        >
+                            <IconCircleCheck class="size-3.5" stroke-width="2.5" />
+                            {{ $t('repurposes.show.saved') }}
+                        </span>
+
+                        <RepurposeLifecycle
+                            :repurpose="repurpose"
+                            :blocked-reason="blockedReason"
+                            @delete="handleDelete"
+                        />
+                    </div>
                 </div>
 
                 <RepurposeHealthBanner :repurpose="repurpose" :accounts="destinationAccounts" />
@@ -289,12 +353,6 @@ const handleDelete = () => {
                                     />
                                 </CardContent>
                             </Card>
-
-                            <div v-if="form.isDirty" class="sticky bottom-4 flex justify-end">
-                                <Button data-testid="save-destinations" :disabled="form.processing" @click="save">
-                                    {{ $t('repurposes.destinations.save') }}
-                                </Button>
-                            </div>
                         </div>
                     </div>
                 </TabsContent>

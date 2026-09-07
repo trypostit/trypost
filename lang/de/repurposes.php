@@ -88,6 +88,8 @@ return [
     'show' => [
         'title' => 'Repurpose',
         'description' => 'Videos, die außerhalb von TryPost auf diesem Konto erscheinen, werden auf die Ziele unten repliziert.',
+        'saving' => 'Wird gespeichert...',
+        'saved' => 'Gespeichert',
     ],
 
     'tabs' => [
@@ -102,8 +104,6 @@ return [
         'description' => 'Wähle die Konten, die es erhalten. Jedes veröffentlicht im Format deiner Wahl.',
         'hint' => 'Der Text wird nur dann pro Netzwerk angepasst, wenn er dessen Limit überschreitet.',
         'none_available' => 'In diesem Workspace ist noch kein weiteres Konto verbunden.',
-        'save' => 'Änderungen speichern',
-        'saved' => 'Ziele gespeichert',
         'publish_as' => 'Veröffentlichen als',
     ],
 

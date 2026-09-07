@@ -88,6 +88,8 @@ return [
     'show' => [
         'title' => 'Repurpose',
         'description' => 'Los vídeos publicados en esta cuenta fuera de TryPost se replican en los destinos de abajo.',
+        'saving' => 'Guardando...',
+        'saved' => 'Guardado',
     ],
 
     'tabs' => [
@@ -102,8 +104,6 @@ return [
         'description' => 'Elige las cuentas que lo recibirán. Cada una publica en el formato que elijas.',
         'hint' => 'El texto solo se adapta por red cuando supera el límite de esa red.',
         'none_available' => 'No hay ninguna otra cuenta conectada en este espacio de trabajo.',
-        'save' => 'Guardar cambios',
-        'saved' => 'Destinos guardados',
         'publish_as' => 'Publicar como',
     ],
 

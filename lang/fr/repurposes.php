@@ -88,6 +88,8 @@ return [
     'show' => [
         'title' => 'Repurpose',
         'description' => 'Les vidéos publiées sur ce compte en dehors de TryPost sont répliquées vers les destinations ci-dessous.',
+        'saving' => 'Enregistrement...',
+        'saved' => 'Enregistré',
     ],
 
     'tabs' => [
@@ -102,8 +104,6 @@ return [
         'description' => 'Choisissez les comptes qui le reçoivent. Chacun publie dans le format que vous choisissez.',
         'hint' => 'La légende n\'est adaptée par réseau que lorsqu\'elle dépasse la limite de ce réseau.',
         'none_available' => 'Aucun autre compte n\'est connecté dans cet espace de travail.',
-        'save' => 'Enregistrer',
-        'saved' => 'Destinations enregistrées',
         'publish_as' => 'Publier comme',
     ],
 

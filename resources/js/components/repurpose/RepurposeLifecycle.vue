@@ -12,13 +12,17 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { activate, disable, pause, resume } from '@/routes/app/repurposes';
 import type { Repurpose } from '@/types/repurpose';
 import { RepurposeStatus } from '@/types/repurpose-status';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     repurpose: Repurpose;
-}>();
+    blockedReason?: string | null;
+}>(), {
+    blockedReason: null,
+});
 
 const emit = defineEmits<{ delete: [] }>();
 
@@ -28,7 +32,7 @@ const isIdle = computed(
     () => status.value === RepurposeStatus.Draft || status.value === RepurposeStatus.Disabled,
 );
 
-const canActivate = computed(() => isIdle.value && props.repurpose.destinations.length > 0);
+const isBlocked = computed(() => Boolean(props.blockedReason));
 
 const send = (url: string) =>
     router.post(url, {}, {
@@ -60,39 +64,52 @@ const send = (url: string) =>
             </DropdownMenuContent>
         </DropdownMenu>
 
-                <Button
-                    v-if="canActivate"
-                    data-testid="activate-repurpose"
-                    @click="send(activate.url(repurpose.id))"
-                >
-                    {{ $t('repurposes.status_card.activate') }}
-                </Button>
+        <TooltipProvider v-if="isIdle || status === RepurposeStatus.Paused" :delay-duration="200">
+            <Tooltip>
+                <TooltipTrigger as-child>
+                    <span tabindex="0">
+                        <Button
+                            v-if="isIdle"
+                            data-testid="activate-repurpose"
+                            :disabled="isBlocked"
+                            @click="send(activate.url(repurpose.id))"
+                        >
+                            {{ $t('repurposes.status_card.activate') }}
+                        </Button>
 
-                <Button
-                    v-if="status === RepurposeStatus.Active"
-                    variant="outline"
-                    data-testid="pause-repurpose"
-                    @click="send(pause.url(repurpose.id))"
-                >
-                    {{ $t('repurposes.status_card.pause') }}
-                </Button>
+                        <Button
+                            v-else
+                            variant="outline"
+                            data-testid="resume-repurpose"
+                            :disabled="isBlocked"
+                            @click="send(resume.url(repurpose.id))"
+                        >
+                            {{ $t('repurposes.status_card.resume') }}
+                        </Button>
+                    </span>
+                </TooltipTrigger>
+                <TooltipContent v-if="isBlocked" class="max-w-xs whitespace-pre-line">
+                    {{ blockedReason }}
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
 
-                <Button
-                    v-if="status === RepurposeStatus.Paused"
-                    variant="outline"
-                    data-testid="resume-repurpose"
-                    @click="send(resume.url(repurpose.id))"
-                >
-                    {{ $t('repurposes.status_card.resume') }}
-                </Button>
+        <Button
+            v-if="status === RepurposeStatus.Active"
+            variant="outline"
+            data-testid="pause-repurpose"
+            @click="send(pause.url(repurpose.id))"
+        >
+            {{ $t('repurposes.status_card.pause') }}
+        </Button>
 
-                <Button
-                    v-if="!isIdle"
-                    variant="destructive"
-                    data-testid="disable-repurpose"
-                    @click="send(disable.url(repurpose.id))"
-                >
-                    {{ $t('repurposes.status_card.disable') }}
-                </Button>
+        <Button
+            v-if="!isIdle"
+            variant="destructive"
+            data-testid="disable-repurpose"
+            @click="send(disable.url(repurpose.id))"
+        >
+            {{ $t('repurposes.status_card.disable') }}
+        </Button>
     </div>
 </template>

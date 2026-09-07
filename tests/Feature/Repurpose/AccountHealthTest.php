@@ -733,7 +733,7 @@ test('changing the source of a never-activated repurpose invents no watermark', 
     expect($repurpose->fresh()->activated_at)->toBeNull();
 });
 
-test('a pinterest destination cannot be saved without a board', function () {
+test('a draft saves a destination that is still missing its required meta', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
@@ -757,12 +757,40 @@ test('a pinterest destination cannot be saved without a board', function () {
                 'meta' => [],
             ]],
         ])
-        ->assertSessionHasErrors('destinations.0.meta.board_id');
+        ->assertSessionHasNoErrors();
 
-    expect($repurpose->fresh()->destinations)->toBe([]);
+    expect($repurpose->fresh()->destinations)->toHaveCount(1);
 });
 
-test('a tiktok destination cannot be saved without a privacy level', function () {
+test('a draft missing its required meta cannot be activated', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $source = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
+    $pinterest = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Pinterest]);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Draft,
+        'destinations' => [[
+            'social_account_id' => $pinterest->id,
+            'content_type' => ContentType::PinterestVideoPin->value,
+            'meta' => [],
+        ]],
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('app.repurposes.activate', $repurpose))
+        ->assertSessionHasErrors('destinations');
+
+    expect($repurpose->fresh()->status)->toBe(Status::Draft);
+});
+
+test('an active repurpose cannot drop the meta its destination needs to publish', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
@@ -775,7 +803,12 @@ test('a tiktok destination cannot be saved without a privacy level', function ()
 
     $repurpose = Repurpose::factory()->for($workspace)->create([
         'source_social_account_id' => $source->id,
-        'status' => Status::Draft,
+        'status' => Status::Active,
+        'destinations' => [[
+            'social_account_id' => $tiktok->id,
+            'content_type' => ContentType::TikTokVideo->value,
+            'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE'],
+        ]],
     ]);
 
     $this->actingAs($user)
@@ -787,4 +820,6 @@ test('a tiktok destination cannot be saved without a privacy level', function ()
             ]],
         ])
         ->assertSessionHasErrors('destinations.0.meta.privacy_level');
+
+    expect(data_get($repurpose->fresh()->destinations, '0.meta.privacy_level'))->toBe('PUBLIC_TO_EVERYONE');
 });

@@ -88,6 +88,8 @@ return [
     'show' => [
         'title' => 'Repurpose',
         'description' => 'I video pubblicati su questo account fuori da TryPost vengono replicati sulle destinazioni qui sotto.',
+        'saving' => 'Salvataggio in corso...',
+        'saved' => 'Salvato',
     ],
 
     'tabs' => [
@@ -102,8 +104,6 @@ return [
         'description' => 'Scegli gli account che lo riceveranno. Ognuno pubblica nel formato che imposti.',
         'hint' => 'La didascalia viene adattata per rete solo quando supera il limite di quella rete.',
         'none_available' => 'Nessun altro account è collegato in questo workspace.',
-        'save' => 'Salva modifiche',
-        'saved' => 'Destinazioni salvate',
         'publish_as' => 'Pubblica come',
     ],
 

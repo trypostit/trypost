@@ -88,6 +88,8 @@ return [
     'show' => [
         'title' => 'Repurpose',
         'description' => 'Os vídeos publicados nesta conta fora do TryPost são replicados nos destinos abaixo.',
+        'saving' => 'Salvando...',
+        'saved' => 'Salvo',
     ],
 
     'tabs' => [
@@ -102,8 +104,6 @@ return [
         'description' => 'Escolha as contas que vão receber. Cada uma publica no formato que você definir.',
         'hint' => 'A legenda só é adaptada por rede quando ultrapassa o limite daquela rede.',
         'none_available' => 'Nenhuma outra conta está conectada neste workspace.',
-        'save' => 'Salvar alterações',
-        'saved' => 'Destinos salvos',
         'publish_as' => 'Publicar como',
     ],
 

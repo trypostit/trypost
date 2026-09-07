@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support\Repurpose;
 
+use App\Enums\Repurpose\Status;
+use App\Models\Repurpose;
 use App\Models\SocialAccount;
 use App\Support\PostPlatformMetaRules;
 use Illuminate\Support\Facades\Validator as ValidatorFacade;
@@ -38,11 +40,17 @@ class DestinationMetaRules
     }
 
     /**
-     * A repurpose publishes without anyone reviewing the post first, so a
+     * An active repurpose publishes without anyone reviewing the post first, so a
      * destination missing the meta its network needs can only fail later, in a
-     * queued job. Checked on save, the way the post editor checks it before
-     * scheduling.
-     *
+     * queued job. A draft, paused or disabled one saves incomplete the way a post
+     * draft does; activating it runs the same check.
+     */
+    public static function enforcedFor(Repurpose $repurpose): bool
+    {
+        return $repurpose->status === Status::Active;
+    }
+
+    /**
      * @param  array<int, mixed>  $destinations
      */
     public static function addRequiredErrors(Validator $validator, array $destinations, ?string $workspaceId): void
