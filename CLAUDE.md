@@ -291,9 +291,28 @@ and parity with `ContentLanguage`).
 
 ## Emails (Maizzle + i18n)
 
-Email HTML is authored in `maizzle/templates/<slug>.html` and compiled to
-`resources/views/mail/<slug>.blade.php` by `cd maizzle && npm run build`. **Never
-edit the Blade files** — they are build output and the next build overwrites them.
+**Every email the app sends is fully translated into all 16 supported locales,
+and every new email must be too.** There is no English-only email left in the
+codebase, and adding one is a regression — not a gap to fill in later.
+
+**Every email is built with Maizzle, and every string in it goes through
+`__()`.** Both halves are mandatory, with no exceptions for "small",
+"transactional", "internal" or "temporary" emails:
+
+- **Maizzle, always.** Email HTML is authored in `maizzle/templates/<slug>.html`
+  and compiled to `resources/views/mail/<slug>.blade.php` by
+  `cd maizzle && npm run build`. Never hand-write a Blade view under
+  `resources/views/mail/`, never use Laravel's markdown mailables, and **never
+  edit the Blade files** — they are build output and the next build overwrites
+  them. A one-off email written outside Maizzle loses the shared layout, header,
+  footer and inlined CSS, and silently drops out of the translation workflow.
+- **i18n, always.** No user-visible string may be a literal — not in the
+  template, not in the Mailable, not in a notification closure. Subject, preview
+  text, headings, body copy, button labels and footer chrome all resolve through
+  `__()` / `trans_choice()` against `lang/*/mail.php`, in all 16 locales. A
+  literal is invisible to `LocalizationParityTest`, so it ships and stays broken.
+
+How that works in practice:
 
 - **Maizzle eats one `{`-level.** Write `@{{ ... }}` in the template to emit Blade
   `{{ ... }}`; write `{!! ... !!}` as-is (it passes through via
