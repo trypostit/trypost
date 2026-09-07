@@ -280,9 +280,9 @@ and parity with `ContentLanguage`).
   **backend validation messages** in the language the visitor picked, and the old
   input is what keeps the re-rendered form in it after a failed submit. Drop
   either and a Portuguese visitor gets English error messages.
-- `locale` is `nullable` on `RegisterRequest` on purpose: the picker is a
-  convenience, and a missing field falls back to negotiation rather than
-  refusing the signup. An *unsupported* value is still rejected.
+- `locale` is `required` on `RegisterRequest`: the register form always submits
+  the field (the hidden input falls back to the `locale` page prop), so a missing
+  one means a broken client, not a visitor without a preference.
 - Google and GitHub signups always store `Locale::DEFAULT`. They have no picker,
   and the OAuth callback's `Accept-Language` is the provider's redirect, not a
   reliable signal about the person.

@@ -44,6 +44,7 @@ test('invite registration rejects a different email than the invite', function (
         'password' => 'password',
         'password_confirmation' => 'password',
         'invite' => $this->invite->id,
+        'locale' => 'en',
     ])->assertSessionHasErrors('email');
 
     expect(User::where('email', 'other@example.com')->exists())->toBeFalse();
@@ -56,6 +57,7 @@ test('invite registration allows the invited email', function () {
         'password' => 'password',
         'password_confirmation' => 'password',
         'invite' => $this->invite->id,
+        'locale' => 'en',
     ])->assertRedirect(route('app.invites.show', $this->invite));
 
     expect(User::where('email', 'invitee@example.com')->exists())->toBeTrue();

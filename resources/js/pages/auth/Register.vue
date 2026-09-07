@@ -192,7 +192,7 @@ watch(selectedLocale, async (locale) => {
                                 :search-placeholder="$t('auth.register.language_search')"
                                 :empty-text="$t('auth.register.language_empty')"
                             />
-                            <input type="hidden" name="locale" :value="selectedLocale" />
+                            <input type="hidden" name="locale" :value="selectedLocale ?? locale" />
                             <InputError :message="errors.locale" />
                         </div>
 

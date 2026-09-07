@@ -30,6 +30,7 @@ test('email registration saves utm parameters from the register page query strin
         'name' => 'UTM User',
         'email' => 'utm@example.com',
         'password' => 'Password123!',
+        'locale' => 'en',
     ])
         ->assertRedirect(route('app.welcome', absolute: false));
 
@@ -44,6 +45,7 @@ test('email registration without utm parameters saves null utm columns', functio
         'name' => 'No UTM User',
         'email' => 'no-utm@example.com',
         'password' => 'Password123!',
+        'locale' => 'en',
     ])
         ->assertRedirect(route('app.welcome', absolute: false));
 
@@ -68,6 +70,7 @@ test('email registration ignores non-utm query params', function () {
         'name' => 'Strip Test',
         'email' => 'strip@example.com',
         'password' => 'Password123!',
+        'locale' => 'en',
     ]);
 
     $this->assertDatabaseHas('users', [
@@ -182,6 +185,7 @@ test('invitation registration redirects to the invite page instead of app.welcom
         'email' => 'invited@example.com',
         'password' => 'Password123!',
         'invite' => $invite->id,
+        'locale' => 'en',
     ])
         ->assertRedirect(route('app.invites.show', $invite));
 });
@@ -195,6 +199,7 @@ test('utm values longer than 255 characters are truncated before being stored', 
         'name' => 'Long UTM User',
         'email' => 'long-utm@example.com',
         'password' => 'Password123!',
+        'locale' => 'en',
     ]);
 
     $user = User::where('email', 'long-utm@example.com')->first();
@@ -207,6 +212,7 @@ test('email registration captures the requesting ip address', function () {
         'name' => 'IP User',
         'email' => 'ip@example.com',
         'password' => 'Password123!',
+        'locale' => 'en',
     ]);
 
     $user = User::where('email', 'ip@example.com')->first();

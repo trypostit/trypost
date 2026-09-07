@@ -20,6 +20,7 @@ function registerWithLocale(array $overrides = [], array $headers = []): TestRes
         'name' => 'Test User',
         'email' => 'test@example.com',
         'password' => 'Password123!',
+        'locale' => 'en',
     ], $overrides), $headers);
 }
 
@@ -45,18 +46,10 @@ test('registering stores the picked locale on the user', function () {
         ->toBe(Locale::PortugueseBrazil);
 });
 
-test('registering without a picked locale falls back to the negotiated one', function () {
-    registerWithLocale(headers: ['Accept-Language' => 'de-DE,de;q=0.9'])->assertSessionHasNoErrors();
+test('the locale is required, since the register form always submits one', function () {
+    registerWithLocale(['locale' => null])->assertSessionHasErrors('locale');
 
-    expect(User::where('email', 'test@example.com')->first()->locale)
-        ->toBe(Locale::German);
-});
-
-test('registering with neither a picked nor a supported locale stores the default', function () {
-    registerWithLocale(headers: ['Accept-Language' => 'sv-SE'])->assertSessionHasNoErrors();
-
-    expect(User::where('email', 'test@example.com')->first()->locale)
-        ->toBe(Locale::DEFAULT);
+    expect(User::where('email', 'test@example.com')->exists())->toBeFalse();
 });
 
 test('an unsupported locale is rejected rather than stored', function () {

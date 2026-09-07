@@ -34,7 +34,7 @@ class RegisterRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', Rules\Password::defaults()],
-            'locale' => ['nullable', Rule::enum(Locale::class)],
+            'locale' => ['required', Rule::enum(Locale::class)],
         ];
     }
 
