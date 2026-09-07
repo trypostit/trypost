@@ -83,41 +83,20 @@ class CaptionAdapter
     {
         $words = explode(' ', $caption);
 
-        $whole = $this->longestFitting(
-            count($words),
-            fn (int $take): string => rtrim(implode(' ', array_slice($words, 0, $take))),
-            $platform,
-        );
-
-        if ($whole !== '') {
-            return $whole;
+        while ($words !== [] && ! $this->fits(rtrim(implode(' ', $words)), $platform)) {
+            array_pop($words);
         }
 
-        return $this->longestFitting(
-            mb_strlen($caption),
-            fn (int $take): string => rtrim(mb_substr($caption, 0, $take)),
-            $platform,
-        );
-    }
-
-    /**
-     * @param  callable(int): string  $take
-     */
-    private function longestFitting(int $most, callable $take, Platform $platform): string
-    {
-        $low = 0;
-        $high = $most;
-
-        while ($low < $high) {
-            $middle = intdiv($low + $high + 1, 2);
-
-            if ($this->fits($take($middle), $platform)) {
-                $low = $middle;
-            } else {
-                $high = $middle - 1;
-            }
+        if ($words !== []) {
+            return rtrim(implode(' ', $words));
         }
 
-        return $take($low);
+        $letters = mb_substr($caption, 0, $platform->maxContentLength());
+
+        while ($letters !== '' && ! $this->fits($letters, $platform)) {
+            $letters = mb_substr($letters, 0, -1);
+        }
+
+        return $letters;
     }
 }
