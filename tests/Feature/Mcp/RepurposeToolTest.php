@@ -298,7 +298,6 @@ test('activating through the tool is refused while the source is unusable', func
 
     $this->source->update(['status' => AccountStatus::Disconnected]);
 
-    // The gate lives in the action, so the tool inherits it without knowing.
     TryPostServer::actingAs($this->user)
         ->tool(ActivateRepurposeTool::class, ['repurpose_id' => $repurpose->id])
         ->assertHasErrors();
@@ -324,8 +323,6 @@ test('the items tool carries each replicated post status', function () {
         'status' => PostPlatformStatus::Published,
     ]);
 
-    // Shares ListRepurposeItems with the web and the API, so the eager load can
-    // no longer drift out of step with what the resource reads.
     TryPostServer::actingAs($this->user)
         ->tool(ListRepurposeItemsTool::class, ['repurpose_id' => $repurpose->id])
         ->assertOk()
@@ -341,8 +338,6 @@ test('the update tool accepts a switched-off account as a destination', function
 
     $this->tiktok->update(['is_active' => false]);
 
-    // An agent round-trips the destination list it was given, exactly like the
-    // editor does, so rejecting a paused destination would block every update.
     TryPostServer::actingAs($this->user)
         ->tool(UpdateRepurposeTool::class, [
             'repurpose_id' => $repurpose->id,

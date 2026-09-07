@@ -33,11 +33,6 @@ const marks: Record<RepurposeItemStatusValue, { icon: Component; class: string }
 
 const detail = (item: RepurposeItem): string | null => item.error ?? null;
 
-/**
- * The post's own state, not the item's. A failure on any network is the thing
- * worth surfacing; otherwise a single shared state only reads as settled when
- * every network agrees on it.
- */
 const postState = (post: RepurposeItemPost): PostPlatformStatusValue | null => {
     const states = post.platforms
         .map((entry) => entry.status)

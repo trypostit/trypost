@@ -159,9 +159,6 @@ class RepurposeController extends Controller
     }
 
     /**
-     * The content type a destination starts on: what the watched format maps to
-     * on that network, or its first video type when the two do not line up.
-     *
      * @param  Collection<int, SocialAccount>  $accounts
      * @return array<string, string>
      */
@@ -223,11 +220,6 @@ class RepurposeController extends Controller
     }
 
     /**
-     * Switched-off accounts included on purpose. A destination the user paused
-     * stays on the repurpose and is skipped at publish time; leaving it out here
-     * drops it from the form, and the next save would erase a destination they
-     * only meant to pause. The page marks them instead.
-     *
      * @return Collection<int, SocialAccount>
      */
     private function connectedAccounts(Request $request): Collection
@@ -236,8 +228,6 @@ class RepurposeController extends Controller
     }
 
     /**
-     * The source has to work, so this one really is active accounts only.
-     *
      * @param  Collection<int, SocialAccount>  $accounts
      * @return Collection<int, SocialAccount>
      */

@@ -224,9 +224,6 @@ test('a switched-off account is accepted as a destination and skipped at publish
 
     $this->tiktok->update(['is_active' => false]);
 
-    // This used to be rejected. Switching an account off means "don't post
-    // here", not "this repurpose is invalid" — ProcessRepurposeItem skips such
-    // a destination, and activation still demands one usable destination.
     $this->actingAs($this->user)
         ->put(route('app.repurposes.update', $repurpose), [
             'destinations' => [destinationPayload($this->tiktok)],
@@ -330,9 +327,6 @@ test('a destination whose account was switched off is kept, not rejected', funct
 
     $this->tiktok->update(['is_active' => false]);
 
-    // Switching an account off means "don't post here", which the job already
-    // honours by skipping it. Rejecting the payload instead would stop the user
-    // saving any edit at all, because the editor round-trips the whole list.
     $this->actingAs($this->user)
         ->put(route('app.repurposes.update', $repurpose), [
             'source_social_account_id' => $this->source->id,
@@ -578,8 +572,6 @@ test('the activity list exposes each replicated post status', function () {
         ->get(route('app.repurposes.show', $repurpose))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->has('items.data.0.posts', 2)
-            // posts() carries no explicit ordering, so assert on the set rather
-            // than on which one the database happened to return first.
             ->where('items.data.0.posts', fn (Collection $posts): bool => $posts
                 ->pluck('platforms.0.status')
                 ->sort()
@@ -596,9 +588,6 @@ test('a switched-off destination is still sent to the page so editing cannot dro
 
     $this->tiktok->update(['is_active' => false]);
 
-    // The editor round-trips whatever it was given. An account missing from
-    // destinationAccounts is filtered out of the form, so the next save would
-    // erase a destination the user only paused.
     $this->actingAs($this->user)
         ->get(route('app.repurposes.show', $repurpose))
         ->assertOk()

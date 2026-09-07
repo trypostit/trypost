@@ -203,8 +203,6 @@ test('activation stamps the watermark', function () {
 test('pausing keeps the watermark and resuming does not move it', function () {
     [$workspace, $user, $account] = repurposeWorkspace();
 
-    // Resuming runs the same health gates as activating, so the repurpose needs
-    // a usable source and destination for this watermark test to reach them.
     $repurpose = Repurpose::factory()->active()->create([
         'workspace_id' => $workspace->id,
         'source_social_account_id' => $account->id,

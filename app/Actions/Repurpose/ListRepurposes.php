@@ -12,9 +12,6 @@ use Illuminate\Pagination\LengthAwarePaginator;
 class ListRepurposes
 {
     /**
-     * The one place the list query lives. Duplicating it is how the activity
-     * list ended up serving a column two of its three callers never selected.
-     *
      * @return LengthAwarePaginator<int, Repurpose>
      */
     public static function execute(Workspace $workspace, ?int $page = null): LengthAwarePaginator

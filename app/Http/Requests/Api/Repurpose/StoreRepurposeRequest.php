@@ -68,10 +68,6 @@ class StoreRepurposeRequest extends FormRequest
                 'string',
                 'uuid',
                 Rule::exists('social_accounts', 'id')
-                    // No is_active clause: switching an account off means
-                    // "don't post here", and the job already skips it. Rejecting
-                    // the payload would stop the user saving any edit, because
-                    // the editor round-trips the whole destination list.
                     ->where('workspace_id', $this->workspaceId()),
             ],
             'destinations.*.content_type' => [
@@ -115,8 +111,6 @@ class StoreRepurposeRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            // Only once the field rules have run: both sides are then strings
-            // that passed `uuid`, instead of whatever the client posted.
             if ($validator->errors()->isNotEmpty()) {
                 return;
             }

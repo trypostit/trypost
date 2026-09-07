@@ -8,7 +8,6 @@ use App\Enums\Repurpose\PauseReason;
 use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
-use Database\Factories\RepurposeFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,7 +16,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Repurpose extends Model
 {
-    /** @use HasFactory<RepurposeFactory> */
     use HasFactory, HasUuids;
 
     protected $fillable = [

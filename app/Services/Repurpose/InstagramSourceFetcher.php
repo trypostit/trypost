@@ -16,13 +16,8 @@ class InstagramSourceFetcher extends MetaSourceFetcher
 {
     private const FIELDS = 'id,media_type,media_product_type,media_url,caption,permalink,timestamp';
 
-    /** Everything Meta marks as public, so any Instagram token can read it. */
     private const PUBLIC_FIELDS = 'id,media_type,media_url,permalink,timestamp';
 
-    /**
-     * Not a quota lever: a page of rows costs the same single call whatever its
-     * size. It bounds how far back a poll can catch up after an outage.
-     */
     private const PAGE_SIZE = 25;
 
     /**
@@ -79,12 +74,6 @@ class InstagramSourceFetcher extends MetaSourceFetcher
     }
 
     /**
-     * Meta documents media_product_type as available to the Facebook-login API
-     * only, and our standalone Instagram accounts talk to graph.instagram.com.
-     * The surface is therefore taken from the edge that returned the row where
-     * it is unambiguous, and a video off /media with no product type is read as
-     * a Reel, which is what Instagram serves new feed video as.
-     *
      * @param  array<string, mixed>  $row
      */
     private function format(array $row, ?SourceFormat $edgeFormat): ?SourceFormat

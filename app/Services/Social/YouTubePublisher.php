@@ -205,11 +205,6 @@ class YouTubePublisher
         }
     }
 
-    /**
-     * YouTube counts a title in characters, so the cut has to as well: measuring
-     * bytes trims accented copy earlier than it needs to and can slice a
-     * multi-byte character in half, which is what reaches the API.
-     */
     private function buildTitle(string $content): string
     {
         $maxLength = 100;

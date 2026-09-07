@@ -29,11 +29,6 @@ class CaptionAdapter
             ?? $this->truncate($caption, $platform);
     }
 
-    /**
-     * What the publisher actually puts on the network. Sanitizing moves the length
-     * both ways — HTML comes off, X rewrites every dot of a host — so the raw
-     * caption is never the thing to measure a limit against.
-     */
     private function sent(string $caption, Platform $platform): string
     {
         return $this->sanitizer->displayText($caption, $platform);
@@ -44,10 +39,6 @@ class CaptionAdapter
         return $platform->contentOverflow($this->sent($caption, $platform)) === 0;
     }
 
-    /**
-     * Null whenever the workspace cannot buy a rewrite or the model does not
-     * deliver one that fits, which sends the caller to plain truncation.
-     */
     private function shorten(Workspace $workspace, ?User $user, string $caption, Platform $platform): ?string
     {
         if ($user === null || Gate::forUser($user)->denies('useAi', $workspace->account)) {
@@ -94,11 +85,6 @@ class CaptionAdapter
         return $caption;
     }
 
-    /**
-     * How many raw characters to try next: the current length scaled by how much
-     * the sent text has to shrink, and always at least one shorter so the cut
-     * cannot stall on a caption that sanitizes to something longer.
-     */
     private function fittingLength(string $caption, Platform $platform): int
     {
         $length = mb_strlen($caption);

@@ -51,8 +51,6 @@ class SocialAccountObserver
 
     public function updated(SocialAccount $socialAccount): void
     {
-        // Its own guard, ahead of the status-only early return below: widening
-        // that one would change the PostHog and onboarding behaviour behind it.
         if ($socialAccount->wasChanged(['status', 'is_active', 'platform'])) {
             app(RepurposeAccountSync::class)->accountChanged($socialAccount);
         }

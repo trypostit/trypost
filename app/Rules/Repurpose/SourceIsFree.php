@@ -10,11 +10,6 @@ use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Str;
 
-/**
- * One workspace watches a given account for a given format once. The database
- * says the same thing, and says it last — this exists so the user reads a
- * sentence instead of the constraint.
- */
 class SourceIsFree implements ValidationRule
 {
     public function __construct(

@@ -109,7 +109,6 @@ class TryPostServer extends Server
         ListDiscordChannelsTool::class,
         ToggleSocialAccountTool::class,
 
-        // Repurpose
         ListRepurposeTemplatesTool::class,
         ListRepurposesTool::class,
         CreateRepurposeTool::class,

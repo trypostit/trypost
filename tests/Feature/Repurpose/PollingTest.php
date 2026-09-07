@@ -313,8 +313,6 @@ test('a skipped poll reschedules without erasing the recorded error', function (
 
     $fresh = $repurpose->fresh();
 
-    // The error is what tells the user why it stopped, so it survives. The
-    // schedule still moves, or the scheduler re-dispatches this on every tick.
     expect($fresh->last_error)->toBe('Instagram rejected the request')
         ->and($fresh->next_poll_at->isFuture())->toBeTrue();
 });
@@ -337,8 +335,6 @@ test('an orphaned repurpose is never dispatched for polling', function () {
         ])->id,
     ]);
 
-    // The observer pauses an orphan, so the command should never see one — but a
-    // null id must not reach whereKey() even if something else leaves one Active.
     $orphan->update(['source_social_account_id' => null, 'status' => Status::Active]);
 
     Artisan::call('repurpose:poll');
@@ -360,12 +356,6 @@ test('polling the same video twice queues it only once', function () {
         'activated_at' => now()->subDays(30),
     ]);
 
-    // The source keeps returning the same page every interval, so only the
-    // first sighting is work. Two things enforce that and this pins the
-    // outcome, not either one: the wasRecentlyCreated check in logMedia, and
-    // ProcessRepurposeItem being ShouldBeUnique on the item id. The second
-    // masks the first for an hour, which is why removing the check alone does
-    // not fail here — past that window the check is what still holds.
     (new PollRepurposeSource($source))->handle(app(SourceFetcherFactory::class));
     (new PollRepurposeSource($source))->handle(app(SourceFetcherFactory::class));
 

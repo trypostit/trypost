@@ -26,13 +26,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 /**
- * File-local on purpose. Pest helpers are global functions that only exist once
- * their defining file has loaded, and this file is run on its own, so it cannot
- * borrow ActionsTest.php's. The names are unique for the same reason.
- *
- * For Action and service tests only: these do not set current_workspace_id,
- * which RepurposePolicy requires, so HTTP tests build their own fixtures.
- *
  * @return array{0: Workspace, 1: User, 2: SocialAccount}
  */
 function healthWorkspace(): array
@@ -455,9 +448,6 @@ test('a repurpose with no destinations left is not auto-resumed', function () {
 });
 
 test('disconnecting an account says how many automations it paused', function () {
-    // Full HTTP setup, not healthWorkspace(): this route authorises
-    // manageAccounts on the current workspace, so the workspace needs the
-    // user's account_id and the user needs current_workspace_id.
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
@@ -558,8 +548,6 @@ test('deleting the last destination account also reports the automation it pause
         ],
     ]);
 
-    // The account being disconnected is a destination, not the source — the
-    // repurpose still stops, so the flash has to say so.
     $this->actingAs($user)
         ->delete(route('app.accounts.disconnect', $only))
         ->assertSessionHas('flash.banner', trans_choice('accounts.flash.disconnected_paused_repurposes', 1, ['count' => 1]));
@@ -585,8 +573,6 @@ test('pruning a destination from a draft repurpose does not pause it', function 
 });
 
 test('a supported content type survives a platform change untouched', function () {
-    // healthWorkspace() already seats an Instagram as the source, and the
-    // one-account-per-network rule would refuse a second one.
     config()->set('trypost.allow_multiple_social_accounts', true);
 
     [$workspace, $user, $source] = healthWorkspace();
@@ -601,8 +587,6 @@ test('a supported content type survives a platform change untouched', function (
         ],
     ]);
 
-    // Instagram and Instagram-via-Facebook share their content types, so the
-    // stored one is still valid and must not be rewritten to the default.
     $instagram->update(['platform' => Platform::InstagramFacebook]);
 
     expect(data_get($repurpose->fresh()->destinations, '0.content_type'))
@@ -623,8 +607,6 @@ test('an item whose destination account was deleted records no usable destinatio
 
     $item = RepurposeItem::factory()->for($repurpose)->create();
 
-    // Straight to the job with the destination still stored but the account
-    // gone: the pruning path and the job's own guard are separate defences.
     $repurpose->update(['destinations' => $repurpose->destinations]);
     $gone->forceDelete();
 
@@ -645,21 +627,17 @@ test('picking a new source for an orphan and resuming starts from now', function
         'destinations' => [$destination],
     ]);
 
-    // The account is deleted: the repurpose survives, orphaned and paused.
     $source->delete();
 
     expect($repurpose->fresh()->paused_reason)->toBe(PauseReason::SourceRemoved)
         ->and($repurpose->fresh()->source_social_account_id)->toBeNull();
 
-    // Reconnecting is a brand new row, so the user picks it as the source.
     $replacement = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
 
     UpdateRepurpose::execute($repurpose, ['source_social_account_id' => $replacement->id]);
 
     $resumed = ResumeRepurpose::execute($repurpose->fresh());
 
-    // A thirty-day back catalogue on an account this repurpose never watched
-    // must not be replicated the moment it is pointed at.
     expect($resumed->status)->toBe(Status::Active)
         ->and($resumed->paused_reason)->toBeNull()
         ->and($resumed->activated_at->isToday())->toBeTrue();
@@ -692,9 +670,6 @@ test('a failure inside the sync never breaks the account operation', function ()
 
     $account = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
 
-    // Malformed destinations make the sync's typed closure throw. The delete
-    // hook runs inside $account->delete(), so an exception escaping it would
-    // turn disconnecting an account into a 500 because of a side module.
     Repurpose::factory()->for($workspace)->create([
         'source_social_account_id' => $account->id,
         'status' => Status::Active,
@@ -720,8 +695,6 @@ test('turning a system-paused repurpose off clears the reason with it', function
         'destinations' => [healthDestination($workspace)],
     ]);
 
-    // The index badges a non-null reason as "stopped on its own". Carrying it
-    // into Disabled would tell the user the system did something they did.
     $disabled = DisableRepurpose::execute($repurpose);
 
     expect($disabled->status)->toBe(Status::Disabled)
@@ -755,8 +728,6 @@ test('changing the source of a never-activated repurpose invents no watermark', 
         'destinations' => [healthDestination($workspace)],
     ]);
 
-    // The watermark only moves for a repurpose that had one. A draft has never
-    // watched anything, so activation is what stamps it.
     UpdateRepurpose::execute($repurpose, ['source_social_account_id' => $other->id]);
 
     expect($repurpose->fresh()->activated_at)->toBeNull();

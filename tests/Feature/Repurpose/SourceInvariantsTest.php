@@ -17,10 +17,6 @@ use App\Support\Repurpose\SourceIsNotADestination;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * The database enforces both of these. These tests are about the user never
- * meeting it: every surface has to say no first, in words.
- */
 beforeEach(function () {
     config()->set('trypost.allow_multiple_social_accounts', true);
 
@@ -208,13 +204,9 @@ test('the helper itself refuses the source as its own destination', function () 
         ['social_account_id' => $this->source->id],
     ];
 
-    // The check moved out of rules() into withValidator: a rule object is built
-    // before anything is validated, so the id it compared against was still raw
-    // request input. Here both sides have already passed `uuid`.
     expect(fn () => SourceIsNotADestination::assert($destinations, $this->source->id))
         ->toThrow(ValidationException::class);
 
-    // A source that appears nowhere in the list passes without comment.
     SourceIsNotADestination::assert(
         [['social_account_id' => $this->other->id]],
         $this->source->id,

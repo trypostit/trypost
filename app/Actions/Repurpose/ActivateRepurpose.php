@@ -35,14 +35,8 @@ class ActivateRepurpose
         );
     }
 
-    /**
-     * The source is all-or-nothing: without a working one there is nothing to
-     * watch, so a repurpose may not run at all.
-     */
     public static function assertSourceUsable(Repurpose $repurpose): void
     {
-        // loadMissing, not a bare relation read: shouldBeStrict() is on outside
-        // production, and here the model came out of a locking query.
         $account = $repurpose->loadMissing('sourceAccount')->sourceAccount;
 
         if ($account === null) {
@@ -58,12 +52,6 @@ class ActivateRepurpose
         }
     }
 
-    /**
-     * At least one, not all. A deactivated destination is the user saying
-     * "don't post here", which the job already honours by skipping it —
-     * demanding every destination be live would let one paused account block
-     * editing and resuming every repurpose that lists it.
-     */
     public static function assertDestinationsPublishable(Repurpose $repurpose): void
     {
         if ($repurpose->destinations === []) {

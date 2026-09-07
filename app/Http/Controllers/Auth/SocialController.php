@@ -93,8 +93,6 @@ class SocialController extends Controller
             abort(403);
         }
 
-        // Captured regardless of direction, and never from $account->is_active:
-        // reading a column off the instance is what silently broke isUsable().
         $before = $this->repurposeStatesFor($account);
 
         ToggleSocialAccount::execute($account);
@@ -302,16 +300,6 @@ class SocialController extends Controller
     }
 
     /**
-     * Status per repurpose that depends on this account, either as its source
-     * or as one of its destinations. Captured before the account changes —
-     * before a delete especially, since the source FK is nullOnDelete — and used
-     * as the baseline for whatever the observer goes on to change.
-     *
-     * Destinations are matched in PHP: they live in a JSON array of objects, and
-     * partial-object containment needs a different candidate shape on PostgreSQL
-     * than on MySQL. The row count is bounded by connected accounts times source
-     * formats.
-     *
      * @return Collection<string, RepurposeStatus>
      */
     private function repurposeStatesFor(SocialAccount $account): Collection
@@ -326,14 +314,6 @@ class SocialController extends Controller
     }
 
     /**
-     * The observer has already done whatever it was going to do by now, so this
-     * compares before and after rather than predicting either.
-     *
-     * With no email in this flow — the user did this deliberately, so an email
-     * would be noise — the flash is the only notice that an automation stopped
-     * or started, and it happens on the accounts page rather than where the
-     * repurpose lives.
-     *
      * @param  Collection<string, RepurposeStatus>  $before
      */
     private function flashAccountChange(string $action, Collection $before): void

@@ -12,12 +12,6 @@ const props = defineProps<{
     accounts: ChannelAccount[];
 }>();
 
-/**
- * Derived from current account health, never from paused_reason. The stored
- * reason decides the watermark and whether the system may resume on its own; it
- * is not a description of the situation the user is looking at now, which may
- * already be fixed.
- */
 const state = computed<RepurposeHealthValue | null>(() => {
     if (props.repurpose.status !== RepurposeStatus.Paused || props.repurpose.paused_reason === null) {
         return null;

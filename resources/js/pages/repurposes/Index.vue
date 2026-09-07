@@ -141,8 +141,6 @@ const handleDelete = (repurpose: Repurpose) => {
                                     {{ $t(`repurposes.status.${repurpose.status}`) }}
                                 </Badge>
 
-                                <!-- A pause the system imposed reads the same as one the
-                                     user chose without this: both are just "Paused". -->
                                 <IconAlertTriangle
                                     v-if="repurpose.paused_reason"
                                     class="size-4 text-amber-500"

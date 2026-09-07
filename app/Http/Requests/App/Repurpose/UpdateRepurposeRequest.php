@@ -30,13 +30,11 @@ class UpdateRepurposeRequest extends FormRequest
         return $this->user()->current_workspace_id;
     }
 
-    /** Route model binding resolves this, or the request never gets built. */
     private function repurpose(): Repurpose
     {
         return $this->route('repurpose');
     }
 
-    /** The format this repurpose will watch once the request is applied. */
     private function sourceFormat(): SourceFormat
     {
         return SourceFormat::tryFrom((string) $this->input('source_format'))
@@ -71,10 +69,6 @@ class UpdateRepurposeRequest extends FormRequest
                 'string',
                 'uuid',
                 Rule::exists('social_accounts', 'id')
-                    // No is_active clause: switching an account off means
-                    // "don't post here", and the job already skips it. Rejecting
-                    // the payload would stop the user saving any edit, because
-                    // the editor round-trips the whole destination list.
                     ->where('workspace_id', $this->workspaceId()),
             ],
             'destinations.*.content_type' => [
@@ -118,8 +112,6 @@ class UpdateRepurposeRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            // Only once the field rules have run: both sides are then strings
-            // that passed `uuid`, instead of whatever the client posted.
             if ($validator->errors()->isNotEmpty()) {
                 return;
             }

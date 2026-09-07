@@ -303,7 +303,6 @@ test('the api exposes why a repurpose stopped and refuses to resume it while bro
         ->assertOk()
         ->assertJsonPath('paused_reason', PauseReason::SourceUnavailable->value);
 
-    // The health gate lives in the action, so every surface inherits it.
     $this->withHeaders(apiHeaders($this->token))
         ->postJson(route('api.repurposes.resume', $repurpose))
         ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)

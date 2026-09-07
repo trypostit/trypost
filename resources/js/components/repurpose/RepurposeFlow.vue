@@ -21,9 +21,6 @@ withDefaults(
         <Tooltip>
             <TooltipTrigger as-child>
                 <span :data-testid="`flow-source-${source.platform}`">
-                    <!-- getPlatformLogo falls back to LinkedIn for an unknown
-                         platform, so a repurpose whose source account was
-                         deleted would claim to watch LinkedIn. -->
                     <span
                         v-if="!source.platform"
                         class="flex size-8 items-center justify-center rounded-lg bg-muted text-foreground/40"

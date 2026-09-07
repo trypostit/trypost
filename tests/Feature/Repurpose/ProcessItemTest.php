@@ -437,7 +437,6 @@ test('an item already in flight still runs after its repurpose is paused', funct
 test('an exhausted publish-mode item leaves no orphan drafts behind', function () {
     $item = repurposeWithTwoDestinations();
 
-    // What an attempt that died after creating its posts leaves behind.
     $post = Post::factory()->create([
         'workspace_id' => $item->repurpose->workspace_id,
         'repurpose_item_id' => $item->id,
@@ -461,8 +460,6 @@ test('an exhausted draft-mode item keeps its drafts and says it drafted them', f
         'status' => PostStatus::Draft,
     ]);
 
-    // In draft mode the draft is the deliverable, so a late failure must not
-    // throw away work the user can already see and publish.
     (new ProcessRepurposeItem($item, REPURPOSE_VIDEO_URL, 'caption'))
         ->failed(new RuntimeException('gave up'));
 
@@ -473,9 +470,6 @@ test('an exhausted draft-mode item keeps its drafts and says it drafted them', f
 test('the stored error never carries the signed source url', function () {
     $item = repurposeWithTwoDestinations();
 
-    // A CDN download URL is a short-lived credential: Meta signs it with oh/oe
-    // query parameters. Guzzle puts the whole URL in its message, and the item
-    // error is exposed through the UI, the public API and MCP.
     $message = 'cURL error 28: Operation timed out for '.REPURPOSE_VIDEO_URL.'?oh=SECRETSIG&oe=68B0';
 
     (new ProcessRepurposeItem($item, REPURPOSE_VIDEO_URL.'?oh=SECRETSIG&oe=68B0', 'caption'))
@@ -488,10 +482,6 @@ test('a redelivered job does not replicate an item that was skipped', function (
     $item = repurposeWithTwoDestinations();
     fakeVideoDownload();
 
-    // Skipped items carry no posts, so the later "already has posts" guards do
-    // not catch them. Only the terminal check does — without it, a video that
-    // was deliberately skipped (already published through TryPost, or with no
-    // downloadable file) gets replicated on the next delivery of the job.
     $item->update(['status' => ItemStatus::Skipped, 'reason' => ItemReason::PublishedViaTrypost]);
 
     (new ProcessRepurposeItem($item->fresh(), REPURPOSE_VIDEO_URL, 'caption'))

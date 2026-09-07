@@ -7,12 +7,6 @@ namespace App\Support\Repurpose;
 use App\Support\PostPlatformMetaRules;
 use Illuminate\Support\Str;
 
-/**
- * Re-keys the shared per-platform meta rules from `platforms.*` to the
- * `destinations.*` a repurpose submits them under. The rules themselves stay in
- * {@see PostPlatformMetaRules}: validated() strips any key without a rule, so a
- * meta field spelled out here instead would be dropped by every other surface.
- */
 class DestinationMetaRules
 {
     /**

@@ -274,8 +274,6 @@ test('a token that cannot read a field falls back to the public set', function (
         instagramGraph().'/*/media*' => function () use (&$attempt) {
             $attempt++;
 
-            // Graph rejects the whole read when one requested field is not
-            // available to the token's login type, answering with code 100.
             return $attempt === 1
                 ? Http::response(['error' => ['code' => 100, 'message' => 'Unsupported get request']], 400)
                 : Http::response(['data' => [[
@@ -295,9 +293,6 @@ test('a token that cannot read a field falls back to the public set', function (
     expect($attempt)->toBe(2)
         ->and($media)->toHaveCount(1)
         ->and($media[0]->id)->toBe('m1')
-        // The reduced set carries neither media_product_type nor caption, so
-        // every video reads as a Reel and the caption arrives empty. That is the
-        // documented cost of not going dark, not an oversight.
         ->and($media[0]->format)->toBe(SourceFormat::Reel)
         ->and($media[0]->caption)->toBe('');
 });

@@ -25,9 +25,6 @@ class RepurposeItemResource extends JsonResource
             'error' => $this->error,
             'posts' => $this->whenLoaded('posts', fn () => $this->posts->map(fn ($post) => [
                 'id' => $post->id,
-                // The post carries the truth about publication, not the item:
-                // rolling the item status up from here would rewrite history
-                // whenever someone edits or deletes a replicated post.
                 'platforms' => $post->postPlatforms
                     ->where('enabled', true)
                     ->map(fn ($postPlatform) => [

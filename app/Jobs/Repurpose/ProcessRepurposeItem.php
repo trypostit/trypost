@@ -119,8 +119,6 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
         }
 
         if ($posts === []) {
-            // Not PostCreationFailed: nothing was attempted. Every destination
-            // resolved to an account that is gone or switched off.
             $this->item->update(['status' => ItemStatus::Failed, 'reason' => ItemReason::NoUsableDestinations]);
 
             return;
@@ -141,16 +139,6 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
         $this->item->update(['status' => ItemStatus::Published, 'reason' => null, 'error' => null]);
     }
 
-    /**
-     * An attempt that died after creating some of its posts leaves them behind
-     * as drafts. Every retry clears them on the way in, but the last one has no
-     * successor — so without this they sit in the calendar with nothing
-     * explaining where they came from.
-     *
-     * In draft mode the draft is the deliverable, not a leftover: the user can
-     * already see and publish it, so a late failure keeps it and the item says
-     * what actually happened.
-     */
     public function failed(Throwable $exception): void
     {
         $drafts = $this->item->posts()->where('status', PostStatus::Draft)->get();
@@ -170,14 +158,6 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
         ]);
     }
 
-    /**
-     * The item's error is read by humans in the app and served through the
-     * public API and MCP, so it must not carry a credential. A CDN download URL
-     * is one: Meta signs it with expiring oh/oe parameters, and an HTTP client
-     * puts the whole URL in its message. The job knows exactly which string that
-     * is, so it is replaced rather than pattern-matched, and TokenRedactor still
-     * covers the OAuth shapes it already knows.
-     */
     private function safeError(Throwable $exception): string
     {
         $message = str_replace($this->downloadUrl, '[source url]', $exception->getMessage());
@@ -186,10 +166,6 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * Throws so the job's own retries get a chance at it: a source video that is
-     * not downloadable right now usually is minutes later. {@see self::failed()}
-     * turns the exhausted attempt into the stored reason.
-     *
      * @param  array<int, Post>  $posts
      */
     private function failDownload(array $posts): never

@@ -8,10 +8,6 @@ use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Support\Repurpose\Templates;
 
-/**
- * The repurpose screens build translation keys from enum values, so a new case
- * without a string renders the raw key to the user instead of failing loudly.
- */
 function repurposeStrings(string $locale): array
 {
     return require dirname(__DIR__, 3)."/lang/{$locale}/repurposes.php";

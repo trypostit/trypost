@@ -31,11 +31,6 @@ class UpdateRepurpose
 
                 $locked->fill($attributes);
 
-                // A repurpose aimed at another account or another format has a
-                // back catalogue behind it that was never meant for these
-                // destinations, so the watermark moves to now instead of
-                // replaying it. Asked of the locked row, so a concurrent update
-                // cannot make this read the wrong "before".
                 if ($locked->isDirty(['source_social_account_id', 'source_format']) && $locked->activated_at !== null) {
                     $locked->activated_at = now();
                 }
@@ -44,10 +39,6 @@ class UpdateRepurpose
                 $locked = $locked->fresh();
 
                 if ($locked->status === Status::Active) {
-                    // Destinations only. The source's health is not this
-                    // request's business, and checking it here would fail an
-                    // unrelated edit during any window where the source is
-                    // briefly unhealthy and the observer has not caught up.
                     ActivateRepurpose::assertDestinationsPublishable($locked);
                 }
 

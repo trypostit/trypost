@@ -7,11 +7,6 @@ export const RepurposeStatus = {
 
 export type RepurposeStatusValue = (typeof RepurposeStatus)[keyof typeof RepurposeStatus];
 
-/**
- * Why the system stopped a repurpose. NULL means the user paused it, which is
- * what decides whether Resume replays the backlog. It governs the watermark and
- * auto-resume eligibility only — the banner reads current account health.
- */
 export const PauseReason = {
     SourceRemoved: 'source_removed',
     SourceUnavailable: 'source_unavailable',
@@ -20,12 +15,6 @@ export const PauseReason = {
 
 export type PauseReasonValue = (typeof PauseReason)[keyof typeof PauseReason];
 
-/**
- * What the page tells the user about a stopped repurpose. Derived from current
- * account health, so it is not PauseReason: that one records why the system
- * stopped and drives the watermark, while this describes the situation now,
- * which may already be fixed. Each value is also its `repurposes.health.*` key.
- */
 export const RepurposeHealth = {
     SourceMissing: 'source_missing',
     SourceUnusable: 'source_unusable',

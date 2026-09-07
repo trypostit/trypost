@@ -7,7 +7,6 @@ export interface ChannelAccount {
     username: string;
     display_label: string;
     avatar_url: string | null;
-    /** Both come from SocialAccountResource; optional because not every caller selects them. */
     is_active?: boolean;
     status?: string;
 }
@@ -23,11 +22,6 @@ export interface ChannelTikTokCreatorInfo {
     max_video_post_duration_sec: number | null;
 }
 
-/**
- * One selectable publishing channel for the post editor's channels tab. `id`
- * is the selection/update key (a post_platform id); `socialAccount` is what
- * the per-platform Settings components consume.
- */
 export interface Channel {
     id: string;
     platform: string;

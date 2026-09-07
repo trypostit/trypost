@@ -45,11 +45,6 @@ interface EmbedDraft {
     color?: string;
 }
 
-/**
- * Discord's embed colour is a plain six-digit hex with no alpha, which is also
- * what the API accepts, so a shorthand or an alpha value from the picker is
- * brought back to that shape rather than rejected on save.
- */
 const DISCORD_BLURPLE = '#5865f2';
 
 const props = withDefaults(
@@ -67,7 +62,6 @@ const open = ref(false);
 
 const updateMeta = (patch: Record<string, any>) => emit('update:meta', { ...props.meta, ...patch });
 
-// --- Channel picker (live fetch) ---------------------------------------------
 const channels = ref<DiscordChannel[]>([]);
 const channelsLoading = ref(false);
 const channelsHttp = useHttp<Record<string, never>, { channels: DiscordChannel[] }>();
@@ -96,8 +90,6 @@ const channelId = computed({
     set: (value: string) => updateMeta({ channel_id: value || null }),
 });
 
-// Keep a saved channel selectable even before the live list loads (or if the
-// lookup is unavailable), so editing a post never visually "loses" its channel.
 const channelOptions = computed<DiscordChannel[]>(() => {
     if (channelId.value && !channels.value.some((channel) => channel.id === channelId.value)) {
         return [{ id: channelId.value, name: channelId.value }, ...channels.value];
@@ -108,8 +100,6 @@ const channelOptions = computed<DiscordChannel[]>(() => {
 
 const channelSelectOptions = computed(() => channelOptions.value.map((channel) => ({ value: channel.id, label: `#${channel.name}` })));
 
-// Persist the channel NAME alongside the id (display-only, for the preview) and
-// keep it fresh as the live list loads or the channel is renamed.
 watch([channelId, channels], () => {
     const name = channels.value.find((channel) => channel.id === channelId.value)?.name;
 
@@ -127,7 +117,6 @@ const channelError = computed<string | undefined>(() => {
     return Object.entries(errors.value).find(([key]) => key.endsWith('.meta.channel_id'))?.[1];
 });
 
-// --- Mentions (autocomplete chips) -------------------------------------------
 const mentionQuery = ref('');
 const mentionResults = ref<MentionTarget[]>([]);
 const mentionsHttp = useHttp<Record<string, never>, { mentions: MentionTarget[] }>();
@@ -178,10 +167,6 @@ const addMention = (target: MentionTarget) => {
 const removeMention = (token: string) =>
     updateMeta({ mentions: mentions.value.filter((mention) => mention.token !== token) });
 
-// --- Embeds (repeater) -------------------------------------------------------
-// Derived straight from meta (like channel/mentions) so it never diverges from
-// the persisted/auto-saved state. Inputs are controlled (one-way :value + emit),
-// so index keys are safe — Vue patches each reused row to the correct values.
 const embeds = computed<EmbedDraft[]>(() => (Array.isArray(props.meta?.embeds) ? (props.meta!.embeds as EmbedDraft[]) : []));
 
 const addEmbed = () => updateMeta({ embeds: [...embeds.value, {}] });
@@ -221,7 +206,6 @@ const updateEmbed = (index: number, patch: Partial<EmbedDraft>) =>
                 </div>
             </div>
 
-            <!-- Channel -->
             <div class="space-y-2">
                 <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.discord.channel') }}</p>
                 <SearchableSelect
@@ -236,7 +220,6 @@ const updateEmbed = (index: number, patch: Partial<EmbedDraft>) =>
                 <InputError :message="channelError" />
             </div>
 
-            <!-- Mentions -->
             <div class="space-y-2">
                 <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.discord.mentions') }}</p>
                 <div v-if="mentions.length" class="flex flex-wrap gap-1.5">
@@ -274,7 +257,6 @@ const updateEmbed = (index: number, patch: Partial<EmbedDraft>) =>
                 </div>
             </div>
 
-            <!-- Embeds -->
             <div class="space-y-2">
                 <div class="flex items-center justify-between">
                     <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.discord.embeds') }}</p>

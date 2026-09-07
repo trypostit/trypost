@@ -11,10 +11,6 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
-/**
- * Wait for a data-testid element to mount and lay out. Pest browser `@`
- * selectors resolve to data-testid, and assertions do not auto-wait on SPA paint.
- */
 function waitForRepurposeHealthTestId(mixed $page, string $testId): void
 {
     $page->script(<<<JS
@@ -40,8 +36,6 @@ test('a repurpose whose source was deleted explains itself instead of rendering 
 
     $destination = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::TikTok]);
 
-    // The state the observer leaves behind when the watched account is deleted:
-    // the repurpose and its history survive, with no source to point at.
     $repurpose = Repurpose::factory()->create([
         'workspace_id' => $workspace->id,
         'source_social_account_id' => null,
@@ -62,8 +56,6 @@ test('a repurpose whose source was deleted explains itself instead of rendering 
 
     $page->assertSee(__('repurposes.health.source_missing'))
         ->assertSee(__('repurposes.summary.no_source'))
-        // getPlatformLogo falls back to LinkedIn for an unknown platform, so
-        // without its own state the flow would claim this watches LinkedIn.
         ->assertPresent('@flow-source-missing')
         ->assertNoJavaScriptErrors();
 });

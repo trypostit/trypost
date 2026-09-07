@@ -12,10 +12,6 @@ use Illuminate\Support\Facades\DB;
 class ListRepurposeItems
 {
     /**
-     * The one place the activity query lives. It was duplicated in the API
-     * controller and the MCP tool, and both kept an eager load that had since
-     * gained a column — so the resource read a status the query never selected.
-     *
      * @return LengthAwarePaginator<int, RepurposeItem>
      */
     public static function execute(Repurpose $repurpose, ?int $page = null): LengthAwarePaginator

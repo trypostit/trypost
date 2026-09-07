@@ -12,11 +12,6 @@ use Illuminate\Validation\ValidationException;
 class RepurposeTransition
 {
     /**
-     * Every lifecycle change reads the status and writes it back, so it holds
-     * the row across both halves and re-reads it inside: the caller's copy was
-     * loaded before the request, and two callers arriving together would each
-     * pass the check the other is about to invalidate.
-     *
      * @param  array<int, Status>  $from
      * @param  callable(Repurpose): void  $change
      */
@@ -36,12 +31,6 @@ class RepurposeTransition
     }
 
     /**
-     * The system's transition. A status that moved on since the caller read it
-     * is an outcome, not an error — two accounts of one repurpose dying in the
-     * same sweep would otherwise throw out of an observer and take the sweep
-     * with it. Returning null also makes the pause idempotent, so a repurpose
-     * that is already stopped is left exactly as it was.
-     *
      * @param  array<int, Status>  $from
      * @param  callable(Repurpose): void  $change
      */

@@ -54,8 +54,6 @@ const props = defineProps<{
 const availableAccountIds = new Set(props.destinationAccounts.map((account) => account.id));
 
 const form = useForm<{
-    // Nullable: a repurpose whose source account was deleted keeps its history
-    // and waits here for the user to pick a new one.
     source_social_account_id: string | null;
     source_format: RepurposeSourceFormat;
     publish_mode: RepurposePublishMode;
@@ -71,16 +69,10 @@ const form = useForm<{
 
 const errors = usePageErrors();
 
-/**
- * The destinations are configured before there is anything to publish, so the
- * media rules would read "no files" and warn about every video-only format. A
- * repurpose always attaches exactly one video, which is what they get to judge.
- */
 const plannedMedia = computed<MediaItem[]>(() => [
     { id: 'repurpose-video', url: '', type: MediaType.Video },
 ]);
 
-/** Whatever the source becomes cannot also receive, so it leaves the list. */
 const destinationAccounts = computed(() =>
     props.destinationAccounts.filter((account) => account.id !== form.source_social_account_id),
 );
@@ -119,12 +111,6 @@ const channels = computed<Channel[]>(() =>
 
 const selectedAccountIds = computed(() => form.destinations.map((destination) => destination.social_account_id));
 
-/**
- * Selected destinations whose account is switched off. They stay on the
- * repurpose and are skipped at publish time, so the only thing missing is
- * saying so — otherwise the video quietly reaches fewer networks than the
- * configuration claims.
- */
 const pausedDestinations = computed(() =>
     props.destinationAccounts
         .filter((account) => account.is_active === false && selectedAccountIds.value.includes(account.id))
@@ -160,7 +146,6 @@ const setDestinationContentType = (accountId: string, contentType: string) =>
 const setDestinationMeta = (accountId: string, meta: Record<string, any>) =>
     updateDestination(accountId, { meta });
 
-/** The account the header describes is the one being chosen, not the saved one. */
 const selectedSourceAccount = computed(
     () =>
         props.sourceAccounts.find((account) => account.id === form.source_social_account_id)
@@ -328,7 +313,6 @@ const handleDelete = () => {
                         </CardContent>
                     </Card>
                 </TabsContent>
-
 
             </Tabs>
         </div>

@@ -15,15 +15,8 @@ class FacebookSourceFetcher extends MetaSourceFetcher
 {
     private const VIDEO_FIELDS = 'id,source,description,permalink_url,created_time';
 
-    /**
-     * Not a quota lever: a page of rows costs the same single call whatever its
-     * size. It bounds how far back a poll can catch up after an outage, and on
-     * the stories edge — where resolving each row's file costs its own call —
-     * how many of those a single poll can fire.
-     */
     private const PAGE_SIZE = 25;
 
-    /** The Video node's documented readable fields, without the permalink. */
     private const PUBLIC_VIDEO_FIELDS = 'id,source,description,created_time';
 
     /**
@@ -35,10 +28,6 @@ class FacebookSourceFetcher extends MetaSourceFetcher
         $wantsReels = in_array(SourceFormat::Reel, $formats, true);
         $wantsVideos = in_array(SourceFormat::Video, $formats, true);
 
-        // The reels edge is read whenever videos are wanted, even if reels are
-        // not: /videos lists reels too and carries nothing to tell them apart,
-        // so this is the only way to subtract them. One extra call per poll,
-        // and only for a page watched for feed videos.
         $reels = $wantsReels || $wantsVideos
             ? $this->videos($account, 'video_reels', $since, SourceFormat::Reel)
             : [];
