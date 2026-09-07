@@ -12,6 +12,7 @@ use App\Jobs\Repurpose\ProcessRepurposeItem;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\Repurpose;
+use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\Repurpose\SourceFetcherFactory;
@@ -344,4 +345,30 @@ test('an orphaned repurpose is never dispatched for polling', function () {
 
     Bus::assertDispatchedTimes(PollRepurposeSource::class, 1);
     expect($healthy->fresh()->status)->toBe(Status::Active);
+});
+
+test('polling the same video twice queues it only once', function () {
+    Bus::fake();
+    fakeInstagramMedia([mediaRow('m1')]);
+
+    $workspace = Workspace::factory()->create();
+    $source = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
+
+    Repurpose::factory()->active()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $source->id,
+        'activated_at' => now()->subDays(30),
+    ]);
+
+    // The source keeps returning the same page every interval, so only the
+    // first sighting is work. Two things enforce that and this pins the
+    // outcome, not either one: the wasRecentlyCreated check in logMedia, and
+    // ProcessRepurposeItem being ShouldBeUnique on the item id. The second
+    // masks the first for an hour, which is why removing the check alone does
+    // not fail here — past that window the check is what still holds.
+    (new PollRepurposeSource($source))->handle(app(SourceFetcherFactory::class));
+    (new PollRepurposeSource($source))->handle(app(SourceFetcherFactory::class));
+
+    Bus::assertDispatchedTimes(ProcessRepurposeItem::class, 1);
+    expect(RepurposeItem::query()->count())->toBe(1);
 });
