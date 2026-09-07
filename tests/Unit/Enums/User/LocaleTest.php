@@ -18,11 +18,11 @@ test('only Arabic is right to left', function () {
     }
 });
 
-test('options expose the code, native name, direction and flag of every case', function () {
+test('options expose the code, native name and flag of every case', function () {
     expect(Locale::options())->toHaveCount(count(Locale::cases()));
 
     expect(Locale::options()[0])
-        ->toMatchArray(['code' => 'en', 'name' => 'English', 'dir' => 'ltr'])
+        ->toMatchArray(['code' => 'en', 'name' => 'English'])
         ->and(Locale::options()[0]['flag'])->toEndWith('/images/flags/US.svg');
 });
 

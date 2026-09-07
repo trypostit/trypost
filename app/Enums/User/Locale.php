@@ -83,7 +83,7 @@ enum Locale: string
     }
 
     /**
-     * @return array<int, array{code: string, name: string, dir: string, flag: string}>
+     * @return array<int, array{code: string, name: string, flag: string}>
      */
     public static function options(): array
     {
@@ -91,7 +91,6 @@ enum Locale: string
             fn (self $locale) => [
                 'code' => $locale->value,
                 'name' => $locale->label(),
-                'dir' => $locale->direction(),
                 'flag' => asset("images/flags/{$locale->flag()}.svg"),
             ],
             self::cases(),

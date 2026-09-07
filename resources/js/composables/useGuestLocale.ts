@@ -9,29 +9,18 @@ const chosen = ref<string | null>(null);
 export const useGuestLocale = () => {
     const page = usePage();
 
-    const languages = computed<Language[]>(
-        () => page.props.languages as Language[],
-    );
-
     const locale = computed<string>({
         get: () => chosen.value ?? (page.props.locale as string),
         set: (value) => {
-            const language = languages.value.find(
-                (candidate) => candidate.code === value,
-            );
+            chosen.value = value;
 
-            if (!language) {
-                return;
-            }
-
-            chosen.value = language.code;
-
-            void loadLanguageAsync(language.code);
-
-            document.documentElement.lang = language.code;
-            document.documentElement.dir = language.dir;
+            void loadLanguageAsync(value);
         },
     });
+
+    const languages = computed<Language[]>(
+        () => page.props.languages as Language[],
+    );
 
     return { locale, languages };
 };
