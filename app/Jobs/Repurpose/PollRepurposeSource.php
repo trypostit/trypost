@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Repurpose;
 
+use App\Dto\SourceMedia;
 use App\Enums\Repurpose\ItemReason;
 use App\Enums\Repurpose\ItemStatus;
 use App\Enums\Repurpose\SourceFormat;
@@ -14,7 +15,6 @@ use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
 use App\Services\Repurpose\SourceFetcherFactory;
-use App\Services\Repurpose\SourceMedia;
 use App\Services\Social\TokenRedactor;
 use Carbon\CarbonInterface;
 use Illuminate\Bus\Queueable;

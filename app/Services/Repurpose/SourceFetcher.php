@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Repurpose;
 
+use App\Dto\SourceMedia;
 use App\Enums\Repurpose\SourceFormat;
 use App\Models\SocialAccount;
 use Carbon\CarbonInterface;

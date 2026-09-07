@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\DataTransferObjects\MediaItem;
+use App\Dto\MediaItem;
 use App\Enums\SocialAccount\Platform;
 
 test('altText returns the trimmed meta alt_text', function () {

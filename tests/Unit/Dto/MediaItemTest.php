@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\DataTransferObjects\MediaItem;
+use App\Dto\MediaItem;
 
 test('fromArray backfills the mime type from the path extension when missing', function () {
     expect(MediaItem::fromArray(['path' => 'a/b/photo.JPG'])->mime_type)->toBe('image/jpeg');

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
-use App\DataTransferObjects\MediaItem;
+use App\Dto\MediaItem;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;

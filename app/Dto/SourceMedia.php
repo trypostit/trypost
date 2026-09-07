@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Repurpose;
+namespace App\Dto;
 
 use App\Enums\Repurpose\SourceFormat;
 use Carbon\CarbonInterface;

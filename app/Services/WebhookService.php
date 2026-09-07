@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\DataTransferObjects\MediaItem;
+use App\Dto\MediaItem;
 use App\Enums\Media\Type;
 use App\Enums\Webhook\EventType as WebhookEvent;
 use App\Jobs\DispatchWebhook;

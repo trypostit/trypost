@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Repurpose;
 
+use App\Dto\SourceMedia;
 use App\Enums\Instagram\MediaProductType;
 use App\Enums\Instagram\MediaType;
 use App\Enums\Repurpose\SourceFormat;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\DataTransferObjects;
+namespace App\Dto;
 
 use App\Enums\Media\Source;
 use App\Enums\Media\Type;
