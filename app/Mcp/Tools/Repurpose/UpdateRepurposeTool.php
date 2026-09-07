@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mcp\Tools\Repurpose;
 
 use App\Actions\Repurpose\UpdateRepurpose;
+use App\Enums\Repurpose\SourceFormat;
 use App\Http\Resources\Api\RepurposeResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Mcp\Concerns\ResolvesWorkspaceRepurpose;
@@ -12,6 +13,7 @@ use App\Mcp\Requests\Repurpose\RepurposeIdRequest;
 use App\Mcp\Requests\Repurpose\UpdateRepurposeRequest;
 use App\Models\Repurpose;
 use App\Models\Workspace;
+use App\Support\Repurpose\SourceIsFree;
 use App\Support\Repurpose\SourceIsNotADestination;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -41,6 +43,13 @@ class UpdateRepurposeTool extends Tool
         }
 
         $validated = $request->validate(UpdateRepurposeRequest::rules($workspace->id, $repurpose, $request->all()));
+
+        SourceIsFree::assert(
+            $workspace->id,
+            data_get($validated, 'source_social_account_id', $repurpose->source_social_account_id),
+            SourceFormat::from(data_get($validated, 'source_format', $repurpose->source_format->value)),
+            $repurpose->id,
+        );
 
         SourceIsNotADestination::assert(
             (array) data_get($validated, 'destinations', []),

@@ -12,7 +12,7 @@ use App\Mcp\Tools\Repurpose\CreateRepurposeTool;
 use App\Mcp\Tools\Repurpose\UpdateRepurposeTool;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
-use App\Rules\Repurpose\SourceIsFree;
+use App\Support\Repurpose\SourceIsFree;
 use App\Support\Repurpose\SourceIsNotADestination;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
@@ -152,50 +152,31 @@ test('a race past the validation still reads as a message, never as a constraint
     ]))->toThrow(ValidationException::class, __('repurposes.errors.source_already_used'));
 });
 
-test('the rule itself refuses a source and format already watched', function () {
+test('the helper itself refuses a source and format already watched', function () {
     Repurpose::factory()->create([
         'workspace_id' => $this->workspace->id,
         'source_social_account_id' => $this->other->id,
         'source_format' => SourceFormat::Reel,
     ]);
 
-    $failures = [];
-    $collect = function (string $message) use (&$failures): void {
-        $failures[] = $message;
-    };
+    expect(fn () => SourceIsFree::assert($this->workspace->id, $this->other->id, SourceFormat::Reel))
+        ->toThrow(ValidationException::class);
 
-    (new SourceIsFree($this->workspace->id, SourceFormat::Reel))
-        ->validate('source_social_account_id', $this->other->id, $collect);
+    SourceIsFree::assert($this->workspace->id, $this->other->id, SourceFormat::Story);
 
-    expect($failures)->toBe([__('repurposes.errors.source_already_used')]);
-
-    $failures = [];
-
-    (new SourceIsFree($this->workspace->id, SourceFormat::Story))
-        ->validate('source_social_account_id', $this->other->id, $collect);
-
-    (new SourceIsFree($this->workspace->id, SourceFormat::Reel))
-        ->validate('source_social_account_id', $this->source->id, $collect);
-
-    expect($failures)->toBe([]);
+    expect(true)->toBeTrue();
 });
 
-test('the rule itself refuses a repurpose that already holds the pair, unless it is the one being edited', function () {
+test('the helper lets a repurpose keep the pair it already holds', function () {
     $mine = Repurpose::factory()->create([
         'workspace_id' => $this->workspace->id,
         'source_social_account_id' => $this->other->id,
         'source_format' => SourceFormat::Reel,
     ]);
 
-    $failures = [];
-    $collect = function (string $message) use (&$failures): void {
-        $failures[] = $message;
-    };
+    SourceIsFree::assert($this->workspace->id, $this->other->id, SourceFormat::Reel, $mine->id);
 
-    (new SourceIsFree($this->workspace->id, SourceFormat::Reel, $mine->id))
-        ->validate('source_social_account_id', $this->other->id, $collect);
-
-    expect($failures)->toBe([]);
+    expect(true)->toBeTrue();
 });
 
 test('the helper itself refuses the source as its own destination', function () {

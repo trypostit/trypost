@@ -20,8 +20,8 @@ class CreateRepurpose
      */
     public static function execute(Workspace $workspace, User $user, array $data): Repurpose
     {
-        $sourceAccountId = (string) data_get($data, 'source_social_account_id');
-        $sourceFormat = SourceFormat::tryFrom((string) data_get($data, 'source_format')) ?? SourceFormat::Reel;
+        $sourceAccountId = data_get($data, 'source_social_account_id');
+        $sourceFormat = SourceFormat::from(data_get($data, 'source_format', SourceFormat::Reel->value));
 
         if (self::existingFor($workspace, $sourceAccountId, $sourceFormat) !== null) {
             throw ValidationException::withMessages([
@@ -35,7 +35,7 @@ class CreateRepurpose
                 'user_id' => $user->id,
                 'source_social_account_id' => $sourceAccountId,
                 'source_format' => $sourceFormat,
-                'publish_mode' => PublishMode::tryFrom((string) data_get($data, 'publish_mode')) ?? PublishMode::Publish,
+                'publish_mode' => PublishMode::from(data_get($data, 'publish_mode', PublishMode::Publish->value)),
                 'destinations' => data_get($data, 'destinations', []),
                 'status' => Status::Draft,
             ]);

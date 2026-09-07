@@ -10,9 +10,9 @@ use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Repurpose;
 use App\Rules\ContentTypeMatchesPlatform;
-use App\Rules\Repurpose\SourceIsFree;
 use App\Services\Repurpose\SourceFetcherFactory;
 use App\Support\Repurpose\DestinationMetaRules;
+use App\Support\Repurpose\SourceIsFree;
 use App\Support\Repurpose\SourceIsNotADestination;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -35,13 +35,6 @@ class UpdateRepurposeRequest extends FormRequest
         return $this->route('repurpose');
     }
 
-    private function sourceFormat(): SourceFormat
-    {
-        return SourceFormat::tryFrom((string) $this->input('source_format'))
-            ?? $this->repurpose()->source_format
-            ?? SourceFormat::Reel;
-    }
-
     /**
      * @return array<string, mixed>
      */
@@ -59,7 +52,6 @@ class UpdateRepurposeRequest extends FormRequest
                         fn (Platform $platform): string => $platform->value,
                         SourceFetcherFactory::supportedPlatforms(),
                     )),
-                new SourceIsFree($this->workspaceId(), $this->sourceFormat(), $this->repurpose()->id),
             ],
             'source_format' => ['sometimes', Rule::enum(SourceFormat::class)],
             'publish_mode' => ['sometimes', Rule::enum(PublishMode::class)],
@@ -116,10 +108,20 @@ class UpdateRepurposeRequest extends FormRequest
                 return;
             }
 
+            $sourceAccountId = $this->input('source_social_account_id', $this->repurpose()->source_social_account_id);
+
+            SourceIsFree::addErrors(
+                $validator,
+                $this->workspaceId(),
+                $sourceAccountId,
+                SourceFormat::from($this->input('source_format', $this->repurpose()->source_format->value)),
+                $this->repurpose()->id,
+            );
+
             SourceIsNotADestination::addErrors(
                 $validator,
                 (array) $this->input('destinations', []),
-                $this->input('source_social_account_id', $this->route('repurpose')->source_social_account_id),
+                $sourceAccountId,
             );
         });
     }

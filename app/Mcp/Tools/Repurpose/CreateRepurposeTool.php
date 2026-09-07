@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Mcp\Tools\Repurpose;
 
 use App\Actions\Repurpose\CreateRepurpose;
+use App\Enums\Repurpose\SourceFormat;
 use App\Http\Resources\Api\RepurposeResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Mcp\Requests\Repurpose\CreateRepurposeRequest;
 use App\Models\Workspace;
+use App\Support\Repurpose\SourceIsFree;
 use App\Support\Repurpose\SourceIsNotADestination;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Validation\ValidationException;
@@ -32,6 +34,12 @@ class CreateRepurposeTool extends Tool
         }
 
         $validated = $request->validate(CreateRepurposeRequest::rules($workspace->id, $request->all()));
+
+        SourceIsFree::assert(
+            $workspace->id,
+            data_get($validated, 'source_social_account_id'),
+            SourceFormat::from(data_get($validated, 'source_format', SourceFormat::Reel->value)),
+        );
 
         SourceIsNotADestination::assert(
             (array) data_get($validated, 'destinations', []),

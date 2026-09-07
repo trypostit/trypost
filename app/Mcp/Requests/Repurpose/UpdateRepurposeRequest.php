@@ -10,7 +10,6 @@ use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Repurpose;
 use App\Rules\ContentTypeMatchesPlatform;
-use App\Rules\Repurpose\SourceIsFree;
 use App\Services\Repurpose\SourceFetcherFactory;
 use App\Support\Repurpose\DestinationMetaRules;
 use Illuminate\Validation\Rule;
@@ -25,10 +24,6 @@ class UpdateRepurposeRequest
      */
     public static function rules(?string $workspaceId = null, ?Repurpose $repurpose = null, array $payload = []): array
     {
-        $sourceAccountId = data_get($payload, 'source_social_account_id', $repurpose?->source_social_account_id);
-        $sourceFormat = SourceFormat::tryFrom((string) data_get($payload, 'source_format'))
-            ?? $repurpose?->source_format
-            ?? SourceFormat::Reel;
 
         return [
             'repurpose_id' => ['required', 'string', 'uuid'],
@@ -43,7 +38,6 @@ class UpdateRepurposeRequest
                         fn (Platform $platform): string => $platform->value,
                         SourceFetcherFactory::supportedPlatforms(),
                     )),
-                new SourceIsFree($workspaceId, $sourceFormat, $repurpose?->id),
             ],
             'source_format' => ['sometimes', Rule::enum(SourceFormat::class)],
             'publish_mode' => ['sometimes', Rule::enum(PublishMode::class)],

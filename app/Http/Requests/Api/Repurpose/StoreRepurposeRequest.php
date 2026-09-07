@@ -9,9 +9,9 @@ use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
 use App\Rules\ContentTypeMatchesPlatform;
-use App\Rules\Repurpose\SourceIsFree;
 use App\Services\Repurpose\SourceFetcherFactory;
 use App\Support\Repurpose\DestinationMetaRules;
+use App\Support\Repurpose\SourceIsFree;
 use App\Support\Repurpose\SourceIsNotADestination;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -27,18 +27,6 @@ class StoreRepurposeRequest extends FormRequest
     private function workspaceId(): ?string
     {
         return $this->user()->currentWorkspace?->id;
-    }
-
-    private function sourceAccountId(): ?string
-    {
-        $id = $this->input('source_social_account_id');
-
-        return is_string($id) ? $id : null;
-    }
-
-    private function sourceFormat(): SourceFormat
-    {
-        return SourceFormat::tryFrom((string) $this->input('source_format')) ?? SourceFormat::Reel;
     }
 
     /**
@@ -58,7 +46,6 @@ class StoreRepurposeRequest extends FormRequest
                         fn (Platform $platform): string => $platform->value,
                         SourceFetcherFactory::supportedPlatforms(),
                     )),
-                new SourceIsFree($this->workspaceId(), $this->sourceFormat()),
             ],
             'source_format' => ['sometimes', Rule::enum(SourceFormat::class)],
             'publish_mode' => ['sometimes', Rule::enum(PublishMode::class)],
@@ -115,10 +102,20 @@ class StoreRepurposeRequest extends FormRequest
                 return;
             }
 
+            $sourceAccountId = $this->input('source_social_account_id');
+
+            SourceIsFree::addErrors(
+                $validator,
+                $this->workspaceId(),
+                $sourceAccountId,
+                SourceFormat::from($this->input('source_format', SourceFormat::Reel->value)),
+                null,
+            );
+
             SourceIsNotADestination::addErrors(
                 $validator,
                 (array) $this->input('destinations', []),
-                $this->input('source_social_account_id'),
+                $sourceAccountId,
             );
         });
     }
