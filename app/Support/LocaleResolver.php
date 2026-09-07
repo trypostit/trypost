@@ -9,13 +9,12 @@ use App\Models\User;
 use Illuminate\Http\Request;
 
 /**
- * Resolves the UI locale for a request. The authenticated user's stored locale
- * is the source of truth; a guest is resolved from the request itself.
+ * The only place that decides a request's UI locale.
  *
- * The two guest steps before `Accept-Language` exist for the language picker on
- * the register page: the submitted `locale` keeps the backend validation
- * messages in the language the visitor picked, and the flashed old input keeps
- * the re-rendered form in it after a failed submit.
+ * The two guest steps before `Accept-Language` serve the auth language
+ * switcher: the submitted `locale` keeps backend validation messages in the
+ * language on screen, and the flashed old input keeps them there when the form
+ * re-renders after a failed submit.
  */
 class LocaleResolver
 {

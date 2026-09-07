@@ -5,14 +5,10 @@ declare(strict_types=1);
 namespace App\Enums\User;
 
 /**
- * The UI locales the application ships translations for, and the single source
- * of truth for them: the `users.locale` column, the language switcher options,
- * request validation, `Accept-Language` negotiation and the document `dir`
- * attribute all derive from this enum.
- *
- * The string value is the locale code stored on the user and handed to
- * `App::setLocale()`, so every case must have a matching `lang/<value>`
- * directory — `LocalizationParityTest` fails when one is missing.
+ * The single source of truth for the UI locales: the `users.locale` column, the
+ * switcher options, request validation and `Accept-Language` negotiation all
+ * derive from it. Every case needs a matching `lang/<value>` directory —
+ * `LocalizationParityTest` fails when one is missing.
  */
 enum Locale: string
 {
@@ -35,9 +31,6 @@ enum Locale: string
 
     public const DEFAULT = self::English;
 
-    /**
-     * The language's own name, shown in the language switcher.
-     */
     public function label(): string
     {
         return match ($this) {
@@ -61,11 +54,9 @@ enum Locale: string
     }
 
     /**
-     * The ISO 3166-1 alpha-2 code of the flag shown next to the language in the
-     * switcher, matching a file in `public/images/flags`.
-     *
-     * A flag is a country, not a language, so these are the most recognisable
-     * stand-in rather than a statement about where the language is spoken.
+     * The flag file in `public/images/flags` to show next to the language. A
+     * flag is a country, not a language, so these are the most recognisable
+     * stand-in rather than a claim about where the language is spoken.
      */
     public function flag(): string
     {
@@ -89,19 +80,15 @@ enum Locale: string
         };
     }
 
-    /**
-     * The text direction (`ltr` or `rtl`) for the document root when this is the
-     * active locale — only Arabic is written right to left.
-     */
+    /** Only Arabic is written right to left. */
     public function direction(): string
     {
         return $this === self::Arabic ? 'rtl' : 'ltr';
     }
 
     /**
-     * Resolve a BCP 47 language tag (e.g. "pt-PT", "zh-Hans", "en_US") to a
-     * supported locale, preferring an exact match and falling back to the
-     * primary subtag, or null when the language is not supported at all.
+     * Resolve a BCP 47 tag ("pt-PT", "zh-Hans", "en_US") to a supported locale,
+     * preferring an exact match and falling back to the primary subtag.
      */
     public static function fromTag(string $tag): ?self
     {
@@ -128,10 +115,7 @@ enum Locale: string
         return null;
     }
 
-    /**
-     * Negotiate an `Accept-Language` header value ("pt-BR,pt;q=0.9,en;q=0.8")
-     * down to the highest-quality supported locale, or null when none match.
-     */
+    /** Negotiate "pt-BR,pt;q=0.9,en;q=0.8" down to the best supported locale. */
     public static function fromAcceptLanguage(?string $header): ?self
     {
         if (blank($header)) {
@@ -172,9 +156,7 @@ enum Locale: string
         return null;
     }
 
-    /**
-     * The lowercased primary subtag of a BCP 47 language tag ("pt-BR" => "pt").
-     */
+    /** "pt-BR" => "pt" */
     private static function primarySubtag(string $tag): string
     {
         return strtolower(explode('-', trim($tag), 2)[0]);
@@ -189,8 +171,6 @@ enum Locale: string
     }
 
     /**
-     * The language switcher options, in the order the cases are declared.
-     *
      * @return array<int, array{code: string, name: string, dir: string, flag: string}>
      */
     public static function options(): array

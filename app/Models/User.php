@@ -107,9 +107,8 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
-     * The locale every mail and notification sent to this user is rendered in.
-     * Laravel reads this off the notifiable, so `Mail::to($user)` localizes on
-     * its own and no send site needs a `->locale()` call.
+     * Laravel reads this off the notifiable, so `Mail::to($user)` and
+     * `$user->notify()` localize on their own — no send site passes a locale.
      */
     public function preferredLocale(): string
     {

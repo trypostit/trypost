@@ -7,14 +7,8 @@ declare(strict_types=1);
 | Email Translations
 |--------------------------------------------------------------------------
 |
-| One block per Maizzle template in `maizzle/templates`, keyed by the template
-| slug with dashes turned into underscores (`post-published.html` =>
-| `post_published`). The `layout` block holds the strings shared by the header,
-| the footers and the sign-off.
-|
-| Body copy is translated inside the template itself (`__('mail.<slug>.<key>')`);
-| the Mailable only resolves the envelope metadata — subject, title and preview
-| text — and passes data, never sentences.
+| One block per Maizzle template, keyed by its slug with dashes as underscores
+| (`post-published.html` => `post_published`). `layout` holds the shared chrome.
 |
 */
 

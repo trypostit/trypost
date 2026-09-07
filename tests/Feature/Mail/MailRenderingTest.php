@@ -18,9 +18,8 @@ use Illuminate\Notifications\Notification as BaseNotification;
 use Illuminate\Support\Facades\Mail;
 
 /**
- * Every template's copy moved out of PHP and into `__()` calls in the Blade
- * view, so a variable the Mailable stopped passing now only shows up when the
- * view is actually rendered. These render the four templates no other test does.
+ * Copy now lives in the Blade view, so a variable the Mailable stopped passing
+ * only surfaces when the view is rendered. These four are rendered nowhere else.
  */
 test('the workspace invite renders in the requested locale', function () {
     $account = Account::factory()->create(['name' => 'Acme Co']);
@@ -74,10 +73,9 @@ test('the disconnected-connections digest renders every account and reason', fun
 });
 
 /**
- * Send a notification for real (the `array` mailer swallows it) and return the
- * HTML that came out. Going through the notification sender is the point: it is
- * what reads `preferredLocale()` off the user, so rendering `toMail()` by hand
- * would pass even with no localization at all.
+ * Going through the real notification sender is the point: it is what reads
+ * `preferredLocale()`, so calling `toMail()` by hand would pass with no
+ * localization at all.
  */
 function sentNotificationHtml(User $user, BaseNotification $notification): string
 {

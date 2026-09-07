@@ -18,7 +18,6 @@ use App\Models\Webhook;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Mail;
 
-/** A user in the given locale, owning a workspace with one social account. */
 function localizedOwner(Locale $locale): User
 {
     $user = User::factory()->create(['locale' => $locale]);
@@ -136,9 +135,7 @@ test('a paused webhook is reported in the account owner locale', function () {
     );
 });
 
-test('a user without a resolved locale falls back to the default', function () {
-    // The column is NOT NULL with an `en` default, so this only happens for a
-    // model that has not been persisted yet.
+test('an unsaved user without a locale falls back to the default', function () {
     expect(User::factory()->make(['locale' => null])->preferredLocale())
         ->toBe(Locale::DEFAULT->value);
 });

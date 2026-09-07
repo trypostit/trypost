@@ -12,9 +12,6 @@ use Illuminate\Support\Facades\View;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Run the middleware over a request built from the given ingredients, so the
- * shared `htmlDir` and the active locale can be asserted.
- *
  * @param  array<string, string>  $input
  * @param  array<string, string>  $old
  */
