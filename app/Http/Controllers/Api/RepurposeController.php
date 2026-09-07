@@ -35,7 +35,7 @@ class RepurposeController extends Controller
         $this->authorize('viewAny', Repurpose::class);
 
         return RepurposeResource::collection(
-            ListRepurposes::execute($request->user()->currentWorkspace, perPage: self::PAGE_SIZE),
+            ListRepurposes::query($request->user()->currentWorkspace)->paginate(self::PAGE_SIZE),
         );
     }
 
@@ -110,7 +110,7 @@ class RepurposeController extends Controller
         $this->authorize('view', $repurpose);
 
         return RepurposeItemResource::collection(
-            ListRepurposeItems::execute($repurpose, perPage: self::PAGE_SIZE),
+            ListRepurposeItems::query($repurpose)->paginate(self::PAGE_SIZE),
         );
     }
 

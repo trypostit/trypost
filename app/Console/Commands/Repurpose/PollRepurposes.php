@@ -37,8 +37,6 @@ class PollRepurposes extends Command
                 }
             });
 
-        $this->info("Dispatched {$dispatched} repurpose source poll(s).");
-
         return self::SUCCESS;
     }
 }

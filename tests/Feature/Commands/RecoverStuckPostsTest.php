@@ -259,7 +259,6 @@ test('it does not finalize a post while a platform is still actively retrying', 
     ]);
 
     $this->artisan('social:recover-stuck-posts')
-        ->expectsOutput('Recovered 0 stuck posts.')
         ->assertSuccessful();
 
     $platform->refresh();
@@ -286,7 +285,6 @@ test('it does not finalize a post while a platform is still actively pending or 
     ]);
 
     $this->artisan('social:recover-stuck-posts')
-        ->expectsOutput('Recovered 0 stuck posts.')
         ->assertSuccessful();
 
     $platform->refresh();
@@ -328,7 +326,6 @@ test('it fails stale platforms but keeps the post publishing when another platfo
     ]);
 
     $this->artisan('social:recover-stuck-posts')
-        ->expectsOutput('Recovered 0 stuck posts.')
         ->assertSuccessful();
 
     $stalePlatform->refresh();

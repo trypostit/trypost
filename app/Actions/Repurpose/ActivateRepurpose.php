@@ -72,13 +72,23 @@ class ActivateRepurpose
             ]);
         }
 
-        $usable = 0;
+        $accounts = SocialAccount::query()
+            ->where('workspace_id', $repurpose->workspace_id)
+            ->where('is_active', true)
+            ->findMany(array_map(
+                fn (array $destination): mixed => data_get($destination, 'social_account_id'),
+                $repurpose->destinations,
+            ))
+            ->keyBy('id');
+
+        if ($accounts->isEmpty()) {
+            throw ValidationException::withMessages([
+                'destinations' => __('repurposes.errors.destination_unavailable'),
+            ]);
+        }
 
         foreach ($repurpose->destinations as $destination) {
-            $account = SocialAccount::query()
-                ->where('workspace_id', $repurpose->workspace_id)
-                ->where('is_active', true)
-                ->find(data_get($destination, 'social_account_id'));
+            $account = $accounts->get(data_get($destination, 'social_account_id'));
 
             if ($account === null) {
                 continue;
@@ -89,14 +99,6 @@ class ActivateRepurpose
             if ($violation !== null) {
                 throw ValidationException::withMessages(['destinations' => $violation[1]]);
             }
-
-            $usable++;
-        }
-
-        if ($usable === 0) {
-            throw ValidationException::withMessages([
-                'destinations' => __('repurposes.errors.destination_unavailable'),
-            ]);
         }
     }
 }
