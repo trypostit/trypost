@@ -72,18 +72,6 @@ return [
         'disabled' => 'Désactivé',
     ],
 
-    'templates' => [
-        'use' => 'Utiliser ce modèle',
-        'instagram_everywhere' => [
-            'title' => 'Instagram partout',
-            'description' => 'Publiez un Reel sur Instagram et TryPost le republie sur TikTok, YouTube Shorts et Facebook.',
-        ],
-        'facebook_everywhere' => [
-            'title' => 'Facebook partout',
-            'description' => 'Publiez une vidéo sur votre Page Facebook et TryPost la republie sur Instagram, TikTok et YouTube Shorts.',
-        ],
-    ],
-
     'create' => [
         'title' => 'Nouveau repurpose',
         'description' => 'Choisissez le compte que TryPost doit surveiller. Les destinations se choisissent à l\'écran suivant.',

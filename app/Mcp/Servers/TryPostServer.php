@@ -32,8 +32,8 @@ use App\Mcp\Tools\Repurpose\DeleteRepurposeTool;
 use App\Mcp\Tools\Repurpose\DisableRepurposeTool;
 use App\Mcp\Tools\Repurpose\GetRepurposeTool;
 use App\Mcp\Tools\Repurpose\ListRepurposeItemsTool;
+use App\Mcp\Tools\Repurpose\ListRepurposeSourceFormatsTool;
 use App\Mcp\Tools\Repurpose\ListRepurposesTool;
-use App\Mcp\Tools\Repurpose\ListRepurposeTemplatesTool;
 use App\Mcp\Tools\Repurpose\PauseRepurposeTool;
 use App\Mcp\Tools\Repurpose\ResumeRepurposeTool;
 use App\Mcp\Tools\Repurpose\UpdateRepurposeTool;
@@ -108,8 +108,6 @@ class TryPostServer extends Server
         ListPinterestBoardsTool::class,
         ListDiscordChannelsTool::class,
         ToggleSocialAccountTool::class,
-
-        ListRepurposeTemplatesTool::class,
         ListRepurposesTool::class,
         CreateRepurposeTool::class,
         GetRepurposeTool::class,
@@ -119,6 +117,7 @@ class TryPostServer extends Server
         ResumeRepurposeTool::class,
         DisableRepurposeTool::class,
         ListRepurposeItemsTool::class,
+        ListRepurposeSourceFormatsTool::class,
         DeleteRepurposeTool::class,
 
         // Webhooks

@@ -72,18 +72,6 @@ return [
         'disabled' => 'Deaktiviert',
     ],
 
-    'templates' => [
-        'use' => 'Diese Vorlage verwenden',
-        'instagram_everywhere' => [
-            'title' => 'Instagram überall',
-            'description' => 'Poste ein Reel auf Instagram und TryPost veröffentlicht es erneut auf TikTok, YouTube Shorts und Facebook.',
-        ],
-        'facebook_everywhere' => [
-            'title' => 'Facebook überall',
-            'description' => 'Poste ein Video auf deiner Facebook-Seite und TryPost veröffentlicht es erneut auf Instagram, TikTok und YouTube Shorts.',
-        ],
-    ],
-
     'create' => [
         'title' => 'Neues Repurpose',
         'description' => 'Wähle das Konto, das TryPost beobachten soll. Die Ziele wählst du im nächsten Schritt.',

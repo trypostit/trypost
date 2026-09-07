@@ -6,7 +6,6 @@ use App\Enums\Repurpose\ItemReason;
 use App\Enums\Repurpose\ItemStatus;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
-use App\Support\Repurpose\Templates;
 
 function repurposeStrings(string $locale): array
 {
@@ -36,10 +35,5 @@ test('every enum value the interface interpolates has a string', function (strin
 
     foreach (SourceFormat::cases() as $format) {
         expect(data_get($strings, "formats.{$format->value}"))->not->toBeNull();
-    }
-
-    foreach (Templates::all() as $template) {
-        expect(data_get($strings, "templates.{$template['key']}.title"))->not->toBeNull()
-            ->and(data_get($strings, "templates.{$template['key']}.description"))->not->toBeNull();
     }
 })->with('locales');

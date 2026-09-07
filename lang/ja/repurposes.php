@@ -72,18 +72,6 @@ return [
         'disabled' => '無効',
     ],
 
-    'templates' => [
-        'use' => 'このテンプレートを使う',
-        'instagram_everywhere' => [
-            'title' => 'Instagram をどこへでも',
-            'description' => 'Instagram にリールを投稿すると、TryPost が TikTok・YouTube ショート・Facebook へ再投稿します。',
-        ],
-        'facebook_everywhere' => [
-            'title' => 'Facebook をどこへでも',
-            'description' => 'Facebook ページに動画を投稿すると、TryPost が Instagram・TikTok・YouTube ショートへ再投稿します。',
-        ],
-    ],
-
     'create' => [
         'title' => '新しい Repurpose',
         'description' => 'TryPost が見張るアカウントを選んでください。配信先は次の画面で選びます。',

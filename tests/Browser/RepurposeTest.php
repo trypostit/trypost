@@ -44,47 +44,6 @@ function repurposeOwnerWithAccounts(): array
     return [$user->fresh(), $workspace, $source, $destination];
 }
 
-test('the empty state offers the ready-made templates', function () {
-    [$user] = repurposeOwnerWithAccounts();
-
-    $this->actingAs($user);
-
-    $page = visit(route('app.repurposes.index'));
-
-    waitForRepurposeTestId($page, 'use-template-instagram_everywhere');
-
-    $page->assertRoute('app.repurposes.index')
-        ->assertVisible('@use-template-instagram_everywhere')
-        ->assertVisible('@use-template-facebook_everywhere')
-        ->assertVisible('@create-repurpose-button')
-        ->assertNoJavaScriptErrors();
-});
-
-test('using a template opens the dialog with only the matching source account', function () {
-    [$user, , $source] = repurposeOwnerWithAccounts();
-
-    $this->actingAs($user);
-
-    $page = visit(route('app.repurposes.index'));
-
-    waitForRepurposeTestId($page, 'use-template-instagram_everywhere');
-
-    $page->click('@use-template-instagram_everywhere');
-
-    waitForRepurposeTestId($page, 'create-repurpose-dialog');
-
-    $page->assertVisible('@create-repurpose-dialog')
-        ->assertVisible('@source-account-select')
-        ->assertVisible('@create-repurpose-submit');
-
-    $page->click('@source-account-select');
-
-    waitForRepurposeTestId($page, 'source-account-option');
-
-    $page->assertSee($source->display_name)
-        ->assertNoJavaScriptErrors();
-});
-
 test('the edit page shows the watched format, the destinations and the settings tab', function () {
     [$user, $workspace, $source, $destination] = repurposeOwnerWithAccounts();
 
@@ -253,5 +212,18 @@ test('the activity list reads as what happened, never as a database id', functio
 
     $page->assertVisible("@repurpose-item-{$withoutLink->id}")
         ->assertDontSee($withoutLink->source_media_id)
+        ->assertNoJavaScriptErrors();
+});
+
+test('the empty state offers a way to create the first repurpose', function () {
+    [$user] = repurposeOwnerWithAccounts();
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.repurposes.index'));
+
+    waitForRepurposeTestId($page, 'create-repurpose-empty');
+
+    $page->assertPresent('@create-repurpose-empty')
         ->assertNoJavaScriptErrors();
 });

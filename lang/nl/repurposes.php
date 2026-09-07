@@ -72,18 +72,6 @@ return [
         'disabled' => 'Uitgeschakeld',
     ],
 
-    'templates' => [
-        'use' => 'Dit sjabloon gebruiken',
-        'instagram_everywhere' => [
-            'title' => 'Instagram overal',
-            'description' => 'Plaats een Reel op Instagram en TryPost publiceert die opnieuw op TikTok, YouTube Shorts en Facebook.',
-        ],
-        'facebook_everywhere' => [
-            'title' => 'Facebook overal',
-            'description' => 'Plaats een video op je Facebook-pagina en TryPost publiceert die opnieuw op Instagram, TikTok en YouTube Shorts.',
-        ],
-    ],
-
     'create' => [
         'title' => 'Nieuwe repurpose',
         'description' => 'Kies het account dat TryPost moet volgen. De bestemmingen kies je in het volgende scherm.',

@@ -70,8 +70,3 @@ export interface RepurposeItem {
     created_at: string;
 }
 
-export interface RepurposeTemplate {
-    key: string;
-    source_platform: string;
-    destination_platforms: string[];
-}

@@ -9,7 +9,6 @@ import EmptyState from '@/components/EmptyState.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import CreateRepurposeDialog from '@/components/repurpose/CreateRepurposeDialog.vue';
 import RepurposeFlow from '@/components/repurpose/RepurposeFlow.vue';
-import RepurposeTemplateCard from '@/components/repurpose/RepurposeTemplateCard.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,31 +23,24 @@ import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { destroy, show } from '@/routes/app/repurposes';
 import type { ChannelAccount } from '@/types/channel';
-import type { FlowNode, Repurpose, RepurposeTemplate } from '@/types/repurpose';
+import type { FlowNode, Repurpose } from '@/types/repurpose';
 import { repurposeStatusVariant } from '@/types/repurpose-status';
 
 const props = defineProps<{
     repurposes: { data: Repurpose[] };
-    templates: RepurposeTemplate[];
     sourceAccounts: ChannelAccount[];
     destinationAccounts: ChannelAccount[];
 }>();
 
 const createDialogOpen = ref(false);
-const activeTemplate = ref<RepurposeTemplate | null>(null);
 const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
 const openRepurpose = (repurpose: Repurpose) => {
     router.visit(show.url(repurpose.id));
 };
 
-const startFromTemplate = (template: RepurposeTemplate) => {
-    activeTemplate.value = template;
-    createDialogOpen.value = true;
-};
 
 const startBlank = () => {
-    activeTemplate.value = null;
     createDialogOpen.value = true;
 };
 
@@ -89,14 +81,10 @@ const handleDelete = (repurpose: Repurpose) => {
                 :description="$t('repurposes.empty.description')"
             >
                 <template #action>
-                    <div class="grid gap-4 sm:grid-cols-2">
-                        <RepurposeTemplateCard
-                            v-for="template in templates"
-                            :key="template.key"
-                            :template="template"
-                            @use="startFromTemplate"
-                        />
-                    </div>
+                    <Button data-testid="create-repurpose-empty" @click="startBlank">
+                        <IconPlus class="size-4" />
+                        {{ $t('repurposes.new') }}
+                    </Button>
                 </template>
             </EmptyState>
 
@@ -174,7 +162,6 @@ const handleDelete = (repurpose: Repurpose) => {
         <CreateRepurposeDialog
             v-model:open="createDialogOpen"
             :source-accounts="sourceAccounts"
-            :locked-platform="activeTemplate?.source_platform ?? null"
         />
 
         <ConfirmDeleteModal ref="confirmDeleteModal" />

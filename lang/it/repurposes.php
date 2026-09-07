@@ -72,18 +72,6 @@ return [
         'disabled' => 'Disattivato',
     ],
 
-    'templates' => [
-        'use' => 'Usa questo modello',
-        'instagram_everywhere' => [
-            'title' => 'Instagram ovunque',
-            'description' => 'Pubblica un Reel su Instagram e TryPost lo ripubblica su TikTok, YouTube Shorts e Facebook.',
-        ],
-        'facebook_everywhere' => [
-            'title' => 'Facebook ovunque',
-            'description' => 'Pubblica un video sulla tua Pagina Facebook e TryPost lo ripubblica su Instagram, TikTok e YouTube Shorts.',
-        ],
-    ],
-
     'create' => [
         'title' => 'Nuovo repurpose',
         'description' => 'Scegli l\'account che TryPost deve seguire. Le destinazioni si scelgono nella schermata successiva.',

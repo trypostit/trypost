@@ -42,7 +42,7 @@ function destinationPayload(SocialAccount $account): array
     ];
 }
 
-test('the index lists repurposes and the ready-made templates', function () {
+test('the index lists the workspace repurposes', function () {
     Repurpose::factory()->create([
         'workspace_id' => $this->workspace->id,
         'source_social_account_id' => $this->source->id,
@@ -55,7 +55,6 @@ test('the index lists repurposes and the ready-made templates', function () {
             ->component('repurposes/Index')
             ->has('repurposes.data', 1)
             ->where('repurposes.data.0.source_account.id', $this->source->id)
-            ->has('templates', 2)
             ->has('sourceAccounts', 1));
 });
 

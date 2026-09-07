@@ -176,14 +176,6 @@ test('items are paginated at the documented page size', function () {
         ->assertJsonPath('meta.total', 30);
 });
 
-test('templates and source formats are listed', function () {
-    $this->withHeaders(apiHeaders($this->token))
-        ->getJson(route('api.repurpose-templates.index'))
-        ->assertOk()
-        ->assertJsonCount(2, 'data')
-        ->assertJsonCount(3, 'source_formats');
-});
-
 test('a repurpose from another workspace is not reachable', function () {
     $stranger = Repurpose::factory()->create();
 
@@ -346,4 +338,12 @@ test('the api activity list carries each replicated post status', function () {
         ->getJson(route('api.repurposes.items', $repurpose))
         ->assertOk()
         ->assertJsonPath('data.0.posts.0.platforms.0.status', PostPlatformStatus::Published->value);
+});
+
+test('the source formats a repurpose can watch are listed', function () {
+    $this->withHeaders(apiHeaders($this->token))
+        ->getJson(route('api.repurpose-source-formats.index'))
+        ->assertOk()
+        ->assertJsonCount(count(SourceFormat::cases()), 'data')
+        ->assertJsonPath('data.0.value', SourceFormat::Reel->value);
 });

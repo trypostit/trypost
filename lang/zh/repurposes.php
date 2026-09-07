@@ -72,18 +72,6 @@ return [
         'disabled' => '已停用',
     ],
 
-    'templates' => [
-        'use' => '使用此模板',
-        'instagram_everywhere' => [
-            'title' => 'Instagram 全平台',
-            'description' => '在 Instagram 发一条 Reels，TryPost 就同步到 TikTok、YouTube Shorts 和 Facebook。',
-        ],
-        'facebook_everywhere' => [
-            'title' => 'Facebook 全平台',
-            'description' => '在 Facebook 主页发一条视频，TryPost 就同步到 Instagram、TikTok 和 YouTube Shorts。',
-        ],
-    ],
-
     'create' => [
         'title' => '新建 Repurpose',
         'description' => '选择 TryPost 要盯着的账号。目标平台在下一屏选择。',

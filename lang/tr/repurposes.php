@@ -72,18 +72,6 @@ return [
         'disabled' => 'Devre dışı',
     ],
 
-    'templates' => [
-        'use' => 'Bu şablonu kullan',
-        'instagram_everywhere' => [
-            'title' => 'Her yerde Instagram',
-            'description' => 'Instagram\'da bir Reel paylaş, TryPost onu TikTok, YouTube Shorts ve Facebook\'ta yeniden yayınlasın.',
-        ],
-        'facebook_everywhere' => [
-            'title' => 'Her yerde Facebook',
-            'description' => 'Facebook Sayfanda bir video paylaş, TryPost onu Instagram, TikTok ve YouTube Shorts\'ta yeniden yayınlasın.',
-        ],
-    ],
-
     'create' => [
         'title' => 'Yeni repurpose',
         'description' => 'TryPost\'un izlemesi gereken hesabı seç. Hedefleri bir sonraki ekranda seçeceksin.',

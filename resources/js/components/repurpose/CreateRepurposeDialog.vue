@@ -22,7 +22,6 @@ import type { ChannelAccount } from '@/types/channel';
 
 const props = defineProps<{
     sourceAccounts: ChannelAccount[];
-    lockedPlatform?: string | null;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -31,14 +30,9 @@ const form = useForm({
     source_social_account_id: '',
 });
 
-const selectableAccounts = computed(() =>
-    props.lockedPlatform
-        ? props.sourceAccounts.filter((account) => account.platform === props.lockedPlatform)
-        : props.sourceAccounts,
-);
 
 const accountOptions = computed(() =>
-    selectableAccounts.value.map((account) => ({
+    props.sourceAccounts.map((account) => ({
         value: account.id,
         label: account.display_name,
         platform: account.platform,
@@ -53,7 +47,7 @@ watch(open, (isOpen) => {
         return;
     }
 
-    form.source_social_account_id = selectableAccounts.value[0]?.id ?? '';
+    form.source_social_account_id = props.sourceAccounts[0]?.id ?? '';
 });
 
 const submit = () => {
@@ -73,7 +67,7 @@ const submit = () => {
                 <DialogDescription>{{ $t('repurposes.create.description') }}</DialogDescription>
             </DialogHeader>
 
-            <div v-if="selectableAccounts.length === 0" class="space-y-4 py-2">
+            <div v-if="sourceAccounts.length === 0" class="space-y-4 py-2">
                 <div class="flex items-start gap-3 rounded-lg border-2 border-dashed border-foreground/20 p-4">
                     <IconPlugConnected class="mt-0.5 size-5 shrink-0 text-muted-foreground" />
                     <p class="text-sm text-muted-foreground">

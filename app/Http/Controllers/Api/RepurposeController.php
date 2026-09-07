@@ -19,7 +19,6 @@ use App\Http\Requests\Api\Repurpose\UpdateRepurposeRequest;
 use App\Http\Resources\Api\RepurposeItemResource;
 use App\Http\Resources\Api\RepurposeResource;
 use App\Models\Repurpose;
-use App\Support\Repurpose\Templates;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -111,13 +110,12 @@ class RepurposeController extends Controller
         );
     }
 
-    public function templates(): JsonResponse
+    public function sourceFormats(): JsonResponse
     {
         $this->authorize('viewAny', Repurpose::class);
 
         return response()->json([
-            'data' => Templates::all(),
-            'source_formats' => array_map(
+            'data' => array_map(
                 fn (SourceFormat $format): array => ['value' => $format->value, 'label' => $format->label()],
                 SourceFormat::cases(),
             ),

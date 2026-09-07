@@ -72,18 +72,6 @@ return [
         'disabled' => 'Disabled',
     ],
 
-    'templates' => [
-        'use' => 'Use this template',
-        'instagram_everywhere' => [
-            'title' => 'Instagram everywhere',
-            'description' => 'Post a Reel on Instagram and TryPost republishes it to TikTok, YouTube Shorts and Facebook.',
-        ],
-        'facebook_everywhere' => [
-            'title' => 'Facebook everywhere',
-            'description' => 'Post a video on your Facebook Page and TryPost republishes it to Instagram, TikTok and YouTube Shorts.',
-        ],
-    ],
-
     'create' => [
         'title' => 'New repurpose',
         'description' => 'Choose the account TryPost should watch. You pick the destinations on the next screen.',

@@ -72,18 +72,6 @@ return [
         'disabled' => 'Wyłączony',
     ],
 
-    'templates' => [
-        'use' => 'Użyj tego szablonu',
-        'instagram_everywhere' => [
-            'title' => 'Instagram wszędzie',
-            'description' => 'Opublikuj Reel na Instagramie, a TryPost powtórzy go na TikToku, YouTube Shorts i Facebooku.',
-        ],
-        'facebook_everywhere' => [
-            'title' => 'Facebook wszędzie',
-            'description' => 'Opublikuj film na swojej stronie na Facebooku, a TryPost powtórzy go na Instagramie, TikToku i YouTube Shorts.',
-        ],
-    ],
-
     'create' => [
         'title' => 'Nowy repurpose',
         'description' => 'Wybierz konto, które TryPost ma obserwować. Cele wybierzesz na następnym ekranie.',

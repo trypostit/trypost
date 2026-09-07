@@ -1,54 +1,3 @@
-<?php
-
-declare(strict_types=1);
-
-use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
-use App\Enums\Repurpose\ItemStatus;
-use App\Enums\Repurpose\PauseReason;
-use App\Enums\Repurpose\PublishMode;
-use App\Enums\Repurpose\SourceFormat;
-use App\Enums\Repurpose\Status;
-use App\Enums\SocialAccount\Platform;
-use App\Enums\SocialAccount\Status as AccountStatus;
-use App\Enums\UserWorkspace\Role;
-use App\Mcp\Servers\TryPostServer;
-use App\Mcp\Tools\Repurpose\ActivateRepurposeTool;
-use App\Mcp\Tools\Repurpose\CreateRepurposeTool;
-use App\Mcp\Tools\Repurpose\DeleteRepurposeTool;
-use App\Mcp\Tools\Repurpose\GetRepurposeTool;
-use App\Mcp\Tools\Repurpose\ListRepurposeItemsTool;
-use App\Mcp\Tools\Repurpose\ListRepurposesTool;
-use App\Mcp\Tools\Repurpose\ListRepurposeTemplatesTool;
-use App\Mcp\Tools\Repurpose\PauseRepurposeTool;
-use App\Mcp\Tools\Repurpose\UpdateRepurposeTool;
-use App\Models\Post;
-use App\Models\PostPlatform;
-use App\Models\Repurpose;
-use App\Models\RepurposeItem;
-use App\Models\SocialAccount;
-use App\Models\User;
-use App\Models\Workspace;
-use Illuminate\Testing\Fluent\AssertableJson;
-
-beforeEach(function () {
-    $this->user = User::factory()->create();
-    $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
-    $this->user->update(['current_workspace_id' => $this->workspace->id]);
-
-    $this->source = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::Instagram]);
-    $this->tiktok = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::TikTok]);
-});
-
-function tiktokDestinationForMcp(SocialAccount $account): array
-{
-    return [
-        'social_account_id' => $account->id,
-        'content_type' => ContentType::TikTokVideo->value,
-        'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE'],
-    ];
-}
 
 test('a repurpose is created with its watched format and destination meta', function () {
     $response = TryPostServer::actingAs($this->user)
@@ -185,13 +134,6 @@ test('the items tool exposes why a video was skipped', function () {
         ->tool(ListRepurposeItemsTool::class, ['repurpose_id' => $repurpose->id])
         ->assertOk()
         ->assertSee('published_via_trypost');
-});
-
-test('templates and source formats are listed', function () {
-    TryPostServer::actingAs($this->user)
-        ->tool(ListRepurposeTemplatesTool::class, [])
-        ->assertOk()
-        ->assertSee('instagram_everywhere');
 });
 
 test('a repurpose from another workspace is not reachable', function () {
@@ -368,4 +310,11 @@ test('the update tool refuses a pinterest destination without a board', function
         ->assertHasErrors();
 
     expect($repurpose->fresh()->destinations)->toBe([]);
+});
+
+test('the source formats tool lists what a repurpose can watch', function () {
+    TryPostServer::actingAs($this->user)
+        ->tool(ListRepurposeSourceFormatsTool::class)
+        ->assertOk()
+        ->assertSee(SourceFormat::Reel->value);
 });

@@ -66,7 +66,7 @@ Route::middleware(['auth:api', 'workspace.token', 'throttle:api'])->group(functi
         ->name('api.social-accounts.channels');
 
     // Repurpose
-    Route::get('/repurpose-templates', [RepurposeController::class, 'templates'])->name('api.repurpose-templates.index');
+    Route::get('/repurpose-source-formats', [RepurposeController::class, 'sourceFormats'])->name('api.repurpose-source-formats.index');
     Route::get('/repurposes', [RepurposeController::class, 'index'])->name('api.repurposes.index');
     Route::post('/repurposes', [RepurposeController::class, 'store'])->name('api.repurposes.store');
     Route::get('/repurposes/{repurpose}', [RepurposeController::class, 'show'])->name('api.repurposes.show');

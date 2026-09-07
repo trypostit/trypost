@@ -72,18 +72,6 @@ return [
         'disabled' => 'Вимкнено',
     ],
 
-    'templates' => [
-        'use' => 'Використати шаблон',
-        'instagram_everywhere' => [
-            'title' => 'Instagram усюди',
-            'description' => 'Опублікуйте Reel в Instagram, і TryPost повторить його в TikTok, YouTube Shorts і Facebook.',
-        ],
-        'facebook_everywhere' => [
-            'title' => 'Facebook усюди',
-            'description' => 'Опублікуйте відео на своїй сторінці Facebook, і TryPost повторить його в Instagram, TikTok і YouTube Shorts.',
-        ],
-    ],
-
     'create' => [
         'title' => 'Новий repurpose',
         'description' => 'Оберіть акаунт, за яким стежитиме TryPost. Призначення обираються на наступному екрані.',

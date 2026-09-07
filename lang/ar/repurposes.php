@@ -72,18 +72,6 @@ return [
         'disabled' => 'معطّل',
     ],
 
-    'templates' => [
-        'use' => 'استخدام هذا القالب',
-        'instagram_everywhere' => [
-            'title' => 'Instagram في كل مكان',
-            'description' => 'انشر Reel على Instagram وسيعيد TryPost نشره على TikTok وYouTube Shorts وFacebook.',
-        ],
-        'facebook_everywhere' => [
-            'title' => 'Facebook في كل مكان',
-            'description' => 'انشر فيديو على صفحتك في Facebook وسيعيد TryPost نشره على Instagram وTikTok وYouTube Shorts.',
-        ],
-    ],
-
     'create' => [
         'title' => 'repurpose جديد',
         'description' => 'اختر الحساب الذي يجب أن يراقبه TryPost. تختار الوجهات في الشاشة التالية.',

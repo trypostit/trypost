@@ -27,7 +27,6 @@ use App\Models\Repurpose;
 use App\Models\SocialAccount;
 use App\Services\Repurpose\SourceFetcherFactory;
 use App\Services\Social\TikTokCreatorInfo;
-use App\Support\Repurpose\Templates;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -45,7 +44,6 @@ class RepurposeController extends Controller
 
         return Inertia::render('repurposes/Index', [
             'repurposes' => Inertia::scroll(fn () => RepurposeResource::collection(ListRepurposes::execute($workspace))),
-            'templates' => Templates::all(),
             'sourceAccounts' => SocialAccountResource::collection($this->sourceAccounts($accounts)),
             'destinationAccounts' => SocialAccountResource::collection($accounts),
         ]);

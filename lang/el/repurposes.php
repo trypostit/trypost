@@ -72,18 +72,6 @@ return [
         'disabled' => 'Απενεργοποιημένο',
     ],
 
-    'templates' => [
-        'use' => 'Χρήση προτύπου',
-        'instagram_everywhere' => [
-            'title' => 'Instagram παντού',
-            'description' => 'Ανέβασε ένα Reel στο Instagram και το TryPost το αναδημοσιεύει σε TikTok, YouTube Shorts και Facebook.',
-        ],
-        'facebook_everywhere' => [
-            'title' => 'Facebook παντού',
-            'description' => 'Ανέβασε ένα βίντεο στη σελίδα σου στο Facebook και το TryPost το αναδημοσιεύει σε Instagram, TikTok και YouTube Shorts.',
-        ],
-    ],
-
     'create' => [
         'title' => 'Νέο repurpose',
         'description' => 'Διάλεξε τον λογαριασμό που θα παρακολουθεί το TryPost. Τους προορισμούς τους επιλέγεις στην επόμενη οθόνη.',

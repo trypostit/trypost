@@ -72,18 +72,6 @@ return [
         'disabled' => '비활성',
     ],
 
-    'templates' => [
-        'use' => '이 템플릿 사용',
-        'instagram_everywhere' => [
-            'title' => '어디서나 Instagram',
-            'description' => 'Instagram에 릴스를 올리면 TryPost가 TikTok, YouTube Shorts, Facebook에 다시 게시합니다.',
-        ],
-        'facebook_everywhere' => [
-            'title' => '어디서나 Facebook',
-            'description' => 'Facebook 페이지에 영상을 올리면 TryPost가 Instagram, TikTok, YouTube Shorts에 다시 게시합니다.',
-        ],
-    ],
-
     'create' => [
         'title' => '새 Repurpose',
         'description' => 'TryPost가 지켜볼 계정을 고르세요. 대상은 다음 화면에서 선택합니다.',
