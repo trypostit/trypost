@@ -32,20 +32,29 @@ class FacebookSourceFetcher extends MetaSourceFetcher
             : [];
 
         $videos = $wantsVideos
-            ? $this->videos($account, 'videos', $since, SourceFormat::Video)
+            ? $this->withoutReels($this->videos($account, 'videos', $since, SourceFormat::Video), $reels)
             : [];
 
         $stories = in_array(SourceFormat::Story, $formats, true)
             ? $this->stories($account, $since)
             : [];
 
+        return [...($wantsReels ? $reels : []), ...$videos, ...$stories];
+    }
+
+    /**
+     * @param  array<int, SourceMedia>  $videos
+     * @param  array<int, SourceMedia>  $reels
+     * @return array<int, SourceMedia>
+     */
+    private function withoutReels(array $videos, array $reels): array
+    {
         $reelIds = array_map(fn (SourceMedia $media): string => $media->id, $reels);
-        $videos = array_values(array_filter(
+
+        return array_values(array_filter(
             $videos,
             fn (SourceMedia $media): bool => ! in_array($media->id, $reelIds, true),
         ));
-
-        return [...($wantsReels ? $reels : []), ...$videos, ...$stories];
     }
 
     /**
