@@ -5,7 +5,7 @@ declare(strict_types=1);
 return [
     'title' => 'Repost',
     'description' => 'Reposte automaticamente nas suas outras redes o que você publica fora do TryPost.',
-    'new' => 'Novo repurpose',
+    'new' => 'Novo repost',
 
     'flow' => [
         'no_source' => 'Sem conta de origem',
@@ -53,7 +53,7 @@ return [
     ],
 
     'empty' => [
-        'title' => 'Nenhum repurpose configurado',
+        'title' => 'Nenhum repost configurado',
         'description' => 'O TryPost acompanha a conta que você escolher e republica cada novo vídeo nas redes que você marcar.',
     ],
 
@@ -72,7 +72,7 @@ return [
     ],
 
     'create' => [
-        'title' => 'Novo repurpose',
+        'title' => 'Novo repost',
         'description' => 'Escolha a conta que o TryPost deve acompanhar. Os destinos você escolhe na próxima tela.',
         'source_label' => 'Conta de origem',
         'source_placeholder' => 'Escolha uma conta',
@@ -157,9 +157,9 @@ return [
     ],
 
     'danger' => [
-        'title' => 'Excluir este repurpose',
+        'title' => 'Excluir este repost',
         'description' => 'As verificações param na hora. Os posts já criados continuam no seu calendário.',
-        'delete' => 'Excluir repurpose',
+        'delete' => 'Excluir repost',
     ],
 
     'health' => [
@@ -171,17 +171,17 @@ return [
     ],
 
     'errors' => [
-        'source_already_used' => 'Esta conta já alimenta outro repurpose. Edite aquele.',
+        'source_already_used' => 'Esta conta já alimenta outro repost. Edite aquele.',
         'source_missing' => 'Escolha uma conta para monitorar antes de iniciar esta automação.',
         'source_unusable' => 'Reconecte a conta que esta automação monitora antes de iniciá-la.',
         'destinations_required' => 'Escolha ao menos um destino antes de ativar.',
         'destination_needs_video' => 'Esse formato não aceita vídeo.',
-        'only_paused_resumes' => 'Só um repurpose pausado pode ser retomado.',
-        'only_active_pauses' => 'Só um repurpose ativo pode ser pausado.',
-        'only_running_disables' => 'Só um repurpose em execução pode ser desativado.',
-        'only_idle_activates' => 'Só um rascunho ou repurpose desativado pode ser ativado.',
+        'only_paused_resumes' => 'Só um repost pausado pode ser retomado.',
+        'only_active_pauses' => 'Só um repost ativo pode ser pausado.',
+        'only_running_disables' => 'Só um repost em execução pode ser desativado.',
+        'only_idle_activates' => 'Só um rascunho ou repost desativado pode ser ativado.',
         'destination_unavailable' => 'Essa conta de destino não está mais disponível.',
-        'destination_is_source' => 'Esse destino é a própria conta que este repurpose observa.',
+        'destination_is_source' => 'Esse destino é a própria conta que este repost observa.',
         'source_unavailable' => 'Essa conta de origem não está mais disponível.',
         'action_failed' => 'Algo deu errado. Confira o formulário e tente de novo.',
     ],

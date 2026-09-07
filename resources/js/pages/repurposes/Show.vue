@@ -382,6 +382,12 @@ const handleDelete = () => {
             </Tabs>
         </div>
 
-        <ConfirmDeleteModal ref="confirmDeleteModal" />
+        <ConfirmDeleteModal
+            ref="confirmDeleteModal"
+            :title="$t('repurposes.danger.title')"
+            :description="$t('repurposes.danger.description')"
+            :action="$t('repurposes.danger.delete')"
+            :cancel="$t('common.cancel')"
+        />
     </AppLayout>
 </template>
