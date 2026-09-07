@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use Illuminate\Support\Facades\Vite;
+
 abstract class BrowserTestCase extends TestCase
 {
     /**
@@ -11,4 +13,11 @@ abstract class BrowserTestCase extends TestCase
      * manifest must not be faked away.
      */
     protected bool $fakesVite = false;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Vite::useHotFile(base_path('tests/.vite-hot-file-that-never-exists'));
+    }
 }
