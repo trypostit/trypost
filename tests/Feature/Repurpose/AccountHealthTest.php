@@ -21,6 +21,7 @@ use App\Models\Workspace;
 use App\Services\Post\MediaAttacher;
 use App\Services\Repurpose\CaptionAdapter;
 use App\Support\Repurpose\RepurposeTransition;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -676,4 +677,34 @@ test('an orphan cannot be resumed before a new source is picked', function () {
 
     expect(fn () => ResumeRepurpose::execute($repurpose->fresh()))
         ->toThrow(ValidationException::class);
+});
+
+test('a failure inside the sync never breaks the account operation', function () {
+    Log::spy();
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $account = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
+
+    // Malformed destinations make the sync's typed closure throw. The delete
+    // hook runs inside $account->delete(), so an exception escaping it would
+    // turn disconnecting an account into a 500 because of a side module.
+    Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $account->id,
+        'status' => Status::Active,
+        'destinations' => ['not-an-object'],
+    ]);
+
+    $this->actingAs($user)
+        ->delete(route('app.accounts.disconnect', $account))
+        ->assertRedirect();
+
+    expect(SocialAccount::query()->whereKey($account->id)->exists())->toBeFalse();
+
+    Log::shouldHaveReceived('error')->withArgs(fn (string $message): bool => $message === 'Repurpose account sync failed');
 });
