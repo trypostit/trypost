@@ -165,14 +165,9 @@ class RepurposeController extends Controller
     private function recommendedFormats(Collection $accounts, SourceFormat $sourceFormat): array
     {
         return $accounts
-            ->mapWithKeys(function (SocialAccount $account) use ($sourceFormat): array {
-                $contentType = $sourceFormat->defaultContentTypeFor($account->platform)
-                    ?? SourceFormat::videoContentTypesFor($account->platform)[0]
-                    ?? null;
-
-                return [$account->id => $contentType?->value];
-            })
-            ->filter()
+            ->mapWithKeys(fn (SocialAccount $account): array => [
+                $account->id => $sourceFormat->defaultContentTypeFor($account->platform)->value,
+            ])
             ->all();
     }
 

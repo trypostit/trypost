@@ -6,6 +6,7 @@ namespace App\Enums\Repurpose;
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use Illuminate\Support\Arr;
 
 enum SourceFormat: string
 {
@@ -29,7 +30,7 @@ enum SourceFormat: string
         };
     }
 
-    public function defaultContentTypeFor(Platform $platform): ?ContentType
+    public function defaultContentTypeFor(Platform $platform): ContentType
     {
         $candidates = match ($this) {
             self::Reel, self::Video => [ContentType::InstagramReel, ContentType::FacebookReel, ContentType::TikTokVideo, ContentType::YouTubeShort],
@@ -44,7 +45,7 @@ enum SourceFormat: string
             }
         }
 
-        return $available[0] ?? ContentType::defaultFor($platform);
+        return Arr::first($available) ?? ContentType::defaultFor($platform);
     }
 
     /**
