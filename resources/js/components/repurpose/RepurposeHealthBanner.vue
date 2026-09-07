@@ -4,7 +4,7 @@ import { computed } from 'vue';
 
 import type { ChannelAccount } from '@/types/channel';
 import type { Repurpose } from '@/types/repurpose';
-import { RepurposeStatus } from '@/types/repurpose-status';
+import { RepurposeHealth, type RepurposeHealthValue, RepurposeStatus } from '@/types/repurpose-status';
 import { SocialAccountStatus } from '@/types/social-account-status';
 
 const props = defineProps<{
@@ -18,19 +18,19 @@ const props = defineProps<{
  * is not a description of the situation the user is looking at now, which may
  * already be fixed.
  */
-const state = computed<'source_missing' | 'source_unusable' | 'no_destinations' | 'ready' | null>(() => {
+const state = computed<RepurposeHealthValue | null>(() => {
     if (props.repurpose.status !== RepurposeStatus.Paused || props.repurpose.paused_reason === null) {
         return null;
     }
 
     if (!props.repurpose.source_social_account_id) {
-        return 'source_missing';
+        return RepurposeHealth.SourceMissing;
     }
 
     const source = props.accounts.find((account) => account.id === props.repurpose.source_social_account_id);
 
     if (!source || !source.is_active || source.status !== SocialAccountStatus.Connected) {
-        return 'source_unusable';
+        return RepurposeHealth.SourceUnusable;
     }
 
     const usable = props.repurpose.destinations.filter((destination) => {
@@ -39,7 +39,7 @@ const state = computed<'source_missing' | 'source_unusable' | 'no_destinations' 
         return account !== undefined && account.is_active;
     });
 
-    return usable.length === 0 ? 'no_destinations' : 'ready';
+    return usable.length === 0 ? RepurposeHealth.NoDestinations : RepurposeHealth.Ready;
 });
 </script>
 
@@ -49,12 +49,12 @@ const state = computed<'source_missing' | 'source_unusable' | 'no_destinations' 
         data-testid="repurpose-health-banner"
         :class="[
             'flex items-start gap-3 rounded-lg border px-4 py-3 text-sm',
-            state === 'ready'
+            state === RepurposeHealth.Ready
                 ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400'
                 : 'border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-400',
         ]"
     >
-        <component :is="state === 'ready' ? IconRefresh : IconAlertTriangle" class="mt-0.5 size-4 shrink-0" />
+        <component :is="state === RepurposeHealth.Ready ? IconRefresh : IconAlertTriangle" class="mt-0.5 size-4 shrink-0" />
 
         <p class="leading-relaxed">
             {{ $t(`repurposes.health.${state}`) }}

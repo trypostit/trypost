@@ -14,6 +14,7 @@ import type { Component } from 'vue';
 import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import { edit } from '@/routes/app/posts';
+import { PostPlatformStatus, type PostPlatformStatusValue } from '@/types/post';
 import type { RepurposeItem, RepurposeItemPost } from '@/types/repurpose';
 import { RepurposeItemStatus, type RepurposeItemStatusValue } from '@/types/repurpose-status';
 
@@ -37,15 +38,17 @@ const detail = (item: RepurposeItem): string | null => item.error ?? null;
  * worth surfacing; otherwise a single shared state only reads as settled when
  * every network agrees on it.
  */
-const postState = (post: RepurposeItemPost): string | null => {
-    const states = post.platforms.map((entry) => entry.status).filter((status): status is string => status !== null);
+const postState = (post: RepurposeItemPost): PostPlatformStatusValue | null => {
+    const states = post.platforms
+        .map((entry) => entry.status)
+        .filter((status): status is PostPlatformStatusValue => status !== null);
 
     if (states.length === 0) {
         return null;
     }
 
-    if (states.includes('failed')) {
-        return 'failed';
+    if (states.includes(PostPlatformStatus.Failed)) {
+        return PostPlatformStatus.Failed;
     }
 
     return states.every((status) => status === states[0]) ? states[0] : null;
@@ -121,7 +124,7 @@ const postState = (post: RepurposeItemPost): string | null => {
                             :src="getPlatformLogo(entry.platform)"
                             :alt="getPlatformLabel(entry.platform)"
                             class="size-4 rounded-sm"
-                            :class="{ 'opacity-40': entry.status === 'failed' }"
+                            :class="{ 'opacity-40': entry.status === PostPlatformStatus.Failed }"
                         />
 
                         {{ post.platforms.map((entry) => getPlatformLabel(entry.platform)).join(', ') }}
@@ -130,7 +133,7 @@ const postState = (post: RepurposeItemPost): string | null => {
                             v-if="postState(post)"
                             :class="[
                                 'rounded px-1 py-px text-[10px] font-semibold uppercase tracking-wide',
-                                postState(post) === 'failed'
+                                postState(post) === PostPlatformStatus.Failed
                                     ? 'bg-red-500/10 text-red-600 dark:text-red-400'
                                     : 'bg-foreground/10 text-foreground/60',
                             ]"

@@ -20,6 +20,21 @@ export const PauseReason = {
 
 export type PauseReasonValue = (typeof PauseReason)[keyof typeof PauseReason];
 
+/**
+ * What the page tells the user about a stopped repurpose. Derived from current
+ * account health, so it is not PauseReason: that one records why the system
+ * stopped and drives the watermark, while this describes the situation now,
+ * which may already be fixed. Each value is also its `repurposes.health.*` key.
+ */
+export const RepurposeHealth = {
+    SourceMissing: 'source_missing',
+    SourceUnusable: 'source_unusable',
+    NoDestinations: 'no_destinations',
+    Ready: 'ready',
+} as const;
+
+export type RepurposeHealthValue = (typeof RepurposeHealth)[keyof typeof RepurposeHealth];
+
 export const RepurposeItemStatus = {
     Pending: 'pending',
     Processing: 'processing',
