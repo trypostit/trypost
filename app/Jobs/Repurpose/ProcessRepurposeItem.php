@@ -15,6 +15,7 @@ use App\Models\Post;
 use App\Models\RepurposeItem;
 use App\Services\Post\MediaAttacher;
 use App\Services\Repurpose\CaptionAdapter;
+use App\Services\Social\TokenRedactor;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -165,8 +166,23 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
         $this->item->update([
             'status' => ItemStatus::Failed,
             'reason' => $exception instanceof SourceDownloadException ? ItemReason::DownloadFailed : $this->item->reason,
-            'error' => Str::limit($exception->getMessage(), 1000),
+            'error' => $this->safeError($exception),
         ]);
+    }
+
+    /**
+     * The item's error is read by humans in the app and served through the
+     * public API and MCP, so it must not carry a credential. A CDN download URL
+     * is one: Meta signs it with expiring oh/oe parameters, and an HTTP client
+     * puts the whole URL in its message. The job knows exactly which string that
+     * is, so it is replaced rather than pattern-matched, and TokenRedactor still
+     * covers the OAuth shapes it already knows.
+     */
+    private function safeError(Throwable $exception): string
+    {
+        $message = str_replace($this->downloadUrl, '[source url]', $exception->getMessage());
+
+        return Str::limit((string) TokenRedactor::redact($message), 1000);
     }
 
     /**

@@ -469,3 +469,17 @@ test('an exhausted draft-mode item keeps its drafts and says it drafted them', f
     expect(Post::query()->whereKey($post->id)->exists())->toBeTrue()
         ->and($item->fresh()->status)->toBe(ItemStatus::Drafted);
 });
+
+test('the stored error never carries the signed source url', function () {
+    $item = repurposeWithTwoDestinations();
+
+    // A CDN download URL is a short-lived credential: Meta signs it with oh/oe
+    // query parameters. Guzzle puts the whole URL in its message, and the item
+    // error is exposed through the UI, the public API and MCP.
+    $message = 'cURL error 28: Operation timed out for '.REPURPOSE_VIDEO_URL.'?oh=SECRETSIG&oe=68B0';
+
+    (new ProcessRepurposeItem($item, REPURPOSE_VIDEO_URL.'?oh=SECRETSIG&oe=68B0', 'caption'))
+        ->failed(new RuntimeException($message));
+
+    expect($item->fresh()->error)->not->toContain('SECRETSIG');
+});
