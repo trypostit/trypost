@@ -146,3 +146,14 @@ test('a self-hosted install with no ai configured still gets a caption that fits
     expect($result)->not->toBe('')
         ->and(Platform::YouTube->contentOverflow($result))->toBe(0);
 });
+
+test('a single word longer than the limit is cut mid-word rather than emptied', function () {
+    $workspace = Workspace::factory()->create();
+    $caption = str_repeat('a', 300);
+
+    $adapted = app(CaptionAdapter::class)->adapt($workspace, null, $caption, Platform::YouTube);
+
+    expect($adapted)->not->toBe('')
+        ->and(mb_strlen($adapted))->toBeLessThan(300)
+        ->and(Platform::YouTube->contentOverflow($adapted))->toBe(0);
+});

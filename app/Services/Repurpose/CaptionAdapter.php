@@ -12,7 +12,6 @@ use App\Services\Ai\RecordAiUsage;
 use App\Services\Social\ContentSanitizer;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Throwable;
 
 class CaptionAdapter
@@ -82,35 +81,43 @@ class CaptionAdapter
 
     private function truncate(string $caption, Platform $platform): string
     {
-        $longest = $this->longestFittingPrefix($caption, $platform);
-        $atBoundary = $this->cutAtWord($longest);
+        $words = explode(' ', $caption);
 
-        return $this->fits($atBoundary, $platform) ? $atBoundary : $longest;
+        $whole = $this->longestFitting(
+            count($words),
+            fn (int $take): string => rtrim(implode(' ', array_slice($words, 0, $take))),
+            $platform,
+        );
+
+        if ($whole !== '') {
+            return $whole;
+        }
+
+        return $this->longestFitting(
+            mb_strlen($caption),
+            fn (int $take): string => rtrim(mb_substr($caption, 0, $take)),
+            $platform,
+        );
     }
 
-    private function longestFittingPrefix(string $caption, Platform $platform): string
+    /**
+     * @param  callable(int): string  $take
+     */
+    private function longestFitting(int $most, callable $take, Platform $platform): string
     {
         $low = 0;
-        $high = mb_strlen($caption);
+        $high = $most;
 
         while ($low < $high) {
             $middle = intdiv($low + $high + 1, 2);
 
-            if ($this->fits(mb_substr($caption, 0, $middle), $platform)) {
+            if ($this->fits($take($middle), $platform)) {
                 $low = $middle;
             } else {
                 $high = $middle - 1;
             }
         }
 
-        return mb_substr($caption, 0, $low);
-    }
-
-    private function cutAtWord(string $caption): string
-    {
-        $trimmed = rtrim($caption);
-        $atBoundary = rtrim(Str::beforeLast($trimmed, ' '));
-
-        return $atBoundary !== '' ? $atBoundary : $trimmed;
+        return $take($low);
     }
 }
