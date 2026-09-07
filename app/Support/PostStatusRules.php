@@ -14,7 +14,7 @@ use Illuminate\Validation\Rule;
  */
 class PostStatusRules
 {
-    private const EDIT_BLOCKED_MESSAGE_KEY = 'posts.cannot_edit_finalized';
+    private const EDIT_BLOCKED_MESSAGE_KEY = 'posts.flash.cannot_edit_finalized';
 
     /**
      * Statuses where the post can no longer be edited.
