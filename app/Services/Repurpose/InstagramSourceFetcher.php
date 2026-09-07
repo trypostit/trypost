@@ -9,7 +9,6 @@ use App\Enums\Instagram\MediaType;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
-use Carbon\Carbon;
 use Carbon\CarbonInterface;
 
 class InstagramSourceFetcher extends MetaSourceFetcher
@@ -69,7 +68,7 @@ class InstagramSourceFetcher extends MetaSourceFetcher
             downloadUrl: data_get($row, 'media_url'),
             caption: (string) data_get($row, 'caption', ''),
             permalink: data_get($row, 'permalink'),
-            createdAt: ($timestamp = data_get($row, 'timestamp')) ? Carbon::parse($timestamp) : null,
+            createdAt: $this->timestamp($row, 'timestamp'),
         );
     }
 

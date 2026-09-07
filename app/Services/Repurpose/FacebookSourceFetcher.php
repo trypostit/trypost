@@ -8,7 +8,6 @@ use App\Enums\Facebook\StoryMediaType;
 use App\Enums\Facebook\StoryStatus;
 use App\Enums\Repurpose\SourceFormat;
 use App\Models\SocialAccount;
-use Carbon\Carbon;
 use Carbon\CarbonInterface;
 
 class FacebookSourceFetcher extends MetaSourceFetcher
@@ -40,13 +39,11 @@ class FacebookSourceFetcher extends MetaSourceFetcher
             ? $this->stories($account, $since)
             : [];
 
-        if ($reels !== [] && $videos !== []) {
-            $reelIds = array_map(fn (SourceMedia $media): string => $media->id, $reels);
-            $videos = array_values(array_filter(
-                $videos,
-                fn (SourceMedia $media): bool => ! in_array($media->id, $reelIds, true),
-            ));
-        }
+        $reelIds = array_map(fn (SourceMedia $media): string => $media->id, $reels);
+        $videos = array_values(array_filter(
+            $videos,
+            fn (SourceMedia $media): bool => ! in_array($media->id, $reelIds, true),
+        ));
 
         return [...($wantsReels ? $reels : []), ...$videos, ...$stories];
     }
@@ -70,7 +67,7 @@ class FacebookSourceFetcher extends MetaSourceFetcher
                 downloadUrl: data_get($row, 'source'),
                 caption: (string) data_get($row, 'description', ''),
                 permalink: data_get($row, 'permalink_url'),
-                createdAt: ($createdTime = data_get($row, 'created_time')) ? Carbon::parse($createdTime) : null,
+                createdAt: $this->timestamp($row, 'created_time'),
             ),
             $rows,
         );
@@ -87,29 +84,37 @@ class FacebookSourceFetcher extends MetaSourceFetcher
             'since' => $since?->getTimestamp(),
         ]);
 
-        $stories = [];
+        return collect($rows)
+            ->filter(fn (array $row): bool => $this->isPublishedVideo($row))
+            ->map(fn (array $row): SourceMedia => $this->toStory($account, $row))
+            ->values()
+            ->all();
+    }
 
-        foreach ($rows as $row) {
-            $mediaType = StoryMediaType::tryFrom((string) data_get($row, 'media_type'));
-            $status = StoryStatus::tryFrom((string) data_get($row, 'status'));
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function isPublishedVideo(array $row): bool
+    {
+        return StoryMediaType::tryFrom((string) data_get($row, 'media_type')) === StoryMediaType::Video
+            && StoryStatus::tryFrom((string) data_get($row, 'status')) === StoryStatus::Published;
+    }
 
-            if ($mediaType !== StoryMediaType::Video || $status !== StoryStatus::Published) {
-                continue;
-            }
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function toStory(SocialAccount $account, array $row): SourceMedia
+    {
+        $mediaId = (string) data_get($row, 'media_id');
 
-            $mediaId = (string) data_get($row, 'media_id');
-
-            $stories[] = new SourceMedia(
-                id: (string) data_get($row, 'post_id', $mediaId),
-                format: SourceFormat::Story,
-                downloadUrl: $this->videoSource($account, $mediaId),
-                caption: '',
-                permalink: data_get($row, 'url'),
-                createdAt: ($createdTime = data_get($row, 'creation_time')) ? Carbon::parse($createdTime) : null,
-            );
-        }
-
-        return $stories;
+        return new SourceMedia(
+            id: (string) data_get($row, 'post_id', $mediaId),
+            format: SourceFormat::Story,
+            downloadUrl: $this->videoSource($account, $mediaId),
+            caption: '',
+            permalink: data_get($row, 'url'),
+            createdAt: $this->timestamp($row, 'creation_time'),
+        );
     }
 
     private function videoSource(SocialAccount $account, string $videoId): ?string

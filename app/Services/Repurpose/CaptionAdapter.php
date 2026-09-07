@@ -73,31 +73,44 @@ class CaptionAdapter
 
         $shortened = trim((string) $result->text);
 
-        return $shortened !== '' && $this->fits($shortened, $platform) ? $shortened : null;
+        if ($shortened === '' || ! $this->fits($shortened, $platform)) {
+            return null;
+        }
+
+        return $shortened;
     }
 
     private function truncate(string $caption, Platform $platform): string
     {
-        while (! $this->fits($caption, $platform)) {
-            $caption = $this->cutAtWord($caption, $this->fittingLength($caption, $platform));
+        $longest = $this->longestFittingPrefix($caption, $platform);
+        $atBoundary = $this->cutAtWord($longest);
+
+        return $this->fits($atBoundary, $platform) ? $atBoundary : $longest;
+    }
+
+    private function longestFittingPrefix(string $caption, Platform $platform): string
+    {
+        $low = 0;
+        $high = mb_strlen($caption);
+
+        while ($low < $high) {
+            $middle = intdiv($low + $high + 1, 2);
+
+            if ($this->fits(mb_substr($caption, 0, $middle), $platform)) {
+                $low = $middle;
+            } else {
+                $high = $middle - 1;
+            }
         }
 
-        return $caption;
+        return mb_substr($caption, 0, $low);
     }
 
-    private function fittingLength(string $caption, Platform $platform): int
+    private function cutAtWord(string $caption): string
     {
-        $length = mb_strlen($caption);
-        $scaled = $length * $platform->maxContentLength() / mb_strlen($this->sent($caption, $platform));
+        $trimmed = rtrim($caption);
+        $atBoundary = rtrim(Str::beforeLast($trimmed, ' '));
 
-        return min((int) $scaled, $length - 1);
-    }
-
-    private function cutAtWord(string $caption, int $limit): string
-    {
-        $cut = rtrim(mb_substr($caption, 0, $limit));
-        $boundary = rtrim(Str::beforeLast($cut, ' '));
-
-        return $boundary === '' ? $cut : $boundary;
+        return $atBoundary !== '' ? $atBoundary : $trimmed;
     }
 }
