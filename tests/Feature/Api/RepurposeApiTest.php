@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\ItemStatus;
+use App\Enums\Repurpose\PauseReason;
 use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
@@ -281,4 +283,42 @@ test('the publishing mode round-trips through the api', function () {
     $this->withHeaders(apiHeaders($this->token))
         ->putJson(route('api.repurposes.update', $created->json('id')), ['publish_mode' => 'whenever'])
         ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
+});
+
+test('the api exposes why a repurpose stopped and refuses to resume it while broken', function () {
+    $repurpose = Repurpose::factory()->for($this->workspace)->create([
+        'source_social_account_id' => $this->source->id,
+        'status' => Status::Paused,
+        'paused_reason' => PauseReason::SourceUnavailable,
+        'destinations' => [tiktokDestinationPayload($this->tiktok)],
+    ]);
+
+    $this->source->update(['status' => AccountStatus::Disconnected]);
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->getJson(route('api.repurposes.show', $repurpose))
+        ->assertOk()
+        ->assertJsonPath('paused_reason', PauseReason::SourceUnavailable->value);
+
+    // The health gate lives in the action, so every surface inherits it.
+    $this->withHeaders(apiHeaders($this->token))
+        ->postJson(route('api.repurposes.resume', $repurpose))
+        ->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
+        ->assertJsonValidationErrors('source_social_account_id');
+});
+
+test('the api accepts a switched-off account as a destination', function () {
+    $repurpose = Repurpose::factory()->for($this->workspace)->create([
+        'source_social_account_id' => $this->source->id,
+    ]);
+
+    $this->tiktok->update(['is_active' => false]);
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->putJson(route('api.repurposes.update', $repurpose), [
+            'destinations' => [tiktokDestinationPayload($this->tiktok)],
+        ])
+        ->assertOk();
+
+    expect($repurpose->fresh()->destinations)->toHaveCount(1);
 });

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\ItemStatus;
+use App\Enums\Repurpose\PauseReason;
 use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\UserWorkspace\Role;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Repurpose\ActivateRepurposeTool;
@@ -267,4 +269,36 @@ test('the publishing mode is settable through mcp', function () {
 
     expect(Repurpose::where('workspace_id', $this->workspace->id)->sole()->publish_mode)
         ->toBe(PublishMode::Draft);
+});
+
+test('the get tool reports why a repurpose stopped', function () {
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+        'status' => Status::Paused,
+        'paused_reason' => PauseReason::SourceRemoved,
+        'destinations' => [tiktokDestinationForMcp($this->tiktok)],
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(GetRepurposeTool::class, ['repurpose_id' => $repurpose->id])
+        ->assertOk()
+        ->assertSee(PauseReason::SourceRemoved->value);
+});
+
+test('activating through the tool is refused while the source is unusable', function () {
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+        'destinations' => [tiktokDestinationForMcp($this->tiktok)],
+    ]);
+
+    $this->source->update(['status' => AccountStatus::Disconnected]);
+
+    // The gate lives in the action, so the tool inherits it without knowing.
+    TryPostServer::actingAs($this->user)
+        ->tool(ActivateRepurposeTool::class, ['repurpose_id' => $repurpose->id])
+        ->assertHasErrors();
+
+    expect($repurpose->fresh()->status)->toBe(Status::Draft);
 });
