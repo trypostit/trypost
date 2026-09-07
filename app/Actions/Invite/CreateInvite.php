@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Invite;
 
+use App\Enums\User\Locale;
 use App\Enums\UserWorkspace\Role as WorkspaceRole;
 use App\Mail\WorkspaceInvite as WorkspaceInviteMail;
 use App\Models\Invite;
@@ -22,7 +23,9 @@ class CreateInvite
             'workspaces' => [$workspace->id],
         ]);
 
-        Mail::to($invite->email)->send(new WorkspaceInviteMail($invite));
+        Mail::to($invite->email)
+            ->locale($invite->invitedBy?->preferredLocale() ?? Locale::DEFAULT->value)
+            ->send(new WorkspaceInviteMail($invite));
 
         return $invite;
     }

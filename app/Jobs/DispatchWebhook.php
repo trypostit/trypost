@@ -171,7 +171,7 @@ class DispatchWebhook implements ShouldQueue
             $owner = $this->webhook->workspace?->account?->owner;
 
             if ($owner?->email) {
-                Mail::to($owner->email)->send(new WebhookPausedMail($this->webhook));
+                Mail::to($owner)->send(new WebhookPausedMail($this->webhook));
             }
         }
     }

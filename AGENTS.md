@@ -362,3 +362,41 @@ and parity with `ContentLanguage`).
   reliable signal about the person.
 - The picker translates the page client-side (`loadLanguageAsync`), so choosing a
   language never costs a round trip; the value only reaches the server on submit.
+
+## Emails (Maizzle + i18n)
+
+Email HTML is authored in `maizzle/templates/<slug>.html` and compiled to
+`resources/views/mail/<slug>.blade.php` by `cd maizzle && npm run build`. **Never
+edit the Blade files** — they are build output and the next build overwrites them.
+
+- **Maizzle eats one `{`-level.** Write `@{{ ... }}` in the template to emit Blade
+  `{{ ... }}`; write `{!! ... !!}` as-is (it passes through via
+  `posthtml.expressions.unescapeDelimiters`). A `{{ }}` written directly is
+  evaluated by Maizzle at build time and disappears.
+- **Copy lives in the template, not in the Mailable.** Body text is
+  `@{{ __('mail.<slug>.<key>') }}` inside the template; the Mailable resolves only
+  the envelope metadata the layout needs — `subject`, `title`, `previewText` — and
+  otherwise passes **data** (`$workspaceName`, `$endpoint`, `$publishedPlatforms`),
+  never sentences. Injecting resolved strings as view variables is what the
+  disconnected-connections email used to do, and it meant every new sentence had
+  to be threaded through PHP while the template gave no hint it was translatable.
+- **One `lang/*/mail.php` block per template**, keyed by the slug with dashes as
+  underscores (`post-published.html` => `post_published`). Shared chrome (footer
+  tagline, sign-off) lives under `layout`. Keys go in all 16 locales;
+  `LocalizationParityTest` fails on drift. Feature lang files must not carry email
+  copy — `webhooks.mail.*` moved here for that reason.
+- **The recipient's locale is automatic.** `User` implements
+  `HasLocalePreference`, so `Mail::to($user)` and `$user->notify(...)` localize on
+  their own; never add a `->locale()` call at a send site. Two consequences:
+  `Mail::to($user->email)` (a bare string) silently loses it, so always pass the
+  model; and the invite is the one exception — the recipient has no account yet,
+  so `CreateInvite` explicitly sends in the inviter's locale.
+- **`trans_choice` must handle zero.** The last plural segment is `[0,*]`, not
+  `[2,*]`: `PostAtRisk` can report a count of 0 when rows disappear between
+  dispatch and send, and an unmatched count renders a stray leading space.
+
+New email checklist: add the template, add the `mail.<slug>` block to all 16
+locales, write a Mailable that passes data plus the three metadata strings, send
+with `Mail::to($user)`, run the Maizzle build, and cover it with a render test —
+`tests/Feature/Mail/MailRenderingTest.php` exists because copy moving into the
+view turns a forgotten variable into a runtime-only failure.

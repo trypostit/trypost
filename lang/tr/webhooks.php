@@ -129,11 +129,4 @@ return [
         'replayed' => 'Webhook olayı yeniden gönderildi.',
         'tested' => 'Test olayı gönderildi.',
     ],
-    'mail' => [
-        'paused_subject' => 'Webhook duraklatıldı: :endpoint',
-        'paused_title' => 'Webhook tekrarlanan hatalardan sonra duraklatıldı',
-        'paused_preview' => 'Üst üste 5 teslim hatasından sonra bir webhooku duraklattık.',
-        'paused_body' => ':endpoint adresindeki webhooku üst üste 5 teslim hatasından sonra duraklattık. Endpointi gözden geçirin ve webhook ayrıntı sayfasından yeniden etkinleştirin.',
-        'paused_cta' => 'Webhooku gör',
-    ],
 ];

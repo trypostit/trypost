@@ -9,11 +9,11 @@
             <tr>
               <td class="p-12 sm:px-6 text-base text-zinc-700 bg-white rounded shadow-sm">
                 <h1 class="m-0 mb-6 text-2xl sm:leading-8 text-black font-semibold">
-                  @{{ $title }}
+                  @{{ __('mail.workspace_connections_disconnected.heading') }}
                 </h1>
 
                 <p class="m-0 leading-6">
-                  {!! $intro !!}
+                  {!! __('mail.workspace_connections_disconnected.intro', ['workspace' => '<strong>'.e($workspaceName).'</strong>']) !!}
                 </p>
 
                 <table class="w-full mt-4" style="border-collapse: collapse">
@@ -33,24 +33,24 @@
                 </table>
 
                 <p class="m-0 mt-6 leading-6">
-                  @{{ $reasonsTitle }}
+                  @{{ __('mail.workspace_connections_disconnected.reasons_title') }}
                 </p>
 
                 <ul class="m-0 mt-2 pl-5 leading-6">
-                  <li>@{{ $reasonExpired }}</li>
-                  <li>@{{ $reasonRevoked }}</li>
-                  <li>@{{ $reasonChanged }}</li>
+                  <li>@{{ __('mail.workspace_connections_disconnected.reason_expired') }}</li>
+                  <li>@{{ __('mail.workspace_connections_disconnected.reason_revoked') }}</li>
+                  <li>@{{ __('mail.workspace_connections_disconnected.reason_changed') }}</li>
                 </ul>
 
                 <p class="m-0 mt-4 leading-6">
-                  @{{ $reconnectCta }}
+                  @{{ __('mail.workspace_connections_disconnected.reconnect_cta') }}
                 </p>
 
                 <x-spacer height="24px" />
 
                 <div class="flex items-center justify-center">
                   <x-button href="@{{ $url }}">
-                    @{{ $buttonText }} &rarr;
+                    @{{ __('mail.workspace_connections_disconnected.button') }} &rarr;
                   </x-button>
                 </div>
               </td>

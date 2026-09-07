@@ -237,10 +237,10 @@ class AppServiceProvider extends ServiceProvider
         VerifyEmail::toMailUsing(function (User $user, string $url) {
             return (new MailMessage)
                 ->from(config('mail.from.address'), config('mail.from.name'))
-                ->subject('Verify your email address')
+                ->subject(__('mail.email_verification.subject'))
                 ->view('mail.email-verification', [
-                    'title' => 'Verify your email address',
-                    'previewText' => 'Please verify your email address.',
+                    'title' => __('mail.email_verification.subject'),
+                    'previewText' => __('mail.email_verification.preview'),
                     'user' => $user,
                     'url' => $url,
                 ]);
@@ -255,10 +255,10 @@ class AppServiceProvider extends ServiceProvider
 
             return (new MailMessage)
                 ->from(config('mail.from.address'), config('mail.from.name'))
-                ->subject('Reset your password')
+                ->subject(__('mail.password_reset.subject'))
                 ->view('mail.password-reset', [
-                    'title' => 'Reset your password',
-                    'previewText' => 'Reset your password.',
+                    'title' => __('mail.password_reset.subject'),
+                    'previewText' => __('mail.password_reset.preview'),
                     'user' => $user,
                     'url' => $url,
                 ]);

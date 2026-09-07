@@ -9,18 +9,18 @@
             <tr>
               <td class="p-12 sm:px-6 text-base text-zinc-700 bg-white rounded shadow-sm">
                 <h1 class="m-0 mb-6 text-2xl sm:leading-8 text-black font-semibold">
-                  @{{ $title }}
+                  @{{ __('mail.webhook_paused.heading') }}
                 </h1>
 
                 <p class="m-0 leading-6">
-                  @{{ $body }}
+                  @{{ __('mail.webhook_paused.body', ['endpoint' => $endpoint]) }}
                 </p>
 
                 <x-spacer height="24px" />
 
                 <div class="flex items-center justify-center">
                   <x-button href="@{{ $url }}">
-                    @{{ $buttonText }} &rarr;
+                    @{{ __('mail.webhook_paused.button') }} &rarr;
                   </x-button>
                 </div>
               </td>

@@ -26,7 +26,10 @@ class AccountDisconnected extends Mailable implements ShouldQueue
         $workspaceName = $this->account->workspace->name;
 
         return new Envelope(
-            subject: "Your {$platformName} account in {$workspaceName} needs to be reconnected",
+            subject: __('mail.account_disconnected.subject', [
+                'platform' => $platformName,
+                'workspace' => $workspaceName,
+            ]),
         );
     }
 
@@ -39,8 +42,11 @@ class AccountDisconnected extends Mailable implements ShouldQueue
         return new Content(
             view: 'mail.account-disconnected',
             with: [
-                'title' => "Your {$platformName} account needs to be reconnected",
-                'previewText' => "Please reconnect your {$platformName} account in {$workspaceName} to continue scheduling posts.",
+                'title' => __('mail.account_disconnected.title', ['platform' => $platformName]),
+                'previewText' => __('mail.account_disconnected.preview', [
+                    'platform' => $platformName,
+                    'workspace' => $workspaceName,
+                ]),
                 'account' => $this->account,
                 'platformName' => $platformName,
                 'accountName' => $accountName,

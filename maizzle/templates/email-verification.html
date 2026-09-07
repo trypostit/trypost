@@ -8,30 +8,30 @@
             <tr>
               <td class="p-12 sm:px-6 text-base text-zinc-800 bg-white rounded shadow-sm">
                 <p class="leading-6 mt-0">
-                  Hi @{{ $user->name }},
+                  @{{ __('mail.email_verification.greeting', ['name' => $user->name]) }}
                 </p>
 
                 <p class="leading-6">
-                  Please confirm your email address by clicking the button below:
+                  @{{ __('mail.email_verification.body') }}
                 </p>
 
                 <x-spacer height="24px" />
 
                 <div class="text-center">
                   <x-button href="@{{ $url }}">
-                    Verify Email Address &rarr;
+                    @{{ __('mail.email_verification.button') }} &rarr;
                   </x-button>
                 </div>
 
                 <x-spacer height="24px" />
 
                 <p class="leading-6">
-                  If you did not create an account, you can safely ignore this email.
+                  @{{ __('mail.email_verification.ignore') }}
                 </p>
                 <p class="leading-6 mb-0">
-                  Best regards,
+                  @{{ __('mail.layout.signoff') }}
                   <br />
-                  The TryPost Team
+                  @{{ __('mail.layout.team') }}
                 </p>
               </td>
             </tr>

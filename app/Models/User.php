@@ -14,6 +14,7 @@ use App\Models\Traits\HasMedia;
 use App\Models\Traits\HasWorkspace;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -24,7 +25,7 @@ use Illuminate\Support\Str;
 use Laravel\Passport\Contracts\OAuthenticatable;
 use Laravel\Passport\HasApiTokens;
 
-class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
+class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail, OAuthenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasAccount, HasApiTokens, HasFactory, HasMedia, HasUuids, HasWorkspace, Notifiable;
@@ -103,6 +104,16 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
             'referral_source' => ReferralSource::class,
             'locale' => Locale::class,
         ];
+    }
+
+    /**
+     * The locale every mail and notification sent to this user is rendered in.
+     * Laravel reads this off the notifiable, so `Mail::to($user)` localizes on
+     * its own and no send site needs a `->locale()` call.
+     */
+    public function preferredLocale(): string
+    {
+        return ($this->locale ?? Locale::DEFAULT)->value;
     }
 
     public function notifications(): HasMany

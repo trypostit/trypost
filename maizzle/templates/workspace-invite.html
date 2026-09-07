@@ -9,29 +9,29 @@
             <tr>
               <td class="p-12 sm:px-6 text-base text-zinc-700 bg-white rounded shadow-sm">
                 <h1 class="m-0 mb-6 text-2xl sm:leading-8 text-black font-semibold">
-                  You've been invited!
+                  @{{ __('mail.workspace_invite.heading') }}
                 </h1>
 
                 <p class="m-0 leading-6">
-                  You've been invited to collaborate on the <strong>@{{ $accountName }}</strong> workspace.
+                  {!! __('mail.workspace_invite.intro', ['account' => '<strong>'.e($accountName).'</strong>']) !!}
                 </p>
 
                 <p class="m-0 mt-4 leading-6">
-                  You've been invited as <strong>@{{ $roleLabel }}</strong>.
+                  {!! __('mail.workspace_invite.role', ['role' => '<strong>'.e($roleLabel).'</strong>']) !!}
                 </p>
 
                 <x-spacer height="24px" />
 
                 <div class="flex items-center justify-center">
                   <x-button href="@{{ $url }}">
-                    Accept Invite &rarr;
+                    @{{ __('mail.workspace_invite.button') }} &rarr;
                   </x-button>
                 </div>
 
                 <x-spacer height="24px" />
 
                 <p class="m-0 leading-6 text-zinc-500 text-sm">
-                  This invite expires in 7 days.
+                  @{{ __('mail.workspace_invite.expiry') }}
                 </p>
               </td>
             </tr>

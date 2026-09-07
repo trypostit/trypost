@@ -129,11 +129,4 @@ return [
         'replayed' => 'Webhook-Ereignis erneut gesendet.',
         'tested' => 'Test-Ereignis gesendet.',
     ],
-    'mail' => [
-        'paused_subject' => 'Webhook pausiert: :endpoint',
-        'paused_title' => 'Webhook nach wiederholten Fehlern pausiert',
-        'paused_preview' => 'Wir haben einen Webhook nach 5 aufeinanderfolgenden Zustellfehlern pausiert.',
-        'paused_body' => 'Wir haben den Webhook unter :endpoint nach 5 aufeinanderfolgenden Zustellfehlern pausiert. Prüfe den Endpoint und aktiviere ihn wieder auf der Webhook-Detailseite.',
-        'paused_cta' => 'Webhook anzeigen',
-    ],
 ];

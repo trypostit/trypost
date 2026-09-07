@@ -24,7 +24,7 @@ class PostPublished extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Your post was published in {$this->post->workspace->name}",
+            subject: __('mail.post_published.subject', ['workspace' => $this->post->workspace->name]),
         );
     }
 
@@ -45,9 +45,9 @@ class PostPublished extends Mailable implements ShouldQueue
         return new Content(
             view: 'mail.post-published',
             with: [
-                'title' => 'Your post was published',
-                'previewText' => 'Your post has been published successfully.',
-                'body' => "Your post in the {$this->post->workspace->name} workspace has been published successfully.",
+                'title' => __('mail.post_published.title'),
+                'previewText' => __('mail.post_published.preview'),
+                'workspaceName' => $this->post->workspace->name,
                 'publishedPlatforms' => $publishedPlatforms,
                 'url' => route('app.posts.edit', $this->post),
             ],

@@ -9,11 +9,11 @@
             <tr>
               <td class="p-12 sm:px-6 text-base text-zinc-700 bg-white rounded shadow-sm">
                 <h1 class="m-0 mb-6 text-2xl sm:leading-8 text-black font-semibold">
-                  @{{ $title }}
+                  @{{ __('mail.post_at_risk.heading') }}
                 </h1>
 
                 <p class="m-0 leading-6">
-                  @{{ $intro }}
+                  @{{ __('mail.post_at_risk.intro', ['workspace' => $workspaceName]) }}
                 </p>
 
                 <table class="w-full mt-4" style="border-collapse: collapse">
@@ -26,7 +26,7 @@
                           <strong class="text-zinc-900">@{{ $group['account']->platform->label() }}</strong>
                           <span class="text-zinc-500"> - @{{ $group['account']->accountDisplayName() }}</span>
                           <div class="text-zinc-500" style="font-size: 14px; margin-top: 4px">
-                            @{{ $group['postsLabel'] }}
+                            @{{ trans_choice('mail.post_at_risk.posts_label', $group['postCount'], ['count' => $group['postCount'], 'times' => $group['times']]) }}
                           </div>
                         </div>
                       </div>
@@ -36,14 +36,14 @@
                 </table>
 
                 <p class="m-0 mt-4 leading-6">
-                  @{{ $reconnectCta }}
+                  @{{ __('mail.post_at_risk.reconnect_cta') }}
                 </p>
 
                 <x-spacer height="24px" />
 
                 <div class="flex items-center justify-center">
                   <x-button href="@{{ $url }}">
-                    @{{ $buttonText }} &rarr;
+                    @{{ __('mail.post_at_risk.button') }} &rarr;
                   </x-button>
                 </div>
               </td>
