@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'Repurpose',
-    'description' => 'Automatycznie publikuj w pozostałych sieciach filmy, które wrzucasz poza TryPost.',
+    'description' => 'Automatycznie publikuj w pozostałych sieciach to, co wrzucasz poza TryPost.',
     'new' => 'Nowy repurpose',
 
     'flow' => [
@@ -16,7 +16,7 @@ return [
 
         'title' => 'Publikowanie',
 
-        'description' => 'Co się dzieje, gdy pojawia się nowy film.',
+        'description' => 'Co się dzieje, gdy pojawia się nowy post.',
 
     ],
 
@@ -24,11 +24,11 @@ return [
 
         'publish' => 'Publikuj automatycznie',
 
-        'publish_hint' => 'Każdy nowy film jest planowany zaraz po znalezieniu.',
+        'publish_hint' => 'Każdy nowy post jest planowany zaraz po znalezieniu.',
 
         'draft' => 'Utwórz jako wersję roboczą',
 
-        'draft_hint' => 'Każdy nowy film trafia tu jako wersja robocza do sprawdzenia i publikacji.',
+        'draft_hint' => 'Każdy nowy post trafia tu jako wersja robocza do sprawdzenia i publikacji.',
 
     ],
 
@@ -40,7 +40,7 @@ return [
 
     'source' => [
         'title' => 'Źródło',
-        'description' => 'TryPost obserwuje to konto w poszukiwaniu nowych filmów w formacie poniżej.',
+        'description' => 'TryPost obserwuje to konto w poszukiwaniu nowych postów w formacie poniżej.',
         'account_label' => 'Konto',
         'watch_label' => 'Obserwuj',
         'needs_reconnect' => 'Wymaga ponownego połączenia',
@@ -54,7 +54,7 @@ return [
 
     'empty' => [
         'title' => 'Nie skonfigurowano jeszcze repurpose',
-        'description' => 'TryPost obserwuje wybrane konto i publikuje każde nowe wideo w zaznaczonych sieciach.',
+        'description' => 'TryPost obserwuje wybrane konto i publikuje każdy nowy post w zaznaczonych sieciach.',
     ],
 
     'table' => [
@@ -86,7 +86,6 @@ return [
 
     'show' => [
         'title' => 'Repurpose',
-        'description' => 'Filmy opublikowane na tym koncie poza TryPost są replikowane do celów poniżej.',
         'saving' => 'Zapisywanie...',
         'saved' => 'Zapisano',
     ],
@@ -114,8 +113,8 @@ return [
         'disable' => 'Wyłącz',
         'watermark' => 'Obserwuje od',
         'last_polled' => 'Ostatnie sprawdzenie',
-        'draft_hint' => 'Wybierz co najmniej jeden cel i aktywuj. Replikowane są tylko filmy opublikowane po aktywacji.',
-        'active_hint' => 'TryPost regularnie sprawdza to konto i replikuje każdy nowy film.',
+        'draft_hint' => 'Wybierz co najmniej jeden cel i aktywuj. Replikowane są tylko posty opublikowane po aktywacji.',
+        'active_hint' => 'TryPost regularnie sprawdza to konto i replikuje każdy nowy post.',
         'paused_hint' => 'Sprawdzanie jest wstrzymane. Wznowienie kontynuuje od miejsca zatrzymania i nic nie ginie.',
         'disabled_hint' => 'Wyłączone. Ponowna aktywacja zaczyna od zera: to, co opublikowałeś w międzyczasie, zostaje pominięte.',
     ],
@@ -130,7 +129,7 @@ return [
         'original_from' => 'oryginał z :date',
         'empty' => [
             'title' => 'Jeszcze nic',
-            'description' => 'Filmy publikowane przez to konto poza TryPost pojawią się tutaj.',
+            'description' => 'Posty publikowane przez to konto poza TryPost pojawią się tutaj.',
         ],
         'open_post' => 'Otwórz post',
         'statuses' => [

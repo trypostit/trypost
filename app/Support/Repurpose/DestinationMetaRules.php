@@ -39,12 +39,6 @@ class DestinationMetaRules
         return self::reKey(PostPlatformMetaRules::attributes());
     }
 
-    /**
-     * An active repurpose publishes without anyone reviewing the post first, so a
-     * destination missing the meta its network needs can only fail later, in a
-     * queued job. A draft, paused or disabled one saves incomplete the way a post
-     * draft does; activating it runs the same check.
-     */
     public static function enforcedFor(Repurpose $repurpose): bool
     {
         return $repurpose->status === Status::Active;

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'Repurpose',
-    'description' => 'TryPost の外で投稿した動画を、他のネットワークへ自動で再投稿します。',
+    'description' => 'TryPost の外で投稿したものを、他のネットワークへ自動で再投稿します。',
     'new' => '新しい Repurpose',
 
     'flow' => [
@@ -16,7 +16,7 @@ return [
 
         'title' => '公開',
 
-        'description' => '新しい動画が見つかったときの動作。',
+        'description' => '新しい投稿が見つかったときの動作。',
 
     ],
 
@@ -24,11 +24,11 @@ return [
 
         'publish' => '自動的に公開',
 
-        'publish_hint' => '新しい動画は見つかった時点で予約されます。',
+        'publish_hint' => '新しい投稿は見つかった時点で予約されます。',
 
         'draft' => '下書きとして作成',
 
-        'draft_hint' => '新しい動画はここで下書きになり、確認してから公開できます。',
+        'draft_hint' => '新しい投稿はここで下書きになり、確認してから公開できます。',
 
     ],
 
@@ -40,7 +40,7 @@ return [
 
     'source' => [
         'title' => 'ソース',
-        'description' => 'TryPost がこのアカウントを見張り、下で選んだ形式の新しい動画を探します。',
+        'description' => 'TryPost がこのアカウントを見張り、下で選んだ形式の新しい投稿を探します。',
         'account_label' => 'アカウント',
         'watch_label' => '監視する形式',
         'needs_reconnect' => '再接続が必要',
@@ -54,7 +54,7 @@ return [
 
     'empty' => [
         'title' => 'Repurpose はまだ設定されていません',
-        'description' => 'TryPost は選んだアカウントを監視し、新しい動画を指定したネットワークに再投稿します。',
+        'description' => 'TryPost は選んだアカウントを監視し、新しい投稿を指定したネットワークに再投稿します。',
     ],
 
     'table' => [
@@ -86,7 +86,6 @@ return [
 
     'show' => [
         'title' => 'Repurpose',
-        'description' => 'このアカウントで TryPost 以外から投稿された動画が、下の配信先へ再投稿されます。',
         'saving' => '保存中...',
         'saved' => '保存しました',
     ],
@@ -114,8 +113,8 @@ return [
         'disable' => '無効にする',
         'watermark' => '監視開始',
         'last_polled' => '最終チェック',
-        'draft_hint' => '配信先を 1 つ以上選んでから有効にしてください。再投稿されるのは有効化より後の動画だけです。',
-        'active_hint' => 'TryPost はこのアカウントを定期的に確認し、新しい動画をすべて再投稿します。',
+        'draft_hint' => '宛先を1つ以上選んでから有効にしてください。有効化した後の投稿だけが複製されます。',
+        'active_hint' => 'TryPost はこのアカウントを定期的に確認し、新しい投稿をすべて複製します。',
         'paused_hint' => 'チェックを停止中です。再開すると止まった時点から続き、その間の投稿も失われません。',
         'disabled_hint' => 'オフです。もう一度有効にすると最初からになり、オフの間に投稿したものは対象外のままです。',
     ],
@@ -130,7 +129,7 @@ return [
         'original_from' => '元投稿 :date',
         'empty' => [
             'title' => 'まだ何もありません',
-            'description' => 'このアカウントが TryPost の外で投稿した動画がここに表示されます。',
+            'description' => 'このアカウントが TryPost の外で公開した投稿がここに表示されます。',
         ],
         'open_post' => '投稿を開く',
         'statuses' => [

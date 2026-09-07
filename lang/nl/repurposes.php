@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'Repurpose',
-    'description' => 'Publiceer video\'s die je buiten TryPost post automatisch opnieuw op je andere netwerken.',
+    'description' => 'Publiceer wat je buiten TryPost post automatisch opnieuw op je andere netwerken.',
     'new' => 'Nieuwe repurpose',
 
     'flow' => [
@@ -16,7 +16,7 @@ return [
 
         'title' => 'Publiceren',
 
-        'description' => 'Wat er gebeurt als er een nieuwe video verschijnt.',
+        'description' => 'Wat er gebeurt als er een nieuw bericht verschijnt.',
 
     ],
 
@@ -24,11 +24,11 @@ return [
 
         'publish' => 'Automatisch publiceren',
 
-        'publish_hint' => 'Elke nieuwe video wordt ingepland zodra die gevonden is.',
+        'publish_hint' => 'Elk nieuw bericht wordt ingepland zodra dat gevonden is.',
 
         'draft' => 'Als concept aanmaken',
 
-        'draft_hint' => 'Elke nieuwe video wordt hier een concept om na te kijken en te publiceren.',
+        'draft_hint' => 'Elk nieuw bericht wordt hier een concept om na te kijken en te publiceren.',
 
     ],
 
@@ -40,7 +40,7 @@ return [
 
     'source' => [
         'title' => 'Bron',
-        'description' => 'TryPost volgt dit account op nieuwe video\'s van het formaat hieronder.',
+        'description' => 'TryPost volgt dit account op nieuwe berichten van het formaat hieronder.',
         'account_label' => 'Account',
         'watch_label' => 'Volgen',
         'needs_reconnect' => 'Opnieuw verbinden nodig',
@@ -54,7 +54,7 @@ return [
 
     'empty' => [
         'title' => 'Nog geen repurpose ingesteld',
-        'description' => 'TryPost volgt het account dat je kiest en plaatst elke nieuwe video opnieuw op de netwerken die je aanvinkt.',
+        'description' => 'TryPost volgt het account dat je kiest en plaatst elk nieuw bericht opnieuw op de netwerken die je aanvinkt.',
     ],
 
     'table' => [
@@ -86,7 +86,6 @@ return [
 
     'show' => [
         'title' => 'Repurpose',
-        'description' => 'Video\'s die buiten TryPost op dit account verschijnen, worden gerepliceerd naar de bestemmingen hieronder.',
         'saving' => 'Opslaan...',
         'saved' => 'Opgeslagen',
     ],
@@ -114,8 +113,8 @@ return [
         'disable' => 'Uitschakelen',
         'watermark' => 'Gevolgd sinds',
         'last_polled' => 'Laatst gecontroleerd',
-        'draft_hint' => 'Kies minstens één bestemming en activeer daarna. Alleen video\'s van na de activering worden gerepliceerd.',
-        'active_hint' => 'TryPost controleert dit account regelmatig en repliceert elke nieuwe video.',
+        'draft_hint' => 'Kies minstens één bestemming en activeer daarna. Alleen berichten van na de activering worden gerepliceerd.',
+        'active_hint' => 'TryPost controleert dit account regelmatig en repliceert elk nieuw bericht.',
         'paused_hint' => 'De controles liggen stil. Bij hervatten gaat het verder waar het stopte, er gaat niets verloren.',
         'disabled_hint' => 'Uitgeschakeld. Opnieuw activeren begint schoon: wat je plaatste terwijl het uit stond, blijft buiten beschouwing.',
     ],
@@ -130,7 +129,7 @@ return [
         'original_from' => 'origineel van :date',
         'empty' => [
             'title' => 'Nog niets',
-            'description' => 'Video\'s die dit account buiten TryPost plaatst, verschijnen hier.',
+            'description' => 'Berichten die dit account buiten TryPost plaatst, verschijnen hier.',
         ],
         'open_post' => 'Post openen',
         'statuses' => [

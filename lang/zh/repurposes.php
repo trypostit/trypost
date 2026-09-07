@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'Repurpose',
-    'description' => '把你在 TryPost 之外发布的视频，自动同步到其他平台。',
+    'description' => '把你在 TryPost 之外发布的内容，自动同步到其他平台。',
     'new' => '新建 Repurpose',
 
     'flow' => [
@@ -16,7 +16,7 @@ return [
 
         'title' => '发布',
 
-        'description' => '发现新视频时会发生什么。',
+        'description' => '发现新内容时会发生什么。',
 
     ],
 
@@ -24,11 +24,11 @@ return [
 
         'publish' => '自动发布',
 
-        'publish_hint' => '每个新视频一被发现就会排入发布计划。',
+        'publish_hint' => '每条新内容一被发现就会排入发布计划。',
 
         'draft' => '创建为草稿',
 
-        'draft_hint' => '每个新视频都会在这里生成草稿，供你检查后发布。',
+        'draft_hint' => '每条新内容都会在这里生成草稿，供你检查后发布。',
 
     ],
 
@@ -40,7 +40,7 @@ return [
 
     'source' => [
         'title' => '来源',
-        'description' => 'TryPost 会盯着这个账号，寻找下面所选格式的新视频。',
+        'description' => 'TryPost 会盯着这个账号，寻找下面所选格式的新内容。',
         'account_label' => '账号',
         'watch_label' => '监控格式',
         'needs_reconnect' => '需要重新连接',
@@ -54,7 +54,7 @@ return [
 
     'empty' => [
         'title' => '还没有设置 Repurpose',
-        'description' => 'TryPost 会监控你选择的账号，并将每个新视频重新发布到你勾选的网络。',
+        'description' => 'TryPost 会监控你选择的账号，并将每条新内容重新发布到你勾选的网络。',
     ],
 
     'table' => [
@@ -86,7 +86,6 @@ return [
 
     'show' => [
         'title' => 'Repurpose',
-        'description' => '这个账号在 TryPost 之外发布的视频，会同步到下面的目标。',
         'saving' => '保存中…',
         'saved' => '已保存',
     ],
@@ -114,8 +113,8 @@ return [
         'disable' => '停用',
         'watermark' => '开始监控于',
         'last_polled' => '上次检查',
-        'draft_hint' => '至少选一个目标再启用。只有启用之后发布的视频才会被同步。',
-        'active_hint' => 'TryPost 会定期检查这个账号，并同步每条新视频。',
+        'draft_hint' => '至少选一个目标再启用。只有启用之后发布的内容才会被同步。',
+        'active_hint' => 'TryPost 会定期检查这个账号，并同步每条新内容。',
         'paused_hint' => '检查已暂停。继续后会从停下的地方接着走，期间发布的内容不会丢失。',
         'disabled_hint' => '已关闭。再次启用会重新开始：关闭期间发布的内容不会被同步。',
     ],
@@ -130,7 +129,7 @@ return [
         'original_from' => '原帖发布于 :date',
         'empty' => [
             'title' => '暂无内容',
-            'description' => '该账号在 TryPost 之外发布的视频会显示在这里。',
+            'description' => '该账号在 TryPost 之外发布的内容会显示在这里。',
         ],
         'open_post' => '打开帖子',
         'statuses' => [

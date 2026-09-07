@@ -16,7 +16,7 @@ return [
 
         'title' => 'Publicação',
 
-        'description' => 'O que acontece quando um vídeo novo aparece.',
+        'description' => 'O que acontece quando uma publicação nova aparece.',
 
     ],
 
@@ -24,11 +24,11 @@ return [
 
         'publish' => 'Publicar automaticamente',
 
-        'publish_hint' => 'Cada vídeo novo é agendado assim que é encontrado.',
+        'publish_hint' => 'Cada publicação nova é agendada assim que é encontrada.',
 
         'draft' => 'Criar como rascunho',
 
-        'draft_hint' => 'Cada vídeo novo vira um rascunho aqui para você revisar e publicar.',
+        'draft_hint' => 'Cada publicação nova vira um rascunho aqui para você revisar e publicar.',
 
     ],
 
@@ -40,7 +40,7 @@ return [
 
     'source' => [
         'title' => 'Origem',
-        'description' => 'O TryPost acompanha esta conta em busca de novos vídeos do formato abaixo.',
+        'description' => 'O TryPost acompanha esta conta em busca de novas publicações do formato abaixo.',
         'account_label' => 'Conta',
         'watch_label' => 'Observar',
         'needs_reconnect' => 'Precisa reconectar',
@@ -54,7 +54,7 @@ return [
 
     'empty' => [
         'title' => 'Nenhum repost configurado',
-        'description' => 'O TryPost acompanha a conta que você escolher e republica cada novo vídeo nas redes que você marcar.',
+        'description' => 'O TryPost acompanha a conta que você escolher e republica cada publicação nova nas redes que você marcar.',
     ],
 
     'table' => [
@@ -86,7 +86,6 @@ return [
 
     'show' => [
         'title' => 'Repost',
-        'description' => 'Os vídeos publicados nesta conta fora do TryPost são replicados nos destinos abaixo.',
         'saving' => 'Salvando...',
         'saved' => 'Salvo',
     ],
@@ -114,8 +113,8 @@ return [
         'disable' => 'Desativar',
         'watermark' => 'Acompanhando desde',
         'last_polled' => 'Última verificação',
-        'draft_hint' => 'Escolha ao menos um destino e ative. Só vídeos publicados depois da ativação são replicados.',
-        'active_hint' => 'O TryPost verifica esta conta com frequência e replica cada novo vídeo.',
+        'draft_hint' => 'Escolha ao menos um destino e ative. Só publicações feitas depois da ativação são replicadas.',
+        'active_hint' => 'O TryPost verifica esta conta com frequência e replica cada publicação nova.',
         'paused_hint' => 'As verificações estão suspensas. Ao retomar, continua de onde parou e nada publicado nesse meio-tempo se perde.',
         'disabled_hint' => 'Desligado. Ao ativar de novo, começa do zero: o que você publicou enquanto estava desligado continua de fora.',
     ],
@@ -130,7 +129,7 @@ return [
         'original_from' => 'original de :date',
         'empty' => [
             'title' => 'Nada ainda',
-            'description' => 'Os vídeos que essa conta postar fora do TryPost aparecem aqui.',
+            'description' => 'As publicações que essa conta fizer fora do TryPost aparecem aqui.',
         ],
         'open_post' => 'Abrir post',
         'statuses' => [

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'Repurpose',
-    'description' => 'TryPost dışında paylaştığın videoları diğer ağlarında otomatik olarak yeniden yayınla.',
+    'description' => 'TryPost dışında paylaştıklarını diğer ağlarında otomatik olarak yeniden yayınla.',
     'new' => 'Yeni repurpose',
 
     'flow' => [
@@ -16,7 +16,7 @@ return [
 
         'title' => 'Yayınlama',
 
-        'description' => 'Yeni bir video göründüğünde ne olur.',
+        'description' => 'Yeni bir gönderi göründüğünde ne olur.',
 
     ],
 
@@ -24,11 +24,11 @@ return [
 
         'publish' => 'Otomatik yayınla',
 
-        'publish_hint' => 'Her yeni video bulunduğu anda planlanır.',
+        'publish_hint' => 'Her yeni gönderi bulunduğu anda planlanır.',
 
         'draft' => 'Taslak olarak oluştur',
 
-        'draft_hint' => 'Her yeni video, gözden geçirip yayınlaman için burada taslak olur.',
+        'draft_hint' => 'Her yeni gönderi, gözden geçirip yayınlaman için burada taslak olur.',
 
     ],
 
@@ -40,7 +40,7 @@ return [
 
     'source' => [
         'title' => 'Kaynak',
-        'description' => 'TryPost bu hesabı aşağıdaki formattaki yeni videolar için izler.',
+        'description' => 'TryPost bu hesabı aşağıdaki formattaki yeni gönderiler için izler.',
         'account_label' => 'Hesap',
         'watch_label' => 'İzle',
         'needs_reconnect' => 'Yeniden bağlanmalı',
@@ -54,7 +54,7 @@ return [
 
     'empty' => [
         'title' => 'Henüz repurpose kurulmadı',
-        'description' => 'TryPost seçtiğiniz hesabı izler ve her yeni videoyu işaretlediğiniz ağlarda yeniden paylaşır.',
+        'description' => 'TryPost seçtiğiniz hesabı izler ve her yeni gönderiyi işaretlediğiniz ağlarda yeniden paylaşır.',
     ],
 
     'table' => [
@@ -86,7 +86,6 @@ return [
 
     'show' => [
         'title' => 'Repurpose',
-        'description' => 'Bu hesapta TryPost dışında yayınlanan videolar aşağıdaki hedeflere kopyalanır.',
         'saving' => 'Kaydediliyor...',
         'saved' => 'Kaydedildi',
     ],
@@ -114,8 +113,8 @@ return [
         'disable' => 'Devre dışı bırak',
         'watermark' => 'İzleme başlangıcı',
         'last_polled' => 'Son kontrol',
-        'draft_hint' => 'En az bir hedef seç ve etkinleştir. Yalnızca etkinleştirmeden sonra paylaşılan videolar kopyalanır.',
-        'active_hint' => 'TryPost bu hesabı düzenli olarak kontrol eder ve her yeni videoyu kopyalar.',
+        'draft_hint' => 'En az bir hedef seç ve etkinleştir. Yalnızca etkinleştirmeden sonra paylaşılan gönderiler kopyalanır.',
+        'active_hint' => 'TryPost bu hesabı düzenli olarak kontrol eder ve her yeni gönderiyi kopyalar.',
         'paused_hint' => 'Kontroller beklemede. Sürdürdüğünde kaldığı yerden devam eder, bu arada paylaşılan hiçbir şey kaybolmaz.',
         'disabled_hint' => 'Kapalı. Yeniden etkinleştirmek sıfırdan başlar: kapalıyken paylaştıkların dışarıda kalır.',
     ],
@@ -130,7 +129,7 @@ return [
         'original_from' => ':date tarihli özgün gönderi',
         'empty' => [
             'title' => 'Henüz bir şey yok',
-            'description' => 'Bu hesabın TryPost dışında paylaştığı videolar burada görünür.',
+            'description' => 'Bu hesabın TryPost dışında paylaştığı gönderiler burada görünür.',
         ],
         'open_post' => 'Gönderiyi aç',
         'statuses' => [

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'Repurpose',
-    'description' => 'Replica automáticamente en tus otras redes los vídeos que publicas fuera de TryPost.',
+    'description' => 'Replica automáticamente en tus otras redes lo que publicas fuera de TryPost.',
     'new' => 'Nuevo repurpose',
 
     'flow' => [
@@ -16,7 +16,7 @@ return [
 
         'title' => 'Publicación',
 
-        'description' => 'Qué ocurre cuando aparece un vídeo nuevo.',
+        'description' => 'Qué ocurre cuando aparece una publicación nueva.',
 
     ],
 
@@ -24,11 +24,11 @@ return [
 
         'publish' => 'Publicar automáticamente',
 
-        'publish_hint' => 'Cada vídeo nuevo se programa en cuanto se encuentra.',
+        'publish_hint' => 'Cada publicación nueva se programa en cuanto se encuentra.',
 
         'draft' => 'Crear como borrador',
 
-        'draft_hint' => 'Cada vídeo nuevo se convierte en un borrador para que lo revises y publiques.',
+        'draft_hint' => 'Cada publicación nueva se convierte en un borrador para que lo revises y publiques.',
 
     ],
 
@@ -40,7 +40,7 @@ return [
 
     'source' => [
         'title' => 'Origen',
-        'description' => 'TryPost vigila esta cuenta en busca de vídeos nuevos del formato de abajo.',
+        'description' => 'TryPost vigila esta cuenta en busca de publicaciones nuevas del formato de abajo.',
         'account_label' => 'Cuenta',
         'watch_label' => 'Vigilar',
         'needs_reconnect' => 'Necesita reconectarse',
@@ -54,7 +54,7 @@ return [
 
     'empty' => [
         'title' => 'Aún no hay ningún repurpose',
-        'description' => 'TryPost sigue la cuenta que elijas y republica cada vídeo nuevo en las redes que marques.',
+        'description' => 'TryPost sigue la cuenta que elijas y republica cada publicación nueva en las redes que marques.',
     ],
 
     'table' => [
@@ -86,7 +86,6 @@ return [
 
     'show' => [
         'title' => 'Repurpose',
-        'description' => 'Los vídeos publicados en esta cuenta fuera de TryPost se replican en los destinos de abajo.',
         'saving' => 'Guardando...',
         'saved' => 'Guardado',
     ],
@@ -114,8 +113,8 @@ return [
         'disable' => 'Desactivar',
         'watermark' => 'Vigilando desde',
         'last_polled' => 'Última comprobación',
-        'draft_hint' => 'Elige al menos un destino y actívalo. Solo se replican los vídeos publicados después de activarlo.',
-        'active_hint' => 'TryPost comprueba esta cuenta con regularidad y replica cada vídeo nuevo.',
+        'draft_hint' => 'Elige al menos un destino y actívalo. Solo se replican las publicaciones hechas después de activarlo.',
+        'active_hint' => 'TryPost comprueba esta cuenta con regularidad y replica cada publicación nueva.',
         'paused_hint' => 'Las comprobaciones están detenidas. Al reanudar, continúa donde lo dejó y no se pierde nada publicado mientras tanto.',
         'disabled_hint' => 'Apagado. Al activarlo de nuevo empieza desde cero: lo que publicaste mientras estaba apagado se queda fuera.',
     ],
@@ -130,7 +129,7 @@ return [
         'original_from' => 'original del :date',
         'empty' => [
             'title' => 'Nada todavía',
-            'description' => 'Los vídeos que esta cuenta publique fuera de TryPost aparecerán aquí.',
+            'description' => 'Las publicaciones que esta cuenta haga fuera de TryPost aparecerán aquí.',
         ],
         'open_post' => 'Abrir publicación',
         'statuses' => [
