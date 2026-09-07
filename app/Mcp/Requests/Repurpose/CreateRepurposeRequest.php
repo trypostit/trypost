@@ -9,7 +9,6 @@ use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
 use App\Rules\ContentTypeMatchesPlatform;
-use App\Rules\Repurpose\NotTheSourceAccount;
 use App\Rules\Repurpose\SourceIsFree;
 use App\Services\Repurpose\SourceFetcherFactory;
 use App\Support\Repurpose\DestinationMetaRules;
@@ -55,7 +54,6 @@ class CreateRepurposeRequest
                 // round-tripping the destination list it was just given.
                 Rule::exists('social_accounts', 'id')
                     ->where('workspace_id', $workspaceId),
-                new NotTheSourceAccount(is_string($sourceAccountId) ? $sourceAccountId : null),
             ],
             'destinations.*.content_type' => [
                 'required',

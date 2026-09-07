@@ -12,6 +12,7 @@ use App\Mcp\Requests\Repurpose\RepurposeIdRequest;
 use App\Mcp\Requests\Repurpose\UpdateRepurposeRequest;
 use App\Models\Repurpose;
 use App\Models\Workspace;
+use App\Support\Repurpose\SourceIsNotADestination;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -40,6 +41,11 @@ class UpdateRepurposeTool extends Tool
         }
 
         $validated = $request->validate(UpdateRepurposeRequest::rules($workspace->id, $repurpose, $request->all()));
+
+        SourceIsNotADestination::assert(
+            (array) data_get($validated, 'destinations', []),
+            data_get($validated, 'source_social_account_id', $repurpose->source_social_account_id),
+        );
 
         return Response::structured(
             (new RepurposeResource(UpdateRepurpose::execute($repurpose, $validated)))->resolve(),

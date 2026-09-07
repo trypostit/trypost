@@ -9,6 +9,7 @@ use App\Http\Resources\Api\RepurposeResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Mcp\Requests\Repurpose\CreateRepurposeRequest;
 use App\Models\Workspace;
+use App\Support\Repurpose\SourceIsNotADestination;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
@@ -31,6 +32,11 @@ class CreateRepurposeTool extends Tool
         }
 
         $validated = $request->validate(CreateRepurposeRequest::rules($workspace->id, $request->all()));
+
+        SourceIsNotADestination::assert(
+            (array) data_get($validated, 'destinations', []),
+            data_get($validated, 'source_social_account_id'),
+        );
 
         try {
             $repurpose = CreateRepurpose::execute($workspace, $request->user(), $validated);

@@ -12,8 +12,8 @@ use App\Mcp\Tools\Repurpose\CreateRepurposeTool;
 use App\Mcp\Tools\Repurpose\UpdateRepurposeTool;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
-use App\Rules\Repurpose\NotTheSourceAccount;
 use App\Rules\Repurpose\SourceIsFree;
+use App\Support\Repurpose\SourceIsNotADestination;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -202,24 +202,23 @@ test('the rule itself refuses a repurpose that already holds the pair, unless it
     expect($failures)->toBe([]);
 });
 
-test('the rule itself refuses the source as its own destination', function () {
-    $failures = [];
-    $collect = function (string $message) use (&$failures): void {
-        $failures[] = $message;
-    };
+test('the helper itself refuses the source as its own destination', function () {
+    $destinations = [
+        ['social_account_id' => $this->other->id],
+        ['social_account_id' => $this->source->id],
+    ];
 
-    (new NotTheSourceAccount($this->source->id))
-        ->validate('destinations.0.social_account_id', $this->source->id, $collect);
+    // The check moved out of rules() into withValidator: a rule object is built
+    // before anything is validated, so the id it compared against was still raw
+    // request input. Here both sides have already passed `uuid`.
+    expect(fn () => SourceIsNotADestination::assert($destinations, $this->source->id))
+        ->toThrow(ValidationException::class);
 
-    expect($failures)->toBe([__('repurposes.errors.destination_is_source')]);
+    // A source that appears nowhere in the list passes without comment.
+    SourceIsNotADestination::assert(
+        [['social_account_id' => $this->other->id]],
+        $this->source->id,
+    );
 
-    $failures = [];
-
-    (new NotTheSourceAccount($this->source->id))
-        ->validate('destinations.0.social_account_id', $this->other->id, $collect);
-
-    (new NotTheSourceAccount(null))
-        ->validate('destinations.0.social_account_id', $this->source->id, $collect);
-
-    expect($failures)->toBe([]);
+    expect(true)->toBeTrue();
 });

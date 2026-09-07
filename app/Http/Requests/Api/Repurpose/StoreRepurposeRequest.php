@@ -9,12 +9,13 @@ use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
 use App\Rules\ContentTypeMatchesPlatform;
-use App\Rules\Repurpose\NotTheSourceAccount;
 use App\Rules\Repurpose\SourceIsFree;
 use App\Services\Repurpose\SourceFetcherFactory;
 use App\Support\Repurpose\DestinationMetaRules;
+use App\Support\Repurpose\SourceIsNotADestination;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreRepurposeRequest extends FormRequest
 {
@@ -72,7 +73,6 @@ class StoreRepurposeRequest extends FormRequest
                     // the payload would stop the user saving any edit, because
                     // the editor round-trips the whole destination list.
                     ->where('workspace_id', $this->workspaceId()),
-                new NotTheSourceAccount($this->sourceAccountId()),
             ],
             'destinations.*.content_type' => [
                 'required',
@@ -110,5 +110,22 @@ class StoreRepurposeRequest extends FormRequest
             'source_social_account_id' => __('repurposes.source.title'),
             ...DestinationMetaRules::attributes(),
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            // Only once the field rules have run: both sides are then strings
+            // that passed `uuid`, instead of whatever the client posted.
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            SourceIsNotADestination::addErrors(
+                $validator,
+                (array) $this->input('destinations', []),
+                $this->input('source_social_account_id'),
+            );
+        });
     }
 }
