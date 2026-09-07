@@ -137,7 +137,7 @@
                   </a>
                 </td>
                 <td style="padding-left: 4px; padding-right: 4px">
-                  <a href="https://www.instagram.com/trypost.it" target="_blank">
+                  <a href="https://www.instagram.com/trypost.en" target="_blank">
                     <img src="{{ asset('/images/emails/social/instagram.png') }}" width="20" height="20" alt="Instagram" style="max-width: 100%; vertical-align: middle">
                   </a>
                 </td>
