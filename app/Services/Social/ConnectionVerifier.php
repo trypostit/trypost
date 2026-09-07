@@ -298,8 +298,11 @@ class ConnectionVerifier
         $client = TokenRefreshClient::for(Platform::Bluesky);
 
         try {
+            // refreshSession must be POSTed with NO body: `post()` without data
+            // still sends an empty JSON body, and bsky.social now rejects it
+            // with "A request body was provided when none was expected".
             $response = $client->send(fn () => $this->refreshHttp()->withToken($account->refresh_token)
-                ->post("{$service}/xrpc/".BlueskyLexicon::REFRESH_SESSION));
+                ->send('POST', "{$service}/xrpc/".BlueskyLexicon::REFRESH_SESSION));
 
             $data = $response->json();
             $account->update([
