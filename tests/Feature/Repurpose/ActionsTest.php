@@ -283,12 +283,15 @@ test('an active repurpose cannot be updated into a state it could not be activat
     expect(fn () => UpdateRepurpose::execute($repurpose, ['destinations' => []]))
         ->toThrow(ValidationException::class);
 
-    $discord = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Discord]);
+    $switchedOff = SocialAccount::factory()->for($workspace)->create([
+        'platform' => Platform::Discord,
+        'is_active' => false,
+    ]);
 
     expect(fn () => UpdateRepurpose::execute($repurpose, ['destinations' => [[
-        'social_account_id' => $discord->id,
+        'social_account_id' => $switchedOff->id,
         'content_type' => ContentType::DiscordMessage->value,
-        'meta' => [],
+        'meta' => ['channel_id' => '123'],
     ]]]))->toThrow(ValidationException::class);
 });
 
@@ -357,12 +360,15 @@ test('an update the activation rules reject leaves the stored destinations untou
         'destinations' => [$destination],
     ]);
 
-    $pinterest = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Pinterest]);
+    $pinterest = SocialAccount::factory()->for($workspace)->create([
+        'platform' => Platform::Pinterest,
+        'is_active' => false,
+    ]);
 
     expect(fn () => UpdateRepurpose::execute($repurpose, ['destinations' => [[
         'social_account_id' => $pinterest->id,
-        'content_type' => ContentType::PinterestPin->value,
-        'meta' => [],
+        'content_type' => ContentType::PinterestVideoPin->value,
+        'meta' => ['board_id' => 'b1'],
     ]]]))->toThrow(ValidationException::class);
 
     expect($repurpose->fresh()->destinations)->toEqual([$destination]);

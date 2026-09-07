@@ -11,13 +11,14 @@ withDefaults(
         source: FlowNode;
         destinations: FlowNode[];
         size?: 'sm' | 'md' | 'lg';
+        align?: 'start' | 'center';
     }>(),
-    { size: 'md' },
+    { size: 'md', align: 'center' },
 );
 </script>
 
 <template>
-    <div class="flex items-center justify-center gap-3">
+    <div class="flex items-center gap-3" :class="align === 'start' ? 'justify-start' : 'justify-center'">
         <Tooltip>
             <TooltipTrigger as-child>
                 <span :data-testid="`flow-source-${source.platform}`">

@@ -43,6 +43,7 @@ return [
         'description' => 'Το TryPost παρακολουθεί αυτόν τον λογαριασμό για νέα βίντεο της παρακάτω μορφής.',
         'account_label' => 'Λογαριασμός',
         'watch_label' => 'Παρακολούθηση',
+        'needs_reconnect' => 'Χρειάζεται επανασύνδεση',
     ],
 
     'summary' => [
@@ -58,8 +59,6 @@ return [
 
     'table' => [
         'flow' => 'Ροή',
-        'source' => 'Πηγή',
-        'destinations' => 'Προορισμοί',
         'status' => 'Κατάσταση',
         'published' => 'Αναπαράχθηκαν',
         'last_polled' => 'Τελευταίος έλεγχος',

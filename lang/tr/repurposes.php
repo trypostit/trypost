@@ -43,6 +43,7 @@ return [
         'description' => 'TryPost bu hesabı aşağıdaki formattaki yeni videolar için izler.',
         'account_label' => 'Hesap',
         'watch_label' => 'İzle',
+        'needs_reconnect' => 'Yeniden bağlanmalı',
     ],
 
     'summary' => [
@@ -58,8 +59,6 @@ return [
 
     'table' => [
         'flow' => 'Akış',
-        'source' => 'Kaynak',
-        'destinations' => 'Hedefler',
         'status' => 'Durum',
         'published' => 'Kopyalanan',
         'last_polled' => 'Son kontrol',

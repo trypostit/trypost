@@ -43,6 +43,7 @@ return [
         'description' => 'TryPost がこのアカウントを見張り、下で選んだ形式の新しい動画を探します。',
         'account_label' => 'アカウント',
         'watch_label' => '監視する形式',
+        'needs_reconnect' => '再接続が必要',
     ],
 
     'summary' => [
@@ -58,8 +59,6 @@ return [
 
     'table' => [
         'flow' => 'フロー',
-        'source' => 'ソース',
-        'destinations' => '配信先',
         'status' => 'ステータス',
         'published' => '再投稿済み',
         'last_polled' => '最終チェック',

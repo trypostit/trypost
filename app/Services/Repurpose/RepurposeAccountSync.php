@@ -89,7 +89,8 @@ class RepurposeAccountSync
         foreach ($candidates as $repurpose) {
             try {
                 ActivateRepurpose::assertSourceUsable($repurpose);
-                ActivateRepurpose::assertDestinationsPublishable($repurpose);
+                ActivateRepurpose::assertHasUsableDestination($repurpose);
+                ActivateRepurpose::assertDestinationsCarryRequiredMeta($repurpose);
             } catch (ValidationException) {
                 continue;
             }

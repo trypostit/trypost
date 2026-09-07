@@ -15,6 +15,9 @@ use Illuminate\Support\Str;
 
 class CaptionAdapter
 {
+    /** @var array<string, string|null> */
+    private array $shortened = [];
+
     public function __construct(private readonly ContentSanitizer $sanitizer) {}
 
     public function adapt(Workspace $workspace, ?User $user, string $caption, Platform $platform): string
@@ -43,7 +46,11 @@ class CaptionAdapter
             return null;
         }
 
-        $shortened = rescue(fn (): string => $this->ask($workspace, $user, $caption, $platform));
+        $key = $platform->maxContentLength().':'.md5($caption);
+
+        $shortened = $this->shortened[$key] ??= rescue(
+            fn (): string => $this->ask($workspace, $user, $caption, $platform),
+        );
 
         return filled($shortened) && $this->fits($shortened, $platform) ? $shortened : null;
     }

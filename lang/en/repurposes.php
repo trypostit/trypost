@@ -43,6 +43,7 @@ return [
         'description' => 'TryPost watches this account for new videos of the format below.',
         'account_label' => 'Account',
         'watch_label' => 'Watch for',
+        'needs_reconnect' => 'Needs reconnecting',
     ],
 
     'summary' => [
@@ -58,8 +59,6 @@ return [
 
     'table' => [
         'flow' => 'Flow',
-        'source' => 'Source',
-        'destinations' => 'Destinations',
         'status' => 'Status',
         'published' => 'Replicated',
         'last_polled' => 'Last checked',

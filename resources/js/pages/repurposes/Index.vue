@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { Head, InfiniteScroll, router } from '@inertiajs/vue3';
-import { IconAlertTriangle, IconRepeat, IconTrash } from '@tabler/icons-vue';
-import { trans } from 'laravel-vue-i18n';
+import { IconAlertTriangle, IconRepeat } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import CreateRepurposeDialog from '@/components/repurpose/CreateRepurposeDialog.vue';
@@ -21,7 +19,7 @@ import {
 } from '@/components/ui/table';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { destroy, show } from '@/routes/app/repurposes';
+import { show } from '@/routes/app/repurposes';
 import type { ChannelAccount } from '@/types/channel';
 import type { FlowNode, Repurpose } from '@/types/repurpose';
 import { repurposeStatusVariant } from '@/types/repurpose-status';
@@ -33,7 +31,6 @@ const props = defineProps<{
 }>();
 
 const createDialogOpen = ref(false);
-const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
 const openRepurpose = (repurpose: Repurpose) => {
     router.visit(show.url(repurpose.id));
@@ -53,12 +50,6 @@ const destinationNodes = (repurpose: Repurpose): FlowNode[] =>
             : [];
     });
 
-const handleDelete = (repurpose: Repurpose) => {
-    confirmDeleteModal.value?.open({
-        url: destroy.url(repurpose.id),
-        confirmText: trans('common.confirm_modal.delete_keyword'),
-    });
-};
 </script>
 
 <template>
@@ -85,12 +76,10 @@ const handleDelete = (repurpose: Repurpose) => {
             <Table data-testid="repurposes-table">
                 <TableHeader>
                     <TableRow>
-                        <TableHead>{{ $t('repurposes.table.flow') }}</TableHead>
-                        <TableHead>{{ $t('repurposes.table.source') }}</TableHead>
-                        <TableHead>{{ $t('repurposes.table.status') }}</TableHead>
-                        <TableHead>{{ $t('repurposes.table.published') }}</TableHead>
-                        <TableHead>{{ $t('repurposes.table.last_polled') }}</TableHead>
-                        <TableHead />
+                        <TableHead class="w-full">{{ $t('repurposes.table.flow') }}</TableHead>
+                        <TableHead class="whitespace-nowrap">{{ $t('repurposes.table.status') }}</TableHead>
+                        <TableHead class="whitespace-nowrap text-center">{{ $t('repurposes.table.published') }}</TableHead>
+                        <TableHead class="whitespace-nowrap text-right">{{ $t('repurposes.table.last_polled') }}</TableHead>
                     </TableRow>
                 </TableHeader>
 
@@ -111,12 +100,10 @@ const handleDelete = (repurpose: Repurpose) => {
                                 }"
                                 :destinations="destinationNodes(repurpose)"
                                 size="sm"
+                                align="start"
                             />
                         </TableCell>
-                        <TableCell>
-                            <span class="text-sm font-semibold">{{ repurpose.source_account?.display_name }}</span>
-                        </TableCell>
-                        <TableCell>
+                        <TableCell class="whitespace-nowrap">
                             <div class="flex items-center gap-1.5">
                                 <Badge :variant="repurposeStatusVariant(repurpose.status)">
                                     {{ $t(`repurposes.status.${repurpose.status}`) }}
@@ -130,21 +117,11 @@ const handleDelete = (repurpose: Repurpose) => {
                                 />
                             </div>
                         </TableCell>
-                        <TableCell>{{ repurpose.published_items_count ?? 0 }}</TableCell>
-                        <TableCell>
-                            {{ repurpose.last_polled_at ? date.diffForHumans(repurpose.last_polled_at) : '—' }}
+                        <TableCell class="text-center tabular-nums">
+                            {{ repurpose.published_items_count ?? 0 }}
                         </TableCell>
-                        <TableCell class="text-right">
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                class="size-8 bg-rose-100 hover:bg-rose-200"
-                                :aria-label="$t('repurposes.danger.delete')"
-                                data-testid="delete-repurpose-button"
-                                @click.stop="handleDelete(repurpose)"
-                            >
-                                <IconTrash class="size-4 text-rose-700" />
-                            </Button>
+                        <TableCell class="whitespace-nowrap text-right text-foreground/70">
+                            {{ repurpose.last_polled_at ? date.diffForHumans(repurpose.last_polled_at) : '—' }}
                         </TableCell>
                     </TableRow>
                 </TableBody>
@@ -157,6 +134,5 @@ const handleDelete = (repurpose: Repurpose) => {
             :source-accounts="sourceAccounts"
         />
 
-        <ConfirmDeleteModal ref="confirmDeleteModal" />
     </AppLayout>
 </template>

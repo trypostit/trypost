@@ -14,6 +14,7 @@ import {
 import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import type { ChannelAccount } from '@/types/channel';
 import type { RepurposeSourceFormat, SourceFormatOption } from '@/types/repurpose';
+import { SocialAccountStatus } from '@/types/social-account-status';
 
 const props = defineProps<{
     accounts: ChannelAccount[];
@@ -36,6 +37,7 @@ const accountOptions = computed(() =>
         value: item.id,
         label: item.display_name,
         platform: item.platform,
+        disconnected: item.status !== SocialAccountStatus.Connected,
     })),
 );
 </script>
@@ -79,7 +81,14 @@ const accountOptions = computed(() =>
                             <span v-if="compact" class="truncate">{{ option.label }}</span>
                             <span v-else class="min-w-0 text-left">
                                 <span class="block truncate text-sm font-bold">{{ option.label }}</span>
-                                <span class="block truncate text-xs text-muted-foreground">
+                                <span
+                                    v-if="option.disconnected"
+                                    class="block truncate text-xs font-semibold text-amber-700 dark:text-amber-400"
+                                    :data-testid="`source-option-disconnected-${option.value}`"
+                                >
+                                    {{ $t('repurposes.source.needs_reconnect') }}
+                                </span>
+                                <span v-else class="block truncate text-xs text-muted-foreground">
                                     {{ getPlatformLabel(option.platform) }}
                                 </span>
                             </span>

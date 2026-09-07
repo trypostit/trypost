@@ -176,3 +176,38 @@ test('newlines and repeated spaces survive truncation', function () {
     expect($adapted)->toStartWith("First line\n\nSecond  line with  gaps")
         ->and(Platform::X->contentOverflow($adapted))->toBe(0);
 });
+
+test('two networks sharing a character limit ask the shortener once, not twice', function () {
+    config()->set('trypost.self_hosted', true);
+    PostContentShortener::fake(['A tight caption that fits.']);
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
+
+    $caption = str_repeat('palavra ', 2000);
+    $adapter = app(CaptionAdapter::class);
+
+    $threads = $adapter->adapt($workspace, $user, $caption, Platform::Threads);
+    $mastodon = $adapter->adapt($workspace, $user, $caption, Platform::Mastodon);
+
+    expect(Platform::Threads->maxContentLength())->toBe(Platform::Mastodon->maxContentLength())
+        ->and($threads)->toBe('A tight caption that fits.')
+        ->and($mastodon)->toBe('A tight caption that fits.')
+        ->and(AiUsageLog::where('workspace_id', $workspace->id)->count())->toBe(1);
+});
+
+test('a tighter limit still gets its own call instead of reusing a longer answer', function () {
+    config()->set('trypost.self_hosted', true);
+    PostContentShortener::fake(['A tight caption that fits.', 'Short one.']);
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
+
+    $caption = str_repeat('palavra ', 2000);
+    $adapter = app(CaptionAdapter::class);
+
+    $adapter->adapt($workspace, $user, $caption, Platform::Threads);
+    $adapter->adapt($workspace, $user, $caption, Platform::YouTube);
+
+    expect(AiUsageLog::where('workspace_id', $workspace->id)->count())->toBe(2);
+});

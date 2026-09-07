@@ -18,7 +18,8 @@ class ResumeRepurpose
             __('repurposes.errors.only_paused_resumes'),
             function (Repurpose $locked): void {
                 ActivateRepurpose::assertSourceUsable($locked);
-                ActivateRepurpose::assertDestinationsPublishable($locked);
+                ActivateRepurpose::assertHasUsableDestination($locked);
+                ActivateRepurpose::assertDestinationsCarryRequiredMeta($locked);
 
                 $locked->update([
                     'status' => Status::Active,

@@ -43,6 +43,7 @@ return [
         'description' => 'TryPost volgt dit account op nieuwe video\'s van het formaat hieronder.',
         'account_label' => 'Account',
         'watch_label' => 'Volgen',
+        'needs_reconnect' => 'Opnieuw verbinden nodig',
     ],
 
     'summary' => [
@@ -58,8 +59,6 @@ return [
 
     'table' => [
         'flow' => 'Stroom',
-        'source' => 'Bron',
-        'destinations' => 'Bestemmingen',
         'status' => 'Status',
         'published' => 'Gerepliceerd',
         'last_polled' => 'Laatst gecontroleerd',

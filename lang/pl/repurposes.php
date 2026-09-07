@@ -43,6 +43,7 @@ return [
         'description' => 'TryPost obserwuje to konto w poszukiwaniu nowych filmów w formacie poniżej.',
         'account_label' => 'Konto',
         'watch_label' => 'Obserwuj',
+        'needs_reconnect' => 'Wymaga ponownego połączenia',
     ],
 
     'summary' => [
@@ -58,8 +59,6 @@ return [
 
     'table' => [
         'flow' => 'Przepływ',
-        'source' => 'Źródło',
-        'destinations' => 'Cele',
         'status' => 'Status',
         'published' => 'Zreplikowane',
         'last_polled' => 'Ostatnie sprawdzenie',

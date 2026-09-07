@@ -71,12 +71,6 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        if ($repurpose->publish_mode === PublishMode::Draft && $this->item->posts()->exists()) {
-            $this->item->update(['status' => ItemStatus::Drafted]);
-
-            return;
-        }
-
         if ($this->item->posts()->where('status', '!=', PostStatus::Draft)->exists()) {
             $this->item->update(['status' => ItemStatus::Published]);
 
@@ -141,15 +135,12 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
 
     public function failed(Throwable $exception): void
     {
-        $drafts = $this->item->posts()->where('status', PostStatus::Draft)->get();
-
-        if ($drafts->isNotEmpty() && $this->item->repurpose?->publish_mode === PublishMode::Draft) {
-            $this->item->update(['status' => ItemStatus::Drafted, 'reason' => null, 'error' => null]);
-
-            return;
+        if ($this->item->repurpose?->publish_mode !== PublishMode::Draft) {
+            $this->item->posts()
+                ->where('status', PostStatus::Draft)
+                ->get()
+                ->each(fn (Post $post) => $post->forceDelete());
         }
-
-        $drafts->each(fn (Post $post) => $post->forceDelete());
 
         $this->item->update([
             'status' => ItemStatus::Failed,

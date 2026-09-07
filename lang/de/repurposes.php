@@ -43,6 +43,7 @@ return [
         'description' => 'TryPost beobachtet dieses Konto auf neue Videos im unten gewählten Format.',
         'account_label' => 'Konto',
         'watch_label' => 'Beobachten',
+        'needs_reconnect' => 'Neu verbinden nötig',
     ],
 
     'summary' => [
@@ -58,8 +59,6 @@ return [
 
     'table' => [
         'flow' => 'Ablauf',
-        'source' => 'Quelle',
-        'destinations' => 'Ziele',
         'status' => 'Status',
         'published' => 'Repliziert',
         'last_polled' => 'Zuletzt geprüft',

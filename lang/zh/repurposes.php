@@ -43,6 +43,7 @@ return [
         'description' => 'TryPost 会盯着这个账号，寻找下面所选格式的新视频。',
         'account_label' => '账号',
         'watch_label' => '监控格式',
+        'needs_reconnect' => '需要重新连接',
     ],
 
     'summary' => [
@@ -58,8 +59,6 @@ return [
 
     'table' => [
         'flow' => '流程',
-        'source' => '来源',
-        'destinations' => '目标',
         'status' => '状态',
         'published' => '已同步',
         'last_polled' => '上次检查',

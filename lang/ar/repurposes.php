@@ -43,6 +43,7 @@ return [
         'description' => 'يراقب TryPost هذا الحساب بحثًا عن مقاطع فيديو جديدة بالصيغة أدناه.',
         'account_label' => 'الحساب',
         'watch_label' => 'المراقبة',
+        'needs_reconnect' => 'يحتاج إلى إعادة اتصال',
     ],
 
     'summary' => [
@@ -58,8 +59,6 @@ return [
 
     'table' => [
         'flow' => 'التدفق',
-        'source' => 'المصدر',
-        'destinations' => 'الوجهات',
         'status' => 'الحالة',
         'published' => 'تم النسخ',
         'last_polled' => 'آخر فحص',

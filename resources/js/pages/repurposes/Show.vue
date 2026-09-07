@@ -7,6 +7,7 @@ import { computed, onUnmounted, ref, watch } from 'vue';
 import ChannelConfigurator from '@/components/ChannelConfigurator.vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import InputError from '@/components/InputError.vue';
 import PublishModeCard from '@/components/repurpose/PublishModeCard.vue';
 import RepurposeFlow from '@/components/repurpose/RepurposeFlow.vue';
 import RepurposeHealthBanner from '@/components/repurpose/RepurposeHealthBanner.vue';
@@ -350,6 +351,12 @@ const handleDelete = () => {
                                         @toggle="toggleDestination"
                                         @update:content-type="setDestinationContentType"
                                         @update:meta="setDestinationMeta"
+                                    />
+
+                                    <InputError
+                                        class="mt-4"
+                                        data-testid="destinations-error"
+                                        :message="form.errors.destinations"
                                     />
                                 </CardContent>
                             </Card>

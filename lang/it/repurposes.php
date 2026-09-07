@@ -43,6 +43,7 @@ return [
         'description' => 'TryPost tiene d\'occhio questo account per i nuovi video del formato qui sotto.',
         'account_label' => 'Account',
         'watch_label' => 'Osserva',
+        'needs_reconnect' => 'Da riconnettere',
     ],
 
     'summary' => [
@@ -58,8 +59,6 @@ return [
 
     'table' => [
         'flow' => 'Flusso',
-        'source' => 'Origine',
-        'destinations' => 'Destinazioni',
         'status' => 'Stato',
         'published' => 'Replicati',
         'last_polled' => 'Ultimo controllo',

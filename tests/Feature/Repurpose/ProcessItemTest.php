@@ -20,6 +20,7 @@ use App\Models\PostPlatform;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Post\MediaAttacher;
 use App\Services\Repurpose\CaptionAdapter;
@@ -450,7 +451,7 @@ test('an exhausted publish-mode item leaves no orphan drafts behind', function (
         ->and($item->fresh()->status)->toBe(ItemStatus::Failed);
 });
 
-test('an exhausted draft-mode item keeps its drafts and says it drafted them', function () {
+test('an exhausted draft-mode item keeps its drafts but does not call the run a success', function () {
     $item = repurposeWithTwoDestinations();
     $item->repurpose->update(['publish_mode' => PublishMode::Draft]);
 
@@ -464,6 +465,39 @@ test('an exhausted draft-mode item keeps its drafts and says it drafted them', f
         ->failed(new RuntimeException('gave up'));
 
     expect(Post::query()->whereKey($post->id)->exists())->toBeTrue()
+        ->and($item->fresh()->status)->toBe(ItemStatus::Failed)
+        ->and($item->fresh()->error)->toContain('gave up');
+});
+
+test('a draft run that died halfway is rebuilt by the retry instead of passing as finished', function () {
+    Bus::fake([PublishPost::class]);
+    fakeVideoDownload();
+
+    $item = repurposeWithTwoDestinations();
+    $item->repurpose->update(['publish_mode' => PublishMode::Draft]);
+
+    app()->instance(CaptionAdapter::class, new class(app(ContentSanitizer::class)) extends CaptionAdapter
+    {
+        private int $calls = 0;
+
+        public function adapt(Workspace $workspace, ?User $user, string $caption, Platform $platform): string
+        {
+            if (++$this->calls === 2) {
+                throw new RuntimeException('the worker went away');
+            }
+
+            return $caption;
+        }
+    });
+
+    expect(fn () => processItem($item->fresh()))->toThrow(RuntimeException::class);
+    expect(Post::where('repurpose_item_id', $item->id)->count())->toBe(1);
+
+    app()->instance(CaptionAdapter::class, new CaptionAdapter(app(ContentSanitizer::class)));
+
+    processItem($item->fresh());
+
+    expect(Post::where('repurpose_item_id', $item->id)->count())->toBe(2)
         ->and($item->fresh()->status)->toBe(ItemStatus::Drafted);
 });
 

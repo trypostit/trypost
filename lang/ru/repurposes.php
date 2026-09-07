@@ -43,6 +43,7 @@ return [
         'description' => 'TryPost следит за этим аккаунтом и ищет новые видео выбранного ниже формата.',
         'account_label' => 'Аккаунт',
         'watch_label' => 'Отслеживать',
+        'needs_reconnect' => 'Требуется переподключение',
     ],
 
     'summary' => [
@@ -58,8 +59,6 @@ return [
 
     'table' => [
         'flow' => 'Поток',
-        'source' => 'Источник',
-        'destinations' => 'Назначения',
         'status' => 'Статус',
         'published' => 'Скопировано',
         'last_polled' => 'Последняя проверка',

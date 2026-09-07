@@ -43,6 +43,7 @@ return [
         'description' => 'TryPost가 이 계정에서 아래 형식의 새 영상을 지켜봅니다.',
         'account_label' => '계정',
         'watch_label' => '감시할 형식',
+        'needs_reconnect' => '다시 연결해야 함',
     ],
 
     'summary' => [
@@ -58,8 +59,6 @@ return [
 
     'table' => [
         'flow' => '흐름',
-        'source' => '소스',
-        'destinations' => '대상',
         'status' => '상태',
         'published' => '복제됨',
         'last_polled' => '마지막 확인',

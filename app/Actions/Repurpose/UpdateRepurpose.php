@@ -39,7 +39,7 @@ class UpdateRepurpose
                 $locked = $locked->fresh();
 
                 if ($locked->status === Status::Active) {
-                    ActivateRepurpose::assertDestinationsPublishable($locked);
+                    ActivateRepurpose::assertHasUsableDestination($locked);
                 }
 
                 return $locked;

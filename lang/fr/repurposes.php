@@ -43,6 +43,7 @@ return [
         'description' => 'TryPost surveille ce compte pour les nouvelles vidéos du format ci-dessous.',
         'account_label' => 'Compte',
         'watch_label' => 'Surveiller',
+        'needs_reconnect' => 'Reconnexion nécessaire',
     ],
 
     'summary' => [
@@ -58,8 +59,6 @@ return [
 
     'table' => [
         'flow' => 'Flux',
-        'source' => 'Source',
-        'destinations' => 'Destinations',
         'status' => 'Statut',
         'published' => 'Répliquées',
         'last_polled' => 'Dernière vérification',

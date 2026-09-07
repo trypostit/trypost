@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 return [
-    'title' => 'Repurpose',
-    'description' => 'Replique automaticamente nas suas outras redes os vídeos que você publica fora do TryPost.',
+    'title' => 'Repost',
+    'description' => 'Reposte automaticamente nas suas outras redes o que você publica fora do TryPost.',
     'new' => 'Novo repurpose',
 
     'flow' => [
@@ -43,10 +43,11 @@ return [
         'description' => 'O TryPost acompanha esta conta em busca de novos vídeos do formato abaixo.',
         'account_label' => 'Conta',
         'watch_label' => 'Observar',
+        'needs_reconnect' => 'Precisa reconectar',
     ],
 
     'summary' => [
-        'sentence' => 'Cada novo :format que você postar no :source é republicado em :destinations.',
+        'sentence' => 'Cada novo :format que você postar no :source é repostado em :destinations.',
         'no_destinations' => 'Cada novo :format que você postar no :source está esperando um destino.',
         'no_source' => 'Esta automação está sem conta de origem. Escolha uma para reativá-la.',
     ],
@@ -58,8 +59,6 @@ return [
 
     'table' => [
         'flow' => 'Fluxo',
-        'source' => 'Origem',
-        'destinations' => 'Destinos',
         'status' => 'Status',
         'published' => 'Replicados',
         'last_polled' => 'Última verificação',
@@ -86,7 +85,7 @@ return [
     ],
 
     'show' => [
-        'title' => 'Repurpose',
+        'title' => 'Repost',
         'description' => 'Os vídeos publicados nesta conta fora do TryPost são replicados nos destinos abaixo.',
         'saving' => 'Salvando...',
         'saved' => 'Salvo',

@@ -7,6 +7,7 @@ use App\Enums\Repurpose\ItemReason;
 use App\Enums\Repurpose\ItemStatus;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
@@ -244,4 +245,65 @@ test('a destination missing its required meta saves anyway but blocks activating
         ->and($page->script('document.querySelector(\'[data-testid="activate-repurpose"]\').disabled'))->toBeTrue();
 
     $page->assertNoJavaScriptErrors();
+});
+
+test('an autosave the backend rejects says so instead of failing quietly', function () {
+    [$user, $workspace, $source, $tiktok] = repurposeOwnerWithAccounts();
+
+    $repurpose = Repurpose::factory()->active()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'source_social_account_id' => $source->id,
+        'destinations' => [[
+            'social_account_id' => $tiktok->id,
+            'content_type' => ContentType::TikTokVideo->value,
+            'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE'],
+        ]],
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.repurposes.show', $repurpose));
+
+    waitForRepurposeTestId($page, "channel-{$tiktok->id}");
+
+    $page->click("@channel-{$tiktok->id}");
+
+    waitForRepurposeTestId($page, 'destinations-error');
+
+    $page->assertVisible('@destinations-error')
+        ->assertSee(trans('repurposes.errors.destinations_required'))
+        ->assertNoJavaScriptErrors();
+
+    expect($repurpose->fresh()->destinations)->toHaveCount(1);
+});
+
+test('a source account that needs reconnecting says so in the picker', function () {
+    [$user, $workspace, $source] = repurposeOwnerWithAccounts();
+
+    config()->set('trypost.allow_multiple_social_accounts', true);
+
+    $broken = SocialAccount::factory()->for($workspace)->create([
+        'platform' => Platform::Instagram,
+        'status' => AccountStatus::TokenExpired,
+    ]);
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $source->id,
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.repurposes.show', $repurpose));
+
+    waitForRepurposeTestId($page, 'source-account-select');
+
+    $page->click('@source-account-select');
+
+    waitForRepurposeTestId($page, "source-option-disconnected-{$broken->id}");
+
+    $page->assertVisible("@source-option-disconnected-{$broken->id}")
+        ->assertMissing("@source-option-disconnected-{$source->id}")
+        ->assertNoJavaScriptErrors();
 });

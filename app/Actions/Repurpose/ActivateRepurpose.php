@@ -10,6 +10,7 @@ use App\Models\Repurpose;
 use App\Models\SocialAccount;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Repurpose\RepurposeTransition;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\ValidationException;
 
 class ActivateRepurpose
@@ -22,7 +23,8 @@ class ActivateRepurpose
             __('repurposes.errors.only_idle_activates'),
             function (Repurpose $locked): void {
                 self::assertSourceUsable($locked);
-                self::assertDestinationsPublishable($locked);
+                self::assertHasUsableDestination($locked);
+                self::assertDestinationsCarryRequiredMeta($locked);
 
                 $locked->update([
                     'status' => Status::Active,
@@ -52,7 +54,7 @@ class ActivateRepurpose
         }
     }
 
-    public static function assertDestinationsPublishable(Repurpose $repurpose): void
+    public static function assertHasUsableDestination(Repurpose $repurpose): void
     {
         if ($repurpose->destinations === []) {
             throw ValidationException::withMessages([
@@ -60,20 +62,16 @@ class ActivateRepurpose
             ]);
         }
 
-        $accounts = SocialAccount::query()
-            ->where('workspace_id', $repurpose->workspace_id)
-            ->where('is_active', true)
-            ->findMany(array_map(
-                fn (array $destination): mixed => data_get($destination, 'social_account_id'),
-                $repurpose->destinations,
-            ))
-            ->keyBy('id');
-
-        if ($accounts->isEmpty()) {
+        if (self::usableAccounts($repurpose)->isEmpty()) {
             throw ValidationException::withMessages([
                 'destinations' => __('repurposes.errors.destination_unavailable'),
             ]);
         }
+    }
+
+    public static function assertDestinationsCarryRequiredMeta(Repurpose $repurpose): void
+    {
+        $accounts = self::usableAccounts($repurpose);
 
         foreach ($repurpose->destinations as $destination) {
             $account = $accounts->get(data_get($destination, 'social_account_id'));
@@ -88,5 +86,20 @@ class ActivateRepurpose
                 throw ValidationException::withMessages(['destinations' => $violation[1]]);
             }
         }
+    }
+
+    /**
+     * @return Collection<string, SocialAccount>
+     */
+    private static function usableAccounts(Repurpose $repurpose): Collection
+    {
+        return SocialAccount::query()
+            ->where('workspace_id', $repurpose->workspace_id)
+            ->where('is_active', true)
+            ->findMany(array_map(
+                fn (array $destination): mixed => data_get($destination, 'social_account_id'),
+                $repurpose->destinations,
+            ))
+            ->keyBy('id');
     }
 }
