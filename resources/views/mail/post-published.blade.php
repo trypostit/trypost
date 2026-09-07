@@ -92,9 +92,9 @@
                   <div role="separator" style="line-height: 24px">&zwj;</div>
                   <div style="display: flex; align-items: center; justify-content: center">
                     <div>
-                      <a href="{{ $url }}" style="display: inline-block; text-decoration: none; padding: 16px 24px; font-size: 16px; line-height: 1; border-radius: 8px; background-color: #262626; color: #ffffff">
+                      <a href="{{ $url }}" style="display: inline-block; text-decoration: none; padding: 16px 24px; font-size: 16px; line-height: 1; border-radius: 8px; background-color: #7c3aed; color: #ffffff">
                         <!--[if mso]><i style="mso-font-width: 150%; mso-text-raise: 31px" hidden>&emsp;</i><![endif]-->
-                        <span style="mso-text-raise: 16px">{{ __('mail.post_published.button') }} &rarr;</span>
+                        <span style="mso-text-raise: 16px">{{ __('mail.post_published.button') }}</span>
                         <!--[if mso]><i hidden style="mso-font-width: 150%">&emsp;&#8203;</i><![endif]-->
                       </a>
                     </div>
