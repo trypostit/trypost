@@ -247,3 +247,74 @@ test('the story listing is bounded and filtered by the watermark', function () {
     Http::assertSent(fn ($request) => str_contains((string) $request->url(), 'limit=25')
         && str_contains((string) $request->url(), 'since='.$since->getTimestamp()));
 });
+
+test('a page watched for feed videos alone does not pick up its reels', function () {
+    Http::fake([
+        facebookGraph().'/*/video_reels*' => Http::response(['data' => [
+            ['id' => 'v1', 'source' => 'https://cdn.example.com/r.mp4', 'description' => 'Reel', 'permalink_url' => '/watch/1', 'created_time' => '2026-09-02T10:00:00+0000'],
+        ]]),
+        facebookGraph().'/*/videos*' => Http::response(['data' => [
+            ['id' => 'v1', 'source' => 'https://cdn.example.com/r.mp4', 'description' => 'Reel', 'permalink_url' => '/watch/1', 'created_time' => '2026-09-02T10:00:00+0000'],
+            ['id' => 'v2', 'source' => 'https://cdn.example.com/v.mp4', 'description' => 'Video', 'permalink_url' => '/watch/2', 'created_time' => '2026-09-02T11:00:00+0000'],
+        ]]),
+    ]);
+
+    $account = SocialAccount::factory()->create(['platform' => Platform::Facebook]);
+
+    $media = fetchFor($account, [SourceFormat::Video]);
+
+    expect($media)->toHaveCount(1)
+        ->and($media[0]->id)->toBe('v2');
+});
+
+test('a token that cannot read a field falls back to the public set', function () {
+    $attempt = 0;
+
+    Http::fake([
+        instagramGraph().'/*/media*' => function () use (&$attempt) {
+            $attempt++;
+
+            // Graph rejects the whole read when one requested field is not
+            // available to the token's login type, answering with code 100.
+            return $attempt === 1
+                ? Http::response(['error' => ['code' => 100, 'message' => 'Unsupported get request']], 400)
+                : Http::response(['data' => [[
+                    'id' => 'm1',
+                    'media_type' => 'VIDEO',
+                    'media_url' => 'https://cdn.example.com/v.mp4',
+                    'permalink' => 'https://instagram.com/p/1',
+                    'timestamp' => '2026-09-02T10:00:00+0000',
+                ]]]);
+        },
+    ]);
+
+    $account = SocialAccount::factory()->create(['platform' => Platform::Instagram]);
+
+    $media = fetchFor($account, [SourceFormat::Reel]);
+
+    expect($attempt)->toBe(2)
+        ->and($media)->toHaveCount(1)
+        ->and($media[0]->id)->toBe('m1')
+        // The reduced set carries neither media_product_type nor caption, so
+        // every video reads as a Reel and the caption arrives empty. That is the
+        // documented cost of not going dark, not an oversight.
+        ->and($media[0]->format)->toBe(SourceFormat::Reel)
+        ->and($media[0]->caption)->toBe('');
+});
+
+test('a graph failure that is not an unknown field is not retried', function () {
+    $attempt = 0;
+
+    Http::fake([
+        instagramGraph().'/*/media*' => function () use (&$attempt) {
+            $attempt++;
+
+            return Http::response(['error' => ['code' => 190, 'message' => 'Invalid token']], 400);
+        },
+    ]);
+
+    $account = SocialAccount::factory()->create(['platform' => Platform::Instagram]);
+
+    expect(fn () => fetchFor($account, [SourceFormat::Reel]))->toThrow(SourceFetchException::class)
+        ->and($attempt)->toBe(1);
+});

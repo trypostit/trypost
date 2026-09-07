@@ -32,11 +32,18 @@ class FacebookSourceFetcher extends MetaSourceFetcher
      */
     public function fetch(SocialAccount $account, ?CarbonInterface $since, array $formats): array
     {
-        $reels = in_array(SourceFormat::Reel, $formats, true)
+        $wantsReels = in_array(SourceFormat::Reel, $formats, true);
+        $wantsVideos = in_array(SourceFormat::Video, $formats, true);
+
+        // The reels edge is read whenever videos are wanted, even if reels are
+        // not: /videos lists reels too and carries nothing to tell them apart,
+        // so this is the only way to subtract them. One extra call per poll,
+        // and only for a page watched for feed videos.
+        $reels = $wantsReels || $wantsVideos
             ? $this->videos($account, 'video_reels', $since, SourceFormat::Reel)
             : [];
 
-        $videos = in_array(SourceFormat::Video, $formats, true)
+        $videos = $wantsVideos
             ? $this->videos($account, 'videos', $since, SourceFormat::Video)
             : [];
 
@@ -52,7 +59,7 @@ class FacebookSourceFetcher extends MetaSourceFetcher
             ));
         }
 
-        return [...$reels, ...$videos, ...$stories];
+        return [...($wantsReels ? $reels : []), ...$videos, ...$stories];
     }
 
     /**
