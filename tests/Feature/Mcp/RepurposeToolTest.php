@@ -331,3 +331,24 @@ test('the items tool carries each replicated post status', function () {
         ->assertOk()
         ->assertSee(PostPlatformStatus::Published->value);
 });
+
+test('the update tool accepts a switched-off account as a destination', function () {
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+        'destinations' => [tiktokDestinationForMcp($this->tiktok)],
+    ]);
+
+    $this->tiktok->update(['is_active' => false]);
+
+    // An agent round-trips the destination list it was given, exactly like the
+    // editor does, so rejecting a paused destination would block every update.
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdateRepurposeTool::class, [
+            'repurpose_id' => $repurpose->id,
+            'destinations' => [tiktokDestinationForMcp($this->tiktok)],
+        ])
+        ->assertOk();
+
+    expect($repurpose->fresh()->destinations)->toHaveCount(1);
+});

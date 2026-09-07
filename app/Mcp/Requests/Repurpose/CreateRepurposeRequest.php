@@ -49,9 +49,12 @@ class CreateRepurposeRequest
                 'required',
                 'string',
                 'uuid',
+                // No is_active clause, matching the web and API requests: a
+                // switched-off destination stays on the repurpose and is skipped
+                // at publish time, so rejecting it here would stop an agent
+                // round-tripping the destination list it was just given.
                 Rule::exists('social_accounts', 'id')
-                    ->where('workspace_id', $workspaceId)
-                    ->where('is_active', true),
+                    ->where('workspace_id', $workspaceId),
                 new NotTheSourceAccount(is_string($sourceAccountId) ? $sourceAccountId : null),
             ],
             'destinations.*.content_type' => [
