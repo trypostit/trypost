@@ -43,7 +43,7 @@ class UpdateRepurposeTool extends Tool
             return $repurpose;
         }
 
-        $validated = $request->validate(UpdateRepurposeRequest::rules($workspace->id, $repurpose, $request->all()));
+        $validated = $request->validate(UpdateRepurposeRequest::rules($workspace->id));
 
         SourceIsFree::assert(
             $workspace->id,

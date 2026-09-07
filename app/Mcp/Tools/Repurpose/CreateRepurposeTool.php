@@ -33,7 +33,7 @@ class CreateRepurposeTool extends Tool
             return $workspace;
         }
 
-        $validated = $request->validate(CreateRepurposeRequest::rules($workspace->id, $request->all()));
+        $validated = $request->validate(CreateRepurposeRequest::rules($workspace->id));
 
         SourceIsFree::assert(
             $workspace->id,
