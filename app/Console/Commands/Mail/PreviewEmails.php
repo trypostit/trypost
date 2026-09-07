@@ -30,7 +30,6 @@ use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Console\Command;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Message;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -143,10 +142,17 @@ class PreviewEmails extends Command
         ];
 
         foreach ($notifications as $slug => $notification) {
-            $mail = $this->inLocale($locale, fn (): MailMessage => $notification->toMail($user));
+            // The view is rendered inside the locale too, not just built there:
+            // `toMail()` only resolves the subject, and `render()` picks up
+            // whatever locale is active when it runs.
+            [$subject, $html] = $this->inLocale($locale, function () use ($notification, $user): array {
+                $mail = $notification->toMail($user);
 
-            Mail::html((string) $mail->render(), function (Message $outgoing) use ($email, $mail): void {
-                $outgoing->to($email)->subject((string) $mail->subject);
+                return [(string) $mail->subject, (string) $mail->render()];
+            });
+
+            Mail::html($html, function (Message $outgoing) use ($email, $subject): void {
+                $outgoing->to($email)->subject($subject);
             });
 
             $this->components->twoColumnDetail($slug, '<fg=green>sent</>');
@@ -160,9 +166,12 @@ class PreviewEmails extends Command
      * Render inside the given locale the way the notification sender does, so a
      * hand-built message comes out translated like a real one.
      *
-     * @param  callable(): MailMessage  $render
+     * @template TReturn
+     *
+     * @param  callable(): TReturn  $render
+     * @return TReturn
      */
-    private function inLocale(Locale $locale, callable $render): MailMessage
+    private function inLocale(Locale $locale, callable $render): mixed
     {
         $original = App::getLocale();
 
