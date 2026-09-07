@@ -51,9 +51,7 @@ class SocialAccountObserver
 
     public function updated(SocialAccount $socialAccount): void
     {
-        if ($socialAccount->wasChanged(['status', 'is_active', 'platform'])) {
-            app(RepurposeAccountSync::class)->accountChanged($socialAccount);
-        }
+        app(RepurposeAccountSync::class)->accountChanged($socialAccount);
 
         if (! $socialAccount->wasChanged('status')) {
             return;

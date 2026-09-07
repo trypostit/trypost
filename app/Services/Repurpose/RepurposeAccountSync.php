@@ -21,6 +21,9 @@ use Throwable;
 
 class RepurposeAccountSync
 {
+    /** @var array<int, string> */
+    private const WATCHED_ATTRIBUTES = ['status', 'is_active', 'platform'];
+
     public function accountRemoved(SocialAccount $account): void
     {
         $this->guard(function () use ($account): void {
@@ -34,6 +37,10 @@ class RepurposeAccountSync
 
     public function accountChanged(SocialAccount $account): void
     {
+        if (! $account->wasChanged(self::WATCHED_ATTRIBUTES)) {
+            return;
+        }
+
         $this->guard(function () use ($account): void {
             if ($account->wasChanged('platform')) {
                 $this->realignDestinations($account);
