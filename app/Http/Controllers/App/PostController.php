@@ -94,7 +94,10 @@ class PostController extends Controller
 
         $this->authorize('view', $workspace);
 
-        $tz = 'UTC';
+        // Дни календаря считаются в таймзоне воркспейса: пост на 23:00 по
+        // Брисбену должен лежать в брисбенском дне, а не в UTC-шном. Без
+        // настройки — прежнее поведение (UTC).
+        $tz = $workspace->timezone ?: 'UTC';
         $view = $request->input('view', 'week');
 
         $currentDay = $request->input('day')

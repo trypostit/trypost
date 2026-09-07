@@ -16,6 +16,7 @@ interface Workspace {
     brand_description: string | null;
     brand_voice_traits: string[] | null;
     content_language: string;
+    timezone?: string | null;
 }
 
 defineProps<{
