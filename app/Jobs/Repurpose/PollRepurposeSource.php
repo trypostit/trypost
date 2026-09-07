@@ -118,7 +118,7 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
     {
         collect($media)
             ->filter(fn (SourceMedia $entry): bool => $entry->format === $repurpose->source_format)
-            ->filter(fn (SourceMedia $entry): bool => $entry->isNewerThan($repurpose->activated_at))
+            ->reject(fn (SourceMedia $entry): bool => $entry->predates($repurpose->activated_at))
             ->each(fn (SourceMedia $entry) => $this->queue($repurpose, $entry, $publishedByUs));
     }
 

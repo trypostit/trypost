@@ -18,10 +18,10 @@ readonly class SourceMedia
         public ?CarbonInterface $createdAt,
     ) {}
 
-    public function isNewerThan(?CarbonInterface $watermark): bool
+    public function predates(?CarbonInterface $watermark): bool
     {
-        return $watermark === null
-            || $this->createdAt === null
-            || $this->createdAt->greaterThan($watermark);
+        return $watermark !== null
+            && $this->createdAt !== null
+            && $this->createdAt->lessThanOrEqualTo($watermark);
     }
 }
