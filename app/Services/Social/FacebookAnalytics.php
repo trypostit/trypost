@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Enums\PostPlatform\ContentType;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
@@ -46,9 +47,13 @@ class FacebookAnalytics
             return ['unsupported' => true, 'reason' => 'missing_post_id'];
         }
 
+        if ($postPlatform->content_type === ContentType::FacebookReel) {
+            return $this->fetchReelMetrics($postPlatform, $account);
+        }
+
         $response = $this->socialHttp()
             ->get("{$this->baseUrl}/{$postPlatform->platform_post_id}/insights", [
-                'metric' => 'post_impressions,post_impressions_unique,post_reactions_like_total,post_clicks',
+                'metric' => 'post_total_media_view_unique,post_media_view,post_reactions_like_total,post_clicks',
                 'access_token' => $account->access_token,
             ]);
 
@@ -60,13 +65,72 @@ class FacebookAnalytics
             return ['unsupported' => true, 'reason' => 'api_error'];
         }
 
+        $labels = [
+            'post_total_media_view_unique' => 'Reach',
+            'post_media_view' => 'Views',
+            'post_reactions_like_total' => 'Likes',
+            'post_clicks' => 'Clicks',
+        ];
+
         $insights = data_get($response->json(), 'data', []);
 
         return collect($insights)
             ->map(fn (array $item) => [
-                'label' => ucfirst(str_replace('_', ' ', data_get($item, 'name', ''))),
+                'label' => $labels[data_get($item, 'name', '')] ?? ucfirst(str_replace('_', ' ', data_get($item, 'name', ''))),
                 'value' => (int) data_get($item, 'values.0.value', 0),
             ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Facebook Reels have no /insights edge - their metrics live on /video_insights.
+     * Called without a `metric` parameter, Graph returns the default set (including
+     * blue_reels_play_count, post_impressions_unique, post_video_avg_time_watched).
+     * Those are mapped to readable labels; dictionary values (reactions per type) are summed.
+     */
+    private function fetchReelMetrics(PostPlatform $postPlatform, SocialAccount $account): array
+    {
+        $response = $this->socialHttp()
+            ->get("{$this->baseUrl}/{$postPlatform->platform_post_id}/video_insights", [
+                'access_token' => $account->access_token,
+            ]);
+
+        if ($response->failed()) {
+            Log::warning('Facebook reel metrics fetch failed', [
+                'body' => $this->redactResponseBody($response->body()),
+            ]);
+
+            return ['unsupported' => true, 'reason' => 'api_error'];
+        }
+
+        $labels = [
+            'post_impressions_unique' => 'Reach',
+            'blue_reels_play_count' => 'Plays',
+            'fb_reels_total_plays' => 'Total plays',
+            'fb_reels_replay_count' => 'Replays',
+            'post_video_likes_by_reaction_type' => 'Likes',
+            'post_video_avg_time_watched' => 'Avg watch time ms',
+            'post_video_view_time' => 'View time ms',
+            'post_video_followers' => 'Follows',
+        ];
+
+        $insights = data_get($response->json(), 'data', []);
+
+        return collect($insights)
+            ->filter(fn (array $item) => isset($labels[data_get($item, 'name', '')]))
+            ->map(function (array $item) use ($labels) {
+                $value = data_get($item, 'values.0.value', 0);
+
+                if (! is_numeric($value)) {
+                    $value = array_sum(array_map('intval', (array) $value));
+                }
+
+                return [
+                    'label' => $labels[data_get($item, 'name', '')],
+                    'value' => (int) $value,
+                ];
+            })
             ->values()
             ->all();
     }
