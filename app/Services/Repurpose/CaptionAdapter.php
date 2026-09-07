@@ -11,8 +11,7 @@ use App\Models\Workspace;
 use App\Services\Ai\RecordAiUsage;
 use App\Services\Social\ContentSanitizer;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Log;
-use Throwable;
+use Illuminate\Support\Str;
 
 class CaptionAdapter
 {
@@ -44,59 +43,42 @@ class CaptionAdapter
             return null;
         }
 
-        try {
-            $result = (new PostContentShortener(
-                workspace: $workspace,
-                platformLabel: $platform->label(),
-                limit: $platform->maxContentLength(),
-            ))->prompt($caption);
+        $shortened = rescue(fn (): string => $this->ask($workspace, $user, $caption, $platform));
 
-            RecordAiUsage::recordText(
-                workspace: $workspace,
-                promptTokens: $result->usage->promptTokens,
-                completionTokens: $result->usage->completionTokens,
-                provider: (string) $result->meta->provider,
-                model: (string) $result->meta->model,
-                userId: $user->id,
-                metadata: ['agent' => 'post_shortener'],
-            );
-        } catch (Throwable $exception) {
-            Log::warning('Caption shortening failed, falling back to truncation', [
-                'workspace_id' => $workspace->id,
-                'platform' => $platform->value,
-                'message' => $exception->getMessage(),
-            ]);
+        return filled($shortened) && $this->fits($shortened, $platform) ? $shortened : null;
+    }
 
-            return null;
-        }
+    private function ask(Workspace $workspace, User $user, string $caption, Platform $platform): string
+    {
+        $result = (new PostContentShortener(
+            workspace: $workspace,
+            platformLabel: $platform->label(),
+            limit: $platform->maxContentLength(),
+        ))->prompt($caption);
 
-        $shortened = trim((string) $result->text);
+        RecordAiUsage::recordText(
+            workspace: $workspace,
+            promptTokens: $result->usage->promptTokens,
+            completionTokens: $result->usage->completionTokens,
+            provider: (string) $result->meta->provider,
+            model: (string) $result->meta->model,
+            userId: $user->id,
+            metadata: ['agent' => 'post_shortener'],
+        );
 
-        if ($shortened === '' || ! $this->fits($shortened, $platform)) {
-            return null;
-        }
-
-        return $shortened;
+        return trim((string) $result->text);
     }
 
     private function truncate(string $caption, Platform $platform): string
     {
-        $words = explode(' ', $caption);
+        $candidate = $caption;
 
-        while ($words !== [] && ! $this->fits(rtrim(implode(' ', $words)), $platform)) {
-            array_pop($words);
+        while (! $this->fits($candidate, $platform) && str_contains($candidate, ' ')) {
+            $candidate = rtrim(Str::beforeLast($candidate, ' '));
         }
 
-        if ($words !== []) {
-            return rtrim(implode(' ', $words));
-        }
-
-        $letters = mb_substr($caption, 0, $platform->maxContentLength());
-
-        while ($letters !== '' && ! $this->fits($letters, $platform)) {
-            $letters = mb_substr($letters, 0, -1);
-        }
-
-        return $letters;
+        return $this->fits($candidate, $platform)
+            ? $candidate
+            : Str::limit($caption, $platform->maxContentLength(), '');
     }
 }

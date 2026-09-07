@@ -157,3 +157,22 @@ test('a single word longer than the limit is cut mid-word rather than emptied', 
         ->and(mb_strlen($adapted))->toBeLessThan(300)
         ->and(Platform::YouTube->contentOverflow($adapted))->toBe(0);
 });
+
+test('a caption of one long word without spaces terminates instead of looping', function () {
+    $workspace = Workspace::factory()->create();
+
+    $adapted = app(CaptionAdapter::class)->adapt($workspace, null, str_repeat('x', 500), Platform::X);
+
+    expect(Platform::X->contentOverflow($adapted))->toBe(0)
+        ->and($adapted)->not->toBe('');
+});
+
+test('newlines and repeated spaces survive truncation', function () {
+    $workspace = Workspace::factory()->create();
+    $caption = "First line\n\nSecond  line with  gaps ".str_repeat('word ', 100);
+
+    $adapted = app(CaptionAdapter::class)->adapt($workspace, null, $caption, Platform::X);
+
+    expect($adapted)->toStartWith("First line\n\nSecond  line with  gaps")
+        ->and(Platform::X->contentOverflow($adapted))->toBe(0);
+});
