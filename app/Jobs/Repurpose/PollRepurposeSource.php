@@ -16,6 +16,7 @@ use App\Models\SocialAccount;
 use App\Services\Repurpose\SourceFetcherFactory;
 use App\Services\Repurpose\SourceMedia;
 use App\Services\Social\TokenRedactor;
+use Carbon\CarbonInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -55,7 +56,7 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
         }
 
         if ($this->account->disconnected_at !== null || $this->account->is_active === false) {
-            $this->reschedule($repurposes, $this->interval());
+            $this->reschedule($repurposes);
 
             return;
         }
@@ -75,10 +76,10 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
         $publishedByUs = $this->idsPublishedByTryPost($media);
 
         foreach ($repurposes as $repurpose) {
-            $this->logMedia($repurpose, $media, $publishedByUs);
+            $this->queueNewMedia($repurpose, $media, $publishedByUs);
         }
 
-        $this->markPolled($repurposes, $this->interval());
+        $this->markPolled($repurposes);
     }
 
     /**
@@ -104,7 +105,7 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
     /**
      * @param  Collection<int, Repurpose>  $repurposes
      */
-    private function earliestWatermark(Collection $repurposes): mixed
+    private function earliestWatermark(Collection $repurposes): ?CarbonInterface
     {
         return $repurposes->pluck('activated_at')->filter()->min();
     }
@@ -113,46 +114,45 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
      * @param  array<int, SourceMedia>  $media
      * @param  array<int, string>  $publishedByUs
      */
-    private function logMedia(Repurpose $repurpose, array $media, array $publishedByUs): void
+    private function queueNewMedia(Repurpose $repurpose, array $media, array $publishedByUs): void
     {
-        $matching = array_values(array_filter(
-            $media,
-            fn (SourceMedia $entry): bool => $entry->format === $repurpose->source_format
-                && ($repurpose->activated_at === null || $entry->createdAt === null || $entry->createdAt->greaterThan($repurpose->activated_at)),
-        ));
+        collect($media)
+            ->filter(fn (SourceMedia $entry): bool => $entry->format === $repurpose->source_format)
+            ->filter(fn (SourceMedia $entry): bool => $entry->isNewerThan($repurpose->activated_at))
+            ->each(fn (SourceMedia $entry) => $this->queue($repurpose, $entry, $publishedByUs));
+    }
 
-        if ($matching === []) {
+    /**
+     * @param  array<int, string>  $publishedByUs
+     */
+    private function queue(Repurpose $repurpose, SourceMedia $entry, array $publishedByUs): void
+    {
+        $item = RepurposeItem::firstOrCreate(
+            ['repurpose_id' => $repurpose->id, 'source_media_id' => $entry->id],
+            [
+                'status' => ItemStatus::Pending,
+                'source_permalink' => $entry->permalink,
+                'source_created_at' => $entry->createdAt,
+            ],
+        );
+
+        if (! $item->wasRecentlyCreated) {
             return;
         }
 
-        foreach ($matching as $entry) {
-            $item = RepurposeItem::firstOrCreate(
-                ['repurpose_id' => $repurpose->id, 'source_media_id' => $entry->id],
-                [
-                    'status' => ItemStatus::Pending,
-                    'source_permalink' => $entry->permalink,
-                    'source_created_at' => $entry->createdAt,
-                ],
-            );
+        if (in_array($entry->id, $publishedByUs, true)) {
+            $item->update(['status' => ItemStatus::Skipped, 'reason' => ItemReason::PublishedViaTrypost]);
 
-            if (! $item->wasRecentlyCreated) {
-                continue;
-            }
-
-            if (in_array($entry->id, $publishedByUs, true)) {
-                $item->update(['status' => ItemStatus::Skipped, 'reason' => ItemReason::PublishedViaTrypost]);
-
-                continue;
-            }
-
-            if (blank($entry->downloadUrl)) {
-                $item->update(['status' => ItemStatus::Skipped, 'reason' => ItemReason::MediaUrlMissing]);
-
-                continue;
-            }
-
-            ProcessRepurposeItem::dispatch($item, (string) $entry->downloadUrl, $entry->caption);
+            return;
         }
+
+        if (blank($entry->downloadUrl)) {
+            $item->update(['status' => ItemStatus::Skipped, 'reason' => ItemReason::MediaUrlMissing]);
+
+            return;
+        }
+
+        ProcessRepurposeItem::dispatch($item, (string) $entry->downloadUrl, $entry->caption);
     }
 
     /**
@@ -189,7 +189,7 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
             'next_poll_at' => now()->addMinutes($throttled ? $this->backoff() : $this->interval()),
         ]);
 
-        Log::warning('Repurpose polling failed', [
+        Log::error('Repurpose polling failed', [
             'social_account_id' => $this->account->id,
             'message' => $message,
         ]);
@@ -198,22 +198,22 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
     /**
      * @param  Collection<int, Repurpose>  $repurposes
      */
-    private function reschedule(Collection $repurposes, int $minutes): void
+    private function reschedule(Collection $repurposes): void
     {
         Repurpose::whereKey($repurposes->modelKeys())->update([
-            'next_poll_at' => now()->addMinutes($minutes),
+            'next_poll_at' => now()->addMinutes($this->interval()),
         ]);
     }
 
     /**
      * @param  Collection<int, Repurpose>  $repurposes
      */
-    private function markPolled(Collection $repurposes, int $minutes): void
+    private function markPolled(Collection $repurposes): void
     {
         Repurpose::whereKey($repurposes->modelKeys())->update([
             'last_error' => null,
             'last_polled_at' => now(),
-            'next_poll_at' => now()->addMinutes($minutes),
+            'next_poll_at' => now()->addMinutes($this->interval()),
         ]);
     }
 

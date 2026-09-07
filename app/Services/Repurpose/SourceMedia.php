@@ -17,4 +17,11 @@ readonly class SourceMedia
         public ?string $permalink,
         public ?CarbonInterface $createdAt,
     ) {}
+
+    public function isNewerThan(?CarbonInterface $watermark): bool
+    {
+        return $watermark === null
+            || $this->createdAt === null
+            || $this->createdAt->greaterThan($watermark);
+    }
 }
