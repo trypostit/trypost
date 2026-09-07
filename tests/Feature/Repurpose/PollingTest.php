@@ -18,6 +18,7 @@ use App\Models\Workspace;
 use App\Services\Repurpose\SourceFetcherFactory;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 
 function fakeInstagramMedia(array $rows): void
 {
@@ -246,6 +247,17 @@ test('the command dispatches one job per due account, not per repurpose', functi
     $this->artisan('repurpose:poll')->assertSuccessful();
 
     Bus::assertDispatchedTimes(PollRepurposeSource::class, 1);
+});
+
+test('the poll job reaches a real queue connection', function () {
+    Queue::fake();
+
+    $account = instagramAccount();
+    activeRepurposeOn($account, SourceFormat::Reel);
+
+    $this->artisan('repurpose:poll')->assertSuccessful();
+
+    Queue::assertPushedOn($account->platform->queue(), PollRepurposeSource::class);
 });
 
 test('an account that is not due yet is not dispatched', function () {

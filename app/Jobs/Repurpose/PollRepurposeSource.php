@@ -119,13 +119,13 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
         collect($media)
             ->filter(fn (SourceMedia $entry): bool => $entry->format === $repurpose->source_format)
             ->reject(fn (SourceMedia $entry): bool => $entry->predates($repurpose->activated_at))
-            ->each(fn (SourceMedia $entry) => $this->queue($repurpose, $entry, $publishedByUs));
+            ->each(fn (SourceMedia $entry) => $this->recordMedia($repurpose, $entry, $publishedByUs));
     }
 
     /**
      * @param  array<int, string>  $publishedByUs
      */
-    private function queue(Repurpose $repurpose, SourceMedia $entry, array $publishedByUs): void
+    private function recordMedia(Repurpose $repurpose, SourceMedia $entry, array $publishedByUs): void
     {
         $item = RepurposeItem::firstOrCreate(
             ['repurpose_id' => $repurpose->id, 'source_media_id' => $entry->id],
@@ -186,7 +186,7 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
         Repurpose::whereKey($repurposes->modelKeys())->update([
             'last_error' => $message,
             'last_polled_at' => now(),
-            'next_poll_at' => now()->addMinutes($throttled ? $this->backoff() : $this->interval()),
+            'next_poll_at' => now()->addMinutes($throttled ? $this->backoffMinutes() : $this->intervalMinutes()),
         ]);
 
         Log::error('Repurpose polling failed', [
@@ -201,7 +201,7 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
     private function reschedule(Collection $repurposes): void
     {
         Repurpose::whereKey($repurposes->modelKeys())->update([
-            'next_poll_at' => now()->addMinutes($this->interval()),
+            'next_poll_at' => now()->addMinutes($this->intervalMinutes()),
         ]);
     }
 
@@ -213,16 +213,16 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
         Repurpose::whereKey($repurposes->modelKeys())->update([
             'last_error' => null,
             'last_polled_at' => now(),
-            'next_poll_at' => now()->addMinutes($this->interval()),
+            'next_poll_at' => now()->addMinutes($this->intervalMinutes()),
         ]);
     }
 
-    private function interval(): int
+    private function intervalMinutes(): int
     {
         return (int) config('trypost.repurpose.poll_interval_minutes');
     }
 
-    private function backoff(): int
+    private function backoffMinutes(): int
     {
         return (int) config('trypost.repurpose.backoff_minutes');
     }
