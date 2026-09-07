@@ -82,7 +82,7 @@ export const useWebhookLogs = (
             selectedLog.value = next;
         }
 
-        router.reload({ only: ['logs'], preserveScroll: true });
+        router.reload({ only: ['logs'] });
     };
 
     useWebhookEcho(toValue(webhookId), '.webhook.log.updated', applyLogUpdate);
