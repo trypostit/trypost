@@ -8,6 +8,7 @@ return [
     'new' => 'Nuovo repurpose',
 
     'flow' => [
+        'no_source' => 'Nessun account di origine',
         'no_destinations' => 'Nessuna destinazione',
     ],
 

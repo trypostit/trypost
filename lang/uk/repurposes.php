@@ -8,6 +8,7 @@ return [
     'new' => 'Новий repurpose',
 
     'flow' => [
+        'no_source' => 'Немає вихідного облікового запису',
         'no_destinations' => 'Ще немає призначення',
     ],
 

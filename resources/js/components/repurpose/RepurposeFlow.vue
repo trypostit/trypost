@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { IconArrowRight } from '@tabler/icons-vue';
+import { IconArrowRight, IconQuestionMark } from '@tabler/icons-vue';
 
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -21,7 +21,18 @@ withDefaults(
         <Tooltip>
             <TooltipTrigger as-child>
                 <span :data-testid="`flow-source-${source.platform}`">
-                    <PlatformLogo :platform="source.platform" :size="size" />
+                    <!-- getPlatformLogo falls back to LinkedIn for an unknown
+                         platform, so a repurpose whose source account was
+                         deleted would claim to watch LinkedIn. -->
+                    <span
+                        v-if="!source.platform"
+                        class="flex size-8 items-center justify-center rounded-lg bg-muted text-foreground/40"
+                        data-testid="flow-source-missing"
+                    >
+                        <IconQuestionMark class="size-4" />
+                    </span>
+
+                    <PlatformLogo v-else :platform="source.platform" :size="size" />
                 </span>
             </TooltipTrigger>
             <TooltipContent>
@@ -29,7 +40,9 @@ withDefaults(
                     <p class="font-semibold">
                         {{ source.label }}<span v-if="source.username" class="font-normal opacity-80">&nbsp;·&nbsp;@{{ source.username }}</span>
                     </p>
-                    <p class="opacity-70">{{ getPlatformLabel(source.platform) }}</p>
+                    <p class="opacity-70">
+                        {{ source.platform ? getPlatformLabel(source.platform) : $t('repurposes.flow.no_source') }}
+                    </p>
                 </div>
             </TooltipContent>
         </Tooltip>

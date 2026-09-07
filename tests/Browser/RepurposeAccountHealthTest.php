@@ -62,5 +62,8 @@ test('a repurpose whose source was deleted explains itself instead of rendering 
 
     $page->assertSee(__('repurposes.health.source_missing'))
         ->assertSee(__('repurposes.summary.no_source'))
+        // getPlatformLogo falls back to LinkedIn for an unknown platform, so
+        // without its own state the flow would claim this watches LinkedIn.
+        ->assertPresent('@flow-source-missing')
         ->assertNoJavaScriptErrors();
 });

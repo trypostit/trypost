@@ -8,6 +8,7 @@ return [
     'new' => '새 Repurpose',
 
     'flow' => [
+        'no_source' => '소스 계정 없음',
         'no_destinations' => '아직 대상이 없습니다',
     ],
 

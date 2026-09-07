@@ -8,6 +8,7 @@ return [
     'new' => '新建 Repurpose',
 
     'flow' => [
+        'no_source' => '没有来源账号',
         'no_destinations' => '还没有目标',
     ],
 

@@ -8,6 +8,7 @@ return [
     'new' => '新しい Repurpose',
 
     'flow' => [
+        'no_source' => 'ソースアカウントなし',
         'no_destinations' => '配信先はまだありません',
     ],
 
