@@ -191,6 +191,10 @@ return [
         'tiktok' => [
             'enabled' => env('TIKTOK_ENABLED', true),
             'api' => env('TIKTOK_API', 'https://open.tiktokapis.com/v2'),
+            // OAuth scopes to request. Trim when the TikTok app lacks a product
+            // (e.g. no Display API => drop user.info.profile, user.info.stats,
+            // video.list; analytics degrade gracefully, username stays empty).
+            'scopes' => array_values(array_filter(array_map('trim', explode(',', (string) env('TIKTOK_SCOPES', 'user.info.basic,user.info.profile,user.info.stats,video.publish,video.upload,video.list'))))),
         ],
         'youtube' => [
             'enabled' => env('YOUTUBE_ENABLED', true),
