@@ -743,3 +743,21 @@ test('activating clears any reason left from an earlier stop', function () {
     expect($activated->status)->toBe(Status::Active)
         ->and($activated->paused_reason)->toBeNull();
 });
+
+test('changing the source of a never-activated repurpose invents no watermark', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+    $other = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Facebook]);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Draft,
+        'activated_at' => null,
+        'destinations' => [healthDestination($workspace)],
+    ]);
+
+    // The watermark only moves for a repurpose that had one. A draft has never
+    // watched anything, so activation is what stamps it.
+    UpdateRepurpose::execute($repurpose, ['source_social_account_id' => $other->id]);
+
+    expect($repurpose->fresh()->activated_at)->toBeNull();
+});

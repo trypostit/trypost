@@ -26,14 +26,11 @@ class PollRepurposes extends Command
             ->pluck('source_social_account_id')
             ->filter();
 
-        $dispatched = 0;
-
         SocialAccount::query()
             ->whereKey($accountIds)
-            ->chunkById(100, function ($accounts) use (&$dispatched): void {
+            ->chunkById(100, function ($accounts): void {
                 foreach ($accounts as $account) {
                     PollRepurposeSource::dispatch($account);
-                    $dispatched++;
                 }
             });
 

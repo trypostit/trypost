@@ -16,6 +16,7 @@ use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use Inertia\Testing\AssertableInertia;
@@ -577,8 +578,13 @@ test('the activity list exposes each replicated post status', function () {
         ->get(route('app.repurposes.show', $repurpose))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->has('items.data.0.posts', 2)
-            ->where('items.data.0.posts.0.platforms.0.status', PostPlatformStatus::Published->value)
-            ->where('items.data.0.posts.1.platforms.0.status', PostPlatformStatus::Failed->value));
+            // posts() carries no explicit ordering, so assert on the set rather
+            // than on which one the database happened to return first.
+            ->where('items.data.0.posts', fn (Collection $posts): bool => $posts
+                ->pluck('platforms.0.status')
+                ->sort()
+                ->values()
+                ->all() === [PostPlatformStatus::Failed->value, PostPlatformStatus::Published->value]));
 });
 
 test('a switched-off destination is still sent to the page so editing cannot drop it', function () {

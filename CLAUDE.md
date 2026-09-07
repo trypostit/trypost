@@ -476,3 +476,9 @@ No email is sent when a repurpose stops. `markAsTokenExpired()` and
 what auto-resumes the repurpose; deleting or switching an account off is
 something the user just did, so the flash on the accounts page reports the count
 instead.
+
+`VerifyWorkspaceConnections` is the **only** thing that promotes an account back
+to `Connected`, because it does so after a real `verify()` call. A successful
+token refresh is not that proof — the refresh token being valid says nothing
+about whether publishing still works — so `RefreshSocialToken` must not promote,
+even though it would let a paused repurpose resume sooner.

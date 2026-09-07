@@ -25,15 +25,22 @@ class UpdateRepurpose
             'destinations',
         ]);
 
-        if (self::watchesSomethingElse($repurpose, $attributes)) {
-            $attributes['activated_at'] = $repurpose->activated_at === null ? null : now();
-        }
-
         try {
             return DB::transaction(function () use ($repurpose, $attributes): Repurpose {
                 $locked = Repurpose::query()->whereKey($repurpose->id)->lockForUpdate()->firstOrFail();
 
-                $locked->update($attributes);
+                $locked->fill($attributes);
+
+                // A repurpose aimed at another account or another format has a
+                // back catalogue behind it that was never meant for these
+                // destinations, so the watermark moves to now instead of
+                // replaying it. Asked of the locked row, so a concurrent update
+                // cannot make this read the wrong "before".
+                if ($locked->isDirty(['source_social_account_id', 'source_format']) && $locked->activated_at !== null) {
+                    $locked->activated_at = now();
+                }
+
+                $locked->save();
                 $locked = $locked->fresh();
 
                 if ($locked->status === Status::Active) {
@@ -51,18 +58,5 @@ class UpdateRepurpose
                 'source_social_account_id' => __('repurposes.errors.source_already_used'),
             ]);
         }
-    }
-
-    /**
-     * A repurpose aimed at another account or another format has a back catalogue
-     * behind it that was never meant for these destinations, so the watermark
-     * moves to now instead of replaying it.
-     *
-     * @param  array<string, mixed>  $attributes
-     */
-    private static function watchesSomethingElse(Repurpose $repurpose, array $attributes): bool
-    {
-        return data_get($attributes, 'source_social_account_id', $repurpose->source_social_account_id) !== $repurpose->source_social_account_id
-            || data_get($attributes, 'source_format', $repurpose->source_format->value) !== $repurpose->source_format->value;
     }
 }
