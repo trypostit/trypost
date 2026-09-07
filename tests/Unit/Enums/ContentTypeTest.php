@@ -35,6 +35,10 @@ test('content type exposes max video duration in seconds', function () {
     expect(ContentType::TikTokVideo->maxVideoDurationSec())->toBeNull();
 });
 
+test('youtube short accepts square as well as vertical video', function () {
+    expect(ContentType::YouTubeShort->aspectRatioBounds())->toBe(['min' => 0.5, 'max' => 1.0]);
+});
+
 test('media rules for frontend expose the full editor rule set keyed by content type', function () {
     $rules = ContentType::mediaRulesForFrontend();
 

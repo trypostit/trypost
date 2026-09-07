@@ -225,3 +225,116 @@ test('request media takes precedence over the stored fallback', function () {
 test('does nothing for invalid content type values', function () {
     expect(runMediaRule('not_a_real_content_type', []))->toBe([]);
 });
+
+test('rejects more files than the content type allows', function () {
+    $media = array_fill(0, ContentType::XPost->maxMediaCount() + 1, [
+        'type' => MediaType::Image->value, 'mime_type' => 'image/jpeg',
+    ]);
+
+    $errors = runMediaRule(ContentType::XPost->value, $media);
+
+    expect($errors)->toHaveCount(1);
+    expect($errors[0])->toContain('allows at most');
+});
+
+test('rejects fewer files than the content type requires', function () {
+    $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/jpeg']];
+
+    $errors = runMediaRule(ContentType::PinterestCarousel->value, $media);
+
+    expect($errors)->toHaveCount(1);
+    expect($errors[0])->toContain('requires at least 2 media files');
+});
+
+test('rejects an animated gif when the content type does not accept gifs', function () {
+    $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/gif']];
+
+    $errors = runMediaRule(ContentType::LinkedInPost->value, $media);
+
+    expect($errors)->toHaveCount(1);
+    expect($errors[0])->toContain('does not support animated GIFs');
+});
+
+test('accepts an animated gif when the content type allows it', function () {
+    $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/gif']];
+
+    expect(runMediaRule(ContentType::XPost->value, $media))->toBe([]);
+});
+
+test('rejects an image over the content type size limit', function () {
+    $media = [[
+        'type' => MediaType::Image->value,
+        'mime_type' => 'image/jpeg',
+        'size' => ContentType::FacebookPost->maxImageBytes() + 1,
+    ]];
+
+    $errors = runMediaRule(ContentType::FacebookPost->value, $media);
+
+    expect($errors)->toHaveCount(1);
+    expect($errors[0])->toContain('images must be under');
+});
+
+test('rejects a video over the content type size limit', function () {
+    $media = [[
+        'type' => MediaType::Video->value,
+        'mime_type' => 'video/mp4',
+        'size' => ContentType::InstagramReel->maxVideoBytes() + 1,
+    ]];
+
+    $errors = runMediaRule(ContentType::InstagramReel->value, $media);
+
+    expect($errors)->toHaveCount(1);
+    expect($errors[0])->toContain('videos must be under');
+});
+
+test('rejects a video longer than the content type max duration', function () {
+    $media = [[
+        'type' => MediaType::Video->value,
+        'mime_type' => 'video/mp4',
+        'meta' => ['duration' => ContentType::FacebookReel->maxVideoDurationSec() + 10],
+    ]];
+
+    $errors = runMediaRule(ContentType::FacebookReel->value, $media);
+
+    expect($errors)->toHaveCount(1);
+    expect($errors[0])->toContain('videos must be under');
+});
+
+test('accepts a video with unknown duration rather than rejecting it', function () {
+    $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/mp4']];
+
+    expect(runMediaRule(ContentType::FacebookReel->value, $media))->toBe([]);
+});
+
+test('rejects media outside the content type aspect ratio window', function () {
+    $media = [[
+        'type' => MediaType::Video->value,
+        'mime_type' => 'video/mp4',
+        'meta' => ['width' => 1000, 'height' => 1000],
+    ]];
+
+    $errors = runMediaRule(ContentType::InstagramReel->value, $media);
+
+    expect($errors)->toHaveCount(1);
+    expect($errors[0])->toContain('aspect ratio between 0.5 and 0.6');
+});
+
+test('youtube short accepts a square video', function () {
+    $media = [[
+        'type' => MediaType::Video->value,
+        'mime_type' => 'video/mp4',
+        'meta' => ['width' => 1000, 'height' => 1000],
+    ]];
+
+    expect(runMediaRule(ContentType::YouTubeShort->value, $media))->toBe([]);
+});
+
+test('instagram story auto-fits images so aspect ratio is not enforced for them', function () {
+    $media = [[
+        'type' => MediaType::Image->value,
+        'mime_type' => 'image/jpeg',
+        'meta' => ['width' => 2000, 'height' => 200],
+    ]];
+
+    expect(runMediaRule(ContentType::InstagramStory->value, $media))->toBe([]);
+});
