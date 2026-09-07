@@ -631,3 +631,49 @@ test('an item whose destination account was deleted records no usable destinatio
 
     expect($item->fresh()->reason)->toBe(ItemReason::NoUsableDestinations);
 });
+
+test('picking a new source for an orphan and resuming starts from now', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+    $destination = healthDestination($workspace);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Active,
+        'activated_at' => now()->subDays(30),
+        'destinations' => [$destination],
+    ]);
+
+    // The account is deleted: the repurpose survives, orphaned and paused.
+    $source->delete();
+
+    expect($repurpose->fresh()->paused_reason)->toBe(PauseReason::SourceRemoved)
+        ->and($repurpose->fresh()->source_social_account_id)->toBeNull();
+
+    // Reconnecting is a brand new row, so the user picks it as the source.
+    $replacement = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
+
+    UpdateRepurpose::execute($repurpose, ['source_social_account_id' => $replacement->id]);
+
+    $resumed = ResumeRepurpose::execute($repurpose->fresh());
+
+    // A thirty-day back catalogue on an account this repurpose never watched
+    // must not be replicated the moment it is pointed at.
+    expect($resumed->status)->toBe(Status::Active)
+        ->and($resumed->paused_reason)->toBeNull()
+        ->and($resumed->activated_at->isToday())->toBeTrue();
+});
+
+test('an orphan cannot be resumed before a new source is picked', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Active,
+        'destinations' => [healthDestination($workspace)],
+    ]);
+
+    $source->delete();
+
+    expect(fn () => ResumeRepurpose::execute($repurpose->fresh()))
+        ->toThrow(ValidationException::class);
+});
