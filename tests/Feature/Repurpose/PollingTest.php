@@ -317,3 +317,31 @@ test('a skipped poll reschedules without erasing the recorded error', function (
     expect($fresh->last_error)->toBe('Instagram rejected the request')
         ->and($fresh->next_poll_at->isFuture())->toBeTrue();
 });
+
+test('an orphaned repurpose is never dispatched for polling', function () {
+    Bus::fake();
+
+    $workspace = Workspace::factory()->create();
+    $source = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
+
+    $orphan = Repurpose::factory()->active()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $source->id,
+    ]);
+
+    $healthy = Repurpose::factory()->active()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => SocialAccount::factory()->for($workspace)->create([
+            'platform' => Platform::Facebook,
+        ])->id,
+    ]);
+
+    // The observer pauses an orphan, so the command should never see one — but a
+    // null id must not reach whereKey() even if something else leaves one Active.
+    $orphan->update(['source_social_account_id' => null, 'status' => Status::Active]);
+
+    Artisan::call('repurpose:poll');
+
+    Bus::assertDispatchedTimes(PollRepurposeSource::class, 1);
+    expect($healthy->fresh()->status)->toBe(Status::Active);
+});
