@@ -109,6 +109,7 @@ return [
     ],
 
     'destinations' => [
+        'paused_note' => 'Deaktiviert und übersprungen, bis du sie wieder einschaltest: :accounts',
         'title' => 'Ziele',
         'description' => 'Wähle die Konten, die es erhalten. Jedes veröffentlicht im Format deiner Wahl.',
         'hint' => 'Der Text wird nur dann pro Netzwerk angepasst, wenn er dessen Limit überschreitet.',

@@ -109,6 +109,7 @@ return [
     ],
 
     'destinations' => [
+        'paused_note' => 'Kapalı ve yeniden açana kadar atlanıyor: :accounts',
         'title' => 'Hedefler',
         'description' => 'Alacak hesapları seç. Her biri senin belirlediğin formatta paylaşır.',
         'hint' => 'Açıklama yalnızca o ağın sınırını aştığında ağa göre uyarlanır.',

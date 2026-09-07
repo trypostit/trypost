@@ -109,6 +109,7 @@ return [
     ],
 
     'destinations' => [
+        'paused_note' => 'Wyłączone i pomijane do czasu ponownego włączenia: :accounts',
         'title' => 'Cele',
         'description' => 'Wybierz konta, które go otrzymają. Każde publikuje w wybranym przez ciebie formacie.',
         'hint' => 'Opis jest dostosowywany do sieci tylko wtedy, gdy przekracza jej limit.',

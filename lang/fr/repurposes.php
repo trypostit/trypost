@@ -109,6 +109,7 @@ return [
     ],
 
     'destinations' => [
+        'paused_note' => 'Désactivés et ignorés jusqu\'à réactivation : :accounts',
         'title' => 'Destinations',
         'description' => 'Choisissez les comptes qui le reçoivent. Chacun publie dans le format que vous choisissez.',
         'hint' => 'La légende n\'est adaptée par réseau que lorsqu\'elle dépasse la limite de ce réseau.',

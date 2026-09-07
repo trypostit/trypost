@@ -580,3 +580,23 @@ test('the activity list exposes each replicated post status', function () {
             ->where('items.data.0.posts.0.platforms.0.status', PostPlatformStatus::Published->value)
             ->where('items.data.0.posts.1.platforms.0.status', PostPlatformStatus::Failed->value));
 });
+
+test('a switched-off destination is still sent to the page so editing cannot drop it', function () {
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+        'destinations' => [destinationPayload($this->tiktok)],
+    ]);
+
+    $this->tiktok->update(['is_active' => false]);
+
+    // The editor round-trips whatever it was given. An account missing from
+    // destinationAccounts is filtered out of the form, so the next save would
+    // erase a destination the user only paused.
+    $this->actingAs($this->user)
+        ->get(route('app.repurposes.show', $repurpose))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('destinationAccounts', 2)
+            ->where('repurpose.destinations.0.social_account_id', $this->tiktok->id));
+});

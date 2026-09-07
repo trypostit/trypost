@@ -109,6 +109,7 @@ return [
     ],
 
     'destinations' => [
+        'paused_note' => 'Desativadas e ignoradas até você reativá-las: :accounts',
         'title' => 'Destinos',
         'description' => 'Escolha as contas que vão receber. Cada uma publica no formato que você definir.',
         'hint' => 'A legenda só é adaptada por rede quando ultrapassa o limite daquela rede.',

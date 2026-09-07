@@ -217,16 +217,32 @@ class RepurposeController extends Controller
      */
     private function sourceAccounts(Collection $accounts): Collection
     {
-        return $accounts
+        return $this->usableSourceAccounts($accounts)
             ->whereIn('platform', SourceFetcherFactory::supportedPlatforms())
             ->values();
     }
 
     /**
+     * Switched-off accounts included on purpose. A destination the user paused
+     * stays on the repurpose and is skipped at publish time; leaving it out here
+     * drops it from the form, and the next save would erase a destination they
+     * only meant to pause. The page marks them instead.
+     *
      * @return Collection<int, SocialAccount>
      */
     private function connectedAccounts(Request $request): Collection
     {
-        return $request->user()->currentWorkspace->socialAccounts()->active()->get();
+        return $request->user()->currentWorkspace->socialAccounts()->orderBy('platform')->get();
+    }
+
+    /**
+     * The source has to work, so this one really is active accounts only.
+     *
+     * @param  Collection<int, SocialAccount>  $accounts
+     * @return Collection<int, SocialAccount>
+     */
+    private function usableSourceAccounts(Collection $accounts): Collection
+    {
+        return $accounts->where('is_active', true)->values();
     }
 }

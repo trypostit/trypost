@@ -109,6 +109,7 @@ return [
     ],
 
     'destinations' => [
+        'paused_note' => 'Switched off and skipped until you turn them back on: :accounts',
         'title' => 'Destinations',
         'description' => 'Pick the accounts that receive it. Each one publishes in the format you choose.',
         'hint' => 'Captions are adapted per network only when they exceed that network\'s limit.',

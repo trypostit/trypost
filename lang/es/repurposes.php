@@ -109,6 +109,7 @@ return [
     ],
 
     'destinations' => [
+        'paused_note' => 'Desactivadas y omitidas hasta que las reactives: :accounts',
         'title' => 'Destinos',
         'description' => 'Elige las cuentas que lo recibirán. Cada una publica en el formato que elijas.',
         'hint' => 'El texto solo se adapta por red cuando supera el límite de esa red.',

@@ -109,6 +109,7 @@ return [
     ],
 
     'destinations' => [
+        'paused_note' => 'Uitgeschakeld en overgeslagen tot je ze weer aanzet: :accounts',
         'title' => 'Bestemmingen',
         'description' => 'Kies de accounts die het ontvangen. Elk plaatst in het formaat dat jij kiest.',
         'hint' => 'Het bijschrift wordt alleen per netwerk aangepast als het de limiet van dat netwerk overschrijdt.',

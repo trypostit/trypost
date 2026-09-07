@@ -109,6 +109,7 @@ return [
     ],
 
     'destinations' => [
+        'paused_note' => '已关闭，重新开启前将被跳过：:accounts',
         'title' => '目标',
         'description' => '选择接收的账号。每个账号按你指定的格式发布。',
         'hint' => '只有当文案超出该平台上限时，才会按平台调整。',

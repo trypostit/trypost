@@ -119,6 +119,18 @@ const channels = computed<Channel[]>(() =>
 
 const selectedAccountIds = computed(() => form.destinations.map((destination) => destination.social_account_id));
 
+/**
+ * Selected destinations whose account is switched off. They stay on the
+ * repurpose and are skipped at publish time, so the only thing missing is
+ * saying so — otherwise the video quietly reaches fewer networks than the
+ * configuration claims.
+ */
+const pausedDestinations = computed(() =>
+    props.destinationAccounts
+        .filter((account) => account.is_active === false && selectedAccountIds.value.includes(account.id))
+        .map((account) => account.display_label ?? account.display_name),
+);
+
 const toggleDestination = (accountId: string) => {
     if (selectedAccountIds.value.includes(accountId)) {
         form.destinations = form.destinations.filter((destination) => destination.social_account_id !== accountId);
@@ -274,6 +286,14 @@ const handleDelete = () => {
                                 </CardHeader>
 
                                 <CardContent>
+                                    <p
+                                        v-if="pausedDestinations.length > 0"
+                                        class="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs leading-relaxed text-amber-700 dark:text-amber-400"
+                                        data-testid="paused-destinations-note"
+                                    >
+                                        {{ $t('repurposes.destinations.paused_note', { accounts: pausedDestinations.join(', ') }) }}
+                                    </p>
+
                                     <ChannelConfigurator
                                         :channels="channels"
                                         :media="plannedMedia"

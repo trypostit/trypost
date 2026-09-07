@@ -67,3 +67,38 @@ test('a repurpose whose source was deleted explains itself instead of rendering 
         ->assertPresent('@flow-source-missing')
         ->assertNoJavaScriptErrors();
 });
+
+test('a switched-off destination is shown as skipped rather than quietly dropped', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $source = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
+    $paused = SocialAccount::factory()->for($workspace)->create([
+        'platform' => Platform::TikTok,
+        'is_active' => false,
+    ]);
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $source->id,
+        'destinations' => [[
+            'social_account_id' => $paused->id,
+            'content_type' => 'tiktok_video',
+            'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE'],
+        ]],
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.repurposes.show', $repurpose));
+
+    waitForRepurposeHealthTestId($page, 'paused-destinations-note');
+
+    $page->assertPresent('@paused-destinations-note')
+        ->assertNoJavaScriptErrors();
+});

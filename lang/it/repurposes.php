@@ -109,6 +109,7 @@ return [
     ],
 
     'destinations' => [
+        'paused_note' => 'Disattivati e ignorati finché non li riattivi: :accounts',
         'title' => 'Destinazioni',
         'description' => 'Scegli gli account che lo riceveranno. Ognuno pubblica nel formato che imposti.',
         'hint' => 'La didascalia viene adattata per rete solo quando supera il limite di quella rete.',

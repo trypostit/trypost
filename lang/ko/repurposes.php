@@ -109,6 +109,7 @@ return [
     ],
 
     'destinations' => [
+        'paused_note' => '꺼져 있어 건너뜁니다. 다시 켤 때까지: :accounts',
         'title' => '대상',
         'description' => '받을 계정을 고르세요. 각 계정은 지정한 형식으로 게시합니다.',
         'hint' => '캡션은 해당 네트워크의 한도를 넘을 때만 조정됩니다.',
