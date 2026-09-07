@@ -53,7 +53,7 @@ class InstagramAnalytics
         // Per-post metric set differs by content type. Reels/Stories expose
         // different fields than feed posts. Pick the right set per type.
         $metrics = match ($postPlatform->content_type) {
-            ContentType::InstagramReel => 'reach,likes,comments,shares,saved,plays',
+            ContentType::InstagramReel => 'reach,likes,comments,shares,saved,views',
             ContentType::InstagramStory => 'reach,impressions,replies',
             default => 'reach,likes,comments,shares,saved,total_interactions',
         };
