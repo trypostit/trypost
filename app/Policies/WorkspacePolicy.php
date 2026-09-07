@@ -61,6 +61,15 @@ class WorkspacePolicy
         return $this->isOwnerOrWorkspaceAdmin($user, $workspace);
     }
 
+    /**
+     * Repurpose creates posts on the workspace's behalf, so it follows the
+     * post-creation role rather than the stricter integration roles.
+     */
+    public function manageRepurposes(User $user, Workspace $workspace): bool
+    {
+        return $this->createPost($user, $workspace);
+    }
+
     public function createPost(User $user, Workspace $workspace): bool
     {
         if ($this->isOwner($user, $workspace)) {

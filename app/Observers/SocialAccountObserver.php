@@ -12,6 +12,7 @@ use App\Jobs\PostHog\IdentifyConnectedPlatforms;
 use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\SocialAccount;
 use App\Services\PostHogService;
+use App\Services\Repurpose\RepurposeAccountSync;
 
 class SocialAccountObserver
 {
@@ -43,8 +44,19 @@ class SocialAccountObserver
         $this->syncUsageAndOnboarding($socialAccount);
     }
 
+    public function deleting(SocialAccount $socialAccount): void
+    {
+        app(RepurposeAccountSync::class)->accountRemoved($socialAccount);
+    }
+
     public function updated(SocialAccount $socialAccount): void
     {
+        // Its own guard, ahead of the status-only early return below: widening
+        // that one would change the PostHog and onboarding behaviour behind it.
+        if ($socialAccount->wasChanged(['status', 'is_active', 'platform'])) {
+            app(RepurposeAccountSync::class)->accountChanged($socialAccount);
+        }
+
         if (! $socialAccount->wasChanged('status')) {
             return;
         }

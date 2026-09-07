@@ -4,6 +4,7 @@ import { IconChevronDown, IconChevronUp, IconPlus, IconX } from '@tabler/icons-v
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import { channels as channelsRoute, mentions as mentionsRoute } from '@/actions/App/Http/Controllers/App/DiscordController';
+import HexColorInput from '@/components/HexColorInput.vue';
 import InputError from '@/components/InputError.vue';
 import SearchableSelect from '@/components/SearchableSelect.vue';
 import { Avatar } from '@/components/ui/avatar';
@@ -43,6 +44,13 @@ interface EmbedDraft {
     image?: string;
     color?: string;
 }
+
+/**
+ * Discord's embed colour is a plain six-digit hex with no alpha, which is also
+ * what the API accepts, so a shorthand or an alpha value from the picker is
+ * brought back to that shape rather than rejected on save.
+ */
+const DISCORD_BLURPLE = '#5865f2';
 
 const props = withDefaults(
     defineProps<{
@@ -317,15 +325,16 @@ const updateEmbed = (index: number, patch: Partial<EmbedDraft>) =>
                         :placeholder="$t('posts.form.discord.embed_image')"
                         @update:model-value="updateEmbed(index, { image: String($event) })"
                     />
-                    <div class="flex items-center gap-2">
-                        <input
-                            type="color"
-                            :value="embed.color || '#5865F2'"
+                    <div class="space-y-1">
+                        <p class="text-xs font-medium text-foreground/60">
+                            {{ $t('posts.form.discord.embed_color') }}
+                        </p>
+                        <HexColorInput
+                            :model-value="embed.color || DISCORD_BLURPLE"
                             :disabled="disabled"
-                            class="h-8 w-12 cursor-pointer rounded border-2 border-foreground/30 disabled:opacity-50"
-                            @input="updateEmbed(index, { color: ($event.target as HTMLInputElement).value })"
+                            :placeholder="DISCORD_BLURPLE"
+                            @update:model-value="(value) => updateEmbed(index, { color: value ?? undefined })"
                         />
-                        <span class="text-xs font-medium text-foreground/60">{{ $t('posts.form.discord.embed_color') }}</span>
                     </div>
                 </div>
             </div>

@@ -26,6 +26,7 @@ return [
         'others' => 'أخرى',
     ],
     'analytics' => 'التحليلات',
+    'repurposes' => 'Repurpose',
     'onboarding' => 'البدء',
     'onboarding_hint' => 'أكمل الإعداد',
     'posts' => [

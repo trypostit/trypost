@@ -72,6 +72,7 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
         <button
             type="button"
             class="flex w-full cursor-pointer items-center justify-between gap-3 p-4 text-sm"
+            data-testid="facebook-settings-toggle"
             @click="open = !open"
         >
             <span class="flex min-w-0 items-center gap-2">

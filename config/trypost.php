@@ -153,6 +153,26 @@ return [
 
     'user_agent' => env('TRYPOST_USER_AGENT', 'TryPost.it/1.0 (+https://trypost.it)'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Repurpose
+    |--------------------------------------------------------------------------
+    |
+    | How often an active repurpose polls its source network for videos the
+    | workspace published outside TryPost. The scheduler ticks every five
+    | minutes and each repurpose is polled when it is due, so the interval is
+    | a runtime knob rather than a cron expression. Meta's Instagram quota is
+    | an app-wide pool (200 calls per hour per daily active user), so raise
+    | the interval before the pool tightens. `backoff_minutes` is used instead
+    | when the source answers with a rate-limit error.
+    |
+    */
+
+    'repurpose' => [
+        'poll_interval_minutes' => (int) env('REPURPOSE_POLL_INTERVAL_MINUTES', 15),
+        'backoff_minutes' => (int) env('REPURPOSE_BACKOFF_MINUTES', 60),
+    ],
+
     'google_auth_enabled' => env('GOOGLE_AUTH_ENABLED', false),
 
     'github_auth_enabled' => env('GITHUB_AUTH_ENABLED', false),

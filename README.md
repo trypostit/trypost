@@ -46,6 +46,7 @@
 | **AI generate &amp; review** | Draft from a prompt, get inline feedback before you publish. |
 | **AI carousel builder** | Prompt to a multi-slide carousel with images, on-brand. |
 | **Brand profile** | Tone, voice, language, and colors applied to every AI call. |
+| **Repurpose** | Auto-replicate the videos you post outside TryPost to your other networks. |
 | **Asset library** | Reusable workspace media, plus Unsplash and Giphy search built in. |
 | **Signatures &amp; labels** | Reusable hashtag and CTA blocks, color-coded post tags. |
 | **Team collaboration** | Owner / Admin / Member roles, comments with @mentions on drafts. |

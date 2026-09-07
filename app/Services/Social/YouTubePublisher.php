@@ -205,17 +205,22 @@ class YouTubePublisher
         }
     }
 
+    /**
+     * YouTube counts a title in characters, so the cut has to as well: measuring
+     * bytes trims accented copy earlier than it needs to and can slice a
+     * multi-byte character in half, which is what reaches the API.
+     */
     private function buildTitle(string $content): string
     {
         $maxLength = 100;
         $shortsTag = ' #Shorts';
-        $availableLength = $maxLength - strlen($shortsTag);
+        $availableLength = $maxLength - mb_strlen($shortsTag);
 
         $firstLine = explode("\n", $content)[0];
         $title = explode('.', $firstLine)[0];
 
-        if (strlen($title) > $availableLength) {
-            $title = substr($title, 0, $availableLength - 3).'...';
+        if (mb_strlen($title) > $availableLength) {
+            $title = mb_substr($title, 0, $availableLength - 3).'...';
         }
 
         return $title.$shortsTag;

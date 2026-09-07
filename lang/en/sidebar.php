@@ -26,6 +26,7 @@ return [
         'others' => 'Others',
     ],
     'analytics' => 'Analytics',
+    'repurposes' => 'Repurpose',
     'onboarding' => 'Getting started',
     'onboarding_hint' => 'Finish setup',
     'posts' => [

@@ -26,6 +26,7 @@ return [
         'others' => 'Diğerleri',
     ],
     'analytics' => 'Analitik',
+    'repurposes' => 'Repurpose',
     'onboarding' => 'Başlarken',
     'onboarding_hint' => 'Kurulumu bitir',
     'posts' => [

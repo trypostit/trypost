@@ -286,3 +286,44 @@ Standing constraints:
 - The editor counts characters and renders the X preview client-side, so the rewrite is mirrored in `resources/js/lib/defuseXLinks.ts`. The TLD list is NOT duplicated there: `PostController@edit` sends `App\Support\LinkTlds::all()` as the `xLinkTlds` page prop, and only when defusing is on — an empty set means the feature is off, since without the list a bare host cannot be told from `Node.js`. Do not move it to the Inertia shared props; only the editor needs it. Two tests keep the mirror honest: `XLinkDefusingParityTest` runs a shared corpus through both engines over the same list and diffs the output, and `tests/Browser/XLinkDefusingTest.php` drives the real editor.
 - Neither expression may use lookbehind. Safari only understands it from 16.4, esbuild cannot transpile it, and a `SyntaxError` there takes down the whole chunk — the character before a candidate URL is consumed and put back instead.
 
+## Repurpose account health
+
+A repurpose depends on social accounts it does not own the lifecycle of. Three
+decisions govern how it reacts, and each exists because the obvious alternative
+was tried and was wrong.
+
+- **A switched-off destination is skipped, never an error.** Deactivating an
+  account means "don't post here", which `ProcessRepurposeItem` already honours.
+  So `ActivateRepurpose::assertDestinationsPublishable()` requires **one** usable
+  destination, not all of them, and the destination rule in the repurpose
+  FormRequests carries **no** `is_active` clause. Requiring either is what used
+  to block editing *and* resuming any repurpose that listed a paused account.
+  Keep the `workspace_id` clause — that is tenancy, not health. The
+  `source_social_account_id` rules stay strict: a source genuinely must work.
+- **`repurposes.paused_reason` is not UI copy.** NULL means the user paused it.
+  Its only two jobs are deciding the watermark on resume (a system pause starts
+  from `now()`, a user pause keeps its place) and deciding whether the system may
+  auto-resume. Banners derive from current account health instead, so they can
+  say "ready to resume" once the cause is fixed. **Never clear it in
+  `UpdateRepurpose`** — that destroys the record that the pause was systemic, and
+  the next Resume replays the entire backlog.
+- **Source and destination are deliberately asymmetric.** A dead source stops the
+  automation; a dead destination keeps flowing to the publisher, which fails the
+  post visibly and lets the user retry it after reconnecting. Skipping a
+  destination at job time would be permanent for that item, since items are never
+  retried.
+
+`RepurposeAccountSync` runs from `SocialAccountObserver` and must never throw:
+`deleting` runs inside `$account->delete()`, and `persistIdentity()` wraps a
+reconnect in a transaction, so an exception there would 500 a disconnect or roll
+back a reconnect. It reads account health **from the database**, not from the
+model it was handed — `is_active` is absent from `SocialAccountFactory`, and
+strict mode exempts recently-created models from the missing-attribute
+exception, so a healthy account read back as `null` and silently skipped
+auto-resume.
+
+No email is sent when a repurpose stops. `markAsTokenExpired()` and
+`VerifyWorkspaceConnections` already email about the account, and reconnecting is
+what auto-resumes the repurpose; deleting or switching an account off is
+something the user just did, so the flash on the accounts page reports the count
+instead.

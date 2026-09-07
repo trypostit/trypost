@@ -58,6 +58,7 @@ class SocialAccount extends Model
     protected $hidden = [
         'access_token',
         'refresh_token',
+        'meta',
     ];
 
     protected $appends = [

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\SocialAccount\Status;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\SocialAccount;
@@ -112,5 +113,13 @@ class RefreshSocialToken implements ShouldBeUnique, ShouldQueue
     private function recordVerification(): void
     {
         $this->account->update(['last_verified_at' => now()]);
+
+        // A refresh that succeeded is proof the connection works. Waiting for
+        // the daily sweep to say so keeps everything that depends on the
+        // account — repurposes included — stopped for up to a day longer than
+        // it needs to be.
+        if ($this->account->status === Status::TokenExpired) {
+            $this->account->markAsConnected();
+        }
     }
 }

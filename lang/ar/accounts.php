@@ -123,6 +123,9 @@ return [
     ],
 
     'flash' => [
+        'activated_resumed_repurposes' => 'تم تفعيل الحساب. تم استئناف :count أتمتة.|تم تفعيل الحساب. تم استئناف :count أتمتة.',
+        'disconnected_paused_repurposes' => 'تم فصل الحساب. تم إيقاف :count أتمتة مؤقتًا.|تم فصل الحساب. تم إيقاف :count أتمتة مؤقتًا.',
+        'deactivated_paused_repurposes' => 'تم إيقاف الحساب. تم إيقاف :count أتمتة مؤقتًا.|تم إيقاف الحساب. تم إيقاف :count أتمتة مؤقتًا.',
         'disconnected' => 'تم فصل الحساب بنجاح!',
         'connected' => 'تم ربط الحساب بنجاح!',
         'session_expired' => 'انتهت الجلسة. يرجى المحاولة مرة أخرى.',

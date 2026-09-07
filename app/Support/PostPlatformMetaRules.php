@@ -160,7 +160,7 @@ class PostPlatformMetaRules
      *
      * @return array{0: string, 1: string}|null [field, message]
      */
-    private static function requiredMetaViolation(?Platform $platform, mixed $meta): ?array
+    public static function requiredMetaViolation(?Platform $platform, mixed $meta): ?array
     {
         return match (true) {
             $platform === Platform::TikTok && blank(data_get($meta, 'privacy_level')) => ['privacy_level', trans('posts.form.tiktok.privacy_required')],

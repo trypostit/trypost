@@ -123,6 +123,9 @@ return [
     ],
 
     'flash' => [
+        'activated_resumed_repurposes' => 'Account ingeschakeld. :count automatisering hervat.|Account ingeschakeld. :count automatiseringen hervat.',
+        'disconnected_paused_repurposes' => 'Account losgekoppeld. :count automatisering gepauzeerd.|Account losgekoppeld. :count automatiseringen gepauzeerd.',
+        'deactivated_paused_repurposes' => 'Account uitgeschakeld. :count automatisering gepauzeerd.|Account uitgeschakeld. :count automatiseringen gepauzeerd.',
         'disconnected' => 'Account succesvol losgekoppeld!',
         'connected' => 'Account succesvol gekoppeld!',
         'session_expired' => 'Sessie verlopen. Probeer het opnieuw.',

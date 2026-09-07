@@ -1,0 +1,201 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'title' => 'Repurpose',
+    'description' => 'Replicate videos you post outside TryPost to your other networks, automatically.',
+    'new' => 'New repurpose',
+
+    'flow' => [
+        'no_source' => 'No source account',
+        'no_destinations' => 'No destination yet',
+    ],
+
+    'publish_mode' => [
+
+        'title' => 'Publishing',
+
+        'description' => 'What happens when a new video shows up.',
+
+    ],
+
+    'publish_modes' => [
+
+        'publish' => 'Publish automatically',
+
+        'publish_hint' => 'Each new video is scheduled the moment it is found.',
+
+        'draft' => 'Create as draft',
+
+        'draft_hint' => 'Each new video becomes a draft here for you to review and publish.',
+
+    ],
+
+    'formats' => [
+        'reel' => 'Reels',
+        'video' => 'Videos',
+        'story' => 'Stories',
+    ],
+
+    'source' => [
+        'title' => 'Source',
+        'description' => 'TryPost watches this account for new videos of the format below.',
+        'account_label' => 'Account',
+        'watch_label' => 'Watch for',
+    ],
+
+    'summary' => [
+        'sentence' => 'Every new :format you post on :source is republished to :destinations.',
+        'no_destinations' => 'Every new :format you post on :source is waiting for a destination.',
+        'no_source' => 'This repurpose has no source account. Pick one to start it again.',
+    ],
+
+    'empty' => [
+        'title' => 'No repurpose set up yet',
+        'description' => 'Pick a starting point below. TryPost watches the account you choose and republishes every new video to the networks you pick.',
+    ],
+
+    'table' => [
+        'flow' => 'Flow',
+        'source' => 'Source',
+        'destinations' => 'Destinations',
+        'status' => 'Status',
+        'published' => 'Replicated',
+        'last_polled' => 'Last checked',
+    ],
+
+    'status' => [
+        'draft' => 'Draft',
+        'active' => 'Active',
+        'paused' => 'Paused',
+        'disabled' => 'Disabled',
+    ],
+
+    'templates' => [
+        'use' => 'Use this template',
+        'instagram_everywhere' => [
+            'title' => 'Instagram everywhere',
+            'description' => 'Post a Reel on Instagram and TryPost republishes it to TikTok, YouTube Shorts and Facebook.',
+        ],
+        'facebook_everywhere' => [
+            'title' => 'Facebook everywhere',
+            'description' => 'Post a video on your Facebook Page and TryPost republishes it to Instagram, TikTok and YouTube Shorts.',
+        ],
+    ],
+
+    'create' => [
+        'title' => 'New repurpose',
+        'description' => 'Choose the account TryPost should watch. You pick the destinations on the next screen.',
+        'source_label' => 'Source account',
+        'source_placeholder' => 'Choose an account',
+        'source_search' => 'Search accounts',
+        'source_empty' => 'No account found.',
+        'source_placeholder' => 'Select an account',
+        'no_accounts' => 'Connect an Instagram or Facebook account first. Only these can be a source, because they are the only networks that let us download the video.',
+        'submit' => 'Create',
+        'connect' => 'Connect an account',
+    ],
+
+    'show' => [
+        'title' => 'Repurpose',
+        'description' => 'Videos published on this account outside TryPost are replicated to the destinations below.',
+    ],
+
+    'tabs' => [
+        'configuration' => 'Configuration',
+        'activity' => 'Activity',
+        'settings' => 'Settings',
+    ],
+
+    'destinations' => [
+        'paused_note' => 'Switched off and skipped until you turn them back on: :accounts',
+        'title' => 'Destinations',
+        'description' => 'Pick the accounts that receive it. Each one publishes in the format you choose.',
+        'hint' => 'Captions are adapted per network only when they exceed that network\'s limit.',
+        'none_available' => 'No other account is connected in this workspace yet.',
+        'save' => 'Save changes',
+        'saved' => 'Destinations saved',
+        'publish_as' => 'Publish as',
+    ],
+
+    'status_card' => [
+        'title' => 'Status',
+        'activate' => 'Activate',
+        'pause' => 'Pause',
+        'resume' => 'Resume',
+        'disable' => 'Disable',
+        'watermark' => 'Watching since',
+        'last_polled' => 'Last checked',
+        'draft_hint' => 'Pick at least one destination, then activate. Only videos posted after you activate are replicated.',
+        'active_hint' => 'TryPost checks this account regularly and replicates every new video.',
+        'paused_hint' => 'Checks are on hold. Resuming picks up where it stopped, so nothing posted meanwhile is lost.',
+        'disabled_hint' => 'Turned off. Activating again starts fresh: whatever you posted while it was off stays off.',
+    ],
+
+    'items' => [
+        'source' => 'Original',
+        'published_at' => 'Posted',
+        'status' => 'Status',
+        'detail' => 'Detail',
+        'posts' => 'Replicated to',
+        'view_original' => 'View original',
+        'original_from' => 'original from :date',
+        'empty' => [
+            'title' => 'Nothing yet',
+            'description' => 'Videos this account posts outside TryPost will show up here.',
+        ],
+        'open_post' => 'Open post',
+        'statuses' => [
+            'pending' => 'Queued',
+            'processing' => 'Processing',
+            'published' => 'Replicated',
+            'drafted' => 'Drafted',
+            'skipped' => 'Skipped',
+            'failed' => 'Failed',
+        ],
+        'reasons' => [
+            'published_via_trypost' => 'Already published through TryPost',
+            'media_url_missing' => 'The network did not share a downloadable file, usually because of copyrighted audio',
+            'download_failed' => 'The video could not be downloaded',
+            'post_creation_failed' => 'Could not create the posts',
+            'no_usable_destinations' => 'No destination was available to publish to',
+        ],
+    ],
+
+    'menu' => [
+
+        'label' => 'More actions',
+
+    ],
+
+    'danger' => [
+        'title' => 'Delete this repurpose',
+        'description' => 'Checks stop immediately. Posts already created stay in your calendar.',
+        'delete' => 'Delete repurpose',
+    ],
+
+    'health' => [
+        'stopped_itself' => 'Stopped on its own — open it to see why',
+        'source_missing' => 'Replication is on hold: this repurpose has no source account. Pick one, then resume it.',
+        'source_unusable' => 'Replication is on hold: the account this repurpose watches needs to be reconnected.',
+        'no_destinations' => 'Replication is on hold: no destination is available. Add one, then resume it.',
+        'ready' => 'The problem is fixed. Resume this repurpose to start replicating again.',
+    ],
+
+    'errors' => [
+        'source_already_used' => 'This account already feeds another repurpose. Edit that one instead.',
+        'source_missing' => 'Pick an account to watch before starting this repurpose.',
+        'source_unusable' => 'Reconnect the account this repurpose watches before starting it.',
+        'destinations_required' => 'Pick at least one destination before activating.',
+        'destination_needs_video' => 'That format cannot carry a video.',
+        'only_paused_resumes' => 'Only a paused repurpose can be resumed.',
+        'only_active_pauses' => 'Only an active repurpose can be paused.',
+        'only_running_disables' => 'Only a running repurpose can be turned off.',
+        'only_idle_activates' => 'Only a draft or turned-off repurpose can be activated.',
+        'destination_unavailable' => 'That destination account is no longer available.',
+        'destination_is_source' => 'That destination is the account this repurpose watches.',
+        'source_unavailable' => 'That source account is no longer available.',
+        'action_failed' => 'Something went wrong. Check the form and try again.',
+    ],
+];

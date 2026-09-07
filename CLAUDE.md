@@ -434,3 +434,45 @@ Standing constraints:
 - NEVER add `Co-Authored-By` lines to commit messages.
 - NEVER commit, push, or open PRs unless explicitly asked by the user.
 - Always create a new branch for feature work before making changes.
+
+## Repurpose account health
+
+A repurpose depends on social accounts it does not own the lifecycle of. Three
+decisions govern how it reacts, and each exists because the obvious alternative
+was tried and was wrong.
+
+- **A switched-off destination is skipped, never an error.** Deactivating an
+  account means "don't post here", which `ProcessRepurposeItem` already honours.
+  So `ActivateRepurpose::assertDestinationsPublishable()` requires **one** usable
+  destination, not all of them, and the destination rule in the repurpose
+  FormRequests carries **no** `is_active` clause. Requiring either is what used
+  to block editing *and* resuming any repurpose that listed a paused account.
+  Keep the `workspace_id` clause — that is tenancy, not health. The
+  `source_social_account_id` rules stay strict: a source genuinely must work.
+- **`repurposes.paused_reason` is not UI copy.** NULL means the user paused it.
+  Its only two jobs are deciding the watermark on resume (a system pause starts
+  from `now()`, a user pause keeps its place) and deciding whether the system may
+  auto-resume. Banners derive from current account health instead, so they can
+  say "ready to resume" once the cause is fixed. **Never clear it in
+  `UpdateRepurpose`** — that destroys the record that the pause was systemic, and
+  the next Resume replays the entire backlog.
+- **Source and destination are deliberately asymmetric.** A dead source stops the
+  automation; a dead destination keeps flowing to the publisher, which fails the
+  post visibly and lets the user retry it after reconnecting. Skipping a
+  destination at job time would be permanent for that item, since items are never
+  retried.
+
+`RepurposeAccountSync` runs from `SocialAccountObserver` and must never throw:
+`deleting` runs inside `$account->delete()`, and `persistIdentity()` wraps a
+reconnect in a transaction, so an exception there would 500 a disconnect or roll
+back a reconnect. It reads account health **from the database**, not from the
+model it was handed — `is_active` is absent from `SocialAccountFactory`, and
+strict mode exempts recently-created models from the missing-attribute
+exception, so a healthy account read back as `null` and silently skipped
+auto-resume.
+
+No email is sent when a repurpose stops. `markAsTokenExpired()` and
+`VerifyWorkspaceConnections` already email about the account, and reconnecting is
+what auto-resumes the repurpose; deleting or switching an account off is
+something the user just did, so the flash on the accounts page reports the count
+instead.

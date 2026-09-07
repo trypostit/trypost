@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'beta' => '测试版',
 
     'back' => '返回',
 

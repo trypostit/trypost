@@ -59,6 +59,7 @@ export interface NavItem {
     activePattern?: string;
     exact?: boolean;
     excludeActive?: string[];
+    badge?: string;
 }
 
 export interface OnboardingProgress {
