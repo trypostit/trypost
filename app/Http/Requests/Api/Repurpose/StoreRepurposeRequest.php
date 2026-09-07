@@ -117,6 +117,12 @@ class StoreRepurposeRequest extends FormRequest
                 (array) $this->input('destinations', []),
                 $sourceAccountId,
             );
+
+            DestinationMetaRules::addRequiredErrors(
+                $validator,
+                (array) $this->input('destinations', []),
+                $this->workspaceId(),
+            );
         });
     }
 }

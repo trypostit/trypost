@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Support\Repurpose;
 
+use App\Models\SocialAccount;
 use App\Support\PostPlatformMetaRules;
+use Illuminate\Support\Facades\Validator as ValidatorFacade;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Validator;
 
 class DestinationMetaRules
 {
@@ -31,6 +35,51 @@ class DestinationMetaRules
     public static function attributes(): array
     {
         return self::reKey(PostPlatformMetaRules::attributes());
+    }
+
+    /**
+     * A repurpose publishes without anyone reviewing the post first, so a
+     * destination missing the meta its network needs can only fail later, in a
+     * queued job. Checked on save, the way the post editor checks it before
+     * scheduling.
+     *
+     * @param  array<int, mixed>  $destinations
+     */
+    public static function addRequiredErrors(Validator $validator, array $destinations, ?string $workspaceId): void
+    {
+        $platforms = SocialAccount::query()
+            ->where('workspace_id', $workspaceId)
+            ->findMany(array_map(
+                fn (mixed $destination): mixed => data_get($destination, 'social_account_id'),
+                $destinations,
+            ))
+            ->pluck('platform', 'id');
+
+        foreach ($destinations as $index => $destination) {
+            $violation = PostPlatformMetaRules::requiredMetaViolation(
+                $platforms->get(data_get($destination, 'social_account_id')),
+                data_get($destination, 'meta'),
+            );
+
+            if ($violation !== null) {
+                [$field, $message] = $violation;
+                $validator->errors()->add("destinations.{$index}.meta.{$field}", $message);
+            }
+        }
+    }
+
+    /**
+     * @param  array<int, mixed>  $destinations
+     */
+    public static function assertRequired(array $destinations, ?string $workspaceId): void
+    {
+        $validator = ValidatorFacade::make([], []);
+
+        self::addRequiredErrors($validator, $destinations, $workspaceId);
+
+        if ($validator->errors()->isNotEmpty()) {
+            throw new ValidationException($validator);
+        }
     }
 
     /**

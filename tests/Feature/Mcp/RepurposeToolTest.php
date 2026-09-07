@@ -347,3 +347,25 @@ test('the update tool accepts a switched-off account as a destination', function
 
     expect($repurpose->fresh()->destinations)->toHaveCount(1);
 });
+
+test('the update tool refuses a pinterest destination without a board', function () {
+    $pinterest = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::Pinterest]);
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdateRepurposeTool::class, [
+            'repurpose_id' => $repurpose->id,
+            'destinations' => [[
+                'social_account_id' => $pinterest->id,
+                'content_type' => ContentType::PinterestVideoPin->value,
+                'meta' => [],
+            ]],
+        ])
+        ->assertHasErrors();
+
+    expect($repurpose->fresh()->destinations)->toBe([]);
+});

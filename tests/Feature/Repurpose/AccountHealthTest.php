@@ -732,3 +732,59 @@ test('changing the source of a never-activated repurpose invents no watermark', 
 
     expect($repurpose->fresh()->activated_at)->toBeNull();
 });
+
+test('a pinterest destination cannot be saved without a board', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $source = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
+    $pinterest = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Pinterest]);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Draft,
+    ]);
+
+    $this->actingAs($user)
+        ->put(route('app.repurposes.update', $repurpose), [
+            'destinations' => [[
+                'social_account_id' => $pinterest->id,
+                'content_type' => ContentType::PinterestVideoPin->value,
+                'meta' => [],
+            ]],
+        ])
+        ->assertSessionHasErrors('destinations.0.meta.board_id');
+
+    expect($repurpose->fresh()->destinations)->toBe([]);
+});
+
+test('a tiktok destination cannot be saved without a privacy level', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $source = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
+    $tiktok = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::TikTok]);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Draft,
+    ]);
+
+    $this->actingAs($user)
+        ->put(route('app.repurposes.update', $repurpose), [
+            'destinations' => [[
+                'social_account_id' => $tiktok->id,
+                'content_type' => ContentType::TikTokVideo->value,
+                'meta' => [],
+            ]],
+        ])
+        ->assertSessionHasErrors('destinations.0.meta.privacy_level');
+});

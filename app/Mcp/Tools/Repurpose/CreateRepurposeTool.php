@@ -10,6 +10,7 @@ use App\Http\Resources\Api\RepurposeResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Mcp\Requests\Repurpose\CreateRepurposeRequest;
 use App\Models\Workspace;
+use App\Support\Repurpose\DestinationMetaRules;
 use App\Support\Repurpose\SourceIsFree;
 use App\Support\Repurpose\SourceIsNotADestination;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -44,6 +45,11 @@ class CreateRepurposeTool extends Tool
         SourceIsNotADestination::assert(
             (array) data_get($validated, 'destinations', []),
             data_get($validated, 'source_social_account_id'),
+        );
+
+        DestinationMetaRules::assertRequired(
+            (array) data_get($validated, 'destinations', []),
+            $workspace->id,
         );
 
         try {
