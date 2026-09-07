@@ -7,6 +7,7 @@ namespace App\Http\Middleware\App;
 use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Enums\Auth\SocialAuthProvider;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\User\Locale;
 use App\Http\Resources\App\HandleInertiaRequests\AuthAccountResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthPlanResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthUserResource;
@@ -63,10 +64,7 @@ class HandleInertiaRequests extends Middleware
             'applicationUrl' => config('app.url'),
             'env' => config('app.env'),
             'locale' => app()->getLocale(),
-            'languages' => collect(config('languages.available'))->map(fn ($name, $code) => [
-                'code' => $code,
-                'name' => $name,
-            ])->values()->all(),
+            'languages' => Locale::options(),
             'aiEnabled' => filled(config('ai.providers.'.config('ai.default').'.key')),
             'selfHosted' => $isSelfHosted,
             'allowMultipleSocialAccounts' => (bool) config('trypost.allow_multiple_social_accounts'),

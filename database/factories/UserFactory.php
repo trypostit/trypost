@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Enums\User\Locale;
 use App\Models\Account;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -47,6 +48,7 @@ class UserFactory extends Factory
             'utm_content' => null,
             'registration_ip' => null,
             'persona' => null,
+            'locale' => Locale::DEFAULT,
         ];
     }
 

@@ -333,3 +333,32 @@ to `Connected`, because it does so after a real `verify()` call. A successful
 token refresh is not that proof — the refresh token being valid says nothing
 about whether publishing still works — so `RefreshSocialToken` must not promote,
 even though it would let a paused repurpose resume sooner.
+
+## UI locale (`users.locale`)
+
+The user's UI language lives in the database, on `users.locale`, cast to
+`App\Enums\User\Locale`. That enum is the single source of truth for the
+supported locales — there is no `config/languages.php` any more, and a case is
+only valid if `lang/<value>` exists (`LocalizationParityTest` enforces both that
+and parity with `ContentLanguage`).
+
+- **There is no `locale` cookie.** The app stored the locale in the database
+  until March 2026, moved it to a forever cookie, and moved it back here. Do not
+  reintroduce the cookie as a "guest fallback": a second source of truth is what
+  made the switcher and the register page disagree the first time.
+- `App\Support\LocaleResolver` is the only place that decides the active locale.
+  For an authenticated user it is `$user->locale`, full stop. For a guest it is
+  the submitted `locale`, then the flashed `old('locale')`, then a negotiated
+  `Accept-Language`, then `Locale::DEFAULT`. The first two steps exist for the
+  register page's language picker — the submitted value is what keeps the
+  **backend validation messages** in the language the visitor picked, and the old
+  input is what keeps the re-rendered form in it after a failed submit. Drop
+  either and a Portuguese visitor gets English error messages.
+- `locale` is `nullable` on `RegisterRequest` on purpose: the picker is a
+  convenience, and a missing field falls back to negotiation rather than
+  refusing the signup. An *unsupported* value is still rejected.
+- Google and GitHub signups always store `Locale::DEFAULT`. They have no picker,
+  and the OAuth callback's `Accept-Language` is the provider's redirect, not a
+  reliable signal about the person.
+- The picker translates the page client-side (`loadLanguageAsync`), so choosing a
+  language never costs a round trip; the value only reaches the server on submit.

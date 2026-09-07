@@ -33,17 +33,12 @@ import {
     create as createWorkspaceRoute,
     switchMethod,
 } from '@/routes/app/workspaces';
-import type { User } from '@/types';
+import type { Language, User } from '@/types';
 
 interface Workspace {
     id: string;
     name: string;
     logo_url: string | null;
-}
-
-interface Language {
-    code: string;
-    name: string;
 }
 
 const props = defineProps<{

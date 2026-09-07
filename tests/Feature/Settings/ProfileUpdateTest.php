@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\User\Locale;
 use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\Account;
@@ -61,41 +62,39 @@ test('email verification status is unchanged when the email address is unchanged
     expect($user->refresh()->email_verified_at)->not->toBeNull();
 });
 
-test('user can update their locale via cookie', function () {
+test('user can switch the UI locale', function (string $locale, Locale $expected) {
     $user = User::factory()->create();
 
     $response = $this
         ->actingAs($user)
         ->from(route('app.posts.index'))
         ->put(route('app.profile.language'), [
-            'locale' => 'es',
-        ]);
-
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect(route('app.posts.index'));
-
-    $response->assertCookieNotExpired('locale');
-});
-
-test('user can switch the UI locale to Ukrainian', function () {
-    $user = User::factory()->create();
-
-    $response = $this
-        ->actingAs($user)
-        ->from(route('app.posts.index'))
-        ->put(route('app.profile.language'), [
-            'locale' => 'uk',
+            'locale' => $locale,
         ]);
 
     $response
         ->assertSessionHasNoErrors()
         ->assertRedirect(route('app.posts.index'))
-        ->assertCookieNotExpired('locale');
+        ->assertCookieMissing('locale');
+
+    expect($user->refresh()->locale)->toBe($expected);
+})->with([
+    ['es', Locale::Spanish],
+    ['uk', Locale::Ukrainian],
+    ['pt-BR', Locale::PortugueseBrazil],
+]);
+
+test('the stored locale drives the UI on the next request', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->put(route('app.profile.language'), ['locale' => 'ja']);
+    $this->actingAs($user)->get(route('app.posts.index'));
+
+    expect(app()->getLocale())->toBe('ja');
 });
 
 test('user cannot update locale with invalid code', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['locale' => Locale::English]);
 
     $response = $this
         ->actingAs($user)
@@ -104,6 +103,8 @@ test('user cannot update locale with invalid code', function () {
         ]);
 
     $response->assertSessionHasErrors('locale');
+
+    expect($user->refresh()->locale)->toBe(Locale::English);
 });
 
 test('user can delete their account', function () {

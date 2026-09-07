@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { Form, Head, usePage } from '@inertiajs/vue3';
 import { IconEye, IconEyeOff, IconMail } from '@tabler/icons-vue';
-import { computed, ref } from 'vue';
+import { loadLanguageAsync } from 'laravel-vue-i18n';
+import { computed, ref, watch } from 'vue';
 
 import LegalLinks from '@/components/auth/LegalLinks.vue';
 import SocialLogin from '@/components/auth/SocialLogin.vue';
 import InputError from '@/components/InputError.vue';
+import LanguagePicker from '@/components/LanguagePicker.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,10 +22,13 @@ import {
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
+import type { ContentLanguageOption, Language } from '@/types';
 
-defineProps<{
+const props = defineProps<{
     email?: string | null;
     invite?: string | null;
+    /** The locale the account is created with, resolved by LocaleResolver. */
+    locale: string;
 }>();
 
 const showPassword = ref(false);
@@ -39,6 +44,33 @@ const hasSocial = computed(
 // With no social providers the email form is the only way to sign up, so it
 // stays visible; otherwise it is revealed by the "Sign up with email" toggle.
 const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value);
+
+const languages = computed<Language[]>(() => page.props.languages as Language[]);
+
+const languageOptions = computed<ContentLanguageOption[]>(() =>
+    languages.value.map((language) => ({
+        value: language.code,
+        label: language.name,
+    })),
+);
+
+const selectedLocale = ref<string | null>(props.locale);
+
+// The picked language is what the account is created with, so the page switches
+// to it right away — including the backend validation messages, which the
+// submitted `locale` resolves on the server.
+watch(selectedLocale, async (locale) => {
+    if (!locale) {
+        return;
+    }
+
+    await loadLanguageAsync(locale);
+
+    document.documentElement.lang = locale;
+    document.documentElement.dir =
+        languages.value.find((language) => language.code === locale)?.dir ??
+        'ltr';
+});
 </script>
 
 <template>
@@ -151,10 +183,23 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
                             <InputError :message="errors.password" />
                         </div>
 
+                        <div class="grid gap-2">
+                            <Label>{{ $t('auth.register.language') }}</Label>
+                            <LanguagePicker
+                                v-model="selectedLocale"
+                                :options="languageOptions"
+                                :placeholder="$t('auth.register.language_placeholder')"
+                                :search-placeholder="$t('auth.register.language_search')"
+                                :empty-text="$t('auth.register.language_empty')"
+                            />
+                            <input type="hidden" name="locale" :value="selectedLocale" />
+                            <InputError :message="errors.locale" />
+                        </div>
+
                         <Button
                             type="submit"
                             class="mt-2 w-full"
-                            tabindex="4"
+                            tabindex="5"
                             :disabled="processing"
                             data-test="register-user-button"
                         >
@@ -169,7 +214,7 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
                     <TextLink
                         :href="login()"
                         class="underline underline-offset-4"
-                        :tabindex="5"
+                        :tabindex="6"
                         >{{ $t('auth.register.log_in') }}</TextLink
                     >
                 </div>

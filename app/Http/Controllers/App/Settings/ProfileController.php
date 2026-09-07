@@ -8,6 +8,7 @@ use App\Actions\User\DeleteUser;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Settings\ProfileDeleteRequest;
 use App\Http\Requests\App\Settings\ProfileUpdateRequest;
+use App\Http\Requests\App\Settings\UpdateLanguageRequest;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -69,15 +70,11 @@ class ProfileController extends Controller
         return back();
     }
 
-    public function updateLanguage(Request $request): RedirectResponse
+    public function updateLanguage(UpdateLanguageRequest $request): RedirectResponse
     {
-        $request->validate([
-            'locale' => ['required', 'string', 'in:'.implode(',', array_keys(config('languages.available')))],
-        ]);
+        $request->user()->update(['locale' => $request->validated('locale')]);
 
-        return back()->withCookie(
-            cookie()->forever('locale', $request->locale, '/', config('session.domain'))
-        );
+        return back();
     }
 
     public function destroy(ProfileDeleteRequest $request): RedirectResponse
