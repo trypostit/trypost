@@ -64,3 +64,28 @@ test('the preview renders every mailable in the requested locale', function () {
         ->toContain(__('mail.layout.tagline', [], 'ja'))
         ->not->toContain(__('mail.layout.tagline', [], 'en'));
 });
+
+test('the preview can be limited to specific templates', function () {
+    $this->artisan('mail:preview', [
+        'email' => 'preview@example.com',
+        '--locale' => Locale::PortugueseBrazil->value,
+        '--only' => ['password-reset', 'email-verification'],
+    ])->assertSuccessful();
+
+    $emails = capturedPreviewEmails();
+
+    expect($emails)->toHaveCount(2)
+        ->toHaveKeys([
+            __('mail.password_reset.subject', [], 'pt-BR'),
+            __('mail.email_verification.subject', [], 'pt-BR'),
+        ]);
+});
+
+test('an unknown slug sends nothing rather than everything', function () {
+    $this->artisan('mail:preview', [
+        'email' => 'preview@example.com',
+        '--only' => ['does-not-exist'],
+    ])->assertSuccessful();
+
+    expect(capturedPreviewEmails())->toBeEmpty();
+});

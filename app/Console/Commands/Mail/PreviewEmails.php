@@ -47,7 +47,8 @@ class PreviewEmails extends Command
 {
     protected $signature = 'mail:preview
         {email : The address every email is sent to}
-        {--locale= : Locale to render in (defaults to the application default)}';
+        {--locale= : Locale to render in (defaults to the application default)}
+        {--only=* : Template slugs to send instead of all of them (e.g. --only=password-reset)}';
 
     protected $description = 'Send a sample of every application email to one address';
 
@@ -56,7 +57,7 @@ class PreviewEmails extends Command
         $email = (string) $this->argument('email');
         $locale = Locale::tryFrom((string) $this->option('locale')) ?? Locale::DEFAULT;
 
-        $this->components->info("Sending every email to {$email} in {$locale->value} ({$locale->label()})");
+        $this->components->info("Sending to {$email} in {$locale->value} ({$locale->label()})");
 
         DB::beginTransaction();
 
@@ -74,6 +75,21 @@ class PreviewEmails extends Command
         $this->components->info("{$sent} emails sent. Sample records were rolled back.");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The slugs the run is limited to, or an empty array for every template.
+     *
+     * @return array<int, string>
+     */
+    private function only(): array
+    {
+        return array_values(array_filter((array) $this->option('only')));
+    }
+
+    private function wants(string $slug): bool
+    {
+        return $this->only() === [] || in_array($slug, $this->only(), true);
     }
 
     private function sendAll(string $email, Locale $locale): int
@@ -130,6 +146,10 @@ class PreviewEmails extends Command
         $sent = 0;
 
         foreach ($mailables as $slug => $mailable) {
+            if (! $this->wants($slug)) {
+                continue;
+            }
+
             $this->send($email, $locale, $slug, $mailable);
             $sent++;
         }
@@ -142,6 +162,10 @@ class PreviewEmails extends Command
         ];
 
         foreach ($notifications as $slug => $notification) {
+            if (! $this->wants($slug)) {
+                continue;
+            }
+
             // The view is rendered inside the locale too, not just built there:
             // `toMail()` only resolves the subject, and `render()` picks up
             // whatever locale is active when it runs.
