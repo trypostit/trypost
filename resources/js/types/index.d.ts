@@ -144,6 +144,7 @@ export interface Language {
     code: string;
     name: string;
     dir: string;
+    flag: string;
 }
 
 export interface ContentLanguageOption {

@@ -18,12 +18,17 @@ test('only Arabic is right to left', function () {
     }
 });
 
-test('options expose the code, native name and direction of every case', function () {
-    expect(Locale::options())
-        ->toHaveCount(count(Locale::cases()))
-        ->and(Locale::options()[0])
-        ->toBe(['code' => 'en', 'name' => 'English', 'dir' => 'ltr']);
+test('options expose the code, native name, direction and flag of every case', function () {
+    expect(Locale::options())->toHaveCount(count(Locale::cases()));
+
+    expect(Locale::options()[0])
+        ->toMatchArray(['code' => 'en', 'name' => 'English', 'dir' => 'ltr'])
+        ->and(Locale::options()[0]['flag'])->toEndWith('/images/flags/US.svg');
 });
+
+test('every case points at a flag file that actually ships', function (Locale $locale) {
+    expect(public_path("images/flags/{$locale->flag()}.svg"))->toBeFile();
+})->with(Locale::cases());
 
 test('resolves a language tag to a supported locale', function (string $tag, ?Locale $expected) {
     expect(Locale::fromTag($tag))->toBe($expected);

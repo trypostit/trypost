@@ -46,7 +46,6 @@ const select = (code: string) => {
                 :aria-expanded="open"
                 :disabled="disabled"
                 class="w-full justify-between font-normal"
-                data-testid="language-picker"
             >
                 <span :class="selectedLabel ? '' : 'text-muted-foreground'">
                     {{ selectedLabel || placeholder }}
@@ -65,7 +64,6 @@ const select = (code: string) => {
                             v-for="option in options"
                             :key="option.value"
                             :value="option.value"
-                            :data-testid="`language-option-${option.value}`"
                             @select="select(option.value)"
                         >
                             {{ option.label }}

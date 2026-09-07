@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useGuestLocale } from '@/composables/useGuestLocale';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import { store } from '@/routes/password';
 
@@ -14,6 +15,8 @@ const props = defineProps<{
     token: string;
     email: string;
 }>();
+
+const { locale } = useGuestLocale();
 
 const inputEmail = ref(props.email);
 </script>
@@ -31,6 +34,8 @@ const inputEmail = ref(props.email);
             :reset-on-success="['password', 'password_confirmation']"
             v-slot="{ errors, processing }"
         >
+            <input type="hidden" name="locale" :value="locale" />
+
             <div class="grid gap-6">
                 <div class="grid gap-2">
                     <Label for="email">{{ $t('auth.reset_password.email') }}</Label>

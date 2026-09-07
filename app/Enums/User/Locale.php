@@ -61,6 +61,35 @@ enum Locale: string
     }
 
     /**
+     * The ISO 3166-1 alpha-2 code of the flag shown next to the language in the
+     * switcher, matching a file in `public/images/flags`.
+     *
+     * A flag is a country, not a language, so these are the most recognisable
+     * stand-in rather than a statement about where the language is spoken.
+     */
+    public function flag(): string
+    {
+        return match ($this) {
+            self::English => 'US',
+            self::Ukrainian => 'UA',
+            self::PortugueseBrazil => 'BR',
+            self::Spanish => 'ES',
+            self::French => 'FR',
+            self::German => 'DE',
+            self::Italian => 'IT',
+            self::Dutch => 'NL',
+            self::Polish => 'PL',
+            self::Greek => 'GR',
+            self::Japanese => 'JP',
+            self::Korean => 'KR',
+            self::Chinese => 'CN',
+            self::Russian => 'RU',
+            self::Turkish => 'TR',
+            self::Arabic => 'SA',
+        };
+    }
+
+    /**
      * The text direction (`ltr` or `rtl`) for the document root when this is the
      * active locale — only Arabic is written right to left.
      */
@@ -162,7 +191,7 @@ enum Locale: string
     /**
      * The language switcher options, in the order the cases are declared.
      *
-     * @return array<int, array{code: string, name: string, dir: string}>
+     * @return array<int, array{code: string, name: string, dir: string, flag: string}>
      */
     public static function options(): array
     {
@@ -171,6 +200,7 @@ enum Locale: string
                 'code' => $locale->value,
                 'name' => $locale->label(),
                 'dir' => $locale->direction(),
+                'flag' => asset("images/flags/{$locale->flag()}.svg"),
             ],
             self::cases(),
         );

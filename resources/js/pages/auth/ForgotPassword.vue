@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useGuestLocale } from '@/composables/useGuestLocale';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import { login } from '@/routes';
 import { email } from '@/routes/password';
@@ -14,6 +15,8 @@ import { email } from '@/routes/password';
 defineProps<{
     status?: string;
 }>();
+
+const { locale } = useGuestLocale();
 </script>
 
 <template>
@@ -32,6 +35,8 @@ defineProps<{
 
         <div class="space-y-6">
             <Form v-bind="email.form()" v-slot="{ errors, processing }">
+                <input type="hidden" name="locale" :value="locale" />
+
                 <div class="grid gap-2">
                     <Label for="email">{{ $t('auth.forgot_password.email') }}</Label>
                     <Input

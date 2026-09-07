@@ -8,7 +8,6 @@ use App\Actions\User\CreateUser;
 use App\Http\Controllers\Auth\Concerns\PreservesAttributionParameters;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Auth\RegisterRequest;
-use App\Support\LocaleResolver;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,7 +26,6 @@ class RegisteredUserController extends Controller
         return Inertia::render('auth/Register', [
             'email' => $request->query('email'),
             'invite' => $request->query('invite'),
-            'locale' => LocaleResolver::resolve($request)->value,
         ]);
     }
 
