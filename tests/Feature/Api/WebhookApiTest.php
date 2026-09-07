@@ -371,11 +371,11 @@ test('rotate secret returns a new signing secret', function () {
         ->not->toBe('whsec_oldsecretoldsecretoldsecre');
 });
 
-test('list logs paginates at 15', function () {
+test('list logs paginates at the configured page size', function () {
     $webhook = Webhook::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]);
-    WebhookLog::factory()->count(16)->create([
+    WebhookLog::factory()->count(30)->create([
         'webhook_id' => $webhook->id,
     ]);
 
@@ -386,8 +386,8 @@ test('list logs paginates at 15', function () {
         ['HTTP_HOST' => 'api.trypost.test']
     )
         ->assertOk()
-        ->assertJsonCount(15, 'data')
-        ->assertJsonPath('meta.per_page', 15)
+        ->assertJsonCount((int) config('app.pagination.default'), 'data')
+        ->assertJsonPath('meta.per_page', (int) config('app.pagination.default'))
         ->assertJsonPath('data.0.event_type', EventType::PostPublished->value);
 });
 

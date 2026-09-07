@@ -118,7 +118,7 @@ test('the index lists the workspace repurposes', function () {
         ->getJson(route('api.repurposes.index'))
         ->assertOk()
         ->assertJsonCount(2, 'data')
-        ->assertJsonPath('meta.per_page', 15)
+        ->assertJsonPath('meta.per_page', (int) config('app.pagination.default'))
         ->assertJsonPath('data.0.source_account.id', $this->source->id);
 });
 
@@ -167,13 +167,13 @@ test('items are paginated at the documented page size', function () {
         'source_social_account_id' => $this->source->id,
     ]);
 
-    RepurposeItem::factory()->count(20)->for($repurpose)->create(['status' => ItemStatus::Published]);
+    RepurposeItem::factory()->count(30)->for($repurpose)->create(['status' => ItemStatus::Published]);
 
     $this->withHeaders(apiHeaders($this->token))
         ->getJson(route('api.repurposes.items', $repurpose))
         ->assertOk()
-        ->assertJsonCount(15, 'data')
-        ->assertJsonPath('meta.total', 20);
+        ->assertJsonCount((int) config('app.pagination.default'), 'data')
+        ->assertJsonPath('meta.total', 30);
 });
 
 test('templates and source formats are listed', function () {

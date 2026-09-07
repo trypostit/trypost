@@ -27,15 +27,12 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RepurposeController extends Controller
 {
-    /** The public API's page size is a documented contract, not the app default. */
-    private const PAGE_SIZE = 15;
-
     public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Repurpose::class);
 
         return RepurposeResource::collection(
-            ListRepurposes::query($request->user()->currentWorkspace)->paginate(self::PAGE_SIZE),
+            ListRepurposes::execute($request->user()->currentWorkspace),
         );
     }
 
@@ -110,7 +107,7 @@ class RepurposeController extends Controller
         $this->authorize('view', $repurpose);
 
         return RepurposeItemResource::collection(
-            ListRepurposeItems::query($repurpose)->paginate(self::PAGE_SIZE),
+            ListRepurposeItems::execute($repurpose),
         );
     }
 

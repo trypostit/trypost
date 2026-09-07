@@ -104,7 +104,7 @@ class WebhookController extends Controller
 
         $logs = $webhook->logs()
             ->orderByDesc('created_at')
-            ->paginate(15);
+            ->paginate((int) config('app.pagination.default'));
 
         return WebhookLogResource::collection($logs);
     }
