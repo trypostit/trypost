@@ -483,3 +483,21 @@ test('the stored error never carries the signed source url', function () {
 
     expect($item->fresh()->error)->not->toContain('SECRETSIG');
 });
+
+test('a redelivered job does not replicate an item that was skipped', function () {
+    $item = repurposeWithTwoDestinations();
+    fakeVideoDownload();
+
+    // Skipped items carry no posts, so the later "already has posts" guards do
+    // not catch them. Only the terminal check does — without it, a video that
+    // was deliberately skipped (already published through TryPost, or with no
+    // downloadable file) gets replicated on the next delivery of the job.
+    $item->update(['status' => ItemStatus::Skipped, 'reason' => ItemReason::PublishedViaTrypost]);
+
+    (new ProcessRepurposeItem($item->fresh(), REPURPOSE_VIDEO_URL, 'caption'))
+        ->handle(app(MediaAttacher::class), app(CaptionAdapter::class));
+
+    expect(Post::query()->where('repurpose_item_id', $item->id)->count())->toBe(0)
+        ->and($item->fresh()->status)->toBe(ItemStatus::Skipped)
+        ->and($item->fresh()->reason)->toBe(ItemReason::PublishedViaTrypost);
+});
