@@ -70,4 +70,16 @@ class Repurpose extends Model
     {
         return $this->hasMany(RepurposeItem::class);
     }
+
+    public function hasDestination(string $socialAccountId): bool
+    {
+        return collect($this->destinations)
+            ->contains(fn (array $destination): bool => data_get($destination, 'social_account_id') === $socialAccountId);
+    }
+
+    public function dependsOn(SocialAccount $account): bool
+    {
+        return $this->source_social_account_id === $account->id
+            || $this->hasDestination($account->id);
+    }
 }

@@ -307,9 +307,7 @@ class SocialController extends Controller
         return Repurpose::query()
             ->where('workspace_id', $account->workspace_id)
             ->get()
-            ->filter(fn (Repurpose $repurpose): bool => $repurpose->source_social_account_id === $account->id
-                || collect($repurpose->destinations)
-                    ->contains(fn (array $destination): bool => data_get($destination, 'social_account_id') === $account->id))
+            ->filter(fn (Repurpose $repurpose): bool => $repurpose->dependsOn($account))
             ->pluck('status', 'id');
     }
 

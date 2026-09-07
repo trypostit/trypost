@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\ItemStatus;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
+use App\Enums\SocialAccount\Platform;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
@@ -74,4 +76,38 @@ test('the database refuses a duplicate source and format for one workspace', fun
         'source_social_account_id' => $repurpose->source_social_account_id,
         'source_format' => SourceFormat::Reel,
     ]))->toThrow(QueryException::class);
+});
+
+test('a repurpose knows which accounts it depends on', function () {
+    $workspace = Workspace::factory()->create();
+    $source = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
+    $destination = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::TikTok]);
+    $stranger = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Mastodon]);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'destinations' => [
+            ['social_account_id' => $destination->id, 'content_type' => ContentType::TikTokVideo->value, 'meta' => []],
+        ],
+    ]);
+
+    expect($repurpose->dependsOn($source))->toBeTrue()
+        ->and($repurpose->dependsOn($destination))->toBeTrue()
+        ->and($repurpose->dependsOn($stranger))->toBeFalse()
+        ->and($repurpose->hasDestination($destination->id))->toBeTrue()
+        ->and($repurpose->hasDestination($source->id))->toBeFalse();
+});
+
+test('a repurpose with no destinations depends only on its source', function () {
+    $workspace = Workspace::factory()->create();
+    $source = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
+    $other = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::TikTok]);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'destinations' => [],
+    ]);
+
+    expect($repurpose->dependsOn($source))->toBeTrue()
+        ->and($repurpose->dependsOn($other))->toBeFalse();
 });

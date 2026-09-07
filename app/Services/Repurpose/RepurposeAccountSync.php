@@ -148,8 +148,7 @@ class RepurposeAccountSync
         return Repurpose::query()
             ->where('workspace_id', $account->workspace_id)
             ->get()
-            ->filter(fn (Repurpose $repurpose): bool => collect($repurpose->destinations)
-                ->contains(fn (array $destination): bool => data_get($destination, 'social_account_id') === $account->id))
+            ->filter(fn (Repurpose $repurpose): bool => $repurpose->hasDestination($account->id))
             ->values();
     }
 
