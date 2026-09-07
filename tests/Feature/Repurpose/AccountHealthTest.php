@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Repurpose\ActivateRepurpose;
+use App\Actions\Repurpose\DisableRepurpose;
 use App\Actions\Repurpose\ResumeRepurpose;
 use App\Actions\Repurpose\UpdateRepurpose;
 use App\Enums\PostPlatform\ContentType;
@@ -707,4 +708,38 @@ test('a failure inside the sync never breaks the account operation', function ()
     expect(SocialAccount::query()->whereKey($account->id)->exists())->toBeFalse();
 
     Log::shouldHaveReceived('error')->withArgs(fn (string $message): bool => $message === 'Repurpose account sync failed');
+});
+
+test('turning a system-paused repurpose off clears the reason with it', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Paused,
+        'paused_reason' => PauseReason::SourceUnavailable,
+        'destinations' => [healthDestination($workspace)],
+    ]);
+
+    // The index badges a non-null reason as "stopped on its own". Carrying it
+    // into Disabled would tell the user the system did something they did.
+    $disabled = DisableRepurpose::execute($repurpose);
+
+    expect($disabled->status)->toBe(Status::Disabled)
+        ->and($disabled->paused_reason)->toBeNull();
+});
+
+test('activating clears any reason left from an earlier stop', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Disabled,
+        'paused_reason' => PauseReason::NoDestinations,
+        'destinations' => [healthDestination($workspace)],
+    ]);
+
+    $activated = ActivateRepurpose::execute($repurpose);
+
+    expect($activated->status)->toBe(Status::Active)
+        ->and($activated->paused_reason)->toBeNull();
 });
