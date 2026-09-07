@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\User\Locale;
 use App\Enums\UserWorkspace\Role;
+use App\Jobs\PostHog\SyncUser;
 use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\Invite;
@@ -11,6 +12,7 @@ use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Cashier\Subscription;
 
@@ -504,4 +506,33 @@ test('account delete cancels incomplete stripe subscriptions that are not subscr
     expect($owner->fresh())->not->toBeNull();
     expect(User::find($member->id))->not->toBeNull();
     expect(Account::find($accountId))->not->toBeNull();
+});
+
+test('switching the UI language pushes the new locale to PostHog', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Queue::fake();
+
+    $user = User::factory()->create(['locale' => Locale::English]);
+
+    $this->actingAs($user)->put(route('app.profile.language'), ['locale' => 'pt-BR']);
+
+    expect($user->refresh()->locale)->toBe(Locale::PortugueseBrazil);
+
+    Queue::assertPushed(
+        SyncUser::class,
+        fn (SyncUser $job) => $job->userId === (string) $user->id,
+    );
+});
+
+test('a rejected language change pushes nothing to PostHog', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Queue::fake();
+
+    $user = User::factory()->create(['locale' => Locale::English]);
+
+    $this->actingAs($user)
+        ->put(route('app.profile.language'), ['locale' => 'sv'])
+        ->assertSessionHasErrors('locale');
+
+    Queue::assertNotPushed(SyncUser::class);
 });

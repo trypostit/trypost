@@ -289,6 +289,33 @@ and parity with `ContentLanguage`).
 - The picker translates the page client-side (`loadLanguageAsync`), so choosing a
   language never costs a round trip; the value only reaches the server on submit.
 
+## PostHog person properties
+
+`App\Jobs\PostHog\SyncUser` is the only place that writes person properties, and
+the distinction between its two buckets is load-bearing:
+
+- **`$set_once`** — first-touch facts that must never be rewritten: `signed_up_at`
+  and the attribution keys (`utm_*`, `gclid`, `fbclid`, …). A later sync must not
+  overwrite where a user originally came from.
+- **Top level** — current state, overwritten on every sync: `$email`, `$name`, and
+  `locale`.
+
+`locale` mirrors `users.locale` and is what the PostHog email automations (the
+onboarding cadence and friends) read to decide which translation to send, so it
+has to reflect the language the user picked *now* — never `$set_once`. Anything
+that changes `users.locale` must dispatch `SyncUser`; `ProfileController@updateLanguage`
+does, and registration already does via `CreateUser`.
+
+Do not reach for `$browser_language` / `$browser_language_prefix` instead. They
+are captured automatically by posthog-js but only as **event** properties on
+`$pageview`, so they cannot segment a person or feed an automation — and they
+report the browser's language at that pageview, not the language the user chose.
+
+Before adding a person property, check what the project already has with the
+PostHog MCP (`read-data-schema` with `{"kind": "entity_properties", "entity":
+"person"}`) rather than guessing a name; overwriting an existing property is
+silent and retroactive.
+
 ## Emails (Maizzle + i18n)
 
 **Every email the app sends is fully translated into all 16 supported locales,
