@@ -433,3 +433,39 @@ test('an item already in flight still runs after its repurpose is paused', funct
 
     expect($item->fresh()->status)->toBe(ItemStatus::Drafted);
 });
+
+test('an exhausted publish-mode item leaves no orphan drafts behind', function () {
+    $item = repurposeWithTwoDestinations();
+
+    // What an attempt that died after creating its posts leaves behind.
+    $post = Post::factory()->create([
+        'workspace_id' => $item->repurpose->workspace_id,
+        'repurpose_item_id' => $item->id,
+        'status' => PostStatus::Draft,
+    ]);
+
+    (new ProcessRepurposeItem($item, REPURPOSE_VIDEO_URL, 'caption'))
+        ->failed(new RuntimeException('gave up'));
+
+    expect(Post::query()->whereKey($post->id)->exists())->toBeFalse()
+        ->and($item->fresh()->status)->toBe(ItemStatus::Failed);
+});
+
+test('an exhausted draft-mode item keeps its drafts and says it drafted them', function () {
+    $item = repurposeWithTwoDestinations();
+    $item->repurpose->update(['publish_mode' => PublishMode::Draft]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $item->repurpose->workspace_id,
+        'repurpose_item_id' => $item->id,
+        'status' => PostStatus::Draft,
+    ]);
+
+    // In draft mode the draft is the deliverable, so a late failure must not
+    // throw away work the user can already see and publish.
+    (new ProcessRepurposeItem($item, REPURPOSE_VIDEO_URL, 'caption'))
+        ->failed(new RuntimeException('gave up'));
+
+    expect(Post::query()->whereKey($post->id)->exists())->toBeTrue()
+        ->and($item->fresh()->status)->toBe(ItemStatus::Drafted);
+});

@@ -140,8 +140,28 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
         $this->item->update(['status' => ItemStatus::Published, 'reason' => null, 'error' => null]);
     }
 
+    /**
+     * An attempt that died after creating some of its posts leaves them behind
+     * as drafts. Every retry clears them on the way in, but the last one has no
+     * successor — so without this they sit in the calendar with nothing
+     * explaining where they came from.
+     *
+     * In draft mode the draft is the deliverable, not a leftover: the user can
+     * already see and publish it, so a late failure keeps it and the item says
+     * what actually happened.
+     */
     public function failed(Throwable $exception): void
     {
+        $drafts = $this->item->posts()->where('status', PostStatus::Draft)->get();
+
+        if ($drafts->isNotEmpty() && $this->item->repurpose?->publish_mode === PublishMode::Draft) {
+            $this->item->update(['status' => ItemStatus::Drafted, 'reason' => null, 'error' => null]);
+
+            return;
+        }
+
+        $drafts->each(fn (Post $post) => $post->forceDelete());
+
         $this->item->update([
             'status' => ItemStatus::Failed,
             'reason' => $exception instanceof SourceDownloadException ? ItemReason::DownloadFailed : $this->item->reason,
