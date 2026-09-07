@@ -82,9 +82,11 @@ class RepurposeAccountSync
     }
 
     /**
-     * Active only. A repurpose the user paused deliberately must not acquire a
-     * system reason — that would make it eligible for auto-resume and turn back
-     * on something they turned off.
+     * Active only, so the transition is not handed rows it would reject anyway.
+     * The guarantee itself lives in pause()'s `from` list: a repurpose the user
+     * paused deliberately must not acquire a system reason, or auto-resume would
+     * turn back on something they turned off. Both hold; only this one is an
+     * optimisation.
      *
      * @return Collection<int, Repurpose>
      */
