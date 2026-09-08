@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
+import { IconArrowLeft } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
+import AuthLanguageSwitcher from '@/components/auth/AuthLanguageSwitcher.vue';
 import Toast from '@/components/Toast.vue';
+import { Button } from '@/components/ui/button';
+import WelcomeWorkspacePreview from '@/components/welcome/WelcomeWorkspacePreview.vue';
 import {
     connect as connectRoute,
     goals as goalsRoute,
@@ -10,6 +14,7 @@ import {
     plan as planRoute,
     referralSource as referralSourceRoute,
 } from '@/routes/app/welcome';
+import type { WelcomeSummary } from '@/types';
 
 const maxWidthClass = {
     sm: 'max-w-sm',
@@ -33,112 +38,203 @@ const props = withDefaults(
         step?: number;
         totalSteps?: number;
         size?: MaxWidthSize;
+        /** Center the step in its column instead of aligning it to the start. */
+        centered?: boolean;
     }>(),
     {
         title: undefined,
         description: undefined,
         step: undefined,
         totalSteps: 5,
-        size: 'xl',
+        size: '3xl',
+        centered: false,
     },
 );
 
-const stepRoutes = computed(() => [
-    personaRoute(),
-    goalsRoute(),
-    referralSourceRoute(),
-    connectRoute(),
-    planRoute(),
+const page = usePage();
+
+// Only the five welcome steps share a summary; the holding screen for
+// members has nothing to preview, so it renders as a single centered column.
+const summary = computed(
+    () => (page.props.welcome as WelcomeSummary | undefined) ?? null,
+);
+
+const steps = computed(() => [
+    { key: 'persona', route: personaRoute() },
+    { key: 'goals', route: goalsRoute() },
+    { key: 'referral_source', route: referralSourceRoute() },
+    { key: 'connect', route: connectRoute() },
+    { key: 'plan', route: planRoute() },
 ]);
 
-const canNavigateTo = (stepNumber: number): boolean =>
-    props.step !== undefined && stepNumber < props.step;
+const previousStep = computed(() =>
+    props.step !== undefined && props.step > 1
+        ? steps.value[props.step - 2]
+        : null,
+);
 </script>
 
 <template>
     <div
-        class="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10"
+        :class="[
+            'min-h-svh bg-background',
+            summary
+                ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_28rem] xl:grid-cols-[minmax(0,1fr)_32rem] 2xl:grid-cols-[minmax(0,1fr)_36rem]'
+                : '',
+        ]"
     >
-        <div class="w-full" :class="maxWidthClass[size]">
-            <div class="flex flex-col gap-8">
-                <div class="flex flex-col items-center gap-4">
-                    <Link
-                        :href="personaRoute()"
-                        class="flex flex-col items-center gap-2 font-medium"
+        <div class="relative flex min-h-svh flex-col">
+            <header
+                class="flex items-center justify-between gap-4 px-6 pt-6 md:px-10 lg:px-14"
+            >
+                <nav
+                    v-if="step !== undefined"
+                    class="flex items-center gap-3"
+                    :aria-label="$t('welcome.progress')"
+                >
+                    <span
+                        class="text-sm font-semibold whitespace-nowrap text-muted-foreground tabular-nums"
                     >
-                        <img
-                            src="/images/trypost/logo-light.png"
-                            alt="TryPost"
-                            class="h-8 w-auto dark:hidden"
-                        />
-                        <img
-                            src="/images/trypost/logo-dark.png"
-                            alt="TryPost"
-                            class="hidden h-8 w-auto dark:block"
-                        />
-                    </Link>
-
-                    <nav
-                        v-if="step !== undefined"
-                        class="flex items-center gap-2"
-                        :aria-label="$t('welcome.progress')"
-                    >
-                        <template
-                            v-for="stepNumber in totalSteps"
-                            :key="stepNumber"
+                        {{
+                            $t('welcome.step_of', {
+                                step: String(step),
+                                total: String(totalSteps),
+                            })
+                        }}
+                    </span>
+                    <ol class="flex items-center gap-1.5">
+                        <li
+                            v-for="(entry, index) in steps"
+                            :key="entry.key"
+                            class="flex h-6 items-center"
+                            :title="$t(`welcome.steps.${entry.key}`)"
+                            :data-testid="`welcome-step-${index + 1}`"
+                            :aria-current="
+                                index + 1 === step ? 'step' : undefined
+                            "
+                            :aria-label="
+                                index + 1 === step
+                                    ? $t('welcome.step_current', {
+                                          step: String(index + 1),
+                                      })
+                                    : undefined
+                            "
                         >
-                            <Link
-                                v-if="canNavigateTo(stepNumber)"
-                                :href="stepRoutes[stepNumber - 1]"
-                                class="flex h-6 w-8 items-center"
-                                :aria-label="
-                                    $t('welcome.go_to_step', {
-                                        step: String(stepNumber),
-                                    })
-                                "
-                                :data-testid="`welcome-step-${stepNumber}`"
-                            >
-                                <span
-                                    class="h-2 w-full rounded-full bg-primary transition-opacity hover:opacity-70 motion-reduce:transition-none"
-                                />
-                            </Link>
-                            <div
-                                v-else
-                                class="flex h-6 w-8 items-center"
-                                :data-testid="`welcome-step-${stepNumber}`"
-                                :aria-current="
-                                    stepNumber === step ? 'step' : undefined
-                                "
-                                :aria-label="
-                                    stepNumber === step
-                                        ? $t('welcome.step_current', {
-                                              step: String(stepNumber),
-                                          })
-                                        : undefined
-                                "
-                            >
-                                <span
-                                    :class="[
-                                        'h-2 w-full rounded-full transition-colors',
-                                        stepNumber <= step
-                                            ? 'bg-primary'
-                                            : 'bg-muted',
-                                    ]"
-                                />
-                            </div>
-                        </template>
-                    </nav>
+                            <span
+                                :class="[
+                                    'h-1.5 w-6 rounded-full transition-colors sm:w-8',
+                                    index + 1 <= step
+                                        ? 'bg-primary'
+                                        : 'bg-foreground/15',
+                                ]"
+                            />
+                        </li>
+                    </ol>
+                </nav>
+                <span v-else />
 
-                    <div class="space-y-2 text-center">
-                        <h1 class="text-2xl font-bold">{{ title }}</h1>
-                        <p class="text-muted-foreground">
+                <AuthLanguageSwitcher />
+            </header>
+
+            <main
+                :class="[
+                    'flex flex-1 flex-col px-6 pt-10 pb-10 md:px-10 lg:px-14 lg:pt-14',
+                    summary ? '' : 'items-center',
+                ]"
+            >
+                <div
+                    :class="[
+                        'my-auto w-full',
+                        maxWidthClass[size],
+                        centered || !summary ? 'mx-auto text-center' : '',
+                    ]"
+                >
+                    <div
+                        v-if="title || description"
+                        class="flex flex-col gap-3"
+                    >
+                        <h1 v-if="title" class="h3 text-foreground">
+                            {{ title }}
+                        </h1>
+                        <p
+                            v-if="description"
+                            :class="[
+                                'text-base text-pretty text-muted-foreground',
+                                centered || !summary
+                                    ? 'mx-auto max-w-xl'
+                                    : 'max-w-prose',
+                            ]"
+                        >
                             {{ description }}
                         </p>
                     </div>
+
+                    <div class="mt-8 flex flex-col gap-8">
+                        <slot />
+                    </div>
                 </div>
-                <slot />
-            </div>
+            </main>
+
+            <footer
+                v-if="$slots.actions || previousStep"
+                class="sticky bottom-0 z-10 mt-auto border-t border-foreground/10 bg-background/90 px-6 py-4 backdrop-blur-sm md:px-10 lg:px-14"
+            >
+                <div
+                    class="flex w-full flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                >
+                    <Button
+                        v-if="previousStep"
+                        as-child
+                        variant="outline"
+                        size="lg"
+                        class="w-full sm:w-auto"
+                    >
+                        <Link
+                            :href="previousStep.route"
+                            data-testid="welcome-back"
+                        >
+                            <IconArrowLeft
+                                class="size-4 rtl:rotate-180"
+                                stroke-width="2.25"
+                            />
+                            {{ $t('welcome.back') }}
+                        </Link>
+                    </Button>
+
+                    <div class="sm:ms-auto">
+                        <slot name="actions" />
+                    </div>
+                </div>
+            </footer>
+
+            <Toast />
         </div>
-        <Toast />
+
+        <aside
+            v-if="summary"
+            class="relative hidden overflow-hidden border-s-2 border-foreground bg-accent lg:sticky lg:top-0 lg:flex lg:h-svh lg:flex-col lg:justify-center lg:px-10 xl:px-14"
+        >
+            <div
+                class="pointer-events-none absolute -top-24 -right-24 size-[440px] rounded-full bg-violet-200/50 blur-3xl"
+            />
+            <div
+                class="pointer-events-none absolute -bottom-32 -left-32 size-[440px] rounded-full bg-fuchsia-200/40 blur-3xl"
+            />
+            <div
+                class="pointer-events-none absolute inset-0 opacity-[0.06]"
+                style="
+                    background-image: radial-gradient(
+                        circle,
+                        #0a0a0a 1px,
+                        transparent 1px
+                    );
+                    background-size: 28px 28px;
+                "
+            />
+
+            <div class="relative mx-auto w-full max-w-lg">
+                <WelcomeWorkspacePreview :summary="summary" :step="step" />
+            </div>
+        </aside>
     </div>
 </template>

@@ -20,7 +20,6 @@ return [
         'billed_yearly' => 'Billed annually',
         'prices' => [
             'first_month' => '$1',
-            'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -38,12 +37,13 @@ return [
         'current' => 'Current plan',
         'select' => 'Choose :plan',
         'start_first_month' => 'Start my first month for :price',
-        'first_month_then' => 'First month :first, then :price/month',
 
         'billed_yearly_total' => 'Billed annually · :price (2 months free)',
-        'socials_tagline' => 'One workspace. Post everywhere.',
-        'workspaces_tagline' => 'A workspace for every brand or client.',
+        'socials_tagline' => 'Best for creators and small brands.',
+        'workspaces_tagline' => 'Best for agencies and larger businesses.',
+        'everything_included' => 'Everything included',
         'features' => [
+            'networks_all' => 'All social networks',
             'accounts_unlimited' => 'Unlimited social accounts',
             'calendar' => 'Visual calendar with auto-publishing',
             'ai' => 'AI content: captions, images, brand voice',

@@ -20,7 +20,6 @@ return [
         'billed_yearly' => 'Rozliczane rocznie',
         'prices' => [
             'first_month' => '$1',
-            'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -38,12 +37,13 @@ return [
         'current' => 'Aktualny plan',
         'select' => 'Wybierz :plan',
         'start_first_month' => 'Zacznij pierwszy miesiąc za :price',
-        'first_month_then' => 'Pierwszy miesiąc :first, potem :price/miesiąc',
 
         'billed_yearly_total' => 'Rozliczane rocznie · :price (2 miesiące gratis)',
-        'socials_tagline' => 'Jeden workspace. Publikuj wszędzie.',
-        'workspaces_tagline' => 'Workspace na każdą markę lub klienta.',
+        'socials_tagline' => 'Dla twórców i małych marek.',
+        'workspaces_tagline' => 'Dla agencji i większych firm.',
+        'everything_included' => 'Wszystko w cenie',
         'features' => [
+            'networks_all' => 'Wszystkie sieci społecznościowe',
             'accounts_unlimited' => 'Nielimitowane konta społecznościowe',
             'calendar' => 'Wizualny kalendarz z automatyczną publikacją',
             'ai' => 'AI: podpisy, obrazy i głos marki',

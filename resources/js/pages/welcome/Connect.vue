@@ -11,11 +11,13 @@ import { Button } from '@/components/ui/button';
 import { usePageErrors } from '@/composables/usePageErrors';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
 import { store } from '@/routes/app/welcome/connect';
+import type { WelcomeSummary } from '@/types';
 import { SocialAccountStatus } from '@/types/social-account-status';
 
 const props = defineProps<{
     platforms: AvailablePlatform[];
     accounts: ConnectedAccount[];
+    welcome: WelcomeSummary;
 }>();
 
 const form = useForm({});
@@ -44,31 +46,35 @@ const submit = (): void => {
         :title="$t('welcome.connect.title')"
         :description="$t('welcome.connect.description')"
         :step="4"
-        size="7xl"
+        size="5xl"
     >
         <NetworkConnectGrid
             v-if="platforms.length > 0"
             :platforms="platforms"
             :connected-accounts="accounts"
-            grid-class="grid-cols-2 sm:grid-cols-3 xl:grid-cols-6"
+            grid-class="grid-cols-2 sm:grid-cols-3 xl:grid-cols-4"
             data-testid="welcome-connect-grid"
         />
 
-        <div class="mx-auto flex w-full max-w-sm flex-col items-center gap-3">
-            <InputError
-                data-testid="welcome-connect-error"
-                :message="errors.connect"
-            />
-            <Button as-child size="lg" class="w-full rounded-full">
-                <button
-                    type="button"
-                    data-testid="welcome-connect-continue"
-                    :disabled="form.processing || !hasConnectedAccount"
-                    @click="submit"
-                >
-                    {{ $t('welcome.continue') }}
-                </button>
-            </Button>
-        </div>
+        <template #actions>
+            <div
+                class="flex flex-col gap-2 sm:flex-row-reverse sm:items-center sm:gap-4"
+            >
+                <Button as-child size="lg" class="w-full sm:w-auto sm:min-w-48">
+                    <button
+                        type="button"
+                        data-testid="welcome-connect-continue"
+                        :disabled="form.processing || !hasConnectedAccount"
+                        @click="submit"
+                    >
+                        {{ $t('welcome.continue') }}
+                    </button>
+                </Button>
+                <InputError
+                    data-testid="welcome-connect-error"
+                    :message="errors.connect"
+                />
+            </div>
+        </template>
     </WelcomeLayout>
 </template>

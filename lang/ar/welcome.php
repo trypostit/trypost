@@ -11,8 +11,22 @@ return [
     'subscription_required_owner' => 'مالك حسابك هو :name.',
     'subscription_required_auto' => 'يتم تحديث هذه الصفحة تلقائيًا — لا حاجة لإعادة التحميل.',
     'progress' => 'تقدم الترحيب',
-    'go_to_step' => 'الانتقال إلى الخطوة :step',
     'step_current' => 'الخطوة :step (الحالية)',
+    'step_of' => 'الخطوة :step من :total',
+    'back' => 'رجوع',
+    'steps' => [
+        'persona' => 'عنك',
+        'goals' => 'أهدافك',
+        'referral_source' => 'كيف وجدتنا',
+        'connect' => 'الشبكات الاجتماعية',
+        'plan' => 'الخطة',
+    ],
+    'preview' => [
+        'heading' => 'مساحة عملك تتشكّل.',
+        'workspace' => 'مساحة عملك',
+        'pending' => 'لم يُختَر بعد',
+        'networks_empty' => 'لا توجد شبكات متصلة بعد',
+    ],
     'personas' => [
         'creator' => 'صانع محتوى',
         'freelancer' => 'مستقل',
@@ -29,7 +43,7 @@ return [
     'goals' => [
         'save_time' => 'توفير الوقت بالنشر في كل مكان دفعة واحدة',
         'ai_content' => 'إنشاء منشورات بذكاء TryPost الاصطناعي',
-        'use_mcp' => 'إنشاء منشورات عبر Claude أو ChatGPT أو Cursor',
+        'use_mcp' => 'إنشاء منشورات عبر Claude أو ChatGPT وغيرها',
         'plan_calendar' => 'التخطيط لمنشوراتي على التقويم',
         'stay_on_brand' => 'الحفاظ على اتساق كل منشور مع العلامة التجارية',
         'grow_audience' => 'تنمية جمهوري وزيادة التفاعل',
@@ -38,8 +52,8 @@ return [
         'just_exploring' => 'مجرد استكشاف في الوقت الحالي',
         'other' => 'شيء آخر',
     ],
-    'plan_title' => 'اختر خطة. كل الميزات مشمولة.',
-    'plan_description' => 'الفرق الوحيد هو عدد مساحات العمل. يمكنك التغيير لاحقًا.',
+    'plan_title' => 'اختر خطتك',
+    'plan_description' => 'تتضمن الخطتان جميع الميزات وجميع الشبكات الاجتماعية. الفرق الوحيد هو عدد مساحات العمل — ويمكنك التبديل في أي وقت.',
     'referral_source_title' => 'كيف وجدتنا؟',
     'referral_source_description' => 'يساعدنا هذا على فهم كيفية اكتشاف الأشخاص لـ TryPost.',
     'referral_source' => [

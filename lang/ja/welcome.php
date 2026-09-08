@@ -11,8 +11,22 @@ return [
     'subscription_required_owner' => 'アカウントのオーナーは :name です。',
     'subscription_required_auto' => 'このページは自動で更新されます — 再読み込みは不要です。',
     'progress' => 'ようこそ進捗',
-    'go_to_step' => 'ステップ :step へ',
     'step_current' => 'ステップ :step（現在）',
+    'step_of' => 'ステップ :step / :total',
+    'back' => '戻る',
+    'steps' => [
+        'persona' => 'あなたについて',
+        'goals' => '目標',
+        'referral_source' => '知ったきっかけ',
+        'connect' => 'SNS',
+        'plan' => 'プラン',
+    ],
+    'preview' => [
+        'heading' => 'ワークスペースが形になってきました。',
+        'workspace' => 'あなたのワークスペース',
+        'pending' => 'まだ未選択',
+        'networks_empty' => 'まだSNSが連携されていません',
+    ],
     'personas' => [
         'creator' => 'コンテンツクリエイター',
         'freelancer' => 'フリーランス',
@@ -29,7 +43,7 @@ return [
     'goals' => [
         'save_time' => 'すべての場所へ一度に投稿して時間を節約する',
         'ai_content' => 'TryPost AI で投稿を生成する',
-        'use_mcp' => 'Claude・ChatGPT・Cursor から投稿を作成する',
+        'use_mcp' => 'Claude・ChatGPT などから投稿を作成する',
         'plan_calendar' => 'カレンダーで投稿を計画する',
         'stay_on_brand' => 'すべての投稿をブランドに沿ったものにする',
         'grow_audience' => 'オーディエンスとエンゲージメントを増やす',
@@ -38,8 +52,8 @@ return [
         'just_exploring' => '今はまだ様子を見ている',
         'other' => 'その他',
     ],
-    'plan_title' => 'プランを選ぶ。機能はすべて含まれています。',
-    'plan_description' => '違いはワークスペースの数だけ。あとから変更できます。',
+    'plan_title' => 'プランを選ぶ',
+    'plan_description' => 'どちらのプランもすべての機能とすべてのSNSを含みます。違いはワークスペースの数だけ。いつでも変更できます。',
     'referral_source_title' => 'どこで私たちを知りましたか？',
     'referral_source_description' => 'これは、人々がどのように TryPost を見つけるかを理解するのに役立ちます。',
     'referral_source' => [

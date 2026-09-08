@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import { getPlatformLabel, getPlatformTheme } from '@/composables/usePlatformLogo';
+import {
+    getPlatformLabel,
+    getPlatformTheme,
+} from '@/composables/usePlatformLogo';
 
 const props = withDefaults(
     defineProps<{
@@ -9,8 +12,16 @@ const props = withDefaults(
         size?: 'xs' | 'sm' | 'md' | 'lg';
         tilt?: boolean;
         plain?: boolean;
+        /** Native title. Pass `null` when a richer Tooltip wraps this logo. */
+        title?: string | null;
     }>(),
-    { size: 'md', tilt: true, plain: false },
+    { size: 'md', tilt: true, plain: false, title: undefined },
+);
+
+const nativeTitle = computed(() =>
+    props.title === undefined
+        ? getPlatformLabel(props.platform)
+        : (props.title ?? undefined),
 );
 
 const theme = computed(() => getPlatformTheme(props.platform));
@@ -52,7 +63,7 @@ const plainImageClass = computed(
             v-if="plain"
             :src="theme.image"
             :alt="getPlatformLabel(platform)"
-            :title="getPlatformLabel(platform)"
+            :title="nativeTitle"
             :class="['rounded-full object-cover', plainImageClass]"
             loading="lazy"
         />
@@ -64,9 +75,14 @@ const plainImageClass = computed(
                 boxClass,
                 'inline-flex items-center justify-center border-2 border-foreground shadow-sm transition-transform group-hover:!rotate-0',
             ]"
-            :title="getPlatformLabel(platform)"
+            :title="nativeTitle"
         >
-            <img :src="theme.image" :alt="getPlatformLabel(platform)" :class="imageClass" loading="lazy" />
+            <img
+                :src="theme.image"
+                :alt="getPlatformLabel(platform)"
+                :class="imageClass"
+                loading="lazy"
+            />
         </span>
     </span>
 </template>

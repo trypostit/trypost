@@ -20,6 +20,7 @@ use App\Http\Requests\App\Welcome\StoreWelcomePlanRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeReferralSourceRequest;
 use App\Http\Resources\App\PlanResource;
 use App\Http\Resources\App\SocialAccountResource;
+use App\Http\Resources\App\WelcomeSummaryResource;
 use App\Models\Plan;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
@@ -37,9 +38,12 @@ class WelcomeController extends Controller
             return $redirect;
         }
 
+        $user = $request->user();
+
         return Inertia::render('welcome/Persona', [
             'personas' => array_map(fn (Persona $persona): string => $persona->value, Persona::cases()),
-            'selected' => $request->user()->persona?->value,
+            'selected' => $user->persona?->value,
+            'welcome' => WelcomeSummaryResource::make($user),
         ]);
     }
 
@@ -78,6 +82,7 @@ class WelcomeController extends Controller
         return Inertia::render('welcome/Goals', [
             'goals' => array_map(fn (Goal $goal): string => $goal->value, Goal::cases()),
             'selected' => $user->goals ?? [],
+            'welcome' => WelcomeSummaryResource::make($user),
         ]);
     }
 
@@ -116,6 +121,7 @@ class WelcomeController extends Controller
         return Inertia::render('welcome/ReferralSource', [
             'sources' => array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases()),
             'selected' => $user->referral_source?->value,
+            'welcome' => WelcomeSummaryResource::make($user),
         ]);
     }
 
@@ -151,7 +157,8 @@ class WelcomeController extends Controller
             return $redirect;
         }
 
-        $workspace = $request->user()->currentWorkspace;
+        $user = $request->user();
+        $workspace = $user->currentWorkspace;
 
         abort_unless($workspace !== null, Response::HTTP_NOT_FOUND);
 
@@ -160,6 +167,7 @@ class WelcomeController extends Controller
             'accounts' => SocialAccountResource::collection(
                 $workspace->socialAccounts()->orderBy('id')->get(),
             )->resolve(),
+            'welcome' => WelcomeSummaryResource::make($user),
         ]);
     }
 
@@ -197,6 +205,7 @@ class WelcomeController extends Controller
             'plans' => PlanResource::collection(
                 Plan::active()->orderBy('sort')->get(),
             )->resolve(),
+            'welcome' => WelcomeSummaryResource::make($request->user()),
         ]);
     }
 

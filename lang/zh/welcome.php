@@ -11,8 +11,22 @@ return [
     'subscription_required_owner' => '您的账户所有者是 :name。',
     'subscription_required_auto' => '此页面会自动更新 — 无需刷新。',
     'progress' => '欢迎进度',
-    'go_to_step' => '前往第 :step 步',
     'step_current' => '第 :step 步（当前）',
+    'step_of' => '第 :step 步，共 :total 步',
+    'back' => '返回',
+    'steps' => [
+        'persona' => '关于你',
+        'goals' => '你的目标',
+        'referral_source' => '如何找到我们',
+        'connect' => '社交网络',
+        'plan' => '套餐',
+    ],
+    'preview' => [
+        'heading' => '你的工作区正在成形。',
+        'workspace' => '你的工作区',
+        'pending' => '尚未选择',
+        'networks_empty' => '尚未连接任何网络',
+    ],
     'personas' => [
         'creator' => '内容创作者',
         'freelancer' => '自由职业者',
@@ -29,7 +43,7 @@ return [
     'goals' => [
         'save_time' => '一次发布到所有平台，节省时间',
         'ai_content' => '用 TryPost AI 生成帖子',
-        'use_mcp' => '通过 Claude、ChatGPT 或 Cursor 创建帖子',
+        'use_mcp' => '通过 Claude、ChatGPT 等创建帖子',
         'plan_calendar' => '在日历上规划我的帖子',
         'stay_on_brand' => '让每一条帖子都符合品牌调性',
         'grow_audience' => '增长我的受众和互动',
@@ -38,8 +52,8 @@ return [
         'just_exploring' => '目前只是随便看看',
         'other' => '其他需求',
     ],
-    'plan_title' => '选择套餐。所有功能都包含在内。',
-    'plan_description' => '唯一的区别是工作区数量。之后随时可以换。',
+    'plan_title' => '选择你的套餐',
+    'plan_description' => '两个套餐都包含全部功能和全部社交网络。唯一的区别是工作区数量——随时可以切换。',
     'referral_source_title' => '您是如何找到我们的？',
     'referral_source_description' => '这有助于我们了解人们是如何发现 TryPost 的。',
     'referral_source' => [

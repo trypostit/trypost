@@ -20,7 +20,6 @@ return [
         'billed_yearly' => 'فوترة سنوية',
         'prices' => [
             'first_month' => '$1',
-            'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -38,12 +37,13 @@ return [
         'current' => 'الخطة الحالية',
         'select' => 'اختر :plan',
         'start_first_month' => 'ابدأ شهري الأول مقابل :price',
-        'first_month_then' => 'الشهر الأول :first، ثم :price/شهر',
 
         'billed_yearly_total' => 'فوترة سنوية · :price (شهران مجانًا)',
-        'socials_tagline' => 'مساحة عمل واحدة. انشر في كل مكان.',
-        'workspaces_tagline' => 'مساحة عمل لكل علامة أو عميل.',
+        'socials_tagline' => 'مناسب لمنشئي المحتوى والعلامات الصغيرة.',
+        'workspaces_tagline' => 'مناسب للوكالات والأعمال الكبيرة.',
+        'everything_included' => 'كل شيء مشمول',
         'features' => [
+            'networks_all' => 'جميع الشبكات الاجتماعية',
             'accounts_unlimited' => 'حسابات اجتماعية غير محدودة',
             'calendar' => 'تقويم مرئي مع نشر تلقائي',
             'ai' => 'ذكاء اصطناعي: نصوص وصور وصوت العلامة',

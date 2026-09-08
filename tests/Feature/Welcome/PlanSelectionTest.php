@@ -7,6 +7,7 @@ use App\Enums\Plan\Slug;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Enums\User\Goal;
+use App\Enums\User\Locale;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
 use App\Enums\UserWorkspace\Role;
@@ -56,6 +57,16 @@ test('the plan step lists only active plans, ordered by sort', function () {
             ->where('plans.1.slug', Slug::Workspaces->value)
             ->where('plans.1.workspace_limit', null)
         );
+});
+
+test('the welcome plan step stores a locale change and stays on the page', function () {
+    $this->actingAs($this->user->fresh())
+        ->from(route('app.welcome.plan'))
+        ->put(route('app.profile.language'), ['locale' => 'pt-BR'])
+        ->assertRedirect(route('app.welcome.plan'))
+        ->assertCookieMissing('locale');
+
+    expect($this->user->fresh()->locale)->toBe(Locale::PortugueseBrazil);
 });
 
 test('the plan step redirects back to connect when no account is connected', function () {

@@ -11,8 +11,22 @@ return [
     'subscription_required_owner' => 'Власник вашого акаунта — :name.',
     'subscription_required_auto' => 'Ця сторінка оновлюється автоматично — оновлювати вручну не потрібно.',
     'progress' => 'Прогрес привітання',
-    'go_to_step' => 'Перейти до кроку :step',
     'step_current' => 'Крок :step (поточний)',
+    'step_of' => 'Крок :step з :total',
+    'back' => 'Назад',
+    'steps' => [
+        'persona' => 'Про вас',
+        'goals' => 'Ваші цілі',
+        'referral_source' => 'Як ви нас знайшли',
+        'connect' => 'Соцмережі',
+        'plan' => 'Тариф',
+    ],
+    'preview' => [
+        'heading' => 'Ваш workspace набуває форми.',
+        'workspace' => 'Ваш workspace',
+        'pending' => 'Ще не обрано',
+        'networks_empty' => 'Соцмережі ще не підключено',
+    ],
     'personas' => [
         'creator' => 'Автор контенту',
         'freelancer' => 'Фрілансер',
@@ -29,7 +43,7 @@ return [
     'goals' => [
         'save_time' => 'Економити час, публікуючи всюди одразу',
         'ai_content' => 'Генерувати пости з AI TryPost',
-        'use_mcp' => 'Створювати пости через Claude, ChatGPT або Cursor',
+        'use_mcp' => 'Створювати пости через Claude, ChatGPT тощо',
         'plan_calendar' => 'Планувати пости в календарі',
         'stay_on_brand' => 'Тримати кожен пост у стилі бренду',
         'grow_audience' => 'Збільшувати аудиторію та залучення',
@@ -38,8 +52,8 @@ return [
         'just_exploring' => 'Поки що просто досліджую',
         'other' => 'Щось інше',
     ],
-    'plan_title' => 'Оберіть план. Усі функції включені.',
-    'plan_description' => 'Єдина різниця — скільки робочих просторів ви отримуєте. Пізніше можна змінити.',
+    'plan_title' => 'Оберіть тариф',
+    'plan_description' => 'Обидва тарифи включають усі функції та всі соцмережі. Єдина різниця — кількість workspace. Змінити можна будь-коли.',
     'referral_source_title' => 'Як ви нас знайшли?',
     'referral_source_description' => 'Це допомагає нам зрозуміти, як люди дізнаються про TryPost.',
     'referral_source' => [

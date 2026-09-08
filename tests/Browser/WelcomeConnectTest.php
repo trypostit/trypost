@@ -95,9 +95,9 @@ test('connect step can go back to referral', function () {
 
     $page = visit(route('app.welcome.connect'));
 
-    waitForWelcomeTestId($page, 'welcome-step-3');
+    waitForWelcomeTestId($page, 'welcome-back');
 
-    $page->click('@welcome-step-3');
+    $page->click('@welcome-back');
 
     waitForWelcomeTestId($page, 'welcome-referral-continue');
 

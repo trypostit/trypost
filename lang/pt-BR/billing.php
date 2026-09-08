@@ -19,10 +19,9 @@ return [
         'billed_monthly' => 'Cobrança mensal',
         'billed_yearly' => 'Cobrança anual',
         'prices' => [
-            'first_month' => 'R$ 5',
-            'workspace' => ['monthly' => 'R$ 60', 'yearly_per_month' => 'R$ 50', 'yearly' => 'R$ 600'],
-            'socials' => ['monthly' => 'R$ 95', 'yearly_per_month' => 'R$ 79,17', 'yearly' => 'R$ 950'],
-            'workspaces' => ['monthly' => 'R$ 495', 'yearly_per_month' => 'R$ 412,50', 'yearly' => 'R$ 4.950'],
+            'first_month' => 'R$ 1',
+            'socials' => ['monthly' => 'R$ 99', 'yearly_per_month' => 'R$ 82,50', 'yearly' => 'R$ 990'],
+            'workspaces' => ['monthly' => 'R$ 499', 'yearly_per_month' => 'R$ 415,83', 'yearly' => 'R$ 4.990'],
         ],
     ],
 
@@ -38,12 +37,13 @@ return [
         'current' => 'Plano atual',
         'select' => 'Escolher :plan',
         'start_first_month' => 'Começar meu primeiro mês por :price',
-        'first_month_then' => 'Primeiro mês :first, depois :price/mês',
 
         'billed_yearly_total' => 'Cobrança anual · :price (2 meses grátis)',
-        'socials_tagline' => 'Um workspace. Publique em todas as redes.',
-        'workspaces_tagline' => 'Um workspace para cada marca ou cliente.',
+        'socials_tagline' => 'Indicado para criadores e pequenas marcas.',
+        'workspaces_tagline' => 'Indicado para agências e grandes negócios.',
+        'everything_included' => 'Tudo incluído',
         'features' => [
+            'networks_all' => 'Todas as redes sociais',
             'accounts_unlimited' => 'Contas sociais ilimitadas',
             'calendar' => 'Calendário visual com publicação automática',
             'ai' => 'IA: legendas, imagens e voz da marca',

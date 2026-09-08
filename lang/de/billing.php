@@ -22,7 +22,6 @@ return [
         'billed_yearly' => 'Jährlich abgerechnet',
         'prices' => [
             'first_month' => '$1',
-            'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -40,12 +39,13 @@ return [
         'current' => 'Aktueller Tarif',
         'select' => ':plan wählen',
         'start_first_month' => 'Meinen ersten Monat für :price starten',
-        'first_month_then' => 'Erster Monat :first, danach :price/Monat',
 
         'billed_yearly_total' => 'Jährlich abgerechnet · :price (2 Monate gratis)',
-        'socials_tagline' => 'Ein Workspace. Überall posten.',
-        'workspaces_tagline' => 'Ein Workspace für jede Marke oder jeden Kunden.',
+        'socials_tagline' => 'Ideal für Creator und kleine Marken.',
+        'workspaces_tagline' => 'Ideal für Agenturen und größere Unternehmen.',
+        'everything_included' => 'Alles inklusive',
         'features' => [
+            'networks_all' => 'Alle sozialen Netzwerke',
             'accounts_unlimited' => 'Unbegrenzte Social-Accounts',
             'calendar' => 'Visueller Kalender mit Auto-Publishing',
             'ai' => 'KI: Captions, Bilder und Markenstimme',

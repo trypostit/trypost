@@ -11,8 +11,22 @@ return [
     'subscription_required_owner' => 'Der Kontoinhaber ist :name.',
     'subscription_required_auto' => 'Diese Seite aktualisiert sich automatisch — kein Neuladen nötig.',
     'progress' => 'Willkommensfortschritt',
-    'go_to_step' => 'Zu Schritt :step gehen',
     'step_current' => 'Schritt :step (aktuell)',
+    'step_of' => 'Schritt :step von :total',
+    'back' => 'Zurück',
+    'steps' => [
+        'persona' => 'Über dich',
+        'goals' => 'Deine Ziele',
+        'referral_source' => 'Wie du uns gefunden hast',
+        'connect' => 'Soziale Netzwerke',
+        'plan' => 'Tarif',
+    ],
+    'preview' => [
+        'heading' => 'Dein Workspace nimmt Gestalt an.',
+        'workspace' => 'Dein Workspace',
+        'pending' => 'Noch nicht gewählt',
+        'networks_empty' => 'Noch keine Netzwerke verbunden',
+    ],
     'personas' => [
         'creator' => 'Content Creator',
         'freelancer' => 'Freelancer',
@@ -29,7 +43,7 @@ return [
     'goals' => [
         'save_time' => 'Zeit sparen, indem ich überall gleichzeitig poste',
         'ai_content' => 'Beiträge mit TryPost-KI erstellen',
-        'use_mcp' => 'Beiträge über Claude, ChatGPT oder Cursor erstellen',
+        'use_mcp' => 'Beiträge über Claude, ChatGPT usw. erstellen',
         'plan_calendar' => 'Meine Beiträge in einem Kalender planen',
         'stay_on_brand' => 'Jeden Beitrag markenkonform halten',
         'grow_audience' => 'Meine Reichweite und mein Engagement steigern',
@@ -38,8 +52,8 @@ return [
         'just_exploring' => 'Ich schaue mich vorerst nur um',
         'other' => 'Etwas anderes',
     ],
-    'plan_title' => 'Wähle einen Tarif. Alle Funktionen sind enthalten.',
-    'plan_description' => 'Der einzige Unterschied ist, wie viele Workspaces du bekommst. Du kannst später wechseln.',
+    'plan_title' => 'Wähle deinen Tarif',
+    'plan_description' => 'Beide Tarife enthalten alle Funktionen und alle sozialen Netzwerke. Der einzige Unterschied ist die Anzahl der Workspaces — jederzeit wechselbar.',
     'referral_source_title' => 'Wie hast du uns gefunden?',
     'referral_source_description' => 'Das hilft uns zu verstehen, wie Menschen TryPost entdecken.',
     'referral_source' => [

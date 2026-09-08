@@ -20,7 +20,6 @@ return [
         'billed_yearly' => '年払い',
         'prices' => [
             'first_month' => '$1',
-            'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -38,12 +37,13 @@ return [
         'current' => '現在のプラン',
         'select' => ':plan を選ぶ',
         'start_first_month' => '初月を:priceで始める',
-        'first_month_then' => '初月:first、その後:price/月',
 
         'billed_yearly_total' => '年払い · :price（2か月分無料）',
-        'socials_tagline' => 'ワークスペース1つで、すべてのネットワークに投稿。',
-        'workspaces_tagline' => 'ブランドやクライアントごとにワークスペースを。',
+        'socials_tagline' => 'クリエイターや小規模ブランド向け。',
+        'workspaces_tagline' => '代理店や大規模ビジネス向け。',
+        'everything_included' => 'すべて含まれます',
         'features' => [
+            'networks_all' => 'すべてのSNS',
             'accounts_unlimited' => 'ソーシャルアカウント数無制限',
             'calendar' => '自動投稿付きのビジュアルカレンダー',
             'ai' => 'AI：キャプション、画像、ブランドボイス',

@@ -11,8 +11,22 @@ return [
     'subscription_required_owner' => 'Hesap sahibiniz :name.',
     'subscription_required_auto' => 'Bu sayfa otomatik olarak güncellenir — yenilemenize gerek yok.',
     'progress' => 'Karşılama ilerlemesi',
-    'go_to_step' => ':step. adıma git',
     'step_current' => 'Adım :step (şu anki)',
+    'step_of' => 'Adım :step / :total',
+    'back' => 'Geri',
+    'steps' => [
+        'persona' => 'Senin hakkında',
+        'goals' => 'Hedeflerin',
+        'referral_source' => 'Bizi nasıl buldun',
+        'connect' => 'Sosyal ağlar',
+        'plan' => 'Plan',
+    ],
+    'preview' => [
+        'heading' => 'Workspace’in şekilleniyor.',
+        'workspace' => 'Workspace’in',
+        'pending' => 'Henüz seçilmedi',
+        'networks_empty' => 'Henüz bağlı ağ yok',
+    ],
     'personas' => [
         'creator' => 'İçerik üreticisi',
         'freelancer' => 'Serbest çalışan',
@@ -29,7 +43,7 @@ return [
     'goals' => [
         'save_time' => 'Her yere aynı anda paylaşarak zaman kazanmak',
         'ai_content' => 'TryPost AI ile gönderi oluşturmak',
-        'use_mcp' => 'Claude, ChatGPT veya Cursor ile gönderi oluşturmak',
+        'use_mcp' => 'Claude, ChatGPT vb. ile gönderi oluşturmak',
         'plan_calendar' => 'Gönderilerimi bir takvimde planlamak',
         'stay_on_brand' => 'Her gönderiyi marka çizgisinde tutmak',
         'grow_audience' => 'Kitlemi ve etkileşimimi büyütmek',
@@ -38,8 +52,8 @@ return [
         'just_exploring' => 'Şimdilik sadece keşfetmek',
         'other' => 'Başka bir şey',
     ],
-    'plan_title' => 'Bir plan seçin. Tüm özellikler dahil.',
-    'plan_description' => 'Tek fark aldığınız çalışma alanı sayısı. Daha sonra değiştirebilirsiniz.',
+    'plan_title' => 'Planını seç',
+    'plan_description' => 'Her iki plan da tüm özellikleri ve tüm sosyal ağları içerir. Tek fark kaç workspace aldığın — istediğin zaman değiştir.',
     'referral_source_title' => 'Bizi nasıl buldunuz?',
     'referral_source_description' => 'İnsanların TryPost\'u nasıl keşfettiğini anlamamıza yardımcı olur.',
     'referral_source' => [

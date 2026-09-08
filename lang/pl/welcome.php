@@ -11,8 +11,22 @@ return [
     'subscription_required_owner' => 'Właścicielem Twojego konta jest :name.',
     'subscription_required_auto' => 'Ta strona odświeża się automatycznie — nie musisz jej przeładowywać.',
     'progress' => 'Postęp powitalny',
-    'go_to_step' => 'Przejdź do kroku :step',
     'step_current' => 'Krok :step (bieżący)',
+    'step_of' => 'Krok :step z :total',
+    'back' => 'Wstecz',
+    'steps' => [
+        'persona' => 'O Tobie',
+        'goals' => 'Twoje cele',
+        'referral_source' => 'Jak nas znalazłeś',
+        'connect' => 'Sieci społecznościowe',
+        'plan' => 'Plan',
+    ],
+    'preview' => [
+        'heading' => 'Twój workspace nabiera kształtu.',
+        'workspace' => 'Twój workspace',
+        'pending' => 'Jeszcze nie wybrano',
+        'networks_empty' => 'Nie połączono jeszcze żadnej sieci',
+    ],
     'personas' => [
         'creator' => 'Twórca treści',
         'freelancer' => 'Freelancer',
@@ -29,7 +43,7 @@ return [
     'goals' => [
         'save_time' => 'Oszczędzaj czas, publikując wszędzie naraz',
         'ai_content' => 'Generuj posty z AI TryPost',
-        'use_mcp' => 'Twórz posty w Claude, ChatGPT lub Cursor',
+        'use_mcp' => 'Twórz posty w Claude, ChatGPT itd.',
         'plan_calendar' => 'Planuj posty w kalendarzu',
         'stay_on_brand' => 'Utrzymuj każdy post spójny z marką',
         'grow_audience' => 'Powiększaj grono odbiorców i zaangażowanie',
@@ -38,8 +52,8 @@ return [
         'just_exploring' => 'Na razie tylko się rozglądam',
         'other' => 'Coś innego',
     ],
-    'plan_title' => 'Wybierz plan. Wszystkie funkcje są w cenie.',
-    'plan_description' => 'Jedyna różnica to liczba workspace\'ów. Możesz zmienić później.',
+    'plan_title' => 'Wybierz plan',
+    'plan_description' => 'Oba plany zawierają wszystkie funkcje i wszystkie sieci społecznościowe. Jedyna różnica to liczba workspace’ów — zmień w każdej chwili.',
     'referral_source_title' => 'Jak nas znalazłeś?',
     'referral_source_description' => 'To pomaga nam zrozumieć, jak ludzie odkrywają TryPost.',
     'referral_source' => [

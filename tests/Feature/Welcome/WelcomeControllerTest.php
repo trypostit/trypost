@@ -401,6 +401,46 @@ test('connect renders connected accounts for the current workspace', function ()
         );
 });
 
+test('every step shares the welcome summary that fills in as the user progresses', function () {
+    $this->actingAs($this->user)
+        ->get(route('app.welcome.persona'))
+        ->assertInertia(fn ($page) => $page
+            ->component('welcome/Persona', false)
+            ->where('welcome.persona', null)
+            ->where('welcome.goals', [])
+            ->where('welcome.networks', [])
+        );
+
+    completeWelcomeThroughReferral($this->user);
+    $workspace = attachCurrentWorkspace($this->user);
+    $connected = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    SocialAccount::factory()->x()->tokenExpired()->create(['workspace_id' => $workspace->id]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.connect'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('welcome/Connect', false)
+            ->where('welcome.persona', $this->user->fresh()->persona->value)
+            ->where('welcome.goals', $this->user->fresh()->goals)
+            ->has('welcome.networks', 1)
+            ->where('welcome.networks.0.id', $connected->id)
+            ->where('welcome.networks.0.platform', SocialPlatform::LinkedIn->value)
+            ->where('welcome.networks.0.display_label', $connected->display_label)
+            ->where('welcome.networks.0.username', $connected->username)
+        );
+});
+
+test('the welcome summary drops goals that no longer exist', function () {
+    $this->user->update(['goals' => [Goal::SaveTime->value, 'retired_goal']]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.welcome.persona'))
+        ->assertInertia(fn ($page) => $page
+            ->where('welcome.goals', [Goal::SaveTime->value])
+        );
+});
+
 test('connect copy exists in every locale', function (string $locale) {
     expect(__('welcome.connect.title', [], $locale))->not->toBe('welcome.connect.title')
         ->and(__('welcome.connect.description', [], $locale))->not->toBe('welcome.connect.description')

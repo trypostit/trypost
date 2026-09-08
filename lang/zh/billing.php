@@ -20,7 +20,6 @@ return [
         'billed_yearly' => '按年计费',
         'prices' => [
             'first_month' => '$1',
-            'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -38,12 +37,13 @@ return [
         'current' => '当前套餐',
         'select' => '选择 :plan',
         'start_first_month' => '以 :price 开始第一个月',
-        'first_month_then' => '首月 :first，之后 :price/月',
 
         'billed_yearly_total' => '按年计费 · :price（免两个月）',
-        'socials_tagline' => '一个工作区，发到所有网络。',
-        'workspaces_tagline' => '每个品牌或客户一个工作区。',
+        'socials_tagline' => '适合创作者和小品牌。',
+        'workspaces_tagline' => '适合代理商和大型业务。',
+        'everything_included' => '全部包含',
         'features' => [
+            'networks_all' => '所有社交网络',
             'accounts_unlimited' => '社交账号不限',
             'calendar' => '可视化日历，自动发布',
             'ai' => 'AI：文案、图片和品牌声音',

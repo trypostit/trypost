@@ -20,7 +20,6 @@ return [
         'billed_yearly' => '연간 결제',
         'prices' => [
             'first_month' => '$1',
-            'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -38,12 +37,13 @@ return [
         'current' => '현재 요금제',
         'select' => ':plan 선택',
         'start_first_month' => '첫 달을 :price에 시작하기',
-        'first_month_then' => '첫 달 :first, 이후 :price/월',
 
         'billed_yearly_total' => '연간 결제 · :price (2개월 무료)',
-        'socials_tagline' => '워크스페이스 하나. 모든 네트워크에 게시.',
-        'workspaces_tagline' => '브랜드나 클라이언트마다 워크스페이스 하나.',
+        'socials_tagline' => '크리에이터와 소규모 브랜드에 적합.',
+        'workspaces_tagline' => '에이전시와 대규모 비즈니스에 적합.',
+        'everything_included' => '모두 포함',
         'features' => [
+            'networks_all' => '모든 소셜 네트워크',
             'accounts_unlimited' => '소셜 계정 무제한',
             'calendar' => '자동 게시가 되는 비주얼 캘린더',
             'ai' => 'AI: 캡션, 이미지, 브랜드 보이스',

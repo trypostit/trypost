@@ -11,8 +11,22 @@ return [
     'subscription_required_owner' => 'Le propriétaire de votre compte est :name.',
     'subscription_required_auto' => 'Cette page se met à jour automatiquement — inutile de la recharger.',
     'progress' => 'Progression d’accueil',
-    'go_to_step' => 'Aller à l’étape :step',
     'step_current' => 'Étape :step (actuelle)',
+    'step_of' => 'Étape :step sur :total',
+    'back' => 'Retour',
+    'steps' => [
+        'persona' => 'À propos de vous',
+        'goals' => 'Vos objectifs',
+        'referral_source' => 'Comment vous nous avez trouvés',
+        'connect' => 'Réseaux sociaux',
+        'plan' => 'Forfait',
+    ],
+    'preview' => [
+        'heading' => 'Votre workspace prend forme.',
+        'workspace' => 'Votre workspace',
+        'pending' => 'Pas encore choisi',
+        'networks_empty' => 'Aucun réseau connecté pour l’instant',
+    ],
     'personas' => [
         'creator' => 'Créateur de contenu',
         'freelancer' => 'Freelance',
@@ -29,7 +43,7 @@ return [
     'goals' => [
         'save_time' => 'Gagner du temps en publiant partout à la fois',
         'ai_content' => 'Générer des publications avec l\'IA TryPost',
-        'use_mcp' => 'Créer des publications depuis Claude, ChatGPT ou Cursor',
+        'use_mcp' => 'Créer des publications depuis Claude, ChatGPT, etc.',
         'plan_calendar' => 'Planifier mes publications sur un calendrier',
         'stay_on_brand' => 'Garder chaque publication fidèle à ma marque',
         'grow_audience' => 'Développer mon audience et mon engagement',
@@ -38,8 +52,8 @@ return [
         'just_exploring' => 'Je découvre pour l\'instant',
         'other' => 'Autre chose',
     ],
-    'plan_title' => 'Choisissez une offre. Toutes les fonctionnalités sont incluses.',
-    'plan_description' => 'La seule différence, c\'est le nombre d\'espaces de travail. Vous pourrez changer plus tard.',
+    'plan_title' => 'Choisissez votre forfait',
+    'plan_description' => 'Les deux forfaits incluent toutes les fonctionnalités et tous les réseaux sociaux. La seule différence : le nombre de workspaces — changez à tout moment.',
     'referral_source_title' => 'Comment nous avez-vous connus ?',
     'referral_source_description' => 'Cela nous aide à comprendre comment les gens découvrent TryPost.',
     'referral_source' => [

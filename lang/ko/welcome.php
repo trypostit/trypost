@@ -11,8 +11,22 @@ return [
     'subscription_required_owner' => '계정 소유자는 :name 님입니다.',
     'subscription_required_auto' => '이 페이지는 자동으로 업데이트됩니다 — 새로고침할 필요가 없습니다.',
     'progress' => '환영 진행률',
-    'go_to_step' => ':step단계로 이동',
     'step_current' => ':step단계 (현재)',
+    'step_of' => ':total단계 중 :step단계',
+    'back' => '뒤로',
+    'steps' => [
+        'persona' => '나에 대해',
+        'goals' => '목표',
+        'referral_source' => '알게 된 경로',
+        'connect' => '소셜 네트워크',
+        'plan' => '요금제',
+    ],
+    'preview' => [
+        'heading' => '워크스페이스가 만들어지고 있어요.',
+        'workspace' => '내 워크스페이스',
+        'pending' => '아직 선택하지 않음',
+        'networks_empty' => '아직 연결된 네트워크가 없어요',
+    ],
     'personas' => [
         'creator' => '콘텐츠 크리에이터',
         'freelancer' => '프리랜서',
@@ -29,7 +43,7 @@ return [
     'goals' => [
         'save_time' => '한 번에 여러 곳에 게시하여 시간 절약',
         'ai_content' => 'TryPost AI로 게시물 생성',
-        'use_mcp' => 'Claude, ChatGPT 또는 Cursor에서 게시물 작성',
+        'use_mcp' => 'Claude, ChatGPT 등에서 게시물 작성',
         'plan_calendar' => '캘린더에서 게시물 계획',
         'stay_on_brand' => '모든 게시물을 브랜드에 맞게 유지',
         'grow_audience' => '팔로워와 참여 늘리기',
@@ -38,8 +52,8 @@ return [
         'just_exploring' => '지금은 둘러보는 중',
         'other' => '다른 것',
     ],
-    'plan_title' => '요금제를 선택하세요. 모든 기능이 포함됩니다.',
-    'plan_description' => '차이는 워크스페이스 수뿐입니다. 나중에 바꿀 수 있습니다.',
+    'plan_title' => '요금제 선택',
+    'plan_description' => '두 요금제 모두 모든 기능과 모든 소셜 네트워크를 포함합니다. 차이는 워크스페이스 수뿐이며, 언제든 변경할 수 있어요.',
     'referral_source_title' => '저희를 어떻게 알게 되셨나요?',
     'referral_source_description' => '사람들이 TryPost를 어떻게 발견하는지 파악하는 데 도움이 됩니다.',
     'referral_source' => [
