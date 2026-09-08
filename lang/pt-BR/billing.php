@@ -42,8 +42,6 @@ return [
         'title' => 'Plano',
         'description' => 'Gerencie seu plano de assinatura.',
         'label' => 'Plano',
-        'workspaces' => '{1}:count workspace|[2,*]:count workspaces',
-        'per_workspace' => 'por workspace',
         'price' => 'Preço',
         'month' => 'mês',
         'trial' => 'Trial',

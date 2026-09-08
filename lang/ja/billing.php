@@ -42,8 +42,6 @@ return [
         'title' => 'プラン',
         'description' => 'サブスクリプションプランを管理します。',
         'label' => 'プラン',
-        'workspaces' => '{1}:count 個のワークスペース|[2,*]:count 個のワークスペース',
-        'per_workspace' => 'ワークスペースあたり',
         'price' => '料金',
         'month' => '月',
         'trial' => 'トライアル',

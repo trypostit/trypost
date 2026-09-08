@@ -212,15 +212,46 @@ Checkout options are configured only via env — do not hardcode trial/coupon/pr
 | --- | --- | --- | --- |
 | `REQUIRE_CARD_FOR_TRIAL` | `trypost.billing.require_card_for_trial` | `true` | `true`: app access only after Stripe Checkout (no generic signup trial). `false`: generic `accounts.trial_ends_at` trial without a card |
 | `CASHIER_TRIAL_DAYS` | `cashier.trial_days` | `8` | Card-required Checkout: `trialDays(N)` for **first-time** subscribers when no first-month coupon is applied (`0` = off). Re-subscribers skip trial. No-card mode: length of the generic signup trial |
-| `STRIPE_FIRST_MONTH_COUPON_ID` | `cashier.first_month_coupon_id` | empty | Optional. When set for a qualifying first-time single-workspace checkout, applies `withCoupon` and **skips** trial. Empty = trial mode |
+| `STRIPE_FIRST_MONTH_COUPON_ID` | `cashier.first_month_coupon_id` | empty | Optional. When set for a qualifying first-time checkout, applies `withCoupon` and **skips** trial. Empty = trial mode |
 | `CASHIER_ALLOW_PROMOTION_CODES` | `cashier.allow_promotion_codes` | `false` | When `true` and no coupon is applied, show the Checkout promo-code field |
 
 Standing constraints:
 - Stripe rejects `discounts` (coupon) and `allow_promotion_codes` on the same session — if both would apply, `ConfigureSubscriptionCheckout` must throw (fail loud). Never “prefer one silently.” Envs may both be set when the account does **not** qualify for the coupon (no throw).
 - A set first-month coupon wins over trial (`trialDays` is skipped for that checkout).
 - Empty coupon + card required + first-time must use `trialDays` — do **not** reintroduce a required-coupon throw.
-- Coupon qualification stays: card required, exactly one workspace, no prior real subscription (`incomplete` / `incomplete_expired` still qualify).
+- Coupon qualification stays: card required, no prior real subscription (`incomplete` / `incomplete_expired` still qualify). Workspace count is irrelevant — Socials is already capped at one, and a first-time Workspaces subscriber qualifies the same way.
 - Prefer documenting durable billing decisions here (and in `CLAUDE.md`) — do **not** create a `.ai/` rules folder for this project.
+
+## Plans and the workspace limit
+
+TryPost sells two plans. Both are flat: Stripe subscription **quantity is never
+used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
+
+| slug | name | price | workspace_limit |
+| --- | --- | --- | --- |
+| `socials` | Socials | $19/mo, $190/yr | 1 |
+| `workspaces` | Workspaces | $99/mo, $990/yr | `null` (unlimited) |
+| `workspace` | Workspace (legacy, archived) | $12/mo per workspace | 1 |
+
+- The cap lives in `plans.workspace_limit`, **not** in code. `null` on that
+  column means unlimited. Read it through `Account::workspaceLimit()` /
+  `Account::canCreateWorkspace()` — never compare `plan->slug` to decide what
+  an account may do. A **missing** `plan_id` is not unlimited: it may create
+  only the signup workspace (`count === 0`).
+- `WorkspacePolicy::create()` is owner-only. The cap is not a permission: an
+  owner at the limit is redirected to billing by `WorkspaceController`, not 403'd.
+- First-month coupon qualification is card required + first-time subscriber.
+  Workspace count is not part of it. (`incomplete` / `incomplete_expired` still
+  qualify; coupon + `allow_promotion_codes` still throws.)
+- The legacy plan is archived: it never appears in the picker, so nobody can move
+  back to it. Its `workspace_limit` is 1 because it costs less than Socials.
+- Plan choice is a welcome step (`app.welcome.plan`) and the same `PlanPicker`
+  component drives upgrade/downgrade on the billing page (`app.billing.change-plan`).
+  A change is a `swap()` to another price id; `accounts.plan_id` is reconciled by
+  the `customer.subscription.updated` webhook, never written by the controller.
+- **There is no AI credit ceiling.** `AiUsageLog` / `RecordAiUsage` still record
+  every AI call for cost visibility, but nothing meters or blocks a user.
+  `AccountPolicy::useAi` checks app access and nothing else.
 
 ## Multiple social accounts per network
 

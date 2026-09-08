@@ -42,8 +42,6 @@ return [
         'title' => 'Piano',
         'description' => 'Gestisci il tuo piano di abbonamento.',
         'label' => 'Piano',
-        'workspaces' => '{1}:count workspace|[2,*]:count workspace',
-        'per_workspace' => 'per workspace',
         'price' => 'Prezzo',
         'month' => 'mese',
         'trial' => 'Prova',

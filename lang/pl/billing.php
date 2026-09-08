@@ -42,8 +42,6 @@ return [
         'title' => 'Plan',
         'description' => 'Zarządzaj swoim planem subskrypcji.',
         'label' => 'Plan',
-        'workspaces' => ':count przestrzeń robocza|:count przestrzenie robocze|:count przestrzeni roboczych',
-        'per_workspace' => 'za przestrzeń roboczą',
         'price' => 'Cena',
         'month' => 'miesiąc',
         'trial' => 'Okres próbny',

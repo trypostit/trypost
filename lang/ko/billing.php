@@ -42,8 +42,6 @@ return [
         'title' => '요금제',
         'description' => '구독 요금제를 관리하세요.',
         'label' => '요금제',
-        'workspaces' => '{1}:count개 워크스페이스|[2,*]:count개 워크스페이스',
-        'per_workspace' => '워크스페이스당',
         'price' => '가격',
         'month' => '월',
         'trial' => '체험',

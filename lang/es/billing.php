@@ -42,8 +42,6 @@ return [
         'title' => 'Plan',
         'description' => 'Gestiona tu plan de suscripción.',
         'label' => 'Plan',
-        'workspaces' => '{1}:count workspace|[2,*]:count workspaces',
-        'per_workspace' => 'por workspace',
         'price' => 'Precio',
         'month' => 'mes',
         'trial' => 'Prueba',

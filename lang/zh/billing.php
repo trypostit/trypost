@@ -42,8 +42,6 @@ return [
         'title' => '套餐',
         'description' => '管理你的订阅套餐。',
         'label' => '套餐',
-        'workspaces' => '{1}:count 个工作区|[2,*]:count 个工作区',
-        'per_workspace' => '每个工作区',
         'price' => '价格',
         'month' => '月',
         'trial' => '试用',

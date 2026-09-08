@@ -44,8 +44,6 @@ return [
         'title' => 'Plan',
         'description' => 'Abonelik planınızı yönetin.',
         'label' => 'Plan',
-        'workspaces' => '{1}:count çalışma alanı|[2,*]:count çalışma alanı',
-        'per_workspace' => 'çalışma alanı başına',
         'price' => 'Fiyat',
         'month' => 'ay',
         'trial' => 'Deneme',

@@ -42,8 +42,6 @@ return [
         'title' => 'Forfait',
         'description' => 'Gérez votre forfait d\'abonnement.',
         'label' => 'Forfait',
-        'workspaces' => '{1}:count espace de travail|[2,*]:count espaces de travail',
-        'per_workspace' => 'par espace de travail',
         'price' => 'Prix',
         'month' => 'mois',
         'trial' => 'Essai',

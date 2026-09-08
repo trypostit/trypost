@@ -42,8 +42,6 @@ return [
         'title' => 'Plan',
         'description' => 'Manage your subscription plan.',
         'label' => 'Plan',
-        'workspaces' => '{1}:count workspace|[2,*]:count workspaces',
-        'per_workspace' => 'per workspace',
         'price' => 'Price',
         'month' => 'month',
         'trial' => 'Trial',

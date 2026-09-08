@@ -42,8 +42,6 @@ return [
         'title' => 'Abonnement',
         'description' => 'Beheer je abonnement.',
         'label' => 'Abonnement',
-        'workspaces' => '{1}:count workspace|[2,*]:count workspaces',
-        'per_workspace' => 'per workspace',
         'price' => 'Prijs',
         'month' => 'maand',
         'trial' => 'Proefperiode',

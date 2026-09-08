@@ -42,8 +42,6 @@ return [
         'title' => 'Πρόγραμμα',
         'description' => 'Διαχειριστείτε το πρόγραμμα συνδρομής σας.',
         'label' => 'Πρόγραμμα',
-        'workspaces' => '{1}:count workspace|[2,*]:count workspaces',
-        'per_workspace' => 'ανά workspace',
         'price' => 'Τιμή',
         'month' => 'μήνας',
         'trial' => 'Δοκιμαστική περίοδος',

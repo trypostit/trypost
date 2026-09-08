@@ -44,8 +44,6 @@ return [
         'title' => 'Tarif',
         'description' => 'Verwalte deinen Abonnement-Tarif.',
         'label' => 'Tarif',
-        'workspaces' => '{1}:count Workspace|[2,*]:count Workspaces',
-        'per_workspace' => 'pro Workspace',
         'price' => 'Preis',
         'month' => 'Monat',
         'trial' => 'Testphase',
