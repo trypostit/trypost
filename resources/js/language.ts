@@ -7,9 +7,17 @@ import type { Auth, Language } from './types';
 interface LocaleProps {
     locale?: string;
     auth?: Auth;
+    languages?: Language[];
 }
 
 const chosen = ref<string | null>(null);
+
+/**
+ * The locale the page is currently rendered in. `dayjs.locale()` is global and
+ * not reactive, so anything formatting a date has to depend on this instead —
+ * otherwise a cached computed keeps the previous language's month and day names.
+ */
+export const activeLocale = ref('en');
 
 export const guestLocale = (): string | null => chosen.value;
 
@@ -18,12 +26,23 @@ export const guestLocale = (): string | null => chosen.value;
  */
 const align = (locale: string, direction?: string): void => {
     dayjs.locale(locale.toLowerCase());
+    activeLocale.value = locale;
     document.documentElement.lang = locale;
 
     if (direction) {
         document.documentElement.dir = direction;
     }
 };
+
+/**
+ * Only Arabic is right to left, but the rule lives in the Locale enum and
+ * reaches the client in the shared languages prop.
+ */
+const directionOf = (
+    locale: string,
+    languages?: Language[],
+): string | undefined =>
+    languages?.find((language) => language.code === locale)?.dir;
 
 /**
  * The locale the app starts in. The i18n plugin loads the strings itself from
@@ -68,7 +87,7 @@ export const syncLocale = (props: LocaleProps): void => {
     }
 
     void loadLanguageAsync(next);
-    align(next);
+    align(next, directionOf(next, props.languages));
 };
 
 export const i18nConfig = (lang: string) => ({

@@ -11,6 +11,7 @@ import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import date from '@/date';
 import dayjs from '@/dayjs';
+import { activeLocale } from '@/language';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { calendar } from '@/routes/app';
 import { create as createPost, edit as editPost, show as showPost } from '@/routes/app/posts';
@@ -104,7 +105,9 @@ const dayPosts = computed(() => {
 const selectedDate = ref(props.currentDay);
 
 // Week view computed
-const weekStart = computed(() => dayjs(props.currentWeekStart));
+const weekStart = computed(() =>
+    dayjs(props.currentWeekStart).locale(activeLocale.value.toLowerCase()),
+);
 
 const weekDays = computed(() => {
     const days = [];

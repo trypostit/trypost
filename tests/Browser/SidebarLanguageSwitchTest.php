@@ -21,7 +21,7 @@ function waitForSidebarLanguageTestId(mixed $page, string $testId): void
     JS);
 }
 
-test('switching language in the sidebar translates the app without a reload', function () {
+test('switching language in the sidebar translates the page in place', function () {
     $user = User::factory()->create(['locale' => Locale::English]);
     $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
@@ -38,34 +38,105 @@ test('switching language in the sidebar translates the app without a reload', fu
     // A full page load would clear this, so it doubles as the no-reload assertion.
     $page->script('window.__notReloaded = true;');
 
-    // Drives the same request the sidebar switcher issues. The submenu itself is
-    // a Radix sub-trigger that Playwright cannot open reliably.
+    // The submenu is a Radix sub-trigger; it needs a pointer event before the
+    // click, and Playwright's click alone does not open it.
     $page->script(<<<'JS'
         (async () => {
-            const token = document.querySelector('meta[name="csrf-token"]')?.content;
-            await fetch('/settings/language', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': token ?? '',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                body: JSON.stringify({ _method: 'PUT', locale: 'ja' }),
-            });
-            window.__switched = true;
+            const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+            document.querySelector('[data-testid="sidebar-workspace-menu"]').click();
+            await wait(400);
+            const trigger = document.querySelector('[data-testid="sidebar-language-trigger"]');
+            trigger.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+            trigger.click();
+            await wait(600);
+            document.querySelector('[data-testid="sidebar-language-ja"]').click();
         })();
     JS);
 
-    $page->script('(async () => { for (let i = 0; i < 150; i++) { if (window.__switched) return; await new Promise((r) => setTimeout(r, 50)); } })();');
+    $japanese = __('sidebar.posts.all', [], 'ja');
 
-    // An Inertia visit, not a page load — this is what has to re-apply the locale.
-    $page->click('@nav-/posts');
+    $page->script("(async () => { for (let i = 0; i < 150; i++) { if (document.body.innerText.includes('{$japanese}')) return; await new Promise((r) => setTimeout(r, 50)); } })();");
 
-    $page->script('(async () => { for (let i = 0; i < 150; i++) { if (document.body.innerText.includes("'.__('sidebar.posts.all', [], 'ja').'")) return; await new Promise((r) => setTimeout(r, 50)); } })();');
-
-    $page->assertSee(__('sidebar.posts.all', [], 'ja'))
+    $page->assertSee($japanese)
+        ->assertDontSee(__('sidebar.posts.all', [], 'en'))
         ->assertScript('window.__notReloaded === true', true)
         ->assertNoJavaScriptErrors();
 
     expect($user->refresh()->locale)->toBe(Locale::Japanese);
+});
+
+test('switching to a right-to-left language flips the document direction', function () {
+    $user = User::factory()->create(['locale' => Locale::English]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar'));
+    waitForSidebarLanguageTestId($page, 'sidebar-workspace-menu');
+
+    $page->script(<<<'JS'
+        (async () => {
+            const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+            window.__dirBefore = document.documentElement.dir;
+            document.querySelector('[data-testid="sidebar-workspace-menu"]').click();
+            await wait(400);
+            const trigger = document.querySelector('[data-testid="sidebar-language-trigger"]');
+            trigger.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+            trigger.click();
+            await wait(600);
+            document.querySelector('[data-testid="sidebar-language-ar"]').click();
+            for (let i = 0; i < 150; i++) {
+                if (document.documentElement.dir === 'rtl') return;
+                await wait(50);
+            }
+        })();
+    JS);
+
+    $page->assertScript('window.__dirBefore', 'ltr')
+        ->assertScript('document.documentElement.dir', 'rtl')
+        ->assertNoJavaScriptErrors();
+
+    expect($user->refresh()->locale)->toBe(Locale::Arabic);
+});
+
+test('the calendar header follows the language, not the previous one', function () {
+    $user = User::factory()->create(['locale' => Locale::English]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar'));
+    waitForSidebarLanguageTestId($page, 'sidebar-workspace-menu');
+
+    $page->script(<<<'JS'
+        (async () => {
+            const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+            document.querySelector('[data-testid="sidebar-workspace-menu"]').click();
+            await wait(400);
+            const trigger = document.querySelector('[data-testid="sidebar-language-trigger"]');
+            trigger.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+            trigger.click();
+            await wait(600);
+            document.querySelector('[data-testid="sidebar-language-pt-BR"]').click();
+            await wait(2500);
+            window.__header = document.body.innerText.match(/\d+[–-]\d+ [^\n]*/)?.[0] ?? '';
+        })();
+    JS);
+
+    $page->script('(async () => { for (let i = 0; i < 150; i++) { if (window.__header !== undefined) return; await new Promise((r) => setTimeout(r, 50)); } })();');
+
+    // The month name comes from dayjs on the client, so it is the piece that used
+    // to lag one switch behind the interface strings.
+    $page->assertScript('/setembro/i.test(window.__header)', true)
+        ->assertScript('/September/.test(window.__header)', false);
 });

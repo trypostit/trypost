@@ -46,8 +46,14 @@ createInertiaApp({
         syncContentTypeMediaRules(props.initialPage);
         capturePageview();
 
-        router.on('navigate', (event) => {
+        // `success`, not `navigate`: switching language answers with `back()`,
+        // which keeps the same URL, so Inertia updates the props without
+        // reporting a navigation.
+        router.on('success', (event) => {
             syncLocale(event.detail.page.props);
+        });
+
+        router.on('navigate', (event) => {
             syncPostHogContext(event.detail.page);
             syncContentTypeMediaRules(event.detail.page);
             capturePageview();
