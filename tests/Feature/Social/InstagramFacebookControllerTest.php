@@ -22,6 +22,29 @@ beforeEach(function () {
     $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
 });
 
+test('instagram-facebook connect redirects to oauth provider', function () {
+    $driverMock = Mockery::mock();
+    $driverMock->shouldReceive('usingGraphVersion')->andReturnSelf();
+    $driverMock->shouldReceive('setScopes')->andReturnSelf();
+    $driverMock->shouldReceive('redirectUrl')->andReturnSelf();
+    $driverMock->shouldReceive('reRequest')->once()->andReturnSelf();
+    $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
+        'getTargetUrl' => 'https://www.facebook.com/v25.0/dialog/oauth?test=1',
+    ]));
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn($driverMock);
+
+    $response = $this->actingAs($this->user)
+        ->withHeader('X-Inertia', 'true')
+        ->get(route('app.social.instagram-facebook.connect'));
+
+    $response->assertStatus(409); // Inertia::location returns 409 with X-Inertia header
+
+    expect(session('social_connect_workspace'))->toBe($this->workspace->id);
+});
+
 test('instagram-facebook callback follows accounts pagination and shows picker', function () {
     session([
         'social_connect_workspace' => $this->workspace->id,
