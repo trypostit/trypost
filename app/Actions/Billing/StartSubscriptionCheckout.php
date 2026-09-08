@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Billing;
 
 use App\Models\Account;
+use App\Models\Plan;
 use App\Support\Billing\ConfigureSubscriptionCheckout;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -15,7 +16,7 @@ class StartSubscriptionCheckout
     /**
      * Create a Stripe Checkout session for the given price and return an Inertia
      * redirect to it. Trial days,
-     * optional first-month coupon, and promotion codes come from cashier /
+     * optional per-plan first-month coupon, and promotion codes come from cashier /
      * trypost billing env config via ConfigureSubscriptionCheckout. The owner's
      * signup attribution -- UTM parameters and ad click IDs -- and onboarding
      * answers ride along as subscription metadata, flattened to the strings
@@ -23,7 +24,7 @@ class StartSubscriptionCheckout
      * rejects a longer value outright rather than truncating it, which would
      * fail the whole checkout: https://docs.stripe.com/api/metadata
      */
-    public function redirect(Account $account, string $priceId, string $cancelUrl): Response
+    public function redirect(Account $account, string $priceId, string $cancelUrl, ?Plan $plan = null): Response
     {
         $account->createOrGetStripeCustomer([
             'email' => $account->stripeEmail(),
@@ -55,7 +56,11 @@ class StartSubscriptionCheckout
                 $metadata,
             ));
 
-        ConfigureSubscriptionCheckout::apply($subscription, $account);
+        ConfigureSubscriptionCheckout::apply(
+            $subscription,
+            $account,
+            self::planForFirstMonthCoupon($plan, $priceId),
+        );
 
         $session = $subscription->checkout([
             'success_url' => route('app.billing.processing').'?session_id={CHECKOUT_SESSION_ID}',
@@ -63,5 +68,19 @@ class StartSubscriptionCheckout
         ]);
 
         return Inertia::location($session->url);
+    }
+
+    /**
+     * First-month coupons are amount_off against the monthly price ($18 on
+     * Socials, $88 on Workspaces). A yearly price would leave the customer
+     * paying almost the full year, so it never qualifies.
+     */
+    private static function planForFirstMonthCoupon(?Plan $plan, string $priceId): ?Plan
+    {
+        if ($plan === null || $plan->stripe_monthly_price_id !== $priceId) {
+            return null;
+        }
+
+        return $plan;
     }
 }

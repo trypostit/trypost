@@ -19,6 +19,7 @@ return [
         'billed_monthly' => 'Facturé mensuellement',
         'billed_yearly' => 'Facturé annuellement',
         'prices' => [
+            'first_month' => '1 $',
             'workspace' => ['monthly' => '12 $', 'yearly_per_month' => '10 $', 'yearly' => '120 $'],
             'socials' => ['monthly' => '19 $', 'yearly_per_month' => '15,83 $', 'yearly' => '190 $'],
             'workspaces' => ['monthly' => '99 $', 'yearly_per_month' => '82,50 $', 'yearly' => '990 $'],
@@ -36,6 +37,21 @@ return [
         'workspaces_unlimited' => 'Espaces de travail illimités',
         'current' => 'Offre actuelle',
         'select' => 'Choisir :plan',
+        'start_first_month' => 'Commencer mon premier mois pour :price',
+        'first_month_then' => 'Premier mois :first, puis :price/mois',
+
+        'billed_yearly_total' => 'Facturé annuellement · :price (2 mois offerts)',
+        'socials_tagline' => 'Un espace de travail. Publiez partout.',
+        'workspaces_tagline' => 'Un espace de travail pour chaque marque ou client.',
+        'features' => [
+            'accounts_unlimited' => 'Comptes sociaux illimités',
+            'calendar' => 'Calendrier visuel avec publication automatique',
+            'ai' => 'IA : légendes, images et voix de marque',
+            'mcp' => 'MCP : créez et planifiez depuis Claude, ChatGPT ou Grok',
+            'repurpose' => 'Repurpose : transformez un post en plusieurs',
+            'analytics' => 'Analyses par publication et par compte',
+            'team' => 'Équipe, rôles et validations illimités',
+        ],
     ],
 
     'plan' => [

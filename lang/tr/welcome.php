@@ -38,8 +38,8 @@ return [
         'just_exploring' => 'Şimdilik sadece keşfetmek',
         'other' => 'Başka bir şey',
     ],
-    'plan_title' => 'Planınızı seçin',
-    'plan_description' => 'Bugün ihtiyacınız olanla başlayın. İstediğiniz zaman değiştirebilirsiniz.',
+    'plan_title' => 'Bir plan seçin. Tüm özellikler dahil.',
+    'plan_description' => 'Tek fark aldığınız çalışma alanı sayısı. Daha sonra değiştirebilirsiniz.',
     'referral_source_title' => 'Bizi nasıl buldunuz?',
     'referral_source_description' => 'İnsanların TryPost\'u nasıl keşfettiğini anlamamıza yardımcı olur.',
     'referral_source' => [

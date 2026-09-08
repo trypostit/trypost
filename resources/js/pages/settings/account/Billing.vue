@@ -99,7 +99,7 @@ const upgradeToAnnual = (): void => {
     <Head :title="$t('billing.title')" />
 
     <AppLayout>
-        <div class="mx-auto max-w-4xl space-y-8 px-6 py-8">
+        <div class="mx-auto max-w-5xl space-y-8 px-6 py-8">
             <PageHeader
                 :title="$t('settings.hub.title')"
                 :description="$t('settings.hub.description')"

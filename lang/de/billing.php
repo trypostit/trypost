@@ -21,6 +21,7 @@ return [
         'billed_monthly' => 'Monatlich abgerechnet',
         'billed_yearly' => 'Jährlich abgerechnet',
         'prices' => [
+            'first_month' => '$1',
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
@@ -38,6 +39,21 @@ return [
         'workspaces_unlimited' => 'Unbegrenzte Workspaces',
         'current' => 'Aktueller Tarif',
         'select' => ':plan wählen',
+        'start_first_month' => 'Meinen ersten Monat für :price starten',
+        'first_month_then' => 'Erster Monat :first, danach :price/Monat',
+
+        'billed_yearly_total' => 'Jährlich abgerechnet · :price (2 Monate gratis)',
+        'socials_tagline' => 'Ein Workspace. Überall posten.',
+        'workspaces_tagline' => 'Ein Workspace für jede Marke oder jeden Kunden.',
+        'features' => [
+            'accounts_unlimited' => 'Unbegrenzte Social-Accounts',
+            'calendar' => 'Visueller Kalender mit Auto-Publishing',
+            'ai' => 'KI: Captions, Bilder und Markenstimme',
+            'mcp' => 'MCP: erstellen und planen mit Claude, ChatGPT oder Grok',
+            'repurpose' => 'Repurpose: aus einem Post viele machen',
+            'analytics' => 'Analytics pro Post und Account',
+            'team' => 'Unbegrenztes Team, Rollen und Freigaben',
+        ],
     ],
 
     'plan' => [

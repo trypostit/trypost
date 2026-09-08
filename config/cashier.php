@@ -144,18 +144,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Paid First Month Coupon
+    | Paid First Month Coupons
     |--------------------------------------------------------------------------
     |
-    | Optional Stripe Coupon ID (amount_off, duration=once). When set and the
-    | account qualifies (card required, single workspace, first-time), checkout
-    | applies withCoupon and skips trialDays so the first invoice validates the
-    | card. Empty = no coupon; card-required checkouts use trial_days instead.
-    | Cannot be combined with allow_promotion_codes on the same checkout.
+    | Per-plan Stripe Coupon IDs (amount_off, duration=once) so the first
+    | monthly invoice is $1: Socials $19 − $18, Workspaces $99 − $88. When
+    | the matching coupon is set and the account qualifies (card required,
+    | first-time, monthly price), checkout applies withCoupon and skips
+    | trialDays. Empty for that plan = trial_days instead. Never reuse one
+    | coupon on the other plan — the amounts are different. Yearly prices
+    | never get a coupon. Cannot be combined with allow_promotion_codes on
+    | the same checkout.
     |
     */
 
-    'first_month_coupon_id' => env('STRIPE_FIRST_MONTH_COUPON_ID'),
+    'first_month_coupon_ids' => [
+        'socials' => env('STRIPE_SOCIALS_FIRST_MONTH_COUPON_ID'),
+        'workspaces' => env('STRIPE_WORKSPACES_FIRST_MONTH_COUPON_ID'),
+    ],
 
     /*
     |--------------------------------------------------------------------------

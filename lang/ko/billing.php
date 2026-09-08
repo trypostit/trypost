@@ -19,6 +19,7 @@ return [
         'billed_monthly' => '월간 결제',
         'billed_yearly' => '연간 결제',
         'prices' => [
+            'first_month' => '$1',
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
@@ -36,6 +37,21 @@ return [
         'workspaces_unlimited' => '무제한 워크스페이스',
         'current' => '현재 요금제',
         'select' => ':plan 선택',
+        'start_first_month' => '첫 달을 :price에 시작하기',
+        'first_month_then' => '첫 달 :first, 이후 :price/월',
+
+        'billed_yearly_total' => '연간 결제 · :price (2개월 무료)',
+        'socials_tagline' => '워크스페이스 하나. 모든 네트워크에 게시.',
+        'workspaces_tagline' => '브랜드나 클라이언트마다 워크스페이스 하나.',
+        'features' => [
+            'accounts_unlimited' => '소셜 계정 무제한',
+            'calendar' => '자동 게시가 되는 비주얼 캘린더',
+            'ai' => 'AI: 캡션, 이미지, 브랜드 보이스',
+            'mcp' => 'MCP: Claude, ChatGPT, Grok에서 만들고 예약',
+            'repurpose' => 'Repurpose: 게시물 하나를 여러 개로',
+            'analytics' => '게시물·계정별 분석',
+            'team' => '팀, 역할, 승인 무제한',
+        ],
     ],
 
     'plan' => [

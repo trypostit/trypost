@@ -19,6 +19,7 @@ return [
         'billed_monthly' => 'Cobrança mensal',
         'billed_yearly' => 'Cobrança anual',
         'prices' => [
+            'first_month' => 'R$ 5',
             'workspace' => ['monthly' => 'R$ 60', 'yearly_per_month' => 'R$ 50', 'yearly' => 'R$ 600'],
             'socials' => ['monthly' => 'R$ 95', 'yearly_per_month' => 'R$ 79,17', 'yearly' => 'R$ 950'],
             'workspaces' => ['monthly' => 'R$ 495', 'yearly_per_month' => 'R$ 412,50', 'yearly' => 'R$ 4.950'],
@@ -36,6 +37,21 @@ return [
         'workspaces_unlimited' => 'Workspaces ilimitados',
         'current' => 'Plano atual',
         'select' => 'Escolher :plan',
+        'start_first_month' => 'Começar meu primeiro mês por :price',
+        'first_month_then' => 'Primeiro mês :first, depois :price/mês',
+
+        'billed_yearly_total' => 'Cobrança anual · :price (2 meses grátis)',
+        'socials_tagline' => 'Um workspace. Publique em todas as redes.',
+        'workspaces_tagline' => 'Um workspace para cada marca ou cliente.',
+        'features' => [
+            'accounts_unlimited' => 'Contas sociais ilimitadas',
+            'calendar' => 'Calendário visual com publicação automática',
+            'ai' => 'IA: legendas, imagens e voz da marca',
+            'mcp' => 'MCP: crie e agende pelo Claude, ChatGPT ou Grok',
+            'repurpose' => 'Repurpose: transforme um post em vários',
+            'analytics' => 'Analytics por post e por conta',
+            'team' => 'Time, papéis e aprovações ilimitados',
+        ],
     ],
 
     'plan' => [

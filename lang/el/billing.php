@@ -19,6 +19,7 @@ return [
         'billed_monthly' => 'Μηνιαία χρέωση',
         'billed_yearly' => 'Ετήσια χρέωση',
         'prices' => [
+            'first_month' => '$1',
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
@@ -36,6 +37,21 @@ return [
         'workspaces_unlimited' => 'Απεριόριστα workspaces',
         'current' => 'Τρέχον πλάνο',
         'select' => 'Επιλέξτε :plan',
+        'start_first_month' => 'Ξεκίνα τον πρώτο μήνα με :price',
+        'first_month_then' => 'Πρώτος μήνας :first, μετά :price/μήνα',
+
+        'billed_yearly_total' => 'Ετήσια χρέωση · :price (2 μήνες δωρεάν)',
+        'socials_tagline' => 'Ένα workspace. Δημοσιεύστε παντού.',
+        'workspaces_tagline' => 'Ένα workspace για κάθε brand ή πελάτη.',
+        'features' => [
+            'accounts_unlimited' => 'Απεριόριστοι λογαριασμοί social',
+            'calendar' => 'Οπτικό ημερολόγιο με αυτόματη δημοσίευση',
+            'ai' => 'AI: λεζάντες, εικόνες και φωνή brand',
+            'mcp' => 'MCP: δημιουργία και προγραμματισμός από Claude, ChatGPT ή Grok',
+            'repurpose' => 'Repurpose: ένα post γίνεται πολλά',
+            'analytics' => 'Analytics ανά ανάρτηση και λογαριασμό',
+            'team' => 'Απεριόριστη ομάδα, ρόλοι και εγκρίσεις',
+        ],
     ],
 
     'plan' => [

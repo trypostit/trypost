@@ -19,6 +19,7 @@ return [
         'billed_monthly' => 'Maandelijks gefactureerd',
         'billed_yearly' => 'Jaarlijks gefactureerd',
         'prices' => [
+            'first_month' => '$1',
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
@@ -36,6 +37,21 @@ return [
         'workspaces_unlimited' => 'Onbeperkte workspaces',
         'current' => 'Huidig plan',
         'select' => 'Kies :plan',
+        'start_first_month' => 'Start mijn eerste maand voor :price',
+        'first_month_then' => 'Eerste maand :first, daarna :price/maand',
+
+        'billed_yearly_total' => 'Jaarlijks gefactureerd · :price (2 maanden gratis)',
+        'socials_tagline' => 'Eén workspace. Overal posten.',
+        'workspaces_tagline' => 'Een workspace voor elk merk of elke klant.',
+        'features' => [
+            'accounts_unlimited' => 'Onbeperkte social accounts',
+            'calendar' => 'Visuele kalender met automatisch publiceren',
+            'ai' => 'AI: captions, afbeeldingen en merkstem',
+            'mcp' => 'MCP: maak en plan via Claude, ChatGPT of Grok',
+            'repurpose' => 'Repurpose: maak van één post er veel',
+            'analytics' => 'Analytics per post en per account',
+            'team' => 'Onbeperkt team, rollen en goedkeuringen',
+        ],
     ],
 
     'plan' => [

@@ -21,6 +21,7 @@ return [
         'billed_monthly' => 'Aylık faturalandırılır',
         'billed_yearly' => 'Yıllık faturalandırılır',
         'prices' => [
+            'first_month' => '$1',
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
@@ -38,6 +39,21 @@ return [
         'workspaces_unlimited' => 'Sınırsız workspace',
         'current' => 'Mevcut plan',
         'select' => ':plan seç',
+        'start_first_month' => 'İlk ayıma :price ile başla',
+        'first_month_then' => 'İlk ay :first, sonra :price/ay',
+
+        'billed_yearly_total' => 'Yıllık faturalandırılır · :price (2 ay bedava)',
+        'socials_tagline' => 'Bir çalışma alanı. Her yere yayınlayın.',
+        'workspaces_tagline' => 'Her marka veya müşteri için bir çalışma alanı.',
+        'features' => [
+            'accounts_unlimited' => 'Sınırsız sosyal hesaplar',
+            'calendar' => 'Otomatik yayınlamalı görsel takvim',
+            'ai' => 'Yapay zeka: metinler, görseller ve marka sesi',
+            'mcp' => 'MCP: Claude, ChatGPT veya Grok ile oluşturun ve planlayın',
+            'repurpose' => 'Repurpose: bir gönderiyi çoğaltın',
+            'analytics' => 'Gönderi ve hesap analitiği',
+            'team' => 'Sınırsız ekip, roller ve onaylar',
+        ],
     ],
 
     'plan' => [

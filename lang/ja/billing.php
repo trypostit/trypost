@@ -19,6 +19,7 @@ return [
         'billed_monthly' => '月払い',
         'billed_yearly' => '年払い',
         'prices' => [
+            'first_month' => '$1',
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
@@ -36,6 +37,21 @@ return [
         'workspaces_unlimited' => '無制限のワークスペース',
         'current' => '現在のプラン',
         'select' => ':plan を選ぶ',
+        'start_first_month' => '初月を:priceで始める',
+        'first_month_then' => '初月:first、その後:price/月',
+
+        'billed_yearly_total' => '年払い · :price（2か月分無料）',
+        'socials_tagline' => 'ワークスペース1つで、すべてのネットワークに投稿。',
+        'workspaces_tagline' => 'ブランドやクライアントごとにワークスペースを。',
+        'features' => [
+            'accounts_unlimited' => 'ソーシャルアカウント数無制限',
+            'calendar' => '自動投稿付きのビジュアルカレンダー',
+            'ai' => 'AI：キャプション、画像、ブランドボイス',
+            'mcp' => 'MCP：Claude、ChatGPT、Grokから作成・予約',
+            'repurpose' => 'Repurpose：1本の投稿を複数に展開',
+            'analytics' => '投稿・アカウントごとの分析',
+            'team' => 'チーム、役割、承認は無制限',
+        ],
     ],
 
     'plan' => [

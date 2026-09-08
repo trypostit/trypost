@@ -9,14 +9,9 @@ defineProps<{
     plans: PlanOption[];
 }>();
 
-const form = useForm<{ plan_id: string | null; interval: 'monthly' | 'yearly' }>({
+const form = useForm<{ plan_id: string | null }>({
     plan_id: null,
-    interval: 'monthly',
 });
-
-const setInterval = (interval: 'monthly' | 'yearly'): void => {
-    form.interval = interval;
-};
 
 const select = (planId: string): void => {
     if (form.processing) {
@@ -35,13 +30,14 @@ const select = (planId: string): void => {
         :title="$t('welcome.plan_title')"
         :description="$t('welcome.plan_description')"
         :step="5"
-        size="2xl"
+        size="5xl"
     >
         <PlanPicker
             :plans="plans"
-            :interval="form.interval"
+            interval="monthly"
+            :allow-yearly="false"
+            :offer-first-month="true"
             :processing="form.processing"
-            @update:interval="setInterval"
             @select="select"
         />
     </WelcomeLayout>

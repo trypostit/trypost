@@ -19,6 +19,7 @@ return [
         'billed_monthly' => 'Billed monthly',
         'billed_yearly' => 'Billed annually',
         'prices' => [
+            'first_month' => '$1',
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
@@ -36,6 +37,21 @@ return [
         'workspaces_unlimited' => 'Unlimited workspaces',
         'current' => 'Current plan',
         'select' => 'Choose :plan',
+        'start_first_month' => 'Start my first month for :price',
+        'first_month_then' => 'First month :first, then :price/month',
+
+        'billed_yearly_total' => 'Billed annually · :price (2 months free)',
+        'socials_tagline' => 'One workspace. Post everywhere.',
+        'workspaces_tagline' => 'A workspace for every brand or client.',
+        'features' => [
+            'accounts_unlimited' => 'Unlimited social accounts',
+            'calendar' => 'Visual calendar with auto-publishing',
+            'ai' => 'AI content: captions, images, brand voice',
+            'mcp' => 'MCP: create and schedule from Claude, ChatGPT, or Grok',
+            'repurpose' => 'Repurpose: turn one post into many',
+            'analytics' => 'Analytics per post and account',
+            'team' => 'Unlimited teammates, roles, and approvals',
+        ],
     ],
 
     'plan' => [

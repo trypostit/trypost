@@ -211,18 +211,17 @@ class WelcomeController extends Controller
 
         $user = $request->user();
         $plan = Plan::active()->findOrFail($request->validated('plan_id'));
-        $interval = Interval::from($request->validated('interval'));
-        $priceId = $interval->priceIdFor($plan);
+        $priceId = Interval::Monthly->priceIdFor($plan);
 
         abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
 
-        $response = $checkout->redirect($user->account, $priceId, route('app.welcome.plan'));
+        $response = $checkout->redirect($user->account, $priceId, route('app.welcome.plan'), $plan);
 
         try {
             $postHog->capture(
                 $user->id,
                 CheckoutEvent::Started->value,
-                ['plan_name' => $plan->name, 'interval' => $interval->value],
+                ['plan_name' => $plan->name, 'interval' => Interval::Monthly->value],
                 $user->account,
             );
         } catch (Throwable $e) {

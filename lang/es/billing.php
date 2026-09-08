@@ -19,6 +19,7 @@ return [
         'billed_monthly' => 'Facturado mensualmente',
         'billed_yearly' => 'Facturado anualmente',
         'prices' => [
+            'first_month' => '$1',
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
@@ -36,6 +37,21 @@ return [
         'workspaces_unlimited' => 'Workspaces ilimitados',
         'current' => 'Plan actual',
         'select' => 'Elegir :plan',
+        'start_first_month' => 'Empezar mi primer mes por :price',
+        'first_month_then' => 'Primer mes :first, luego :price/mes',
+
+        'billed_yearly_total' => 'Facturación anual · :price (2 meses gratis)',
+        'socials_tagline' => 'Un workspace. Publica en todas partes.',
+        'workspaces_tagline' => 'Un workspace para cada marca o cliente.',
+        'features' => [
+            'accounts_unlimited' => 'Cuentas sociales ilimitadas',
+            'calendar' => 'Calendario visual con publicación automática',
+            'ai' => 'IA: textos, imágenes y voz de marca',
+            'mcp' => 'MCP: crea y programa desde Claude, ChatGPT o Grok',
+            'repurpose' => 'Repurpose: convierte un post en muchos',
+            'analytics' => 'Analíticas por publicación y por cuenta',
+            'team' => 'Equipo, roles y aprobaciones ilimitados',
+        ],
     ],
 
     'plan' => [

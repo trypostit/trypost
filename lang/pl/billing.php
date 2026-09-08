@@ -19,6 +19,7 @@ return [
         'billed_monthly' => 'Rozliczane miesięcznie',
         'billed_yearly' => 'Rozliczane rocznie',
         'prices' => [
+            'first_month' => '$1',
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
@@ -36,6 +37,21 @@ return [
         'workspaces_unlimited' => 'Nielimitowane workspace’y',
         'current' => 'Aktualny plan',
         'select' => 'Wybierz :plan',
+        'start_first_month' => 'Zacznij pierwszy miesiąc za :price',
+        'first_month_then' => 'Pierwszy miesiąc :first, potem :price/miesiąc',
+
+        'billed_yearly_total' => 'Rozliczane rocznie · :price (2 miesiące gratis)',
+        'socials_tagline' => 'Jeden workspace. Publikuj wszędzie.',
+        'workspaces_tagline' => 'Workspace na każdą markę lub klienta.',
+        'features' => [
+            'accounts_unlimited' => 'Nielimitowane konta społecznościowe',
+            'calendar' => 'Wizualny kalendarz z automatyczną publikacją',
+            'ai' => 'AI: podpisy, obrazy i głos marki',
+            'mcp' => 'MCP: twórz i planuj w Claude, ChatGPT lub Grok',
+            'repurpose' => 'Repurpose: z jednego posta zrób wiele',
+            'analytics' => 'Analityka per post i konto',
+            'team' => 'Nielimitowany zespół, role i akceptacje',
+        ],
     ],
 
     'plan' => [

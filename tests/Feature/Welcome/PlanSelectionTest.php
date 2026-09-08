@@ -77,18 +77,7 @@ test('the plan step rejects an archived plan', function () {
         ->assertSessionHasErrors('plan_id');
 });
 
-test('the plan step rejects an unknown interval', function () {
-    $plan = Plan::where('slug', Slug::Socials)->firstOrFail();
-
-    $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.plan.store'), [
-            'plan_id' => $plan->id,
-            'interval' => 'weekly',
-        ])
-        ->assertSessionHasErrors('interval');
-});
-
-test('the plan step starts checkout with the yearly price of the chosen plan', function () {
+test('the plan step always checks out the monthly price of the chosen plan', function () {
     $plan = Plan::where('slug', Slug::Workspaces)->firstOrFail();
     $plan->update([
         'stripe_monthly_price_id' => 'price_workspaces_monthly',
@@ -98,7 +87,7 @@ test('the plan step starts checkout with the yearly price of the chosen plan', f
     $this->mock(StartSubscriptionCheckout::class)
         ->shouldReceive('redirect')
         ->once()
-        ->withArgs(fn ($account, $priceId) => $priceId === 'price_workspaces_yearly')
+        ->withArgs(fn ($account, $priceId, $cancelUrl, $passedPlan) => $priceId === 'price_workspaces_monthly' && $passedPlan->is($plan))
         ->andReturn(redirect('https://checkout.stripe.test/session'));
 
     $this->actingAs($this->user->fresh())

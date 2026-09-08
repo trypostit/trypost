@@ -38,8 +38,8 @@ return [
         'just_exploring' => 'Voorlopig gewoon aan het verkennen',
         'other' => 'Iets anders',
     ],
-    'plan_title' => 'Kies je plan',
-    'plan_description' => 'Begin met wat je vandaag nodig hebt. Je kunt het altijd wijzigen.',
+    'plan_title' => 'Kies een plan. Elke functie is inbegrepen.',
+    'plan_description' => 'Het enige verschil is hoeveel workspaces je krijgt. Je kunt later wisselen.',
     'referral_source_title' => 'Hoe heb je ons gevonden?',
     'referral_source_description' => 'Dit helpt ons te begrijpen hoe mensen TryPost ontdekken.',
     'referral_source' => [

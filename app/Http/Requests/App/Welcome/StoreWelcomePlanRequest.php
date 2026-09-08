@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\App\Welcome;
 
-use App\Enums\Billing\Interval;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -26,7 +25,6 @@ class StoreWelcomePlanRequest extends FormRequest
                 'uuid',
                 Rule::exists('plans', 'id')->where(fn ($query) => $query->where('is_archived', false)),
             ],
-            'interval' => ['required', Rule::enum(Interval::class)],
         ];
     }
 }

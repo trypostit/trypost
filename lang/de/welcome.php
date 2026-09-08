@@ -38,8 +38,8 @@ return [
         'just_exploring' => 'Ich schaue mich vorerst nur um',
         'other' => 'Etwas anderes',
     ],
-    'plan_title' => 'Wähle deinen Tarif',
-    'plan_description' => 'Starte mit dem, was du heute brauchst. Du kannst jederzeit wechseln.',
+    'plan_title' => 'Wähle einen Tarif. Alle Funktionen sind enthalten.',
+    'plan_description' => 'Der einzige Unterschied ist, wie viele Workspaces du bekommst. Du kannst später wechseln.',
     'referral_source_title' => 'Wie hast du uns gefunden?',
     'referral_source_description' => 'Das hilft uns zu verstehen, wie Menschen TryPost entdecken.',
     'referral_source' => [

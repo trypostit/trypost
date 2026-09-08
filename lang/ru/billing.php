@@ -19,6 +19,7 @@ return [
         'billed_monthly' => 'Ежемесячная оплата',
         'billed_yearly' => 'Годовая оплата',
         'prices' => [
+            'first_month' => '$1',
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
@@ -36,6 +37,21 @@ return [
         'workspaces_unlimited' => 'Неограниченное число workspace',
         'current' => 'Текущий план',
         'select' => 'Выбрать :plan',
+        'start_first_month' => 'Начать первый месяц за :price',
+        'first_month_then' => 'Первый месяц :first, затем :price/месяц',
+
+        'billed_yearly_total' => 'Оплата раз в год · :price (2 месяца бесплатно)',
+        'socials_tagline' => 'Одно рабочее пространство. Публикуйте везде.',
+        'workspaces_tagline' => 'Рабочее пространство для каждого бренда или клиента.',
+        'features' => [
+            'accounts_unlimited' => 'Безлимитные аккаунты',
+            'calendar' => 'Визуальный календарь с автопубликацией',
+            'ai' => 'ИИ: тексты, изображения и голос бренда',
+            'mcp' => 'MCP: создавайте и планируйте в Claude, ChatGPT или Grok',
+            'repurpose' => 'Repurpose: из одного поста сделайте много',
+            'analytics' => 'Аналитика по постам и аккаунтам',
+            'team' => 'Безлимитная команда, роли и согласования',
+        ],
     ],
 
     'plan' => [

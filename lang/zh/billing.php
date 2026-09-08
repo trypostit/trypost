@@ -19,6 +19,7 @@ return [
         'billed_monthly' => '按月计费',
         'billed_yearly' => '按年计费',
         'prices' => [
+            'first_month' => '$1',
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
@@ -36,6 +37,21 @@ return [
         'workspaces_unlimited' => '无限工作区',
         'current' => '当前套餐',
         'select' => '选择 :plan',
+        'start_first_month' => '以 :price 开始第一个月',
+        'first_month_then' => '首月 :first，之后 :price/月',
+
+        'billed_yearly_total' => '按年计费 · :price（免两个月）',
+        'socials_tagline' => '一个工作区，发到所有网络。',
+        'workspaces_tagline' => '每个品牌或客户一个工作区。',
+        'features' => [
+            'accounts_unlimited' => '社交账号不限',
+            'calendar' => '可视化日历，自动发布',
+            'ai' => 'AI：文案、图片和品牌声音',
+            'mcp' => 'MCP：用 Claude、ChatGPT 或 Grok 创建并预约',
+            'repurpose' => 'Repurpose：一条内容变成多条',
+            'analytics' => '按帖子和账号查看分析',
+            'team' => '无限团队、角色和审批',
+        ],
     ],
 
     'plan' => [
