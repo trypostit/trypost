@@ -34,7 +34,7 @@ class LoginRequest extends FormRequest
         return [
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
-            'locale' => ['required', ValidationRule::enum(Locale::class)],
+            'locale' => ['nullable', ValidationRule::enum(Locale::class)],
         ];
     }
 

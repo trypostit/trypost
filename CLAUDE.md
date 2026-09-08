@@ -280,11 +280,12 @@ and parity with `ContentLanguage`).
   changing language on login or register costs no round trip and touches nothing
   on the server. `useGuestLocale` holds the choice at module scope so it survives
   Inertia navigation between those screens.
-- **Login and register both submit `locale` as a required hidden field**, and
-  both write it: register creates the user with it, login updates the user and
-  dispatches `SyncUser`. The redirect after either lands on a page the middleware
-  already renders in that language. Forgot and reset password do not send the
-  field — nothing reads it there.
+- **Register submits `locale` as a required hidden field** and creates the user
+  with it. **Login submits it only once the visitor picks a language** — the
+  field goes out empty otherwise, and an empty value leaves `users.locale`
+  untouched. This asymmetry is load-bearing: the login screen always renders in
+  `Locale::DEFAULT`, so an always-sent field would reset every non-English user
+  to English on each login. Forgot and reset password do not send it at all.
 - Google and GitHub signups store `Locale::DEFAULT`: they have no picker, and the
   OAuth callback tells you nothing reliable about the person.
 

@@ -28,12 +28,24 @@ test('logging in stores the locale picked on the login screen', function () {
     expect($user->refresh()->locale)->toBe(Locale::PortugueseBrazil);
 });
 
-test('the locale is required, since the login form always submits one', function () {
+test('logging in without touching the picker leaves the stored locale alone', function () {
     $user = User::factory()->create(['locale' => Locale::Japanese]);
 
-    loginWith($user, ['locale' => null])->assertSessionHasErrors('locale');
+    loginWith($user, ['locale' => ''])->assertSessionHasNoErrors();
 
-    $this->assertGuest();
+    $this->assertAuthenticated();
+    expect($user->refresh()->locale)->toBe(Locale::Japanese);
+});
+
+test('the locale the login screen renders in never overwrites the stored one', function () {
+    $user = User::factory()->create(['locale' => Locale::Japanese]);
+
+    $rendered = $this->get(route('login'))->viewData('page')['props']['locale'];
+
+    expect($rendered)->toBe(Locale::DEFAULT->value);
+
+    loginWith($user, ['locale' => ''])->assertSessionHasNoErrors();
+
     expect($user->refresh()->locale)->toBe(Locale::Japanese);
 });
 
@@ -44,6 +56,16 @@ test('an unsupported locale is rejected rather than stored', function () {
 
     $this->assertGuest();
     expect($user->refresh()->locale)->toBe(Locale::Japanese);
+});
+
+test('logging in without a pick pushes nothing to PostHog', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Queue::fake();
+
+    loginWith(User::factory()->create(['locale' => Locale::Japanese]), ['locale' => ''])
+        ->assertSessionHasNoErrors();
+
+    Queue::assertNotPushed(SyncUser::class);
 });
 
 test('logging in pushes the locale to PostHog', function () {

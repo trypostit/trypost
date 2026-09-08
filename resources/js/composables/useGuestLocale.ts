@@ -22,5 +22,5 @@ export const useGuestLocale = () => {
         () => page.props.languages as Language[],
     );
 
-    return { locale, languages };
+    return { locale, chosen, languages };
 };

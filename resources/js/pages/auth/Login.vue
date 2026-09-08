@@ -31,7 +31,7 @@ defineProps<{
     invite?: string | null;
 }>();
 
-const { locale } = useGuestLocale();
+const { chosen } = useGuestLocale();
 
 const showPassword = ref(false);
 
@@ -63,7 +63,7 @@ const pageErrors = usePageErrors();
                 v-slot="{ errors, processing }"
                 class="flex flex-col gap-6"
             >
-                <input type="hidden" name="locale" :value="locale" />
+                <input type="hidden" name="locale" :value="chosen ?? ''" />
 
                 <input
                     v-if="invite"

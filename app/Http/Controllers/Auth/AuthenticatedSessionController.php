@@ -38,11 +38,13 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        $user = $request->user();
-        $user->update(['locale' => $request->validated('locale')]);
+        if ($locale = $request->validated('locale')) {
+            $user = $request->user();
+            $user->update(['locale' => $locale]);
 
-        if (PostHogService::shouldTrack()) {
-            SyncUser::dispatch((string) $user->id);
+            if (PostHogService::shouldTrack()) {
+                SyncUser::dispatch((string) $user->id);
+            }
         }
 
         if ($invite = Invite::fromId($request->string('invite')->toString())) {
