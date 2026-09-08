@@ -61,11 +61,26 @@ test('the plan step shows both plans with networks and no yearly toggle', functi
     waitForWelcomePlanTestId($page, 'plan-networks-info-socials');
     waitForWelcomePlanTestId($page, 'plan-card-socials');
     waitForWelcomePlanTestId($page, 'plan-card-workspaces');
+    waitForWelcomePlanTestId($page, 'plan-price-first-month-socials');
     waitForWelcomePlanTestId($page, 'language-picker');
 
     $page->assertRoute('app.welcome.plan')
         ->assertVisible('@plan-card-socials')
         ->assertVisible('@plan-card-workspaces')
+        ->assertMissing('@plan-price-regular-socials')
+        ->assertMissing('@plan-price-regular-workspaces')
+        ->assertVisible('@plan-price-first-month-socials')
+        ->assertVisible('@plan-price-first-month-workspaces')
+        ->assertSeeIn('@plan-price-first-month-socials', '$1')
+        ->assertSeeIn('@plan-price-first-month-workspaces', '$1')
+        ->assertSeeIn('@plan-price-suffix-socials', '/first month')
+        ->assertSeeIn('@plan-price-suffix-workspaces', '/first month')
+        ->assertSeeIn('@plan-price-note-socials', 'Then $19/month')
+        ->assertSeeIn('@plan-price-note-workspaces', 'Then $99/month')
+        ->assertSeeIn('@plan-highlight-socials', 'One workspace')
+        ->assertSeeIn('@plan-highlight-workspaces', 'Unlimited workspaces')
+        ->assertVisible('@plan-workspaces-info-socials')
+        ->assertVisible('@plan-workspaces-info-workspaces')
         ->assertVisible('@plan-networks-info-socials')
         ->assertVisible('@plan-networks-info-workspaces')
         ->assertVisible('@plan-select-socials')

@@ -45,6 +45,14 @@ test('connect store sends the user to the plan step instead of Stripe', function
         ->assertRedirect(route('app.welcome.plan'));
 });
 
+test('the first-month offer copy mirrors the per-month suffix', function () {
+    expect(__('billing.plans.per_first_month'))
+        ->toBe('/first month')
+        ->and(__('billing.plans.per_month'))->toBe('/month')
+        ->and(__('billing.plans.then_monthly', ['price' => '$19']))->toBe('Then $19/month')
+        ->and(__('billing.subscribe.prices.first_month'))->toBe('$1');
+});
+
 test('the plan step lists only active plans, ordered by sort', function () {
     $this->actingAs($this->user->fresh())
         ->get(route('app.welcome.plan'))

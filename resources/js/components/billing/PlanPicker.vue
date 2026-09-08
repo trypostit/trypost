@@ -127,6 +127,10 @@ const isFeatured = (plan: PlanOption): boolean => plan.slug === 'workspaces';
 const firstMonthPrice = (): string =>
     trans('billing.subscribe.prices.first_month');
 
+const showsFirstMonthOffer = computed(
+    (): boolean => props.offerFirstMonth && props.interval === 'monthly',
+);
+
 const billingNote = (plan: PlanOption): string =>
     props.interval === 'yearly'
         ? trans('billing.plans.billed_yearly_total', {
@@ -206,12 +210,11 @@ const sharedFeatures = computed<PlanFeature[]>(() =>
                 "
                 :data-testid="`plan-card-${plan.slug}`"
             >
-                <div class="space-y-2">
-                    <Badge v-if="isCurrent(plan)" variant="secondary">
-                        {{ $t('billing.plans.current') }}
-                    </Badge>
-
-                    <div class="space-y-0.5">
+                <div class="flex flex-col gap-4">
+                    <div class="flex flex-col items-start gap-1.5 text-start">
+                        <Badge v-if="isCurrent(plan)" variant="secondary">
+                            {{ $t('billing.plans.current') }}
+                        </Badge>
                         <h3 class="text-xl font-bold tracking-tight">
                             {{ plan.name }}
                         </h3>
@@ -220,21 +223,51 @@ const sharedFeatures = computed<PlanFeature[]>(() =>
                         </p>
                     </div>
 
-                    <p>
-                        <span
-                            class="text-3xl font-bold text-foreground tabular-nums"
-                            >{{ price(plan) }}</span
-                        >
-                        <span class="ml-1 text-foreground/70">{{
-                            $t('billing.plans.per_month')
-                        }}</span>
-                    </p>
-                    <p
-                        v-if="!offerFirstMonth"
-                        class="text-xs font-medium text-foreground/60"
+                    <div
+                        v-if="showsFirstMonthOffer"
+                        class="flex flex-col items-center text-center"
                     >
-                        {{ billingNote(plan) }}
-                    </p>
+                        <p class="flex items-baseline justify-center gap-1">
+                            <span
+                                class="text-5xl leading-none font-bold tracking-tight tabular-nums"
+                                :data-testid="`plan-price-first-month-${plan.slug}`"
+                                >{{ firstMonthPrice() }}</span
+                            >
+                            <span
+                                class="text-lg font-semibold text-foreground/80"
+                                :data-testid="`plan-price-suffix-${plan.slug}`"
+                                >{{ $t('billing.plans.per_first_month') }}</span
+                            >
+                        </p>
+                        <p
+                            class="mt-1.5 text-sm font-medium text-foreground/60"
+                            :data-testid="`plan-price-note-${plan.slug}`"
+                        >
+                            {{
+                                $t('billing.plans.then_monthly', {
+                                    price: price(plan),
+                                })
+                            }}
+                        </p>
+                    </div>
+                    <div v-else class="flex flex-col items-center text-center">
+                        <p class="flex items-baseline gap-1.5">
+                            <span
+                                class="text-4xl leading-none font-bold tracking-tight tabular-nums"
+                                :data-testid="`plan-price-${plan.slug}`"
+                                >{{ price(plan) }}</span
+                            >
+                            <span class="text-base text-foreground/70">{{
+                                $t('billing.plans.per_month')
+                            }}</span>
+                        </p>
+                        <p
+                            class="mt-1.5 text-xs font-medium text-foreground/60"
+                            :data-testid="`plan-price-note-${plan.slug}`"
+                        >
+                            {{ billingNote(plan) }}
+                        </p>
+                    </div>
                 </div>
 
                 <div
@@ -249,8 +282,46 @@ const sharedFeatures = computed<PlanFeature[]>(() =>
                     >
                         <IconBuilding class="size-4.5" stroke-width="2.25" />
                     </span>
-                    <p class="text-base font-bold text-foreground">
-                        {{ workspaceLabel(plan) }}
+                    <p
+                        class="inline-flex items-center gap-1.5 text-base font-bold text-foreground"
+                    >
+                        <span>{{ workspaceLabel(plan) }}</span>
+                        <TooltipProvider :delay-duration="200">
+                            <Tooltip>
+                                <TooltipTrigger as-child>
+                                    <button
+                                        type="button"
+                                        class="inline-flex size-4 shrink-0 items-center justify-center text-foreground/55 transition-colors hover:text-foreground"
+                                        :aria-label="
+                                            $t(
+                                                'billing.plans.workspaces_tooltip',
+                                            )
+                                        "
+                                        :data-testid="`plan-workspaces-info-${plan.slug}`"
+                                    >
+                                        <IconInfoCircle
+                                            class="size-4"
+                                            stroke-width="2.25"
+                                        />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent
+                                    side="top"
+                                    :side-offset="8"
+                                    class="max-w-64 rounded-xl p-3 text-start"
+                                >
+                                    <p
+                                        class="text-xs leading-snug font-medium text-background"
+                                    >
+                                        {{
+                                            $t(
+                                                'billing.plans.workspaces_tooltip',
+                                            )
+                                        }}
+                                    </p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </p>
                 </div>
 
