@@ -30,15 +30,21 @@ test('plan slug is cast to enum', function () {
 test('active scope excludes archived plans', function () {
     $activeBefore = Plan::active()->count();
 
-    $plan = Plan::where('slug', Slug::Workspace)->first();
+    $plan = Plan::where('slug', Slug::Socials)->first();
     $plan->update(['is_archived' => true]);
 
     expect(Plan::active()->count())->toBe($activeBefore - 1);
 });
 
 test('integer fields are cast correctly', function () {
-    $plan = Plan::where('slug', Slug::Workspace)->first();
+    $plan = Plan::where('slug', Slug::Socials)->first();
 
-    expect($plan->monthly_credits_limit)->toBeInt()
+    expect($plan->workspace_limit)->toBeInt()
         ->and($plan->sort)->toBeInt();
+});
+
+test('an unlimited plan stores a null workspace limit', function () {
+    $plan = Plan::where('slug', Slug::Workspaces)->first();
+
+    expect($plan->workspace_limit)->toBeNull();
 });

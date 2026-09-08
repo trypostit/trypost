@@ -21,14 +21,22 @@ class PlanFactory extends Factory
     public function definition(): array
     {
         return [
-            'slug' => Slug::Workspace,
-            'name' => 'Workspace',
+            'slug' => Slug::Socials,
+            'name' => 'Socials',
             'stripe_monthly_price_id' => null,
             'stripe_yearly_price_id' => null,
             'monthly_credits_limit' => 2500,
+            'workspace_limit' => 1,
             'sort' => 0,
             'is_archived' => false,
         ];
+    }
+
+    public function unlimited(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'workspace_limit' => null,
+        ]);
     }
 
     public function archived(): static

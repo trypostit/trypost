@@ -23,6 +23,7 @@ class Plan extends Model
         'stripe_monthly_price_id',
         'stripe_yearly_price_id',
         'monthly_credits_limit',
+        'workspace_limit',
         'sort',
         'is_archived',
     ];
@@ -33,6 +34,7 @@ class Plan extends Model
             'slug' => Slug::class,
             'is_archived' => 'boolean',
             'monthly_credits_limit' => 'integer',
+            'workspace_limit' => 'integer',
             'sort' => 'integer',
         ];
     }
