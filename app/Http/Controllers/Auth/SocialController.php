@@ -206,10 +206,6 @@ class SocialController extends Controller
         )->values()->all();
     }
 
-    /**
-     * @param  array<int, string>  $scopes
-     * @param  array<string, mixed>  $parameters  Extra query parameters for the provider's authorize URL.
-     */
     protected function redirectToProvider(Request $request, string $driver, array $scopes, array $parameters = []): SymfonyResponse
     {
         $workspace = $request->user()->currentWorkspace;
