@@ -21,24 +21,31 @@ const g2ReviewsUrl = 'https://www.g2.com/products/trypost/reviews';
 const reviewKeys = ['paulo_dantas', 'diego', 'luiz', 'pedro', 'paulo_castellano'] as const;
 
 const reviewPeople = {
-    paulo_dantas: { name: 'Paulo Dantas', photo: '/images/reviews/paulo-dantas.png' },
-    diego: { name: 'Diego Sampaio', photo: '/images/reviews/diego-sampaio.png' },
+    paulo_dantas: { name: 'Paulo Dantas', photo: '/images/reviews/paulo-dantas.jpg' },
+    diego: { name: 'Diego Sampaio', photo: '/images/reviews/diego-sampaio.jpg' },
     luiz: { name: 'Luiz Mazini', photo: '/images/reviews/luiz-mazini.jpg' },
     pedro: { name: 'Pedro Campos', photo: '/images/reviews/pedro-campos.jpg' },
-    paulo_castellano: { name: 'Paulo Castellano', photo: '/images/reviews/paulo-castellano.png' },
+    paulo_castellano: { name: 'Paulo Castellano', photo: '/images/reviews/paulo-castellano.jpg' },
 };
 
 const reviews = computed(() =>
-    reviewKeys.map((key) => ({
+    reviewKeys.map((key, index) => ({
         key,
         name: reviewPeople[key].name,
         photo: reviewPeople[key].photo,
         role: trans(`auth.reviews.${key}.role`),
         quote: trans(`auth.reviews.${key}.quote`),
+        rotation: index % 2 === 0 ? '-rotate-1' : 'rotate-1',
     })),
 );
 
-const loopedReviews = computed(() => [...reviews.value, ...reviews.value]);
+// The marquee scrolls one full copy of the list, so a second copy fills the gap
+// it leaves behind. Both copies must render identically for the loop to be
+// seamless, hence the rotation living on the review rather than on the index.
+const loopedReviews = computed(() => [
+    ...reviews.value.map((review) => ({ ...review, duplicate: false })),
+    ...reviews.value.map((review) => ({ ...review, duplicate: true })),
+]);
 </script>
 
 <template>
@@ -90,6 +97,7 @@ const loopedReviews = computed(() => [...reviews.value, ...reviews.value]);
                         target="_blank"
                         rel="noopener noreferrer"
                         class="group inline-flex items-center gap-3"
+                        data-testid="auth-reviews-g2-link"
                     >
                         <div class="flex gap-0.5">
                             <IconStarFilled v-for="star in 5" :key="star" class="size-4 text-amber-500" />
@@ -99,18 +107,19 @@ const loopedReviews = computed(() => [...reviews.value, ...reviews.value]);
                         </span>
                     </a>
 
-                    <h2 class="h3 mt-4 text-2xl whitespace-nowrap text-foreground">
+                    <h2 class="h3 mt-4 whitespace-nowrap text-foreground">
                         {{ $t('auth.reviews.heading') }}
                     </h2>
                 </div>
 
                 <div class="relative mt-10 min-h-0 flex-1 overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_12%,black_82%,transparent)]">
-                    <div class="marquee mx-auto flex w-full max-w-md flex-col gap-4">
+                    <div class="marquee mx-auto flex w-full max-w-md flex-col gap-4" data-testid="auth-reviews">
                         <figure
                             v-for="(review, index) in loopedReviews"
                             :key="`${review.key}-${index}`"
                             class="shrink-0 rounded-xl border-2 border-foreground bg-card p-5 shadow-sm"
-                            :class="index % 2 === 0 ? '-rotate-1' : 'rotate-1'"
+                            :class="review.rotation"
+                            :aria-hidden="review.duplicate"
                         >
                             <div class="flex gap-0.5">
                                 <IconStarFilled v-for="star in 5" :key="star" class="size-3.5 text-amber-500" />
@@ -124,6 +133,9 @@ const loopedReviews = computed(() => [...reviews.value, ...reviews.value]);
                                 <img
                                     :src="review.photo"
                                     :alt="review.name"
+                                    width="96"
+                                    height="96"
+                                    loading="lazy"
                                     class="size-10 shrink-0 rounded-full border-2 border-foreground object-cover shadow-2xs"
                                 />
                                 <span class="min-w-0">
