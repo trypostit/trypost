@@ -38,6 +38,8 @@ return [
         'just_exploring' => 'مجرد استكشاف في الوقت الحالي',
         'other' => 'شيء آخر',
     ],
+    'plan_title' => 'اختر خطتك',
+    'plan_description' => 'ابدأ بما تحتاجه اليوم. يمكنك التغيير في أي وقت.',
     'referral_source_title' => 'كيف وجدتنا؟',
     'referral_source_description' => 'يساعدنا هذا على فهم كيفية اكتشاف الأشخاص لـ TryPost.',
     'referral_source' => [

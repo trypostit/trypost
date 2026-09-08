@@ -72,6 +72,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('welcome/connect', [WelcomeController::class, 'storeConnect'])
         ->middleware('throttle:6,1')
         ->name('app.welcome.connect.store');
+    Route::get('welcome/plan', [WelcomeController::class, 'plan'])->name('app.welcome.plan');
+    Route::post('welcome/plan', [WelcomeController::class, 'storePlan'])
+        ->middleware('throttle:6,1')
+        ->name('app.welcome.plan.store');
     Route::get('welcome/subscription-required', [WelcomeController::class, 'subscriptionRequired'])->name('app.welcome.subscription-required');
     Route::get('billing/processing', [BillingController::class, 'processing'])->name('app.billing.processing');
 

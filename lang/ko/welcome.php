@@ -38,6 +38,8 @@ return [
         'just_exploring' => '지금은 둘러보는 중',
         'other' => '다른 것',
     ],
+    'plan_title' => '요금제를 선택하세요',
+    'plan_description' => '오늘 필요한 것으로 시작하세요. 언제든지 변경할 수 있습니다.',
     'referral_source_title' => '저희를 어떻게 알게 되셨나요?',
     'referral_source_description' => '사람들이 TryPost를 어떻게 발견하는지 파악하는 데 도움이 됩니다.',
     'referral_source' => [

@@ -62,7 +62,7 @@ const submit = (): void => {
             <Button as-child size="lg" class="w-full rounded-full">
                 <button
                     type="button"
-                    data-testid="welcome-start-checkout"
+                    data-testid="welcome-connect-continue"
                     :disabled="form.processing || !hasConnectedAccount"
                     @click="submit"
                 >

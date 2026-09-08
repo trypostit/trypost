@@ -56,12 +56,12 @@ test('connect step shows the grid and keeps continue disabled without a social a
 
     $page = visit(route('app.welcome.connect'));
 
-    waitForWelcomeTestId($page, 'welcome-start-checkout');
+    waitForWelcomeTestId($page, 'welcome-connect-continue');
 
     $page->assertRoute('app.welcome.connect')
         ->assertVisible('@welcome-connect-grid')
-        ->assertVisible('@welcome-start-checkout')
-        ->assertDisabled('@welcome-start-checkout')
+        ->assertVisible('@welcome-connect-continue')
+        ->assertDisabled('@welcome-connect-continue')
         ->assertVisible('@welcome-step-4')
         ->assertNoJavaScriptErrors();
 });
@@ -78,11 +78,11 @@ test('connect step enables continue when a social account is connected', functio
 
     $page = visit(route('app.welcome.connect'));
 
-    waitForWelcomeTestId($page, 'welcome-start-checkout');
+    waitForWelcomeTestId($page, 'welcome-connect-continue');
 
     $page->assertRoute('app.welcome.connect')
         ->assertVisible('@welcome-connect-grid')
-        ->assertEnabled('@welcome-start-checkout')
+        ->assertEnabled('@welcome-connect-continue')
         ->assertNoJavaScriptErrors();
 });
 
@@ -131,13 +131,13 @@ test('connect step shows the backend error when the account disappears before su
 
     $page = visit(route('app.welcome.connect'));
 
-    waitForWelcomeTestId($page, 'welcome-start-checkout');
+    waitForWelcomeTestId($page, 'welcome-connect-continue');
 
-    $page->assertEnabled('@welcome-start-checkout');
+    $page->assertEnabled('@welcome-connect-continue');
 
     $account->delete();
 
-    $page->click('@welcome-start-checkout');
+    $page->click('@welcome-connect-continue');
 
     waitForWelcomeTestId($page, 'welcome-connect-error');
 

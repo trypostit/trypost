@@ -20,7 +20,22 @@ return [
         'billed_yearly' => 'فوترة سنوية',
         'prices' => [
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
+            'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
+            'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
+    ],
+
+    'plans' => [
+        'title' => 'الخطط',
+        'description' => 'يمكنك الترقية أو التخفيض في أي وقت.',
+        'monthly' => 'شهري',
+        'yearly' => 'سنوي',
+        'save_two_months' => 'شهران مجانًا',
+        'per_month' => '/شهر',
+        'workspaces_one' => 'مساحة عمل واحدة',
+        'workspaces_unlimited' => 'مساحات عمل غير محدودة',
+        'current' => 'الخطة الحالية',
+        'select' => 'اختر :plan',
     ],
 
     'plan' => [

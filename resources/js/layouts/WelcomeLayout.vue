@@ -7,6 +7,7 @@ import {
     connect as connectRoute,
     goals as goalsRoute,
     persona as personaRoute,
+    plan as planRoute,
     referralSource as referralSourceRoute,
 } from '@/routes/app/welcome';
 
@@ -37,7 +38,7 @@ const props = withDefaults(
         title: undefined,
         description: undefined,
         step: undefined,
-        totalSteps: 4,
+        totalSteps: 5,
         size: 'xl',
     },
 );
@@ -47,6 +48,7 @@ const stepRoutes = computed(() => [
     goalsRoute(),
     referralSourceRoute(),
     connectRoute(),
+    planRoute(),
 ]);
 
 const canNavigateTo = (stepNumber: number): boolean =>

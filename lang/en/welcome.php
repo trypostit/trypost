@@ -38,6 +38,8 @@ return [
         'just_exploring' => 'Just exploring for now',
         'other' => 'Something else',
     ],
+    'plan_title' => 'Choose your plan',
+    'plan_description' => 'Start with what you need today. You can change it whenever you want.',
     'referral_source_title' => 'How did you find us?',
     'referral_source_description' => 'This helps us understand how people discover TryPost.',
     'referral_source' => [

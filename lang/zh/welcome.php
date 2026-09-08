@@ -38,6 +38,8 @@ return [
         'just_exploring' => '目前只是随便看看',
         'other' => '其他需求',
     ],
+    'plan_title' => '选择套餐',
+    'plan_description' => '从今天需要的开始。随时可以更改。',
     'referral_source_title' => '您是如何找到我们的？',
     'referral_source_description' => '这有助于我们了解人们是如何发现 TryPost 的。',
     'referral_source' => [

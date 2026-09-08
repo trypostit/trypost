@@ -22,7 +22,22 @@ return [
         'billed_yearly' => 'Jährlich abgerechnet',
         'prices' => [
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
+            'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
+            'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
+    ],
+
+    'plans' => [
+        'title' => 'Tarife',
+        'description' => 'Jederzeit upgraden oder downgraden.',
+        'monthly' => 'Monatlich',
+        'yearly' => 'Jährlich',
+        'save_two_months' => '2 Monate gratis',
+        'per_month' => '/Monat',
+        'workspaces_one' => '1 Workspace',
+        'workspaces_unlimited' => 'Unbegrenzte Workspaces',
+        'current' => 'Aktueller Tarif',
+        'select' => ':plan wählen',
     ],
 
     'plan' => [

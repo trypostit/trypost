@@ -20,7 +20,22 @@ return [
         'billed_yearly' => '按年计费',
         'prices' => [
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
+            'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
+            'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
+    ],
+
+    'plans' => [
+        'title' => '套餐',
+        'description' => '随时可以升级或降级。',
+        'monthly' => '按月',
+        'yearly' => '按年',
+        'save_two_months' => '免两个月',
+        'per_month' => '/月',
+        'workspaces_one' => '1 个工作区',
+        'workspaces_unlimited' => '无限工作区',
+        'current' => '当前套餐',
+        'select' => '选择 :plan',
     ],
 
     'plan' => [

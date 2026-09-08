@@ -20,7 +20,22 @@ return [
         'billed_yearly' => 'Jaarlijks gefactureerd',
         'prices' => [
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
+            'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
+            'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
+    ],
+
+    'plans' => [
+        'title' => 'Plannen',
+        'description' => 'Upgrade of downgrade wanneer je wilt.',
+        'monthly' => 'Maandelijks',
+        'yearly' => 'Jaarlijks',
+        'save_two_months' => '2 maanden gratis',
+        'per_month' => '/maand',
+        'workspaces_one' => '1 workspace',
+        'workspaces_unlimited' => 'Onbeperkte workspaces',
+        'current' => 'Huidig plan',
+        'select' => 'Kies :plan',
     ],
 
     'plan' => [

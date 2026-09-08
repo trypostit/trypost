@@ -22,7 +22,22 @@ return [
         'billed_yearly' => 'Yıllık faturalandırılır',
         'prices' => [
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
+            'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
+            'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
+    ],
+
+    'plans' => [
+        'title' => 'Planlar',
+        'description' => 'İstediğiniz zaman yükseltin veya düşürün.',
+        'monthly' => 'Aylık',
+        'yearly' => 'Yıllık',
+        'save_two_months' => '2 ay ücretsiz',
+        'per_month' => '/ay',
+        'workspaces_one' => '1 workspace',
+        'workspaces_unlimited' => 'Sınırsız workspace',
+        'current' => 'Mevcut plan',
+        'select' => ':plan seç',
     ],
 
     'plan' => [

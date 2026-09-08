@@ -221,7 +221,8 @@ test('welcome funnel captures connect between referral and checkout.started', fu
     $workspace = attachCurrentWorkspace($this->user);
     SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
 
-    Plan::where('slug', Slug::Workspace)->firstOrFail()->update([
+    $plan = Plan::where('slug', Slug::Socials)->firstOrFail();
+    $plan->update([
         'stripe_monthly_price_id' => 'price_monthly_test',
     ]);
 
@@ -246,6 +247,13 @@ test('welcome funnel captures connect between referral and checkout.started', fu
 
     $this->actingAs($this->user->fresh())
         ->post(route('app.welcome.connect.store'))
+        ->assertRedirect(route('app.welcome.plan'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.plan.store'), [
+            'plan_id' => $plan->id,
+            'interval' => 'monthly',
+        ])
         ->assertRedirect('https://checkout.stripe.test/session');
 
     $funnel = WelcomeEvent::funnel();
@@ -451,101 +459,33 @@ test('connect store ignores social accounts on another workspace', function () {
         ->assertSessionHasErrors('connect');
 });
 
-test('connect store starts Stripe checkout when a social account is connected', function () {
+test('connect store advances to the plan step when a social account is connected', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
     completeWelcomeThroughReferral($this->user);
     $workspace = attachCurrentWorkspace($this->user);
     SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
 
-    Plan::where('slug', Slug::Workspace)->firstOrFail()->update([
-        'stripe_monthly_price_id' => 'price_monthly_test',
-    ]);
-
-    $this->mock(StartSubscriptionCheckout::class)
-        ->shouldReceive('redirect')
-        ->once()
-        ->withArgs(fn (Account $account, string $priceId, string $cancelUrl): bool => $account->is($this->user->account)
-            && $priceId === 'price_monthly_test'
-            && $cancelUrl === route('app.welcome.connect'))
-        ->andReturn(redirect('https://checkout.stripe.test/session'));
+    $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
 
     $this->actingAs($this->user->fresh())
         ->post(route('app.welcome.connect.store'))
-        ->assertRedirect('https://checkout.stripe.test/session');
+        ->assertRedirect(route('app.welcome.plan'));
 
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
         && data_get($event->payload, 'event') === WelcomeEvent::Connect->value
         && data_get($event->payload, 'properties.platforms') === [SocialPlatform::LinkedIn->value]);
-});
-
-test('connect store captures checkout.started with the plan name and interval', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
-    Bus::fake();
-    completeWelcomeThroughReferral($this->user);
-    $workspace = attachCurrentWorkspace($this->user);
-    SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
-
-    $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
-    $plan->update(['stripe_monthly_price_id' => 'price_monthly_test']);
-
-    $this->mock(StartSubscriptionCheckout::class)
-        ->shouldReceive('redirect')
-        ->once()
-        ->andReturn(redirect('https://checkout.stripe.test/session'));
-
-    $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.connect.store'));
-
-    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
-        && data_get($event->payload, 'event') === CheckoutEvent::Started->value
-        && data_get($event->payload, 'properties.plan_name') === $plan->name
-        && data_get($event->payload, 'properties.interval') === 'monthly');
-});
-
-test('connect store does not capture checkout.started when Stripe checkout creation fails', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
-    Bus::fake();
-    completeWelcomeThroughReferral($this->user);
-    $workspace = attachCurrentWorkspace($this->user);
-    SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
-
-    Plan::where('slug', Slug::Workspace)->firstOrFail()->update([
-        'stripe_monthly_price_id' => 'price_monthly_test',
-    ]);
-
-    $this->mock(StartSubscriptionCheckout::class)
-        ->shouldReceive('redirect')
-        ->once()
-        ->andThrow(new RuntimeException('Stripe checkout could not be created.'));
-
-    $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.connect.store'));
-
-    Bus::assertNotDispatched(
-        SendEvent::class,
-        fn (SendEvent $event): bool => data_get($event->payload, 'event') === WelcomeEvent::Connect->value,
-    );
     Bus::assertNotDispatched(
         SendEvent::class,
         fn (SendEvent $event): bool => data_get($event->payload, 'event') === CheckoutEvent::Started->value,
     );
 });
 
-test('connect store still redirects to stripe when posthog capture fails', function () {
+test('connect store still advances to the plan step when posthog capture fails', function () {
     Exceptions::fake();
     completeWelcomeThroughReferral($this->user);
     $workspace = attachCurrentWorkspace($this->user);
     SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
-
-    Plan::where('slug', Slug::Workspace)->firstOrFail()->update([
-        'stripe_monthly_price_id' => 'price_monthly_test',
-    ]);
-
-    $this->mock(StartSubscriptionCheckout::class)
-        ->shouldReceive('redirect')
-        ->once()
-        ->andReturn(redirect('https://checkout.stripe.test/session'));
 
     $this->mock(PostHogService::class)
         ->shouldReceive('capture')
@@ -553,13 +493,17 @@ test('connect store still redirects to stripe when posthog capture fails', funct
 
     $this->actingAs($this->user->fresh())
         ->post(route('app.welcome.connect.store'))
-        ->assertRedirect('https://checkout.stripe.test/session');
+        ->assertRedirect(route('app.welcome.plan'));
 
     Exceptions::assertReported(RuntimeException::class);
 });
 
 test('welcome steps redirect to calendar for subscribed accounts', function (string $routeName, string $method, array $payload = []) {
     subscribeAccount($this->user->account);
+
+    if ($routeName === 'app.welcome.plan.store') {
+        $payload['plan_id'] = Plan::where('slug', Slug::Socials)->value('id');
+    }
 
     $this->actingAs($this->user->fresh());
 
@@ -577,6 +521,8 @@ test('welcome steps redirect to calendar for subscribed accounts', function (str
     'referral source store' => ['app.welcome.referral-source.store', 'post', ['referral_source' => ReferralSource::Google->value]],
     'connect' => ['app.welcome.connect', 'get'],
     'connect store' => ['app.welcome.connect.store', 'post'],
+    'plan' => ['app.welcome.plan', 'get'],
+    'plan store' => ['app.welcome.plan.store', 'post', ['interval' => 'monthly']],
 ]);
 
 test('welcome redirects generic-trial accounts with app access to calendar', function () {
@@ -597,6 +543,10 @@ test('welcome redirects generic-trial accounts with app access to calendar', fun
 test('welcome steps redirect to calendar in self hosted mode', function (string $routeName, string $method, array $payload = []) {
     config(['trypost.self_hosted' => true]);
 
+    if ($routeName === 'app.welcome.plan.store') {
+        $payload['plan_id'] = Plan::where('slug', Slug::Socials)->value('id');
+    }
+
     $this->actingAs($this->user);
 
     $response = $method === 'get'
@@ -613,6 +563,8 @@ test('welcome steps redirect to calendar in self hosted mode', function (string 
     'referral source store' => ['app.welcome.referral-source.store', 'post', ['referral_source' => ReferralSource::Google->value]],
     'connect' => ['app.welcome.connect', 'get'],
     'connect store' => ['app.welcome.connect.store', 'post'],
+    'plan' => ['app.welcome.plan', 'get'],
+    'plan store' => ['app.welcome.plan.store', 'post', ['interval' => 'monthly']],
 ]);
 
 test('old onboarding icp routes are not registered', function (string $routeName) {
@@ -665,6 +617,10 @@ test('subscribed owners skip connect validation and go to calendar', function ()
 test('members without app access are held on the subscription required screen', function (string $routeName, string $method, array $payload = []) {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
 
+    if ($routeName === 'app.welcome.plan.store') {
+        $payload['plan_id'] = Plan::where('slug', Slug::Socials)->value('id');
+    }
+
     $this->actingAs($member->fresh());
 
     $response = $method === 'get'
@@ -681,6 +637,8 @@ test('members without app access are held on the subscription required screen', 
     'referral source store' => ['app.welcome.referral-source.store', 'post', ['referral_source' => ReferralSource::Google->value]],
     'connect' => ['app.welcome.connect', 'get'],
     'connect store' => ['app.welcome.connect.store', 'post'],
+    'plan' => ['app.welcome.plan', 'get'],
+    'plan store' => ['app.welcome.plan.store', 'post', ['interval' => 'monthly']],
 ]);
 
 test('subscription required screen renders for members without app access', function () {
@@ -735,30 +693,6 @@ test('welcome sends members with app access to the calendar', function () {
     $this->actingAs($member)
         ->get(route('app.welcome.persona'))
         ->assertRedirect(route('app.calendar'));
-});
-
-test('connect store fails loudly when the monthly price is not configured', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
-    Bus::fake();
-    completeWelcomeThroughReferral($this->user);
-    $workspace = attachCurrentWorkspace($this->user);
-    SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
-    Plan::where('slug', Slug::Workspace)->update(['stripe_monthly_price_id' => null]);
-
-    $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
-
-    $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.connect.store'))
-        ->assertServerError();
-
-    Bus::assertNotDispatched(
-        SendEvent::class,
-        fn (SendEvent $event): bool => data_get($event->payload, 'event') === WelcomeEvent::Connect->value,
-    );
-    Bus::assertNotDispatched(
-        SendEvent::class,
-        fn (SendEvent $event): bool => data_get($event->payload, 'event') === CheckoutEvent::Started->value,
-    );
 });
 
 function completeWelcomeThroughReferral(User $user): void

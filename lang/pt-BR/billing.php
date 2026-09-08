@@ -20,7 +20,22 @@ return [
         'billed_yearly' => 'Cobrança anual',
         'prices' => [
             'workspace' => ['monthly' => 'R$ 60', 'yearly_per_month' => 'R$ 50', 'yearly' => 'R$ 600'],
+            'socials' => ['monthly' => 'R$ 95', 'yearly_per_month' => 'R$ 79,17', 'yearly' => 'R$ 950'],
+            'workspaces' => ['monthly' => 'R$ 495', 'yearly_per_month' => 'R$ 412,50', 'yearly' => 'R$ 4.950'],
         ],
+    ],
+
+    'plans' => [
+        'title' => 'Planos',
+        'description' => 'Faça upgrade ou downgrade a qualquer momento.',
+        'monthly' => 'Mensal',
+        'yearly' => 'Anual',
+        'save_two_months' => '2 meses grátis',
+        'per_month' => '/mês',
+        'workspaces_one' => '1 workspace',
+        'workspaces_unlimited' => 'Workspaces ilimitados',
+        'current' => 'Plano atual',
+        'select' => 'Escolher :plan',
     ],
 
     'plan' => [

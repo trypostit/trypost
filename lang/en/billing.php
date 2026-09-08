@@ -20,7 +20,22 @@ return [
         'billed_yearly' => 'Billed annually',
         'prices' => [
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
+            'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
+            'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
+    ],
+
+    'plans' => [
+        'title' => 'Plans',
+        'description' => 'Upgrade or downgrade at any time.',
+        'monthly' => 'Monthly',
+        'yearly' => 'Yearly',
+        'save_two_months' => '2 months free',
+        'per_month' => '/month',
+        'workspaces_one' => '1 workspace',
+        'workspaces_unlimited' => 'Unlimited workspaces',
+        'current' => 'Current plan',
+        'select' => 'Choose :plan',
     ],
 
     'plan' => [

@@ -20,7 +20,22 @@ return [
         'billed_yearly' => 'Річна оплата',
         'prices' => [
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
+            'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
+            'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
+    ],
+
+    'plans' => [
+        'title' => 'Плани',
+        'description' => 'Підвищуйте або знижуйте план будь-коли.',
+        'monthly' => 'Щомісяця',
+        'yearly' => 'Щороку',
+        'save_two_months' => '2 місяці безкоштовно',
+        'per_month' => '/місяць',
+        'workspaces_one' => '1 workspace',
+        'workspaces_unlimited' => 'Необмежена кількість workspace',
+        'current' => 'Поточний план',
+        'select' => 'Обрати :plan',
     ],
 
     'plan' => [

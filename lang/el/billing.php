@@ -20,7 +20,22 @@ return [
         'billed_yearly' => 'Ετήσια χρέωση',
         'prices' => [
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
+            'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
+            'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
+    ],
+
+    'plans' => [
+        'title' => 'Πλάνα',
+        'description' => 'Αναβαθμίστε ή υποβαθμίστε οποιαδήποτε στιγμή.',
+        'monthly' => 'Μηνιαία',
+        'yearly' => 'Ετήσια',
+        'save_two_months' => '2 μήνες δωρεάν',
+        'per_month' => '/μήνα',
+        'workspaces_one' => '1 workspace',
+        'workspaces_unlimited' => 'Απεριόριστα workspaces',
+        'current' => 'Τρέχον πλάνο',
+        'select' => 'Επιλέξτε :plan',
     ],
 
     'plan' => [

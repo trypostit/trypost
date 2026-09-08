@@ -20,7 +20,22 @@ return [
         'billed_yearly' => '연간 결제',
         'prices' => [
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
+            'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
+            'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
+    ],
+
+    'plans' => [
+        'title' => '요금제',
+        'description' => '언제든지 업그레이드하거나 다운그레이드하세요.',
+        'monthly' => '월간',
+        'yearly' => '연간',
+        'save_two_months' => '2개월 무료',
+        'per_month' => '/월',
+        'workspaces_one' => '워크스페이스 1개',
+        'workspaces_unlimited' => '무제한 워크스페이스',
+        'current' => '현재 요금제',
+        'select' => ':plan 선택',
     ],
 
     'plan' => [

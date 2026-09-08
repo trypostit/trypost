@@ -38,6 +38,8 @@ return [
         'just_exploring' => '今はまだ様子を見ている',
         'other' => 'その他',
     ],
+    'plan_title' => 'プランを選ぶ',
+    'plan_description' => '今必要なものから始めましょう。いつでも変更できます。',
     'referral_source_title' => 'どこで私たちを知りましたか？',
     'referral_source_description' => 'これは、人々がどのように TryPost を見つけるかを理解するのに役立ちます。',
     'referral_source' => [

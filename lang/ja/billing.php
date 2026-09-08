@@ -20,7 +20,22 @@ return [
         'billed_yearly' => '年払い',
         'prices' => [
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
+            'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
+            'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
+    ],
+
+    'plans' => [
+        'title' => 'プラン',
+        'description' => 'いつでもアップグレードまたはダウングレードできます。',
+        'monthly' => '月額',
+        'yearly' => '年額',
+        'save_two_months' => '2か月分無料',
+        'per_month' => '/月',
+        'workspaces_one' => 'ワークスペース 1 つ',
+        'workspaces_unlimited' => '無制限のワークスペース',
+        'current' => '現在のプラン',
+        'select' => ':plan を選ぶ',
     ],
 
     'plan' => [

@@ -20,7 +20,22 @@ return [
         'billed_yearly' => 'Rozliczane rocznie',
         'prices' => [
             'workspace' => ['monthly' => '$12', 'yearly_per_month' => '$10', 'yearly' => '$120'],
+            'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
+            'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
+    ],
+
+    'plans' => [
+        'title' => 'Plany',
+        'description' => 'Zmień plan w dowolnym momencie.',
+        'monthly' => 'Miesięcznie',
+        'yearly' => 'Rocznie',
+        'save_two_months' => '2 miesiące gratis',
+        'per_month' => '/miesiąc',
+        'workspaces_one' => '1 workspace',
+        'workspaces_unlimited' => 'Nielimitowane workspace’y',
+        'current' => 'Aktualny plan',
+        'select' => 'Wybierz :plan',
     ],
 
     'plan' => [
