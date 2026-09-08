@@ -1,0 +1,32 @@
+{
+  "name": "TryPost (Bulldog Social)",
+  "dockerComposeFile": ["../compose.yaml"],
+  "service": "app",
+  "workspaceFolder": "/var/www/html",
+  "shutdownAction": "stopCompose",
+  "forwardPorts": [8000, 8080, 5173, 8025],
+  "portsAttributes": {
+    "8000": {
+      "label": "TryPost App",
+      "visibility": "public",
+      "onAutoForward": "notify"
+    },
+    "8080": {
+      "label": "Reverb (WebSockets)",
+      "visibility": "public",
+      "onAutoForward": "silent"
+    },
+    "5173": {
+      "label": "Vite",
+      "visibility": "private",
+      "onAutoForward": "silent"
+    },
+    "8025": {
+      "label": "Mailpit UI",
+      "visibility": "private",
+      "onAutoForward": "silent"
+    }
+  },
+  "remoteUser": "app",
+  "postStartCommand": "if [ -n \"$CODESPACE_NAME\" ] && [ -f .env ]; then URL=\"https://${CODESPACE_NAME}-8000.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}\"; sed -i \"s|^APP_URL=.*|APP_URL=${URL}|\" .env; sed -i \"s|^WEBHOOK_URL=.*|WEBHOOK_URL=${URL}|\" .env; echo \"Codespace URL: ${URL} — re-run 'php artisan config:clear' if OAuth/webhook testing needs it live.\"; fi"
+}

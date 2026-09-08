@@ -1,0 +1,221 @@
+# DigitalOcean App Platform Specification — TryPost (Bulldog Social)
+# Deploy: doctl apps create --spec .do/app.yaml   (first time)
+#         doctl apps update $APP_ID --spec .do/app.yaml   (after)
+# Region: syd (Sydney) — matches bulldog-central's region.
+#
+# Manual prerequisites (see setup checklist at the bottom of this comment
+# block / in the PR description) — this spec ATTACHES existing managed
+# clusters, it does not create them:
+#   1. A dedicated Postgres cluster (do NOT reuse bulldog-pg-prod — see PR notes)
+#      doctl databases create bulldog-social-pg --engine pg --region syd --size db-s-1vcpu-1gb
+#   2. A dedicated Redis/Valkey cluster (TryPost requires Redis — Horizon queues,
+#      cache, and broadcasting auth all depend on it)
+#      doctl databases create bulldog-social-redis --engine redis --region syd --size db-s-1vcpu-1gb
+#   3. A dedicated DO Spaces bucket for social media assets (keep separate from
+#      bulldog-bucket — that one may hold private financial documents; TryPost's
+#      media disk is served publicly)
+#   4. Passport keys generated ONCE and stored as secrets (NOT regenerated per
+#      deploy — this app is ephemeral/rebuilt on every push):
+#      docker compose -f compose.prod.yaml run --rm app php artisan passport:keys --show
+#   5. APP_KEY generated once:
+#      docker compose -f compose.prod.yaml run --rm app php artisan key:generate --show
+#   6. Decide the public domain BEFORE first deploy. VITE_REVERB_HOST is baked
+#      into the compiled JS bundle at BUILD time (not runtime) — changing the
+#      domain later means a full rebuild/redeploy, not just an env var change.
+#      This spec assumes the custom domain is attached from the start.
+
+name: bulldog-social
+
+region: syd
+
+# ── Managed Databases (attach existing clusters — create them first, see above) ─
+databases:
+  - name: db
+    cluster_name: bulldog-social-pg
+    engine: PG
+    production: true
+  - name: redis
+    cluster_name: bulldog-social-redis
+    engine: REDIS
+    production: true
+
+# ── Services ────────────────────────────────────────────────────────────────
+services:
+  # TryPost ships nginx + php-fpm + Reverb + Horizon + the scheduler all
+  # bundled into ONE container via supervisord (docker/supervisord.prod.conf).
+  # nginx internally reverse-proxies WebSocket upgrade requests (/app/, /apps/)
+  # to Reverb on 127.0.0.1:8080 — so only ONE public port (nginx, 80) needs to
+  # be exposed here. Do NOT split this into separate services: Horizon and the
+  # scheduler must run as exactly one instance each, so instance_count must
+  # stay at 1 (matches how TryPost's own image is designed to run).
+  - name: web
+    github:
+      repo: harfordmark889/bulldog-social
+      branch: main
+      deploy_on_push: true
+    dockerfile_path: docker/Dockerfile
+    # No `target` field exists in the App Platform spec — Docker defaults to
+    # the LAST stage in a multi-stage file when none is given, which is
+    # `production` here (see docker/Dockerfile). Confirm this after first
+    # deploy by checking the build log names the production stage.
+    instance_count: 1
+    instance_size_slug: professional-xs
+    http_port: 80
+    health_check:
+      http_path: /up
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    envs:
+      # ── Core ──
+      - key: APP_NAME
+        value: "Bulldog Social"
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_URL
+        value: "https://social.plymptonbulldogs.com.au"   # CONFIRM this domain — pulled from bulldog-central-v2's MAIL_FROM_ADDRESS; correct if wrong before first deploy
+      - key: SELF_HOSTED
+        value: "true"
+      - key: ALLOW_MULTIPLE_SOCIAL_ACCOUNTS
+        value: "true"
+      - key: TRYPOST_TARGET
+        value: production
+      - key: APP_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET   # paste from: php artisan key:generate --show
+      - key: APP_MAINTENANCE_DRIVER
+        value: cache
+      - key: BCRYPT_ROUNDS
+        value: "12"
+
+      # ── Logging ──
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: warning
+
+      # ── Database ──
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_URL
+        scope: RUN_AND_BUILD_TIME
+        value: "${db.DATABASE_URL}"
+
+      # ── Redis / Queue / Cache / Broadcasting ──
+      - key: REDIS_URL
+        scope: RUN_AND_BUILD_TIME
+        value: "${redis.DATABASE_URL}"
+      - key: QUEUE_CONNECTION
+        value: redis
+      - key: CACHE_STORE
+        value: redis
+      - key: SESSION_DRIVER
+        value: database
+      - key: SESSION_SECURE_COOKIE
+        value: "true"
+      - key: SESSION_ENCRYPT
+        value: "true"
+      - key: BROADCAST_CONNECTION
+        value: reverb
+
+      # ── Reverb (WebSockets) — baked into the JS bundle at BUILD time ──
+      - key: REVERB_APP_ID
+        value: "1001"
+      - key: REVERB_APP_KEY
+        value: "bulldog-social-reverb-key"   # change to a random string before first deploy
+      - key: REVERB_APP_SECRET
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET   # generate a random secret and store it here
+      - key: REVERB_HOST
+        value: "social.plymptonbulldogs.com.au"
+      - key: REVERB_PORT
+        value: "443"
+      - key: REVERB_SCHEME
+        value: https
+      - key: VITE_APP_NAME
+        value: "Bulldog Social"
+      - key: VITE_REVERB_APP_KEY
+        scope: BUILD_TIME
+        value: "bulldog-social-reverb-key"   # MUST match REVERB_APP_KEY above
+      - key: VITE_REVERB_HOST
+        scope: BUILD_TIME
+        value: "social.plymptonbulldogs.com.au"
+      - key: VITE_REVERB_PORT
+        scope: BUILD_TIME
+        value: "443"
+      - key: VITE_REVERB_SCHEME
+        scope: BUILD_TIME
+        value: https
+
+      # ── Passport (OAuth / API keys / MCP) — REQUIRED for this ephemeral
+      # container; storage/oauth-*.key is not on a persisted volume, so
+      # without these every redeploy invalidates all API/MCP tokens.
+      - key: PASSPORT_PRIVATE_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET   # paste PEM from: php artisan passport:keys --show (use \n for newlines)
+      - key: PASSPORT_PUBLIC_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+
+      # ── Storage (dedicated DO Spaces bucket — do not reuse bulldog-bucket) ──
+      - key: FILESYSTEM_DISK
+        value: s3
+      - key: AWS_ACCESS_KEY_ID
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: AWS_SECRET_ACCESS_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: AWS_DEFAULT_REGION
+        value: syd1
+      - key: AWS_BUCKET
+        value: "bulldog-social-bucket"
+      - key: AWS_ENDPOINT
+        value: "https://syd1.digitaloceanspaces.com"
+      - key: AWS_URL
+        value: "https://bulldog-social-bucket.syd1.digitaloceanspaces.com"
+
+      # ── Mail (reuse the existing Postmark account) ──
+      - key: MAIL_MAILER
+        value: postmark
+      - key: POSTMARK_TOKEN
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: MAIL_FROM_ADDRESS
+        value: "social-noreply@plymptonbulldogs.com.au"
+      - key: MAIL_FROM_NAME
+        value: "Bulldog Social"
+
+      # ── AI (drafting — Claude via Anthropic API) ──
+      # Deliberately a SEPARATE key from bulldog-central-v2's ANTHROPIC_API_KEY
+      # (used there for supplier-invoice extraction) so spend is attributable
+      # per module for the cost-log reporting in the workflow brief.
+      - key: ANTHROPIC_API_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: AI_TEXT_PROVIDER
+        value: anthropic
+
+      # ── Social platform OAuth — filled in once developer apps are registered ──
+      - key: FACEBOOK_CLIENT_ID
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: FACEBOOK_CLIENT_SECRET
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: INSTAGRAM_CLIENT_ID
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: INSTAGRAM_CLIENT_SECRET
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: TIKTOK_CLIENT_ID
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: TIKTOK_CLIENT_SECRET
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
