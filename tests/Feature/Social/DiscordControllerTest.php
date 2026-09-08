@@ -22,6 +22,7 @@ beforeEach(function () {
 test('discord connect redirects to the oauth provider', function () {
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('scopes')->andReturnSelf();
+    $driverMock->shouldReceive('with')->with([])->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
         'getTargetUrl' => 'https://discord.com/api/oauth2/authorize?test=1',
     ]));

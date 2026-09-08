@@ -212,14 +212,12 @@ class SocialController extends Controller
 
         $this->rememberConnectSession($request, $workspace);
 
-        $provider = Socialite::driver($driver)->scopes($scopes);
-
-        if ($parameters !== []) {
-            $provider->with($parameters);
-        }
-
         return Inertia::location(
-            $provider->redirect()->getTargetUrl()
+            Socialite::driver($driver)
+                ->scopes($scopes)
+                ->with($parameters)
+                ->redirect()
+                ->getTargetUrl()
         );
     }
 

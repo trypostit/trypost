@@ -22,6 +22,7 @@ beforeEach(function () {
 test('pinterest connect redirects to oauth provider', function () {
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('scopes')->andReturnSelf();
+    $driverMock->shouldReceive('with')->with([])->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
         'getTargetUrl' => 'https://www.pinterest.com/oauth?test=1',
     ]));

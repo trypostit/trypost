@@ -22,6 +22,7 @@ beforeEach(function () {
 test('x connect redirects to oauth provider', function () {
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('scopes')->andReturnSelf();
+    $driverMock->shouldReceive('with')->with([])->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
         'getTargetUrl' => 'https://twitter.com/i/oauth2/authorize?test=1',
     ]));
