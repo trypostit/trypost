@@ -76,6 +76,7 @@ return [
         'plan_changed' => 'Du nutzt jetzt den Tarif :plan.',
         'switched_to_yearly' => 'Du nutzt jetzt die jährliche Abrechnung.',
         'cannot_manage' => 'Nur der Kontoinhaber kann die Abrechnung verwalten.',
+        'too_many_workspaces' => 'Du hast :count Workspaces. Dieser Tarif umfasst :limit — lösche die überzähligen, bevor du wechselst.',
         'subscription_required' => 'Für die Nutzung der KI-Funktionen ist ein aktives Abonnement erforderlich.',
     ],
 

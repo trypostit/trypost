@@ -44,11 +44,14 @@ test('subscribe redirects to welcome', function () {
     $response->assertRedirect(route('app.welcome.persona'));
 });
 
-test('swapToYearly redirects to calendar in self hosted mode', function () {
+test('changePlan redirects to calendar in self hosted mode', function () {
     config(['trypost.self_hosted' => true]);
 
     $response = $this->actingAs($this->user)
-        ->post(route('app.billing.swap-to-yearly'));
+        ->post(route('app.billing.change-plan'), [
+            'plan_id' => Plan::where('slug', 'socials')->value('id'),
+            'interval' => 'yearly',
+        ]);
 
     $response->assertRedirect(route('app.calendar'));
 });
@@ -298,8 +301,7 @@ test('member cannot access billing index', function () {
     $this->actingAs($member)->get(route('app.billing.index'))->assertForbidden();
 });
 
-// Swap-to-yearly tests
-test('swapToYearly forbids a non-owner', function () {
+test('changePlan forbids a non-owner', function () {
     config(['trypost.self_hosted' => false]);
 
     $member = User::factory()->create(['account_id' => $this->account->id]);
@@ -314,14 +316,17 @@ test('swapToYearly forbids a non-owner', function () {
     ]);
 
     $this->actingAs($member)
-        ->post(route('app.billing.swap-to-yearly'))
+        ->post(route('app.billing.change-plan'), [
+            'plan_id' => Plan::where('slug', 'socials')->value('id'),
+            'interval' => 'yearly',
+        ])
         ->assertForbidden();
 });
 
-test('swapToYearly is a no-op when already on annual billing', function () {
+test('changePlan is a no-op when already on that price', function () {
     config(['trypost.self_hosted' => false]);
 
-    $plan = Plan::where('slug', 'workspace')->first();
+    $plan = Plan::where('slug', 'socials')->first();
     $plan->update([
         'stripe_monthly_price_id' => 'price_monthly',
         'stripe_yearly_price_id' => 'price_yearly',
@@ -337,12 +342,15 @@ test('swapToYearly is a no-op when already on annual billing', function () {
     $this->user->unsetRelation('account');
 
     $this->actingAs($this->user)
-        ->post(route('app.billing.swap-to-yearly'))
+        ->post(route('app.billing.change-plan'), [
+            'plan_id' => $plan->id,
+            'interval' => 'yearly',
+        ])
         ->assertRedirect(route('app.billing.index'));
 });
 
-test('swapToYearly requires authentication', function () {
-    $response = $this->post(route('app.billing.swap-to-yearly'));
+test('changePlan requires authentication', function () {
+    $response = $this->post(route('app.billing.change-plan'));
 
     $response->assertRedirect(route('login'));
 });

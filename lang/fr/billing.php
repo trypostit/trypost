@@ -74,6 +74,7 @@ return [
         'plan_changed' => 'Vous êtes maintenant sur le forfait :plan.',
         'switched_to_yearly' => 'Vous êtes maintenant en facturation annuelle.',
         'cannot_manage' => 'Seul le propriétaire du compte peut gérer la facturation.',
+        'too_many_workspaces' => 'Vous avez :count espaces de travail. Cette offre en inclut :limit — supprimez les extras avant de changer.',
         'subscription_required' => 'Un abonnement actif est requis pour utiliser les fonctionnalités d\'IA.',
     ],
 

@@ -74,6 +74,7 @@ return [
         'plan_changed' => 'Je zit nu op het :plan-abonnement.',
         'switched_to_yearly' => 'Je zit nu op jaarlijkse facturatie.',
         'cannot_manage' => 'Alleen de accounteigenaar kan de facturatie beheren.',
+        'too_many_workspaces' => 'Je hebt :count workspaces. Dit plan bevat er :limit — verwijder de extra\'s voordat je wisselt.',
         'subscription_required' => 'Een actief abonnement is vereist om AI-functies te gebruiken.',
     ],
 

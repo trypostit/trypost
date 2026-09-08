@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { IconCreditCard, IconDownload, IconFileText, IconRosetteDiscountCheck, IconSparkles } from '@tabler/icons-vue';
-import { trans, transChoice } from 'laravel-vue-i18n';
-import { computed } from 'vue';
+import { trans } from 'laravel-vue-i18n';
+import { computed, ref } from 'vue';
 
+import PlanPicker, { type PlanOption } from '@/components/billing/PlanPicker.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import SettingsTabsNav from '@/components/settings/SettingsTabsNav.vue';
@@ -12,13 +13,9 @@ import { Button } from '@/components/ui/button';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { edit as accountEdit } from '@/routes/app/account';
-import { index as billingIndex, portal, swapToYearly } from '@/routes/app/billing';
+import { changePlan as changePlanRoute, index as billingIndex, portal } from '@/routes/app/billing';
 import { index as usageIndex } from '@/routes/app/usage';
 import type { AuthPlan } from '@/types';
-
-interface Plan {
-    slug: string;
-}
 
 interface Subscription {
     stripe_status: string;
@@ -45,7 +42,9 @@ const props = defineProps<{
     onTrial: boolean;
     trialEndsAt: string | null;
     subscription: Subscription | null;
-    plan: Plan | null;
+    plan: PlanOption | null;
+    plans: PlanOption[];
+    deniedPlanIds: string[];
     workspaceCount: number;
     invoices: Invoice[];
     defaultPaymentMethod: PaymentMethod | null;
@@ -67,17 +66,32 @@ const displayPrice = (slug: string | undefined): string => {
     return trans(`billing.subscribe.prices.${slug}.${key}`);
 };
 
-const workspacesLabel = computed(() => transChoice('billing.plan.workspaces', props.workspaceCount, { count: String(props.workspaceCount) }));
-
 const monthlyPrice = computed(() => (props.plan ? trans(`billing.subscribe.prices.${props.plan.slug}.monthly`) : ''));
 const yearlyPerMonthPrice = computed(() => (props.plan ? trans(`billing.subscribe.prices.${props.plan.slug}.yearly_per_month`) : ''));
 
 const showAnnualBanner = computed(() => props.hasSubscription && ! isYearly.value);
 
-const upgradeForm = useForm({});
+const selectedInterval = ref<'monthly' | 'yearly'>(isYearly.value ? 'yearly' : 'monthly');
+
+const planForm = useForm<{ plan_id: string | null; interval: 'monthly' | 'yearly' }>({
+    plan_id: null,
+    interval: 'monthly',
+});
+
+const changePlan = (planId: string, interval: 'monthly' | 'yearly'): void => {
+    if (planForm.processing) {
+        return;
+    }
+
+    planForm.plan_id = planId;
+    planForm.interval = interval;
+    planForm.post(changePlanRoute.url(), { preserveScroll: true });
+};
 
 const upgradeToAnnual = (): void => {
-    upgradeForm.post(swapToYearly.url(), { preserveScroll: true });
+    if (props.plan) {
+        changePlan(props.plan.id, 'yearly');
+    }
 };
 </script>
 
@@ -115,7 +129,7 @@ const upgradeToAnnual = (): void => {
                             <span class="font-medium text-foreground/60">/{{ $t('billing.plan.month') }} · {{ $t('billing.subscribe.billed_yearly') }}</span>
                         </p>
                     </div>
-                    <Button class="shrink-0" :disabled="upgradeForm.processing" @click="upgradeToAnnual">
+                    <Button class="shrink-0" :disabled="planForm.processing" @click="upgradeToAnnual">
                         {{ $t('billing.annual_banner.cta') }}
                     </Button>
                 </div>
@@ -138,7 +152,7 @@ const upgradeToAnnual = (): void => {
                                         class="text-3xl font-semibold leading-tight text-foreground"
                                         style="font-family: var(--font-display)"
                                     >
-                                        {{ workspacesLabel }}
+                                        {{ plan?.name }}
                                     </h3>
                                     <Badge v-if="onTrial" variant="secondary">{{ $t('billing.plan.trial') }}</Badge>
                                     <Badge v-else-if="subscription?.stripe_status === 'active'" variant="success">{{ $t('billing.plan.active') }}</Badge>
@@ -147,7 +161,7 @@ const upgradeToAnnual = (): void => {
                                 </div>
                                 <p class="text-base text-foreground/70">
                                     <span class="text-2xl font-bold tabular-nums text-foreground">{{ displayPrice(plan?.slug) }}</span>
-                                    <span class="ml-1">/{{ $t('billing.plan.month') }} {{ $t('billing.plan.per_workspace') }}</span>
+                                    <span class="ml-1">/{{ $t('billing.plan.month') }}</span>
                                 </p>
                                 <p v-if="plan" class="text-xs font-medium text-foreground/60">
                                     {{ isYearly ? $t('billing.subscribe.billed_yearly') : $t('billing.subscribe.billed_monthly') }}
@@ -166,6 +180,23 @@ const upgradeToAnnual = (): void => {
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <div v-if="hasSubscription" class="space-y-6">
+                    <HeadingSmall
+                        :title="$t('billing.plans.title')"
+                        :description="$t('billing.plans.description')"
+                    />
+
+                    <PlanPicker
+                        :plans="plans"
+                        :interval="selectedInterval"
+                        :current-plan-id="plan?.id ?? null"
+                        :disabled-plan-ids="deniedPlanIds"
+                        :processing="planForm.processing"
+                        @update:interval="(value) => (selectedInterval = value)"
+                        @select="(planId) => changePlan(planId, selectedInterval)"
+                    />
                 </div>
 
                 <!-- ───── Payment method ───── -->

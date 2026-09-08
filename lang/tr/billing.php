@@ -76,6 +76,7 @@ return [
         'plan_changed' => 'Artık :plan planındasınız.',
         'switched_to_yearly' => 'Artık yıllık faturalandırmadasınız.',
         'cannot_manage' => 'Faturalandırmayı yalnızca hesap sahibi yönetebilir.',
+        'too_many_workspaces' => ':count workspace\'iniz var. Bu plan :limit içeriyor — geçmeden önce fazlaları silin.',
         'subscription_required' => 'AI özelliklerini kullanmak için etkin bir abonelik gereklidir.',
     ],
 

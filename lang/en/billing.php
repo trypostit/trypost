@@ -74,6 +74,7 @@ return [
         'plan_changed' => 'You are now on the :plan plan.',
         'switched_to_yearly' => 'You\'re now on annual billing.',
         'cannot_manage' => 'Only the account owner can manage billing.',
+        'too_many_workspaces' => 'You have :count workspaces. This plan includes :limit — delete the extras before switching.',
         'subscription_required' => 'An active subscription is required to use AI features.',
     ],
 

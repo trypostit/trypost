@@ -74,6 +74,7 @@ return [
         'plan_changed' => '이제 :plan 요금제를 사용 중입니다.',
         'switched_to_yearly' => '이제 연간 결제를 사용 중입니다.',
         'cannot_manage' => '계정 소유자만 결제를 관리할 수 있습니다.',
+        'too_many_workspaces' => '워크스페이스가 :count개 있습니다. 이 요금제는 :limit개까지입니다. 전환하기 전에 나머지를 삭제하세요.',
         'subscription_required' => 'AI 기능을 사용하려면 활성 구독이 필요합니다.',
     ],
 

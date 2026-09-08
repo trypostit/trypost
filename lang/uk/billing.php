@@ -74,6 +74,7 @@ return [
         'plan_changed' => 'Ви перейшли на план :plan.',
         'switched_to_yearly' => 'Тепер у вас річна оплата.',
         'cannot_manage' => 'Лише власник облікового запису може керувати оплатою.',
+        'too_many_workspaces' => 'У вас :count workspace. Цей план включає :limit — видаліть зайві перед зміною.',
         'subscription_required' => 'Для використання AI-функцій потрібна активна підписка.',
     ],
 

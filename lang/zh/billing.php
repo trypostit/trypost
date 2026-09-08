@@ -74,6 +74,7 @@ return [
         'plan_changed' => '你现在使用的是 :plan 套餐。',
         'switched_to_yearly' => '你现在已切换为按年计费。',
         'cannot_manage' => '只有账户所有者才能管理账单。',
+        'too_many_workspaces' => '你有 :count 个工作区。此套餐包含 :limit 个 — 切换前请先删除多余的。',
         'subscription_required' => '使用 AI 功能需要有效的订阅。',
     ],
 

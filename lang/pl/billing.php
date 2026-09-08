@@ -74,6 +74,7 @@ return [
         'plan_changed' => 'Korzystasz teraz z planu :plan.',
         'switched_to_yearly' => 'Korzystasz teraz z rozliczenia rocznego.',
         'cannot_manage' => 'Tylko właściciel konta może zarządzać rozliczeniami.',
+        'too_many_workspaces' => 'Masz :count workspace’ów. Ten plan obejmuje :limit — usuń nadmiar przed zmianą.',
         'subscription_required' => 'Aby korzystać z funkcji AI, wymagana jest aktywna subskrypcja.',
     ],
 

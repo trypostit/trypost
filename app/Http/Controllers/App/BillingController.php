@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Enums\Billing\Interval;
+use App\Http\Requests\App\Billing\ChangePlanRequest;
+use App\Http\Resources\App\PlanResource;
 use App\Models\Account;
+use App\Models\Plan;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -49,6 +53,7 @@ class BillingController extends Controller
         abort_unless($request->user()->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
 
         $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
+        $plans = Plan::active()->orderBy('sort')->get();
 
         return Inertia::render('settings/account/Billing', [
             'hasSubscription' => $account->subscribed(Account::SUBSCRIPTION_NAME),
@@ -58,7 +63,13 @@ class BillingController extends Controller
                 'stripe_status',
                 'ends_at',
             ]),
-            'plan' => $account->plan,
+            'plan' => $account->plan ? PlanResource::make($account->plan)->resolve() : null,
+            'plans' => PlanResource::collection($plans)->resolve(),
+            'deniedPlanIds' => $plans
+                ->filter(fn (Plan $candidate): bool => Gate::inspect('swapPlan', [$account, $candidate])->denied())
+                ->pluck('id')
+                ->values()
+                ->all(),
             'workspaceCount' => $account->workspaces()->count(),
             'invoices' => $account->invoices()->map(fn ($invoice) => [
                 'id' => $invoice->id,
@@ -71,40 +82,38 @@ class BillingController extends Controller
         ]);
     }
 
-    public function swapToYearly(Request $request): RedirectResponse
+    public function changePlan(ChangePlanRequest $request): RedirectResponse
     {
         if (config('trypost.self_hosted')) {
             return redirect()->route('app.calendar');
         }
 
         $account = $request->user()->account;
+        $plan = Plan::active()->findOrFail($request->validated('plan_id'));
+        $interval = Interval::from($request->validated('interval'));
 
-        abort_unless($request->user()->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
-        abort_unless($account->subscribed(Account::SUBSCRIPTION_NAME), SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No active subscription');
-
-        $plan = $account->plan;
-        $yearlyPriceId = $plan?->stripe_yearly_price_id;
-
-        abort_if($yearlyPriceId === null, SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No annual price configured');
-
-        $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
-
-        abort_if($subscription === null, SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No active subscription');
-
-        if ($subscription->stripe_price === $yearlyPriceId) {
-            return redirect()->route('app.billing.index');
-        }
-
-        $authorization = Gate::inspect('swapPlan', [$account]);
+        $authorization = Gate::inspect('swapPlan', [$account, $plan]);
 
         if ($authorization->denied()) {
             return back()->with('flash.error', $authorization->message());
         }
 
-        $subscription->swap($yearlyPriceId);
+        $priceId = $interval->priceIdFor($plan);
+
+        abort_if($priceId === null, SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No price configured for this interval');
+
+        $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
+
+        abort_if($subscription === null, SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No active subscription');
+
+        if ($subscription->stripe_price === $priceId) {
+            return redirect()->route('app.billing.index');
+        }
+
+        $subscription->swap($priceId);
 
         return redirect()->route('app.billing.index')
-            ->with('flash.success', __('billing.flash.switched_to_yearly'));
+            ->with('flash.success', __('billing.flash.plan_changed', ['plan' => $plan->name]));
     }
 
     public function portal(Request $request): RedirectResponse

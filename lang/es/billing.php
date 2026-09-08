@@ -74,6 +74,7 @@ return [
         'plan_changed' => 'Ahora estás en el plan :plan.',
         'switched_to_yearly' => 'Ahora tienes facturación anual.',
         'cannot_manage' => 'Solo el propietario de la cuenta puede gestionar la facturación.',
+        'too_many_workspaces' => 'Tienes :count workspaces. Este plan incluye :limit — elimina los extra antes de cambiar.',
         'subscription_required' => 'Se requiere una suscripción activa para usar las funciones de IA.',
     ],
 

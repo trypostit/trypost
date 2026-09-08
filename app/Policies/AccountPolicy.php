@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Models\Account;
+use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
@@ -39,14 +40,29 @@ class AccountPolicy
     }
 
     /**
-     * Authorize swapping the account's subscription billing interval. Only the
-     * account owner may change billing; per-workspace pricing has no plan tiers
-     * to downgrade between, so there are no usage-based restrictions.
+     * Authorize moving the account to another plan or billing interval. Only the
+     * owner may change billing, and a plan can only be adopted when the account
+     * already fits inside its workspace cap — Stripe would happily charge for a
+     * plan the account then violates.
      */
-    public function swapPlan(User $user, Account $account): Response
+    public function swapPlan(User $user, Account $account, Plan $target): Response
     {
         if ($user->id !== $account->owner_id) {
             return Response::deny(__('billing.flash.cannot_manage'));
+        }
+
+        if (! $account->subscribed(Account::SUBSCRIPTION_NAME)) {
+            return Response::deny(__('billing.flash.subscription_required'));
+        }
+
+        $limit = $target->workspace_limit;
+        $count = $account->workspaces()->count();
+
+        if ($limit !== null && $count > $limit) {
+            return Response::deny(__('billing.flash.too_many_workspaces', [
+                'count' => $count,
+                'limit' => $limit,
+            ]));
         }
 
         return Response::allow();

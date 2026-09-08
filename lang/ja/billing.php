@@ -74,6 +74,7 @@ return [
         'plan_changed' => ':plan プランに変更されました。',
         'switched_to_yearly' => '年払いに変更されました。',
         'cannot_manage' => 'お支払いを管理できるのはアカウントのオーナーのみです。',
+        'too_many_workspaces' => 'ワークスペースが :count あります。このプランは :limit までです。切り替える前に余分なものを削除してください。',
         'subscription_required' => 'AI 機能を使用するには有効なサブスクリプションが必要です。',
     ],
 

@@ -20,15 +20,26 @@ beforeEach(function () {
 });
 
 test('swapPlan allows the account owner', function () {
-    $response = $this->policy->swapPlan($this->owner, $this->account);
+    subscribeAccount($this->account);
+
+    $response = $this->policy->swapPlan(
+        $this->owner,
+        $this->account->fresh(),
+        Plan::where('slug', Slug::Workspaces)->firstOrFail(),
+    );
 
     expect($response->allowed())->toBeTrue();
 });
 
 test('swapPlan denies a non-owner', function () {
+    subscribeAccount($this->account);
     $member = User::factory()->create(['account_id' => $this->account->id]);
 
-    $response = $this->policy->swapPlan($member, $this->account);
+    $response = $this->policy->swapPlan(
+        $member,
+        $this->account->fresh(),
+        Plan::where('slug', Slug::Workspaces)->firstOrFail(),
+    );
 
     expect($response->denied())->toBeTrue();
     expect($response->message())->toBe(__('billing.flash.cannot_manage'));
