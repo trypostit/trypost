@@ -9,6 +9,8 @@ return [
     'current' => 'Текущее',
     'connections' => ':count подключений',
     'posts' => ':count постов',
+    'subscription_required' => 'Оформите подписку, чтобы создавать больше workspace.',
+    'limit_reached' => 'В вашем плане один workspace. Перейдите на другой план, чтобы добавить больше.',
 
     'create' => [
         'page_title' => 'Создайте рабочее пространство',

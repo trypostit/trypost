@@ -9,6 +9,8 @@ return [
     'current' => 'Actuel',
     'connections' => ':count connexions',
     'posts' => ':count publications',
+    'subscription_required' => 'Abonnez-vous pour créer plus d\'espaces de travail.',
+    'limit_reached' => 'Votre offre inclut un espace de travail. Passez à une offre supérieure pour en ajouter.',
 
     'create' => [
         'page_title' => 'Créer votre espace de travail',

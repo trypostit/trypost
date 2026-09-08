@@ -124,6 +124,10 @@ test('creating an additional workspace redirects to billing without an active su
 test('creating an additional workspace is allowed with an active subscription', function () {
     config(['trypost.self_hosted' => false]);
 
+    $this->account->update([
+        'plan_id' => Plan::where('slug', PlanSlug::Workspaces)->value('id'),
+    ]);
+
     $this->account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
         'stripe_id' => 'sub_test_'.fake()->uuid(),

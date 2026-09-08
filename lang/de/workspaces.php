@@ -9,6 +9,8 @@ return [
     'current' => 'Aktuell',
     'connections' => ':count Verbindungen',
     'posts' => ':count Beiträge',
+    'subscription_required' => 'Abonniere, um weitere Workspaces zu erstellen.',
+    'limit_reached' => 'Dein Tarif umfasst einen Workspace. Upgrade, um weitere hinzuzufügen.',
 
     'create' => [
         'page_title' => 'Erstelle deinen Workspace',

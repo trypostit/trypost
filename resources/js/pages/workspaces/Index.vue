@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
+import { computed } from 'vue';
 
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import { create as createWorkspace, switchMethod } from '@/routes/app/workspaces';
+import type { Features } from '@/types';
 
 interface Workspace {
     id: string;
@@ -22,9 +24,16 @@ interface Props {
     currentWorkspaceId: string | null;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const { canCreateWorkspace } = useWorkspaceRole();
+
+const page = usePage();
+const features = computed<Features | null>(() => (page.props.features as Features | null) ?? null);
+const atWorkspaceLimit = computed((): boolean => {
+    const limit = features.value?.workspaceLimit ?? null;
+    return limit !== null && props.workspaces.length >= limit;
+});
 
 const switchToWorkspace = (workspace: Workspace) => {
     router.post(switchMethod.url(workspace.id), {}, {
@@ -66,10 +75,13 @@ const switchToWorkspace = (workspace: Workspace) => {
             </div>
         </div>
 
-        <Link v-if="canCreateWorkspace" :href="createWorkspace.url()">
+        <Link v-if="canCreateWorkspace && !atWorkspaceLimit" :href="createWorkspace.url()">
             <Button variant="outline" class="w-full">
                 {{ $t('workspaces.create.submit') }}
             </Button>
         </Link>
+        <p v-else-if="canCreateWorkspace" class="text-center text-xs text-muted-foreground">
+            {{ $t('workspaces.limit_reached') }}
+        </p>
     </AuthLayout>
 </template>

@@ -9,6 +9,8 @@ return [
     'current' => '현재',
     'connections' => ':count개 연결',
     'posts' => ':count개 게시물',
+    'subscription_required' => '워크스페이스를 더 만들려면 구독하세요.',
+    'limit_reached' => '이 요금제에는 워크스페이스가 하나 포함됩니다. 더 추가하려면 업그레이드하세요.',
 
     'create' => [
         'page_title' => '워크스페이스 만들기',

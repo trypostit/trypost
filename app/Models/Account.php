@@ -110,6 +110,32 @@ class Account extends Model
         return $this->plan?->workspace_limit;
     }
 
+    /**
+     * Whether the account may create another workspace.
+     *
+     * Self-hosted and a plan with a null workspace_limit are unlimited.
+     * An account with no plan may create only the signup workspace
+     * (`count === 0`) — a missing plan_id is not the Workspaces plan.
+     */
+    public function canCreateWorkspace(): bool
+    {
+        if (config('trypost.self_hosted')) {
+            return true;
+        }
+
+        if ($this->plan === null) {
+            return $this->workspaces()->count() === 0;
+        }
+
+        $limit = $this->workspaceLimit();
+
+        if ($limit === null) {
+            return true;
+        }
+
+        return $this->workspaces()->count() < $limit;
+    }
+
     public function isPastDue(): bool
     {
         if (config('trypost.self_hosted')) {

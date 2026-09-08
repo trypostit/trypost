@@ -9,6 +9,8 @@ return [
     'current' => '現在',
     'connections' => ':count 件の接続',
     'posts' => ':count 件の投稿',
+    'subscription_required' => 'ワークスペースを追加するにはサブスクリプションが必要です。',
+    'limit_reached' => 'このプランにはワークスペースが1つ含まれます。追加するにはアップグレードしてください。',
 
     'create' => [
         'page_title' => 'ワークスペースを作成',

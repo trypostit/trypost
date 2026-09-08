@@ -9,6 +9,8 @@ return [
     'current' => 'الحالية',
     'connections' => ':count اتصال',
     'posts' => ':count منشور',
+    'subscription_required' => 'اشترك لإنشاء المزيد من مساحات العمل.',
+    'limit_reached' => 'تتضمن خطتك مساحة عمل واحدة. قم بالترقية لإضافة المزيد.',
 
     'create' => [
         'page_title' => 'أنشئ مساحة عملك',

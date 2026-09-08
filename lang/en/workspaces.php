@@ -9,6 +9,8 @@ return [
     'current' => 'Current',
     'connections' => ':count connections',
     'posts' => ':count posts',
+    'subscription_required' => 'Subscribe to create more workspaces.',
+    'limit_reached' => 'Your plan includes one workspace. Upgrade to add more.',
 
     'create' => [
         'page_title' => 'Create your workspace',

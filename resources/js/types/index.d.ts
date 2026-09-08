@@ -44,6 +44,10 @@ export interface Usage {
     creditsUsed: number;
 }
 
+export interface Features {
+    workspaceLimit: number | null;
+}
+
 export interface FlashData {
     banner?: string;
     bannerStyle?: 'success' | 'danger' | 'info' | 'warning';
@@ -100,6 +104,8 @@ export interface SharedData {
     allowMultipleSocialAccounts: boolean;
     legal: LegalLinks;
     contentTypeMediaRules?: Record<string, ContentTypeMediaRule>;
+    features?: Features | null;
+    usage?: Usage | null;
     [key: string]: unknown;
 }
 

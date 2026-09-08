@@ -9,6 +9,8 @@ return [
     'current' => 'Huidige',
     'connections' => ':count koppelingen',
     'posts' => ':count posts',
+    'subscription_required' => 'Abonneer je om meer workspaces te maken.',
+    'limit_reached' => 'Je plan bevat één workspace. Upgrade om er meer toe te voegen.',
 
     'create' => [
         'page_title' => 'Maak je workspace aan',

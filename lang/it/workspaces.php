@@ -9,6 +9,8 @@ return [
     'current' => 'Attuale',
     'connections' => ':count connessioni',
     'posts' => ':count post',
+    'subscription_required' => 'Abbonati per creare altri workspace.',
+    'limit_reached' => 'Il tuo piano include un workspace. Fai l\'upgrade per aggiungerne altri.',
 
     'create' => [
         'page_title' => 'Crea il tuo workspace',

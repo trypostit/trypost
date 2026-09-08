@@ -9,6 +9,8 @@ return [
     'current' => 'Geçerli',
     'connections' => ':count bağlantı',
     'posts' => ':count gönderi',
+    'subscription_required' => 'Daha fazla workspace oluşturmak için abone olun.',
+    'limit_reached' => 'Planınız bir workspace içerir. Daha fazlasını eklemek için yükseltin.',
 
     'create' => [
         'page_title' => 'Çalışma alanınızı oluşturun',

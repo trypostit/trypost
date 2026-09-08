@@ -70,7 +70,7 @@ class WorkspaceController extends Controller
     {
         $this->authorize('create', Workspace::class);
 
-        if ($redirect = $this->denyAdditionalWorkspaceWithoutSubscription($request->user())) {
+        if ($redirect = $this->denyAdditionalWorkspace($request->user())) {
             return $redirect;
         }
 
@@ -83,12 +83,12 @@ class WorkspaceController extends Controller
     }
 
     /**
-     * Block creating a paid additional workspace without an active subscription.
-     * Guards both the form (`create`) and the write (`store`) so a direct POST
-     * can't bootstrap a second billable workspace — which would also inflate the
-     * checkout quantity before the first subscription exists.
+     * Block a second workspace the account cannot have — either because there is
+     * no active subscription yet, or because the plan's cap is reached. Guards
+     * both the form (`create`) and the write (`store`) so a direct POST cannot
+     * bypass the plan.
      */
-    private function denyAdditionalWorkspaceWithoutSubscription(User $user): ?RedirectResponse
+    private function denyAdditionalWorkspace(User $user): ?RedirectResponse
     {
         // An invited member joins exactly one account via the invite. Creating a
         // workspace on their empty invite-signup shell would leave it non-empty
@@ -97,11 +97,18 @@ class WorkspaceController extends Controller
             abort(403);
         }
 
-        if (! config('trypost.self_hosted')
-            && $user->ownedWorkspacesCount() > 0
-            && ! $user->account?->hasActiveSubscription()) {
+        if (config('trypost.self_hosted') || $user->ownedWorkspacesCount() === 0) {
+            return null;
+        }
+
+        if (! $user->account?->hasActiveSubscription()) {
             return redirect()->route('app.billing.index')
-                ->with('message', 'Subscribe to create more workspaces.');
+                ->with('flash.error', __('workspaces.subscription_required'));
+        }
+
+        if (! $user->account->canCreateWorkspace()) {
+            return redirect()->route('app.billing.index')
+                ->with('flash.error', __('workspaces.limit_reached'));
         }
 
         return null;
@@ -122,7 +129,7 @@ class WorkspaceController extends Controller
     {
         $user = $request->user();
 
-        if ($redirect = $this->denyAdditionalWorkspaceWithoutSubscription($user)) {
+        if ($redirect = $this->denyAdditionalWorkspace($user)) {
             return $redirect;
         }
 
