@@ -3,10 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'beta' => 'Βήτα',
 
     'back' => 'Πίσω',
-
-    'beta' => 'Βήτα',
 
     'confirm_modal' => [
         'cannot_be_undone' => 'Αυτό δεν μπορεί να αναιρεθεί.',

@@ -3,10 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'beta' => 'Beta',
 
     'back' => 'Volver',
-
-    'beta' => 'Beta',
 
     'confirm_modal' => [
         'cannot_be_undone' => 'Esta acción no se puede deshacer.',

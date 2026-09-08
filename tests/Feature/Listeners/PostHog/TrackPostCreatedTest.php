@@ -45,7 +45,7 @@ test('listener is wired to the PostCreated event via auto-discovery', function (
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'created_via' => CreatedVia::Automation,
+        'created_via' => CreatedVia::Api,
     ]);
 
     Bus::fake();

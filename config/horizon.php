@@ -228,7 +228,7 @@ return [
 
         'social-publishing' => [
             'connection' => 'redis',
-            'queue' => Platform::allQueues(),
+            'queue' => Platform::enabledQueues(),
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'minProcesses' => 1,
@@ -256,14 +256,14 @@ return [
             'nice' => 0,
         ],
 
-        'automations' => [
+        'webhooks' => [
             'connection' => 'redis',
-            'queue' => ['automations'],
+            'queue' => ['webhooks'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'minProcesses' => 1,
-            'maxProcesses' => 3,
-            'timeout' => 630,
+            'maxProcesses' => 2,
+            'timeout' => 60,
             'maxTime' => 0,
             'maxJobs' => 0,
             'memory' => 256,
@@ -292,8 +292,8 @@ return [
                 'balanceCooldown' => 3,
             ],
 
-            'automations' => [
-                'maxProcesses' => 5,
+            'webhooks' => [
+                'maxProcesses' => 3,
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],
@@ -312,8 +312,8 @@ return [
                 'maxProcesses' => 2,
             ],
 
-            'automations' => [
-                'maxProcesses' => 2,
+            'webhooks' => [
+                'maxProcesses' => 1,
             ],
         ],
     ],

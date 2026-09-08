@@ -16,6 +16,7 @@ return [
         'signatures' => 'Υπογραφές',
         'labels' => 'Ετικέτες',
         'assets' => 'Στοιχεία',
+        'webhooks' => 'Webhooks',
         'mcp' => 'MCP',
     ],
     'language' => 'Γλώσσα: :name',
@@ -25,7 +26,7 @@ return [
         'others' => 'Άλλα',
     ],
     'analytics' => 'Στατιστικά',
-    'automations' => 'Αυτοματισμοί',
+    'repurposes' => 'Repurpose',
     'onboarding' => 'Ξεκινώντας',
     'onboarding_hint' => 'Ολοκλήρωση ρύθμισης',
     'posts' => [

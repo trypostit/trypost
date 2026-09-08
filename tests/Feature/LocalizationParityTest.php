@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Enums\User\Locale;
 use App\Enums\Workspace\ContentLanguage;
 use Illuminate\Support\Arr;
 
-test('every UI language in config matches the ContentLanguage enum', function () {
-    expect(array_keys(config('languages.available')))
-        ->toEqualCanonicalizing(ContentLanguage::values());
+test('every UI locale is a supported content language', function () {
+    expect(Locale::values())->toEqualCanonicalizing(ContentLanguage::values());
 });
 
-test('the default UI language is a supported content language', function () {
-    expect(config('languages.default'))->toBeIn(ContentLanguage::values());
+test('the default UI locale is a supported content language', function () {
+    expect(Locale::DEFAULT->value)->toBeIn(ContentLanguage::values());
 });
 
 test('locale ships every base translation file with identical keys', function (string $locale) {
@@ -44,7 +44,7 @@ test('locale ships every base translation file with identical keys', function (s
 
     expect($missingFiles)->toBe([], "{$locale} is missing translation files: ".implode(', ', $missingFiles));
     expect($keyDrift)->toBe([], "{$locale} has key drift: ".json_encode($keyDrift, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-})->with(ContentLanguage::values());
+})->with(Locale::values());
 
 // Key presence alone cannot catch stale wording (same key, incomplete sentence).
 // Destructive account/workspace delete copy is additionally asserted in

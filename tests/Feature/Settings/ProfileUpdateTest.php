@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Enums\User\Locale;
 use App\Enums\UserWorkspace\Role;
+use App\Jobs\PostHog\SyncUser;
 use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\Invite;
@@ -10,6 +12,7 @@ use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Cashier\Subscription;
 
@@ -61,41 +64,39 @@ test('email verification status is unchanged when the email address is unchanged
     expect($user->refresh()->email_verified_at)->not->toBeNull();
 });
 
-test('user can update their locale via cookie', function () {
+test('user can switch the UI locale', function (string $locale, Locale $expected) {
     $user = User::factory()->create();
 
     $response = $this
         ->actingAs($user)
         ->from(route('app.posts.index'))
         ->put(route('app.profile.language'), [
-            'locale' => 'es',
-        ]);
-
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect(route('app.posts.index'));
-
-    $response->assertCookieNotExpired('locale');
-});
-
-test('user can switch the UI locale to Ukrainian', function () {
-    $user = User::factory()->create();
-
-    $response = $this
-        ->actingAs($user)
-        ->from(route('app.posts.index'))
-        ->put(route('app.profile.language'), [
-            'locale' => 'uk',
+            'locale' => $locale,
         ]);
 
     $response
         ->assertSessionHasNoErrors()
         ->assertRedirect(route('app.posts.index'))
-        ->assertCookieNotExpired('locale');
+        ->assertCookieMissing('locale');
+
+    expect($user->refresh()->locale)->toBe($expected);
+})->with([
+    ['es', Locale::Spanish],
+    ['uk', Locale::Ukrainian],
+    ['pt-BR', Locale::PortugueseBrazil],
+]);
+
+test('the stored locale drives the UI on the next request', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->put(route('app.profile.language'), ['locale' => 'ja']);
+    $this->actingAs($user)->get(route('app.posts.index'));
+
+    expect(app()->getLocale())->toBe('ja');
 });
 
 test('user cannot update locale with invalid code', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['locale' => Locale::English]);
 
     $response = $this
         ->actingAs($user)
@@ -104,6 +105,8 @@ test('user cannot update locale with invalid code', function () {
         ]);
 
     $response->assertSessionHasErrors('locale');
+
+    expect($user->refresh()->locale)->toBe(Locale::English);
 });
 
 test('user can delete their account', function () {
@@ -201,6 +204,20 @@ test('user cannot upload non-image file as photo', function () {
         ]);
 
     $response->assertSessionHasErrors('photo');
+});
+
+test('user cannot upload a photo over the size limit', function () {
+    Storage::fake();
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('app.profile.upload-photo'), [
+            'photo' => UploadedFile::fake()->image('avatar.jpg')->size(2049),
+        ])
+        ->assertSessionHasErrors('photo');
+
+    expect($user->refresh()->has_photo)->toBeFalse();
 });
 
 test('user can delete profile photo', function () {
@@ -503,4 +520,33 @@ test('account delete cancels incomplete stripe subscriptions that are not subscr
     expect($owner->fresh())->not->toBeNull();
     expect(User::find($member->id))->not->toBeNull();
     expect(Account::find($accountId))->not->toBeNull();
+});
+
+test('switching the UI language pushes the new locale to PostHog', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Queue::fake();
+
+    $user = User::factory()->create(['locale' => Locale::English]);
+
+    $this->actingAs($user)->put(route('app.profile.language'), ['locale' => 'pt-BR']);
+
+    expect($user->refresh()->locale)->toBe(Locale::PortugueseBrazil);
+
+    Queue::assertPushed(
+        SyncUser::class,
+        fn (SyncUser $job) => $job->userId === (string) $user->id,
+    );
+});
+
+test('a rejected language change pushes nothing to PostHog', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Queue::fake();
+
+    $user = User::factory()->create(['locale' => Locale::English]);
+
+    $this->actingAs($user)
+        ->put(route('app.profile.language'), ['locale' => 'sv'])
+        ->assertSessionHasErrors('locale');
+
+    Queue::assertNotPushed(SyncUser::class);
 });

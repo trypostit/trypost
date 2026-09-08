@@ -126,11 +126,6 @@ function createApiTestToken(array $overrides = []): array
     ];
 }
 
-function feedFixture(string $name): string
-{
-    return file_get_contents(base_path("tests/fixtures/feeds/{$name}.xml"));
-}
-
 /**
  * Create an account on the Workspace plan with an active subscription on the
  * given Stripe price, plus N workspaces. Used by the billing-cycle tests.

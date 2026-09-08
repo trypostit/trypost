@@ -68,7 +68,6 @@ class RetryFailedPost extends Command
         );
 
         if (! $this->confirm('Queue publish attempts for these failed platforms?')) {
-            $this->info('Retry cancelled.');
 
             return self::SUCCESS;
         }
@@ -94,8 +93,6 @@ class RetryFailedPost extends Command
             'post_id' => $post->id,
             'post_platform_ids' => array_column($retryEntries, 'id'),
         ]);
-
-        $this->info(count($retryEntries).' publish attempt(s) queued.');
 
         return self::SUCCESS;
     }

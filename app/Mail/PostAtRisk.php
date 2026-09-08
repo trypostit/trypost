@@ -52,7 +52,10 @@ class PostAtRisk extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: $this->subjectFor($this->count),
+            subject: trans_choice('mail.post_at_risk.subject', $this->count, [
+                'count' => $this->count,
+                'workspace' => $this->workspace->name,
+            ]),
         );
     }
 
@@ -61,12 +64,12 @@ class PostAtRisk extends Mailable implements ShouldQueue
         return new Content(
             view: 'mail.post-at-risk',
             with: [
-                'title' => 'Posts May Fail to Publish',
-                'previewText' => $this->subjectFor($this->count),
-                'intro' => "The following social accounts in your {$this->workspace->name} workspace need to be reconnected before these scheduled posts can publish:",
-                'reconnectCta' => 'Please reconnect these accounts now to avoid missing your scheduled posts.',
-                'buttonText' => 'Reconnect Accounts',
-                'workspace' => $this->workspace,
+                'title' => __('mail.post_at_risk.title'),
+                'previewText' => trans_choice('mail.post_at_risk.subject', $this->count, [
+                    'count' => $this->count,
+                    'workspace' => $this->workspace->name,
+                ]),
+                'workspaceName' => $this->workspace->name,
                 'atRiskGroups' => $this->atRiskGroups(),
                 'url' => route('app.accounts'),
             ],
@@ -74,7 +77,7 @@ class PostAtRisk extends Mailable implements ShouldQueue
     }
 
     /**
-     * @return Collection<int, array{account: mixed, postPlatforms: Collection<int, PostPlatform>, postsLabel: string}>
+     * @return Collection<int, array{account: mixed, postPlatforms: Collection<int, PostPlatform>, postCount: int, times: string}>
      */
     private function atRiskGroups(): Collection
     {
@@ -93,25 +96,15 @@ class PostAtRisk extends Mailable implements ShouldQueue
             // handle), so it's dropped rather than crashing the render.
             ->filter(fn (Collection $group) => $group->first()->socialAccount !== null)
             ->map(function (Collection $group) {
-                $postCount = $group->count();
-                $times = $group->sortBy(fn ($pp) => $pp->post->scheduled_at)
-                    ->map(fn ($pp) => $pp->post->scheduled_at->format('H:i'))
-                    ->implode(', ');
-                $noun = $postCount === 1 ? 'post' : 'posts';
-
                 return [
                     'account' => $group->first()->socialAccount,
                     'postPlatforms' => $group,
-                    'postsLabel' => "{$postCount} {$noun} scheduled: {$times} UTC",
+                    'postCount' => $group->count(),
+                    'times' => $group->sortBy(fn ($pp) => $pp->post->scheduled_at)
+                        ->map(fn ($pp) => $pp->post->scheduled_at->format('H:i'))
+                        ->implode(', '),
                 ];
             })->values();
-    }
-
-    private function subjectFor(int $count): string
-    {
-        $noun = $count === 1 ? 'post is' : 'posts are';
-
-        return "{$count} {$noun} at risk in {$this->workspace->name}";
     }
 
     public function attachments(): array

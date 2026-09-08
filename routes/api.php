@@ -7,9 +7,11 @@ use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\LabelController;
 use App\Http\Controllers\Api\PlatformController;
 use App\Http\Controllers\Api\PostController;
+use App\Http\Controllers\Api\RepurposeController;
 use App\Http\Controllers\Api\SignatureController;
 use App\Http\Controllers\Api\SocialAccountController;
 use App\Http\Controllers\Api\UploadController;
+use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\WorkspaceController;
 use Illuminate\Support\Facades\Route;
 
@@ -62,6 +64,30 @@ Route::middleware(['auth:api', 'workspace.token', 'throttle:api'])->group(functi
     Route::get('/social-accounts/{account}/channels', [SocialAccountController::class, 'channels'])
         ->middleware('throttle:60,1')
         ->name('api.social-accounts.channels');
+
+    // Repurpose
+    Route::get('/repurpose-source-formats', [RepurposeController::class, 'sourceFormats'])->name('api.repurpose-source-formats.index');
+    Route::get('/repurposes', [RepurposeController::class, 'index'])->name('api.repurposes.index');
+    Route::post('/repurposes', [RepurposeController::class, 'store'])->name('api.repurposes.store');
+    Route::get('/repurposes/{repurpose}', [RepurposeController::class, 'show'])->name('api.repurposes.show');
+    Route::put('/repurposes/{repurpose}', [RepurposeController::class, 'update'])->name('api.repurposes.update');
+    Route::get('/repurposes/{repurpose}/items', [RepurposeController::class, 'items'])->name('api.repurposes.items');
+    Route::post('/repurposes/{repurpose}/activate', [RepurposeController::class, 'activate'])->name('api.repurposes.activate');
+    Route::post('/repurposes/{repurpose}/pause', [RepurposeController::class, 'pause'])->name('api.repurposes.pause');
+    Route::post('/repurposes/{repurpose}/resume', [RepurposeController::class, 'resume'])->name('api.repurposes.resume');
+    Route::post('/repurposes/{repurpose}/disable', [RepurposeController::class, 'disable'])->name('api.repurposes.disable');
+    Route::delete('/repurposes/{repurpose}', [RepurposeController::class, 'destroy'])->name('api.repurposes.destroy');
+
+    // Webhooks
+    Route::get('/webhooks', [WebhookController::class, 'index'])->name('api.webhooks.index');
+    Route::post('/webhooks', [WebhookController::class, 'store'])->name('api.webhooks.store');
+    Route::get('/webhooks/{webhook}', [WebhookController::class, 'show'])->name('api.webhooks.show');
+    Route::put('/webhooks/{webhook}', [WebhookController::class, 'update'])->name('api.webhooks.update');
+    Route::post('/webhooks/{webhook}/send-test', [WebhookController::class, 'sendTest'])->name('api.webhooks.send-test');
+    Route::post('/webhooks/{webhook}/rotate-secret', [WebhookController::class, 'rotateSecret'])->name('api.webhooks.rotate-secret');
+    Route::get('/webhooks/{webhook}/logs', [WebhookController::class, 'logs'])->name('api.webhooks.logs');
+    Route::post('/webhooks/{webhook}/logs/{webhookLog}/replay', [WebhookController::class, 'replay'])->name('api.webhooks.replay');
+    Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy'])->name('api.webhooks.destroy');
 
     // API Keys
     Route::get('/api-keys', [ApiKeyController::class, 'index'])->name('api.api-keys.index');

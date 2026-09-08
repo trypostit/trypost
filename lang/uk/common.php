@@ -3,10 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'beta' => 'Бета',
 
     'back' => 'Назад',
-
-    'beta' => 'Бета',
 
     'confirm_modal' => [
         'cannot_be_undone' => 'Цю дію не можна скасувати.',

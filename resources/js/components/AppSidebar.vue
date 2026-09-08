@@ -3,7 +3,6 @@ import { Link, usePage } from '@inertiajs/vue3';
 import {
     IconAffiliate,
     IconAlertTriangle,
-    IconBolt,
     IconBrandDiscord,
     IconCalendar,
     IconChartBar,
@@ -17,8 +16,10 @@ import {
     IconPencil,
     IconPhoto,
     IconPlugConnected,
+    IconRepeat,
     IconSelector,
     IconTag,
+    IconWebhook,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
@@ -52,11 +53,12 @@ import WorkspaceMenuContent from '@/components/WorkspaceMenuContent.vue';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import { accounts, analytics, calendar } from '@/routes/app';
 import { index as assets } from '@/routes/app/assets';
-import { index as automations } from '@/routes/app/automations';
 import { portal } from '@/routes/app/billing';
 import { index as labels } from '@/routes/app/labels';
 import { index as mcp } from '@/routes/app/mcp';
+import { index as repurposes } from '@/routes/app/repurposes';
 import { index as signatures } from '@/routes/app/signatures';
+import { index as webhooks } from '@/routes/app/webhooks';
 import type { NavItem, User } from '@/types';
 
 interface Workspace {
@@ -79,8 +81,9 @@ const subscriptionPastDue = computed<boolean>(() =>
 
 const {
     canCreatePost,
+    canManageRepurposes,
     canManageAccounts,
-    canManageAutomations,
+    canManageWebhooks,
     canCreateWorkspace,
 } = useWorkspaceRole();
 const { isMobile } = useSidebar();
@@ -96,12 +99,12 @@ const mainNavItems = computed<NavItem[]>(() => [
         href: analytics.url(),
         icon: IconChartBar,
     },
-    ...(canManageAutomations.value
+    ...(canManageRepurposes.value
         ? [
               {
-                  title: trans('sidebar.automations'),
-                  href: automations.url(),
-                  icon: IconBolt,
+                  title: trans('sidebar.repurposes'),
+                  href: repurposes.url(),
+                  icon: IconRepeat,
                   badge: trans('common.beta'),
               },
           ]
@@ -162,6 +165,15 @@ const workspaceNavItems = computed<NavItem[]>(() => [
                   title: trans('sidebar.workspace.assets'),
                   href: assets.url(),
                   icon: IconPhoto,
+              },
+          ]
+        : []),
+    ...(canManageWebhooks.value
+        ? [
+              {
+                  title: trans('sidebar.workspace.webhooks'),
+                  href: webhooks.url(),
+                  icon: IconWebhook,
               },
           ]
         : []),

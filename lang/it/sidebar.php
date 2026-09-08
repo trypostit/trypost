@@ -16,6 +16,7 @@ return [
         'signatures' => 'Firme',
         'labels' => 'Etichette',
         'assets' => 'Risorse',
+        'webhooks' => 'Webhook',
         'mcp' => 'MCP',
     ],
     'language' => 'Lingua: :name',
@@ -25,7 +26,7 @@ return [
         'others' => 'Altro',
     ],
     'analytics' => 'Statistiche',
-    'automations' => 'Automazioni',
+    'repurposes' => 'Repurpose',
     'onboarding' => 'Primi passi',
     'onboarding_hint' => 'Completa la configurazione',
     'posts' => [

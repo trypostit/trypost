@@ -32,7 +32,7 @@ const { urlIsActive } = useActiveUrl();
                     :is-active="urlIsActive(item.activePattern ?? item.href, { exact: item.exact, exclude: item.excludeActive })"
                     :tooltip="item.title"
                 >
-                    <Link :href="item.href">
+                    <Link :href="item.href" :data-testid="`nav-${item.href}`">
                         <component :is="item.icon" />
                         <span>{{ item.title }}</span>
                     </Link>

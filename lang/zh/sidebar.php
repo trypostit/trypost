@@ -16,6 +16,7 @@ return [
         'signatures' => '签名',
         'labels' => '标签',
         'assets' => '素材库',
+        'webhooks' => 'Webhooks',
         'mcp' => 'MCP',
     ],
     'language' => '语言：:name',
@@ -25,7 +26,7 @@ return [
         'others' => '其他',
     ],
     'analytics' => '分析',
-    'automations' => '自动化',
+    'repurposes' => 'Repurpose',
     'onboarding' => '开始使用',
     'onboarding_hint' => '完成设置',
     'posts' => [

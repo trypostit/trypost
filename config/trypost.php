@@ -18,6 +18,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Legal pages
+    |--------------------------------------------------------------------------
+    |
+    | Linked from the auth screens. Platform app reviews (TikTok explicitly)
+    | require Terms and Privacy links to be clearly visible; self-hosted
+    | installs point these at wherever they publish their own documents.
+    |
+    */
+
+    'legal' => [
+        'terms_url' => env('LEGAL_TERMS_URL', 'https://trypost.it/terms'),
+        'privacy_url' => env('LEGAL_PRIVACY_URL', 'https://trypost.it/privacy'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Meta page walk budget
     |--------------------------------------------------------------------------
     |
@@ -56,7 +72,7 @@ return [
     |
     | SafeHttpFetcher blocks requests to private/reserved IP ranges (SSRF
     | protection) by default. Self-hosted operators who need to fetch from
-    | their own internal network (e.g. an internal RSS feed or webhook) can
+    | their own internal network (e.g. an internal webhook endpoint) can
     | opt in here. Leave disabled unless you understand the SSRF risk.
     |
     */
@@ -129,13 +145,33 @@ return [
     | Outbound User-Agent
     |--------------------------------------------------------------------------
     |
-    | Branded User-Agent applied to outbound HTTP from automation nodes
-    | (webhook + http_request) so recipients know the request came from
-    | TryPost.it. Self-hosters can override it.
+    | Branded User-Agent applied to outbound HTTP from workspace webhooks so
+    | recipients know the request came from TryPost.it. Self-hosters can
+    | override it.
     |
     */
 
     'user_agent' => env('TRYPOST_USER_AGENT', 'TryPost.it/1.0 (+https://trypost.it)'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Repurpose
+    |--------------------------------------------------------------------------
+    |
+    | How often an active repurpose polls its source network for videos the
+    | workspace published outside TryPost. The scheduler ticks every five
+    | minutes and each repurpose is polled when it is due, so the interval is
+    | a runtime knob rather than a cron expression. Meta's Instagram quota is
+    | an app-wide pool (200 calls per hour per daily active user), so raise
+    | the interval before the pool tightens. `backoff_minutes` is used instead
+    | when the source answers with a rate-limit error.
+    |
+    */
+
+    'repurpose' => [
+        'poll_interval_minutes' => (int) env('REPURPOSE_POLL_INTERVAL_MINUTES', 15),
+        'backoff_minutes' => (int) env('REPURPOSE_BACKOFF_MINUTES', 60),
+    ],
 
     'google_auth_enabled' => env('GOOGLE_AUTH_ENABLED', false),
 

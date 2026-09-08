@@ -3,6 +3,7 @@ import { Form, Head, usePage } from '@inertiajs/vue3';
 import { IconEye, IconEyeOff, IconMail } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
+import LegalLinks from '@/components/auth/LegalLinks.vue';
 import SocialLogin from '@/components/auth/SocialLogin.vue';
 import InputError from '@/components/InputError.vue';
 import TextLink from '@/components/TextLink.vue';
@@ -16,6 +17,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useGuestLocale } from '@/composables/useGuestLocale';
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
@@ -25,11 +27,12 @@ defineProps<{
     invite?: string | null;
 }>();
 
+const { locale } = useGuestLocale();
+
 const showPassword = ref(false);
 const showEmailForm = ref(false);
 
 const page = usePage();
-const isSelfHosted = computed(() => Boolean(page.props.selfHosted));
 const hasSocial = computed(
     () =>
         Boolean(page.props.googleAuthEnabled) ||
@@ -71,6 +74,7 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
                 class="flex flex-col gap-6"
             >
                 <input v-if="invite" type="hidden" name="invite" :value="invite" />
+                <input type="hidden" name="locale" :value="locale" />
 
                 <div
                     v-if="hasSocial && showEmailForm"
@@ -175,12 +179,7 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
                 </div>
             </Form>
 
-            <!-- eslint-disable-next-line vue/no-v-html -->
-            <div
-                v-if="!isSelfHosted"
-                class="text-center text-xs text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:text-primary"
-                v-html="$t('auth.legal')"
-            />
+            <LegalLinks />
         </div>
     </AuthBase>
 </template>

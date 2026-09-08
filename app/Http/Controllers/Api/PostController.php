@@ -37,7 +37,7 @@ class PostController extends Controller
         $posts = $request->user()->currentWorkspace->posts()
             ->with(['postPlatforms.socialAccount', 'user', 'labels'])
             ->latest('scheduled_at')
-            ->paginate(15);
+            ->paginate((int) config('app.pagination.default'));
 
         return PostResource::collection($posts);
     }

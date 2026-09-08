@@ -16,6 +16,7 @@ return [
         'signatures' => 'Підписи',
         'labels' => 'Мітки',
         'assets' => 'Медіафайли',
+        'webhooks' => 'Вебхуки',
         'mcp' => 'MCP',
     ],
     'language' => 'Мова: :name',
@@ -25,7 +26,7 @@ return [
         'others' => 'Інше',
     ],
     'analytics' => 'Аналітика',
-    'automations' => 'Автоматизації',
+    'repurposes' => 'Repurpose',
     'onboarding' => 'Початок роботи',
     'onboarding_hint' => 'Завершіть налаштування',
     'posts' => [

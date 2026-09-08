@@ -19,6 +19,7 @@ import { destroy as assetsDestroy, search as assetsSearch, storeChunked as asset
 import { search as giphySearch, trending as giphyTrending } from '@/routes/app/assets/giphy';
 import { search as unsplashSearch, trending as unsplashTrending } from '@/routes/app/assets/unsplash';
 import { store as storePost } from '@/routes/app/posts';
+import type { SourceMetaValue } from '@/types/media';
 import { uploadChunked } from '@/utils/chunkedUpload';
 
 interface AssetMedia {
@@ -74,7 +75,7 @@ interface PickedMedia {
     size?: number;
     meta?: { width?: number; height?: number; duration?: number };
     source?: 'ai' | 'unsplash' | 'giphy';
-    source_meta?: Record<string, unknown>;
+    source_meta?: Record<string, SourceMetaValue>;
 }
 
 const props = defineProps<{

@@ -64,6 +64,84 @@ test('display_name falls back to the platform_name snapshot when the account has
     expect($this->postPlatform->fresh()->display_name)->toBe('Snapshot Name');
 });
 
+test('notificationLabel prefers username over display name', function () {
+    $account = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => 'myfbpage',
+        'display_name' => 'InboxPlacement.io',
+    ]);
+    $postPlatform = PostPlatform::factory()->facebook()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+    ]);
+
+    expect($postPlatform->notificationLabel())->toBe('Facebook Page (@myfbpage)');
+});
+
+test('notificationLabel falls back to display name when username is empty', function () {
+    $account = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => null,
+        'display_name' => 'InboxPlacement.io',
+    ]);
+    $postPlatform = PostPlatform::factory()->facebook()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+    ]);
+
+    expect($postPlatform->notificationLabel())->toBe('Facebook Page (@InboxPlacement.io)');
+});
+
+test('notificationLabel uses username when display name is empty', function () {
+    $account = SocialAccount::factory()->bluesky()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => 'inboxplacementio.bsky.social',
+        'display_name' => '',
+    ]);
+    $postPlatform = PostPlatform::factory()->bluesky()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+    ]);
+
+    expect($postPlatform->notificationLabel())->toBe('Bluesky (@inboxplacementio.bsky.social)');
+});
+
+test('notificationLabel omits empty parentheses when both identifiers are missing', function () {
+    $account = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => null,
+        'display_name' => '',
+    ]);
+    $postPlatform = PostPlatform::factory()->facebook()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+    ]);
+
+    expect($postPlatform->notificationLabel())->toBe('Facebook Page');
+});
+
+test('notificationLabel uses the snapshot when the account has been deleted', function () {
+    $account = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => null,
+        'display_name' => 'InboxPlacement.io',
+    ]);
+    $postPlatform = PostPlatform::factory()->facebook()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+        'platform_name' => 'InboxPlacement.io',
+    ]);
+
+    $account->delete();
+
+    expect($postPlatform->fresh()->notificationLabel())->toBe('Facebook Page (@InboxPlacement.io)');
+});
+
 test('markAsFailed clears stale platform_post_id and platform_url', function () {
     $this->postPlatform->update([
         'status' => Status::Published,

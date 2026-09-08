@@ -186,7 +186,7 @@ test('youtube publisher builds correct title with shorts tag', function () {
     // Long content: truncates to leave room for #Shorts tag (100 chars max)
     $longContent = str_repeat('A', 200);
     $title = $method->invoke($publisher, $longContent);
-    expect(strlen($title))->toBeLessThanOrEqual(100);
+    expect(mb_strlen($title))->toBeLessThanOrEqual(100);
     expect($title)->toEndWith(' #Shorts');
 
     // Multi-line content: only uses first line before period
@@ -198,4 +198,25 @@ test('youtube publisher builds correct title with shorts tag', function () {
     $newlineContent = "Title line\nMore content here";
     $title = $method->invoke($publisher, $newlineContent);
     expect($title)->toBe('Title line #Shorts');
+});
+
+test('youtube publisher counts an accented title in characters, not bytes', function () {
+    $reflection = new ReflectionClass(YouTubePublisher::class);
+    $method = $reflection->getMethod('buildTitle');
+    $method->setAccessible(true);
+
+    $publisher = new YouTubePublisher;
+
+    foreach (range(0, 11) as $pad) {
+        $title = $method->invoke($publisher, str_repeat('a', $pad).str_repeat('ação ', 30));
+
+        expect(mb_check_encoding($title, 'UTF-8'))->toBeTrue()
+            ->and(mb_strlen($title))->toBeLessThanOrEqual(100);
+    }
+
+    $accented = str_repeat('ção', 30);
+
+    expect(mb_strlen($accented))->toBe(90)
+        ->and(strlen($accented))->toBeGreaterThan(92)
+        ->and($method->invoke($publisher, $accented))->toBe($accented.' #Shorts');
 });

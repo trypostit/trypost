@@ -103,16 +103,192 @@ test('platform exposes the correct default token TTL fallback', function () {
     expect(Platform::Facebook->defaultTokenTtlSeconds())->toBeNull();
 });
 
-test('platform is enabled by default', function () {
-    expect(Platform::LinkedIn->isEnabled())->toBeTrue();
-    expect(Platform::Instagram->isEnabled())->toBeTrue();
+test('platform is enabled by default for every platform', function (Platform $platform) {
+    expect($platform->isEnabled())->toBeTrue();
+})->with([
+    Platform::LinkedIn,
+    Platform::LinkedInPage,
+    Platform::X,
+    Platform::TikTok,
+    Platform::YouTube,
+    Platform::Facebook,
+    Platform::Instagram,
+    Platform::InstagramFacebook,
+    Platform::Threads,
+    Platform::Pinterest,
+    Platform::Bluesky,
+    Platform::Mastodon,
+    Platform::Telegram,
+    Platform::Discord,
+]);
+
+test('each platform can be disabled via config', function (Platform $platform) {
+    config(["trypost.platforms.{$platform->value}.enabled" => false]);
+
+    expect($platform->isEnabled())->toBeFalse();
+})->with([
+    Platform::LinkedIn,
+    Platform::LinkedInPage,
+    Platform::X,
+    Platform::TikTok,
+    Platform::YouTube,
+    Platform::Facebook,
+    Platform::Instagram,
+    Platform::InstagramFacebook,
+    Platform::Threads,
+    Platform::Pinterest,
+    Platform::Bluesky,
+    Platform::Mastodon,
+    Platform::Telegram,
+    Platform::Discord,
+]);
+
+test('each platform maps to its publishing queue', function (Platform $platform, string $queue) {
+    expect($platform->queue())->toBe($queue);
+})->with([
+    [Platform::LinkedIn, 'social-linkedin'],
+    [Platform::LinkedInPage, 'social-linkedin-page'],
+    [Platform::X, 'social-x'],
+    [Platform::TikTok, 'social-tiktok'],
+    [Platform::YouTube, 'social-youtube'],
+    [Platform::Facebook, 'social-facebook'],
+    [Platform::Instagram, 'social-instagram'],
+    [Platform::InstagramFacebook, 'social-instagram-facebook'],
+    [Platform::Threads, 'social-threads'],
+    [Platform::Pinterest, 'social-pinterest'],
+    [Platform::Bluesky, 'social-bluesky'],
+    [Platform::Mastodon, 'social-mastodon'],
+    [Platform::Telegram, 'social-telegram'],
+    [Platform::Discord, 'social-discord'],
+]);
+
+test('allQueues lists every platform publishing queue in enum order', function () {
+    expect(Platform::allQueues())->toBe([
+        'social-linkedin',
+        'social-linkedin-page',
+        'social-x',
+        'social-tiktok',
+        'social-youtube',
+        'social-facebook',
+        'social-instagram',
+        'social-instagram-facebook',
+        'social-threads',
+        'social-pinterest',
+        'social-bluesky',
+        'social-mastodon',
+        'social-telegram',
+        'social-discord',
+    ])->and(Platform::allQueues())->toHaveCount(count(Platform::cases()));
 });
 
-test('platform can be disabled via config', function () {
-    config(['trypost.platforms.linkedin.enabled' => false]);
+test('enabledQueues matches allQueues when every platform is enabled', function () {
+    foreach (Platform::cases() as $platform) {
+        config(["trypost.platforms.{$platform->value}.enabled" => true]);
+    }
 
-    expect(Platform::LinkedIn->isEnabled())->toBeFalse();
+    expect(Platform::enabledQueues())->toBe(Platform::allQueues());
 });
+
+test('disabling a platform removes only its queue from enabledQueues', function (Platform $disabled) {
+    foreach (Platform::cases() as $platform) {
+        config(["trypost.platforms.{$platform->value}.enabled" => true]);
+    }
+
+    config(["trypost.platforms.{$disabled->value}.enabled" => false]);
+
+    $enabledQueues = Platform::enabledQueues();
+
+    expect($enabledQueues)
+        ->not->toContain($disabled->queue())
+        ->toHaveCount(count(Platform::cases()) - 1);
+
+    foreach (Platform::cases() as $platform) {
+        if ($platform === $disabled) {
+            continue;
+        }
+
+        expect($enabledQueues)->toContain($platform->queue());
+    }
+
+    expect(Platform::allQueues())->toContain($disabled->queue());
+})->with([
+    Platform::LinkedIn,
+    Platform::LinkedInPage,
+    Platform::X,
+    Platform::TikTok,
+    Platform::YouTube,
+    Platform::Facebook,
+    Platform::Instagram,
+    Platform::InstagramFacebook,
+    Platform::Threads,
+    Platform::Pinterest,
+    Platform::Bluesky,
+    Platform::Mastodon,
+    Platform::Telegram,
+    Platform::Discord,
+]);
+
+test('disabling every platform yields no enabled queues', function () {
+    foreach (Platform::cases() as $platform) {
+        config(["trypost.platforms.{$platform->value}.enabled" => false]);
+    }
+
+    expect(Platform::enabledQueues())->toBe([]);
+});
+
+test('enabledQueues is always a subset of allQueues', function () {
+    config([
+        'trypost.platforms.linkedin.enabled' => true,
+        'trypost.platforms.linkedin-page.enabled' => false,
+        'trypost.platforms.x.enabled' => false,
+        'trypost.platforms.tiktok.enabled' => true,
+        'trypost.platforms.youtube.enabled' => false,
+        'trypost.platforms.facebook.enabled' => true,
+        'trypost.platforms.instagram.enabled' => false,
+        'trypost.platforms.instagram-facebook.enabled' => true,
+        'trypost.platforms.threads.enabled' => false,
+        'trypost.platforms.pinterest.enabled' => true,
+        'trypost.platforms.bluesky.enabled' => false,
+        'trypost.platforms.mastodon.enabled' => true,
+        'trypost.platforms.telegram.enabled' => false,
+        'trypost.platforms.discord.enabled' => true,
+    ]);
+
+    $enabledQueues = Platform::enabledQueues();
+
+    expect($enabledQueues)->toEqual(array_values(array_intersect(Platform::allQueues(), $enabledQueues)))
+        ->and(array_diff($enabledQueues, Platform::allQueues()))->toBe([]);
+});
+
+test('horizon social publishing queues match enabledQueues', function () {
+    expect(config('horizon.defaults.social-publishing.queue'))->toBe(Platform::enabledQueues());
+});
+
+test('isEnabled falls back to env when enabled config is missing', function (Platform $platform, string $envKey) {
+    $platforms = config('trypost.platforms');
+    unset($platforms[$platform->value]['enabled']);
+    config(['trypost.platforms' => $platforms]);
+
+    $original = getenv($envKey);
+    putenv("{$envKey}=false");
+
+    try {
+        expect($platform->isEnabled())->toBeFalse();
+    } finally {
+        if ($original === false) {
+            putenv($envKey);
+        } else {
+            putenv("{$envKey}={$original}");
+        }
+    }
+})->with([
+    [Platform::LinkedIn, 'LINKEDIN_ENABLED'],
+    [Platform::LinkedInPage, 'LINKEDIN_PAGE_ENABLED'],
+    [Platform::X, 'X_ENABLED'],
+    [Platform::InstagramFacebook, 'INSTAGRAM_FACEBOOK_ENABLED'],
+    [Platform::Telegram, 'TELEGRAM_ENABLED'],
+    [Platform::Discord, 'DISCORD_ENABLED'],
+]);
 
 test('linkedin pages and instagram facebook are not directly connectable', function () {
     expect(Platform::LinkedInPage->isConnectable())->toBeFalse();

@@ -118,3 +118,30 @@ test('connect step redirects to persona when prior steps are missing', function 
     $page->assertRoute('app.welcome.persona')
         ->assertNoJavaScriptErrors();
 });
+
+test('connect step shows the backend error when the account disappears before submitting', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = welcomeOwnerOnConnectStep();
+    $account = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $user->current_workspace_id,
+    ]);
+
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.welcome.connect'));
+
+    waitForWelcomeTestId($page, 'welcome-start-checkout');
+
+    $page->assertEnabled('@welcome-start-checkout');
+
+    $account->delete();
+
+    $page->click('@welcome-start-checkout');
+
+    waitForWelcomeTestId($page, 'welcome-connect-error');
+
+    $page->assertVisible('@welcome-connect-error')
+        ->assertSee(trans('welcome.connect.required'))
+        ->assertNoJavaScriptErrors();
+});

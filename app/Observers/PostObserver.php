@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Observers;
 
-use App\Enums\Automation\Trigger\Type as TriggerType;
 use App\Enums\Post\Status as PostStatus;
 use App\Events\OnboardingStatusUpdated;
 use App\Events\PostCreated;
-use App\Jobs\Automation\DispatchPostTriggerAutomationsJob;
+use App\Events\PostStatusChanged;
 use App\Models\Account;
 use App\Models\Post;
 use Illuminate\Database\Eloquent\Builder;
@@ -34,15 +33,24 @@ class PostObserver
             return;
         }
 
-        $triggerType = match ($post->status) {
-            PostStatus::Published => TriggerType::PostPublished,
-            PostStatus::Scheduled => TriggerType::PostScheduled,
-            default => null,
-        };
+        $previousStatus = $this->previousStatus($post);
 
-        if ($triggerType !== null) {
-            DispatchPostTriggerAutomationsJob::dispatch($post, $triggerType)->afterCommit();
+        DB::afterCommit(fn () => PostStatusChanged::dispatch($post, $previousStatus));
+    }
+
+    private function previousStatus(Post $post): ?PostStatus
+    {
+        $previous = $post->getRawOriginal('status');
+
+        if ($previous instanceof PostStatus) {
+            return $previous;
         }
+
+        if (is_string($previous)) {
+            return PostStatus::tryFrom($previous);
+        }
+
+        return null;
     }
 
     /**

@@ -16,6 +16,7 @@ return [
         'signatures' => '署名',
         'labels' => 'ラベル',
         'assets' => 'アセット',
+        'webhooks' => 'ウェブフック',
         'mcp' => 'MCP',
     ],
     'language' => '言語: :name',
@@ -25,7 +26,7 @@ return [
         'others' => 'その他',
     ],
     'analytics' => 'アナリティクス',
-    'automations' => 'オートメーション',
+    'repurposes' => 'Repurpose',
     'onboarding' => 'はじめに',
     'onboarding_hint' => 'セットアップを完了',
     'posts' => [

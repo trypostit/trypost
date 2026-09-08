@@ -47,6 +47,5 @@ class RefreshExpiringTokens extends Command
 
         // Accounts in the window, not jobs queued: the job is unique per
         // account, so a dispatch during a backlog is silently discarded.
-        $this->info("{$count} accounts due for a token refresh.");
     }
 }

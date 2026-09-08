@@ -23,12 +23,10 @@ const props = withDefaults(defineProps<{
     media?: MediaItem[];
     videoDurationSec?: number | null;
     disabled?: boolean;
-    previewOnly?: boolean;
 }>(), {
     media: () => [],
     videoDurationSec: null,
     disabled: false,
-    previewOnly: false,
 });
 
 const emit = defineEmits<{
@@ -57,6 +55,7 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                                 !channel.issue ? 'opacity-100 hover:opacity-90' : '',
                             ]"
                             :disabled="Boolean(channel.issue) && !isSelected(channel.id)"
+                            :data-testid="`channel-${channel.id}`"
                             @click="emit('toggle', channel.id)"
                         >
                             <div class="relative">
@@ -118,7 +117,6 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                 :media="media"
                 :meta="channel.meta"
                 :disabled="disabled"
-                :preview-only="previewOnly"
                 @update:content-type="emit('update:contentType', channel.id, $event)"
                 @update:meta="emit('update:meta', channel.id, $event)"
             />
@@ -129,7 +127,6 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                 :media="media"
                 :meta="channel.meta"
                 :disabled="disabled"
-                :preview-only="previewOnly"
                 @update:content-type="emit('update:contentType', channel.id, $event)"
                 @update:meta="emit('update:meta', channel.id, $event)"
             />
@@ -143,7 +140,6 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                 :content-type-error="channel.contentTypeError"
                 :meta="channel.meta"
                 :disabled="disabled"
-                :preview-only="previewOnly"
                 @update:content-type="emit('update:contentType', channel.id, $event)"
                 @update:meta="emit('update:meta', channel.id, $event)"
             />
@@ -156,7 +152,6 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                 :boards-truncated="channel.boardsTruncated ?? false"
                 :meta="channel.meta"
                 :disabled="disabled"
-                :preview-only="previewOnly"
                 @update:content-type="emit('update:contentType', channel.id, $event)"
                 @update:meta="emit('update:meta', channel.id, $event)"
             />
@@ -167,7 +162,6 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                 :media="media"
                 :meta="channel.meta"
                 :disabled="disabled"
-                :preview-only="previewOnly"
                 @update:meta="emit('update:meta', channel.id, $event)"
             />
             <DiscordSettings
@@ -175,7 +169,6 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                 :social-account="channel.socialAccount"
                 :meta="channel.meta"
                 :disabled="disabled"
-                :preview-only="previewOnly"
                 @update:meta="emit('update:meta', channel.id, $event)"
             />
         </template>

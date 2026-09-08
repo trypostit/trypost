@@ -426,7 +426,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             ->enabled()
             ->where('status', $status)
             ->get()
-            ->map(fn ($pp) => $pp->platform->label().' (@'.data_get($pp, 'socialAccount.username', '').')')
+            ->map(fn ($pp) => $pp->notificationLabel())
             ->implode(', ');
 
         SendNotification::dispatch(

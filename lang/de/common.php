@@ -3,10 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'beta' => 'Beta',
 
     'back' => 'Zurück',
-
-    'beta' => 'Beta',
 
     'confirm_modal' => [
         'cannot_be_undone' => 'Dies kann nicht rückgängig gemacht werden.',

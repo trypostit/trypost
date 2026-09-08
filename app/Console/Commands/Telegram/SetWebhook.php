@@ -24,8 +24,6 @@ class SetWebhook extends Command
             return self::FAILURE;
         }
 
-        $this->info("Telegram webhook registered at {$url}");
-
         return self::SUCCESS;
     }
 }

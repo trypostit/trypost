@@ -72,7 +72,7 @@
                     {{ $title }}
                   </h1>
                   <p style="margin: 0 0 16px; line-height: 24px">
-                    {!! __('mail.mentioned.intro', ['name' => '<strong>'.e($authorName).'</strong>']) !!}
+                    {!! __('mail.mentioned_in_comment.intro', ['name' => '<strong>'.e($authorName).'</strong>']) !!}
                   </p>
                   <div style="border-radius: 4px; border-left-width: 3px; border-color: #e4e4e7; background-color: #fafafa; padding: 12px 16px; font-size: 15px; line-height: 22px; color: #3f3f46">
                     {{ $excerpt }}
@@ -80,9 +80,9 @@
                   <div role="separator" style="line-height: 24px">&zwj;</div>
                   <div style="display: flex; align-items: center; justify-content: center">
                     <div>
-                      <a href="{{ $url }}" style="display: inline-block; text-decoration: none; padding: 16px 24px; font-size: 16px; line-height: 1; border-radius: 8px; background-color: #262626; color: #ffffff">
+                      <a href="{{ $url }}" style="display: inline-block; text-decoration: none; padding: 16px 24px; font-size: 16px; line-height: 1; border-radius: 8px; background-color: #7c3aed; color: #ffffff">
                         <!--[if mso]><i style="mso-font-width: 150%; mso-text-raise: 31px" hidden>&emsp;</i><![endif]-->
-                        <span style="mso-text-raise: 16px">{{ __('mail.mentioned.cta') }} &rarr;</span>
+                        <span style="mso-text-raise: 16px">{{ __('mail.mentioned_in_comment.button') }}</span>
                         <!--[if mso]><i hidden style="mso-font-width: 150%">&emsp;&#8203;</i><![endif]-->
                       </a>
                     </div>
@@ -95,11 +95,11 @@
         <tr>
           <td align="center" style="padding: 24px; text-align: center; font-size: 12px; color: #52525b">
             <p style="margin: 0 0 8px">
-              Open-source social media scheduling tool
+              {{ __('mail.layout.tagline') }}
             </p>
             <p style="margin: 8px 0 0">
               <a href="{{ route('app.notifications.preferences') }}" target="_blank" class="hover-i-text-decoration-underline" style="color: #52525b; text-decoration: none">
-                Manage notifications
+                {{ __('mail.layout.manage_notifications') }}
               </a>
             </p>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-left: auto; margin-right: auto; margin-top: 16px">
@@ -125,7 +125,7 @@
                   </a>
                 </td>
                 <td style="padding-left: 4px; padding-right: 4px">
-                  <a href="https://www.instagram.com/trypost.it" target="_blank">
+                  <a href="https://www.instagram.com/trypost.en" target="_blank">
                     <img src="{{ asset('/images/emails/social/instagram.png') }}" width="20" height="20" alt="Instagram" style="max-width: 100%; vertical-align: middle">
                   </a>
                 </td>

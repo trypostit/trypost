@@ -6,16 +6,19 @@ namespace App\Http\Controllers\Auth;
 
 use App\Actions\SocialAccount\ToggleSocialAccount;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
+use App\Enums\Repurpose\Status as RepurposeStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\ConnectPopupException;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\App\SocialAccountResource;
+use App\Models\Repurpose;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -71,10 +74,11 @@ class SocialController extends Controller
             ->where('status', PostPlatformStatus::Pending->value)
             ->delete();
 
+        $before = $this->repurposeStatesFor($account);
+
         $account->delete();
 
-        session()->flash('flash.banner', __('accounts.flash.disconnected'));
-        session()->flash('flash.bannerStyle', 'success');
+        $this->flashAccountChange('disconnected', $before);
 
         return back();
     }
@@ -89,11 +93,11 @@ class SocialController extends Controller
             abort(403);
         }
 
+        $before = $this->repurposeStatesFor($account);
+
         ToggleSocialAccount::execute($account);
 
-        $status = $account->is_active ? 'activated' : 'deactivated';
-        session()->flash('flash.banner', __("accounts.flash.{$status}"));
-        session()->flash('flash.bannerStyle', 'success');
+        $this->flashAccountChange($account->is_active ? 'activated' : 'deactivated', $before);
 
         return back();
     }
@@ -293,5 +297,42 @@ class SocialController extends Controller
             'platform' => $platform,
             'onboardingProgress' => false,
         ]);
+    }
+
+    /**
+     * @return Collection<string, RepurposeStatus>
+     */
+    private function repurposeStatesFor(SocialAccount $account): Collection
+    {
+        return Repurpose::query()
+            ->where('workspace_id', $account->workspace_id)
+            ->get()
+            ->filter(fn (Repurpose $repurpose): bool => $repurpose->dependsOn($account))
+            ->pluck('status', 'id');
+    }
+
+    /**
+     * @param  Collection<string, RepurposeStatus>  $before
+     */
+    private function flashAccountChange(string $action, Collection $before): void
+    {
+        $after = Repurpose::query()->whereKey($before->keys())->pluck('status', 'id');
+
+        $paused = $before
+            ->filter(fn (RepurposeStatus $status, string $id): bool => $status !== RepurposeStatus::Paused
+                && $after->get($id) === RepurposeStatus::Paused)
+            ->count();
+
+        $resumed = $before
+            ->filter(fn (RepurposeStatus $status, string $id): bool => $status === RepurposeStatus::Paused
+                && $after->get($id) === RepurposeStatus::Active)
+            ->count();
+
+        session()->flash('flash.banner', match (true) {
+            $paused > 0 => trans_choice("accounts.flash.{$action}_paused_repurposes", $paused, ['count' => $paused]),
+            $resumed > 0 => trans_choice("accounts.flash.{$action}_resumed_repurposes", $resumed, ['count' => $resumed]),
+            default => __("accounts.flash.{$action}"),
+        });
+        session()->flash('flash.bannerStyle', 'success');
     }
 }

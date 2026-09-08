@@ -25,26 +25,26 @@ class UpdatePost
             return ['post' => $post, 'action' => PostAction::Finalized];
         }
 
-        $scheduledAt = $post->scheduled_at;
-        if (data_get($data, 'scheduled_at')) {
-            $scheduledAt = Carbon::parse(data_get($data, 'scheduled_at'))->utc();
-        }
+        return DB::transaction(function () use ($post, $data): array {
+            $scheduledAt = $post->scheduled_at;
+            if (data_get($data, 'scheduled_at')) {
+                $scheduledAt = Carbon::parse(data_get($data, 'scheduled_at'))->utc();
+            }
 
-        $status = data_get($data, 'status', $post->status);
+            $status = data_get($data, 'status', $post->status);
 
-        $post->update([
-            'content' => data_get($data, 'content', $post->content),
-            'media' => data_get($data, 'media', $post->media),
-            'status' => $status === PostStatus::Publishing->value ? PostStatus::Publishing : $status,
-            'scheduled_at' => $scheduledAt,
-        ]);
+            $post->update([
+                'content' => data_get($data, 'content', $post->content),
+                'media' => data_get($data, 'media', $post->media),
+                'status' => $status === PostStatus::Publishing->value ? PostStatus::Publishing : $status,
+                'scheduled_at' => $scheduledAt,
+            ]);
 
-        if (Arr::has($data, 'label_ids')) {
-            $post->labels()->sync(data_get($data, 'label_ids', []));
-        }
+            if (Arr::has($data, 'label_ids')) {
+                $post->labels()->sync(data_get($data, 'label_ids', []));
+            }
 
-        if (Arr::has($data, 'platforms')) {
-            DB::transaction(function () use ($post, $data) {
+            if (Arr::has($data, 'platforms')) {
                 $post->postPlatforms()->update(['enabled' => false]);
 
                 foreach (data_get($data, 'platforms', []) as $platformData) {
@@ -69,20 +69,20 @@ class UpdatePost
                         ->where('id', data_get($platformData, 'id'))
                         ->update($updateData);
                 }
-            });
-        }
+            }
 
-        if ($status === PostStatus::Publishing->value) {
-            $post->update(['scheduled_at' => now()]);
-            PublishPost::dispatch($post);
+            if ($status === PostStatus::Publishing->value) {
+                $post->update(['scheduled_at' => now()]);
+                PublishPost::dispatch($post)->afterCommit();
 
-            return ['post' => $post, 'action' => PostAction::Publishing];
-        }
+                return ['post' => $post, 'action' => PostAction::Publishing];
+            }
 
-        if ($status === PostStatus::Scheduled->value) {
-            return ['post' => $post, 'action' => PostAction::Scheduled];
-        }
+            if ($status === PostStatus::Scheduled->value) {
+                return ['post' => $post, 'action' => PostAction::Scheduled];
+            }
 
-        return ['post' => $post, 'action' => null];
+            return ['post' => $post, 'action' => null];
+        });
     }
 }

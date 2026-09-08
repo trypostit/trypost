@@ -23,6 +23,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\ConnectionVerifier;
+use App\Services\Social\FacebookPublisher;
 use App\Services\Social\LinkedInPagePublisher;
 use App\Services\Social\LinkedInPublisher;
 use App\Services\Social\PinterestPublisher;
@@ -1273,6 +1274,77 @@ test('publish to social platform dispatches failure notification when platform f
     $this->post->refresh();
     expect($this->post->status)->toBe(PostStatus::Failed);
     Queue::assertPushed(SendNotification::class);
+});
+
+test('in-app published notification falls back to the facebook page display name', function () {
+    Event::fake();
+    Queue::fake();
+
+    $account = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => null,
+        'display_name' => 'InboxPlacement.io',
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    $postPlatform = PostPlatform::factory()->facebook()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+        'enabled' => true,
+    ]);
+
+    $publisher = Mockery::mock(FacebookPublisher::class);
+    $publisher->shouldReceive('publish')->andReturn([
+        'id' => 'fb-123',
+        'url' => 'https://www.facebook.com/permalink.php?story_fbid=pfbid0&id=61592851040951',
+    ]);
+    $this->app->instance(FacebookPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($postPlatform))->handle();
+
+    Queue::assertPushed(SendNotification::class, function (SendNotification $job) use ($post) {
+        return $job->type === Type::PostPublished
+            && $job->title === 'Post published successfully'
+            && $job->body === 'Facebook Page (@InboxPlacement.io)'
+            && data_get($job->data, 'post_id') === $post->id;
+    });
+});
+
+test('in-app failed notification falls back to the facebook page display name', function () {
+    Event::fake();
+    Queue::fake();
+
+    $account = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => null,
+        'display_name' => 'InboxPlacement.io',
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    $postPlatform = PostPlatform::factory()->facebook()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => $account->platform,
+        'enabled' => true,
+    ]);
+
+    $publisher = Mockery::mock(FacebookPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(new Exception('API error'));
+    $this->app->instance(FacebookPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($postPlatform))->handle();
+
+    Queue::assertPushed(SendNotification::class, function (SendNotification $job) use ($post) {
+        return $job->type === Type::PostFailed
+            && $job->title === 'Post failed to publish'
+            && $job->body === 'Failed on: Facebook Page (@InboxPlacement.io)'
+            && data_get($job->data, 'post_id') === $post->id;
+    });
 });
 
 test('it retries with token refresh when token expires during publish', function () {

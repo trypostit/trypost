@@ -16,6 +16,7 @@ return [
         'signatures' => 'İmzalar',
         'labels' => 'Etiketler',
         'assets' => 'Varlıklar',
+        'webhooks' => 'Webhooklar',
         'mcp' => 'MCP',
     ],
     'language' => 'Dil: :name',
@@ -25,7 +26,7 @@ return [
         'others' => 'Diğerleri',
     ],
     'analytics' => 'Analitik',
-    'automations' => 'Otomasyonlar',
+    'repurposes' => 'Repurpose',
     'onboarding' => 'Başlarken',
     'onboarding_hint' => 'Kurulumu bitir',
     'posts' => [

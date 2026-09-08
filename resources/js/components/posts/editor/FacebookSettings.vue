@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { IconAlertTriangle, IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 
 import { Avatar } from '@/components/ui/avatar';
 import { getMediaValidationWarning } from '@/composables/useMedia';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
-import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 
@@ -24,12 +23,10 @@ interface Props {
     media: MediaItem[];
     meta?: Record<string, any>;
     disabled?: boolean;
-    previewOnly?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
     disabled: false,
-    previewOnly: false,
     meta: () => ({}),
 });
 
@@ -40,24 +37,12 @@ const emit = defineEmits<{
 
 const open = ref(false);
 
-const allVariants = [
+const variants = [
     { value: ContentType.FacebookPost, labelKey: 'posts.form.facebook.variant.post' },
     { value: ContentType.FacebookReel, labelKey: 'posts.form.facebook.variant.reel' },
     { value: ContentType.FacebookStory, labelKey: 'posts.form.facebook.variant.story' },
 ] as const;
 
-const variants = computed(() => filterImageCapableVariants(allVariants, props.previewOnly));
-
-watch(
-    () => [props.previewOnly, props.contentType, variants.value] as const,
-    () => {
-        const fallback = fallbackImageCapableVariant(props.contentType, variants.value);
-        if (fallback) {
-            emit('update:contentType', fallback);
-        }
-    },
-    { immediate: true },
-);
 
 const aspectRatios = [
     { value: '1:1', labelKey: 'posts.form.facebook.aspect.square' },
@@ -87,6 +72,7 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
         <button
             type="button"
             class="flex w-full cursor-pointer items-center justify-between gap-3 p-4 text-sm"
+            data-testid="facebook-settings-toggle"
             @click="open = !open"
         >
             <span class="flex min-w-0 items-center gap-2">
@@ -155,7 +141,7 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
             </div>
 
             <p
-                v-if="warning && !previewOnly"
+                v-if="warning"
                 class="flex items-start gap-2 rounded-lg border-2 border-foreground bg-rose-50 p-2 text-xs font-semibold text-rose-700"
             >
                 <IconAlertTriangle class="mt-0.5 size-3.5 shrink-0" />

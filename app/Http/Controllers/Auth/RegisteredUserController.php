@@ -40,6 +40,7 @@ class RegisteredUserController extends Controller
             'password' => $request->validated('password'),
             'is_invite' => $invite !== null,
             'registration_ip' => $request->ip(),
+            'locale' => $request->validated('locale'),
         ], $attributionParameters);
 
         event(new Registered($user));

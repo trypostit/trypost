@@ -46,6 +46,7 @@ class SyncUser implements ShouldQueue
         $postHog->identify($user->id, [
             '$email' => $user->email,
             '$name' => $user->name,
+            'locale' => $user->locale->value,
             '$set_once' => [
                 'signed_up_at' => $user->created_at?->toIso8601String(),
                 ...$attribution,

@@ -380,6 +380,18 @@ enum Platform: string
         return array_map(fn (self $platform) => $platform->queue(), self::cases());
     }
 
+    /**
+     * @return array<string>
+     */
+    public static function enabledQueues(): array
+    {
+        return collect(self::cases())
+            ->filter(fn (self $platform): bool => $platform->isEnabled())
+            ->map(fn (self $platform): string => $platform->queue())
+            ->values()
+            ->all();
+    }
+
     public function instagramGraphBaseUrl(): string
     {
         return match ($this) {
@@ -390,7 +402,25 @@ enum Platform: string
 
     public function isEnabled(): bool
     {
-        return config("trypost.platforms.{$this->value}.enabled", true);
+        return (bool) config(
+            "trypost.platforms.{$this->value}.enabled",
+            env(match ($this) {
+                self::LinkedIn => 'LINKEDIN_ENABLED',
+                self::LinkedInPage => 'LINKEDIN_PAGE_ENABLED',
+                self::X => 'X_ENABLED',
+                self::TikTok => 'TIKTOK_ENABLED',
+                self::YouTube => 'YOUTUBE_ENABLED',
+                self::Facebook => 'FACEBOOK_ENABLED',
+                self::Instagram => 'INSTAGRAM_ENABLED',
+                self::InstagramFacebook => 'INSTAGRAM_FACEBOOK_ENABLED',
+                self::Threads => 'THREADS_ENABLED',
+                self::Pinterest => 'PINTEREST_ENABLED',
+                self::Bluesky => 'BLUESKY_ENABLED',
+                self::Mastodon => 'MASTODON_ENABLED',
+                self::Telegram => 'TELEGRAM_ENABLED',
+                self::Discord => 'DISCORD_ENABLED',
+            }, true),
+        );
     }
 
     /**

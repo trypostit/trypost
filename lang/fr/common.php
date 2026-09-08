@@ -3,10 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'beta' => 'Bêta',
 
     'back' => 'Retour',
-
-    'beta' => 'Bêta',
 
     'confirm_modal' => [
         'cannot_be_undone' => 'Cette action est irréversible.',

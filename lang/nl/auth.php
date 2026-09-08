@@ -22,32 +22,30 @@ return [
         'welcome_trial' => 'Welkom bij TryPost! Je proefperiode is gestart.',
     ],
 
-    'legal' => 'Door door te gaan ga je akkoord met onze <a href="https://trypost.it/terms" target="_blank">Servicevoorwaarden</a> en <a href="https://trypost.it/privacy" target="_blank">Privacybeleid</a>.',
+    'legal' => 'Door door te gaan ga je akkoord met onze <a href=":terms_url" target="_blank">Servicevoorwaarden</a> en <a href=":privacy_url" target="_blank">Privacybeleid</a>.',
 
-    'slides' => [
-        'calendar' => [
-            'title' => 'Visuele kalender',
-            'description' => 'Plan en agendeer je content met een intuïtieve drag-and-drop-kalender voor al je social accounts.',
+    'reviews' => [
+        'eyebrow' => '5/5 op G2',
+        'heading' => 'Geliefd bij wie elke dag publiceert',
+        'paulo_dantas' => [
+            'role' => 'Oprichter, chatadv.com.br',
+            'quote' => 'De eenvoud van content maken, organiseren en verspreiden op alle sociale netwerken. Met MCP gebruiken we de AI die we willen, zoals Claude of ChatGPT, om content te maken en meteen in te plannen.',
         ],
-        'scheduling' => [
-            'title' => 'Slim plannen',
-            'description' => 'Plan posts voor LinkedIn, X, Instagram, TikTok, YouTube en meer — allemaal vanaf één plek.',
+        'diego' => [
+            'role' => 'CEO, Globalfy.com',
+            'quote' => 'Ik vind TryPost heel makkelijk in gebruik. Ik maak een post direct in Claude en gebruik daarna MCP om te publiceren en in te plannen. Binnen vijf minuten stond alles klaar.',
         ],
-        'media' => [
-            'title' => 'Rijke media',
-            'description' => 'Publiceer afbeeldingen, carrousels, stories en reels. Elk platform krijgt automatisch het juiste formaat.',
+        'luiz' => [
+            'role' => 'Contentmaker',
+            'quote' => 'Ik vind het geweldig hoe makkelijk ik mijn AI-tools en agents koppel en mijn posts in een paar minuten op 9 sociale netwerken inplan.',
         ],
-        'video' => [
-            'title' => 'Video publiceren',
-            'description' => 'Upload video\'s één keer en publiceer naar TikTok, YouTube Shorts, Instagram Reels en Facebook Reels.',
+        'pedro' => [
+            'role' => 'Oprichter, templated.io',
+            'quote' => 'Heel makkelijk te gebruiken en te integreren. Met MCP heb ik de interface alleen nodig om de social media-accounts te koppelen.',
         ],
-        'team' => [
-            'title' => 'Teamworkspaces',
-            'description' => 'Nodig je team uit, wijs rollen toe en beheer meerdere merken vanuit aparte workspaces.',
-        ],
-        'signatures' => [
-            'title' => 'Handtekeningen',
-            'description' => 'Sla herbruikbare handtekeningen op (hashtags, links, afsluitingen) en voeg ze met één klik aan posts toe.',
+        'paulo_castellano' => [
+            'role' => 'Oprichter, changelogfy.com',
+            'quote' => 'Ik ben dol op de MCP-integratie, want daarmee beheer ik al mijn social media-accounts vanuit Claude of ChatGPT.',
         ],
     ],
 

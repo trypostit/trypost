@@ -16,6 +16,7 @@ return [
         'signatures' => 'Handtekeningen',
         'labels' => 'Labels',
         'assets' => 'Assets',
+        'webhooks' => 'Webhooks',
         'mcp' => 'MCP',
     ],
     'language' => 'Taal: :name',
@@ -25,7 +26,7 @@ return [
         'others' => 'Overige',
     ],
     'analytics' => 'Statistieken',
-    'automations' => 'Automatiseringen',
+    'repurposes' => 'Repurpose',
     'onboarding' => 'Aan de slag',
     'onboarding_hint' => 'Setup afronden',
     'posts' => [

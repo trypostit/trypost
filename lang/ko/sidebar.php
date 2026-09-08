@@ -16,6 +16,7 @@ return [
         'signatures' => '서명',
         'labels' => '라벨',
         'assets' => '에셋',
+        'webhooks' => '웹훅',
         'mcp' => 'MCP',
     ],
     'language' => '언어: :name',
@@ -25,7 +26,7 @@ return [
         'others' => '기타',
     ],
     'analytics' => '분석',
-    'automations' => '자동화',
+    'repurposes' => 'Repurpose',
     'onboarding' => '시작하기',
     'onboarding_hint' => '설정 마치기',
     'posts' => [

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
-use App\DataTransferObjects\MediaItem;
+use App\Dto\MediaItem;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PublishStatus;
 use App\Exceptions\PlatformUnavailableException;

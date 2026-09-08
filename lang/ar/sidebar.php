@@ -16,6 +16,7 @@ return [
         'signatures' => 'التوقيعات',
         'labels' => 'التسميات',
         'assets' => 'الوسائط',
+        'webhooks' => 'Webhooks',
         'mcp' => 'MCP',
     ],
     'language' => 'اللغة: :name',
@@ -25,7 +26,7 @@ return [
         'others' => 'أخرى',
     ],
     'analytics' => 'التحليلات',
-    'automations' => 'الأتمتة',
+    'repurposes' => 'Repurpose',
     'onboarding' => 'البدء',
     'onboarding_hint' => 'أكمل الإعداد',
     'posts' => [

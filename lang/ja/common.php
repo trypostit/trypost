@@ -3,10 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'beta' => 'ベータ',
 
     'back' => '戻る',
-
-    'beta' => 'ベータ',
 
     'confirm_modal' => [
         'cannot_be_undone' => 'この操作は取り消せません。',

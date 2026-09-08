@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0"><channel>
-  <item><title>New1</title><link>https://1.1.1.1/x</link><guid>x</guid><pubDate>Sun, 01 Jun 2025 12:00:00 +0000</pubDate></item>
-  <item><title>New2</title><link>https://1.1.1.1/y</link><guid>y</guid><pubDate>Mon, 02 Jun 2025 12:00:00 +0000</pubDate></item>
-  <item><title>New3</title><link>https://1.1.1.1/z</link><guid>z</guid><pubDate>Tue, 03 Jun 2025 12:00:00 +0000</pubDate></item>
-</channel></rss>

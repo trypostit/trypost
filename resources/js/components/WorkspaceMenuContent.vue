@@ -33,17 +33,12 @@ import {
     create as createWorkspaceRoute,
     switchMethod,
 } from '@/routes/app/workspaces';
-import type { User } from '@/types';
+import type { Language, User } from '@/types';
 
 interface Workspace {
     id: string;
     name: string;
     logo_url: string | null;
-}
-
-interface Language {
-    code: string;
-    name: string;
 }
 
 const props = defineProps<{
@@ -68,13 +63,7 @@ const currentLanguage = computed(() =>
 );
 
 const switchLanguage = (code: string): void => {
-    router.put(
-        updateLanguage.url(),
-        { locale: code },
-        {
-            onSuccess: () => window.location.reload(),
-        },
-    );
+    router.put(updateLanguage.url(), { locale: code });
 };
 
 const switchWorkspace = (workspaceId: string): void => {
@@ -149,8 +138,14 @@ const handleLogout = (): void => {
 
     <DropdownMenuGroup>
         <DropdownMenuSub v-if="languages && languages.length > 1">
-            <DropdownMenuSubTrigger>
-                <IconLanguage />
+            <DropdownMenuSubTrigger data-testid="sidebar-language-trigger">
+                <img
+                    v-if="currentLanguage"
+                    :src="currentLanguage.flag"
+                    :alt="currentLanguage.name"
+                    class="h-3.5 w-5 shrink-0 rounded-xs object-cover ring-1 ring-border"
+                />
+                <IconLanguage v-else />
                 {{
                     $t('sidebar.language', {
                         name: currentLanguage?.name ?? 'English',
@@ -167,8 +162,14 @@ const handleLogout = (): void => {
                                 ? 'bg-accent'
                                 : ''
                         "
+                        :data-testid="`sidebar-language-${language.code}`"
                         @click="switchLanguage(language.code)"
                     >
+                        <img
+                            :src="language.flag"
+                            :alt="language.name"
+                            class="h-3.5 w-5 shrink-0 rounded-xs object-cover ring-1 ring-border"
+                        />
                         {{ language.name }}
                         <IconCheck
                             v-if="language.code === currentLanguage?.code"

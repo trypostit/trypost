@@ -24,7 +24,7 @@ class PostPublishFailed extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Your post failed to publish in {$this->post->workspace->name}",
+            subject: __('mail.post_publish_failed.subject', ['workspace' => $this->post->workspace->name]),
         );
     }
 
@@ -36,7 +36,7 @@ class PostPublishFailed extends Mailable implements ShouldQueue
             ->get()
             ->filter(fn ($pp) => $pp->status === Status::Failed)
             ->map(fn ($pp) => [
-                'name' => $pp->platform->label().' (@'.data_get($pp, 'socialAccount.username', data_get($pp, 'socialAccount.display_name', '')).')',
+                'name' => $pp->notificationLabel(),
                 'error' => $pp->error_message,
             ])
             ->values()
@@ -45,9 +45,9 @@ class PostPublishFailed extends Mailable implements ShouldQueue
         return new Content(
             view: 'mail.post-publish-failed',
             with: [
-                'title' => 'Your post failed to publish',
-                'previewText' => 'One or more platforms failed to publish your post.',
-                'body' => "Your scheduled post in the {$this->post->workspace->name} workspace failed to publish on one or more platforms.",
+                'title' => __('mail.post_publish_failed.title'),
+                'previewText' => __('mail.post_publish_failed.preview'),
+                'workspaceName' => $this->post->workspace->name,
                 'failedPlatforms' => $failedPlatforms,
                 'url' => route('app.posts.edit', $this->post),
             ],

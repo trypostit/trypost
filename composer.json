@@ -55,7 +55,6 @@
         "posthog/posthog-php": "^4.1",
         "predis/predis": "^3.3",
         "sendkit/sendkit-laravel": "^1.1",
-        "simplepie/simplepie": "^1.9",
         "socialiteproviders/facebook": "^4.1",
         "socialiteproviders/instagram": "^5.1",
         "socialiteproviders/linkedin": "^5.0",
