@@ -184,9 +184,12 @@ const pageErrors = usePageErrors();
                     class="text-center text-sm text-muted-foreground"
                 >
                     {{ $t('auth.login.no_account') }}
-                    <TextLink :href="register()" :tabindex="5">{{
-                        $t('auth.login.sign_up')
-                    }}</TextLink>
+                    <TextLink
+                        :href="register()"
+                        :tabindex="5"
+                        data-testid="login-sign-up-link"
+                        >{{ $t('auth.login.sign_up') }}</TextLink
+                    >
                 </div>
             </Form>
 

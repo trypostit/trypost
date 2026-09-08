@@ -47,7 +47,7 @@ test('the picked language survives navigating between auth screens', function ()
     waitForAuthLanguageTestId($page, 'language-picker');
     $page->assertSee('Entrar na sua conta');
 
-    $page->click('Cadastre-se');
+    $page->click('@login-sign-up-link');
     waitForAuthLanguageTestId($page, 'language-picker');
 
     $page->assertSee('Criar conta')->assertNoJavaScriptErrors();
