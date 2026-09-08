@@ -53,7 +53,7 @@ return [
         'other' => 'Outra coisa',
     ],
     'plan_title' => 'Escolha seu plano',
-    'plan_description' => 'Os dois planos incluem todos os recursos e todas as redes sociais. A única diferença é quantos workspaces você tem — troque quando quiser.',
+    'plan_description' => 'Os dois planos têm os mesmos recursos. O que muda é o número de workspaces, e você pode trocar de plano quando quiser.',
     'referral_source_title' => 'Como você nos encontrou?',
     'referral_source_description' => 'Isso nos ajuda a entender como as pessoas descobrem o TryPost.',
     'referral_source' => [

@@ -19,10 +19,12 @@ import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { Platform } from '@/types/platform';
 
 export interface PlanOption {
@@ -37,6 +39,8 @@ interface PlanFeature {
     label: string;
     icon: Component;
     tone: string;
+    /** Resolved copy for an info tooltip next to the label, when the feature needs one. */
+    tooltip?: string;
 }
 
 const props = withDefaults(
@@ -78,7 +82,7 @@ const PLAN_NETWORKS = [
     Platform.Discord,
 ] as const;
 
-const SHARED_FEATURES: Omit<PlanFeature, 'label'>[] = [
+const SHARED_FEATURES: Omit<PlanFeature, 'label' | 'tooltip'>[] = [
     { key: 'accounts_unlimited', icon: IconShare, tone: 'bg-sky-200' },
     { key: 'calendar', icon: IconCalendarEvent, tone: 'bg-blue-200' },
     { key: 'ai', icon: IconSparkles, tone: 'bg-pink-200' },
@@ -87,6 +91,17 @@ const SHARED_FEATURES: Omit<PlanFeature, 'label'>[] = [
     { key: 'analytics', icon: IconChartBar, tone: 'bg-emerald-200' },
     { key: 'team', icon: IconUsers, tone: 'bg-purple-200' },
 ];
+
+/** Features whose label alone leaves a question open, so they get an info tooltip. */
+const FEATURES_WITH_TOOLTIP = new Set([
+    'accounts_unlimited',
+    'ai',
+    'analytics',
+    'calendar',
+    'mcp',
+    'repurpose',
+    'team',
+]);
 
 const price = (plan: PlanOption): string =>
     trans(
@@ -144,6 +159,9 @@ const sharedFeatures = computed<PlanFeature[]>(() =>
     SHARED_FEATURES.map((feature) => ({
         ...feature,
         label: trans(`billing.plans.features.${feature.key}`),
+        tooltip: FEATURES_WITH_TOOLTIP.has(feature.key)
+            ? trans(`billing.plans.features.${feature.key}_tooltip`)
+            : undefined,
     })),
 );
 </script>
@@ -258,53 +276,68 @@ const sharedFeatures = computed<PlanFeature[]>(() =>
                                 <span>{{
                                     $t('billing.plans.features.networks_all')
                                 }}</span>
-                                <Popover>
-                                    <PopoverTrigger as-child>
-                                        <button
-                                            type="button"
-                                            class="inline-flex size-4 shrink-0 items-center justify-center text-foreground/55 transition-colors hover:text-foreground"
-                                            :aria-label="
-                                                $t(
-                                                    'billing.plans.features.networks_all_tooltip',
-                                                )
-                                            "
-                                            :data-testid="`plan-networks-info-${plan.slug}`"
+                                <TooltipProvider :delay-duration="200">
+                                    <Tooltip>
+                                        <TooltipTrigger as-child>
+                                            <button
+                                                type="button"
+                                                class="inline-flex size-4 shrink-0 items-center justify-center text-foreground/55 transition-colors hover:text-foreground"
+                                                :aria-label="
+                                                    $t(
+                                                        'billing.plans.features.networks_all_tooltip',
+                                                    )
+                                                "
+                                                :data-testid="`plan-networks-info-${plan.slug}`"
+                                            >
+                                                <IconInfoCircle
+                                                    class="size-4"
+                                                    stroke-width="2.25"
+                                                />
+                                            </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent
+                                            side="top"
+                                            :side-offset="8"
+                                            class="w-fit max-w-none space-y-2.5 rounded-xl p-3"
                                         >
-                                            <IconInfoCircle
-                                                class="size-4"
-                                                stroke-width="2.25"
-                                            />
-                                        </button>
-                                    </PopoverTrigger>
-                                    <PopoverContent
-                                        side="top"
-                                        :side-offset="8"
-                                        class="w-56 space-y-3 p-3"
-                                    >
-                                        <p
-                                            class="text-xs leading-snug text-muted-foreground"
-                                        >
-                                            {{
-                                                $t(
-                                                    'billing.plans.features.networks_all_tooltip',
-                                                )
-                                            }}
-                                        </p>
-                                        <div
-                                            class="grid grid-cols-4 gap-2"
-                                            :data-testid="`plan-networks-${plan.slug}`"
-                                        >
-                                            <PlatformLogo
-                                                v-for="network in PLAN_NETWORKS"
-                                                :key="network"
-                                                :platform="network"
-                                                size="xs"
-                                                :tilt="false"
-                                                :title="null"
-                                            />
-                                        </div>
-                                    </PopoverContent>
-                                </Popover>
+                                            <p
+                                                class="text-xs font-semibold text-background"
+                                            >
+                                                {{
+                                                    $t(
+                                                        'billing.plans.features.networks_all_tooltip',
+                                                    )
+                                                }}
+                                            </p>
+                                            <div
+                                                class="grid grid-cols-4 gap-1.5"
+                                                :data-testid="`plan-networks-${plan.slug}`"
+                                            >
+                                                <span
+                                                    v-for="network in PLAN_NETWORKS"
+                                                    :key="network"
+                                                    class="flex w-16 flex-col items-center gap-1.5 rounded-lg bg-background/10 px-1.5 py-2"
+                                                >
+                                                    <PlatformLogo
+                                                        :platform="network"
+                                                        size="xs"
+                                                        plain
+                                                        :title="null"
+                                                    />
+                                                    <span
+                                                        class="max-w-full truncate text-[10px] leading-none font-medium text-background/80"
+                                                    >
+                                                        {{
+                                                            getPlatformLabel(
+                                                                network,
+                                                            )
+                                                        }}
+                                                    </span>
+                                                </span>
+                                            </div>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                             </span>
                         </li>
 
@@ -323,9 +356,42 @@ const sharedFeatures = computed<PlanFeature[]>(() =>
                                     stroke-width="2.25"
                                 />
                             </span>
-                            <span class="leading-tight">{{
-                                feature.label
-                            }}</span>
+                            <span
+                                class="inline-flex items-center gap-1.5 leading-tight"
+                            >
+                                <span>{{ feature.label }}</span>
+                                <TooltipProvider
+                                    v-if="feature.tooltip"
+                                    :delay-duration="200"
+                                >
+                                    <Tooltip>
+                                        <TooltipTrigger as-child>
+                                            <button
+                                                type="button"
+                                                class="inline-flex size-4 shrink-0 items-center justify-center text-foreground/55 transition-colors hover:text-foreground"
+                                                :aria-label="feature.tooltip"
+                                                :data-testid="`plan-feature-info-${plan.slug}-${feature.key}`"
+                                            >
+                                                <IconInfoCircle
+                                                    class="size-4"
+                                                    stroke-width="2.25"
+                                                />
+                                            </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent
+                                            side="top"
+                                            :side-offset="8"
+                                            class="max-w-56 rounded-xl p-3 text-start"
+                                        >
+                                            <p
+                                                class="text-xs leading-snug font-medium text-background"
+                                            >
+                                                {{ feature.tooltip }}
+                                            </p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </span>
                         </li>
                     </ul>
                 </div>

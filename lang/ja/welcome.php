@@ -53,7 +53,7 @@ return [
         'other' => 'その他',
     ],
     'plan_title' => 'プランを選ぶ',
-    'plan_description' => 'どちらのプランもすべての機能とすべてのSNSを含みます。違いはワークスペースの数だけ。いつでも変更できます。',
+    'plan_description' => '2つのプランの機能は同じです。違いはワークスペースの数だけで、プランはいつでも変更できます。',
     'referral_source_title' => 'どこで私たちを知りましたか？',
     'referral_source_description' => 'これは、人々がどのように TryPost を見つけるかを理解するのに役立ちます。',
     'referral_source' => [

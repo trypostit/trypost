@@ -53,7 +53,7 @@ return [
         'other' => 'Iets anders',
     ],
     'plan_title' => 'Kies je abonnement',
-    'plan_description' => 'Beide abonnementen bevatten alle functies en alle sociale netwerken. Het enige verschil is hoeveel workspaces je krijgt — wissel wanneer je wilt.',
+    'plan_description' => 'Beide plannen hebben dezelfde functies. Het verschil is het aantal workspaces, en je kunt wisselen wanneer je wilt.',
     'referral_source_title' => 'Hoe heb je ons gevonden?',
     'referral_source_description' => 'Dit helpt ons te begrijpen hoe mensen TryPost ontdekken.',
     'referral_source' => [

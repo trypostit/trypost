@@ -53,7 +53,7 @@ return [
         'other' => 'Etwas anderes',
     ],
     'plan_title' => 'Wähle deinen Tarif',
-    'plan_description' => 'Beide Tarife enthalten alle Funktionen und alle sozialen Netzwerke. Der einzige Unterschied ist die Anzahl der Workspaces — jederzeit wechselbar.',
+    'plan_description' => 'Beide Pläne haben dieselben Funktionen. Der Unterschied ist die Anzahl der Workspaces, und du kannst jederzeit wechseln.',
     'referral_source_title' => 'Wie hast du uns gefunden?',
     'referral_source_description' => 'Das hilft uns zu verstehen, wie Menschen TryPost entdecken.',
     'referral_source' => [

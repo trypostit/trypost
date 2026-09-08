@@ -53,7 +53,7 @@ return [
         'other' => '其他需求',
     ],
     'plan_title' => '选择你的套餐',
-    'plan_description' => '两个套餐都包含全部功能和全部社交网络。唯一的区别是工作区数量——随时可以切换。',
+    'plan_description' => '两个套餐功能相同，区别只在工作区数量，随时可以切换。',
     'referral_source_title' => '您是如何找到我们的？',
     'referral_source_description' => '这有助于我们了解人们是如何发现 TryPost 的。',
     'referral_source' => [

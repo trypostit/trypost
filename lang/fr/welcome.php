@@ -53,7 +53,7 @@ return [
         'other' => 'Autre chose',
     ],
     'plan_title' => 'Choisissez votre forfait',
-    'plan_description' => 'Les deux forfaits incluent toutes les fonctionnalités et tous les réseaux sociaux. La seule différence : le nombre de workspaces — changez à tout moment.',
+    'plan_description' => 'Les deux formules ont les mêmes fonctionnalités. Seul le nombre de workspaces change, et vous pouvez changer de formule quand vous voulez.',
     'referral_source_title' => 'Comment nous avez-vous connus ?',
     'referral_source_description' => 'Cela nous aide à comprendre comment les gens découvrent TryPost.',
     'referral_source' => [

@@ -53,7 +53,7 @@ return [
         'other' => 'Başka bir şey',
     ],
     'plan_title' => 'Planını seç',
-    'plan_description' => 'Her iki plan da tüm özellikleri ve tüm sosyal ağları içerir. Tek fark kaç workspace aldığın — istediğin zaman değiştir.',
+    'plan_description' => 'İki planın özellikleri aynı. Fark, workspace sayısında; planı istediğiniz zaman değiştirebilirsiniz.',
     'referral_source_title' => 'Bizi nasıl buldunuz?',
     'referral_source_description' => 'İnsanların TryPost\'u nasıl keşfettiğini anlamamıza yardımcı olur.',
     'referral_source' => [

@@ -53,7 +53,7 @@ return [
         'other' => '다른 것',
     ],
     'plan_title' => '요금제 선택',
-    'plan_description' => '두 요금제 모두 모든 기능과 모든 소셜 네트워크를 포함합니다. 차이는 워크스페이스 수뿐이며, 언제든 변경할 수 있어요.',
+    'plan_description' => '두 플랜의 기능은 같습니다. 차이는 워크스페이스 수이고, 플랜은 언제든 바꿀 수 있습니다.',
     'referral_source_title' => '저희를 어떻게 알게 되셨나요?',
     'referral_source_description' => '사람들이 TryPost를 어떻게 발견하는지 파악하는 데 도움이 됩니다.',
     'referral_source' => [

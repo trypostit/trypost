@@ -53,7 +53,7 @@ return [
         'other' => 'Something else',
     ],
     'plan_title' => 'Choose your plan',
-    'plan_description' => 'Both plans include every feature and every social network. The only difference is how many workspaces you get — switch anytime.',
+    'plan_description' => 'Both plans have the same features. The difference is how many workspaces you get, and you can switch plans whenever you like.',
     'referral_source_title' => 'How did you find us?',
     'referral_source_description' => 'This helps us understand how people discover TryPost.',
     'referral_source' => [
