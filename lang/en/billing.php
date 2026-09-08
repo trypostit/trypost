@@ -59,7 +59,6 @@ return [
         'plan_changed' => 'You are now on the :plan plan.',
         'switched_to_yearly' => 'You\'re now on annual billing.',
         'cannot_manage' => 'Only the account owner can manage billing.',
-        'credits_exhausted' => 'Out of AI credits — your monthly :limit allowance has been used. Upgrade your plan or wait until next month.',
         'subscription_required' => 'An active subscription is required to use AI features.',
     ],
 

@@ -59,7 +59,6 @@ return [
         'plan_changed' => 'Ora sei sul piano :plan.',
         'switched_to_yearly' => 'Ora hai la fatturazione annuale.',
         'cannot_manage' => 'Solo il proprietario dell\'account può gestire la fatturazione.',
-        'credits_exhausted' => 'Crediti IA esauriti: la tua quota mensile di :limit è stata utilizzata. Aggiorna il tuo piano o attendi il mese prossimo.',
         'subscription_required' => 'È richiesto un abbonamento attivo per usare le funzioni IA.',
     ],
 

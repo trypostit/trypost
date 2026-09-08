@@ -13,9 +13,7 @@ use Illuminate\Support\Facades\Cache;
 /**
  * Provides account-level usage counts and plan-resolved feature limits.
  *
- * `featureLimits()` resolves the account's per-cycle credit allotment directly
- * from BillingCycle, computed fresh from the plan, workspace count, and billing
- * interval — no caching, so there is nothing to invalidate.
+ * `featureLimits()` exposes the plan workspace cap (`null` = unlimited).
  */
 trait HasUsage
 {
@@ -49,13 +47,11 @@ trait HasUsage
     }
 
     /**
-     * @return array{monthlyCreditsLimit: int}
+     * @return array{workspaceLimit: int|null}
      */
     public function featureLimits(): array
     {
-        return [
-            'monthlyCreditsLimit' => BillingCycle::for($this)->creditAllotment(),
-        ];
+        return ['workspaceLimit' => $this->workspaceLimit()];
     }
 
     /**

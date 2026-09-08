@@ -59,7 +59,6 @@ return [
         'plan_changed' => ':plan プランに変更されました。',
         'switched_to_yearly' => '年払いに変更されました。',
         'cannot_manage' => 'お支払いを管理できるのはアカウントのオーナーのみです。',
-        'credits_exhausted' => 'AI クレジットが不足しています — 今月の :limit の割り当てをすべて使い切りました。プランをアップグレードするか、来月までお待ちください。',
         'subscription_required' => 'AI 機能を使用するには有効なサブスクリプションが必要です。',
     ],
 

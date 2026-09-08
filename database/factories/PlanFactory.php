@@ -25,7 +25,6 @@ class PlanFactory extends Factory
             'name' => 'Socials',
             'stripe_monthly_price_id' => null,
             'stripe_yearly_price_id' => null,
-            'monthly_credits_limit' => 2500,
             'workspace_limit' => 1,
             'sort' => 0,
             'is_archived' => false,

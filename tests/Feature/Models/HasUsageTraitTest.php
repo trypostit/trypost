@@ -45,20 +45,26 @@ test('usage returns correct counts across the account', function () {
     ]);
 });
 
-test('featureLimits returns the monthly credits allotment', function () {
-    $plan = Plan::where('slug', Slug::Workspace)->first();
-    $this->account->update(['plan_id' => $plan->id]);
+test('featureLimits reports the plan workspace limit', function () {
+    config()->set('trypost.self_hosted', false);
 
-    Workspace::factory()->count(2)->create([
-        'account_id' => $this->account->id,
-        'user_id' => $this->owner->id,
-    ]);
+    $user = User::factory()->create();
+    $account = $user->account;
 
-    $limits = $this->account->featureLimits();
+    $account->update(['plan_id' => Plan::where('slug', Slug::Socials)->value('id')]);
 
-    expect($limits)->toBe([
-        'monthlyCreditsLimit' => 5000,
-    ]);
+    expect($account->fresh()->featureLimits())->toBe(['workspaceLimit' => 1]);
+});
+
+test('featureLimits reports null for an unlimited plan', function () {
+    config()->set('trypost.self_hosted', false);
+
+    $user = User::factory()->create();
+    $account = $user->account;
+
+    $account->update(['plan_id' => Plan::where('slug', Slug::Workspaces)->value('id')]);
+
+    expect($account->fresh()->featureLimits())->toBe(['workspaceLimit' => null]);
 });
 
 test('pendingInviteCount excludes accepted invites', function () {

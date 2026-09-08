@@ -59,7 +59,6 @@ return [
         'plan_changed' => 'Je zit nu op het :plan-abonnement.',
         'switched_to_yearly' => 'Je zit nu op jaarlijkse facturatie.',
         'cannot_manage' => 'Alleen de accounteigenaar kan de facturatie beheren.',
-        'credits_exhausted' => 'Geen AI-credits meer — je maandelijkse tegoed van :limit is opgebruikt. Upgrade je abonnement of wacht tot volgende maand.',
         'subscription_required' => 'Een actief abonnement is vereist om AI-functies te gebruiken.',
     ],
 

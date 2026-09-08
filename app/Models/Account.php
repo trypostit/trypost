@@ -99,10 +99,19 @@ class Account extends Model
     }
 
     /**
-     * Align the Stripe subscription quantity with the number of workspaces the
-     * account owns. Each workspace is a billed unit. No-op in self-hosted mode
-     * or when there is no active subscription (e.g. during onboarding).
+     * Workspaces the account's plan allows. Null means unlimited — both for a
+     * plan with no cap and for self-hosted. A missing plan_id is not the
+     * Workspaces plan: `canCreateWorkspace()` treats that as signup-only.
      */
+    public function workspaceLimit(): ?int
+    {
+        if (config('trypost.self_hosted')) {
+            return null;
+        }
+
+        return $this->plan?->workspace_limit;
+    }
+
     public function syncWorkspaceQuantity(): void
     {
         if (config('trypost.self_hosted')) {

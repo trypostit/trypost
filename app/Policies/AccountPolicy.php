@@ -6,7 +6,6 @@ namespace App\Policies;
 
 use App\Models\Account;
 use App\Models\User;
-use App\Support\BillingCycle;
 use Illuminate\Auth\Access\Response;
 
 class AccountPolicy
@@ -22,9 +21,9 @@ class AccountPolicy
     }
 
     /**
-     * Authorize using AI features. Requires an active subscription (or trial)
-     * and remaining monthly credits. Manual post creation is unaffected — only
-     * AI calls are gated by this check.
+     * Authorize using AI features. Requires app access (active subscription or
+     * trial). There is no usage ceiling: AI usage is recorded for cost
+     * visibility, never metered against the account.
      */
     public function useAi(User $user, Account $account): Response
     {
@@ -34,15 +33,6 @@ class AccountPolicy
 
         if (! $account->hasAppAccess()) {
             return Response::deny(__('billing.flash.subscription_required'));
-        }
-
-        $cycle = BillingCycle::for($account);
-        $limit = $cycle->creditAllotment();
-
-        if ($cycle->usedCredits() >= $limit) {
-            return Response::deny(__('billing.flash.credits_exhausted', [
-                'limit' => (string) $limit,
-            ]));
         }
 
         return Response::allow();

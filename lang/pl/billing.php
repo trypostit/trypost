@@ -59,7 +59,6 @@ return [
         'plan_changed' => 'Korzystasz teraz z planu :plan.',
         'switched_to_yearly' => 'Korzystasz teraz z rozliczenia rocznego.',
         'cannot_manage' => 'Tylko właściciel konta może zarządzać rozliczeniami.',
-        'credits_exhausted' => 'Brak kredytów AI — Twój miesięczny limit :limit został wykorzystany. Ulepsz plan lub poczekaj do następnego miesiąca.',
         'subscription_required' => 'Aby korzystać z funkcji AI, wymagana jest aktywna subskrypcja.',
     ],
 

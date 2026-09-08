@@ -59,7 +59,6 @@ return [
         'plan_changed' => 'Você está agora no plano :plan.',
         'switched_to_yearly' => 'Você está agora na cobrança anual.',
         'cannot_manage' => 'Apenas o owner da conta pode gerenciar a cobrança.',
-        'credits_exhausted' => 'Sem créditos de IA — você usou seus :limit créditos mensais. Faça upgrade do plano ou aguarde até o próximo mês.',
         'subscription_required' => 'É necessária uma assinatura ativa para usar os recursos de IA.',
     ],
 

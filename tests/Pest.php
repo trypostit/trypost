@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Plan\Slug;
 use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\Account;
@@ -134,7 +135,7 @@ function createApiTestToken(array $overrides = []): array
  */
 function billingAccount(string $price, array $subscriptionAttributes = [], int $workspaces = 1): Account
 {
-    $plan = Plan::query()->firstOrFail();
+    $plan = Plan::where('slug', Slug::Socials)->firstOrFail();
     $plan->update([
         'stripe_monthly_price_id' => 'price_month',
         'stripe_yearly_price_id' => 'price_year',

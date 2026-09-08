@@ -61,7 +61,6 @@ return [
         'plan_changed' => 'Artık :plan planındasınız.',
         'switched_to_yearly' => 'Artık yıllık faturalandırmadasınız.',
         'cannot_manage' => 'Faturalandırmayı yalnızca hesap sahibi yönetebilir.',
-        'credits_exhausted' => 'AI kredileriniz bitti — aylık :limit hakkınız kullanıldı. Planınızı yükseltin veya gelecek ayı bekleyin.',
         'subscription_required' => 'AI özelliklerini kullanmak için etkin bir abonelik gereklidir.',
     ],
 

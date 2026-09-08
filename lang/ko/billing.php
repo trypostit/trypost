@@ -59,7 +59,6 @@ return [
         'plan_changed' => '이제 :plan 요금제를 사용 중입니다.',
         'switched_to_yearly' => '이제 연간 결제를 사용 중입니다.',
         'cannot_manage' => '계정 소유자만 결제를 관리할 수 있습니다.',
-        'credits_exhausted' => 'AI 크레딧 소진 — 월 :limit 한도를 모두 사용했습니다. 요금제를 업그레이드하거나 다음 달까지 기다려 주세요.',
         'subscription_required' => 'AI 기능을 사용하려면 활성 구독이 필요합니다.',
     ],
 

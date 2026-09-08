@@ -59,7 +59,6 @@ return [
         'plan_changed' => 'Vous êtes maintenant sur le forfait :plan.',
         'switched_to_yearly' => 'Vous êtes maintenant en facturation annuelle.',
         'cannot_manage' => 'Seul le propriétaire du compte peut gérer la facturation.',
-        'credits_exhausted' => 'Crédits IA épuisés — votre quota mensuel de :limit a été utilisé. Améliorez votre forfait ou attendez le mois prochain.',
         'subscription_required' => 'Un abonnement actif est requis pour utiliser les fonctionnalités d\'IA.',
     ],
 

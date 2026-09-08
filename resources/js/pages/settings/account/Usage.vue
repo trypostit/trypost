@@ -3,7 +3,6 @@ import { Head } from '@inertiajs/vue3';
 import {
     IconAffiliate,
     IconBuildingCommunity,
-    IconSparkles,
     IconUsers,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
@@ -22,8 +21,6 @@ interface UsageData {
     workspaceCount: number;
     socialAccountCount: number;
     memberCount: number;
-    creditsUsed: number;
-    monthlyCreditsLimit: number;
 }
 
 defineProps<{
@@ -79,24 +76,6 @@ const tabs = computed(() => [
                             :current="usage.memberCount"
                             tone="emerald"
                             rotate="-rotate-1"
-                        />
-                    </div>
-                </div>
-
-                <div class="space-y-6">
-                    <HeadingSmall
-                        :title="$t('usage.section_ai')"
-                        :description="$t('usage.section_ai_description')"
-                    />
-
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        <UsageMetricCard
-                            :label="$t('usage.credits')"
-                            :icon="IconSparkles"
-                            :current="usage.creditsUsed"
-                            :limit="usage.monthlyCreditsLimit"
-                            tone="fuchsia"
-                            rotate="rotate-1"
                         />
                     </div>
                 </div>

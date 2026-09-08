@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers\App\Settings;
 
 use App\Http\Controllers\App\Controller;
-use App\Support\BillingCycle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -36,8 +35,6 @@ class UsageController extends Controller
                 'workspaceCount' => $account->workspaces->count(),
                 'socialAccountCount' => $totalSocialAccounts,
                 'memberCount' => $totalMembers,
-                'creditsUsed' => BillingCycle::for($account)->usedCredits(),
-                'monthlyCreditsLimit' => BillingCycle::for($account)->creditAllotment(),
             ],
         ]);
     }

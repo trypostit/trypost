@@ -59,7 +59,6 @@ return [
         'plan_changed' => '你现在使用的是 :plan 套餐。',
         'switched_to_yearly' => '你现在已切换为按年计费。',
         'cannot_manage' => '只有账户所有者才能管理账单。',
-        'credits_exhausted' => 'AI 额度已用完——你每月 :limit 的额度已用尽。请升级套餐或等到下个月。',
         'subscription_required' => '使用 AI 功能需要有效的订阅。',
     ],
 

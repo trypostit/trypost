@@ -10,11 +10,9 @@ use Carbon\CarbonImmutable;
 use Laravel\Cashier\Subscription;
 
 /**
- * Resolves an account's current AI credit cycle: the allotment it is entitled to
- * and the time window usage is measured against. The window follows the Stripe
- * billing cycle (monthly or yearly), anchored on the subscription date — so an
- * annual subscriber receives twelve months of credits upfront and resets on
- * their renewal date, while a monthly subscriber resets each anniversary day.
+ * Resolves the time window AI usage is measured against. The window follows
+ * the Stripe billing cycle (monthly or yearly), anchored on the subscription
+ * date. Usage is recorded for cost visibility, not metered as an entitlement.
  */
 class BillingCycle
 {
@@ -30,29 +28,6 @@ class BillingCycle
     public static function for(Account $account): self
     {
         return new self($account);
-    }
-
-    public function intervalMonths(): int
-    {
-        $subscription = $this->subscription();
-        $plan = $this->account->plan;
-
-        if ($subscription !== null
-            && $plan?->stripe_yearly_price_id !== null
-            && $subscription->stripe_price === $plan->stripe_yearly_price_id
-        ) {
-            return 12;
-        }
-
-        return 1;
-    }
-
-    public function creditAllotment(): int
-    {
-        $base = (int) ($this->account->plan?->monthly_credits_limit ?? 0);
-        $months = $this->onTrial() ? 1 : $this->intervalMonths();
-
-        return $base * $this->account->workspaces()->count() * $months;
     }
 
     public function usedCredits(): int
@@ -98,7 +73,7 @@ class BillingCycle
 
         $anchor = $this->anchor();
         $now = CarbonImmutable::now();
-        $step = $this->intervalMonths();
+        $step = $this->isYearly() ? 12 : 1;
 
         $periods = 0;
 
@@ -112,6 +87,16 @@ class BillingCycle
         ];
     }
 
+    private function isYearly(): bool
+    {
+        $subscription = $this->subscription();
+        $plan = $this->account->plan;
+
+        return $subscription !== null
+            && $plan?->stripe_yearly_price_id !== null
+            && $subscription->stripe_price === $plan->stripe_yearly_price_id;
+    }
+
     private function anchor(): CarbonImmutable
     {
         $subscription = $this->subscription();
@@ -122,11 +107,6 @@ class BillingCycle
             ?? CarbonImmutable::now();
 
         return CarbonImmutable::parse($anchor);
-    }
-
-    private function onTrial(): bool
-    {
-        return (bool) $this->subscription()?->onTrial();
     }
 
     private function subscription(): ?Subscription

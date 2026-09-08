@@ -61,7 +61,6 @@ return [
         'plan_changed' => 'Du nutzt jetzt den Tarif :plan.',
         'switched_to_yearly' => 'Du nutzt jetzt die jährliche Abrechnung.',
         'cannot_manage' => 'Nur der Kontoinhaber kann die Abrechnung verwalten.',
-        'credits_exhausted' => 'Keine KI-Credits mehr – dein monatliches Kontingent von :limit ist aufgebraucht. Führe ein Upgrade durch oder warte bis zum nächsten Monat.',
         'subscription_required' => 'Für die Nutzung der KI-Funktionen ist ein aktives Abonnement erforderlich.',
     ],
 
