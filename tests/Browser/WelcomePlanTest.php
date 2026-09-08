@@ -58,7 +58,7 @@ test('the plan step shows both plans with networks and no yearly toggle', functi
 
     $page = visit(route('app.welcome.plan'));
 
-    waitForWelcomePlanTestId($page, 'plan-networks-socials');
+    waitForWelcomePlanTestId($page, 'plan-networks-info-socials');
     waitForWelcomePlanTestId($page, 'plan-card-socials');
     waitForWelcomePlanTestId($page, 'plan-card-workspaces');
     waitForWelcomePlanTestId($page, 'language-picker');
@@ -66,8 +66,8 @@ test('the plan step shows both plans with networks and no yearly toggle', functi
     $page->assertRoute('app.welcome.plan')
         ->assertVisible('@plan-card-socials')
         ->assertVisible('@plan-card-workspaces')
-        ->assertVisible('@plan-networks-socials')
-        ->assertVisible('@plan-networks-workspaces')
+        ->assertVisible('@plan-networks-info-socials')
+        ->assertVisible('@plan-networks-info-workspaces')
         ->assertVisible('@plan-select-socials')
         ->assertVisible('@plan-select-workspaces')
         ->assertVisible('@plan-highlight-socials')

@@ -138,7 +138,7 @@ const previousStep = computed(() =>
 
             <main
                 :class="[
-                    'flex flex-1 flex-col px-6 pt-10 pb-10 md:px-10 lg:px-14 lg:pt-14',
+                    'flex flex-1 flex-col px-6 pt-8 pb-8 md:px-10 lg:px-14 lg:pt-10',
                     summary ? '' : 'items-center',
                 ]"
             >
@@ -169,7 +169,7 @@ const previousStep = computed(() =>
                         </p>
                     </div>
 
-                    <div class="mt-8 flex flex-col gap-8">
+                    <div class="mt-6 flex flex-col gap-8">
                         <slot />
                     </div>
                 </div>

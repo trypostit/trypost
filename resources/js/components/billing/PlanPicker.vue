@@ -3,6 +3,7 @@ import {
     IconBuilding,
     IconCalendarEvent,
     IconChartBar,
+    IconInfoCircle,
     IconRefresh,
     IconRobot,
     IconShare,
@@ -17,6 +18,11 @@ import { computed } from 'vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 import { Platform } from '@/types/platform';
 
 export interface PlanOption {
@@ -174,7 +180,7 @@ const sharedFeatures = computed<PlanFeature[]>(() =>
             <article
                 v-for="plan in plans"
                 :key="plan.id"
-                class="flex flex-col gap-5 rounded-2xl border-2 border-foreground p-6 shadow-2xs"
+                class="flex flex-col gap-4 rounded-2xl border-2 border-foreground p-5 shadow-2xs"
                 :class="
                     isFeatured(plan)
                         ? 'bg-violet-50 dark:bg-violet-950/30'
@@ -182,12 +188,12 @@ const sharedFeatures = computed<PlanFeature[]>(() =>
                 "
                 :data-testid="`plan-card-${plan.slug}`"
             >
-                <div class="space-y-3">
+                <div class="space-y-2">
                     <Badge v-if="isCurrent(plan)" variant="secondary">
                         {{ $t('billing.plans.current') }}
                     </Badge>
 
-                    <div class="space-y-1">
+                    <div class="space-y-0.5">
                         <h3 class="text-xl font-bold tracking-tight">
                             {{ plan.name }}
                         </h3>
@@ -198,7 +204,7 @@ const sharedFeatures = computed<PlanFeature[]>(() =>
 
                     <p>
                         <span
-                            class="text-4xl font-bold text-foreground tabular-nums"
+                            class="text-3xl font-bold text-foreground tabular-nums"
                             >{{ price(plan) }}</span
                         >
                         <span class="ml-1 text-foreground/70">{{
@@ -214,74 +220,112 @@ const sharedFeatures = computed<PlanFeature[]>(() =>
                 </div>
 
                 <div
-                    class="flex items-center gap-3 rounded-xl border-2 border-foreground px-4 py-3 shadow-2xs"
+                    class="flex items-center gap-3 rounded-xl border-2 border-foreground px-3.5 py-2.5 text-start shadow-2xs"
                     :class="
                         isUnlimited(plan) ? 'bg-violet-200' : 'bg-amber-200'
                     "
                     :data-testid="`plan-highlight-${plan.slug}`"
                 >
                     <span
-                        class="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border-2 border-foreground bg-card"
+                        class="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border-2 border-foreground bg-card"
                     >
-                        <IconBuilding class="size-5" stroke-width="2.25" />
+                        <IconBuilding class="size-4.5" stroke-width="2.25" />
                     </span>
                     <p class="text-base font-bold text-foreground">
                         {{ workspaceLabel(plan) }}
                     </p>
                 </div>
 
-                <div class="flex flex-1 flex-col gap-3">
+                <div class="flex flex-1 flex-col gap-2.5 text-start">
                     <p
                         class="text-xs font-bold tracking-wide text-foreground/60 uppercase"
                     >
                         {{ $t('billing.plans.everything_included') }}
                     </p>
 
-                    <ul class="flex flex-col gap-2.5">
-                        <li class="flex flex-col gap-2 text-sm text-foreground">
-                            <span class="flex items-start gap-2.5 font-medium">
-                                <span
-                                    class="inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-foreground bg-rose-200"
-                                >
-                                    <IconWorld
-                                        class="size-3.5"
-                                        stroke-width="2.25"
-                                    />
-                                </span>
+                    <ul class="flex flex-col gap-1.5">
+                        <li
+                            class="flex items-center gap-2.5 text-sm font-medium text-foreground"
+                        >
+                            <span
+                                class="inline-flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-foreground bg-rose-200"
+                            >
+                                <IconWorld class="size-3" stroke-width="2.25" />
+                            </span>
+                            <span
+                                class="inline-flex items-center gap-1.5 leading-tight"
+                            >
                                 <span>{{
                                     $t('billing.plans.features.networks_all')
                                 }}</span>
-                            </span>
-                            <span
-                                class="flex flex-wrap gap-1.5 ps-9.5"
-                                :data-testid="`plan-networks-${plan.slug}`"
-                            >
-                                <PlatformLogo
-                                    v-for="network in PLAN_NETWORKS"
-                                    :key="network"
-                                    :platform="network"
-                                    size="xs"
-                                    :tilt="false"
-                                />
+                                <Popover>
+                                    <PopoverTrigger as-child>
+                                        <button
+                                            type="button"
+                                            class="inline-flex size-4 shrink-0 items-center justify-center text-foreground/55 transition-colors hover:text-foreground"
+                                            :aria-label="
+                                                $t(
+                                                    'billing.plans.features.networks_all_tooltip',
+                                                )
+                                            "
+                                            :data-testid="`plan-networks-info-${plan.slug}`"
+                                        >
+                                            <IconInfoCircle
+                                                class="size-4"
+                                                stroke-width="2.25"
+                                            />
+                                        </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent
+                                        side="top"
+                                        :side-offset="8"
+                                        class="w-56 space-y-3 p-3"
+                                    >
+                                        <p
+                                            class="text-xs leading-snug text-muted-foreground"
+                                        >
+                                            {{
+                                                $t(
+                                                    'billing.plans.features.networks_all_tooltip',
+                                                )
+                                            }}
+                                        </p>
+                                        <div
+                                            class="grid grid-cols-4 gap-2"
+                                            :data-testid="`plan-networks-${plan.slug}`"
+                                        >
+                                            <PlatformLogo
+                                                v-for="network in PLAN_NETWORKS"
+                                                :key="network"
+                                                :platform="network"
+                                                size="xs"
+                                                :tilt="false"
+                                                :title="null"
+                                            />
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
                             </span>
                         </li>
 
                         <li
                             v-for="feature in sharedFeatures"
                             :key="feature.key"
-                            class="flex items-start gap-2.5 text-sm font-medium text-foreground"
+                            class="flex items-center gap-2.5 text-sm font-medium text-foreground"
                         >
                             <span
-                                class="inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-foreground"
+                                class="inline-flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-foreground"
                                 :class="feature.tone"
                             >
                                 <component
                                     :is="feature.icon"
-                                    class="size-3.5"
+                                    class="size-3"
                                     stroke-width="2.25"
                                 />
                             </span>
-                            <span>{{ feature.label }}</span>
+                            <span class="leading-tight">{{
+                                feature.label
+                            }}</span>
                         </li>
                     </ul>
                 </div>
