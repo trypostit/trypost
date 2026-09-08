@@ -169,6 +169,7 @@ const pageErrors = usePageErrors();
 
                     <Button
                         type="submit"
+                        data-testid="login-submit"
                         class="mt-4 w-full"
                         :tabindex="4"
                         :disabled="processing"

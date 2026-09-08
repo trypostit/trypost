@@ -63,13 +63,7 @@ const currentLanguage = computed(() =>
 );
 
 const switchLanguage = (code: string): void => {
-    router.put(
-        updateLanguage.url(),
-        { locale: code },
-        {
-            onSuccess: () => window.location.reload(),
-        },
-    );
+    router.put(updateLanguage.url(), { locale: code });
 };
 
 const switchWorkspace = (workspaceId: string): void => {
@@ -144,7 +138,7 @@ const handleLogout = (): void => {
 
     <DropdownMenuGroup>
         <DropdownMenuSub v-if="languages && languages.length > 1">
-            <DropdownMenuSubTrigger>
+            <DropdownMenuSubTrigger data-testid="sidebar-language-trigger">
                 <img
                     v-if="currentLanguage"
                     :src="currentLanguage.flag"
@@ -168,6 +162,7 @@ const handleLogout = (): void => {
                                 ? 'bg-accent'
                                 : ''
                         "
+                        :data-testid="`sidebar-language-${language.code}`"
                         @click="switchLanguage(language.code)"
                     >
                         <img

@@ -3,9 +3,11 @@ import './echo';
 
 import { createInertiaApp, router } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
-import { i18nVue } from 'laravel-vue-i18n';
+import { getActiveLanguage, i18nVue, loadLanguageAsync } from 'laravel-vue-i18n';
 import type { DefineComponent } from 'vue';
 import { createApp, h } from 'vue';
+
+import { clearGuestLocale, guestLocale } from '@/composables/useGuestLocale';
 
 import { initializeDataLayer } from './datalayer';
 import dayjs from './dayjs';
@@ -29,6 +31,30 @@ createInertiaApp({
         // Set dayjs locale based on user's language
         dayjs.locale(locale.toLowerCase());
 
+        // The locale is read once at boot, but it changes mid-session: logging
+        // in swaps the guest default for the account's language over an Inertia
+        // visit, which never re-runs this setup. While logged out the shared
+        // prop is always the default, so a visitor's own pick wins instead.
+        const applyLocale = (props: Record<string, unknown>): void => {
+            const authenticated = Boolean((props.auth as Auth | undefined)?.user);
+
+            if (authenticated) {
+                clearGuestLocale();
+            }
+
+            const next = authenticated
+                ? (props.locale as string | undefined)
+                : (guestLocale() ?? (props.locale as string | undefined));
+
+            if (!next || next === getActiveLanguage()) {
+                return;
+            }
+
+            void loadLanguageAsync(next);
+            dayjs.locale(next.toLowerCase());
+            document.documentElement.lang = next;
+        };
+
         const auth = props.initialPage.props.auth as Auth | undefined;
         const flash = props.initialPage.props.flash as
             | { conversion_event?: string; [key: string]: unknown }
@@ -51,6 +77,7 @@ createInertiaApp({
         capturePageview();
 
         router.on('navigate', (event) => {
+            applyLocale(event.detail.page.props);
             syncPostHogContext(event.detail.page);
             syncContentTypeMediaRules(event.detail.page);
             capturePageview();

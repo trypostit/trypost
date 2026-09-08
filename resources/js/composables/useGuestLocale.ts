@@ -6,6 +6,14 @@ import type { Language } from '@/types';
 
 const chosen = ref<string | null>(null);
 
+/** The locale a logged-out visitor picked, if any. */
+export const guestLocale = (): string | null => chosen.value;
+
+/** Called once the visitor authenticates: the account's locale takes over. */
+export const clearGuestLocale = (): void => {
+    chosen.value = null;
+};
+
 export const useGuestLocale = () => {
     const page = usePage();
 
