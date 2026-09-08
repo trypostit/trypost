@@ -27,8 +27,6 @@ return [
     ],
     'analytics' => 'التحليلات',
     'repurposes' => 'Repurpose',
-    'onboarding' => 'البدء',
-    'onboarding_hint' => 'أكمل الإعداد',
     'posts' => [
         'calendar' => 'التقويم',
         'all' => 'الكل',

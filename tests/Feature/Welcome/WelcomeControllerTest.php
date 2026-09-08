@@ -607,11 +607,13 @@ test('welcome steps redirect to calendar in self hosted mode', function (string 
     'plan store' => ['app.welcome.plan.store', 'post', ['interval' => 'monthly']],
 ]);
 
-test('old onboarding icp routes are not registered', function (string $routeName) {
+test('old onboarding routes are not registered', function (string $routeName) {
     expect(Route::has($routeName))->toBeFalse();
 })->with([
-    // `app.onboarding` is reused for the post-subscription activation checklist.
+    'index' => 'app.onboarding',
     'store' => 'app.onboarding.store',
+    'skip mcp' => 'app.onboarding.mcp.skip',
+    'complete' => 'app.onboarding.complete',
     'goals' => 'app.onboarding.goals',
     'goals store' => 'app.onboarding.goals.store',
     'referral source' => 'app.onboarding.referral-source',
@@ -619,6 +621,15 @@ test('old onboarding icp routes are not registered', function (string $routeName
     'connect' => 'app.onboarding.connect',
     'checkout' => 'app.onboarding.checkout',
 ]);
+
+test('legacy onboarding path redirects to the calendar', function () {
+    config(['trypost.self_hosted' => true]);
+    attachCurrentWorkspace($this->user);
+
+    $this->actingAs($this->user)
+        ->get('/onboarding')
+        ->assertRedirect(route('app.calendar'));
+});
 
 test('members cannot start Stripe checkout from welcome', function (bool $withWorkspace) {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);

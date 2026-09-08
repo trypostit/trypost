@@ -439,7 +439,6 @@ test('the publishing mode is offered on the page and saved', function () {
 });
 
 test('the source account can be changed from the edit page', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
 
     $other = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::Facebook]);
 

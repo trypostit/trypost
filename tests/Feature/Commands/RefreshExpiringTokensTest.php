@@ -10,7 +10,6 @@ use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
 
 test('it dispatches refresh jobs for rotating tokens near expiry and extension tokens well ahead of expiry', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
     Queue::fake();
 
     $workspace = Workspace::factory()->create();

@@ -18,7 +18,7 @@ class StartSubscriptionCheckout
      * redirect to it. Trial days,
      * optional per-plan first-month coupon, and promotion codes come from cashier /
      * trypost billing env config via ConfigureSubscriptionCheckout. The owner's
-     * signup attribution -- UTM parameters and ad click IDs -- and onboarding
+     * signup attribution -- UTM parameters and ad click IDs -- and welcome
      * answers ride along as subscription metadata, flattened to the strings
      * Stripe stores and cut to the 500 characters it allows per value. Stripe
      * rejects a longer value outright rather than truncating it, which would

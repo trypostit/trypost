@@ -27,8 +27,6 @@ return [
     ],
     'analytics' => 'アナリティクス',
     'repurposes' => 'Repurpose',
-    'onboarding' => 'はじめに',
-    'onboarding_hint' => 'セットアップを完了',
     'posts' => [
         'calendar' => 'カレンダー',
         'all' => 'すべて',

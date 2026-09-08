@@ -15,7 +15,7 @@ trait HasAccount
     }
 
     /**
-     * Account for authenticated product flows (onboarding, billing, settings).
+     * Account for authenticated product flows (welcome, billing, settings).
      * In-app users always have one; null only during account teardown.
      */
     public function accountOrFail(): Account

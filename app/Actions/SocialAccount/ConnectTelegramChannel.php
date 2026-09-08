@@ -22,8 +22,8 @@ class ConnectTelegramChannel
      * Link a Telegram chat to a workspace for a one-off connect nonce.
      *
      * @param  array<string, mixed>  $chat  The `chat` object from the Bot API update.
-     * @return SocialAccount|null The linked account, or null when blocked (account
-     *                            limit reached or the code was already consumed).
+     * @return SocialAccount|null The linked account, or null when the code was
+     *                            already consumed or the chat did not match.
      */
     public static function execute(Workspace $workspace, array $chat, string $nonce, mixed $reconnectId = null): ?SocialAccount
     {
@@ -34,17 +34,6 @@ class ConnectTelegramChannel
                 ->whereIn('platform', Platform::Telegram->networkPlatformValues())
                 ->find($reconnectId)
             : null;
-
-        $isNewAccount = ! $workspace->socialAccounts()
-            ->where('platform', Platform::Telegram->value)
-            ->where('platform_user_id', $chatId)
-            ->exists();
-
-        if ($reconnect === null && $isNewAccount && SocialAccount::occupiesNetwork((string) $workspace->id, Platform::Telegram)) {
-            TelegramConnectFailed::dispatch($workspace->id, $nonce, 'network_taken');
-
-            return null;
-        }
 
         // Reject before consuming the nonce so the user can retry in the right
         // chat with the code they already have.

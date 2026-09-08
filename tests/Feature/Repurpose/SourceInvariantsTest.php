@@ -18,7 +18,6 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 beforeEach(function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
 
     ['plain_token' => $token, 'workspace' => $this->workspace] = createApiTestToken();
 

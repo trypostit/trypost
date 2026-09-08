@@ -27,8 +27,6 @@ return [
     ],
     'analytics' => 'Analitik',
     'repurposes' => 'Repurpose',
-    'onboarding' => 'Başlarken',
-    'onboarding_hint' => 'Kurulumu bitir',
     'posts' => [
         'calendar' => 'Takvim',
         'all' => 'Tümü',

@@ -27,8 +27,6 @@ return [
     ],
     'analytics' => '분석',
     'repurposes' => 'Repurpose',
-    'onboarding' => '시작하기',
-    'onboarding_hint' => '설정 마치기',
     'posts' => [
         'calendar' => '캘린더',
         'all' => '전체',

@@ -455,7 +455,7 @@ enum Platform: string
     }
 
     /**
-     * Connectable platforms shaped for Inertia account/onboarding grids.
+     * Connectable platforms shaped for Inertia account connect grids.
      * Sorted alphabetically by label (ASC, case-insensitive).
      *
      * Instagram includes `connect_methods` so the connect dialog only lists

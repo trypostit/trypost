@@ -144,8 +144,7 @@ test('mastodon callback fails with expired session', function () {
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Session expired. Please try again.'));
 });
 
-test('user can connect multiple mastodon accounts when multiple social accounts are allowed', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
+test('user can connect multiple mastodon accounts', function () {
 
     SocialAccount::factory()->mastodon()->create([
         'workspace_id' => $this->workspace->id,
@@ -182,47 +181,6 @@ test('user can connect multiple mastodon accounts when multiple social accounts 
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::Mastodon)->count())->toBe(2);
-});
-
-test('mastodon callback shows network_taken when the network is already connected', function () {
-    config()->set('trypost.allow_multiple_social_accounts', false);
-
-    SocialAccount::factory()->mastodon()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform_user_id' => '123456789',
-    ]);
-
-    session([
-        'mastodon_instance' => 'https://mastodon.social',
-        'mastodon_client_id' => 'test-client-id',
-        'mastodon_client_secret' => 'test-client-secret',
-        'mastodon_oauth_state' => 'test-state',
-        'social_connect_workspace' => $this->workspace->id,
-    ]);
-
-    Http::fake([
-        'https://mastodon.social/oauth/token' => Http::response([
-            'access_token' => 'new-access-token',
-            'token_type' => 'Bearer',
-        ], 200),
-        'https://mastodon.social/api/v1/accounts/verify_credentials' => Http::response([
-            'id' => '987654321',
-            'username' => 'anotheruser',
-            'acct' => 'anotheruser',
-            'display_name' => 'Another User',
-        ], 200),
-    ]);
-
-    $response = $this->actingAs($this->user)->get(route('app.social.mastodon.callback', [
-        'code' => 'test-auth-code',
-        'state' => 'test-state',
-    ]));
-
-    $response->assertOk();
-    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
-    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', __('accounts.popup_callback.network_taken')));
-
-    expect($this->workspace->socialAccounts()->where('platform', Platform::Mastodon)->count())->toBe(1);
 });
 
 test('mastodon connection validates instance url', function () {

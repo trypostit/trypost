@@ -3,11 +3,10 @@ import { Head, router, usePoll } from '@inertiajs/vue3';
 import { IconLoader2 } from '@tabler/icons-vue';
 import { onMounted, ref, watch } from 'vue';
 
-import { accounts, onboarding } from '@/routes/app';
+import { calendar } from '@/routes/app';
 
 const props = defineProps<{
     subscriptionActive: boolean;
-    redirectToOnboarding: boolean;
 }>();
 
 // Polls `auth` alongside so `auth.plan.interval` is fresh once the Stripe
@@ -15,15 +14,13 @@ const props = defineProps<{
 // initial render that row doesn't exist yet, so the interval would default
 // to 'monthly' even for a yearly purchase.
 const { stop } = usePoll(2000, {
-    only: ['subscriptionActive', 'redirectToOnboarding', 'auth'],
+    only: ['subscriptionActive', 'auth'],
 });
 
 const finishing = ref(false);
 
 const goNext = (): void => {
-    router.visit(
-        props.redirectToOnboarding ? onboarding.url() : accounts.url(),
-    );
+    router.visit(calendar.url());
 };
 
 // A trial-with-card subscription is already `subscribed()` (status

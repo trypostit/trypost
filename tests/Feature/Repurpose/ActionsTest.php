@@ -93,7 +93,6 @@ test('changing the watched format resets the watermark', function () {
 });
 
 test('two accounts on the same network each get their own repurpose', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
 
     [$workspace, $user, $first] = repurposeWorkspace();
     $second = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
@@ -241,7 +240,6 @@ test('disabling clears the watermark so re-activation starts fresh', function ()
 });
 
 test('changing the source account resets the watermark', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
 
     [$workspace, $user, $account] = repurposeWorkspace();
 

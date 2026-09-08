@@ -27,8 +27,6 @@ return [
     ],
     'analytics' => 'Аналитика',
     'repurposes' => 'Repurpose',
-    'onboarding' => 'Начало работы',
-    'onboarding_hint' => 'Завершите настройку',
     'posts' => [
         'calendar' => 'Календарь',
         'all' => 'Все',

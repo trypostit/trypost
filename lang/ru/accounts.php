@@ -6,6 +6,23 @@ return [
     'description' => 'Обзор всех подключённых социальных аккаунтов',
     'connect_cta' => 'Подключить',
     'connect_another' => 'Подключить ещё',
+    'connect_account' => 'Подключить аккаунт',
+    'actions' => 'Действия с аккаунтом',
+    'activate' => 'Включить',
+    'deactivate' => 'Отключить',
+    'active' => 'Активен',
+    'paused' => 'Отключён',
+    'accounts_count' => ':count аккаунт|:count аккаунта|:count аккаунтов',
+
+    'connect_dialog' => [
+        'title' => 'Подключить аккаунт',
+        'description' => 'Выберите сеть, которую хотите подключить. Можно добавить сколько угодно аккаунтов, даже несколько из одной сети.',
+    ],
+
+    'variants' => [
+        'linkedin-page' => 'Страница',
+        'instagram-facebook' => 'через Facebook',
+    ],
 
     'not_connected' => 'Не подключено',
     'connect' => 'Подключить',

@@ -27,8 +27,6 @@ return [
     ],
     'analytics' => 'Στατιστικά',
     'repurposes' => 'Repurpose',
-    'onboarding' => 'Ξεκινώντας',
-    'onboarding_hint' => 'Ολοκλήρωση ρύθμισης',
     'posts' => [
         'calendar' => 'Ημερολόγιο',
         'all' => 'Όλες',

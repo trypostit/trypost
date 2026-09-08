@@ -56,7 +56,6 @@ test('one source account can feed a repurpose per watched format', function () {
 });
 
 test('a workspace can have one repurpose per connected account of the same network', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
 
     $workspace = Workspace::factory()->create();
     $first = SocialAccount::factory()->for($workspace)->create();

@@ -88,15 +88,6 @@ class SocialAccount extends Model
         return $this->belongsTo(Workspace::class);
     }
 
-    public static function occupiesNetwork(string $workspaceId, SocialPlatform $platform): bool
-    {
-        return ! config('trypost.allow_multiple_social_accounts')
-            && static::query()
-                ->where('workspace_id', $workspaceId)
-                ->whereIn('platform', $platform->networkPlatformValues())
-                ->exists();
-    }
-
     /**
      * Persist a freshly authorized identity.
      *
@@ -113,9 +104,8 @@ class SocialAccount extends Model
         array $values,
         ?self $reconnect = null,
     ): self {
-        // The one-per-network rule is a config flag, so no database constraint
-        // can hold it and the observer's check-then-insert would let two popups
-        // finishing at once seat two different identities on one network.
+        // Two popups finishing at once for the same network must not interleave
+        // a reconnect's update-and-realign transaction with a fresh insert.
         try {
             return Cache::lock("social_connect:{$workspace->id}:{$platform->network()}", 10)
                 ->block(5, fn (): self => static::persistIdentity(

@@ -2,16 +2,17 @@
 import { Head, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
-import NetworkConnectGrid, {
-    type AvailablePlatform,
-    type ConnectedAccount,
-} from '@/components/accounts/NetworkConnectGrid.vue';
+import SocialAccountsManager from '@/components/accounts/SocialAccountsManager.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { usePageErrors } from '@/composables/usePageErrors';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
 import { store } from '@/routes/app/welcome/connect';
 import type { WelcomeSummary } from '@/types';
+import type {
+    AvailablePlatform,
+    ConnectedAccount,
+} from '@/types/social-account';
 import { SocialAccountStatus } from '@/types/social-account-status';
 
 const props = defineProps<{
@@ -48,11 +49,10 @@ const submit = (): void => {
         :step="4"
         size="5xl"
     >
-        <NetworkConnectGrid
+        <SocialAccountsManager
             v-if="platforms.length > 0"
             :platforms="platforms"
             :connected-accounts="accounts"
-            grid-class="grid-cols-2 sm:grid-cols-3 xl:grid-cols-4"
             data-testid="welcome-connect-grid"
         />
 

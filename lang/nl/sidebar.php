@@ -27,8 +27,6 @@ return [
     ],
     'analytics' => 'Statistieken',
     'repurposes' => 'Repurpose',
-    'onboarding' => 'Aan de slag',
-    'onboarding_hint' => 'Setup afronden',
     'posts' => [
         'calendar' => 'Kalender',
         'all' => 'Alle',

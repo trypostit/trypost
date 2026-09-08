@@ -484,40 +484,7 @@ test('select fails with expired session', function () {
     $response->assertInertia(fn (Assert $page) => $page->where('message', 'Session expired. Please try again.'));
 });
 
-test('selecting the person shows network_taken when a linkedin page already occupies the network', function () {
-    config()->set('trypost.allow_multiple_social_accounts', false);
-
-    SocialAccount::factory()->linkedinPage()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform_user_id' => 'existing-linkedin-page',
-    ]);
-
-    session(['linkedin_pending' => [
-        'workspace_id' => $this->workspace->id,
-        'token' => 'test-access-token',
-        'refresh_token' => 'test-refresh-token',
-        'expires_in' => 5184000,
-        'approved_scopes' => ['openid', 'profile', 'email', 'w_member_social'],
-        'person' => ['id' => 'new-person', 'name' => 'John Doe', 'avatar' => null, 'vanity_name' => 'johndoe'],
-        'organizations' => [],
-    ]]);
-
-    $response = $this->actingAs($this->user)->post(route('app.social.linkedin.select'), [
-        'type' => 'person',
-    ]);
-
-    $response->assertOk();
-    $response->assertInertia(fn (Assert $page) => $page->where('success', false));
-    $response->assertInertia(fn (Assert $page) => $page->where('message', __('accounts.popup_callback.network_taken')));
-
-    $this->assertDatabaseMissing('social_accounts', [
-        'platform' => Platform::LinkedIn->value,
-        'platform_user_id' => 'new-person',
-    ]);
-});
-
-test('user can connect multiple linkedin organizations when multiple social accounts are allowed', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
+test('user can connect multiple linkedin organizations', function () {
 
     SocialAccount::factory()->linkedinPage()->create([
         'workspace_id' => $this->workspace->id,
@@ -693,7 +660,6 @@ test('linkedin identity picker hides identities that are not the reconnect card'
 });
 
 test('select-identity hides an organization that is already connected', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
 
     SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -725,9 +691,7 @@ test('select-identity hides an organization that is already connected', function
         );
 });
 
-test('select-identity reports the network is taken when nothing is connectable', function () {
-    config()->set('trypost.allow_multiple_social_accounts', false);
-
+test('select-identity reports everything connected when nothing is connectable', function () {
     SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::LinkedIn,
@@ -750,7 +714,7 @@ test('select-identity reports the network is taken when nothing is connectable',
         ->assertInertia(fn (Assert $page) => $page
             ->component('accounts/PopupCallback')
             ->where('success', false)
-            ->where('message', __('accounts.popup_callback.network_taken'))
+            ->where('message', __('accounts.popup_callback.all_connected'))
         );
 
     expect(session()->has('linkedin_pending'))->toBeFalse();
@@ -780,7 +744,7 @@ test('select-identity keeps the picker empty state when linkedin offers nothing'
         );
 });
 
-test('select-identity does not defer onboarding progress back onto its own route', function () {
+test('select-identity does not leave a pending session after rendering', function () {
     config()->set('trypost.platforms.linkedin.enabled', false);
     config()->set('trypost.platforms.linkedin-page.enabled', true);
 
@@ -799,7 +763,6 @@ test('select-identity does not defer onboarding progress back onto its own route
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('accounts/LinkedInSelect')
-            ->where('onboardingProgress', false)
         );
 
     expect(session()->has('linkedin_pending'))->toBeFalse();

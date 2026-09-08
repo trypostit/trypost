@@ -157,16 +157,12 @@ class SocialController extends Controller
 
     /**
      * Nothing on this network is left to connect: the card being reconnected is
-     * gone from the provider, this login has nothing left to offer, or the
-     * single slot is taken.
-     *
-     * A taken slot is a fact about our own rows, so it stands even when the provider
-     * listing came back short. The other two answers depend on having seen everything.
+     * gone from the provider, or this login has nothing left to offer. Both
+     * answers depend on having seen the provider's full listing.
      */
     protected function noConnectableIdentities(?SocialAccount $reconnect, string $missingKey, bool $listingComplete = true): Response
     {
         $key = match (true) {
-            ! (bool) config('trypost.allow_multiple_social_accounts') && $reconnect === null => 'network_taken',
             $listingComplete => $reconnect !== null ? $missingKey : 'all_connected',
             default => 'pages_read_incomplete',
         };
@@ -178,9 +174,9 @@ class SocialController extends Controller
      * Narrow the identities a provider returned to the ones this card may take.
      *
      * A reconnect only ever offers its own identity. Otherwise every identity
-     * already connected on this network is dropped — including in multi-account
-     * mode, where the same identity could otherwise be connected twice under two
-     * platforms of one network (Instagram directly and via Facebook).
+     * already connected on this network is dropped, so the same identity cannot
+     * be connected twice under two platforms of one network (Instagram directly
+     * and via Facebook).
      *
      * @param  array<int, array<string, mixed>>  $identities
      * @return array<int, array<string, mixed>>
@@ -283,10 +279,6 @@ class SocialController extends Controller
      * Render the Inertia page that notifies the opener and closes the connect
      * popup. Used by both the GET OAuth callbacks (a fresh popup page load) and
      * the XHR selection submits (an Inertia visit that swaps to this page).
-     *
-     * Always pass `onboardingProgress` as inline false so it overrides the shared
-     * deferred prop: after select the URL is still the select path, and a deferred
-     * reload would re-GET that route with a cleared session.
      */
     protected function popupCallback(bool $success, string $message, ?string $platform = null): Response
     {
@@ -296,7 +288,6 @@ class SocialController extends Controller
             'success' => $success,
             'message' => $message,
             'platform' => $platform,
-            'onboardingProgress' => false,
         ]);
     }
 

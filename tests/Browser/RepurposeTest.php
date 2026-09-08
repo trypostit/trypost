@@ -107,8 +107,6 @@ test('a destination is not warned about missing media before there is any', func
 test('the source account is picked from a searchable list on the edit page', function () {
     [$user, $workspace, $source] = repurposeOwnerWithAccounts();
 
-    config()->set('trypost.allow_multiple_social_accounts', true);
-
     $other = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Facebook]);
 
     $repurpose = Repurpose::factory()->create([
@@ -129,8 +127,6 @@ test('the source account is picked from a searchable list on the edit page', fun
 
 test('switching the source hands the old one back to the destinations before saving', function () {
     [$user, $workspace, $source] = repurposeOwnerWithAccounts();
-
-    config()->set('trypost.allow_multiple_social_accounts', true);
 
     $facebook = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Facebook]);
 
@@ -280,8 +276,6 @@ test('an autosave the backend rejects says so instead of failing quietly', funct
 
 test('a source account that needs reconnecting says so in the picker', function () {
     [$user, $workspace, $source] = repurposeOwnerWithAccounts();
-
-    config()->set('trypost.allow_multiple_social_accounts', true);
 
     $broken = SocialAccount::factory()->for($workspace)->create([
         'platform' => Platform::Instagram,

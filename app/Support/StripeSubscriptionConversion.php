@@ -13,7 +13,7 @@ final class StripeSubscriptionConversion
      * subscription webhook payload — trial.started, checkout.completed, and
      * trial.converted all start from this shape. Persona is not included
      * here: it is already set as a person property via identify() during
-     * onboarding, so it is joinable on every event without repeating it.
+     * welcome, so it is joinable on every event without repeating it.
      *
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>

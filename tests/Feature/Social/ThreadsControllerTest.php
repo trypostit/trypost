@@ -106,8 +106,7 @@ test('threads callback fails with expired session', function () {
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Session expired. Please try again.'));
 });
 
-test('user can connect multiple threads accounts when multiple social accounts are allowed', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
+test('user can connect multiple threads accounts', function () {
 
     SocialAccount::factory()->threads()->create([
         'workspace_id' => $this->workspace->id,
@@ -171,51 +170,6 @@ test('threads callback handles token exchange failure', function () {
     $response->assertOk();
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Error connecting account. Please try again.'));
-});
-
-test('threads callback shows network_taken when the network is already connected', function () {
-    config()->set('trypost.allow_multiple_social_accounts', false);
-
-    SocialAccount::factory()->threads()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform_user_id' => 'existing-threads',
-    ]);
-
-    $state = bin2hex(random_bytes(16));
-
-    session([
-        'social_connect_workspace' => $this->workspace->id,
-        'threads_oauth_state' => $state,
-    ]);
-
-    Http::fake([
-        'https://graph.threads.net/oauth/access_token' => Http::response([
-            'access_token' => 'short-lived-token',
-            'user_id' => '123456789',
-        ], 200),
-        'https://graph.threads.net/access_token*' => Http::response([
-            'access_token' => 'long-lived-token',
-            'expires_in' => 5184000,
-        ], 200),
-        'https://graph.threads.net/v1.0/123456789*' => Http::response([
-            'id' => '123456789',
-            'username' => 'testuser',
-            'name' => 'Test User',
-            'threads_profile_picture_url' => null,
-        ], 200),
-    ]);
-
-    $response = $this->actingAs($this->user)->get(route('app.social.threads.callback', [
-        'code' => 'test-auth-code',
-        'state' => $state,
-    ]));
-
-    $response->assertOk();
-    $response->assertInertia(fn (AssertableInertia $page) => $page->component('accounts/PopupCallback'));
-    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
-    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', __('accounts.popup_callback.network_taken')));
-
-    expect($this->workspace->socialAccounts()->where('platform', Platform::Threads)->count())->toBe(1);
 });
 
 test('threads callback fails the connect when the long-lived token exchange fails', function () {

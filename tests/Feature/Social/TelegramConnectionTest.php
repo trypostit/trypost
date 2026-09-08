@@ -121,39 +121,8 @@ it('links a private channel that has no username', function () {
     expect(data_get($account->meta, 'username'))->toBeNull();
 });
 
-it('does not connect a second telegram channel when one is already connected', function () {
-    config([
-        'trypost.self_hosted' => false,
-        'trypost.allow_multiple_social_accounts' => false,
-    ]);
-    Event::fake([TelegramConnectFailed::class]);
-
-    SocialAccount::factory()->telegram()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform_user_id' => '-1009999999999',
-    ]);
-
-    $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15));
-
-    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
-        ->postJson(route('telegram.webhook'), telegramUpdate($code))
-        ->assertNoContent();
-
-    expect($this->workspace->socialAccounts()->count())->toBe(1);
-    expect(
-        SocialAccount::where('platform', Platform::Telegram)->where('platform_user_id', '-1001234567890')->exists()
-    )->toBeFalse();
-
-    Event::assertDispatched(
-        TelegramConnectFailed::class,
-        fn (TelegramConnectFailed $event): bool => $event->workspaceId === $this->workspace->id
-            && $event->reason === 'network_taken',
-    );
-});
-
-it('connects a second telegram channel when multiple social accounts are allowed', function () {
+it('connects a second telegram channel alongside the first', function () {
     Http::fake();
-    config(['trypost.allow_multiple_social_accounts' => true]);
 
     SocialAccount::factory()->telegram()->create([
         'workspace_id' => $this->workspace->id,
@@ -174,7 +143,6 @@ it('connects a second telegram channel when multiple social accounts are allowed
 
 it('reconnects an existing telegram channel', function () {
     Http::fake();
-    config(['trypost.allow_multiple_social_accounts' => false]);
 
     SocialAccount::factory()->telegram()->create([
         'workspace_id' => $this->workspace->id,
@@ -209,7 +177,6 @@ it('issues a connect code that carries the reconnect card', function () {
 it('keeps the reconnect card on its own chat when a different channel posts the code', function () {
     Http::fake();
     Event::fake([TelegramConnectFailed::class]);
-    config(['trypost.allow_multiple_social_accounts' => false]);
 
     $account = SocialAccount::factory()->telegram()->create([
         'workspace_id' => $this->workspace->id,
@@ -234,7 +201,6 @@ it('keeps the reconnect card on its own chat when a different channel posts the 
 
 it('lets the user retry in the right chat with the same code', function () {
     Http::fake();
-    config(['trypost.allow_multiple_social_accounts' => false]);
 
     $account = SocialAccount::factory()->telegram()->create([
         'workspace_id' => $this->workspace->id,
@@ -258,7 +224,6 @@ it('lets the user retry in the right chat with the same code', function () {
 
 it('reconnects the card when its own chat posts the code', function () {
     Http::fake();
-    config(['trypost.allow_multiple_social_accounts' => false]);
 
     $account = SocialAccount::factory()->telegram()->create([
         'workspace_id' => $this->workspace->id,

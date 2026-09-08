@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Models\Traits\HasOnboarding;
 use App\Models\Traits\HasUsage;
 use Carbon\CarbonInterface;
 use Database\Factories\AccountFactory;
@@ -18,7 +17,7 @@ use Laravel\Cashier\Billable;
 class Account extends Model
 {
     /** @use HasFactory<AccountFactory> */
-    use Billable, HasFactory, HasOnboarding, HasUsage, HasUuids;
+    use Billable, HasFactory, HasUsage, HasUuids;
 
     public const SUBSCRIPTION_NAME = 'default';
 

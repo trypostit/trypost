@@ -573,7 +573,6 @@ test('pruning a destination from a draft repurpose does not pause it', function 
 });
 
 test('a supported content type survives a platform change untouched', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
 
     [$workspace, $user, $source] = healthWorkspace();
 

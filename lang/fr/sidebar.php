@@ -27,8 +27,6 @@ return [
     ],
     'analytics' => 'Statistiques',
     'repurposes' => 'Repurpose',
-    'onboarding' => 'Premiers pas',
-    'onboarding_hint' => 'Terminer la configuration',
     'posts' => [
         'calendar' => 'Calendrier',
         'all' => 'Toutes',

@@ -17,36 +17,41 @@ use Illuminate\Support\Facades\Cache;
 
 beforeEach(function () {
     config()->set('trypost.self_hosted', false);
-    config()->set('trypost.allow_multiple_social_accounts', false);
     $this->workspace = Workspace::factory()->create();
 });
 
-test('blocks a second account of the same network', function () {
+test('allows a second account of the same network', function () {
     SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::Instagram,
         'platform_user_id' => 'ig-a',
     ]);
 
-    expect(fn () => SocialAccount::factory()->create([
+    $second = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::Instagram,
         'platform_user_id' => 'ig-b',
-    ]))->toThrow(NetworkAlreadyConnectedException::class);
+    ]);
+
+    expect($second->exists)->toBeTrue()
+        ->and($this->workspace->socialAccounts()->count())->toBe(2);
 });
 
-test('collapses platform variants into one network', function () {
+test('allows both variants of a network side by side', function () {
     SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::LinkedIn,
         'platform_user_id' => 'li-profile',
     ]);
 
-    expect(fn () => SocialAccount::factory()->create([
+    $page = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::LinkedInPage,
         'platform_user_id' => 'li-page',
-    ]))->toThrow(NetworkAlreadyConnectedException::class);
+    ]);
+
+    expect($page->exists)->toBeTrue()
+        ->and($this->workspace->socialAccounts()->count())->toBe(2);
 });
 
 test('allows different networks in the same workspace', function () {
@@ -100,87 +105,7 @@ test('reconnecting the same account via updateOrCreate is allowed', function () 
         ->and($this->workspace->socialAccounts()->first()->username)->toBe('new');
 });
 
-test('allowing multiple social accounts bypasses the one-per-network rule', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
-
-    SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
-        'platform_user_id' => 'ig-a',
-    ]);
-
-    $second = SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
-        'platform_user_id' => 'ig-b',
-    ]);
-
-    expect($second->exists)->toBeTrue();
-});
-
-test('multiple social accounts can be enabled without self-hosted mode', function () {
-    config()->set('trypost.self_hosted', false);
-    config()->set('trypost.allow_multiple_social_accounts', true);
-
-    SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
-        'platform_user_id' => 'ig-a',
-    ]);
-
-    $second = SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
-        'platform_user_id' => 'ig-b',
-    ]);
-
-    expect($second->exists)->toBeTrue();
-});
-
-test('self-hosted still enforces one-per-network when multiple social accounts are disabled', function () {
-    config()->set('trypost.self_hosted', true);
-    config()->set('trypost.allow_multiple_social_accounts', false);
-
-    SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
-        'platform_user_id' => 'ig-a',
-    ]);
-
-    expect(fn () => SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
-        'platform_user_id' => 'ig-b',
-    ]))->toThrow(NetworkAlreadyConnectedException::class);
-});
-
-test('occupiesNetwork is true when the workspace already has that network', function () {
-    SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
-        'platform_user_id' => 'ig-a',
-    ]);
-
-    expect(SocialAccount::occupiesNetwork((string) $this->workspace->id, Platform::Instagram))->toBeTrue()
-        ->and(SocialAccount::occupiesNetwork((string) $this->workspace->id, Platform::X))->toBeFalse();
-});
-
-test('blocks a same-id account connected via a different network variant', function () {
-    SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
-        'platform_user_id' => 'shared-ig-id',
-    ]);
-
-    expect(fn () => SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::InstagramFacebook,
-        'platform_user_id' => 'shared-ig-id',
-    ]))->toThrow(NetworkAlreadyConnectedException::class);
-});
-
 test('the same workspace platform identity cannot be stored twice', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
 
     SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -196,7 +121,6 @@ test('the same workspace platform identity cannot be stored twice', function () 
 });
 
 test('connectIdentity refuses to repoint the reconnect target at another identity', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
 
     $account = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -219,7 +143,6 @@ test('connectIdentity refuses to repoint the reconnect target at another identit
 });
 
 test('connectIdentity keeps posts on the card when a stray identity is authorized', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
 
     $account = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -268,7 +191,6 @@ test('connectIdentity still reconnects the same identity across a network varian
 });
 
 test('connectIdentity reconnect throws when the new identity is already taken', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
 
     SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,

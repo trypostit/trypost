@@ -66,11 +66,6 @@ export interface NavItem {
     badge?: string;
 }
 
-export interface OnboardingProgress {
-    completed: number;
-    total: number;
-}
-
 export interface WelcomeNetwork {
     id: string;
     platform: string;
@@ -113,10 +108,8 @@ export interface SharedData {
     name: string;
     auth: Auth;
     flash: FlashData;
-    onboardingProgress?: OnboardingProgress | false;
     sidebarOpen: boolean;
     selfHosted: boolean;
-    allowMultipleSocialAccounts: boolean;
     legal: LegalLinks;
     contentTypeMediaRules?: Record<string, ContentTypeMediaRule>;
     features?: Features | null;

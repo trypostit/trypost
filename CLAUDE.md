@@ -289,13 +289,21 @@ used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
 
 ## Multiple social accounts per network
 
-One connected identity per social network per workspace is the Cloud default. This is **not** tied to `SELF_HOSTED` — Cloud cannot flip that flag, but it can flip this one.
+A workspace may connect as many accounts of the same network as it wants (two
+LinkedIns, three Instagrams, ...). There is **no** one-per-network rule and no
+flag for it: `ALLOW_MULTIPLE_SOCIAL_ACCOUNTS` was removed in September 2026, along
+with `SocialAccount::occupiesNetwork()` and the observer's `creating` guard. Do
+not reintroduce either. What still holds:
 
-| Env | Config | Default | Effect |
-| --- | --- | --- | --- |
-| `ALLOW_MULTIPLE_SOCIAL_ACCOUNTS` | `trypost.allow_multiple_social_accounts` | `false` (falls back to `SELF_HOSTED` when unset) | `true`: a workspace may connect more than one account of the same network (two LinkedIns, two Instagrams, …). `false`: one per network (LinkedIn profile + page count as one; Instagram standalone + Instagram-via-Facebook count as one). Reconnecting the same `platform` + `platform_user_id` still updates the existing row. Shared to Inertia as `allowMultipleSocialAccounts`. |
-
-Self-hosted compose / `.env.example` set this `true`. When the env is unset, the config falls back to `SELF_HOSTED` so existing self-hosted installs keep multiple accounts. Do **not** use `selfHosted` for the occupancy check (observer, Telegram connect, `NetworkConnectGrid`).
+- Reconnecting the same `platform` + `platform_user_id` updates the existing row
+ (`SocialAccount::connectIdentity()`), and the identity pickers drop identities
+ already connected on that network, so one identity can never be seated twice
+ under two platforms of one network (Instagram directly and via Facebook).
+- `Platform::network()` still collapses variants (LinkedIn profile/page,
+ Instagram standalone/Facebook) — that grouping drives the accounts UI, not a cap.
+- `accounts.popup_callback.network_taken` / `accounts.telegram.network_taken` stay
+ in the lang files because `NetworkAlreadyConnectedException` still uses the key
+ for a reconnect that collides on the unique identity index.
 
 ## UI locale (`users.locale`)
 
@@ -496,6 +504,7 @@ Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` d
     - `@my-element` resolves to `[data-testid="my-element"]`, so add `data-testid="my-element"` in the Vue component and use `$page->click('@my-element')`.
     - Bind it for repeated elements: `:data-testid="`connect-${platform.value}`"`.
 - Assertions do NOT auto-wait on SPA paint. Wait for the element to mount and lay out first — see the `waitFor*TestId()` helper at the top of `tests/Browser/WelcomeConnectTest.php` and copy the pattern under a file-unique name (these helpers are global functions; a duplicated name collides across test files).
+- **Never `sleep()` in a browser test.** The HTTP server that serves the page runs inside the same PHP process (an Amp loop that only ticks while Pest awaits Playwright), so a blocking `sleep()` starves every asset request: the page stays blank, the Vue app never mounts, and screenshots come out empty. Poll from the page with `$page->script(...)` (as the `waitFor*TestId()` helpers do) — that keeps the loop running.
 - `BrowserTestCase` sets `$fakesVite = false` on purpose: these tests load real built assets, so faking Vite blanks the app.
 - End page assertions with `->assertNoJavaScriptErrors()`.
 - CI runs them un-parallelised (`php artisan test tests/Browser --compact`) against `npm run build` output, so keep them independent of a running dev server.

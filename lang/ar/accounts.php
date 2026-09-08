@@ -6,6 +6,23 @@ return [
     'description' => 'نظرة عامة على جميع حساباتك الاجتماعية المتصلة',
     'connect_cta' => 'ربط',
     'connect_another' => 'ربط حساب آخر',
+    'connect_account' => 'ربط حساب',
+    'actions' => 'إجراءات الحساب',
+    'activate' => 'تشغيل',
+    'deactivate' => 'إيقاف',
+    'active' => 'نشط',
+    'paused' => 'متوقف',
+    'accounts_count' => ':count حساب|:count حسابات',
+
+    'connect_dialog' => [
+        'title' => 'ربط حساب',
+        'description' => 'اختر الشبكة التي تريد ربطها. يمكنك إضافة أي عدد من الحسابات، حتى عدة حسابات من الشبكة نفسها.',
+    ],
+
+    'variants' => [
+        'linkedin-page' => 'صفحة',
+        'instagram-facebook' => 'عبر Facebook',
+    ],
 
     'not_connected' => 'غير متصل',
     'connect' => 'ربط',

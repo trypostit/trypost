@@ -10,8 +10,10 @@ use App\Models\Workspace;
 /**
  * Wait for a data-testid element to mount and lay out. Pest browser `@`
  * selectors resolve to data-testid, and assertions do not auto-wait on SPA paint.
+ * Never `sleep()` here instead: the test server runs inside the PHP process, so
+ * a blocking sleep starves the assets the page is trying to load.
  */
-function waitForGridTestId(mixed $page, string $testId): void
+function waitForAccountsTestId(mixed $page, string $testId): void
 {
     $page->script(<<<JS
         (async () => {
@@ -25,7 +27,7 @@ function waitForGridTestId(mixed $page, string $testId): void
     JS);
 }
 
-function gridOwnerWithLinkedIn(): User
+function accountsOwner(): User
 {
     $user = User::factory()->create();
 
@@ -36,44 +38,79 @@ function gridOwnerWithLinkedIn(): User
     $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
     $user->update(['current_workspace_id' => $workspace->id]);
 
-    SocialAccount::factory()->linkedin()->create([
-        'workspace_id' => $workspace->id,
-        'platform_user_id' => 'li-connected',
-    ]);
-
     return $user->fresh();
 }
 
-test('a taken network offers no second card when multiples are disabled', function () {
-    config(['trypost.allow_multiple_social_accounts' => false]);
+function accountsOwnerWithLinkedIn(): User
+{
+    $user = accountsOwner();
 
-    $this->actingAs(gridOwnerWithLinkedIn());
+    SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $user->current_workspace_id,
+        'platform_user_id' => 'li-connected',
+    ]);
 
-    $page = visit(route('app.accounts'));
+    return $user;
+}
 
-    waitForGridTestId($page, 'connect-x');
-
-    $page->assertVisible('@connect-x')
-        ->assertMissing('@connect-linkedin')
-        ->assertNoJavaScriptErrors();
-});
-
-test('a taken network offers another card when multiples are allowed', function () {
-    config(['trypost.allow_multiple_social_accounts' => true]);
-
-    $this->actingAs(gridOwnerWithLinkedIn());
+test('a workspace without accounts lists every network with a connect slot', function () {
+    $this->actingAs(accountsOwner());
 
     $page = visit(route('app.accounts'));
 
-    waitForGridTestId($page, 'connect-linkedin');
+    waitForAccountsTestId($page, 'network-group-linkedin');
 
-    $page->assertVisible('@connect-linkedin')
+    $page->assertVisible('@network-group-linkedin')
+        ->assertVisible('@connect-linkedin')
         ->assertVisible('@connect-x')
+        ->assertMissing('@connect-another-linkedin')
+        ->assertVisible('@connect-account-button')
         ->assertNoJavaScriptErrors();
 });
 
-test('a lost connection offers both reconnect and disconnect', function () {
-    $user = gridOwnerWithLinkedIn();
+test('every network is listed, connected ones grouped with a slot for one more', function () {
+    $user = accountsOwnerWithLinkedIn();
+
+    SocialAccount::factory()->linkedinPage()->create([
+        'workspace_id' => $user->current_workspace_id,
+        'platform_user_id' => 'li-page',
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.accounts'));
+
+    waitForAccountsTestId($page, 'network-group-linkedin');
+
+    $page->assertVisible('@network-group-linkedin')
+        ->assertVisible('@connect-another-linkedin')
+        ->assertMissing('@connect-linkedin')
+        ->assertVisible('@network-group-x')
+        ->assertVisible('@connect-x')
+        ->assertMissing('@connect-another-x')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the connect button opens the catalog with per-network counts', function () {
+    $this->actingAs(accountsOwnerWithLinkedIn());
+
+    $page = visit(route('app.accounts'));
+
+    waitForAccountsTestId($page, 'connect-account-button');
+
+    $page->click('@connect-account-button');
+
+    waitForAccountsTestId($page, 'connect-account-dialog');
+
+    $page->assertVisible('@connect-account-dialog')
+        ->assertVisible('@connect-linkedin')
+        ->assertSeeIn('@connect-count-linkedin', '1')
+        ->assertMissing('@connect-count-x')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a lost connection offers reconnect on the card and disconnect in its menu', function () {
+    $user = accountsOwnerWithLinkedIn();
 
     $account = SocialAccount::factory()->x()->tokenExpired()->create([
         'workspace_id' => $user->current_workspace_id,
@@ -84,7 +121,12 @@ test('a lost connection offers both reconnect and disconnect', function () {
 
     $page = visit(route('app.accounts'));
 
-    waitForGridTestId($page, "disconnect-{$account->id}");
+    waitForAccountsTestId($page, "reconnect-button-{$account->id}");
+
+    $page->assertVisible("@reconnect-button-{$account->id}")
+        ->click("@account-menu-{$account->id}");
+
+    waitForAccountsTestId($page, "disconnect-{$account->id}");
 
     $page->assertVisible("@reconnect-{$account->id}")
         ->assertVisible("@disconnect-{$account->id}")

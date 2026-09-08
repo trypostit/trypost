@@ -94,8 +94,7 @@ test('x callback fails with expired session', function () {
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Session expired. Please try again.'));
 });
 
-test('user can connect multiple x accounts when multiple social accounts are allowed', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
+test('user can connect multiple x accounts', function () {
 
     SocialAccount::factory()->x()->create([
         'workspace_id' => $this->workspace->id,
@@ -128,42 +127,6 @@ test('user can connect multiple x accounts when multiple social accounts are all
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::X)->count())->toBe(2);
-});
-
-test('x callback shows network_taken when the network is already connected', function () {
-    config()->set('trypost.allow_multiple_social_accounts', false);
-
-    SocialAccount::factory()->x()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform_user_id' => '123456789',
-    ]);
-
-    session(['social_connect_workspace' => $this->workspace->id]);
-
-    $socialiteUser = Mockery::mock(SocialiteUser::class);
-    $socialiteUser->shouldReceive('getId')->andReturn('987654321');
-    $socialiteUser->shouldReceive('getNickname')->andReturn('anotheruser');
-    $socialiteUser->shouldReceive('getName')->andReturn('Another User');
-    $socialiteUser->shouldReceive('getAvatar')->andReturn(null);
-    $socialiteUser->token = 'new-access-token';
-    $socialiteUser->refreshToken = 'new-refresh-token';
-    $socialiteUser->expiresIn = 7200;
-    $socialiteUser->approvedScopes = ['tweet.read', 'tweet.write'];
-
-    Socialite::shouldReceive('driver')
-        ->with('x')
-        ->andReturn(Mockery::mock([
-            'user' => $socialiteUser,
-        ]));
-
-    $response = $this->actingAs($this->user)->get(route('app.social.x.callback'));
-
-    $response->assertOk();
-    $response->assertInertia(fn (AssertableInertia $page) => $page->component('accounts/PopupCallback'));
-    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
-    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', __('accounts.popup_callback.network_taken')));
-
-    expect($this->workspace->socialAccounts()->where('platform', Platform::X)->count())->toBe(1);
 });
 
 test('x callback reconnects the original card', function () {
@@ -225,7 +188,7 @@ test('x callback handles oauth errors gracefully', function () {
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Error connecting account. Please try again.'));
 });
 
-test('x reconnect that authorizes another account says so instead of network_taken', function () {
+test('x reconnect that authorizes another account says so', function () {
     $account = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::X,

@@ -27,8 +27,6 @@ return [
     ],
     'analytics' => '分析',
     'repurposes' => 'Repurpose',
-    'onboarding' => '开始使用',
-    'onboarding_hint' => '完成设置',
     'posts' => [
         'calendar' => '日历',
         'all' => '全部',

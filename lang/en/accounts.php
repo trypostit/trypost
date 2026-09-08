@@ -6,6 +6,23 @@ return [
     'description' => 'Overview of all your connected social accounts',
     'connect_cta' => 'Connect',
     'connect_another' => 'Connect another',
+    'connect_account' => 'Connect account',
+    'actions' => 'Account actions',
+    'activate' => 'Turn on',
+    'deactivate' => 'Turn off',
+    'active' => 'Active',
+    'paused' => 'Off',
+    'accounts_count' => ':count account|:count accounts',
+
+    'connect_dialog' => [
+        'title' => 'Connect an account',
+        'description' => 'Pick the network you want to connect. You can add as many accounts as you like, even several from the same network.',
+    ],
+
+    'variants' => [
+        'linkedin-page' => 'Page',
+        'instagram-facebook' => 'via Facebook',
+    ],
 
     'not_connected' => 'Not connected',
     'connect' => 'Connect',

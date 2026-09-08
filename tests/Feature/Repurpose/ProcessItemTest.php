@@ -36,7 +36,6 @@ const REPURPOSE_VIDEO_URL = 'https://93.184.216.34/v.mp4';
 function repurposeWithTwoDestinations(): RepurposeItem
 {
     Storage::fake();
-    config()->set('trypost.allow_multiple_social_accounts', true);
 
     $workspace = Workspace::factory()->create();
     $source = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);

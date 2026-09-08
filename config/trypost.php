@@ -10,7 +10,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | When enabled, the application runs in self-hosted mode which skips
-    | payment/subscription requirements during onboarding.
+    | payment/subscription requirements during welcome.
     |
     */
 
@@ -44,26 +44,6 @@ return [
     */
 
     'meta_page_walk_seconds' => (int) env('META_PAGE_WALK_SECONDS', 20),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Multiple social accounts per network
-    |--------------------------------------------------------------------------
-    |
-    | When false (Cloud default), a workspace may connect only one account
-    | per social network. Variants of the same network (LinkedIn profile/page,
-    | Instagram standalone/Facebook) count as one. Reconnecting the same
-    | identity (platform + platform_user_id) still updates the existing row.
-    |
-    | Independent of SELF_HOSTED so Cloud can flip this later without becoming
-    | self-hosted. Self-hosted installs typically set this true.
-    |
-    */
-
-    'allow_multiple_social_accounts' => (bool) env(
-        'ALLOW_MULTIPLE_SOCIAL_ACCOUNTS',
-        env('SELF_HOSTED', true),
-    ),
 
     /*
     |--------------------------------------------------------------------------

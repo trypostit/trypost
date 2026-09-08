@@ -6,6 +6,23 @@ return [
     'description' => 'Panoramica di tutti i tuoi account social collegati',
     'connect_cta' => 'Collega',
     'connect_another' => 'Collega un altro',
+    'connect_account' => 'Collega account',
+    'actions' => 'Azioni account',
+    'activate' => 'Attiva',
+    'deactivate' => 'Disattiva',
+    'active' => 'Attivo',
+    'paused' => 'Disattivato',
+    'accounts_count' => ':count account|:count account',
+
+    'connect_dialog' => [
+        'title' => 'Collega un account',
+        'description' => 'Scegli la rete che vuoi collegare. Puoi aggiungere tutti gli account che vuoi, anche più di uno della stessa rete.',
+    ],
+
+    'variants' => [
+        'linkedin-page' => 'Pagina',
+        'instagram-facebook' => 'via Facebook',
+    ],
 
     'not_connected' => 'Non collegato',
     'connect' => 'Collega',

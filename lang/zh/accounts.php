@@ -6,6 +6,23 @@ return [
     'description' => '查看你所有已连接的社交账号',
     'connect_cta' => '连接',
     'connect_another' => '连接另一个',
+    'connect_account' => '连接账号',
+    'actions' => '账号操作',
+    'activate' => '启用',
+    'deactivate' => '停用',
+    'active' => '已启用',
+    'paused' => '已停用',
+    'accounts_count' => ':count 个账号',
+
+    'connect_dialog' => [
+        'title' => '连接账号',
+        'description' => '选择要连接的社交网络。你可以添加任意数量的账号，包括同一网络的多个账号。',
+    ],
+
+    'variants' => [
+        'linkedin-page' => '主页',
+        'instagram-facebook' => '通过 Facebook',
+    ],
 
     'not_connected' => '未连接',
     'connect' => '连接',
