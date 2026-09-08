@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Settings\ProfileDeleteRequest;
 use App\Http\Requests\App\Settings\ProfileUpdateRequest;
 use App\Http\Requests\App\Settings\UpdateLanguageRequest;
+use App\Http\Requests\App\Settings\UploadPhotoRequest;
 use App\Jobs\PostHog\SyncUser;
 use App\Services\PostHogService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -43,12 +44,8 @@ class ProfileController extends Controller
         return to_route('app.profile.edit');
     }
 
-    public function uploadPhoto(Request $request): RedirectResponse
+    public function uploadPhoto(UploadPhotoRequest $request): RedirectResponse
     {
-        $request->validate([
-            'photo' => ['required', 'image', 'max:2048'],
-        ]);
-
         $user = $request->user();
         $user->clearMediaCollection('avatar');
         $user->addMedia($request->file('photo'), 'avatar');

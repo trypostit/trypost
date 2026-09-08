@@ -206,6 +206,20 @@ test('user cannot upload non-image file as photo', function () {
     $response->assertSessionHasErrors('photo');
 });
 
+test('user cannot upload a photo over the size limit', function () {
+    Storage::fake();
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('app.profile.upload-photo'), [
+            'photo' => UploadedFile::fake()->image('avatar.jpg')->size(2049),
+        ])
+        ->assertSessionHasErrors('photo');
+
+    expect($user->refresh()->has_photo)->toBeFalse();
+});
+
 test('user can delete profile photo', function () {
     Storage::fake();
 
