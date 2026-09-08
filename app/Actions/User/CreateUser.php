@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
 class CreateUser
 {
     /**
-     * @param  array{name: string, email: string, password?: string, google_id?: string, github_id?: string, email_verified_at?: \DateTimeInterface|null, is_invite?: bool, registration_ip?: string|null, locale?: string|null}  $data
+     * @param  array{name: string, email: string, password?: string, google_id?: string, github_id?: string, email_verified_at?: \DateTimeInterface|null, is_invite?: bool, registration_ip?: string|null, locale?: string}  $data
      * @param  array<string, string>  $attributionParameters  UTM parameters and ad click IDs (gclid, fbclid, etc.) captured before signup
      */
     public static function execute(array $data, array $attributionParameters = []): User

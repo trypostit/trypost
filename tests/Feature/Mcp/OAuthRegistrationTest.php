@@ -309,6 +309,7 @@ test('post-login redirect to authorize renders inertia instead of raw oauth json
     $login = $this->post(route('login.store'), [
         'email' => $user->email,
         'password' => 'password',
+        'locale' => 'en',
     ]);
 
     $login->assertRedirect();

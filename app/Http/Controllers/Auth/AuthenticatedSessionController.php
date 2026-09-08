@@ -6,7 +6,9 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Auth\LoginRequest;
+use App\Jobs\PostHog\SyncUser;
 use App\Models\Invite;
+use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -35,6 +37,13 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         $request->session()->regenerate();
+
+        $user = $request->user();
+        $user->update(['locale' => $request->validated('locale')]);
+
+        if (PostHogService::shouldTrack()) {
+            SyncUser::dispatch((string) $user->id);
+        }
 
         if ($invite = Invite::fromId($request->string('invite')->toString())) {
             return redirect()->route('app.invites.show', $invite);

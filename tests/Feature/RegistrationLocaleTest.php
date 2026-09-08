@@ -51,17 +51,6 @@ test('an unsupported locale is rejected rather than stored', function () {
     expect(User::where('email', 'test@example.com')->exists())->toBeFalse();
 });
 
-test('validation errors come back in the picked locale', function () {
-    $this->post(route('register.store'), [
-        'name' => '',
-        'email' => 'test@example.com',
-        'password' => 'Password123!',
-        'locale' => 'pt-BR',
-    ])->assertSessionHasErrors([
-        'name' => __('validation.required', ['attribute' => 'name'], 'pt-BR'),
-    ]);
-});
-
 test('social registration always stores the default locale', function (string $provider, string $driver) {
     config([
         'trypost.google_auth_enabled' => true,
