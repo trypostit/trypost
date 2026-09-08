@@ -43,10 +43,9 @@ test('instagram connect redirects to oauth provider', function () {
     $this->withoutExceptionHandling();
 
     $response = $this->actingAs($this->user)
-        ->withHeader('X-Inertia', 'true')
         ->get(route('app.social.instagram.connect'));
 
-    $response->assertStatus(409);
+    $response->assertRedirect('https://www.instagram.com/oauth/authorize?test=1');
 
     expect(session('social_connect_workspace'))->toBe($this->workspace->id);
 });

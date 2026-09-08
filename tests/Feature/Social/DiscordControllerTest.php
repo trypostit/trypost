@@ -30,9 +30,8 @@ test('discord connect redirects to the oauth provider', function () {
     Socialite::shouldReceive('driver')->with('discord')->andReturn($driverMock);
 
     $this->actingAs($this->user)
-        ->withHeader('X-Inertia', 'true')
         ->get(route('app.social.discord.connect'))
-        ->assertStatus(409); // Inertia::location
+        ->assertRedirect('https://discord.com/api/oauth2/authorize?test=1');
 
     expect(session('social_connect_workspace'))->toBe($this->workspace->id);
 });

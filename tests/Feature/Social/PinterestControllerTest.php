@@ -32,10 +32,9 @@ test('pinterest connect redirects to oauth provider', function () {
         ->andReturn($driverMock);
 
     $response = $this->actingAs($this->user)
-        ->withHeader('X-Inertia', 'true')
         ->get(route('app.social.pinterest.connect'));
 
-    $response->assertStatus(409); // Inertia::location returns 409 with X-Inertia header
+    $response->assertRedirect('https://www.pinterest.com/oauth?test=1');
 
     expect(session('social_connect_workspace'))->toBe($this->workspace->id);
 });

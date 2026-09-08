@@ -36,12 +36,12 @@ test('user can initiate mastodon oauth flow', function () {
     ]);
 
     $response = $this->actingAs($this->user)
-        ->withHeader('X-Inertia', 'true')
         ->post(route('app.social.mastodon.authorize'), [
             'instance' => 'https://mastodon.social',
         ]);
 
-    $response->assertStatus(409); // Inertia::location returns 409 with X-Inertia header
+    expect($response->headers->get('Location'))
+        ->toStartWith('https://mastodon.social/oauth/authorize');
 
     expect(session('mastodon_instance'))->toBe('https://mastodon.social');
     expect(session('mastodon_client_id'))->toBe('test-client-id');
@@ -244,12 +244,12 @@ test('mastodon works with custom instances', function () {
     ]);
 
     $response = $this->actingAs($this->user)
-        ->withHeader('X-Inertia', 'true')
         ->post(route('app.social.mastodon.authorize'), [
             'instance' => 'https://techhub.social',
         ]);
 
-    $response->assertStatus(409); // Inertia::location with X-Inertia header
+    expect($response->headers->get('Location'))
+        ->toStartWith('https://techhub.social/oauth/authorize');
 
     expect(session('mastodon_instance'))->toBe('https://techhub.social');
 });

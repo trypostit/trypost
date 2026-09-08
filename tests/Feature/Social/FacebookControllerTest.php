@@ -37,10 +37,9 @@ test('facebook connect redirects to oauth provider', function () {
         ->andReturn($driverMock);
 
     $response = $this->actingAs($this->user)
-        ->withHeader('X-Inertia', 'true')
         ->get(route('app.social.facebook.connect'));
 
-    $response->assertStatus(409); // Inertia::location returns 409 with X-Inertia header
+    $response->assertRedirect('https://www.facebook.com/v25.0/dialog/oauth?test=1');
 
     expect(session('social_connect_workspace'))->toBe($this->workspace->id);
 });
@@ -657,10 +656,9 @@ test('facebook connect remembers the reconnect account from the query string', f
         ->andReturn($driverMock);
 
     $response = $this->actingAs($this->user)
-        ->withHeader('X-Inertia', 'true')
         ->get(route('app.social.facebook.connect', ['reconnect' => $account->id]));
 
-    $response->assertStatus(409);
+    $response->assertRedirect('https://www.facebook.com/v25.0/dialog/oauth?test=1');
 
     expect(session('social_connect_workspace'))->toBe($this->workspace->id)
         ->and(session('social_reconnect_id'))->toBe($account->id);
@@ -685,9 +683,8 @@ test('facebook connect ignores a reconnect id from another workspace', function 
         ->andReturn($driverMock);
 
     $this->actingAs($this->user)
-        ->withHeader('X-Inertia', 'true')
         ->get(route('app.social.facebook.connect', ['reconnect' => $foreign->id]))
-        ->assertStatus(409);
+        ->assertRedirect('https://www.facebook.com/v25.0/dialog/oauth?test=1');
 
     expect(session('social_reconnect_id'))->toBeNull();
 });
@@ -712,9 +709,8 @@ test('facebook connect ignores a reconnect id from another network', function ()
         ->andReturn($driverMock);
 
     $this->actingAs($this->user)
-        ->withHeader('X-Inertia', 'true')
         ->get(route('app.social.facebook.connect', ['reconnect' => $linkedin->id]))
-        ->assertStatus(409);
+        ->assertRedirect('https://www.facebook.com/v25.0/dialog/oauth?test=1');
 
     expect(session('social_reconnect_id'))->toBeNull();
 });

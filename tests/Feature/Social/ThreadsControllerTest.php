@@ -20,10 +20,10 @@ beforeEach(function () {
 
 test('threads connect redirects to oauth', function () {
     $response = $this->actingAs($this->user)
-        ->withHeader('X-Inertia', 'true')
         ->get(route('app.social.threads.connect'));
 
-    $response->assertStatus(409); // Inertia::location returns 409 with X-Inertia header
+    expect($response->headers->get('Location'))
+        ->toStartWith('https://threads.net/oauth/authorize');
 
     expect(session('social_connect_workspace'))->toBe($this->workspace->id);
     expect(session('threads_oauth_state'))->not->toBeNull();
