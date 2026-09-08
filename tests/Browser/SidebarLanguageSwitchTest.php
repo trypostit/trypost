@@ -140,3 +140,38 @@ test('the calendar header follows the language, not the previous one', function 
     $page->assertScript('/setembro/i.test(window.__header)', true)
         ->assertScript('/September/.test(window.__header)', false);
 });
+
+test('the month view header follows the language too', function () {
+    $user = User::factory()->create(['locale' => Locale::English]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'month']));
+    waitForSidebarLanguageTestId($page, 'sidebar-workspace-menu');
+
+    $page->script(<<<'JS'
+        (async () => {
+            const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+            document.querySelector('[data-testid="sidebar-workspace-menu"]').click();
+            await wait(400);
+            const trigger = document.querySelector('[data-testid="sidebar-language-trigger"]');
+            trigger.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+            trigger.click();
+            await wait(600);
+            document.querySelector('[data-testid="sidebar-language-pt-BR"]').click();
+            await wait(2500);
+            window.__monthHeader = document.body.innerText;
+        })();
+    JS);
+
+    $page->script('(async () => { for (let i = 0; i < 150; i++) { if (window.__monthHeader !== undefined) return; await new Promise((r) => setTimeout(r, 50)); } })();');
+
+    $page->assertScript('/setembro/i.test(window.__monthHeader)', true)
+        ->assertScript('/September/.test(window.__monthHeader)', false);
+});

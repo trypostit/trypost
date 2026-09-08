@@ -79,10 +79,18 @@ const effectiveView = computed(() => {
 });
 
 
+/**
+ * Every date on this screen goes through here: `dayjs.locale()` is global and
+ * not reactive, so a computed built on a bare `dayjs()` keeps the previous
+ * language's month and day names after a switch.
+ */
+const localized = (value?: dayjs.ConfigType) =>
+    dayjs(value).locale(activeLocale.value.toLowerCase());
+
 // Generate weekday names based on dayjs locale (respects weekStart config)
 const weekdayNames = computed(() => {
     const names = [];
-    const start = dayjs().startOf('week');
+    const start = localized().startOf('week');
     for (let i = 0; i < 7; i++) {
         names.push(start.add(i, 'day').format('dddd'));
     }
@@ -92,7 +100,7 @@ const weekdayNames = computed(() => {
 const formatDayMonth = (day: dayjs.Dayjs): string => day.format('D MMMM');
 
 // Day view computed
-const currentDay = computed(() => dayjs(props.currentDay));
+const currentDay = computed(() => localized(props.currentDay));
 
 const dayHeaderTitle = computed(() => currentDay.value.format('LL'));
 
@@ -105,9 +113,7 @@ const dayPosts = computed(() => {
 const selectedDate = ref(props.currentDay);
 
 // Week view computed
-const weekStart = computed(() =>
-    dayjs(props.currentWeekStart).locale(activeLocale.value.toLowerCase()),
-);
+const weekStart = computed(() => localized(props.currentWeekStart));
 
 const weekDays = computed(() => {
     const days = [];
@@ -134,7 +140,7 @@ const weekHeaderTitle = computed(() => {
 });
 
 // Month view computed
-const monthDate = computed(() => dayjs(props.currentMonth));
+const monthDate = computed(() => localized(props.currentMonth));
 
 const monthHeaderTitle = computed(() => monthDate.value.format('MMMM YYYY'));
 
