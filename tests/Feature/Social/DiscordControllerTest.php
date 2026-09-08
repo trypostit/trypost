@@ -19,6 +19,16 @@ beforeEach(function () {
     $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
 });
 
+test('discord authorize url asks for the bot scope and leaves the server picker open', function () {
+    $response = $this->actingAs($this->user)->get(route('app.social.discord.connect'));
+
+    expect(urldecode((string) $response->headers->get('Location')))
+        ->toStartWith('https://discord.com/api/oauth2/authorize')
+        ->toContain('scope=bot identify guilds')
+        ->toContain('permissions=248832')
+        ->not->toContain('disable_guild_select');
+});
+
 test('discord connect redirects to the oauth provider', function () {
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('scopes')->andReturnSelf();

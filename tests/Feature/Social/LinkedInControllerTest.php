@@ -38,6 +38,15 @@ function linkedInSocialiteUser(string $id = 'person-123'): SocialiteUser
     return $socialiteUser;
 }
 
+test('linkedin authorize url carries the member and organization scopes', function () {
+    $response = $this->actingAs($this->user)->get(route('app.social.linkedin.connect'));
+
+    expect(urldecode((string) $response->headers->get('Location')))
+        ->toStartWith('https://www.linkedin.com/oauth/v2/authorization')
+        ->toContain('w_member_social')
+        ->toContain('rw_organization_admin');
+});
+
 test('linkedin connect redirects to oauth provider via the openid driver', function () {
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('scopes')->andReturnSelf();

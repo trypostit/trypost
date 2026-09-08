@@ -19,6 +19,15 @@ beforeEach(function () {
     $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
 });
 
+test('x authorize url uses the current host and pkce', function () {
+    $response = $this->actingAs($this->user)->get(route('app.social.x.connect'));
+
+    expect(urldecode((string) $response->headers->get('Location')))
+        ->toStartWith('https://x.com/i/oauth2/authorize')
+        ->toContain('code_challenge_method=S256')
+        ->toContain('offline.access');
+});
+
 test('x connect redirects to oauth provider', function () {
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('scopes')->andReturnSelf();
