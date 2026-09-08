@@ -11,7 +11,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rules\Enum;
+use Illuminate\Validation\Rule as ValidationRule;
 use Illuminate\Validation\ValidationException;
 
 class LoginRequest extends FormRequest
@@ -34,7 +34,7 @@ class LoginRequest extends FormRequest
         return [
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
-            'locale' => ['required', new Enum(Locale::class)],
+            'locale' => ['required', ValidationRule::enum(Locale::class)],
         ];
     }
 

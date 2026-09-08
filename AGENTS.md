@@ -344,24 +344,23 @@ and parity with `ContentLanguage`).
 
 - **There is no `locale` cookie.** The app stored the locale in the database
   until March 2026, moved it to a forever cookie, and moved it back here. Do not
-  reintroduce the cookie as a "guest fallback": a second source of truth is what
-  made the switcher and the register page disagree the first time.
-- `App\Support\LocaleResolver` is the only place that decides the active locale.
-  For an authenticated user it is `$user->locale`, full stop. For a guest it is
-  the submitted `locale`, then the flashed `old('locale')`, then a negotiated
-  `Accept-Language`, then `Locale::DEFAULT`. The first two steps exist for the
-  register page's language picker — the submitted value is what keeps the
-  **backend validation messages** in the language the visitor picked, and the old
-  input is what keeps the re-rendered form in it after a failed submit. Drop
-  either and a Portuguese visitor gets English error messages.
-- `locale` is `required` on `RegisterRequest`: the register form always submits
-  the field (the hidden input falls back to the `locale` page prop), so a missing
-  one means a broken client, not a visitor without a preference.
-- Google and GitHub signups always store `Locale::DEFAULT`. They have no picker,
-  and the OAuth callback's `Accept-Language` is the provider's redirect, not a
-  reliable signal about the person.
-- The picker translates the page client-side (`loadLanguageAsync`), so choosing a
-  language never costs a round trip; the value only reaches the server on submit.
+  reintroduce the cookie: a second source of truth is what made the switcher and
+  the register page disagree the first time.
+- **`SetLocale` has exactly one rule:** an authenticated request renders in
+  `Auth::user()->locale`, everything else in `Locale::DEFAULT`. It does not look
+  at the request body, old input or `Accept-Language`. A logged-out visitor
+  therefore always gets English from the server, including validation messages.
+- **The auth switcher is client-side only.** It calls `loadLanguageAsync`, so
+  changing language on login or register costs no round trip and touches nothing
+  on the server. `useGuestLocale` holds the choice at module scope so it survives
+  Inertia navigation between those screens.
+- **Login and register both submit `locale` as a required hidden field**, and
+  both write it: register creates the user with it, login updates the user and
+  dispatches `SyncUser`. The redirect after either lands on a page the middleware
+  already renders in that language. Forgot and reset password do not send the
+  field — nothing reads it there.
+- Google and GitHub signups store `Locale::DEFAULT`: they have no picker, and the
+  OAuth callback tells you nothing reliable about the person.
 
 ## PostHog person properties
 
