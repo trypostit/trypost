@@ -23,6 +23,14 @@ beforeEach(function () {
     $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
 });
 
+test('facebook authorize url reopens the page selection', function () {
+    $response = $this->actingAs($this->user)->get(route('app.social.facebook.connect'));
+
+    expect(urldecode((string) $response->headers->get('Location')))
+        ->toStartWith('https://www.facebook.com/')
+        ->toContain('auth_type=rerequest');
+});
+
 test('facebook connect redirects to oauth provider', function () {
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('usingGraphVersion')->andReturnSelf();

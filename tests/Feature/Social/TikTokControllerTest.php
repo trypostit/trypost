@@ -19,6 +19,14 @@ beforeEach(function () {
     $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
 });
 
+test('tiktok authorize url disables auto auth', function () {
+    $response = $this->actingAs($this->user)->get(route('app.social.tiktok.connect'));
+
+    expect(urldecode((string) $response->headers->get('Location')))
+        ->toStartWith('https://www.tiktok.com/v2/auth/authorize')
+        ->toContain('disable_auto_auth=1');
+});
+
 test('tiktok connect redirects to oauth provider', function () {
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('scopes')->andReturnSelf();

@@ -22,6 +22,14 @@ beforeEach(function () {
     $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
 });
 
+test('instagram-facebook authorize url reopens the page selection', function () {
+    $response = $this->actingAs($this->user)->get(route('app.social.instagram-facebook.connect'));
+
+    expect(urldecode((string) $response->headers->get('Location')))
+        ->toStartWith('https://www.facebook.com/')
+        ->toContain('auth_type=rerequest');
+});
+
 test('instagram-facebook connect redirects to oauth provider', function () {
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('usingGraphVersion')->andReturnSelf();
