@@ -37,7 +37,9 @@ class TikTokController extends SocialController
 
         $this->authorize('manageAccounts', $workspace);
 
-        return $this->redirectToProvider($request, $this->driver, $this->scopes);
+        return $this->redirectToProvider($request, $this->driver, $this->scopes, [
+            'disable_auto_auth' => 1,
+        ]);
     }
 
     public function callback(Request $request): InertiaResponse

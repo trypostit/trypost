@@ -22,6 +22,7 @@ beforeEach(function () {
 test('tiktok connect redirects to oauth provider', function () {
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('scopes')->andReturnSelf();
+    $driverMock->shouldReceive('with')->with(['disable_auto_auth' => 1])->once()->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
         'getTargetUrl' => 'https://www.tiktok.com/v2/auth/authorize?test=1',
     ]));
@@ -193,6 +194,7 @@ test('tiktok connect carries a reconnect id into the session', function () {
 
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('scopes')->andReturnSelf();
+    $driverMock->shouldReceive('with')->with(['disable_auto_auth' => 1])->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
         'getTargetUrl' => 'https://www.tiktok.com/v2/auth/authorize?test=1',
     ]));

@@ -206,17 +206,24 @@ class SocialController extends Controller
         )->values()->all();
     }
 
-    protected function redirectToProvider(Request $request, string $driver, array $scopes): SymfonyResponse
+    /**
+     * @param  array<int, string>  $scopes
+     * @param  array<string, mixed>  $parameters  Extra query parameters for the provider's authorize URL.
+     */
+    protected function redirectToProvider(Request $request, string $driver, array $scopes, array $parameters = []): SymfonyResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
         $this->rememberConnectSession($request, $workspace);
 
+        $provider = Socialite::driver($driver)->scopes($scopes);
+
+        if ($parameters !== []) {
+            $provider->with($parameters);
+        }
+
         return Inertia::location(
-            Socialite::driver($driver)
-                ->scopes($scopes)
-                ->redirect()
-                ->getTargetUrl()
+            $provider->redirect()->getTargetUrl()
         );
     }
 
