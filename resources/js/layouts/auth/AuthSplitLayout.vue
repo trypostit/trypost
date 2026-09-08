@@ -1,15 +1,8 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
-import {
-    IconCalendar,
-    IconClock,
-    IconHash,
-    IconPhoto,
-    IconUsers,
-    IconVideo,
-} from '@tabler/icons-vue';
+import { IconStarFilled } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { onBeforeUnmount, onMounted, ref, computed } from 'vue';
+import { computed } from 'vue';
 
 import AuthLanguageSwitcher from '@/components/auth/AuthLanguageSwitcher.vue';
 import type { Auth } from '@/types';
@@ -23,73 +16,29 @@ const page = usePage();
 
 const isGuest = computed(() => !(page.props.auth as Auth).user);
 
-const slideKeys = ['calendar', 'scheduling', 'media', 'video', 'team', 'signatures'] as const;
+const g2ReviewsUrl = 'https://www.g2.com/products/trypost/reviews';
 
-const slideIcons = {
-    calendar: IconCalendar,
-    scheduling: IconClock,
-    media: IconPhoto,
-    video: IconVideo,
-    team: IconUsers,
-    signatures: IconHash,
+const reviewKeys = ['paulo_dantas', 'diego', 'luiz', 'pedro', 'paulo_castellano'] as const;
+
+const reviewPeople = {
+    paulo_dantas: { name: 'Paulo Dantas', photo: '/images/reviews/paulo-dantas.png' },
+    diego: { name: 'Diego Sampaio', photo: '/images/reviews/diego-sampaio.png' },
+    luiz: { name: 'Luiz Mazini', photo: '/images/reviews/luiz-mazini.jpg' },
+    pedro: { name: 'Pedro Campos', photo: '/images/reviews/pedro-campos.jpg' },
+    paulo_castellano: { name: 'Paulo Castellano', photo: '/images/reviews/paulo-castellano.png' },
 };
 
-const slides = computed(() =>
-    slideKeys.map((key) => ({
-        icon: slideIcons[key],
-        title: trans(`auth.slides.${key}.title`),
-        description: trans(`auth.slides.${key}.description`),
+const reviews = computed(() =>
+    reviewKeys.map((key) => ({
+        key,
+        name: reviewPeople[key].name,
+        photo: reviewPeople[key].photo,
+        role: trans(`auth.reviews.${key}.role`),
+        quote: trans(`auth.reviews.${key}.quote`),
     })),
 );
 
-const activeIndex = ref(0);
-const isPaused = ref(false);
-let intervalId: ReturnType<typeof setInterval> | null = null;
-
-const activeSlide = computed(() => slides.value[activeIndex.value]);
-
-const goTo = (index: number) => {
-    activeIndex.value = index;
-    restartInterval();
-};
-
-const startInterval = () => {
-    intervalId = setInterval(() => {
-        if (!isPaused.value) {
-            activeIndex.value = (activeIndex.value + 1) % slides.value.length;
-        }
-    }, 4000);
-};
-
-const restartInterval = () => {
-    if (intervalId) {
-        clearInterval(intervalId);
-    }
-    startInterval();
-};
-
-onMounted(() => {
-    startInterval();
-});
-
-onBeforeUnmount(() => {
-    if (intervalId) {
-        clearInterval(intervalId);
-    }
-});
-
-const platforms = [
-    { name: 'LinkedIn', icon: '/images/accounts/linkedin.png' },
-    { name: 'X', icon: '/images/accounts/x.png' },
-    { name: 'Instagram', icon: '/images/accounts/instagram.png' },
-    { name: 'Facebook', icon: '/images/accounts/facebook.png' },
-    { name: 'TikTok', icon: '/images/accounts/tiktok.png' },
-    { name: 'YouTube', icon: '/images/accounts/youtube.png' },
-    { name: 'Threads', icon: '/images/accounts/threads.png' },
-    { name: 'Pinterest', icon: '/images/accounts/pinterest.png' },
-    { name: 'Bluesky', icon: '/images/accounts/bluesky.png' },
-    { name: 'Mastodon', icon: '/images/accounts/mastodon.png' },
-];
+const loopedReviews = computed(() => [...reviews.value, ...reviews.value]);
 </script>
 
 <template>
@@ -123,8 +72,6 @@ const platforms = [
 
         <div
             class="relative hidden overflow-hidden border-l-2 border-foreground bg-accent lg:sticky lg:top-0 lg:block lg:h-svh lg:self-start"
-            @mouseenter="isPaused = true"
-            @mouseleave="isPaused = false"
         >
             <!-- Soft violet glow blobs for ambient depth (off-canvas). -->
             <div class="pointer-events-none absolute -top-24 -right-24 size-[440px] rounded-full bg-violet-200/50 blur-3xl" />
@@ -136,106 +83,84 @@ const platforms = [
                 style="background-image: radial-gradient(circle, #0a0a0a 1px, transparent 1px); background-size: 28px 28px;"
             />
 
-            <div class="relative flex h-full flex-col items-center justify-center px-12 xl:px-16">
-                <!-- Mockup card carousel -->
-                <div class="relative h-[280px] w-full max-w-md">
-                    <template v-for="(slide, index) in slides" :key="index">
-                        <Transition
-                            enter-active-class="transition-all duration-500 ease-out"
-                            leave-active-class="transition-all duration-500 ease-out"
-                            enter-from-class="opacity-0 translate-y-4"
-                            enter-to-class="opacity-100 translate-y-0"
-                            leave-from-class="opacity-100 translate-y-0"
-                            leave-to-class="opacity-0 -translate-y-4"
-                        >
-                            <div
-                                v-if="activeIndex === index"
-                                class="absolute inset-0 flex items-center justify-center"
-                            >
-                                <div class="w-full overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-xl -rotate-1">
-                                    <!-- Title bar with traffic lights + live badge -->
-                                    <div class="flex items-center gap-3 border-b-2 border-foreground bg-muted px-4 py-2.5">
-                                        <div class="flex gap-1.5">
-                                            <span class="size-3 rounded-full border border-foreground bg-rose-300" />
-                                            <span class="size-3 rounded-full border border-foreground bg-amber-300" />
-                                            <span class="size-3 rounded-full border border-foreground bg-emerald-300" />
-                                        </div>
-                                        <div class="ml-2 truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                                            trypost.it
-                                        </div>
-                                        <span class="ml-auto inline-flex items-center gap-1.5 rounded-md border-2 border-foreground bg-foreground px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-background shadow-2xs">
-                                            <span class="relative flex size-1.5">
-                                                <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/80" />
-                                                <span class="relative inline-flex size-1.5 rounded-full bg-emerald-400" />
-                                            </span>
-                                            Live
-                                        </span>
-                                    </div>
+            <div class="relative flex h-full flex-col px-12 pt-14 xl:px-16">
+                <div class="mx-auto w-full max-w-md">
+                    <a
+                        :href="g2ReviewsUrl"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="group inline-flex items-center gap-3"
+                    >
+                        <div class="flex gap-0.5">
+                            <IconStarFilled v-for="star in 5" :key="star" class="size-4 text-amber-500" />
+                        </div>
+                        <span class="text-xs font-bold tracking-widest text-foreground/70 uppercase underline-offset-4 transition-colors group-hover:text-foreground group-hover:underline">
+                            {{ $t('auth.reviews.eyebrow') }}
+                        </span>
+                    </a>
 
-                                    <!-- Body: feature icon -->
-                                    <div class="flex items-center justify-center bg-card py-8">
-                                        <div class="flex size-20 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-200 shadow-sm -rotate-2">
-                                            <component :is="slide.icon" class="size-10 text-foreground" />
-                                        </div>
-                                    </div>
-
-                                    <!-- Platform strip -->
-                                    <div class="flex flex-wrap justify-center gap-1.5 border-t-2 border-foreground/15 bg-card px-4 py-3">
-                                        <img
-                                            v-for="platform in platforms"
-                                            :key="platform.name"
-                                            :src="platform.icon"
-                                            :alt="platform.name"
-                                            class="size-7 rounded-full border-2 border-foreground bg-card p-0.5 shadow-2xs"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </Transition>
-                    </template>
+                    <h2 class="h3 mt-4 text-2xl whitespace-nowrap text-foreground">
+                        {{ $t('auth.reviews.heading') }}
+                    </h2>
                 </div>
 
-                <!-- Text content -->
-                <div class="mt-10 w-full max-w-md text-center">
-                    <div class="relative h-[100px]">
-                        <TransitionGroup
-                            enter-active-class="transition-all duration-400 ease-out"
-                            leave-active-class="transition-all duration-300 ease-in"
-                            enter-from-class="opacity-0 translate-y-2"
-                            enter-to-class="opacity-100 translate-y-0"
-                            leave-from-class="opacity-100"
-                            leave-to-class="opacity-0"
+                <div class="relative mt-10 min-h-0 flex-1 overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_12%,black_82%,transparent)]">
+                    <div class="marquee mx-auto flex w-full max-w-md flex-col gap-4">
+                        <figure
+                            v-for="(review, index) in loopedReviews"
+                            :key="`${review.key}-${index}`"
+                            class="shrink-0 rounded-xl border-2 border-foreground bg-card p-5 shadow-sm"
+                            :class="index % 2 === 0 ? '-rotate-1' : 'rotate-1'"
                         >
-                            <div :key="activeIndex" class="absolute inset-x-0 top-0">
-                                <h3 class="h3 text-foreground">
-                                    {{ activeSlide.title }}
-                                </h3>
-                                <p class="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-foreground/70">
-                                    {{ activeSlide.description }}
-                                </p>
+                            <div class="flex gap-0.5">
+                                <IconStarFilled v-for="star in 5" :key="star" class="size-3.5 text-amber-500" />
                             </div>
-                        </TransitionGroup>
-                    </div>
 
-                    <!-- Dots -->
-                    <div class="flex items-center justify-center gap-2">
-                        <button
-                            v-for="(_, index) in slides"
-                            :key="index"
-                            class="group relative flex h-5 cursor-pointer items-center justify-center"
-                            @click="goTo(index)"
-                        >
-                            <span
-                                class="block h-1.5 rounded-full border border-foreground transition-all duration-300"
-                                :class="activeIndex === index
-                                    ? 'w-6 bg-foreground'
-                                    : 'w-1.5 bg-card group-hover:bg-foreground/30'
-                                "
-                            />
-                        </button>
+                            <blockquote class="mt-3 text-sm leading-relaxed text-foreground/80">
+                                “{{ review.quote }}”
+                            </blockquote>
+
+                            <figcaption class="mt-4 flex items-center gap-3">
+                                <img
+                                    :src="review.photo"
+                                    :alt="review.name"
+                                    class="size-10 shrink-0 rounded-full border-2 border-foreground object-cover shadow-2xs"
+                                />
+                                <span class="min-w-0">
+                                    <span class="block truncate text-sm font-bold text-foreground">{{ review.name }}</span>
+                                    <span class="block truncate text-xs text-muted-foreground">{{ review.role }}</span>
+                                </span>
+                            </figcaption>
+                        </figure>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </template>
+
+<style scoped>
+@keyframes marquee-down {
+    0% {
+        transform: translateY(calc(-50% - 0.5rem));
+    }
+
+    100% {
+        transform: translateY(0);
+    }
+}
+
+.marquee {
+    animation: marquee-down 45s linear infinite;
+}
+
+.marquee:hover {
+    animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .marquee {
+        animation: none;
+    }
+}
+</style>
