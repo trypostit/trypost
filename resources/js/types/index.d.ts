@@ -139,6 +139,7 @@ export interface PinterestBoardsPayload {
 export interface Language {
     code: string;
     name: string;
+    dir: string;
     flag: string;
 }
 

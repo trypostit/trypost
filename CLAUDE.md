@@ -279,7 +279,9 @@ and parity with `ContentLanguage`).
 - **The auth switcher is client-side only.** It calls `loadLanguageAsync`, so
   changing language on login or register costs no round trip and touches nothing
   on the server. `useGuestLocale` holds the choice at module scope so it survives
-  Inertia navigation between those screens.
+  Inertia navigation between those screens, and it sets `document.documentElement.dir`
+  from the picked language — for a guest that is the *only* source of direction,
+  since the middleware renders `htmlDir` from the default on every request.
 - **Register submits `locale` as a required hidden field** and creates the user
   with it. **Login submits it only once the visitor picks a language** — the
   field goes out empty otherwise, and an empty value leaves `users.locale`
