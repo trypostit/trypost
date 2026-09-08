@@ -42,8 +42,6 @@ class CreateWorkspace
             return $workspace;
         });
 
-        $user->account?->syncWorkspaceQuantity();
-
         return $workspace;
     }
 }

@@ -122,23 +122,17 @@ test('throws when a qualifying coupon would combine with allow promotion codes',
         ->and(trialExpiresAt($subscription))->toBeNull();
 });
 
-test('does not throw when coupon and promo are both set but multi-workspace skips the coupon', function () {
+test('throws when coupon and promo are both set even if the account has several workspaces', function () {
     config([
         'cashier.first_month_coupon_id' => 'TRIAL1USD',
         'cashier.allow_promotion_codes' => true,
     ]);
     Workspace::factory()->count(2)->create(['account_id' => $this->account->id]);
 
-    Carbon::setTestNow('2026-08-07 12:00:00');
-
     $subscription = checkoutSubscription($this->account);
 
     expect(fn () => ConfigureSubscriptionCheckout::apply($subscription, $this->account))
-        ->not->toThrow(RuntimeException::class);
-
-    expect($subscription->couponId)->toBeNull()
-        ->and($subscription->allowPromotionCodes)->toBeTrue()
-        ->and(trialExpiresAt($subscription)?->toDateTimeString())->toBe('2026-08-15 12:00:00');
+        ->toThrow(RuntimeException::class, 'Cannot apply STRIPE_FIRST_MONTH_COUPON_ID while CASHIER_ALLOW_PROMOTION_CODES is enabled');
 });
 
 test('does not throw when coupon and promo are both set but a prior canceled subscription skips the coupon', function () {
@@ -194,18 +188,16 @@ test('skips the coupon and allows promotion codes when a card is not required', 
         ->and(trialExpiresAt($subscription))->toBeNull();
 });
 
-test('skips the coupon when more than one workspace is billed and still applies trial for first-time', function () {
+test('the first-month coupon applies to a first-time subscriber with several workspaces', function () {
     config(['cashier.first_month_coupon_id' => 'TRIAL1USD']);
     Workspace::factory()->count(2)->create(['account_id' => $this->account->id]);
-
-    Carbon::setTestNow('2026-08-07 12:00:00');
 
     $subscription = checkoutSubscription($this->account);
 
     ConfigureSubscriptionCheckout::apply($subscription, $this->account);
 
-    expect($subscription->couponId)->toBeNull()
-        ->and(trialExpiresAt($subscription)?->toDateTimeString())->toBe('2026-08-15 12:00:00');
+    expect($subscription->couponId)->toBe('TRIAL1USD')
+        ->and(trialExpiresAt($subscription))->toBeNull();
 });
 
 test('skips coupon and trial when the account has a prior canceled subscription', function () {
@@ -281,15 +273,13 @@ test('skips trial days when trial_days is zero', function () {
         ->and($subscription->allowPromotionCodes)->toBeFalse();
 });
 
-test('zero workspaces still get a first-time trial without a coupon', function () {
+test('zero workspaces still get the first-month coupon when first-time', function () {
     config(['cashier.first_month_coupon_id' => 'TRIAL1USD']);
-
-    Carbon::setTestNow('2026-08-07 12:00:00');
 
     $subscription = checkoutSubscription($this->account);
 
     ConfigureSubscriptionCheckout::apply($subscription, $this->account);
 
-    expect($subscription->couponId)->toBeNull()
-        ->and(trialExpiresAt($subscription)?->toDateTimeString())->toBe('2026-08-15 12:00:00');
+    expect($subscription->couponId)->toBe('TRIAL1USD')
+        ->and(trialExpiresAt($subscription))->toBeNull();
 });

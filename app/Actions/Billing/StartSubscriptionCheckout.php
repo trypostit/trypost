@@ -14,7 +14,7 @@ class StartSubscriptionCheckout
 {
     /**
      * Create a Stripe Checkout session for the given price and return an Inertia
-     * redirect to it. Quantity tracks the account's workspace count. Trial days,
+     * redirect to it. Trial days,
      * optional first-month coupon, and promotion codes come from cashier /
      * trypost billing env config via ConfigureSubscriptionCheckout. The owner's
      * signup attribution -- UTM parameters and ad click IDs -- and onboarding
@@ -50,7 +50,6 @@ class StartSubscriptionCheckout
         ]);
 
         $subscription = $account->newSubscription(Account::SUBSCRIPTION_NAME, $priceId)
-            ->quantity(max(1, $account->workspaces()->count()))
             ->withMetadata(array_map(
                 fn (string $value): string => Str::limit($value, 500, ''),
                 $metadata,

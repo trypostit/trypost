@@ -32,7 +32,7 @@ class WorkspacePolicy
 
     public function delete(User $user, Workspace $workspace): bool
     {
-        // Owner-only: deleting a workspace changes Stripe subscription quantity.
+        // Owner-only: deleting a workspace is an account-level, irreversible action.
         return $this->isOwner($user, $workspace);
     }
 

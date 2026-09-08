@@ -47,7 +47,6 @@ test('redirect applies checkout configuration and attribution metadata before op
     $cancelUrl = route('app.welcome');
 
     $builder = Mockery::mock(SubscriptionBuilder::class);
-    $builder->shouldReceive('quantity')->once()->with(1)->andReturnSelf();
     $builder->shouldReceive('withMetadata')
         ->once()
         ->with([
@@ -112,7 +111,6 @@ test('redirect sends no metadata for an account whose owner left every field emp
     $cancelUrl = route('app.welcome');
 
     $builder = Mockery::mock(SubscriptionBuilder::class);
-    $builder->shouldReceive('quantity')->once()->andReturnSelf();
     $builder->shouldReceive('withMetadata')->once()->with([])->andReturnSelf();
     $builder->shouldReceive('trialDays')->once()->andReturnSelf();
     $builder->shouldReceive('checkout')
@@ -144,7 +142,6 @@ test('redirect cuts an oversized click id to the stripe metadata limit', functio
     $account->refresh();
 
     $builder = Mockery::mock(SubscriptionBuilder::class);
-    $builder->shouldReceive('quantity')->once()->andReturnSelf();
     $builder->shouldReceive('withMetadata')
         ->once()
         ->with(['fbclid' => str_repeat('a', 500)])

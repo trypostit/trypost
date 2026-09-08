@@ -13,9 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Billable;
-use Throwable;
 
 class Account extends Model
 {
@@ -110,28 +108,6 @@ class Account extends Model
         }
 
         return $this->plan?->workspace_limit;
-    }
-
-    public function syncWorkspaceQuantity(): void
-    {
-        if (config('trypost.self_hosted')) {
-            return;
-        }
-
-        $subscription = $this->subscription(self::SUBSCRIPTION_NAME);
-
-        if (! $subscription || ! $subscription->active()) {
-            return;
-        }
-
-        try {
-            $subscription->updateQuantity($this->workspaces()->count());
-        } catch (Throwable $e) {
-            Log::warning('Failed to sync workspace quantity to Stripe', [
-                'account_id' => $this->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
     }
 
     public function isPastDue(): bool

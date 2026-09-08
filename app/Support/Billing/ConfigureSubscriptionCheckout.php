@@ -62,10 +62,9 @@ final class ConfigureSubscriptionCheckout
     }
 
     /**
-     * Fixed amount_off first-month coupons only fit a new customer checking out a
-     * single workspace. A subscription that never left incomplete never became
-     * real, so a retry after a failed first attempt still qualifies; any started
-     * subscription (even canceled) does not.
+     * First-month coupons only fit a new customer. A subscription that never
+     * left incomplete never became real, so a retry after a failed first
+     * attempt still qualifies; any started subscription (even canceled) does not.
      */
     private static function shouldApplyFirstMonthCoupon(Account $account): bool
     {
@@ -79,8 +78,7 @@ final class ConfigureSubscriptionCheckout
             return false;
         }
 
-        return $account->workspaces()->count() === 1
-            && self::isFirstTimeSubscriber($account);
+        return self::isFirstTimeSubscriber($account);
     }
 
     /**
