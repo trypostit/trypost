@@ -21,7 +21,7 @@ class WebhookPausedMail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: __('webhooks.mail.paused_subject', ['endpoint' => $this->webhook->endpoint]),
+            subject: __('mail.webhook_paused.subject', ['endpoint' => $this->webhook->endpoint]),
         );
     }
 
@@ -30,10 +30,9 @@ class WebhookPausedMail extends Mailable implements ShouldQueue
         return new Content(
             view: 'mail.webhook-paused',
             with: [
-                'title' => __('webhooks.mail.paused_title'),
-                'previewText' => __('webhooks.mail.paused_preview'),
-                'body' => __('webhooks.mail.paused_body', ['endpoint' => $this->webhook->endpoint]),
-                'buttonText' => __('webhooks.mail.paused_cta'),
+                'title' => __('mail.webhook_paused.title'),
+                'previewText' => __('mail.webhook_paused.preview'),
+                'endpoint' => $this->webhook->endpoint,
                 'url' => route('app.webhooks.show', $this->webhook),
             ],
         );

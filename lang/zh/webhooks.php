@@ -129,11 +129,4 @@ return [
         'replayed' => '已重新发送 webhook 事件。',
         'tested' => '已发送测试事件。',
     ],
-    'mail' => [
-        'paused_subject' => 'Webhook 已暂停：:endpoint',
-        'paused_title' => 'Webhook 因连续失败已暂停',
-        'paused_preview' => '连续 5 次投递失败后，我们暂停了一个 webhook。',
-        'paused_body' => '连续 5 次投递失败后，我们暂停了 :endpoint 上的 webhook。请检查该 endpoint，并在 webhook 详情页重新启用。',
-        'paused_cta' => '查看 webhook',
-    ],
 ];

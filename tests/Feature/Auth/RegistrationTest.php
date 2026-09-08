@@ -38,6 +38,7 @@ test('new users can register', function () {
         'name' => 'Test User',
         'email' => 'test@example.com',
         'password' => 'Password123!',
+        'locale' => 'en',
     ]);
 
     $response->assertSessionHasNoErrors();
@@ -50,6 +51,7 @@ test('new users get a default workspace on registration', function () {
         'name' => 'Test User',
         'email' => 'test@example.com',
         'password' => 'Password123!',
+        'locale' => 'en',
     ]);
 
     $user = User::where('email', 'test@example.com')->first();
@@ -66,6 +68,7 @@ test('new users do not have verified email by default', function () {
         'name' => 'Test User',
         'email' => 'test@example.com',
         'password' => 'Password123!',
+        'locale' => 'en',
     ]);
 
     $user = User::where('email', 'test@example.com')->first();
@@ -93,6 +96,7 @@ test('new users registering via invite have verified email automatically', funct
         'email' => 'test@example.com',
         'password' => 'Password123!',
         'invite' => $invite->id,
+        'locale' => 'en',
     ]);
 
     $user = User::where('email', 'test@example.com')->first();
@@ -115,6 +119,7 @@ test('register POST returns 404 when self_hosted and no pending invite in sessio
         'name' => 'Test User',
         'email' => 'test@example.com',
         'password' => 'Password123!',
+        'locale' => 'en',
     ]);
 
     $response->assertNotFound();
@@ -151,6 +156,7 @@ test('signup clears pending_invite_id from session', function () {
             'name' => 'Invitee',
             'email' => 'invitee@example.com',
             'password' => 'Password123!',
+            'locale' => 'en',
         ]);
 
     expect(session('pending_invite_id'))->toBeNull();
@@ -165,6 +171,7 @@ test('register POST passes when self_hosted with invite query param even without
         'name' => 'Invitee',
         'email' => 'invitee@example.com',
         'password' => 'Password123!',
+        'locale' => 'en',
     ]);
 
     $response->assertSessionHasNoErrors();
@@ -180,6 +187,7 @@ test('register works normally when not self_hosted even with pending invite in s
             'name' => 'Invitee',
             'email' => 'invitee@example.com',
             'password' => 'Password123!',
+            'locale' => 'en',
         ]);
 
     $response->assertSessionHasNoErrors();

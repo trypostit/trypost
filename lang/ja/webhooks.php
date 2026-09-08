@@ -129,11 +129,4 @@ return [
         'replayed' => 'Webhookイベントを再送信しました。',
         'tested' => 'テストイベントを送信しました。',
     ],
-    'mail' => [
-        'paused_subject' => 'Webhookを一時停止しました: :endpoint',
-        'paused_title' => '連続した失敗のためWebhookを一時停止しました',
-        'paused_preview' => '配信が5回連続で失敗したため、Webhookを一時停止しました。',
-        'paused_body' => ':endpoint のWebhookを、配信が5回連続で失敗したため一時停止しました。Endpointを確認し、Webhookの詳細ページから再度有効にしてください。',
-        'paused_cta' => 'Webhookを見る',
-    ],
 ];

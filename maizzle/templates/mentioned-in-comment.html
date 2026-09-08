@@ -13,7 +13,7 @@
                 </h1>
 
                 <p class="m-0 mb-4 leading-6">
-                  {!! __('mail.mentioned.intro', ['name' => '<strong>'.e($authorName).'</strong>']) !!}
+                  {!! __('mail.mentioned_in_comment.intro', ['name' => '<strong>'.e($authorName).'</strong>']) !!}
                 </p>
 
                 <div class="border-l-[3px] border-zinc-200 px-4 py-3 bg-zinc-50 rounded text-[15px] leading-[22px] text-zinc-700">
@@ -24,7 +24,7 @@
 
                 <div class="flex items-center justify-center">
                   <x-button href="@{{ $url }}">
-                    @{{ __('mail.mentioned.cta') }} &rarr;
+                    @{{ __('mail.mentioned_in_comment.button') }}
                   </x-button>
                 </div>
               </td>

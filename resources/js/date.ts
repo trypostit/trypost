@@ -1,4 +1,12 @@
 import dayjs from '@/dayjs';
+import { activeLocale } from '@/language';
+
+/**
+ * A dayjs instance bound to the current language. `dayjs.locale()` is global and
+ * not reactive, so reading the ref here is what makes a computed re-run when the
+ * language changes instead of serving the previous one from cache.
+ */
+const localized = (value?: dayjs.ConfigType) => dayjs(value).locale(activeLocale.value.toLowerCase());
 
 /**
  * Obtém o timezone do usuário
@@ -11,13 +19,13 @@ function getUserTimezone(): string {
 /** Resolve scheduled local datetime for platform previews, else now. */
 const resolvePreviewPostedAt = (postedAt?: string | null) => {
     if (postedAt) {
-        const parsed = dayjs(postedAt);
+        const parsed = localized(postedAt);
         if (parsed.isValid()) {
             return parsed;
         }
     }
 
-    return dayjs();
+    return localized();
 };
 
 /** X / Bluesky style: `4:21 PM · Aug 5, 2026` (locale-aware). */

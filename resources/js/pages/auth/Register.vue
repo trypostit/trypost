@@ -17,6 +17,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useGuestLocale } from '@/composables/useGuestLocale';
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
@@ -25,6 +26,8 @@ defineProps<{
     email?: string | null;
     invite?: string | null;
 }>();
+
+const { locale } = useGuestLocale();
 
 const showPassword = ref(false);
 const showEmailForm = ref(false);
@@ -71,6 +74,7 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
                 class="flex flex-col gap-6"
             >
                 <input v-if="invite" type="hidden" name="invite" :value="invite" />
+                <input type="hidden" name="locale" :value="locale" />
 
                 <div
                     v-if="hasSocial && showEmailForm"

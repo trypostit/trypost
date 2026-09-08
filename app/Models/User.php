@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\Auth\SocialAuthProvider;
 use App\Enums\Notification\Type as NotificationType;
+use App\Enums\User\Locale;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
 use App\Models\Traits\HasAccount;
@@ -13,6 +14,7 @@ use App\Models\Traits\HasMedia;
 use App\Models\Traits\HasWorkspace;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -23,7 +25,7 @@ use Illuminate\Support\Str;
 use Laravel\Passport\Contracts\OAuthenticatable;
 use Laravel\Passport\HasApiTokens;
 
-class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
+class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail, OAuthenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasAccount, HasApiTokens, HasFactory, HasMedia, HasUuids, HasWorkspace, Notifiable;
@@ -55,6 +57,7 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
         'persona',
         'goals',
         'referral_source',
+        'locale',
     ];
 
     /**
@@ -99,7 +102,13 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable
             'persona' => Persona::class,
             'goals' => 'array',
             'referral_source' => ReferralSource::class,
+            'locale' => Locale::class,
         ];
+    }
+
+    public function preferredLocale(): string
+    {
+        return $this->locale->value;
     }
 
     public function notifications(): HasMany

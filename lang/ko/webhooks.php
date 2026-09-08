@@ -129,11 +129,4 @@ return [
         'replayed' => '웹훅 이벤트를 다시 보냈습니다.',
         'tested' => '테스트 이벤트를 보냈습니다.',
     ],
-    'mail' => [
-        'paused_subject' => '웹훅이 일시정지됨: :endpoint',
-        'paused_title' => '반복된 실패로 웹훅이 일시정지되었습니다',
-        'paused_preview' => '연속 5회 전달에 실패한 뒤 웹훅을 일시정지했습니다.',
-        'paused_body' => ':endpoint의 웹훅을 연속 5회 전달 실패 후 일시정지했습니다. Endpoint를 확인한 뒤 웹훅 상세 페이지에서 다시 사용하세요.',
-        'paused_cta' => '웹훅 보기',
-    ],
 ];
