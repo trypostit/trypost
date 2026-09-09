@@ -11,6 +11,7 @@ return [
     'account_settings' => 'アカウントと請求',
     'workspace_settings' => 'ワークスペース設定',
     'log_out' => 'ログアウト',
+    'help' => 'ヘルプ',
     'workspace' => [
         'connections' => '接続',
         'signatures' => '署名',

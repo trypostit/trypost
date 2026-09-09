@@ -6,6 +6,7 @@ use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Route;
 
 beforeEach(function () {
     $this->account = Account::factory()->create();
@@ -21,17 +22,11 @@ beforeEach(function () {
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
 });
 
-test('usage index redirects to calendar in self hosted mode', function () {
-    config(['trypost.self_hosted' => true]);
-
-    $response = $this->actingAs($this->user)->get(route('app.usage.index'));
-
-    $response->assertRedirect(route('app.calendar'));
+test('the usage settings route is no longer registered', function () {
+    expect(Route::has('app.usage.index'))->toBeFalse();
 });
 
-test('usage index shows usage page when not self hosted', function () {
-    config(['trypost.self_hosted' => false]);
-
+test('legacy usage path redirects to billing', function () {
     $this->account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
         'stripe_id' => 'sub_test_'.fake()->uuid(),
@@ -39,11 +34,7 @@ test('usage index shows usage page when not self hosted', function () {
         'stripe_price' => 'price_123',
     ]);
 
-    $response = $this->actingAs($this->user)->get(route('app.usage.index'));
-
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('settings/account/Usage', false)
-        ->has('usage')
-    );
+    $this->actingAs($this->user)
+        ->get('/settings/account/usage')
+        ->assertRedirect('/settings/account/billing');
 });

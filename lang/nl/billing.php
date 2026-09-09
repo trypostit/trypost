@@ -36,6 +36,8 @@ return [
         'workspaces_unlimited' => 'Onbeperkte workspaces',
         'workspaces_tooltip' => 'Een workspace is één merk of klant, gescheiden van de rest: met eigen social-media-accounts, handtekeningen, labels, analytics, ledenrechten en MCP-verbinding.',
         'current' => 'Huidig plan',
+        'switch_to_yearly' => 'Overschakelen naar jaarlijks',
+        'switch_to_monthly' => 'Overschakelen naar maandelijks',
         'select' => 'Kies :plan',
         'start_first_month' => 'Start voor :price',
         'per_first_month' => '/eerste maand',
@@ -78,8 +80,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'Abonnement',
-        'description' => 'Beheer je betaalmethode, factuurgegevens en abonnement.',
+        'title' => 'Betaalmethode',
+        'description' => 'Werk je kaart of factuurgegevens bij in Stripe.',
         'payment_method' => 'Betaalmethode',
         'no_payment_method' => 'Nog geen betaalmethode geregistreerd.',
         'expires_on' => 'Verloopt :month/:year',

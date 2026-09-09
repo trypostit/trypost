@@ -12,6 +12,12 @@ return [
     'subscription_required' => 'Subskrybuj, aby tworzyć więcej workspace\'ów.',
     'limit_reached' => 'Twój plan obejmuje jeden workspace. Ulepsz plan, aby dodać więcej.',
 
+    'upgrade_dialog' => [
+        'title' => 'Ulepsz plan, aby dodać workspaces',
+        'description' => 'Twój plan obejmuje jeden workspace. Przejdź na Workspaces, aby mieć nielimitowane workspaces — po jednym na markę lub klienta.',
+        'cancel' => 'Nie teraz',
+    ],
+
     'create' => [
         'page_title' => 'Utwórz przestrzeń roboczą',
         'title' => 'Skonfiguruj przestrzeń roboczą',

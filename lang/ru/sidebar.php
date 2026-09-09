@@ -11,6 +11,7 @@ return [
     'account_settings' => 'Аккаунт и оплата',
     'workspace_settings' => 'Настройки workspace',
     'log_out' => 'Выйти',
+    'help' => 'Помощь',
     'workspace' => [
         'connections' => 'Подключения',
         'signatures' => 'Подписи',

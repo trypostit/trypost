@@ -11,6 +11,7 @@ return [
     'account_settings' => 'Konto & Abrechnung',
     'workspace_settings' => 'Workspace-Einstellungen',
     'log_out' => 'Abmelden',
+    'help' => 'Hilfe',
     'workspace' => [
         'connections' => 'Verbindungen',
         'signatures' => 'Signaturen',

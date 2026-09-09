@@ -12,6 +12,12 @@ return [
     'subscription_required' => 'Abonneer je om meer workspaces te maken.',
     'limit_reached' => 'Je plan bevat één workspace. Upgrade om er meer toe te voegen.',
 
+    'upgrade_dialog' => [
+        'title' => 'Upgrade om workspaces toe te voegen',
+        'description' => 'Je plan bevat één workspace. Upgrade naar Workspaces voor onbeperkte workspaces — één per merk of klant.',
+        'cancel' => 'Niet nu',
+    ],
+
     'create' => [
         'page_title' => 'Maak je workspace aan',
         'title' => 'Stel je workspace in',

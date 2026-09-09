@@ -11,6 +11,7 @@ return [
     'account_settings' => 'Compte et facturation',
     'workspace_settings' => 'Paramètres de l\'espace de travail',
     'log_out' => 'Se déconnecter',
+    'help' => 'Aide',
     'workspace' => [
         'connections' => 'Connexions',
         'signatures' => 'Signatures',

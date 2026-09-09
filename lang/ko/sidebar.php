@@ -11,6 +11,7 @@ return [
     'account_settings' => '계정 및 결제',
     'workspace_settings' => '워크스페이스 설정',
     'log_out' => '로그아웃',
+    'help' => '도움말',
     'workspace' => [
         'connections' => '연결',
         'signatures' => '서명',

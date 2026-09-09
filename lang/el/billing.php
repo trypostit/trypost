@@ -36,6 +36,8 @@ return [
         'workspaces_unlimited' => 'Απεριόριστα workspaces',
         'workspaces_tooltip' => 'Ένα workspace είναι ένα brand ή ένας πελάτης, ξεχωριστά από τα υπόλοιπα: με δικούς του λογαριασμούς social, υπογραφές, ετικέτες, analytics, δικαιώματα μελών και σύνδεση MCP.',
         'current' => 'Τρέχον πλάνο',
+        'switch_to_yearly' => 'Μετάβαση σε ετήσιο',
+        'switch_to_monthly' => 'Μετάβαση σε μηνιαίο',
         'select' => 'Επιλέξτε :plan',
         'start_first_month' => 'Ξεκίνα με :price',
         'per_first_month' => '/πρώτος μήνας',
@@ -78,8 +80,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'Συνδρομή',
-        'description' => 'Διαχειριστείτε τη μέθοδο πληρωμής, τα στοιχεία χρέωσης και τη συνδρομή σας.',
+        'title' => 'Μέθοδος πληρωμής',
+        'description' => 'Ενημερώστε την κάρτα ή τα στοιχεία χρέωσης στο Stripe.',
         'payment_method' => 'Μέθοδος πληρωμής',
         'no_payment_method' => 'Δεν υπάρχει καταχωρημένη μέθοδος πληρωμής ακόμη.',
         'expires_on' => 'Λήγει :month/:year',

@@ -36,6 +36,8 @@ return [
         'workspaces_unlimited' => 'Необмежена кількість workspace',
         'workspaces_tooltip' => 'Workspace — це один бренд або клієнт, відокремлений від інших: власні соцмережі, підписи, мітки, аналітика, права учасників і підключення MCP.',
         'current' => 'Поточний план',
+        'switch_to_yearly' => 'Перейти на річний',
+        'switch_to_monthly' => 'Перейти на місячний',
         'select' => 'Обрати :plan',
         'start_first_month' => 'Почати за :price',
         'per_first_month' => '/перший місяць',
@@ -78,8 +80,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'Підписка',
-        'description' => 'Керуйте способом оплати, реквізитами та підпискою.',
+        'title' => 'Спосіб оплати',
+        'description' => 'Оновіть картку або платіжні дані в Stripe.',
         'payment_method' => 'Спосіб оплати',
         'no_payment_method' => 'Спосіб оплати ще не додано.',
         'expires_on' => 'Діє до :month/:year',

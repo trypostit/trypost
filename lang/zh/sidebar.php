@@ -11,6 +11,7 @@ return [
     'account_settings' => '账户与账单',
     'workspace_settings' => '工作区设置',
     'log_out' => '退出登录',
+    'help' => '帮助',
     'workspace' => [
         'connections' => '连接',
         'signatures' => '签名',

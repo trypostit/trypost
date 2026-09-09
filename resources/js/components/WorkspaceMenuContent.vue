@@ -33,7 +33,7 @@ import {
     create as createWorkspaceRoute,
     switchMethod,
 } from '@/routes/app/workspaces';
-import type { Language, User } from '@/types';
+import type { Features, Language, User } from '@/types';
 
 interface Workspace {
     id: string;
@@ -46,6 +46,10 @@ const props = defineProps<{
     currentWorkspace: Workspace | null;
     workspaces: Workspace[];
     canCreateWorkspace: boolean;
+}>();
+
+const emit = defineEmits<{
+    upgradeRequired: [];
 }>();
 
 const page = usePage();
@@ -61,6 +65,15 @@ const languages = computed<Language[]>(
 const currentLanguage = computed(() =>
     languages.value?.find((language) => language.code === page.props.locale),
 );
+
+const features = computed<Features | null>(
+    () => (page.props.features as Features | null) ?? null,
+);
+const atWorkspaceLimit = computed((): boolean => {
+    const limit = features.value?.workspaceLimit ?? null;
+
+    return limit !== null && props.workspaces.length >= limit;
+});
 
 const switchLanguage = (code: string): void => {
     router.put(updateLanguage.url(), { locale: code });
@@ -81,6 +94,12 @@ const switchWorkspace = (workspaceId: string): void => {
 };
 
 const handleCreateWorkspace = (): void => {
+    if (atWorkspaceLimit.value) {
+        emit('upgradeRequired');
+
+        return;
+    }
+
     router.visit(createWorkspaceRoute.url());
 };
 
@@ -212,6 +231,7 @@ const handleLogout = (): void => {
         </DropdownMenuItem>
         <DropdownMenuItem
             v-if="canCreateWorkspace"
+            data-testid="sidebar-create-workspace"
             @click="handleCreateWorkspace"
         >
             <IconPlus class="size-4" />

@@ -38,6 +38,8 @@ return [
         'workspaces_unlimited' => 'Sınırsız workspace',
         'workspaces_tooltip' => 'Workspace, diğerlerinden ayrı tutulan tek bir marka veya müşteridir: kendi sosyal medya hesapları, imzaları, etiketleri, analizleri, üye izinleri ve MCP bağlantısı vardır.',
         'current' => 'Mevcut plan',
+        'switch_to_yearly' => 'Yıllığa geç',
+        'switch_to_monthly' => 'Aylığa geç',
         'select' => ':plan seç',
         'start_first_month' => ':price ile başla',
         'per_first_month' => '/ilk ay',
@@ -80,8 +82,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'Abonelik',
-        'description' => 'Ödeme yönteminizi, faturalandırma bilgilerinizi ve aboneliğinizi yönetin.',
+        'title' => 'Ödeme yöntemi',
+        'description' => 'Kartınızı veya fatura bilgilerinizi Stripe’da güncelleyin.',
         'payment_method' => 'Ödeme yöntemi',
         'no_payment_method' => 'Henüz kayıtlı ödeme yöntemi yok.',
         'expires_on' => 'Son kullanma: :month/:year',

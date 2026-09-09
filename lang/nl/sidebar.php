@@ -11,6 +11,7 @@ return [
     'account_settings' => 'Account en facturatie',
     'workspace_settings' => 'Workspace-instellingen',
     'log_out' => 'Uitloggen',
+    'help' => 'Hulp',
     'workspace' => [
         'connections' => 'Koppelingen',
         'signatures' => 'Handtekeningen',

@@ -36,6 +36,8 @@ return [
         'workspaces_unlimited' => 'Неограниченное число workspace',
         'workspaces_tooltip' => 'Workspace — это один бренд или клиент, отделённый от остальных: свои соцсети, подписи, метки, аналитика, права участников и подключение MCP.',
         'current' => 'Текущий план',
+        'switch_to_yearly' => 'Перейти на годовой',
+        'switch_to_monthly' => 'Перейти на месячный',
         'select' => 'Выбрать :plan',
         'start_first_month' => 'Начать за :price',
         'per_first_month' => '/первый месяц',
@@ -78,8 +80,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'Подписка',
-        'description' => 'Управляйте способом оплаты, платёжными данными и подпиской.',
+        'title' => 'Способ оплаты',
+        'description' => 'Обновите карту или платёжные данные в Stripe.',
         'payment_method' => 'Способ оплаты',
         'no_payment_method' => 'Способ оплаты пока не добавлен.',
         'expires_on' => 'Истекает :month/:year',

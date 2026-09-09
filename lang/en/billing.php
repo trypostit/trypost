@@ -36,6 +36,8 @@ return [
         'workspaces_unlimited' => 'Unlimited workspaces',
         'workspaces_tooltip' => 'A workspace is one brand or client, kept separate from the rest: its own social accounts, signatures, labels, analytics, member permissions, and MCP connection.',
         'current' => 'Current plan',
+        'switch_to_yearly' => 'Switch to yearly',
+        'switch_to_monthly' => 'Switch to monthly',
         'select' => 'Choose :plan',
         'start_first_month' => 'Start for :price',
         'per_first_month' => '/first month',
@@ -78,8 +80,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'Subscription',
-        'description' => 'Manage your payment method, billing details, and subscription.',
+        'title' => 'Payment method',
+        'description' => 'Update your card or billing details on Stripe.',
         'payment_method' => 'Payment method',
         'no_payment_method' => 'No payment method on file yet.',
         'expires_on' => 'Expires :month/:year',

@@ -104,6 +104,13 @@ export interface LegalLinks {
     privacy: string;
 }
 
+export interface SharedPlan {
+    id: string;
+    slug: string;
+    name: string;
+    workspace_limit: number | null;
+}
+
 export interface SharedData {
     name: string;
     auth: Auth;
@@ -114,6 +121,8 @@ export interface SharedData {
     contentTypeMediaRules?: Record<string, ContentTypeMediaRule>;
     features?: Features | null;
     usage?: Usage | null;
+    plans?: SharedPlan[];
+    deniedPlanIds?: string[];
     [key: string]: unknown;
 }
 

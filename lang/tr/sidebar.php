@@ -11,6 +11,7 @@ return [
     'account_settings' => 'Hesap ve faturalandırma',
     'workspace_settings' => 'Çalışma alanı ayarları',
     'log_out' => 'Çıkış yap',
+    'help' => 'Yardım',
     'workspace' => [
         'connections' => 'Bağlantılar',
         'signatures' => 'İmzalar',

@@ -36,6 +36,8 @@ return [
         'workspaces_unlimited' => '无限工作区',
         'workspaces_tooltip' => '一个工作区对应一个品牌或客户，与其他工作区相互隔离：拥有自己的社交账号、签名、标签、数据分析、成员权限和 MCP 连接。',
         'current' => '当前套餐',
+        'switch_to_yearly' => '切换到年付',
+        'switch_to_monthly' => '切换到月付',
         'select' => '选择 :plan',
         'start_first_month' => '以 :price 开始',
         'per_first_month' => '/首月',
@@ -78,8 +80,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => '订阅',
-        'description' => '管理你的付款方式、账单信息和订阅。',
+        'title' => '付款方式',
+        'description' => '在 Stripe 更新你的卡片或账单信息。',
         'payment_method' => '付款方式',
         'no_payment_method' => '尚未添加付款方式。',
         'expires_on' => '有效期至 :month/:year',

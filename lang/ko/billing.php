@@ -36,6 +36,8 @@ return [
         'workspaces_unlimited' => '무제한 워크스페이스',
         'workspaces_tooltip' => '워크스페이스는 브랜드나 고객 하나를 나머지와 분리한 공간입니다. 소셜 계정, 서명, 라벨, 분석, 멤버 권한, MCP 연결을 각각 따로 가집니다.',
         'current' => '현재 요금제',
+        'switch_to_yearly' => '연간으로 전환',
+        'switch_to_monthly' => '월간으로 전환',
         'select' => ':plan 선택',
         'start_first_month' => ':price에 시작하기',
         'per_first_month' => '/첫 달',
@@ -78,8 +80,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => '구독',
-        'description' => '결제 수단, 청구 정보, 구독을 관리하세요.',
+        'title' => '결제 수단',
+        'description' => '카드나 청구 정보는 Stripe에서 업데이트하세요.',
         'payment_method' => '결제 수단',
         'no_payment_method' => '아직 등록된 결제 수단이 없습니다.',
         'expires_on' => ':month/:year 만료',

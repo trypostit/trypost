@@ -313,7 +313,6 @@ return [
     'account' => [
         'tabs' => [
             'account' => 'Konto',
-            'usage' => 'Nutzung',
             'billing' => 'Abrechnung',
         ],
         'title' => 'Kontoeinstellungen',

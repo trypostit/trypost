@@ -36,6 +36,8 @@ return [
         'workspaces_unlimited' => '無制限のワークスペース',
         'workspaces_tooltip' => 'ワークスペースは 1 つのブランドや顧客ごとの独立した領域です。SNS アカウント、署名、ラベル、アナリティクス、メンバー権限、MCP 接続をそれぞれ個別に持ちます。',
         'current' => '現在のプラン',
+        'switch_to_yearly' => '年払いに切り替え',
+        'switch_to_monthly' => '月払いに切り替え',
         'select' => ':plan を選ぶ',
         'start_first_month' => ':priceで始める',
         'per_first_month' => '/初月',
@@ -78,8 +80,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'サブスクリプション',
-        'description' => 'お支払い方法、請求情報、サブスクリプションを管理します。',
+        'title' => 'お支払い方法',
+        'description' => 'カードや請求情報は Stripe で更新できます。',
         'payment_method' => 'お支払い方法',
         'no_payment_method' => 'まだ登録されたお支払い方法がありません。',
         'expires_on' => '有効期限 :month/:year',

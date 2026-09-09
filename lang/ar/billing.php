@@ -36,6 +36,8 @@ return [
         'workspaces_unlimited' => 'مساحات عمل غير محدودة',
         'workspaces_tooltip' => 'مساحة العمل هي علامة تجارية أو عميل واحد، منفصلة عن البقية: بحساباتها الاجتماعية وتوقيعاتها وتصنيفاتها وتحليلاتها وصلاحيات أعضائها واتصال MCP الخاص بها.',
         'current' => 'الخطة الحالية',
+        'switch_to_yearly' => 'التبديل إلى السنوي',
+        'switch_to_monthly' => 'التبديل إلى الشهري',
         'select' => 'اختر :plan',
         'start_first_month' => 'ابدأ مقابل :price',
         'per_first_month' => '/الشهر الأول',
@@ -78,8 +80,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'الاشتراك',
-        'description' => 'إدارة طريقة الدفع وتفاصيل الفوترة والاشتراك.',
+        'title' => 'طريقة الدفع',
+        'description' => 'حدّث بطاقتك أو بيانات الفوترة على Stripe.',
         'payment_method' => 'طريقة الدفع',
         'no_payment_method' => 'لا توجد طريقة دفع مسجّلة بعد.',
         'expires_on' => 'تنتهي في :month/:year',

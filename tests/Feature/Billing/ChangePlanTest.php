@@ -101,7 +101,7 @@ test('downgrading is allowed once the account is inside the target limit', funct
     expect($response->allowed())->toBeTrue();
 });
 
-test('change-plan flashes when the account has too many workspaces for the target', function () use ($withWorkspace) {
+test('billing lists socials as denied when the account has too many workspaces', function () use ($withWorkspace) {
     $user = User::factory()->create();
     $account = $user->account;
     $account->update(['plan_id' => $this->workspaces->id]);
@@ -115,16 +115,31 @@ test('change-plan flashes when the account has too many workspaces for the targe
     subscribeAccount($account);
 
     $this->actingAs($user->fresh())
-        ->from(route('app.billing.index'))
-        ->post(route('app.billing.change-plan'), [
-            'plan_id' => $this->socials->id,
-            'interval' => 'monthly',
-        ])
-        ->assertRedirect(route('app.billing.index'))
-        ->assertSessionHas('flash.error', __('billing.flash.too_many_workspaces', [
-            'count' => 2,
-            'limit' => 1,
-        ]));
+        ->get(route('app.billing.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('settings/account/Billing', false)
+            ->where('deniedPlanIds', [$this->socials->id])
+            ->has('plans', 2)
+        );
+});
+
+test('cloud requests share plans and denied plan ids for the workspace upgrade paywall', function () use ($withWorkspace) {
+    $user = User::factory()->create();
+    $account = $user->account;
+    $account->update(['plan_id' => $this->socials->id]);
+    $withWorkspace($user);
+    subscribeAccount($account);
+
+    $this->actingAs($user->fresh())
+        ->get(route('app.billing.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('plans', 2)
+            ->where('deniedPlanIds', [])
+            ->where('plans.0.slug', 'socials')
+            ->where('plans.1.slug', 'workspaces')
+        );
 });
 
 test('change-plan is a no-op when the subscription is already on that price', function () use ($withWorkspace) {

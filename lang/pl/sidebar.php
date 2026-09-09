@@ -11,6 +11,7 @@ return [
     'account_settings' => 'Konto i płatności',
     'workspace_settings' => 'Ustawienia workspace',
     'log_out' => 'Wyloguj się',
+    'help' => 'Pomoc',
     'workspace' => [
         'connections' => 'Połączenia',
         'signatures' => 'Sygnatury',

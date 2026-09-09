@@ -14,7 +14,6 @@ import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { edit as accountEdit, update as accountUpdate } from '@/routes/app/account';
 import { index as billingIndex } from '@/routes/app/billing';
-import { index as usageIndex } from '@/routes/app/usage';
 
 interface AccountData {
     id: string;
@@ -31,7 +30,6 @@ const { canManageBilling } = useWorkspaceRole();
 
 const tabs = computed(() => [
     { name: 'account', label: trans('settings.account.tabs.account'), href: accountEdit().url },
-    { name: 'usage', label: trans('settings.account.tabs.usage'), href: usageIndex().url },
     ...(canManageBilling.value
         ? [{ name: 'billing', label: trans('settings.account.tabs.billing'), href: billingIndex().url }]
         : []),

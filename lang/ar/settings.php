@@ -311,7 +311,6 @@ return [
     'account' => [
         'tabs' => [
             'account' => 'الحساب',
-            'usage' => 'الاستخدام',
             'billing' => 'الفوترة',
         ],
         'title' => 'إعدادات الحساب',

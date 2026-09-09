@@ -11,6 +11,7 @@ return [
     'account_settings' => 'الحساب والفوترة',
     'workspace_settings' => 'إعدادات مساحة العمل',
     'log_out' => 'تسجيل الخروج',
+    'help' => 'مساعدة',
     'workspace' => [
         'connections' => 'الاتصالات',
         'signatures' => 'التوقيعات',

@@ -12,6 +12,12 @@ return [
     'subscription_required' => 'Abonnez-vous pour créer plus d\'espaces de travail.',
     'limit_reached' => 'Votre offre inclut un espace de travail. Passez à une offre supérieure pour en ajouter.',
 
+    'upgrade_dialog' => [
+        'title' => 'Passez à un forfait supérieur pour ajouter des workspaces',
+        'description' => 'Votre forfait inclut un workspace. Passez à Workspaces pour des workspaces illimités — un par marque ou client.',
+        'cancel' => 'Pas maintenant',
+    ],
+
     'create' => [
         'page_title' => 'Créer votre espace de travail',
         'title' => 'Configurez votre espace de travail',

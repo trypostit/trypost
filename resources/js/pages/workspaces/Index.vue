@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import AuthLayout from '@/layouts/AuthLayout.vue';
-import { create as createWorkspace, switchMethod } from '@/routes/app/workspaces';
+import {
+    create as createWorkspace,
+    switchMethod,
+} from '@/routes/app/workspaces';
 import type { Features } from '@/types';
 
 interface Workspace {
@@ -29,16 +33,35 @@ const props = defineProps<Props>();
 const { canCreateWorkspace } = useWorkspaceRole();
 
 const page = usePage();
-const features = computed<Features | null>(() => (page.props.features as Features | null) ?? null);
+const features = computed<Features | null>(
+    () => (page.props.features as Features | null) ?? null,
+);
 const atWorkspaceLimit = computed((): boolean => {
     const limit = features.value?.workspaceLimit ?? null;
+
     return limit !== null && props.workspaces.length >= limit;
 });
 
-const switchToWorkspace = (workspace: Workspace) => {
-    router.post(switchMethod.url(workspace.id), {}, {
-        preserveState: false,
-    });
+const upgradeDialogOpen = ref(false);
+
+const switchToWorkspace = (workspace: Workspace): void => {
+    router.post(
+        switchMethod.url(workspace.id),
+        {},
+        {
+            preserveState: false,
+        },
+    );
+};
+
+const handleCreateWorkspace = (): void => {
+    if (atWorkspaceLimit.value) {
+        upgradeDialogOpen.value = true;
+
+        return;
+    }
+
+    router.visit(createWorkspace.url());
 };
 </script>
 
@@ -54,7 +77,9 @@ const switchToWorkspace = (workspace: Workspace) => {
                 v-for="workspace in workspaces"
                 :key="workspace.id"
                 class="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-foreground bg-card p-4 shadow-2xs transition-all hover:-translate-y-0.5 hover:shadow-md"
-                :class="workspace.id === currentWorkspaceId ? 'bg-violet-100' : ''"
+                :class="
+                    workspace.id === currentWorkspaceId ? 'bg-violet-100' : ''
+                "
                 @click="switchToWorkspace(workspace)"
             >
                 <Avatar
@@ -66,22 +91,39 @@ const switchToWorkspace = (workspace: Workspace) => {
                 <div class="min-w-0 flex-1">
                     <p class="truncate font-medium">{{ workspace.name }}</p>
                     <p class="text-xs text-muted-foreground">
-                        {{ trans('workspaces.connections', { count: String(workspace.social_accounts_count) }) }} · {{ trans('workspaces.posts', { count: String(workspace.posts_count) }) }}
+                        {{
+                            trans('workspaces.connections', {
+                                count: String(workspace.social_accounts_count),
+                            })
+                        }}
+                        ·
+                        {{
+                            trans('workspaces.posts', {
+                                count: String(workspace.posts_count),
+                            })
+                        }}
                     </p>
                 </div>
-                <Badge v-if="workspace.id === currentWorkspaceId" variant="secondary" class="shrink-0">
+                <Badge
+                    v-if="workspace.id === currentWorkspaceId"
+                    variant="secondary"
+                    class="shrink-0"
+                >
                     {{ $t('workspaces.current') }}
                 </Badge>
             </div>
         </div>
 
-        <Link v-if="canCreateWorkspace && !atWorkspaceLimit" :href="createWorkspace.url()">
-            <Button variant="outline" class="w-full">
-                {{ $t('workspaces.create.submit') }}
-            </Button>
-        </Link>
-        <p v-else-if="canCreateWorkspace" class="text-center text-xs text-muted-foreground">
-            {{ $t('workspaces.limit_reached') }}
-        </p>
+        <Button
+            v-if="canCreateWorkspace"
+            variant="outline"
+            class="w-full"
+            data-testid="workspaces-create"
+            @click="handleCreateWorkspace"
+        >
+            {{ $t('workspaces.create.submit') }}
+        </Button>
+
+        <WorkspaceUpgradeDialog v-model:open="upgradeDialogOpen" />
     </AuthLayout>
 </template>

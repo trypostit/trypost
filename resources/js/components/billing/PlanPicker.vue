@@ -48,6 +48,7 @@ const props = withDefaults(
         plans: PlanOption[];
         interval: 'monthly' | 'yearly';
         currentPlanId?: string | null;
+        currentInterval?: 'monthly' | 'yearly' | null;
         disabledPlanIds?: string[];
         processing?: boolean;
         allowYearly?: boolean;
@@ -55,6 +56,7 @@ const props = withDefaults(
     }>(),
     {
         currentPlanId: null,
+        currentInterval: null,
         disabledPlanIds: () => [],
         processing: false,
         allowYearly: true,
@@ -114,12 +116,17 @@ const yearlyTotal = (plan: PlanOption): string =>
 const tagline = (plan: PlanOption): string =>
     trans(`billing.plans.${plan.slug}_tagline`);
 
-const isCurrent = (plan: PlanOption): boolean =>
+const isCurrentPlan = (plan: PlanOption): boolean =>
     plan.id === props.currentPlanId;
+
+const isCurrentSelection = (plan: PlanOption): boolean =>
+    isCurrentPlan(plan) &&
+    props.currentInterval !== null &&
+    props.currentInterval === props.interval;
 
 const isDisabled = (plan: PlanOption): boolean =>
     props.processing ||
-    isCurrent(plan) ||
+    isCurrentSelection(plan) ||
     props.disabledPlanIds.includes(plan.id);
 
 const isFeatured = (plan: PlanOption): boolean => plan.slug === 'workspaces';
@@ -138,10 +145,25 @@ const billingNote = (plan: PlanOption): string =>
           })
         : trans('billing.subscribe.billed_monthly');
 
-const selectLabel = (plan: PlanOption): string =>
-    props.offerFirstMonth
-        ? trans('billing.plans.start_first_month', { price: firstMonthPrice() })
-        : trans('billing.plans.select', { plan: plan.name });
+const selectLabel = (plan: PlanOption): string => {
+    if (props.offerFirstMonth) {
+        return trans('billing.plans.start_first_month', {
+            price: firstMonthPrice(),
+        });
+    }
+
+    if (isCurrentSelection(plan)) {
+        return trans('billing.plans.current');
+    }
+
+    if (isCurrentPlan(plan)) {
+        return props.interval === 'yearly'
+            ? trans('billing.plans.switch_to_yearly')
+            : trans('billing.plans.switch_to_monthly');
+    }
+
+    return trans('billing.plans.select', { plan: plan.name });
+};
 
 const isUnlimited = (plan: PlanOption): boolean =>
     plan.workspace_limit === null;
@@ -172,9 +194,12 @@ const sharedFeatures = computed<PlanFeature[]>(() =>
 
 <template>
     <div class="@container space-y-6">
-        <div v-if="allowYearly" class="flex justify-center">
+        <div
+            v-if="allowYearly"
+            class="grid grid-cols-[1fr_auto_1fr] items-center gap-x-4"
+        >
             <div
-                class="inline-flex rounded-full border-2 border-foreground bg-card p-1 shadow-2xs"
+                class="col-start-2 inline-flex isolate justify-self-center gap-1.5 rounded-full border-2 border-foreground bg-card p-1 shadow-2xs"
             >
                 <Button
                     v-for="option in ['monthly', 'yearly'] as const"
@@ -183,19 +208,24 @@ const sharedFeatures = computed<PlanFeature[]>(() =>
                     size="sm"
                     :variant="interval === option ? 'default' : 'ghost'"
                     class="rounded-full"
+                    :class="
+                        interval === option
+                            ? 'relative z-10'
+                            : 'border-2 border-transparent hover:border-transparent'
+                    "
                     :data-testid="`plan-interval-${option}`"
                     @click="emit('update:interval', option)"
                 >
                     {{ $t(`billing.plans.${option}`) }}
-                    <Badge
-                        v-if="option === 'yearly'"
-                        variant="success"
-                        class="ml-1.5"
-                    >
-                        {{ $t('billing.plans.save_two_months') }}
-                    </Badge>
                 </Button>
             </div>
+            <Badge
+                variant="success"
+                class="col-start-3 justify-self-start"
+                data-testid="plan-save-two-months"
+            >
+                {{ $t('billing.plans.save_two_months') }}
+            </Badge>
         </div>
 
         <div class="grid items-stretch gap-4 @2xl:grid-cols-2">
@@ -212,12 +242,20 @@ const sharedFeatures = computed<PlanFeature[]>(() =>
             >
                 <div class="flex flex-col gap-4">
                     <div class="flex flex-col items-start gap-1.5 text-start">
-                        <Badge v-if="isCurrent(plan)" variant="secondary">
-                            {{ $t('billing.plans.current') }}
-                        </Badge>
-                        <h3 class="text-xl font-bold tracking-tight">
-                            {{ plan.name }}
-                        </h3>
+                        <div
+                            class="flex w-full items-center justify-between gap-3"
+                        >
+                            <h3 class="text-xl font-bold tracking-tight">
+                                {{ plan.name }}
+                            </h3>
+                            <Badge
+                                v-if="isCurrentSelection(plan)"
+                                variant="secondary"
+                                class="shrink-0"
+                            >
+                                {{ $t('billing.plans.current') }}
+                            </Badge>
+                        </div>
                         <p class="text-sm text-foreground/70">
                             {{ tagline(plan) }}
                         </p>

@@ -11,6 +11,7 @@ return [
     'account_settings' => 'Λογαριασμός και χρέωση',
     'workspace_settings' => 'Ρυθμίσεις workspace',
     'log_out' => 'Αποσύνδεση',
+    'help' => 'Βοήθεια',
     'workspace' => [
         'connections' => 'Συνδέσεις',
         'signatures' => 'Υπογραφές',

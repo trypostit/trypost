@@ -24,7 +24,6 @@ use App\Http\Controllers\App\Settings\AuthenticationController;
 use App\Http\Controllers\App\Settings\NotificationPreferenceController;
 use App\Http\Controllers\App\Settings\ProfileController;
 use App\Http\Controllers\App\Settings\SettingsController;
-use App\Http\Controllers\App\Settings\UsageController;
 use App\Http\Controllers\App\UnsplashController;
 use App\Http\Controllers\App\WebhookController;
 use App\Http\Controllers\App\WelcomeController;
@@ -283,7 +282,7 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     // Account Settings
     Route::get('settings/account', [AccountController::class, 'edit'])->name('app.account.edit');
     Route::put('settings/account', [AccountController::class, 'update'])->name('app.account.update');
-    Route::get('settings/account/usage', [UsageController::class, 'index'])->name('app.usage.index');
+    Route::redirect('settings/account/usage', '/settings/account/billing');
 
     // Billing
     Route::get('settings/account/billing', [BillingController::class, 'index'])->name('app.billing.index');

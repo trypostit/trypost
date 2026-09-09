@@ -11,6 +11,7 @@ return [
     'account_settings' => 'Account & billing',
     'workspace_settings' => 'Workspace settings',
     'log_out' => 'Log out',
+    'help' => 'Help',
     'workspace' => [
         'connections' => 'Connections',
         'signatures' => 'Signatures',

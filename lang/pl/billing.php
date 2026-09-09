@@ -36,6 +36,8 @@ return [
         'workspaces_unlimited' => 'Nielimitowane workspace’y',
         'workspaces_tooltip' => 'Workspace to jedna marka lub klient, oddzielony od pozostałych: własne konta społecznościowe, podpisy, etykiety, analityka, uprawnienia członków i połączenie MCP.',
         'current' => 'Aktualny plan',
+        'switch_to_yearly' => 'Przełącz na roczny',
+        'switch_to_monthly' => 'Przełącz na miesięczny',
         'select' => 'Wybierz :plan',
         'start_first_month' => 'Zacznij za :price',
         'per_first_month' => '/pierwszy miesiąc',
@@ -78,8 +80,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'Subskrypcja',
-        'description' => 'Zarządzaj metodą płatności, danymi rozliczeniowymi i subskrypcją.',
+        'title' => 'Metoda płatności',
+        'description' => 'Zaktualizuj kartę lub dane rozliczeniowe w Stripe.',
         'payment_method' => 'Metoda płatności',
         'no_payment_method' => 'Brak zapisanej metody płatności.',
         'expires_on' => 'Wygasa :month/:year',

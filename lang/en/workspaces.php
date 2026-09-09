@@ -12,6 +12,12 @@ return [
     'subscription_required' => 'Subscribe to create more workspaces.',
     'limit_reached' => 'Your plan includes one workspace. Upgrade to add more.',
 
+    'upgrade_dialog' => [
+        'title' => 'Upgrade to add workspaces',
+        'description' => 'Your plan includes one workspace. Upgrade to Workspaces for unlimited workspaces — one for each brand or client.',
+        'cancel' => 'Not now',
+    ],
+
     'create' => [
         'page_title' => 'Create your workspace',
         'title' => 'Set up your workspace',

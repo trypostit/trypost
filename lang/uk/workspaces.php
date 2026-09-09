@@ -12,6 +12,12 @@ return [
     'subscription_required' => 'Оформіть підписку, щоб створювати більше workspace.',
     'limit_reached' => 'Ваш план включає один workspace. Оновіть план, щоб додати більше.',
 
+    'upgrade_dialog' => [
+        'title' => 'Оновіть план, щоб додати workspace',
+        'description' => 'Ваш план включає один workspace. Перейдіть на Workspaces для необмеженої кількості workspace — по одному на бренд чи клієнта.',
+        'cancel' => 'Не зараз',
+    ],
+
     'create' => [
         'page_title' => 'Створіть свій робочий простір',
         'title' => 'Налаштуйте робочий простір',

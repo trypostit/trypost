@@ -36,6 +36,8 @@ return [
         'workspaces_unlimited' => 'Espaces de travail illimités',
         'workspaces_tooltip' => 'Un espace de travail correspond à une marque ou un client, séparé des autres : ses propres réseaux sociaux, signatures, libellés, statistiques, permissions des membres et connexion MCP.',
         'current' => 'Offre actuelle',
+        'switch_to_yearly' => 'Passer à l’annuel',
+        'switch_to_monthly' => 'Passer au mensuel',
         'select' => 'Choisir :plan',
         'start_first_month' => 'Commencer pour :price',
         'per_first_month' => '/premier mois',
@@ -78,8 +80,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'Abonnement',
-        'description' => 'Gérez votre moyen de paiement, vos informations de facturation et votre abonnement.',
+        'title' => 'Moyen de paiement',
+        'description' => 'Mettez à jour votre carte ou vos informations de facturation sur Stripe.',
         'payment_method' => 'Moyen de paiement',
         'no_payment_method' => 'Aucun moyen de paiement enregistré pour le moment.',
         'expires_on' => 'Expire le :month/:year',
