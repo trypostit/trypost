@@ -41,8 +41,10 @@ return [
     'archive_all' => 'Archivia tutte',
     'no_notifications' => 'Nessuna notifica',
     'support' => [
+        'chat' => 'Supporto via chat',
         'docs' => 'Documentazione',
         'referral' => 'Guadagna il 30% di referral',
         'discord' => 'Community Discord',
+        'community' => 'Community',
     ],
 ];

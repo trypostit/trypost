@@ -41,8 +41,10 @@ return [
     'archive_all' => 'すべてアーカイブ',
     'no_notifications' => '通知はありません',
     'support' => [
+        'chat' => 'チャットサポート',
         'docs' => 'ドキュメント',
         'referral' => '30% の紹介報酬を獲得',
         'discord' => 'Discord コミュニティ',
+        'community' => 'コミュニティ',
     ],
 ];

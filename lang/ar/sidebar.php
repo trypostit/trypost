@@ -41,8 +41,10 @@ return [
     'archive_all' => 'أرشفة الكل',
     'no_notifications' => 'لا توجد إشعارات',
     'support' => [
+        'chat' => 'الدعم عبر الدردشة',
         'docs' => 'التوثيق',
         'referral' => 'اربح عمولة إحالة 30%',
         'discord' => 'مجتمع Discord',
+        'community' => 'المجتمع',
     ],
 ];

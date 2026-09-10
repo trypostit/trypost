@@ -41,8 +41,10 @@ return [
     'archive_all' => '全部归档',
     'no_notifications' => '暂无通知',
     'support' => [
+        'chat' => '在线客服',
         'docs' => '文档',
         'referral' => '赚取 30% 推荐奖励',
         'discord' => 'Discord 社区',
+        'community' => '社区',
     ],
 ];

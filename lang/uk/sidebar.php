@@ -41,8 +41,10 @@ return [
     'archive_all' => 'Архівувати все',
     'no_notifications' => 'Немає сповіщень',
     'support' => [
+        'chat' => 'Підтримка в чаті',
         'docs' => 'Документація',
         'referral' => 'Отримуйте 30% за рефералами',
         'discord' => 'Спільнота Discord',
+        'community' => 'Спільнота',
     ],
 ];

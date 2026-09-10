@@ -41,8 +41,10 @@ return [
     'archive_all' => 'Archive all',
     'no_notifications' => 'No notifications',
     'support' => [
+        'chat' => 'Chat support',
         'docs' => 'Documentation',
         'referral' => 'Earn 30% referral',
         'discord' => 'Discord community',
+        'community' => 'Community',
     ],
 ];

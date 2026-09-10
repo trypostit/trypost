@@ -41,8 +41,10 @@ return [
     'archive_all' => 'Tout archiver',
     'no_notifications' => 'Aucune notification',
     'support' => [
+        'chat' => 'Support par chat',
         'docs' => 'Documentation',
         'referral' => 'Gagnez 30 % de parrainage',
         'discord' => 'Communauté Discord',
+        'community' => 'Communauté',
     ],
 ];

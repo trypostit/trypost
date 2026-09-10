@@ -41,8 +41,10 @@ return [
     'archive_all' => 'Tümünü arşivle',
     'no_notifications' => 'Bildirim yok',
     'support' => [
+        'chat' => 'Sohbet desteği',
         'docs' => 'Dokümantasyon',
         'referral' => '%30 referans kazanın',
         'discord' => 'Discord topluluğu',
+        'community' => 'Topluluk',
     ],
 ];

@@ -41,8 +41,10 @@ return [
     'archive_all' => 'Αρχειοθέτηση όλων',
     'no_notifications' => 'Δεν υπάρχουν ειδοποιήσεις',
     'support' => [
+        'chat' => 'Υποστήριξη μέσω chat',
         'docs' => 'Τεκμηρίωση',
         'referral' => 'Κερδίστε 30% από συστάσεις',
         'discord' => 'Κοινότητα Discord',
+        'community' => 'Κοινότητα',
     ],
 ];
