@@ -32,6 +32,8 @@ return [
         'switch_to_yearly' => 'التبديل إلى السنوي',
         'switch_to_monthly' => 'التبديل إلى الشهري',
         'select' => 'اختر :plan',
+        'upgrade' => 'الترقية إلى :plan',
+        'downgrade' => 'الرجوع إلى :plan',
         'start_first_month' => 'ابدأ مقابل :price',
         'per_first_month' => '/الشهر الأول',
         'then_monthly' => 'ثم :price/شهر',

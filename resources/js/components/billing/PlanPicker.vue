@@ -26,7 +26,12 @@ import {
 } from '@/components/ui/tooltip';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { Platform } from '@/types/platform';
-import type { BillingInterval, PlanOption } from '@/types/plan';
+import {
+    PLAN_CHANGE_LABELS,
+    planChangeAction,
+    type BillingInterval,
+    type PlanOption,
+} from '@/types/plan';
 
 export type { PlanOption };
 
@@ -113,6 +118,11 @@ const tagline = (plan: PlanOption): string =>
 const isCurrentPlan = (plan: PlanOption): boolean =>
     plan.id === props.currentPlanId;
 
+const currentPlan = computed(
+    (): PlanOption | null =>
+        props.plans.find((plan) => plan.id === props.currentPlanId) ?? null,
+);
+
 const isCurrentSelection = (plan: PlanOption): boolean =>
     isCurrentPlan(plan) &&
     props.currentInterval !== null &&
@@ -156,7 +166,9 @@ const selectLabel = (plan: PlanOption): string => {
             : trans('billing.plans.switch_to_monthly');
     }
 
-    return trans('billing.plans.select', { plan: plan.name });
+    return trans(PLAN_CHANGE_LABELS[planChangeAction(currentPlan.value, plan)], {
+        plan: plan.name,
+    });
 };
 
 const isUnlimited = (plan: PlanOption): boolean =>

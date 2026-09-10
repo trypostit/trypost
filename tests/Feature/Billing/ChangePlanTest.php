@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
 use App\Enums\UserWorkspace\Role;
+use App\Enums\Workspace\ContentLanguage;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Models\Subscription;
@@ -162,6 +163,24 @@ test('billing lists socials as denied when the account has too many workspaces',
             ->where('plans.0.workspace_limit', 1)
             ->has('plans', 2)
         );
+});
+
+test('plan change actions exist in every locale', function (string $locale) {
+    expect(__('billing.plans.upgrade', ['plan' => 'Workspaces'], $locale))
+        ->not->toBe('billing.plans.upgrade')
+        ->toContain('Workspaces')
+        ->and(__('billing.plans.downgrade', ['plan' => 'Socials'], $locale))
+        ->not->toBe('billing.plans.downgrade')
+        ->toContain('Socials');
+})->with(ContentLanguage::values());
+
+test('english plan change actions say upgrade and downgrade instead of choose', function () {
+    expect(__('billing.plans.upgrade', ['plan' => 'Workspaces']))
+        ->toBe('Upgrade to Workspaces')
+        ->and(__('billing.plans.downgrade', ['plan' => 'Socials']))
+        ->toBe('Downgrade to Socials')
+        ->and(__('billing.plans.select', ['plan' => 'Workspaces']))
+        ->toBe('Choose Workspaces');
 });
 
 test('cloud requests share plans for the workspace upgrade paywall', function () use ($withWorkspace) {

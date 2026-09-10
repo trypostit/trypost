@@ -23,6 +23,46 @@ export const deniedPlanIdsFor = (
         )
         .map((plan) => plan.id);
 
+export const PLAN_CHANGE_ACTIONS = ['upgrade', 'downgrade', 'select'] as const;
+
+export type PlanChangeAction = (typeof PLAN_CHANGE_ACTIONS)[number];
+
+export const PLAN_CHANGE_LABELS = {
+    upgrade: 'billing.plans.upgrade',
+    downgrade: 'billing.plans.downgrade',
+    select: 'billing.plans.select',
+} as const satisfies Record<
+    PlanChangeAction,
+    `billing.plans.${PlanChangeAction}`
+>;
+
+const workspaceRank = (plan: PlanOption): number =>
+    plan.workspace_limit === null
+        ? Number.POSITIVE_INFINITY
+        : plan.workspace_limit;
+
+export const planChangeAction = (
+    current: PlanOption | null | undefined,
+    target: PlanOption,
+): PlanChangeAction => {
+    if (current === null || current === undefined || current.id === target.id) {
+        return 'select';
+    }
+
+    const from = workspaceRank(current);
+    const to = workspaceRank(target);
+
+    if (to > from) {
+        return 'upgrade';
+    }
+
+    if (to < from) {
+        return 'downgrade';
+    }
+
+    return 'select';
+};
+
 export interface AuthPlan {
     id: string;
     slug: string;

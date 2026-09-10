@@ -32,6 +32,8 @@ return [
         'switch_to_yearly' => '연간으로 전환',
         'switch_to_monthly' => '월간으로 전환',
         'select' => ':plan 선택',
+        'upgrade' => ':plan(으)로 업그레이드',
+        'downgrade' => ':plan(으)로 다운그레이드',
         'start_first_month' => ':price에 시작하기',
         'per_first_month' => '/첫 달',
         'then_monthly' => '이후 :price/월',

@@ -32,6 +32,8 @@ return [
         'switch_to_yearly' => 'Μετάβαση σε ετήσιο',
         'switch_to_monthly' => 'Μετάβαση σε μηνιαίο',
         'select' => 'Επιλέξτε :plan',
+        'upgrade' => 'Αναβάθμιση σε :plan',
+        'downgrade' => 'Υποβάθμιση σε :plan',
         'start_first_month' => 'Ξεκίνα με :price',
         'per_first_month' => '/πρώτος μήνας',
         'then_monthly' => 'Μετά :price/μήνα',

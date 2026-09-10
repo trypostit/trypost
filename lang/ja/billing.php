@@ -32,6 +32,8 @@ return [
         'switch_to_yearly' => '年払いに切り替え',
         'switch_to_monthly' => '月払いに切り替え',
         'select' => ':plan を選ぶ',
+        'upgrade' => ':plan にアップグレード',
+        'downgrade' => ':plan にダウングレード',
         'start_first_month' => ':priceで始める',
         'per_first_month' => '/初月',
         'then_monthly' => 'その後は:price/月',

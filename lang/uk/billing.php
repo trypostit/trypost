@@ -32,6 +32,8 @@ return [
         'switch_to_yearly' => 'Перейти на річний',
         'switch_to_monthly' => 'Перейти на місячний',
         'select' => 'Обрати :plan',
+        'upgrade' => 'Перейти на :plan',
+        'downgrade' => 'Понизити до :plan',
         'start_first_month' => 'Почати за :price',
         'per_first_month' => '/перший місяць',
         'then_monthly' => 'Потім :price/міс.',

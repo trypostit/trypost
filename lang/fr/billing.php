@@ -32,6 +32,8 @@ return [
         'switch_to_yearly' => 'Passer à l’annuel',
         'switch_to_monthly' => 'Passer au mensuel',
         'select' => 'Choisir :plan',
+        'upgrade' => 'Passer à :plan',
+        'downgrade' => 'Revenir à :plan',
         'start_first_month' => 'Commencer pour :price',
         'per_first_month' => '/premier mois',
         'then_monthly' => 'Puis :price/mois',

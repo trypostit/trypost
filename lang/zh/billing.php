@@ -32,6 +32,8 @@ return [
         'switch_to_yearly' => '切换到年付',
         'switch_to_monthly' => '切换到月付',
         'select' => '选择 :plan',
+        'upgrade' => '升级到 :plan',
+        'downgrade' => '降级到 :plan',
         'start_first_month' => '以 :price 开始',
         'per_first_month' => '/首月',
         'then_monthly' => '之后 :price/月',

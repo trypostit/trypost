@@ -34,6 +34,8 @@ return [
         'switch_to_yearly' => 'Yıllığa geç',
         'switch_to_monthly' => 'Aylığa geç',
         'select' => ':plan seç',
+        'upgrade' => ':plan’e yükselt',
+        'downgrade' => ':plan’e düşür',
         'start_first_month' => ':price ile başla',
         'per_first_month' => '/ilk ay',
         'then_monthly' => 'Sonra :price/ay',

@@ -32,6 +32,8 @@ return [
         'switch_to_yearly' => 'Passa all’annuale',
         'switch_to_monthly' => 'Passa al mensile',
         'select' => 'Scegli :plan',
+        'upgrade' => 'Fai upgrade a :plan',
+        'downgrade' => 'Fai downgrade a :plan',
         'start_first_month' => 'Inizia a :price',
         'per_first_month' => '/primo mese',
         'then_monthly' => 'Poi :price/mese',

@@ -32,6 +32,8 @@ return [
         'switch_to_yearly' => 'Overschakelen naar jaarlijks',
         'switch_to_monthly' => 'Overschakelen naar maandelijks',
         'select' => 'Kies :plan',
+        'upgrade' => 'Upgrade naar :plan',
+        'downgrade' => 'Downgrade naar :plan',
         'start_first_month' => 'Start voor :price',
         'per_first_month' => '/eerste maand',
         'then_monthly' => 'Daarna :price/maand',
