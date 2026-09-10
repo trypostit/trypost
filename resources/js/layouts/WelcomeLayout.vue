@@ -38,7 +38,6 @@ const props = withDefaults(
         step?: number;
         totalSteps?: number;
         size?: MaxWidthSize;
-        /** Center the step in its column instead of aligning it to the start. */
         centered?: boolean;
     }>(),
     {
@@ -53,8 +52,6 @@ const props = withDefaults(
 
 const page = usePage();
 
-// Only the five welcome steps share a summary; the holding screen for
-// members has nothing to preview, so it renders as a single centered column.
 const summary = computed(
     () => (page.props.welcome as WelcomeSummary | undefined) ?? null,
 );

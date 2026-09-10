@@ -18,18 +18,7 @@ final class ConfigureSubscriptionCheckout
     public const MIN_CHECKOUT_TRIAL_DAYS = 2;
 
     /**
-     * Apply env-driven checkout options to a subscription builder.
-     *
-     * Precedence when REQUIRE_CARD_FOR_TRIAL is enabled:
-     * 1. Qualifying first-month coupon for this plan → withCoupon, no trialDays.
-     * 2. Else first-time customer + CASHIER_TRIAL_DAYS > 0 → trialDays (clamped to ≥ 2).
-     * 3. Else plain checkout (immediate full price) — including re-subscribers.
-     *
-     * CASHIER_ALLOW_PROMOTION_CODES enables the Checkout promo field only when no
-     * coupon is applied — Stripe rejects discounts + allow_promotion_codes together.
-     *
-     * @throws RuntimeException when a coupon would be applied while
-     *                          allow_promotion_codes is also enabled.
+     * @throws RuntimeException when a coupon would apply with allow_promotion_codes enabled
      */
     public static function apply(SubscriptionBuilder $subscription, Account $account, ?Plan $plan = null): SubscriptionBuilder
     {
@@ -64,13 +53,6 @@ final class ConfigureSubscriptionCheckout
         return $subscription;
     }
 
-    /**
-     * First-month coupons only fit a new customer on a monthly price. A
-     * subscription that never left incomplete never became real, so a retry
-     * after a failed first attempt still qualifies; any started subscription
-     * (even canceled) does not. The coupon is the one for this plan's slug —
-     * Socials and Workspaces take different amount_off values.
-     */
     private static function firstMonthCouponId(Account $account, ?Plan $plan): ?string
     {
         if ($plan === null || ! (bool) config('trypost.billing.require_card_for_trial', true)) {
@@ -90,11 +72,7 @@ final class ConfigureSubscriptionCheckout
         return $couponId;
     }
 
-    /**
-     * True when the account has never had a real Stripe subscription. Rows that
-     * stayed in incomplete / incomplete_expired never became billable, so a
-     * retry after a failed first Checkout still counts as first-time.
-     */
+    /** Incomplete / incomplete_expired never became billable, so retries still count as first-time. */
     private static function isFirstTimeSubscriber(Account $account): bool
     {
         return ! $account->subscriptions()

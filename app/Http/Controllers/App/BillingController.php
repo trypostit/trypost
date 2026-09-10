@@ -106,8 +106,6 @@ class BillingController extends Controller
 
         $subscription->swap($priceId);
 
-        // Optimistic write so the workspace-limit paywall can send the user
-        // straight to create. The subscription.updated webhook still reconciles.
         $account->update(['plan_id' => $plan->id]);
 
         return redirect()->route('app.billing.index')

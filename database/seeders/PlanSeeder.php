@@ -10,11 +10,6 @@ use Illuminate\Database\Seeder;
 
 class PlanSeeder extends Seeder
 {
-    /**
-     * Keyed by slug so a production run archives the legacy plan and adds the
-     * two new ones without touching accounts.plan_id, which references plans
-     * by UUID. A null workspace_limit means unlimited.
-     */
     public function run(): void
     {
         Plan::updateOrCreate(

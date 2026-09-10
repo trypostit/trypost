@@ -9,11 +9,6 @@ use App\Models\AiUsageLog;
 use Carbon\CarbonImmutable;
 use Laravel\Cashier\Subscription;
 
-/**
- * Resolves the time window AI usage is measured against. The window follows
- * the Stripe billing cycle (monthly or yearly), anchored on the subscription
- * date. Usage is recorded for cost visibility, not metered as an entitlement.
- */
 class BillingCycle
 {
     /** @var array{0: CarbonImmutable, 1: CarbonImmutable}|null */

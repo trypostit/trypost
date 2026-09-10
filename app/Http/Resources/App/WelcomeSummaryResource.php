@@ -10,11 +10,6 @@ use App\Enums\User\Persona;
 use App\Models\SocialAccount;
 use App\Models\User;
 
-/**
- * What the user has built so far during welcome. The layout renders it as a
- * live preview of the workspace that fills in step by step, so every welcome
- * page passes it, not just the step that owns the data.
- */
 class WelcomeSummaryResource
 {
     /**
@@ -37,9 +32,6 @@ class WelcomeSummaryResource
     }
 
     /**
-     * Only goals that still exist as a case: dropped values would render as
-     * an unknown chip.
-     *
      * @param  list<string>|null  $goals
      * @return list<string>
      */

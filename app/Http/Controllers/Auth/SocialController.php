@@ -155,11 +155,6 @@ class SocialController extends Controller
             ->find($reconnectId);
     }
 
-    /**
-     * Nothing on this network is left to connect: the card being reconnected is
-     * gone from the provider, or this login has nothing left to offer. Both
-     * answers depend on having seen the provider's full listing.
-     */
     protected function noConnectableIdentities(?SocialAccount $reconnect, string $missingKey, bool $listingComplete = true): Response
     {
         $key = match (true) {
@@ -171,13 +166,6 @@ class SocialController extends Controller
     }
 
     /**
-     * Narrow the identities a provider returned to the ones this card may take.
-     *
-     * A reconnect only ever offers its own identity. Otherwise every identity
-     * already connected on this network is dropped, so the same identity cannot
-     * be connected twice under two platforms of one network (Instagram directly
-     * and via Facebook).
-     *
      * @param  array<int, array<string, mixed>>  $identities
      * @return array<int, array<string, mixed>>
      */

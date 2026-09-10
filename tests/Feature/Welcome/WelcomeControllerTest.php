@@ -622,15 +622,6 @@ test('old onboarding routes are not registered', function (string $routeName) {
     'checkout' => 'app.onboarding.checkout',
 ]);
 
-test('legacy onboarding path redirects to the calendar', function () {
-    config(['trypost.self_hosted' => true]);
-    attachCurrentWorkspace($this->user);
-
-    $this->actingAs($this->user)
-        ->get('/onboarding')
-        ->assertRedirect(route('app.calendar'));
-});
-
 test('members cannot start Stripe checkout from welcome', function (bool $withWorkspace) {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
     completeWelcomeThroughReferral($member);

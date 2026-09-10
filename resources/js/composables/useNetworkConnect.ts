@@ -6,12 +6,6 @@ import { oauthConnectUrl, useOAuthPopup } from '@/composables/useOAuthPopup';
 import { Platform } from '@/types/platform';
 import type { AvailablePlatform } from '@/types/social-account';
 
-/**
- * Resolves "connect network X" into the right entry point: the Telegram
- * dialog, the Instagram method picker, or the OAuth popup. The caller renders
- * `TelegramConnectDialog` and `InstagramConnectDialog` bound to the returned
- * state, so every surface (accounts page, welcome) shares one flow.
- */
 export const useNetworkConnect = (
     platforms: MaybeRefOrGetter<AvailablePlatform[]>,
 ) => {

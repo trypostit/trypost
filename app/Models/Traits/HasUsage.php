@@ -10,19 +10,8 @@ use App\Models\Post;
 use App\Support\BillingCycle;
 use Illuminate\Support\Facades\Cache;
 
-/**
- * Provides account-level usage counts and plan-resolved feature limits.
- *
- * `featureLimits()` exposes the plan workspace cap (`null` = unlimited).
- */
 trait HasUsage
 {
-    /**
-     * Cache TTL for the per-account post count. Posts are unbounded by plan
-     * limits and not used for any quota gating, so a few minutes of staleness
-     * is acceptable in exchange for skipping a potentially heavy aggregate
-     * query on every authenticated request.
-     */
     private const POST_COUNT_CACHE_TTL = 300;
 
     /**

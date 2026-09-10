@@ -33,11 +33,6 @@ interface NetworkGroup {
     accounts: ConnectedAccount[];
 }
 
-/**
- * One section per network, in catalog order, even when nothing is connected
- * yet so every option stays visible. Variants (LinkedIn profile/page,
- * Instagram direct/via Facebook) collapse into the network they belong to.
- */
 const groups = computed<NetworkGroup[]>(() =>
     props.platforms.map((platform) => ({
         platform,

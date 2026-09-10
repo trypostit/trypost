@@ -14,10 +14,6 @@ trait HasAccount
         return $this->belongsTo(Account::class);
     }
 
-    /**
-     * Account for authenticated product flows (welcome, billing, settings).
-     * In-app users always have one; null only during account teardown.
-     */
     public function accountOrFail(): Account
     {
         return $this->account ?? $this->account()->firstOrFail();

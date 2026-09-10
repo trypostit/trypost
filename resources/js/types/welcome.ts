@@ -1,4 +1,3 @@
-/** What the user has built so far during welcome — see WelcomeSummaryResource. */
 export interface WelcomeNetwork {
     id: string;
     platform: string;

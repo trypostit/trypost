@@ -13,12 +13,6 @@ import type {
     ConnectedAccount,
 } from '@/types/social-account';
 
-/**
- * The whole "manage your social accounts" surface: every network listed with
- * its connected accounts, plus the dialogs and requests that connect,
- * reconnect, toggle and disconnect them. The accounts page and the welcome
- * step render this so both stay identical.
- */
 const props = withDefaults(
     defineProps<{
         platforms: AvailablePlatform[];

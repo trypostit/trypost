@@ -33,11 +33,6 @@ import {
 } from '@tabler/icons-vue';
 import type { FunctionalComponent } from 'vue';
 
-/**
- * Visual identity of one welcome choice. The same badge/icon pair is used by
- * the choice pill on the step and by the workspace preview in the rail, so a
- * selection looks identical in both places.
- */
 export interface WelcomeOptionMeta {
     icon?: FunctionalComponent;
     logo?: string;

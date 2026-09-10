@@ -82,17 +82,9 @@ class WorkspaceController extends Controller
         ]);
     }
 
-    /**
-     * Block a second workspace the account cannot have — either because there is
-     * no active subscription yet, or because the plan's cap is reached. Guards
-     * both the form (`create`) and the write (`store`) so a direct POST cannot
-     * bypass the plan.
-     */
     private function denyAdditionalWorkspace(User $user): ?RedirectResponse
     {
-        // An invited member joins exactly one account via the invite. Creating a
-        // workspace on their empty invite-signup shell would leave it non-empty
-        // and billable after accept abandons it — send them back to the invite.
+        // Invitee signup shells must stay empty until accept — otherwise they become billable.
         if (Invite::query()->where('email', $user->email)->whereNull('accepted_at')->exists()) {
             abort(403);
         }

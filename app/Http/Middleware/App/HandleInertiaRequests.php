@@ -57,7 +57,6 @@ class HandleInertiaRequests extends Middleware
             ],
             'usage' => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => $account && ! $isSelfHosted ? $account->featureLimits() : null,
-            // Fresh each request: depends on workspace count vs each plan's cap.
             'deniedPlanIds' => $account && ! $isSelfHosted
                 ? Plan::active()
                     ->orderBy('sort')
@@ -88,8 +87,6 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::shareOnce($request),
             'contentTypeMediaRules' => fn (): array => ContentType::mediaRulesForFrontend(),
-            // Catalog for the workspace-limit paywall dialog (and anywhere else
-            // PlanPicker opens outside the billing page).
             'plans' => function (): array {
                 if (config('trypost.self_hosted') || auth()->user()?->account === null) {
                     return [];

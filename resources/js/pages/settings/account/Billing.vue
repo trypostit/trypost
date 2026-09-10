@@ -130,7 +130,6 @@ const changePlan = (planId: string, interval: 'monthly' | 'yearly'): void => {
             <SettingsTabsNav :tabs="tabs" active="billing" />
 
             <section class="space-y-12">
-                <!-- ───── Plans ───── -->
                 <div v-if="hasSubscription" class="space-y-6">
                     <div
                         class="flex flex-wrap items-start justify-between gap-3"
@@ -184,7 +183,6 @@ const changePlan = (planId: string, interval: 'monthly' | 'yearly'): void => {
                     />
                 </div>
 
-                <!-- ───── Payment method ───── -->
                 <div v-if="hasSubscription" class="space-y-6">
                     <HeadingSmall
                         :title="$t('billing.subscription.title')"
@@ -233,7 +231,6 @@ const changePlan = (planId: string, interval: 'monthly' | 'yearly'): void => {
                     </div>
                 </div>
 
-                <!-- ───── Invoices ───── -->
                 <div v-if="invoices.length > 0" class="space-y-6">
                     <HeadingSmall
                         :title="$t('billing.invoices.title')"

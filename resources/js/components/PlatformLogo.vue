@@ -12,7 +12,6 @@ const props = withDefaults(
         size?: 'xs' | 'sm' | 'md' | 'lg';
         tilt?: boolean;
         plain?: boolean;
-        /** Native title. Pass `null` when a richer Tooltip wraps this logo. */
         title?: string | null;
     }>(),
     { size: 'md', tilt: true, plain: false, title: undefined },

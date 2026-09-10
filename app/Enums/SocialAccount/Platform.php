@@ -23,12 +23,6 @@ enum Platform: string
     case Telegram = 'telegram';
     case Discord = 'discord';
 
-    /**
-     * The social network this platform belongs to. Variants that represent the
-     * same network (LinkedIn profile vs. company page, Instagram standalone vs.
-     * Facebook-linked) collapse to one key so a workspace may connect only one
-     * account per network.
-     */
     public function network(): string
     {
         return match ($this) {
@@ -39,9 +33,6 @@ enum Platform: string
     }
 
     /**
-     * All platform values that share this platform's network, used to enforce
-     * the one-account-per-network rule across variants.
-     *
      * @return array<int, string>
      */
     public function networkPlatformValues(): array
@@ -455,12 +446,6 @@ enum Platform: string
     }
 
     /**
-     * Connectable platforms shaped for Inertia account connect grids.
-     * Sorted alphabetically by label (ASC, case-insensitive).
-     *
-     * Instagram includes `connect_methods` so the connect dialog only lists
-     * OAuth entry points that are actually enabled (self-hosters may disable one).
-     *
      * @return list<array{value: string, label: string, network: string, connect_methods?: list<string>}>
      */
     public static function connectableOptions(): array

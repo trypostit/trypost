@@ -154,8 +154,6 @@ Route::middleware(['auth'])->group(function () {
 
 // Routes that require account access and a current workspace
 Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class])->group(function () {
-    Route::redirect('onboarding', '/calendar');
-
     // Discord — live lookups for the composer (channel picker + mention autocomplete).
     // Throttled because they proxy the shared bot's (rate-limited) Discord API.
     Route::get('discord/accounts/{account}/channels', [AppDiscordController::class, 'channels'])
@@ -282,7 +280,6 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     // Account Settings
     Route::get('settings/account', [AccountController::class, 'edit'])->name('app.account.edit');
     Route::put('settings/account', [AccountController::class, 'update'])->name('app.account.update');
-    Route::redirect('settings/account/usage', '/settings/account/billing');
 
     // Billing
     Route::get('settings/account/billing', [BillingController::class, 'index'])->name('app.billing.index');

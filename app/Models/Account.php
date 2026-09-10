@@ -21,10 +21,6 @@ class Account extends Model
 
     public const SUBSCRIPTION_NAME = 'default';
 
-    /**
-     * Redis/cache key for aggregated post counts across the account's workspaces.
-     * Invalidated by the PostHog usage sync job before re-reading aggregates for analytics.
-     */
     public static function postsCountCacheKey(string $accountId): string
     {
         return "account:{$accountId}:posts_count";
@@ -79,10 +75,6 @@ class Account extends Model
         return $this->subscribed(self::SUBSCRIPTION_NAME);
     }
 
-    /**
-     * Whether the account may use the app (active subscription, or a generic
-     * trial when REQUIRE_CARD_FOR_TRIAL is disabled).
-     */
     public function hasAppAccess(): bool
     {
         if (config('trypost.self_hosted')) {
@@ -95,11 +87,6 @@ class Account extends Model
             || (! $requiresCardForTrial && $this->isOnTrial());
     }
 
-    /**
-     * Workspaces the account's plan allows. Null means unlimited — both for a
-     * plan with no cap and for self-hosted. A missing plan_id is not the
-     * Workspaces plan: `canCreateWorkspace()` treats that as signup-only.
-     */
     public function workspaceLimit(): ?int
     {
         if (config('trypost.self_hosted')) {
@@ -109,13 +96,6 @@ class Account extends Model
         return $this->plan?->workspace_limit;
     }
 
-    /**
-     * Whether the account may create another workspace.
-     *
-     * Self-hosted and a plan with a null workspace_limit are unlimited.
-     * An account with no plan may create only the signup workspace
-     * (`count === 0`) — a missing plan_id is not the Workspaces plan.
-     */
     public function canCreateWorkspace(): bool
     {
         if (config('trypost.self_hosted')) {

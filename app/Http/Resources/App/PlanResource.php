@@ -9,9 +9,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * A plan as the frontend sees it. Stripe price ids never leave the server: the
- * client posts a plan id and an interval, and the controller resolves the price.
- *
  * @mixin Plan
  */
 class PlanResource extends JsonResource

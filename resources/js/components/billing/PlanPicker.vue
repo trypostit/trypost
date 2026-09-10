@@ -35,7 +35,6 @@ interface PlanFeature {
     label: string;
     icon: Component;
     tone: string;
-    /** Resolved copy for an info tooltip next to the label, when the feature needs one. */
     tooltip?: string;
 }
 
@@ -90,7 +89,6 @@ const SHARED_FEATURES: Omit<PlanFeature, 'label' | 'tooltip'>[] = [
     { key: 'team', icon: IconUsers, tone: 'bg-purple-200' },
 ];
 
-/** Features whose label alone leaves a question open, so they get an info tooltip. */
 const FEATURES_WITH_TOOLTIP = new Set([
     'accounts_unlimited',
     'ai',
@@ -164,10 +162,6 @@ const selectLabel = (plan: PlanOption): string => {
 const isUnlimited = (plan: PlanOption): boolean =>
     plan.workspace_limit === null;
 
-/**
- * The one thing that differs between plans. It gets its own callout so the
- * eye lands on it before the shared feature list.
- */
 const workspaceLabel = (plan: PlanOption): string =>
     isUnlimited(plan)
         ? trans('billing.plans.workspaces_unlimited')

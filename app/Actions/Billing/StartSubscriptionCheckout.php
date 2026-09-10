@@ -14,15 +14,8 @@ use Symfony\Component\HttpFoundation\Response;
 class StartSubscriptionCheckout
 {
     /**
-     * Create a Stripe Checkout session for the given price and return an Inertia
-     * redirect to it. Trial days,
-     * optional per-plan first-month coupon, and promotion codes come from cashier /
-     * trypost billing env config via ConfigureSubscriptionCheckout. The owner's
-     * signup attribution -- UTM parameters and ad click IDs -- and welcome
-     * answers ride along as subscription metadata, flattened to the strings
-     * Stripe stores and cut to the 500 characters it allows per value. Stripe
-     * rejects a longer value outright rather than truncating it, which would
-     * fail the whole checkout: https://docs.stripe.com/api/metadata
+     * Stripe metadata values are capped at 500 characters and rejected if longer:
+     * https://docs.stripe.com/api/metadata
      */
     public function redirect(Account $account, string $priceId, string $cancelUrl, ?Plan $plan = null): Response
     {
@@ -70,11 +63,6 @@ class StartSubscriptionCheckout
         return Inertia::location($session->url);
     }
 
-    /**
-     * First-month coupons are amount_off against the monthly price ($18 on
-     * Socials, $88 on Workspaces). A yearly price would leave the customer
-     * paying almost the full year, so it never qualifies.
-     */
     private static function planForFirstMonthCoupon(?Plan $plan, string $priceId): ?Plan
     {
         if ($plan === null || $plan->stripe_monthly_price_id !== $priceId) {

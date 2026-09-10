@@ -5,7 +5,6 @@ export interface PlanOption {
     workspace_limit: number | null;
 }
 
-/** The account's current plan as shared on `auth.plan`. */
 export interface AuthPlan {
     id: string;
     slug: string;

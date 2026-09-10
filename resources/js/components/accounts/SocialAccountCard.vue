@@ -34,7 +34,6 @@ import {
 
 const props = defineProps<{
     account: ConnectedAccount;
-    /** Shown when the account came in through a variant of its network (LinkedIn Page, Instagram via Facebook). */
     variantLabel?: string;
 }>();
 
