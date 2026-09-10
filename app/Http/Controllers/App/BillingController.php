@@ -47,7 +47,6 @@ class BillingController extends Controller
         abort_unless($request->user()->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
 
         $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
-        $plans = Plan::active()->orderBy('sort')->get();
 
         return Inertia::render('settings/account/Billing', [
             'hasSubscription' => $account->subscribed(Account::SUBSCRIPTION_NAME),
@@ -58,7 +57,6 @@ class BillingController extends Controller
                 'ends_at',
             ]),
             'plan' => $account->plan ? PlanResource::make($account->plan)->resolve() : null,
-            'plans' => PlanResource::collection($plans)->resolve(),
             'workspaceCount' => $account->workspaces()->count(),
             'invoices' => $account->invoices()->map(fn ($invoice) => [
                 'id' => $invoice->id,

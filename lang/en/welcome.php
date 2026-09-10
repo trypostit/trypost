@@ -11,7 +11,6 @@ return [
     'subscription_required_owner' => 'Your account owner is :name.',
     'subscription_required_auto' => 'This page updates automatically — no need to refresh.',
     'progress' => 'Welcome progress',
-    'step_current' => 'Step :step (current)',
     'step_of' => 'Step :step of :total',
     'back' => 'Back',
     'steps' => [

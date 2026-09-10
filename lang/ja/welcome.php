@@ -11,7 +11,6 @@ return [
     'subscription_required_owner' => 'アカウントのオーナーは :name です。',
     'subscription_required_auto' => 'このページは自動で更新されます — 再読み込みは不要です。',
     'progress' => 'ようこそ進捗',
-    'step_current' => 'ステップ :step（現在）',
     'step_of' => 'ステップ :step / :total',
     'back' => '戻る',
     'steps' => [

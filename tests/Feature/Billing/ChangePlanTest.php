@@ -6,9 +6,11 @@ use App\Enums\Plan\Slug;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
 use App\Models\Plan;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Gate;
+use Laravel\Cashier\Cashier;
 
 beforeEach(function () {
     config(['trypost.self_hosted' => false]);
@@ -24,6 +26,11 @@ beforeEach(function () {
         'stripe_monthly_price_id' => 'price_workspaces_monthly',
         'stripe_yearly_price_id' => 'price_workspaces_yearly',
     ]);
+});
+
+afterEach(function () {
+    RecordingSwapSubscription::$swappedPrices = [];
+    Cashier::useSubscriptionModel(Subscription::class);
 });
 
 $withWorkspace = function (User $user): Workspace {
@@ -89,6 +96,34 @@ test('downgrading is denied while the account holds more workspaces than the tar
         ]));
 });
 
+test('change-plan flashes when the account holds more workspaces than the target allows', function () use ($withWorkspace) {
+    $user = User::factory()->create();
+    $account = $user->account;
+    $account->update(['plan_id' => $this->workspaces->id]);
+
+    $withWorkspace($user);
+    Workspace::factory()->create([
+        'account_id' => $account->id,
+        'user_id' => $user->id,
+    ]);
+
+    subscribeAccount($account);
+
+    $this->actingAs($user->fresh())
+        ->from(route('app.billing.index'))
+        ->post(route('app.billing.change-plan'), [
+            'plan_id' => $this->socials->id,
+            'interval' => 'monthly',
+        ])
+        ->assertRedirect(route('app.billing.index'))
+        ->assertSessionHas('flash.error', __('billing.flash.too_many_workspaces', [
+            'count' => 2,
+            'limit' => 1,
+        ]));
+
+    expect($account->fresh()->plan_id)->toBe($this->workspaces->id);
+});
+
 test('downgrading is allowed once the account is inside the target limit', function () {
     $user = User::factory()->create();
     $account = $user->account;
@@ -144,6 +179,35 @@ test('cloud requests share plans for the workspace upgrade paywall', function ()
         );
 });
 
+test('change-plan swaps the price and writes plan_id', function () use ($withWorkspace) {
+    Cashier::useSubscriptionModel(RecordingSwapSubscription::class);
+
+    $user = User::factory()->create();
+    $account = $user->account;
+    $account->update(['plan_id' => $this->socials->id]);
+    $withWorkspace($user);
+
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_'.fake()->uuid(),
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_socials_monthly',
+    ]);
+
+    $this->actingAs($user->fresh())
+        ->post(route('app.billing.change-plan'), [
+            'plan_id' => $this->workspaces->id,
+            'interval' => 'monthly',
+        ])
+        ->assertRedirect(route('app.billing.index'))
+        ->assertSessionHas('flash.success', __('billing.flash.plan_changed', [
+            'plan' => $this->workspaces->name,
+        ]));
+
+    expect($account->fresh()->plan_id)->toBe($this->workspaces->id)
+        ->and(RecordingSwapSubscription::$swappedPrices)->toBe(['price_workspaces_monthly']);
+});
+
 test('change-plan is a no-op when the subscription is already on that price', function () use ($withWorkspace) {
     $user = User::factory()->create();
     $account = $user->account;
@@ -165,3 +229,25 @@ test('change-plan is a no-op when the subscription is already on that price', fu
         ->assertRedirect(route('app.billing.index'))
         ->assertSessionMissing('flash.success');
 });
+
+class RecordingSwapSubscription extends Subscription
+{
+    protected $table = 'subscriptions';
+
+    /**
+     * @var list<string|array<int, string>>
+     */
+    public static array $swappedPrices = [];
+
+    public function getForeignKey(): string
+    {
+        return 'subscription_id';
+    }
+
+    public function swap(string|array $prices, array $options = []): static
+    {
+        self::$swappedPrices[] = $prices;
+
+        return $this;
+    }
+}

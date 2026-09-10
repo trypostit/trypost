@@ -67,7 +67,13 @@ const changePlan = (planId: string): void => {
     planForm.interval = selectedInterval.value;
     planForm.post(changePlanRoute.url(), {
         preserveScroll: true,
-        onSuccess: () => {
+        onSuccess: (visit) => {
+            const flash = visit.props.flash as SharedData['flash'];
+
+            if (!flash.success) {
+                return;
+            }
+
             open.value = false;
 
             if (selected?.workspace_limit === null) {

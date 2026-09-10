@@ -11,7 +11,6 @@ return [
     'subscription_required_owner' => 'De accounteigenaar is :name.',
     'subscription_required_auto' => 'Deze pagina vernieuwt automatisch — verversen is niet nodig.',
     'progress' => 'Welkomstvoortgang',
-    'step_current' => 'Stap :step (huidig)',
     'step_of' => 'Stap :step van :total',
     'back' => 'Terug',
     'steps' => [

@@ -45,6 +45,37 @@ test('swapPlan denies a non-owner', function () {
     expect($response->message())->toBe(__('billing.flash.cannot_manage'));
 });
 
+test('swapPlan denies when the account is not subscribed', function () {
+    $response = $this->policy->swapPlan(
+        $this->owner,
+        $this->account->fresh(),
+        Plan::where('slug', Slug::Workspaces)->firstOrFail(),
+    );
+
+    expect($response->denied())->toBeTrue();
+    expect($response->message())->toBe(__('billing.flash.subscription_required'));
+});
+
+test('swapPlan denies when the account holds more workspaces than the target allows', function () {
+    subscribeAccount($this->account);
+    Workspace::factory()->count(2)->create([
+        'account_id' => $this->account->id,
+        'user_id' => $this->owner->id,
+    ]);
+
+    $response = $this->policy->swapPlan(
+        $this->owner,
+        $this->account->fresh(),
+        Plan::where('slug', Slug::Socials)->firstOrFail(),
+    );
+
+    expect($response->denied())->toBeTrue();
+    expect($response->message())->toBe(__('billing.flash.too_many_workspaces', [
+        'count' => 2,
+        'limit' => 1,
+    ]));
+});
+
 test('useAi allows when subscribed', function () {
     config()->set('trypost.self_hosted', false);
     Workspace::factory()->create([

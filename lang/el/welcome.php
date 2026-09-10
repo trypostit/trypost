@@ -11,7 +11,6 @@ return [
     'subscription_required_owner' => 'Ο κάτοχος του λογαριασμού σας είναι ο/η :name.',
     'subscription_required_auto' => 'Αυτή η σελίδα ενημερώνεται αυτόματα — δεν χρειάζεται ανανέωση.',
     'progress' => 'Πρόοδος καλωσορίσματος',
-    'step_current' => 'Βήμα :step (τρέχον)',
     'step_of' => 'Βήμα :step από :total',
     'back' => 'Πίσω',
     'steps' => [

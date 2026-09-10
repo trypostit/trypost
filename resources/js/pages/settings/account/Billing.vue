@@ -52,7 +52,6 @@ const props = defineProps<{
     trialEndsAt: string | null;
     subscription: Subscription | null;
     plan: PlanOption | null;
-    plans: PlanOption[];
     workspaceCount: number;
     invoices: Invoice[];
     defaultPaymentMethod: PaymentMethod | null;
@@ -72,6 +71,7 @@ const tabs = computed(() => [
 ]);
 
 const page = usePage<SharedData>();
+const plans = computed((): PlanOption[] => page.props.plans ?? []);
 const authPlan = computed((): AuthPlan | null => page.props.auth.plan);
 const currentInterval = computed(
     (): BillingInterval =>
@@ -99,7 +99,7 @@ const subscriptionStatus = computed(() => {
 });
 
 const deniedPlanIds = computed((): string[] =>
-    deniedPlanIdsFor(props.plans, props.workspaceCount),
+    deniedPlanIdsFor(plans.value, props.workspaceCount),
 );
 
 const selectedInterval = ref<BillingInterval>(currentInterval.value);

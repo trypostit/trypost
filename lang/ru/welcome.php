@@ -11,7 +11,6 @@ return [
     'subscription_required_owner' => 'Владелец вашего аккаунта — :name.',
     'subscription_required_auto' => 'Эта страница обновляется автоматически — перезагружать не нужно.',
     'progress' => 'Прогресс приветствия',
-    'step_current' => 'Шаг :step (текущий)',
     'step_of' => 'Шаг :step из :total',
     'back' => 'Назад',
     'steps' => [

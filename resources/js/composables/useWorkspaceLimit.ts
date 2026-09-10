@@ -13,10 +13,15 @@ export const useWorkspaceLimit = (
         (): number | null => page.props.features?.workspaceLimit ?? null,
     );
 
+    const resolvedCount = computed(
+        (): number =>
+            page.props.usage?.workspaceCount ?? toValue(workspaceCount),
+    );
+
     const atWorkspaceLimit = computed((): boolean => {
         const limit = workspaceLimit.value;
 
-        return limit !== null && toValue(workspaceCount) >= limit;
+        return limit !== null && resolvedCount.value >= limit;
     });
 
     const createOrUpgrade = (onUpgradeRequired: () => void): void => {

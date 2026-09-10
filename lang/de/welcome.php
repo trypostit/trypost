@@ -11,7 +11,6 @@ return [
     'subscription_required_owner' => 'Der Kontoinhaber ist :name.',
     'subscription_required_auto' => 'Diese Seite aktualisiert sich automatisch — kein Neuladen nötig.',
     'progress' => 'Willkommensfortschritt',
-    'step_current' => 'Schritt :step (aktuell)',
     'step_of' => 'Schritt :step von :total',
     'back' => 'Zurück',
     'steps' => [

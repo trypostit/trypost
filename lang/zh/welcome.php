@@ -11,7 +11,6 @@ return [
     'subscription_required_owner' => '您的账户所有者是 :name。',
     'subscription_required_auto' => '此页面会自动更新 — 无需刷新。',
     'progress' => '欢迎进度',
-    'step_current' => '第 :step 步（当前）',
     'step_of' => '第 :step 步，共 :total 步',
     'back' => '返回',
     'steps' => [

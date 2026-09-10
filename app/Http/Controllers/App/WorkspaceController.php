@@ -70,7 +70,9 @@ class WorkspaceController extends Controller
     {
         $this->authorize('create', Workspace::class);
 
-        if ($redirect = $this->denyAdditionalWorkspace($request->user())) {
+        $user = $request->user();
+
+        if ($redirect = $this->denyAdditionalWorkspace($user, redirectWhenAtLimit: false)) {
             return $redirect;
         }
 
@@ -82,7 +84,7 @@ class WorkspaceController extends Controller
         ]);
     }
 
-    private function denyAdditionalWorkspace(User $user): ?RedirectResponse
+    private function denyAdditionalWorkspace(User $user, bool $redirectWhenAtLimit = true): ?RedirectResponse
     {
         // Invitee signup shells must stay empty until accept — otherwise they become billable.
         if (Invite::query()->where('email', $user->email)->whereNull('accepted_at')->exists()) {
@@ -98,8 +100,8 @@ class WorkspaceController extends Controller
                 ->with('flash.error', __('workspaces.subscription_required'));
         }
 
-        if (! $user->account->canCreateWorkspace()) {
-            return redirect()->route('app.billing.index')
+        if ($redirectWhenAtLimit && ! $user->account->canCreateWorkspace()) {
+            return redirect()->route('app.workspaces.create')
                 ->with('flash.error', __('workspaces.limit_reached'));
         }
 

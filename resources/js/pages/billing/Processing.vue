@@ -9,10 +9,7 @@ const props = defineProps<{
     subscriptionActive: boolean;
 }>();
 
-// Polls `auth` alongside so `auth.plan.interval` is fresh once the Stripe
-// webhook creates the local Subscription row — at /billing/processing's
-// initial render that row doesn't exist yet, so the interval would default
-// to 'monthly' even for a yearly purchase.
+// Poll `auth` so `auth.plan.interval` is set after the webhook writes the Subscription row.
 const { stop } = usePoll(2000, {
     only: ['subscriptionActive', 'auth'],
 });
@@ -23,11 +20,7 @@ const goNext = (): void => {
     router.visit(calendar.url());
 };
 
-// A trial-with-card subscription is already `subscribed()` (status
-// `trialing`) by the time the webhook lands, so the user frequently reaches
-// this page already active — the false → true poll transition never
-// happens. `checkout.completed` fires from the Stripe webhook server-side,
-// independent of this page, so there's nothing to wait for once active.
+// Card-required trials are already `subscribed()` (`trialing`) on first paint.
 const completePurchase = (): void => {
     if (finishing.value) {
         return;

@@ -11,7 +11,6 @@ return [
     'subscription_required_owner' => 'Власник вашого акаунта — :name.',
     'subscription_required_auto' => 'Ця сторінка оновлюється автоматично — оновлювати вручну не потрібно.',
     'progress' => 'Прогрес привітання',
-    'step_current' => 'Крок :step (поточний)',
     'step_of' => 'Крок :step з :total',
     'back' => 'Назад',
     'steps' => [

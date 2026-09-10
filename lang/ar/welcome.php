@@ -11,7 +11,6 @@ return [
     'subscription_required_owner' => 'مالك حسابك هو :name.',
     'subscription_required_auto' => 'يتم تحديث هذه الصفحة تلقائيًا — لا حاجة لإعادة التحميل.',
     'progress' => 'تقدم الترحيب',
-    'step_current' => 'الخطوة :step (الحالية)',
     'step_of' => 'الخطوة :step من :total',
     'back' => 'رجوع',
     'steps' => [

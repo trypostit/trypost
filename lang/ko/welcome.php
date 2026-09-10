@@ -11,7 +11,6 @@ return [
     'subscription_required_owner' => '계정 소유자는 :name 님입니다.',
     'subscription_required_auto' => '이 페이지는 자동으로 업데이트됩니다 — 새로고침할 필요가 없습니다.',
     'progress' => '환영 진행률',
-    'step_current' => ':step단계 (현재)',
     'step_of' => ':total단계 중 :step단계',
     'back' => '뒤로',
     'steps' => [

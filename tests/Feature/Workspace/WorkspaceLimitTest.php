@@ -25,8 +25,8 @@ $onPlan = function (Slug $slug): User {
     ]);
 
     // The controller guard checks hasActiveSubscription() *before* the cap.
-    // Without this, GET/POST at the Socials cap flash subscription_required
-    // instead of limit_reached, and the Workspaces store test never writes.
+    // Without this, GET at the Socials cap still renders, but store flashes
+    // subscription_required instead of limit_reached.
     subscribeAccount($user->account);
 
     return $user->fresh();
@@ -84,13 +84,15 @@ test('self-hosted ignores the cap', function () use ($onPlan) {
     expect($user->account->canCreateWorkspace())->toBeTrue();
 });
 
-test('the create form redirects to billing when the plan is at its cap', function () use ($onPlan) {
+test('the create form is available when the plan is at its cap', function () use ($onPlan) {
     $user = $onPlan(Slug::Socials);
 
     $this->actingAs($user)
         ->get(route('app.workspaces.create'))
-        ->assertRedirect(route('app.billing.index'))
-        ->assertSessionHas('flash.error', __('workspaces.limit_reached'));
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('workspaces/Create', false)
+        );
 });
 
 test('a direct store POST cannot exceed the cap', function () use ($onPlan) {
@@ -98,7 +100,8 @@ test('a direct store POST cannot exceed the cap', function () use ($onPlan) {
 
     $this->actingAs($user)
         ->post(route('app.workspaces.store'), ['name' => 'Second'])
-        ->assertRedirect(route('app.billing.index'));
+        ->assertRedirect(route('app.workspaces.create'))
+        ->assertSessionHas('flash.error', __('workspaces.limit_reached'));
 
     expect($user->account->workspaces()->count())->toBe(1);
 });

@@ -50,6 +50,10 @@ export interface Usage {
 export interface FlashData {
     banner?: string;
     bannerStyle?: 'success' | 'danger' | 'info' | 'warning';
+    success?: string;
+    error?: string;
+    warning?: string;
+    info?: string;
     plainToken?: string;
     [key: string]: unknown;
 }

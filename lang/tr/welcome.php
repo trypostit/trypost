@@ -11,7 +11,6 @@ return [
     'subscription_required_owner' => 'Hesap sahibiniz :name.',
     'subscription_required_auto' => 'Bu sayfa otomatik olarak güncellenir — yenilemenize gerek yok.',
     'progress' => 'Karşılama ilerlemesi',
-    'step_current' => 'Adım :step (şu anki)',
     'step_of' => 'Adım :step / :total',
     'back' => 'Geri',
     'steps' => [
