@@ -141,8 +141,8 @@ const changePlan = (planId: string, interval: 'monthly' | 'yearly'): void => {
                         />
                         <div
                             v-if="
-                                subscriptionStatus &&
-                                subscriptionStatus !== 'active'
+                                subscriptionStatus === 'trial' ||
+                                subscriptionStatus === 'cancelling'
                             "
                             class="flex flex-wrap items-center gap-2"
                         >
@@ -151,12 +151,6 @@ const changePlan = (planId: string, interval: 'monthly' | 'yearly'): void => {
                                 variant="secondary"
                             >
                                 {{ $t('billing.plan.trial') }}
-                            </Badge>
-                            <Badge
-                                v-else-if="subscriptionStatus === 'past_due'"
-                                variant="destructive"
-                            >
-                                {{ $t('billing.plan.past_due') }}
                             </Badge>
                             <Badge
                                 v-else-if="subscriptionStatus === 'cancelling'"

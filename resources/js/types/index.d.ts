@@ -1,6 +1,11 @@
 import { InertiaLinkProps } from '@inertiajs/vue3';
 import type { Component } from 'vue';
 
+import type { AuthPlan, Features, PlanOption } from '@/types/plan';
+
+export type { AuthPlan, Features, PlanOption } from '@/types/plan';
+export type { WelcomeNetwork, WelcomeSummary } from '@/types/welcome';
+
 export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'viewer';
 
 export interface Workspace {
@@ -9,13 +14,6 @@ export interface Workspace {
     logo_url: string | null;
     role?: WorkspaceRole | null;
     [key: string]: unknown;
-}
-
-export interface AuthPlan {
-    id: string;
-    slug: string;
-    name: string;
-    interval: 'monthly' | 'yearly';
 }
 
 export interface AuthAccount {
@@ -44,10 +42,6 @@ export interface Usage {
     creditsUsed: number;
 }
 
-export interface Features {
-    workspaceLimit: number | null;
-}
-
 export interface FlashData {
     banner?: string;
     bannerStyle?: 'success' | 'danger' | 'info' | 'warning';
@@ -64,21 +58,6 @@ export interface NavItem {
     exact?: boolean;
     excludeActive?: string[];
     badge?: string;
-}
-
-export interface WelcomeNetwork {
-    id: string;
-    platform: string;
-    display_label: string;
-    username: string | null;
-    avatar_url: string | null;
-}
-
-/** What the user has built so far during welcome — see WelcomeSummaryResource. */
-export interface WelcomeSummary {
-    persona: string | null;
-    goals: string[];
-    networks: WelcomeNetwork[];
 }
 
 export interface ContentTypeMediaRule {
@@ -104,13 +83,6 @@ export interface LegalLinks {
     privacy: string;
 }
 
-export interface SharedPlan {
-    id: string;
-    slug: string;
-    name: string;
-    workspace_limit: number | null;
-}
-
 export interface SharedData {
     name: string;
     auth: Auth;
@@ -121,7 +93,7 @@ export interface SharedData {
     contentTypeMediaRules?: Record<string, ContentTypeMediaRule>;
     features?: Features | null;
     usage?: Usage | null;
-    plans?: SharedPlan[];
+    plans?: PlanOption[];
     deniedPlanIds?: string[];
     [key: string]: unknown;
 }
@@ -186,4 +158,3 @@ export interface AiTemplate {
     supported_formats: string[];
     applies_brand_visuals: boolean;
 }
-

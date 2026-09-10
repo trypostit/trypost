@@ -26,13 +26,9 @@ import {
 } from '@/components/ui/tooltip';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { Platform } from '@/types/platform';
+import type { PlanOption } from '@/types/plan';
 
-export interface PlanOption {
-    id: string;
-    slug: string;
-    name: string;
-    workspace_limit: number | null;
-}
+export type { PlanOption };
 
 interface PlanFeature {
     key: string;
