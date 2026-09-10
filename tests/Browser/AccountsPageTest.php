@@ -64,7 +64,7 @@ test('a workspace without accounts lists every network with a connect slot', fun
         ->assertVisible('@connect-linkedin')
         ->assertVisible('@connect-x')
         ->assertMissing('@connect-another-linkedin')
-        ->assertVisible('@connect-account-button')
+        ->assertMissing('@connect-account-button')
         ->assertNoJavaScriptErrors();
 });
 
@@ -91,21 +91,16 @@ test('every network is listed, connected ones grouped with a slot for one more',
         ->assertNoJavaScriptErrors();
 });
 
-test('the connect button opens the catalog with per-network counts', function () {
+test('the accounts page has no header connect catalog', function () {
     $this->actingAs(accountsOwnerWithLinkedIn());
 
     $page = visit(route('app.accounts'));
 
-    waitForAccountsTestId($page, 'connect-account-button');
+    waitForAccountsTestId($page, 'network-group-linkedin');
 
-    $page->click('@connect-account-button');
-
-    waitForAccountsTestId($page, 'connect-account-dialog');
-
-    $page->assertVisible('@connect-account-dialog')
-        ->assertVisible('@connect-linkedin')
-        ->assertSeeIn('@connect-count-linkedin', '1')
-        ->assertMissing('@connect-count-x')
+    $page->assertMissing('@connect-account-button')
+        ->assertMissing('@connect-account-dialog')
+        ->assertVisible('@connect-another-linkedin')
         ->assertNoJavaScriptErrors();
 });
 

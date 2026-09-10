@@ -6,18 +6,12 @@ return [
     'description' => 'Przegląd wszystkich Twoich połączonych kont społecznościowych',
     'connect_cta' => 'Połącz',
     'connect_another' => 'Połącz kolejne',
-    'connect_account' => 'Połącz konto',
     'actions' => 'Akcje konta',
     'activate' => 'Włącz',
     'deactivate' => 'Wyłącz',
     'active' => 'Aktywne',
     'paused' => 'Wyłączone',
     'accounts_count' => ':count konto|:count konta|:count kont',
-
-    'connect_dialog' => [
-        'title' => 'Połącz konto',
-        'description' => 'Wybierz sieć, którą chcesz połączyć. Możesz dodać dowolną liczbę kont, nawet kilka z tej samej sieci.',
-    ],
 
     'variants' => [
         'linkedin-page' => 'Strona',

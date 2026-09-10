@@ -6,18 +6,12 @@ return [
     'description' => '연결된 모든 소셜 계정 개요',
     'connect_cta' => '연결',
     'connect_another' => '다른 계정 연결',
-    'connect_account' => '계정 연결',
     'actions' => '계정 작업',
     'activate' => '켜기',
     'deactivate' => '끄기',
     'active' => '활성',
     'paused' => '꺼짐',
     'accounts_count' => '계정 :count개',
-
-    'connect_dialog' => [
-        'title' => '계정 연결',
-        'description' => '연결할 네트워크를 선택하세요. 같은 네트워크의 계정 여러 개를 포함해 원하는 만큼 추가할 수 있습니다.',
-    ],
 
     'variants' => [
         'linkedin-page' => '페이지',

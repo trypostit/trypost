@@ -6,18 +6,12 @@ return [
     'description' => '接続済みのソーシャルアカウントの一覧',
     'connect_cta' => '接続',
     'connect_another' => '別のアカウントを接続',
-    'connect_account' => 'アカウントを接続',
     'actions' => 'アカウント操作',
     'activate' => '有効にする',
     'deactivate' => '無効にする',
     'active' => '有効',
     'paused' => '無効',
     'accounts_count' => ':count 件のアカウント',
-
-    'connect_dialog' => [
-        'title' => 'アカウントを接続',
-        'description' => '接続するネットワークを選んでください。同じネットワークの複数アカウントも含め、いくつでも追加できます。',
-    ],
 
     'variants' => [
         'linkedin-page' => 'ページ',

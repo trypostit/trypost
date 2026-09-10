@@ -6,18 +6,12 @@ return [
     'description' => 'Vue d\'ensemble de tous vos comptes sociaux connectés',
     'connect_cta' => 'Connecter',
     'connect_another' => 'Connecter un autre',
-    'connect_account' => 'Connecter un compte',
     'actions' => 'Actions du compte',
     'activate' => 'Activer',
     'deactivate' => 'Désactiver',
     'active' => 'Actif',
     'paused' => 'Désactivé',
     'accounts_count' => ':count compte|:count comptes',
-
-    'connect_dialog' => [
-        'title' => 'Connecter un compte',
-        'description' => 'Choisissez le réseau à connecter. Vous pouvez ajouter autant de comptes que vous voulez, même plusieurs du même réseau.',
-    ],
 
     'variants' => [
         'linkedin-page' => 'Page',

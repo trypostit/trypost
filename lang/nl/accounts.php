@@ -6,18 +6,12 @@ return [
     'description' => 'Overzicht van al je gekoppelde social accounts',
     'connect_cta' => 'Koppelen',
     'connect_another' => 'Nog een koppelen',
-    'connect_account' => 'Account koppelen',
     'actions' => 'Accountacties',
     'activate' => 'Inschakelen',
     'deactivate' => 'Uitschakelen',
     'active' => 'Actief',
     'paused' => 'Uit',
     'accounts_count' => ':count account|:count accounts',
-
-    'connect_dialog' => [
-        'title' => 'Een account koppelen',
-        'description' => 'Kies het netwerk dat je wilt koppelen. Je kunt zoveel accounts toevoegen als je wilt, ook meerdere van hetzelfde netwerk.',
-    ],
 
     'variants' => [
         'linkedin-page' => 'Pagina',

@@ -8,18 +8,12 @@ return [
     'description' => 'Bağlı tüm sosyal hesaplarınıza genel bakış',
     'connect_cta' => 'Bağla',
     'connect_another' => 'Başka birini bağla',
-    'connect_account' => 'Hesap bağla',
     'actions' => 'Hesap işlemleri',
     'activate' => 'Aç',
     'deactivate' => 'Kapat',
     'active' => 'Aktif',
     'paused' => 'Kapalı',
     'accounts_count' => ':count hesap|:count hesap',
-
-    'connect_dialog' => [
-        'title' => 'Bir hesap bağla',
-        'description' => 'Bağlamak istediğin ağı seç. İstediğin kadar hesap ekleyebilirsin, aynı ağdan birkaç tane bile.',
-    ],
 
     'variants' => [
         'linkedin-page' => 'Sayfa',

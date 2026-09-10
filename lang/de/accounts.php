@@ -8,18 +8,12 @@ return [
     'description' => 'Übersicht über alle deine verbundenen Social-Media-Konten',
     'connect_cta' => 'Verbinden',
     'connect_another' => 'Weitere verbinden',
-    'connect_account' => 'Konto verbinden',
     'actions' => 'Kontoaktionen',
     'activate' => 'Aktivieren',
     'deactivate' => 'Deaktivieren',
     'active' => 'Aktiv',
     'paused' => 'Deaktiviert',
     'accounts_count' => ':count Konto|:count Konten',
-
-    'connect_dialog' => [
-        'title' => 'Ein Konto verbinden',
-        'description' => 'Wähle das Netzwerk, das du verbinden möchtest. Du kannst beliebig viele Konten hinzufügen, auch mehrere vom selben Netzwerk.',
-    ],
 
     'variants' => [
         'linkedin-page' => 'Seite',
