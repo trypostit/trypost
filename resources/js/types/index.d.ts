@@ -99,7 +99,6 @@ export interface SharedData {
     features?: Features | null;
     usage?: Usage | null;
     plans?: PlanOption[];
-    deniedPlanIds?: string[];
     welcome?: WelcomeSummary;
     [key: string]: unknown;
 }

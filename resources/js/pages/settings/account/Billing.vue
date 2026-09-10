@@ -21,6 +21,7 @@ import {
 import type { AuthPlan, SharedData } from '@/types';
 import {
     DEFAULT_BILLING_INTERVAL,
+    deniedPlanIdsFor,
     type BillingInterval,
     type PlanOption,
 } from '@/types/plan';
@@ -52,7 +53,6 @@ const props = defineProps<{
     subscription: Subscription | null;
     plan: PlanOption | null;
     plans: PlanOption[];
-    deniedPlanIds: string[];
     workspaceCount: number;
     invoices: Invoice[];
     defaultPaymentMethod: PaymentMethod | null;
@@ -97,6 +97,10 @@ const subscriptionStatus = computed(() => {
 
     return null;
 });
+
+const deniedPlanIds = computed((): string[] =>
+    deniedPlanIdsFor(props.plans, props.workspaceCount),
+);
 
 const selectedInterval = ref<BillingInterval>(currentInterval.value);
 

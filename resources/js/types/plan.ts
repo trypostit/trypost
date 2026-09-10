@@ -11,6 +11,18 @@ export interface PlanOption {
     workspace_limit: number | null;
 }
 
+export const deniedPlanIdsFor = (
+    plans: PlanOption[],
+    workspaceCount: number,
+): string[] =>
+    plans
+        .filter(
+            (plan) =>
+                plan.workspace_limit !== null &&
+                workspaceCount > plan.workspace_limit,
+        )
+        .map((plan) => plan.id);
+
 export interface AuthPlan {
     id: string;
     slug: string;

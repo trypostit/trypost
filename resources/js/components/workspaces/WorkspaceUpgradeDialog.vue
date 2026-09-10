@@ -15,6 +15,7 @@ import { create as createWorkspaceRoute } from '@/routes/app/workspaces';
 import type { SharedData } from '@/types';
 import {
     DEFAULT_BILLING_INTERVAL,
+    deniedPlanIdsFor,
     type BillingInterval,
     type PlanOption,
 } from '@/types/plan';
@@ -25,7 +26,12 @@ const page = usePage<SharedData>();
 
 const plans = computed((): PlanOption[] => page.props.plans ?? []);
 
-const deniedPlanIds = computed((): string[] => page.props.deniedPlanIds ?? []);
+const deniedPlanIds = computed((): string[] =>
+    deniedPlanIdsFor(
+        plans.value,
+        page.props.usage?.workspaceCount ?? page.props.auth.workspaces.length,
+    ),
+);
 
 const authPlan = computed(() => page.props.auth.plan);
 

@@ -119,12 +119,14 @@ test('billing lists socials as denied when the account has too many workspaces',
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('settings/account/Billing', false)
-            ->where('deniedPlanIds', [$this->socials->id])
+            ->where('workspaceCount', 2)
+            ->where('plans.0.id', $this->socials->id)
+            ->where('plans.0.workspace_limit', 1)
             ->has('plans', 2)
         );
 });
 
-test('cloud requests share plans and denied plan ids for the workspace upgrade paywall', function () use ($withWorkspace) {
+test('cloud requests share plans for the workspace upgrade paywall', function () use ($withWorkspace) {
     $user = User::factory()->create();
     $account = $user->account;
     $account->update(['plan_id' => $this->socials->id]);
@@ -136,7 +138,7 @@ test('cloud requests share plans and denied plan ids for the workspace upgrade p
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->has('plans', 2)
-            ->where('deniedPlanIds', [])
+            ->where('workspaceCount', 1)
             ->where('plans.0.slug', 'socials')
             ->where('plans.1.slug', 'workspaces')
         );
