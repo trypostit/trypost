@@ -2,9 +2,14 @@ import { InertiaLinkProps } from '@inertiajs/vue3';
 import type { Component } from 'vue';
 
 import type { AuthPlan, Features, PlanOption } from '@/types/plan';
+import type { WelcomeSummary } from '@/types/welcome';
 
 export type { AuthPlan, BillingInterval, Features, PlanOption } from '@/types/plan';
-export type { WelcomeNetwork, WelcomeSummary } from '@/types/welcome';
+export type {
+    WelcomeNetwork,
+    WelcomeStep,
+    WelcomeSummary,
+} from '@/types/welcome';
 
 export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'viewer';
 
@@ -95,6 +100,7 @@ export interface SharedData {
     usage?: Usage | null;
     plans?: PlanOption[];
     deniedPlanIds?: string[];
+    welcome?: WelcomeSummary;
     [key: string]: unknown;
 }
 

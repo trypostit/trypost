@@ -44,7 +44,7 @@ const submit = (): void => {
     <WelcomeLayout
         :title="$t('welcome.referral_source_title')"
         :description="$t('welcome.referral_source_description')"
-        :step="3"
+        step="referral_source"
     >
         <div class="flex flex-wrap gap-2.5">
             <WelcomeChoicePill

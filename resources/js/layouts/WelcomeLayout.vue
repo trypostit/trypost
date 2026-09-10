@@ -14,19 +14,13 @@ import {
     plan as planRoute,
     referralSource as referralSourceRoute,
 } from '@/routes/app/welcome';
-import type { WelcomeSummary } from '@/types';
+import type { SharedData, WelcomeStep } from '@/types';
 
 const maxWidthClass = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
     lg: 'max-w-lg',
-    xl: 'max-w-xl',
-    '2xl': 'max-w-2xl',
     '3xl': 'max-w-3xl',
     '4xl': 'max-w-4xl',
     '5xl': 'max-w-5xl',
-    '6xl': 'max-w-6xl',
-    '7xl': 'max-w-7xl',
 } as const;
 
 type MaxWidthSize = keyof typeof maxWidthClass;
@@ -35,8 +29,7 @@ const props = withDefaults(
     defineProps<{
         title?: string;
         description?: string;
-        step?: number;
-        totalSteps?: number;
+        step?: WelcomeStep;
         size?: MaxWidthSize;
         centered?: boolean;
     }>(),
@@ -44,17 +37,14 @@ const props = withDefaults(
         title: undefined,
         description: undefined,
         step: undefined,
-        totalSteps: 5,
         size: '3xl',
         centered: false,
     },
 );
 
-const page = usePage();
+const page = usePage<SharedData>();
 
-const summary = computed(
-    () => (page.props.welcome as WelcomeSummary | undefined) ?? null,
-);
+const summary = computed(() => page.props.welcome ?? null);
 
 const steps = [
     { key: 'persona', route: personaRoute() },
@@ -64,19 +54,15 @@ const steps = [
     { key: 'plan', route: planRoute() },
 ] as const;
 
-const previousStep = computed(() => {
-    if (props.step === undefined) {
-        return null;
-    }
+const currentIndex = computed(() =>
+    steps.findIndex((entry) => entry.key === props.step),
+);
 
-    const currentIndex = props.step - 1;
+const previousStep = computed(() =>
+    currentIndex.value > 0 ? steps[currentIndex.value - 1] : null,
+);
 
-    if (currentIndex < 1 || currentIndex >= steps.length) {
-        return null;
-    }
-
-    return steps[currentIndex - 1];
-});
+const alignCenter = computed(() => props.centered || summary.value === null);
 </script>
 
 <template>
@@ -93,7 +79,7 @@ const previousStep = computed(() => {
                 class="flex items-center justify-between gap-4 px-6 pt-6 md:px-10 lg:px-14"
             >
                 <nav
-                    v-if="step !== undefined"
+                    v-if="currentIndex >= 0"
                     class="flex items-center gap-3"
                     :aria-label="$t('welcome.progress')"
                 >
@@ -102,8 +88,8 @@ const previousStep = computed(() => {
                     >
                         {{
                             $t('welcome.step_of', {
-                                step: String(step),
-                                total: String(totalSteps),
+                                step: String(currentIndex + 1),
+                                total: String(steps.length),
                             })
                         }}
                     </span>
@@ -113,22 +99,15 @@ const previousStep = computed(() => {
                             :key="entry.key"
                             class="flex h-6 items-center"
                             :title="$t(`welcome.steps.${entry.key}`)"
-                            :data-testid="`welcome-step-${index + 1}`"
+                            :data-testid="`welcome-step-${entry.key}`"
                             :aria-current="
-                                index + 1 === step ? 'step' : undefined
-                            "
-                            :aria-label="
-                                index + 1 === step
-                                    ? $t('welcome.step_current', {
-                                          step: String(index + 1),
-                                      })
-                                    : undefined
+                                index === currentIndex ? 'step' : undefined
                             "
                         >
                             <span
                                 :class="[
                                     'h-1.5 w-6 rounded-full transition-colors sm:w-8',
-                                    index + 1 <= step
+                                    index <= currentIndex
                                         ? 'bg-primary'
                                         : 'bg-foreground/15',
                                 ]"
@@ -151,7 +130,7 @@ const previousStep = computed(() => {
                     :class="[
                         'my-auto w-full',
                         maxWidthClass[size],
-                        centered || !summary ? 'mx-auto text-center' : '',
+                        alignCenter ? 'mx-auto text-center' : '',
                     ]"
                 >
                     <div
@@ -165,9 +144,7 @@ const previousStep = computed(() => {
                             v-if="description"
                             :class="[
                                 'text-base text-pretty text-muted-foreground',
-                                centered || !summary
-                                    ? 'mx-auto max-w-xl'
-                                    : 'max-w-prose',
+                                alignCenter ? 'mx-auto max-w-xl' : 'max-w-prose',
                             ]"
                         >
                             {{ description }}

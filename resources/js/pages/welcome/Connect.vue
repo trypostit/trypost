@@ -46,7 +46,7 @@ const submit = (): void => {
     <WelcomeLayout
         :title="$t('welcome.connect.title')"
         :description="$t('welcome.connect.description')"
-        :step="4"
+        step="connect"
         size="5xl"
     >
         <SocialAccountsManager

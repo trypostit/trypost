@@ -1,3 +1,10 @@
+export type WelcomeStep =
+    | 'persona'
+    | 'goals'
+    | 'referral_source'
+    | 'connect'
+    | 'plan';
+
 export interface WelcomeNetwork {
     id: string;
     platform: string;

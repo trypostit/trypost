@@ -33,7 +33,7 @@ const select = (planId: string): void => {
     <WelcomeLayout
         :title="$t('welcome.plan_title')"
         :description="$t('welcome.plan_description')"
-        :step="5"
+        step="plan"
         size="4xl"
         centered
     >

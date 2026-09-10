@@ -59,7 +59,7 @@ const submit = (): void => {
     <WelcomeLayout
         :title="$t('welcome.goals_title')"
         :description="$t('welcome.goals_description')"
-        :step="2"
+        step="goals"
     >
         <div class="flex flex-wrap gap-2.5">
             <WelcomeChoicePill

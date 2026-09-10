@@ -14,19 +14,19 @@ import {
 } from '@/components/ui/tooltip';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { goalMeta, personaMeta, welcomeOptionMeta } from '@/lib/welcomeOptions';
-import type { Auth, WelcomeSummary } from '@/types';
+import type { SharedData, WelcomeStep, WelcomeSummary } from '@/types';
 
 const props = defineProps<{
     summary: WelcomeSummary;
-    step?: number;
+    step?: WelcomeStep;
 }>();
 
-const page = usePage();
+const page = usePage<SharedData>();
 
-const workspace = computed(() => (page.props.auth as Auth).currentWorkspace);
+const workspace = computed(() => page.props.auth.currentWorkspace);
 
 const workspaceName = computed(
-    () => workspace.value?.name ?? (page.props.auth as Auth).user.first_name,
+    () => workspace.value?.name ?? page.props.auth.user.first_name,
 );
 
 const persona = computed(() =>
@@ -47,12 +47,12 @@ const goals = computed(() =>
 );
 
 const rows = computed(() => [
-    { key: 'persona', step: 1, done: persona.value !== null },
-    { key: 'goals', step: 2, done: goals.value.length > 0 },
-    { key: 'connect', step: 4, done: props.summary.networks.length > 0 },
+    { key: 'persona' as const, done: persona.value !== null },
+    { key: 'goals' as const, done: goals.value.length > 0 },
+    { key: 'connect' as const, done: props.summary.networks.length > 0 },
 ]);
 
-const isCurrent = (rowStep: number): boolean => props.step === rowStep;
+const isCurrent = (key: WelcomeStep): boolean => props.step === key;
 
 const EMPTY_NETWORK_SLOTS = 3;
 
@@ -97,7 +97,7 @@ const PENDING_CLASS =
                     :key="row.key"
                     :class="[
                         'px-5 py-4 transition-colors duration-300 motion-reduce:transition-none',
-                        isCurrent(row.step) ? 'bg-violet-50/70' : '',
+                        isCurrent(row.key) ? 'bg-violet-50/70' : '',
                     ]"
                     :data-testid="`welcome-preview-${row.key}`"
                 >

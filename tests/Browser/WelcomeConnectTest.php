@@ -62,7 +62,7 @@ test('connect step shows the grid and keeps continue disabled without a social a
         ->assertVisible('@welcome-connect-grid')
         ->assertVisible('@welcome-connect-continue')
         ->assertDisabled('@welcome-connect-continue')
-        ->assertVisible('@welcome-step-4')
+        ->assertVisible('@welcome-step-connect')
         ->assertNoJavaScriptErrors();
 });
 
