@@ -15,7 +15,6 @@ return [
     'upgrade_dialog' => [
         'title' => 'Upgrade om workspaces toe te voegen',
         'description' => 'Je plan bevat één workspace. Upgrade naar Workspaces voor onbeperkte workspaces — één per merk of klant.',
-        'cancel' => 'Niet nu',
     ],
 
     'create' => [

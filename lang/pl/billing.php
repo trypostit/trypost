@@ -9,15 +9,8 @@ return [
         'cta' => 'Zaktualizuj płatność',
     ],
 
-    'annual_banner' => [
-        'title' => 'Otrzymaj 2 miesiące gratis',
-        'description' => 'Przejdź na rozliczenie roczne i płać mniej każdego miesiąca — ten sam plan, nic więcej się nie zmienia.',
-        'cta' => 'Przejdź na plan roczny',
-    ],
-
     'subscribe' => [
         'billed_monthly' => 'Rozliczane miesięcznie',
-        'billed_yearly' => 'Rozliczane rocznie',
         'prices' => [
             'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
@@ -67,14 +60,7 @@ return [
     ],
 
     'plan' => [
-        'title' => 'Plan',
-        'description' => 'Zarządzaj swoim planem subskrypcji.',
-        'label' => 'Plan',
-        'price' => 'Cena',
-        'month' => 'miesiąc',
         'trial' => 'Okres próbny',
-        'active' => 'Aktywny',
-        'past_due' => 'Zaległa płatność',
         'cancelling' => 'Anulowanie',
         'trial_ends' => 'Okres próbny kończy się',
     ],
@@ -82,23 +68,19 @@ return [
     'subscription' => [
         'title' => 'Metoda płatności',
         'description' => 'Zaktualizuj kartę lub dane rozliczeniowe w Stripe.',
-        'payment_method' => 'Metoda płatności',
         'no_payment_method' => 'Brak zapisanej metody płatności.',
         'expires_on' => 'Wygasa :month/:year',
-        'manage_label' => 'Subskrypcja',
         'manage_stripe' => 'Zarządzaj w Stripe',
     ],
 
     'invoices' => [
         'title' => 'Faktury',
         'description' => 'Pobierz swoje wcześniejsze faktury.',
-        'empty' => 'Nie znaleziono faktur',
         'paid' => 'Opłacona',
     ],
 
     'flash' => [
         'plan_changed' => 'Korzystasz teraz z planu :plan.',
-        'switched_to_yearly' => 'Korzystasz teraz z rozliczenia rocznego.',
         'cannot_manage' => 'Tylko właściciel konta może zarządzać rozliczeniami.',
         'too_many_workspaces' => 'Masz :count workspace’ów. Ten plan obejmuje :limit — usuń nadmiar przed zmianą.',
         'subscription_required' => 'Aby korzystać z funkcji AI, wymagana jest aktywna subskrypcja.',
@@ -108,10 +90,5 @@ return [
         'page_title' => 'Przetwarzanie...',
         'title' => 'Przetwarzanie Twojej subskrypcji',
         'description' => 'Poczekaj, aż skonfigurujemy Twoje konto. Zajmie to tylko chwilę.',
-        'success_title' => 'Wszystko gotowe!',
-        'success_description' => 'Twoja subskrypcja jest aktywna. Przekierowujemy Cię do Twoich przestrzeni roboczych...',
-        'cancelled_title' => 'Anulowano płatność',
-        'cancelled_description' => 'Twoja płatność została anulowana. Nie pobrano żadnych opłat.',
-        'retry' => 'Spróbuj ponownie',
     ],
 ];

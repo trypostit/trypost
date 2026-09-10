@@ -15,7 +15,6 @@ return [
     'upgrade_dialog' => [
         'title' => 'Daha fazla workspace eklemek için yükseltin',
         'description' => 'Planınız bir workspace içerir. Sınırsız workspace için Workspaces’e yükseltin — her marka veya müşteri için bir tane.',
-        'cancel' => 'Şimdi değil',
     ],
 
     'create' => [

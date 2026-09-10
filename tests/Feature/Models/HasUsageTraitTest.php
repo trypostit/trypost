@@ -55,6 +55,16 @@ test('featureLimits reports the plan workspace limit', function () {
     expect($account->fresh()->featureLimits())->toBe(['workspaceLimit' => 1]);
 });
 
+test('featureLimits reports a one-workspace cap when the account has no plan', function () {
+    config()->set('trypost.self_hosted', false);
+
+    $user = User::factory()->create();
+    $account = $user->account;
+    $account->update(['plan_id' => null]);
+
+    expect($account->fresh()->featureLimits())->toBe(['workspaceLimit' => 1]);
+});
+
 test('featureLimits reports null for an unlimited plan', function () {
     config()->set('trypost.self_hosted', false);
 

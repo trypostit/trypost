@@ -9,15 +9,8 @@ return [
         'cta' => 'Betaling bijwerken',
     ],
 
-    'annual_banner' => [
-        'title' => 'Krijg 2 maanden gratis',
-        'description' => 'Stap over op jaarlijkse facturatie en betaal elke maand minder — hetzelfde abonnement, verder verandert er niets.',
-        'cta' => 'Upgraden naar jaarlijks',
-    ],
-
     'subscribe' => [
         'billed_monthly' => 'Maandelijks gefactureerd',
-        'billed_yearly' => 'Jaarlijks gefactureerd',
         'prices' => [
             'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
@@ -67,14 +60,7 @@ return [
     ],
 
     'plan' => [
-        'title' => 'Abonnement',
-        'description' => 'Beheer je abonnement.',
-        'label' => 'Abonnement',
-        'price' => 'Prijs',
-        'month' => 'maand',
         'trial' => 'Proefperiode',
-        'active' => 'Actief',
-        'past_due' => 'Achterstallig',
         'cancelling' => 'Wordt opgezegd',
         'trial_ends' => 'Proefperiode eindigt',
     ],
@@ -82,23 +68,19 @@ return [
     'subscription' => [
         'title' => 'Betaalmethode',
         'description' => 'Werk je kaart of factuurgegevens bij in Stripe.',
-        'payment_method' => 'Betaalmethode',
         'no_payment_method' => 'Nog geen betaalmethode geregistreerd.',
         'expires_on' => 'Verloopt :month/:year',
-        'manage_label' => 'Abonnement',
         'manage_stripe' => 'Beheren op Stripe',
     ],
 
     'invoices' => [
         'title' => 'Facturen',
         'description' => 'Download je eerdere facturen.',
-        'empty' => 'Geen facturen gevonden',
         'paid' => 'Betaald',
     ],
 
     'flash' => [
         'plan_changed' => 'Je zit nu op het :plan-abonnement.',
-        'switched_to_yearly' => 'Je zit nu op jaarlijkse facturatie.',
         'cannot_manage' => 'Alleen de accounteigenaar kan de facturatie beheren.',
         'too_many_workspaces' => 'Je hebt :count workspaces. Dit plan bevat er :limit — verwijder de extra\'s voordat je wisselt.',
         'subscription_required' => 'Een actief abonnement is vereist om AI-functies te gebruiken.',
@@ -108,10 +90,5 @@ return [
         'page_title' => 'Verwerken...',
         'title' => 'Je abonnement wordt verwerkt',
         'description' => 'Wacht even terwijl we je account instellen. Dit duurt maar een moment.',
-        'success_title' => 'Je bent helemaal klaar!',
-        'success_description' => 'Je abonnement is actief. Je wordt doorgestuurd naar je workspaces...',
-        'cancelled_title' => 'Afrekenen geannuleerd',
-        'cancelled_description' => 'Je afrekenen is geannuleerd. Er zijn geen kosten in rekening gebracht.',
-        'retry' => 'Opnieuw proberen',
     ],
 ];

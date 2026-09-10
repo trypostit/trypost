@@ -9,11 +9,13 @@ use App\Http\Requests\App\Billing\ChangePlanRequest;
 use App\Http\Resources\App\PlanResource;
 use App\Models\Account;
 use App\Models\Plan;
+use App\Support\Billing\SubscriptionPlanSync;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
+use Laravel\Cashier\Exceptions\IncompletePayment;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class BillingController extends Controller
@@ -93,11 +95,22 @@ class BillingController extends Controller
 
         abort_if($subscription === null, SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No active subscription');
 
-        if ($subscription->stripe_price === $priceId) {
-            return redirect()->route('app.billing.index');
+        try {
+            if ($subscription->stripe_price !== $priceId) {
+                $subscription->swap($priceId);
+            }
+        } catch (IncompletePayment $exception) {
+            return redirect()->route('cashier.payment', [
+                $exception->payment->id,
+                'redirect' => route('app.billing.index'),
+            ]);
         }
 
-        $subscription->swap($priceId);
+        $subscription->refresh();
+
+        if (! SubscriptionPlanSync::allows($subscription->stripe_status)) {
+            return redirect()->route('app.billing.index');
+        }
 
         $account->update(['plan_id' => $plan->id]);
 

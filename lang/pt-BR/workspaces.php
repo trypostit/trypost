@@ -15,7 +15,6 @@ return [
     'upgrade_dialog' => [
         'title' => 'Faça upgrade para criar mais workspaces',
         'description' => 'Seu plano inclui um workspace. Faça upgrade para Workspaces e tenha workspaces ilimitados — um para cada marca ou cliente.',
-        'cancel' => 'Agora não',
     ],
 
     'create' => [

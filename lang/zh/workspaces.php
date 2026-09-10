@@ -15,7 +15,6 @@ return [
     'upgrade_dialog' => [
         'title' => '升级以添加更多工作区',
         'description' => '当前套餐包含一个工作区。升级到 Workspaces 可获得无限工作区 — 每个品牌或客户一个。',
-        'cancel' => '暂不',
     ],
 
     'create' => [

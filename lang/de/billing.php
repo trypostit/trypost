@@ -11,15 +11,8 @@ return [
         'cta' => 'Zahlung aktualisieren',
     ],
 
-    'annual_banner' => [
-        'title' => '2 Monate gratis erhalten',
-        'description' => 'Wechsle zur jährlichen Abrechnung und zahle jeden Monat weniger – gleicher Tarif, sonst ändert sich nichts.',
-        'cta' => 'Auf jährlich upgraden',
-    ],
-
     'subscribe' => [
         'billed_monthly' => 'Monatlich abgerechnet',
-        'billed_yearly' => 'Jährlich abgerechnet',
         'prices' => [
             'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
@@ -69,14 +62,7 @@ return [
     ],
 
     'plan' => [
-        'title' => 'Tarif',
-        'description' => 'Verwalte deinen Abonnement-Tarif.',
-        'label' => 'Tarif',
-        'price' => 'Preis',
-        'month' => 'Monat',
         'trial' => 'Testphase',
-        'active' => 'Aktiv',
-        'past_due' => 'Überfällig',
         'cancelling' => 'Wird gekündigt',
         'trial_ends' => 'Testphase endet',
     ],
@@ -84,23 +70,19 @@ return [
     'subscription' => [
         'title' => 'Zahlungsmethode',
         'description' => 'Aktualisiere deine Karte oder Rechnungsdaten bei Stripe.',
-        'payment_method' => 'Zahlungsmethode',
         'no_payment_method' => 'Noch keine Zahlungsmethode hinterlegt.',
         'expires_on' => 'Läuft ab :month/:year',
-        'manage_label' => 'Abonnement',
         'manage_stripe' => 'Bei Stripe verwalten',
     ],
 
     'invoices' => [
         'title' => 'Rechnungen',
         'description' => 'Lade deine bisherigen Rechnungen herunter.',
-        'empty' => 'Keine Rechnungen gefunden',
         'paid' => 'Bezahlt',
     ],
 
     'flash' => [
         'plan_changed' => 'Du nutzt jetzt den Tarif :plan.',
-        'switched_to_yearly' => 'Du nutzt jetzt die jährliche Abrechnung.',
         'cannot_manage' => 'Nur der Kontoinhaber kann die Abrechnung verwalten.',
         'too_many_workspaces' => 'Du hast :count Workspaces. Dieser Tarif umfasst :limit — lösche die überzähligen, bevor du wechselst.',
         'subscription_required' => 'Für die Nutzung der KI-Funktionen ist ein aktives Abonnement erforderlich.',
@@ -110,10 +92,5 @@ return [
         'page_title' => 'Wird verarbeitet...',
         'title' => 'Dein Abonnement wird verarbeitet',
         'description' => 'Bitte warte, während wir dein Konto einrichten. Das dauert nur einen Moment.',
-        'success_title' => 'Alles bereit!',
-        'success_description' => 'Dein Abonnement ist aktiv. Du wirst zu deinen Workspaces weitergeleitet...',
-        'cancelled_title' => 'Bezahlvorgang abgebrochen',
-        'cancelled_description' => 'Dein Bezahlvorgang wurde abgebrochen. Es wurden keine Kosten berechnet.',
-        'retry' => 'Erneut versuchen',
     ],
 ];

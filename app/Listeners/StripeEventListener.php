@@ -12,6 +12,7 @@ use App\Jobs\PostHog\TrackTrialStarted;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Services\PostHogService;
+use App\Support\Billing\SubscriptionPlanSync;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Events\WebhookReceived;
@@ -59,12 +60,7 @@ class StripeEventListener
     {
         $previousPlan = $account->plan?->name;
 
-        if ($plan = $this->resolvePlanFromSubscriptionItems($payload, $account)) {
-            $account->update([
-                'plan_id' => $plan->id,
-                'trial_ends_at' => null,
-            ]);
-        }
+        $this->syncPlanFromSubscription($account, $payload, clearGenericTrial: true);
 
         $this->trackPlanChange($account, BillingEvent::Created, $previousPlan, $payload);
         $this->trackSubscriptionStart($account, $payload);
@@ -77,9 +73,7 @@ class StripeEventListener
     {
         $previousPlan = $account->plan?->name;
 
-        if ($plan = $this->resolvePlanFromSubscriptionItems($payload, $account)) {
-            $account->update(['plan_id' => $plan->id]);
-        }
+        $this->syncPlanFromSubscription($account, $payload);
 
         $this->trackPlanChange($account, BillingEvent::Updated, $previousPlan, $payload);
         $this->trackTrialConversion($account, $payload);
@@ -115,6 +109,36 @@ class StripeEventListener
         }
 
         return ! Cache::add("stripe_webhook_event:{$eventId}", true, now()->addDay());
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function syncPlanFromSubscription(Account $account, array $payload, bool $clearGenericTrial = false): void
+    {
+        $status = $this->currentStatus($payload);
+
+        if (SubscriptionPlanSync::allows($status)) {
+            $plan = $this->resolvePlanFromSubscriptionItems($payload, $account);
+
+            if ($plan === null) {
+                return;
+            }
+
+            $attributes = ['plan_id' => $plan->id];
+
+            if ($clearGenericTrial) {
+                $attributes['trial_ends_at'] = null;
+            }
+
+            $account->update($attributes);
+
+            return;
+        }
+
+        if (SubscriptionPlanSync::clears($status) && $account->plan_id !== null) {
+            $account->update(['plan_id' => null]);
+        }
     }
 
     /**

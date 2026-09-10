@@ -37,6 +37,7 @@ test('an account with no plan can create its first workspace', function () {
     $user->account->update(['plan_id' => null]);
 
     expect($user->account->workspaces()->count())->toBe(0)
+        ->and($user->fresh()->account->workspaceLimit())->toBe(1)
         ->and($user->fresh()->account->canCreateWorkspace())->toBeTrue();
 });
 
@@ -49,7 +50,28 @@ test('an account with no plan cannot create a second workspace', function () {
         'user_id' => $user->id,
     ]);
 
-    expect($user->fresh()->account->canCreateWorkspace())->toBeFalse();
+    expect($user->fresh()->account->workspaceLimit())->toBe(1)
+        ->and($user->fresh()->account->canCreateWorkspace())->toBeFalse();
+});
+
+test('a subscribed account without a plan is still capped at one workspace', function () {
+    $user = User::factory()->create();
+    $user->account->update(['plan_id' => null]);
+
+    Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+
+    subscribeAccount($user->account);
+
+    $this->actingAs($user->fresh())
+        ->get(route('app.workspaces.create'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('workspaces/Create', false)
+            ->where('features.workspaceLimit', 1)
+        );
 });
 
 test('the socials plan blocks a second workspace', function () use ($onPlan) {
@@ -93,6 +115,25 @@ test('the create form is available when the plan is at its cap', function () use
         ->assertInertia(fn ($page) => $page
             ->component('workspaces/Create', false)
         );
+});
+
+test('a subscribed account without a plan cannot store a second workspace', function () {
+    $user = User::factory()->create();
+    $user->account->update(['plan_id' => null]);
+
+    Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+
+    subscribeAccount($user->account);
+
+    $this->actingAs($user->fresh())
+        ->post(route('app.workspaces.store'), ['name' => 'Second'])
+        ->assertRedirect(route('app.workspaces.create'))
+        ->assertSessionHas('flash.error', __('workspaces.limit_reached'));
+
+    expect($user->account->workspaces()->count())->toBe(1);
 });
 
 test('a direct store POST cannot exceed the cap', function () use ($onPlan) {

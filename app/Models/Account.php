@@ -93,17 +93,17 @@ class Account extends Model
             return null;
         }
 
-        return $this->plan?->workspace_limit;
+        if ($this->plan === null) {
+            return 1;
+        }
+
+        return $this->plan->workspace_limit;
     }
 
     public function canCreateWorkspace(): bool
     {
         if (config('trypost.self_hosted')) {
             return true;
-        }
-
-        if ($this->plan === null) {
-            return $this->workspaces()->count() === 0;
         }
 
         $limit = $this->workspaceLimit();

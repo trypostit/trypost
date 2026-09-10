@@ -21,6 +21,12 @@ class StartSubscriptionCheckout
 
     public function redirect(Account $account, string $priceId, string $cancelUrl, ?Plan $plan = null): Response
     {
+        // A leftover Workspaces row (unpaid/canceled without `deleted`) would
+        // let Processing treat auth.plan as checkout-complete and skip the wait.
+        if ($account->plan_id !== null) {
+            $account->update(['plan_id' => null]);
+        }
+
         $account->createOrGetStripeCustomer([
             'email' => $account->stripeEmail(),
             'name' => $account->stripeName(),

@@ -1,20 +1,31 @@
 <script setup lang="ts">
-import { Head, router, usePoll } from '@inertiajs/vue3';
+import { Head, router, usePage, usePoll } from '@inertiajs/vue3';
 import { IconLoader2 } from '@tabler/icons-vue';
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import { calendar } from '@/routes/app';
+import type { SharedData } from '@/types';
 
 const props = defineProps<{
     subscriptionActive: boolean;
 }>();
 
-// Poll `auth` so `auth.plan.interval` is set after the webhook writes the Subscription row.
+const page = usePage<SharedData>();
+
+// Poll `auth` so `auth.plan` is set after the webhook writes plan_id.
 const { stop } = usePoll(2000, {
     only: ['subscriptionActive', 'auth'],
 });
 
 const finishing = ref(false);
+const planWaitTimedOut = ref(false);
+let planWaitTimer: ReturnType<typeof setTimeout> | undefined;
+
+const purchaseReady = computed(
+    (): boolean =>
+        props.subscriptionActive &&
+        (page.props.auth.plan !== null || planWaitTimedOut.value),
+);
 
 const goNext = (): void => {
     router.visit(calendar.url());
@@ -30,18 +41,25 @@ const completePurchase = (): void => {
     goNext();
 };
 
-watch(
-    () => props.subscriptionActive,
-    (active) => {
-        if (active) {
-            completePurchase();
-        }
-    },
-);
+watch(purchaseReady, (ready) => {
+    if (ready) {
+        completePurchase();
+    }
+});
 
 onMounted(() => {
-    if (props.subscriptionActive) {
+    planWaitTimer = setTimeout(() => {
+        planWaitTimedOut.value = true;
+    }, 30_000);
+
+    if (purchaseReady.value) {
         completePurchase();
+    }
+});
+
+onUnmounted(() => {
+    if (planWaitTimer !== undefined) {
+        clearTimeout(planWaitTimer);
     }
 });
 </script>

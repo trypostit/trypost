@@ -15,7 +15,6 @@ return [
     'upgrade_dialog' => [
         'title' => 'Обновите план, чтобы добавить workspace',
         'description' => 'В вашем плане один workspace. Перейдите на Workspaces для неограниченного числа workspace — по одному на бренд или клиента.',
-        'cancel' => 'Не сейчас',
     ],
 
     'create' => [

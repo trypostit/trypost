@@ -15,7 +15,6 @@ return [
     'upgrade_dialog' => [
         'title' => 'Κάντε αναβάθμιση για περισσότερα workspaces',
         'description' => 'Το πλάνο σας περιλαμβάνει ένα workspace. Αναβαθμίστε σε Workspaces για απεριόριστα workspaces — ένα ανά brand ή πελάτη.',
-        'cancel' => 'Όχι τώρα',
     ],
 
     'create' => [

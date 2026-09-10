@@ -26,6 +26,18 @@ beforeEach(function () {
         'stripe_yearly_price_id' => 'price_workspace_yearly',
     ]);
 
+    $this->socials = Plan::where('slug', Slug::Socials)->firstOrFail();
+    $this->socials->update([
+        'stripe_monthly_price_id' => 'price_socials_monthly',
+        'stripe_yearly_price_id' => 'price_socials_yearly',
+    ]);
+
+    $this->workspaces = Plan::where('slug', Slug::Workspaces)->firstOrFail();
+    $this->workspaces->update([
+        'stripe_monthly_price_id' => 'price_workspaces_monthly',
+        'stripe_yearly_price_id' => 'price_workspaces_yearly',
+    ]);
+
     $this->account = Account::factory()->create(['stripe_id' => 'cus_test123']);
     $this->user = User::factory()->create([
         'account_id' => $this->account->id,
@@ -268,11 +280,42 @@ test('subscription created syncs the plan from the price id on first activation'
         'type' => 'customer.subscription.created',
         'data' => ['object' => [
             'customer' => 'cus_test123',
+            'status' => 'active',
             'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
         ]],
     ]));
 
     expect($this->account->fresh()->plan_id)->toBe($this->plan->id);
+});
+
+test('subscription created does not sync a plan while payment is incomplete', function () {
+    $this->account->update(['plan_id' => null]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'status' => 'incomplete',
+            'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+        ]],
+    ]));
+
+    expect($this->account->fresh()->plan_id)->toBeNull();
+});
+
+test('subscription created syncs the workspaces plan while trialing', function () {
+    $this->account->update(['plan_id' => null]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'status' => 'trialing',
+            'items' => ['data' => [['price' => ['id' => 'price_workspaces_monthly']]]],
+        ]],
+    ]));
+
+    expect($this->account->fresh()->plan_id)->toBe($this->workspaces->id);
 });
 
 test('subscription updated maps the plan by its monthly price id', function () {
@@ -282,6 +325,7 @@ test('subscription updated maps the plan by its monthly price id', function () {
         'type' => 'customer.subscription.updated',
         'data' => ['object' => [
             'customer' => 'cus_test123',
+            'status' => 'active',
             'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
         ]],
     ]));
@@ -296,12 +340,92 @@ test('subscription updated maps the plan by its yearly price id too', function (
         'type' => 'customer.subscription.updated',
         'data' => ['object' => [
             'customer' => 'cus_test123',
+            'status' => 'trialing',
             'items' => ['data' => [['price' => ['id' => 'price_workspace_yearly']]]],
         ]],
     ]));
 
     expect($this->account->fresh()->plan_id)->toBe($this->plan->id);
 });
+
+test('subscription updated does not sync a richer plan while past due', function () {
+    $this->account->update(['plan_id' => $this->socials->id]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'status' => 'past_due',
+            'items' => ['data' => [['price' => ['id' => 'price_workspaces_monthly']]]],
+        ]],
+    ]));
+
+    expect($this->account->fresh()->plan_id)->toBe($this->socials->id);
+});
+
+test('subscription updated does not clear workspaces while past due', function () {
+    $this->account->update(['plan_id' => $this->workspaces->id]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'status' => 'past_due',
+            'items' => ['data' => [['price' => ['id' => 'price_workspaces_monthly']]]],
+        ]],
+    ]));
+
+    expect($this->account->fresh()->plan_id)->toBe($this->workspaces->id);
+});
+
+test('subscription updated overwrites socials with workspaces when active', function () {
+    $this->account->update(['plan_id' => $this->socials->id]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_workspaces_monthly']]]],
+        ]],
+    ]));
+
+    expect($this->account->fresh()->plan_id)->toBe($this->workspaces->id);
+});
+
+test('subscription updated overwrites workspaces with socials when active', function () {
+    $this->account->update(['plan_id' => $this->workspaces->id]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+        ]],
+    ]));
+
+    expect($this->account->fresh()->plan_id)->toBe($this->socials->id);
+});
+
+test('subscription updated clears the plan when payment is unpaid canceled or expired', function (string $status) {
+    $this->account->update(['plan_id' => $this->workspaces->id]);
+
+    $this->listener->handle(new WebhookReceived([
+        'type' => 'customer.subscription.updated',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'status' => $status,
+            'items' => ['data' => [['price' => ['id' => 'price_workspaces_monthly']]]],
+        ]],
+    ]));
+
+    expect($this->account->fresh()->plan_id)->toBeNull();
+})->with([
+    'unpaid' => ['unpaid'],
+    'canceled' => ['canceled'],
+    'incomplete expired' => ['incomplete_expired'],
+]);
 
 test('subscription updated leaves plan_id alone when the price already matches', function () {
     $this->account->update(['plan_id' => $this->plan->id]);
@@ -310,6 +434,7 @@ test('subscription updated leaves plan_id alone when the price already matches',
         'type' => 'customer.subscription.updated',
         'data' => ['object' => [
             'customer' => 'cus_test123',
+            'status' => 'active',
             'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
         ]],
     ]));

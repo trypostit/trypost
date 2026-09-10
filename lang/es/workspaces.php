@@ -15,7 +15,6 @@ return [
     'upgrade_dialog' => [
         'title' => 'Mejora tu plan para añadir workspaces',
         'description' => 'Tu plan incluye un workspace. Mejora a Workspaces para tener workspaces ilimitados: uno por cada marca o cliente.',
-        'cancel' => 'Ahora no',
     ],
 
     'create' => [

@@ -155,6 +155,27 @@ test('billing processing shows processing page', function () {
     );
 });
 
+test('billing processing keeps auth.plan null until the webhook writes plan_id', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->account->update(['plan_id' => null]);
+    $this->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test_'.fake()->uuid(),
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_123',
+    ]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('billing/Processing', false)
+            ->where('subscriptionActive', true)
+            ->where('auth.plan', null)
+        );
+});
+
 test('shared auth.plan exposes name slug and interval via AuthPlanResource', function () {
     config(['trypost.self_hosted' => false]);
 
@@ -248,7 +269,7 @@ test('changePlan forbids a non-owner', function () {
         ->assertForbidden();
 });
 
-test('changePlan is a no-op when already on that price', function () {
+test('changePlan writes plan_id and flashes when already on that price', function () {
     config(['trypost.self_hosted' => false]);
 
     $plan = Plan::where('slug', 'socials')->first();
@@ -271,7 +292,12 @@ test('changePlan is a no-op when already on that price', function () {
             'plan_id' => $plan->id,
             'interval' => 'yearly',
         ])
-        ->assertRedirect(route('app.billing.index'));
+        ->assertRedirect(route('app.billing.index'))
+        ->assertSessionHas('flash.success', __('billing.flash.plan_changed', [
+            'plan' => $plan->name,
+        ]));
+
+    expect($this->account->fresh()->plan_id)->toBe($plan->id);
 });
 
 test('changePlan requires authentication', function () {

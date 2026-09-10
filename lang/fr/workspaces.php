@@ -15,7 +15,6 @@ return [
     'upgrade_dialog' => [
         'title' => 'Passez à un forfait supérieur pour ajouter des workspaces',
         'description' => 'Votre forfait inclut un workspace. Passez à Workspaces pour des workspaces illimités — un par marque ou client.',
-        'cancel' => 'Pas maintenant',
     ],
 
     'create' => [

@@ -115,6 +115,8 @@ test('the plan step always checks out the monthly price of the chosen plan', fun
             'interval' => 'yearly',
         ])
         ->assertRedirect('https://checkout.stripe.test/session');
+
+    expect($this->user->account->fresh()->plan_id)->toBeNull();
 });
 
 test('the plan step fails loudly when the price is not configured', function () {

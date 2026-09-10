@@ -63,7 +63,7 @@ final class ConfigureSubscriptionCheckout
             return null;
         }
 
-        $couponId = config('cashier.first_month_coupon_ids.'.$plan->slug->value);
+        $couponId = config("cashier.first_month_coupon_ids.{$plan->slug->value}");
 
         if (! is_string($couponId) || $couponId === '') {
             return null;

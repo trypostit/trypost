@@ -9,15 +9,8 @@ return [
         'cta' => 'Mettre à jour le paiement',
     ],
 
-    'annual_banner' => [
-        'title' => 'Obtenez 2 mois gratuits',
-        'description' => 'Passez à la facturation annuelle et payez moins chaque mois — même forfait, rien d\'autre ne change.',
-        'cta' => 'Passer à l\'annuel',
-    ],
-
     'subscribe' => [
         'billed_monthly' => 'Facturé mensuellement',
-        'billed_yearly' => 'Facturé annuellement',
         'prices' => [
             'first_month' => '1 $',
             'socials' => ['monthly' => '19 $', 'yearly_per_month' => '15,83 $', 'yearly' => '190 $'],
@@ -67,14 +60,7 @@ return [
     ],
 
     'plan' => [
-        'title' => 'Forfait',
-        'description' => 'Gérez votre forfait d\'abonnement.',
-        'label' => 'Forfait',
-        'price' => 'Prix',
-        'month' => 'mois',
         'trial' => 'Essai',
-        'active' => 'Actif',
-        'past_due' => 'En retard',
         'cancelling' => 'Annulation en cours',
         'trial_ends' => 'Fin de l\'essai',
     ],
@@ -82,23 +68,19 @@ return [
     'subscription' => [
         'title' => 'Moyen de paiement',
         'description' => 'Mettez à jour votre carte ou vos informations de facturation sur Stripe.',
-        'payment_method' => 'Moyen de paiement',
         'no_payment_method' => 'Aucun moyen de paiement enregistré pour le moment.',
         'expires_on' => 'Expire le :month/:year',
-        'manage_label' => 'Abonnement',
         'manage_stripe' => 'Gérer sur Stripe',
     ],
 
     'invoices' => [
         'title' => 'Factures',
         'description' => 'Téléchargez vos factures passées.',
-        'empty' => 'Aucune facture trouvée',
         'paid' => 'Payée',
     ],
 
     'flash' => [
         'plan_changed' => 'Vous êtes maintenant sur le forfait :plan.',
-        'switched_to_yearly' => 'Vous êtes maintenant en facturation annuelle.',
         'cannot_manage' => 'Seul le propriétaire du compte peut gérer la facturation.',
         'too_many_workspaces' => 'Vous avez :count espaces de travail. Cette offre en inclut :limit — supprimez les extras avant de changer.',
         'subscription_required' => 'Un abonnement actif est requis pour utiliser les fonctionnalités d\'IA.',
@@ -108,10 +90,5 @@ return [
         'page_title' => 'Traitement...',
         'title' => 'Traitement de votre abonnement',
         'description' => 'Veuillez patienter pendant que nous configurons votre compte. Cela ne prendra qu\'un instant.',
-        'success_title' => 'Tout est prêt !',
-        'success_description' => 'Votre abonnement est actif. Redirection vers vos espaces de travail...',
-        'cancelled_title' => 'Paiement annulé',
-        'cancelled_description' => 'Votre paiement a été annulé. Aucun montant n\'a été débité.',
-        'retry' => 'Réessayer',
     ],
 ];

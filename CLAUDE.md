@@ -269,8 +269,10 @@ used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
   `Account::canCreateWorkspace()` — never compare `plan->slug` to decide what
   an account may do. A **missing** `plan_id` is not unlimited: it may create
   only the signup workspace (`count === 0`).
-- `WorkspacePolicy::create()` is owner-only. The cap is not a permission: an
-  owner at the limit is redirected to billing by `WorkspaceController`, not 403'd.
+- `WorkspacePolicy::create()` is owner-only. The cap is not a permission: GET
+  `/workspaces/create` still renders at the cap (the upgrade dialog opens on
+  submit). POST is redirected back to create with `workspaces.limit_reached`,
+  not 403'd.
 - First-month coupon qualification is card required + first-time subscriber +
   that plan's monthly price. Workspace count is not part of it.
   (`incomplete` / `incomplete_expired` still qualify; coupon +
@@ -281,8 +283,14 @@ used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
   back to it. Its `workspace_limit` is 1 because it costs less than Socials.
 - Plan choice is a welcome step (`app.welcome.plan`) and the same `PlanPicker`
   component drives upgrade/downgrade on the billing page (`app.billing.change-plan`).
-  A change is a `swap()` to another price id; `accounts.plan_id` is reconciled by
-  the `customer.subscription.updated` webhook, never written by the controller.
+  A change is a `swap()` to another price id. `accounts.plan_id` is written by
+  `changePlan` after a successful `swap()` only when the subscription is
+  `active` or `trialing` (so create works before the webhook). Welcome checkout
+  never writes it — `StartSubscriptionCheckout` **clears** a leftover `plan_id`
+  so Processing cannot treat a stale Workspaces row as paid. The
+  `customer.subscription.created` / `updated` webhook writes on `active` /
+  `trialing`, **clears** on `unpaid` / `canceled` / `incomplete_expired`, and
+  leaves `past_due` / `incomplete` alone. `deleted` always clears.
 - **There is no AI credit ceiling.** `AiUsageLog` / `RecordAiUsage` still record
   every AI call for cost visibility, but nothing meters or blocks a user.
   `AccountPolicy::useAi` checks app access and nothing else.

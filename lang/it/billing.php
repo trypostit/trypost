@@ -9,15 +9,8 @@ return [
         'cta' => 'Aggiorna pagamento',
     ],
 
-    'annual_banner' => [
-        'title' => 'Ottieni 2 mesi gratis',
-        'description' => 'Passa alla fatturazione annuale e paga meno ogni mese: stesso piano, nient\'altro cambia.',
-        'cta' => 'Passa all\'annuale',
-    ],
-
     'subscribe' => [
         'billed_monthly' => 'Fatturazione mensile',
-        'billed_yearly' => 'Fatturazione annuale',
         'prices' => [
             'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
@@ -67,14 +60,7 @@ return [
     ],
 
     'plan' => [
-        'title' => 'Piano',
-        'description' => 'Gestisci il tuo piano di abbonamento.',
-        'label' => 'Piano',
-        'price' => 'Prezzo',
-        'month' => 'mese',
         'trial' => 'Prova',
-        'active' => 'Attivo',
-        'past_due' => 'Scaduto',
         'cancelling' => 'In cancellazione',
         'trial_ends' => 'La prova termina',
     ],
@@ -82,23 +68,19 @@ return [
     'subscription' => [
         'title' => 'Metodo di pagamento',
         'description' => 'Aggiorna la carta o i dati di fatturazione su Stripe.',
-        'payment_method' => 'Metodo di pagamento',
         'no_payment_method' => 'Nessun metodo di pagamento ancora registrato.',
         'expires_on' => 'Scade il :month/:year',
-        'manage_label' => 'Abbonamento',
         'manage_stripe' => 'Gestisci su Stripe',
     ],
 
     'invoices' => [
         'title' => 'Fatture',
         'description' => 'Scarica le tue fatture passate.',
-        'empty' => 'Nessuna fattura trovata',
         'paid' => 'Pagata',
     ],
 
     'flash' => [
         'plan_changed' => 'Ora sei sul piano :plan.',
-        'switched_to_yearly' => 'Ora hai la fatturazione annuale.',
         'cannot_manage' => 'Solo il proprietario dell\'account può gestire la fatturazione.',
         'too_many_workspaces' => 'Hai :count workspace. Questo piano ne include :limit — elimina quelli extra prima di cambiare.',
         'subscription_required' => 'È richiesto un abbonamento attivo per usare le funzioni IA.',
@@ -108,10 +90,5 @@ return [
         'page_title' => 'Elaborazione...',
         'title' => 'Elaborazione del tuo abbonamento',
         'description' => 'Attendi mentre configuriamo il tuo account. Ci vorrà solo un momento.',
-        'success_title' => 'Tutto pronto!',
-        'success_description' => 'Il tuo abbonamento è attivo. Ti stiamo reindirizzando ai tuoi workspace...',
-        'cancelled_title' => 'Pagamento annullato',
-        'cancelled_description' => 'Il tuo pagamento è stato annullato. Non è stato effettuato alcun addebito.',
-        'retry' => 'Riprova',
     ],
 ];
