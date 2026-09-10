@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, router, usePage, usePoll } from '@inertiajs/vue3';
 import { IconLoader2 } from '@tabler/icons-vue';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import { calendar } from '@/routes/app';
 import type { SharedData } from '@/types';
@@ -18,13 +18,9 @@ const { stop } = usePoll(2000, {
 });
 
 const finishing = ref(false);
-const planWaitTimedOut = ref(false);
-let planWaitTimer: ReturnType<typeof setTimeout> | undefined;
 
 const purchaseReady = computed(
-    (): boolean =>
-        props.subscriptionActive &&
-        (page.props.auth.plan !== null || planWaitTimedOut.value),
+    (): boolean => props.subscriptionActive && page.props.auth.plan !== null,
 );
 
 const goNext = (): void => {
@@ -48,18 +44,8 @@ watch(purchaseReady, (ready) => {
 });
 
 onMounted(() => {
-    planWaitTimer = setTimeout(() => {
-        planWaitTimedOut.value = true;
-    }, 30_000);
-
     if (purchaseReady.value) {
         completePurchase();
-    }
-});
-
-onUnmounted(() => {
-    if (planWaitTimer !== undefined) {
-        clearTimeout(planWaitTimer);
     }
 });
 </script>
