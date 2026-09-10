@@ -3,7 +3,7 @@ import { Link, usePage } from '@inertiajs/vue3';
 import { IconArrowLeft } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import AuthLanguageSwitcher from '@/components/auth/AuthLanguageSwitcher.vue';
+import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
 import Toast from '@/components/Toast.vue';
 import { Button } from '@/components/ui/button';
 import WelcomeWorkspacePreview from '@/components/welcome/WelcomeWorkspacePreview.vue';
@@ -56,23 +56,26 @@ const summary = computed(
     () => (page.props.welcome as WelcomeSummary | undefined) ?? null,
 );
 
-const steps = computed(() => [
+const steps = [
     { key: 'persona', route: personaRoute() },
     { key: 'goals', route: goalsRoute() },
     { key: 'referral_source', route: referralSourceRoute() },
     { key: 'connect', route: connectRoute() },
     { key: 'plan', route: planRoute() },
-]);
+] as const;
 
 const previousStep = computed(() => {
-    if (props.step === undefined || props.step <= 1) {
+    if (props.step === undefined) {
         return null;
     }
 
     const currentIndex = props.step - 1;
-    const previousIndex = currentIndex - 1;
 
-    return steps.value[previousIndex] ?? null;
+    if (currentIndex < 1 || currentIndex >= steps.length) {
+        return null;
+    }
+
+    return steps[currentIndex - 1];
 });
 </script>
 
@@ -135,7 +138,7 @@ const previousStep = computed(() => {
                 </nav>
                 <span v-else />
 
-                <AuthLanguageSwitcher />
+                <LocaleSwitcher />
             </header>
 
             <main

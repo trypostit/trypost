@@ -12,15 +12,15 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useGuestLocale } from '@/composables/useGuestLocale';
-import type { Auth } from '@/types';
+import type { SharedData } from '@/types';
 
-const page = usePage();
+const page = usePage<SharedData>();
 const { locale, languages } = useGuestLocale();
 
-const isAuthenticated = computed(() => Boolean((page.props.auth as Auth).user));
+const isAuthenticated = computed(() => Boolean(page.props.auth.user));
 
 const selected = computed(() =>
-    isAuthenticated.value ? (page.props.locale as string) : locale.value,
+    isAuthenticated.value ? page.props.locale : locale.value,
 );
 
 const current = computed(() =>
@@ -33,7 +33,11 @@ const select = (code: string): void => {
     }
 
     if (isAuthenticated.value) {
-        router.put(updateLanguage.url(), { locale: code }, { preserveScroll: true });
+        router.put(
+            updateLanguage.url(),
+            { locale: code },
+            { preserveScroll: true },
+        );
 
         return;
     }

@@ -4,9 +4,7 @@ import { IconCreditCard, IconDownload, IconFileText } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
-import PlanPicker, {
-    type PlanOption,
-} from '@/components/billing/PlanPicker.vue';
+import PlanPicker from '@/components/billing/PlanPicker.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import SettingsTabsNav from '@/components/settings/SettingsTabsNav.vue';
@@ -20,7 +18,12 @@ import {
     changePlan as changePlanRoute,
     portal,
 } from '@/routes/app/billing';
-import type { AuthPlan } from '@/types';
+import type { AuthPlan, SharedData } from '@/types';
+import {
+    DEFAULT_BILLING_INTERVAL,
+    type BillingInterval,
+    type PlanOption,
+} from '@/types/plan';
 
 interface Subscription {
     stripe_status: string;
@@ -68,12 +71,11 @@ const tabs = computed(() => [
     },
 ]);
 
-const page = usePage();
-const authPlan = computed<AuthPlan | null>(
-    () => (page.props.auth as { plan: AuthPlan | null }).plan ?? null,
-);
-const currentInterval = computed<'monthly' | 'yearly'>(
-    () => authPlan.value?.interval ?? 'monthly',
+const page = usePage<SharedData>();
+const authPlan = computed((): AuthPlan | null => page.props.auth.plan);
+const currentInterval = computed(
+    (): BillingInterval =>
+        authPlan.value?.interval ?? DEFAULT_BILLING_INTERVAL,
 );
 
 const subscriptionStatus = computed(() => {
@@ -96,17 +98,17 @@ const subscriptionStatus = computed(() => {
     return null;
 });
 
-const selectedInterval = ref<'monthly' | 'yearly'>(currentInterval.value);
+const selectedInterval = ref<BillingInterval>(currentInterval.value);
 
 const planForm = useForm<{
     plan_id: string | null;
-    interval: 'monthly' | 'yearly';
+    interval: BillingInterval;
 }>({
     plan_id: null,
-    interval: 'monthly',
+    interval: DEFAULT_BILLING_INTERVAL,
 });
 
-const changePlan = (planId: string, interval: 'monthly' | 'yearly'): void => {
+const changePlan = (planId: string, interval: BillingInterval): void => {
     if (planForm.processing) {
         return;
     }

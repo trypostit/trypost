@@ -13,7 +13,11 @@ import {
 import { changePlan as changePlanRoute } from '@/routes/app/billing';
 import { create as createWorkspaceRoute } from '@/routes/app/workspaces';
 import type { SharedData } from '@/types';
-import type { BillingInterval, PlanOption } from '@/types/plan';
+import {
+    DEFAULT_BILLING_INTERVAL,
+    type BillingInterval,
+    type PlanOption,
+} from '@/types/plan';
 
 const open = defineModel<boolean>('open', { default: false });
 
@@ -26,7 +30,8 @@ const deniedPlanIds = computed((): string[] => page.props.deniedPlanIds ?? []);
 const authPlan = computed(() => page.props.auth.plan);
 
 const currentInterval = computed(
-    (): BillingInterval => authPlan.value?.interval ?? 'monthly',
+    (): BillingInterval =>
+        authPlan.value?.interval ?? DEFAULT_BILLING_INTERVAL,
 );
 
 const selectedInterval = ref<BillingInterval>(currentInterval.value);
@@ -42,7 +47,7 @@ const planForm = useForm<{
     interval: BillingInterval;
 }>({
     plan_id: null,
-    interval: 'monthly',
+    interval: DEFAULT_BILLING_INTERVAL,
 });
 
 const changePlan = (planId: string): void => {

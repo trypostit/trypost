@@ -4,7 +4,7 @@ import { IconStarFilled } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
-import AuthLanguageSwitcher from '@/components/auth/AuthLanguageSwitcher.vue';
+import LocaleSwitcher from '@/components/LocaleSwitcher.vue';
 import type { Auth } from '@/types';
 
 defineProps<{
@@ -58,7 +58,7 @@ const loopedReviews = computed(() => [
                     class="h-7"
                 />
 
-                <AuthLanguageSwitcher v-if="isGuest" />
+                <LocaleSwitcher v-if="isGuest" />
             </div>
 
             <div class="flex flex-1 items-center justify-center">
