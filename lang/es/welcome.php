@@ -22,7 +22,6 @@ return [
     ],
     'preview' => [
         'heading' => 'Tu workspace está tomando forma.',
-        'workspace' => 'Tu workspace',
         'pending' => 'Aún sin elegir',
         'networks_empty' => 'Aún no hay redes conectadas',
     ],

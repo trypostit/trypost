@@ -22,7 +22,6 @@ return [
     ],
     'preview' => [
         'heading' => 'Ваш workspace набуває форми.',
-        'workspace' => 'Ваш workspace',
         'pending' => 'Ще не обрано',
         'networks_empty' => 'Соцмережі ще не підключено',
     ],

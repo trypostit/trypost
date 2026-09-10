@@ -22,7 +22,6 @@ return [
     ],
     'preview' => [
         'heading' => 'ワークスペースが形になってきました。',
-        'workspace' => 'あなたのワークスペース',
         'pending' => 'まだ未選択',
         'networks_empty' => 'まだSNSが連携されていません',
     ],

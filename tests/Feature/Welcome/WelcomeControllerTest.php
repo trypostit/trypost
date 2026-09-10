@@ -413,7 +413,10 @@ test('every step shares the welcome summary that fills in as the user progresses
 
     completeWelcomeThroughReferral($this->user);
     $workspace = attachCurrentWorkspace($this->user);
-    $connected = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $connected = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $workspace->id,
+        'avatar_url' => 'avatars/linkedin.jpg',
+    ]);
     SocialAccount::factory()->x()->tokenExpired()->create(['workspace_id' => $workspace->id]);
 
     $this->actingAs($this->user->fresh())
@@ -428,6 +431,7 @@ test('every step shares the welcome summary that fills in as the user progresses
             ->where('welcome.networks.0.platform', SocialPlatform::LinkedIn->value)
             ->where('welcome.networks.0.display_label', $connected->display_label)
             ->where('welcome.networks.0.username', $connected->username)
+            ->where('welcome.networks.0.avatar_url', $connected->avatar_url)
         );
 });
 

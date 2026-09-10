@@ -22,7 +22,6 @@ return [
     ],
     'preview' => [
         'heading' => '你的工作区正在成形。',
-        'workspace' => '你的工作区',
         'pending' => '尚未选择',
         'networks_empty' => '尚未连接任何网络',
     ],

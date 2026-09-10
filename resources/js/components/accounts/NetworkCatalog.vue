@@ -44,7 +44,7 @@ const tiles = computed<CatalogTile[]>(() =>
             v-for="tile in tiles"
             :key="tile.platform.value"
             type="button"
-            class="group relative flex flex-col items-center gap-2.5 rounded-xl border-2 border-foreground bg-card p-4 text-center shadow-xs transition-[box-shadow,transform] hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+            class="group relative flex cursor-pointer flex-col items-center gap-2.5 rounded-xl border-2 border-foreground bg-card p-4 text-center shadow-xs transition-[box-shadow,transform] hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
             :data-testid="`connect-${tile.platform.value}`"
             @click="emit('select', tile.platform.value)"
         >

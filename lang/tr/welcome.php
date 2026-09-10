@@ -22,7 +22,6 @@ return [
     ],
     'preview' => [
         'heading' => 'Workspace’in şekilleniyor.',
-        'workspace' => 'Workspace’in',
         'pending' => 'Henüz seçilmedi',
         'networks_empty' => 'Henüz bağlı ağ yok',
     ],

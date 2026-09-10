@@ -97,7 +97,7 @@ const variantLabel = (
 
                 <button
                     type="button"
-                    class="flex items-center gap-3 rounded-xl border-2 border-dashed border-foreground/40 px-3 py-2.5 text-left text-foreground/60 transition-colors hover:border-foreground hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                    class="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-foreground/40 px-3 py-2.5 text-left text-foreground/60 transition-colors hover:border-foreground hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
                     :data-testid="
                         group.accounts.length > 0
                             ? `connect-another-${group.platform.value}`

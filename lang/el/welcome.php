@@ -22,7 +22,6 @@ return [
     ],
     'preview' => [
         'heading' => 'Ο workspace σας παίρνει μορφή.',
-        'workspace' => 'Ο workspace σας',
         'pending' => 'Δεν έχει επιλεγεί ακόμα',
         'networks_empty' => 'Δεν έχουν συνδεθεί δίκτυα ακόμα',
     ],

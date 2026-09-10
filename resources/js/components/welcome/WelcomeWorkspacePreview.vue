@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { usePage } from '@inertiajs/vue3';
 import { IconCheck } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
-import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Avatar } from '@/components/ui/avatar';
 import {
     Tooltip,
@@ -12,22 +10,17 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import {
+    getPlatformLabel,
+    getPlatformLogo,
+} from '@/composables/usePlatformLogo';
 import { goalMeta, personaMeta, welcomeOptionMeta } from '@/lib/welcomeOptions';
-import type { SharedData, WelcomeStep, WelcomeSummary } from '@/types';
+import type { WelcomeStep, WelcomeSummary } from '@/types';
 
 const props = defineProps<{
     summary: WelcomeSummary;
     step?: WelcomeStep;
 }>();
-
-const page = usePage<SharedData>();
-
-const workspace = computed(() => page.props.auth.currentWorkspace);
-
-const workspaceName = computed(
-    () => workspace.value?.name ?? page.props.auth.user.first_name,
-);
 
 const persona = computed(() =>
     props.summary.persona
@@ -72,25 +65,6 @@ const PENDING_CLASS =
         <div
             class="overflow-hidden rounded-2xl border-2 border-foreground bg-card shadow-md"
         >
-            <div
-                class="flex items-center gap-3 border-b-2 border-foreground bg-violet-50 px-5 py-4"
-            >
-                <Avatar
-                    :src="workspace?.logo_url ?? null"
-                    :name="workspaceName"
-                    class="size-11 rounded-xl border-2 border-foreground shadow-2xs"
-                    fallback-class="bg-violet-200 text-sm font-bold text-violet-800"
-                />
-                <div class="min-w-0">
-                    <p class="truncate font-bold text-foreground">
-                        {{ workspaceName }}
-                    </p>
-                    <p class="text-xs font-medium text-muted-foreground">
-                        {{ $t('welcome.preview.workspace') }}
-                    </p>
-                </div>
-            </div>
-
             <ul class="divide-y divide-foreground/10">
                 <li
                     v-for="row in rows"
@@ -198,18 +172,37 @@ const PENDING_CLASS =
                                             <TooltipTrigger as-child>
                                                 <button
                                                     type="button"
-                                                    class="cursor-default"
+                                                    class="relative cursor-default"
                                                     :aria-label="
                                                         network.display_label
                                                     "
+                                                    :data-testid="`welcome-preview-network-${network.id}`"
                                                 >
-                                                    <PlatformLogo
-                                                        :platform="
-                                                            network.platform
+                                                    <Avatar
+                                                        :src="
+                                                            network.avatar_url
                                                         "
-                                                        size="sm"
-                                                        :title="null"
+                                                        :name="
+                                                            network.display_label
+                                                        "
+                                                        class="size-10 shrink-0 rounded-full border-2 border-foreground shadow-2xs"
+                                                        fallback-class="bg-secondary text-xs font-black"
                                                     />
+                                                    <span
+                                                        class="absolute -right-1 -bottom-1 inline-flex size-5 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs"
+                                                    >
+                                                        <img
+                                                            :src="
+                                                                getPlatformLogo(
+                                                                    network.platform,
+                                                                )
+                                                            "
+                                                            :alt="
+                                                                network.platform
+                                                            "
+                                                            class="size-full object-cover"
+                                                        />
+                                                    </span>
                                                 </button>
                                             </TooltipTrigger>
                                             <TooltipContent>

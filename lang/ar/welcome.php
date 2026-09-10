@@ -22,7 +22,6 @@ return [
     ],
     'preview' => [
         'heading' => 'مساحة عملك تتشكّل.',
-        'workspace' => 'مساحة عملك',
         'pending' => 'لم يُختَر بعد',
         'networks_empty' => 'لا توجد شبكات متصلة بعد',
     ],
