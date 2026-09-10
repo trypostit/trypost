@@ -115,6 +115,25 @@ class Account extends Model
         return $this->workspaces()->count() < $limit;
     }
 
+    /**
+     * @return list<string>
+     */
+    public function deniedPlanIds(): array
+    {
+        if (config('trypost.self_hosted')) {
+            return [];
+        }
+
+        $workspaceCount = $this->workspaces()->count();
+
+        return Plan::query()
+            ->active()
+            ->whereNotNull('workspace_limit')
+            ->where('workspace_limit', '<', $workspaceCount)
+            ->pluck('id')
+            ->all();
+    }
+
     public function isPastDue(): bool
     {
         if (config('trypost.self_hosted')) {

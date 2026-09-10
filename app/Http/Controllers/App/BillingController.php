@@ -59,11 +59,6 @@ class BillingController extends Controller
             ]),
             'plan' => $account->plan ? PlanResource::make($account->plan)->resolve() : null,
             'plans' => PlanResource::collection($plans)->resolve(),
-            'deniedPlanIds' => $plans
-                ->filter(fn (Plan $candidate): bool => Gate::inspect('swapPlan', [$account, $candidate])->denied())
-                ->pluck('id')
-                ->values()
-                ->all(),
             'workspaceCount' => $account->workspaces()->count(),
             'invoices' => $account->invoices()->map(fn ($invoice) => [
                 'id' => $invoice->id,

@@ -3,7 +3,7 @@ import type { Component } from 'vue';
 
 import type { AuthPlan, Features, PlanOption } from '@/types/plan';
 
-export type { AuthPlan, Features, PlanOption } from '@/types/plan';
+export type { AuthPlan, BillingInterval, Features, PlanOption } from '@/types/plan';
 export type { WelcomeNetwork, WelcomeSummary } from '@/types/welcome';
 
 export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'viewer';

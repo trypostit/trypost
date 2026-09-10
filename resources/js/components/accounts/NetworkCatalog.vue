@@ -25,14 +25,12 @@ const emit = defineEmits<{
 
 interface CatalogTile {
     platform: AvailablePlatform;
-    title: string;
     count: number;
 }
 
 const tiles = computed<CatalogTile[]>(() =>
     props.platforms.map((platform) => ({
         platform,
-        title: platform.label.split('(')[0].trim(),
         count: props.connectedAccounts.filter(
             (account) => account.network === platform.network,
         ).length,
@@ -64,7 +62,7 @@ const tiles = computed<CatalogTile[]>(() =>
                 <span
                     class="block truncate text-sm font-semibold text-foreground"
                 >
-                    {{ tile.title }}
+                    {{ tile.platform.label }}
                 </span>
                 <span
                     class="mt-0.5 line-clamp-2 block text-xs leading-tight text-foreground/60"

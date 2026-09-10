@@ -2,9 +2,7 @@
 import { router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
-import PlanPicker, {
-    type PlanOption,
-} from '@/components/billing/PlanPicker.vue';
+import PlanPicker from '@/components/billing/PlanPicker.vue';
 import {
     Dialog,
     DialogContent,
@@ -14,31 +12,24 @@ import {
 } from '@/components/ui/dialog';
 import { changePlan as changePlanRoute } from '@/routes/app/billing';
 import { create as createWorkspaceRoute } from '@/routes/app/workspaces';
-import type { AuthPlan } from '@/types';
+import type { SharedData } from '@/types';
+import type { BillingInterval, PlanOption } from '@/types/plan';
 
 const open = defineModel<boolean>('open', { default: false });
 
-const page = usePage();
+const page = usePage<SharedData>();
 
-const plans = computed(
-    () => (page.props.plans as PlanOption[] | null | undefined) ?? [],
+const plans = computed((): PlanOption[] => page.props.plans ?? []);
+
+const deniedPlanIds = computed((): string[] => page.props.deniedPlanIds ?? []);
+
+const authPlan = computed(() => page.props.auth.plan);
+
+const currentInterval = computed(
+    (): BillingInterval => authPlan.value?.interval ?? 'monthly',
 );
 
-const deniedPlanIds = computed(
-    () => (page.props.deniedPlanIds as string[] | null | undefined) ?? [],
-);
-
-const authPlan = computed<AuthPlan | null>(
-    () =>
-        (page.props.auth as { plan: AuthPlan | null } | undefined)?.plan ??
-        null,
-);
-
-const currentInterval = computed<'monthly' | 'yearly'>(
-    () => authPlan.value?.interval ?? 'monthly',
-);
-
-const selectedInterval = ref<'monthly' | 'yearly'>(currentInterval.value);
+const selectedInterval = ref<BillingInterval>(currentInterval.value);
 
 watch(open, (isOpen) => {
     if (isOpen) {
@@ -48,7 +39,7 @@ watch(open, (isOpen) => {
 
 const planForm = useForm<{
     plan_id: string | null;
-    interval: 'monthly' | 'yearly';
+    interval: BillingInterval;
 }>({
     plan_id: null,
     interval: 'monthly',

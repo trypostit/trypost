@@ -29,14 +29,12 @@ const emit = defineEmits<{
 
 interface NetworkGroup {
     platform: AvailablePlatform;
-    title: string;
     accounts: ConnectedAccount[];
 }
 
 const groups = computed<NetworkGroup[]>(() =>
     props.platforms.map((platform) => ({
         platform,
-        title: platform.label.split('(')[0].trim(),
         accounts: props.connectedAccounts.filter(
             (account) => account.network === platform.network,
         ),
@@ -69,7 +67,7 @@ const variantLabel = (
                 <h2
                     class="truncate text-lg leading-tight font-semibold text-foreground"
                 >
-                    {{ group.title }}
+                    {{ group.platform.label }}
                 </h2>
                 <span class="text-sm text-foreground/50">
                     {{

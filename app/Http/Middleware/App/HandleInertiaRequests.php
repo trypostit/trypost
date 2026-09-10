@@ -14,7 +14,6 @@ use App\Http\Resources\App\HandleInertiaRequests\AuthWorkspaceResource;
 use App\Http\Resources\App\PlanResource;
 use App\Models\Plan;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -57,15 +56,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'usage' => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => $account && ! $isSelfHosted ? $account->featureLimits() : null,
-            'deniedPlanIds' => $account && ! $isSelfHosted
-                ? Plan::active()
-                    ->orderBy('sort')
-                    ->get()
-                    ->filter(fn (Plan $candidate): bool => Gate::inspect('swapPlan', [$account, $candidate])->denied())
-                    ->pluck('id')
-                    ->values()
-                    ->all()
-                : [],
+            'deniedPlanIds' => $account && ! $isSelfHosted ? $account->deniedPlanIds() : [],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => $request->session()->get('flash', []),
             'applicationUrl' => config('app.url'),

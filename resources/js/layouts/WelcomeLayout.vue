@@ -64,11 +64,16 @@ const steps = computed(() => [
     { key: 'plan', route: planRoute() },
 ]);
 
-const previousStep = computed(() =>
-    props.step !== undefined && props.step > 1
-        ? steps.value[props.step - 2]
-        : null,
-);
+const previousStep = computed(() => {
+    if (props.step === undefined || props.step <= 1) {
+        return null;
+    }
+
+    const currentIndex = props.step - 1;
+    const previousIndex = currentIndex - 1;
+
+    return steps.value[previousIndex] ?? null;
+});
 </script>
 
 <template>

@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/tooltip';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { Platform } from '@/types/platform';
-import type { PlanOption } from '@/types/plan';
+import type { BillingInterval, PlanOption } from '@/types/plan';
 
 export type { PlanOption };
 
@@ -41,9 +41,9 @@ interface PlanFeature {
 const props = withDefaults(
     defineProps<{
         plans: PlanOption[];
-        interval: 'monthly' | 'yearly';
+        interval: BillingInterval;
         currentPlanId?: string | null;
-        currentInterval?: 'monthly' | 'yearly' | null;
+        currentInterval?: BillingInterval | null;
         disabledPlanIds?: string[];
         processing?: boolean;
         allowYearly?: boolean;
@@ -60,7 +60,7 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-    (event: 'update:interval', value: 'monthly' | 'yearly'): void;
+    (event: 'update:interval', value: BillingInterval): void;
     (event: 'select', planId: string): void;
 }>();
 

@@ -1,3 +1,5 @@
+export type BillingInterval = 'monthly' | 'yearly';
+
 export interface PlanOption {
     id: string;
     slug: string;
@@ -9,7 +11,7 @@ export interface AuthPlan {
     id: string;
     slug: string;
     name: string;
-    interval: 'monthly' | 'yearly';
+    interval: BillingInterval;
 }
 
 export interface Features {

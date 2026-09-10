@@ -23,17 +23,15 @@ import {
     DropdownMenuSubContent,
     DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import posthog from '@/posthog';
 import { logout } from '@/routes';
 import { edit as accountEdit } from '@/routes/app/account';
 import { edit as profileEdit } from '@/routes/app/profile';
 import { settings as workspaceSettings } from '@/routes/app/workspace';
-import {
-    create as createWorkspaceRoute,
-    switchMethod,
-} from '@/routes/app/workspaces';
-import type { Features, Language, User } from '@/types';
+import { switchMethod } from '@/routes/app/workspaces';
+import type { Language, User } from '@/types';
 
 interface Workspace {
     id: string;
@@ -54,6 +52,7 @@ const emit = defineEmits<{
 
 const page = usePage();
 const { canManageBilling, canManageWorkspace } = useWorkspaceRole();
+const { createOrUpgrade } = useWorkspaceLimit(() => props.workspaces.length);
 const selfHosted = computed(() => Boolean(page.props.selfHosted));
 const showAccountSettings = computed(
     () => canManageBilling.value && !selfHosted.value,
@@ -65,15 +64,6 @@ const languages = computed<Language[]>(
 const currentLanguage = computed(() =>
     languages.value?.find((language) => language.code === page.props.locale),
 );
-
-const features = computed<Features | null>(
-    () => (page.props.features as Features | null) ?? null,
-);
-const atWorkspaceLimit = computed((): boolean => {
-    const limit = features.value?.workspaceLimit ?? null;
-
-    return limit !== null && props.workspaces.length >= limit;
-});
 
 const switchLanguage = (code: string): void => {
     router.put(updateLanguage.url(), { locale: code });
@@ -94,13 +84,7 @@ const switchWorkspace = (workspaceId: string): void => {
 };
 
 const handleCreateWorkspace = (): void => {
-    if (atWorkspaceLimit.value) {
-        emit('upgradeRequired');
-
-        return;
-    }
-
-    router.visit(createWorkspaceRoute.url());
+    createOrUpgrade(() => emit('upgradeRequired'));
 };
 
 const handleLogout = (): void => {
