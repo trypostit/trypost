@@ -62,12 +62,16 @@ test('platform unavailable context includes http status and checkpoint keys', fu
     $exception = new PlatformUnavailableException(
         message: 'TikTok is still processing publish_id pub_stuck',
         httpStatus: 503,
-        context: ['tiktok_publish_id' => 'pub_stuck'],
+        context: [
+            'tiktok_publish_id' => 'pub_stuck',
+            'tiktok_status' => 'PROCESSING_DOWNLOAD',
+        ],
     );
 
     expect($exception->context())->toBe([
         'http_status' => 503,
         'tiktok_publish_id' => 'pub_stuck',
+        'tiktok_status' => 'PROCESSING_DOWNLOAD',
     ]);
 });
 

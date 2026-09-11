@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\Media\Type as MediaType;
 use App\Enums\Notification\Channel;
 use App\Enums\Notification\Type;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
@@ -279,13 +280,49 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         Log::error('Social publish failed', [
             'post_platform_id' => $this->postPlatform->id,
             'platform' => $this->postPlatform->platform->value,
+            'content_type' => $this->postPlatform->content_type?->value,
             'exception' => $e::class,
             'message' => $e->getMessage(),
             ...(method_exists($e, 'context') ? $e->context() : []),
             ...$context,
+            'media' => $this->mediaSnapshot($this->postPlatform),
         ]);
 
         report($e);
+    }
+
+    /**
+     * Nightwatch's exception record is class/message/stack only. The
+     * structured log needs the media the platform tried to pull so a
+     * CDN miss can be told from an API rejection.
+     *
+     * @return list<array{url: ?string, mime_type: ?string, size: ?int, type: ?string}>
+     */
+    private function mediaSnapshot(PostPlatform $postPlatform): array
+    {
+        $media = $postPlatform->post?->media;
+
+        if (! is_array($media)) {
+            return [];
+        }
+
+        return array_values(array_map(function (mixed $item): array {
+            $item = is_array($item) ? $item : [];
+            $url = data_get($item, 'url');
+            $mimeType = data_get($item, 'mime_type');
+            $path = data_get($item, 'original_filename') ?? data_get($item, 'path');
+            $type = MediaType::classify(
+                is_string($mimeType) ? $mimeType : null,
+                is_string($path) ? $path : null,
+            );
+
+            return [
+                'url' => is_string($url) ? $url : null,
+                'mime_type' => is_string($mimeType) ? $mimeType : null,
+                'size' => is_numeric(data_get($item, 'size')) ? (int) data_get($item, 'size') : null,
+                'type' => $type?->value,
+            ];
+        }, $media));
     }
 
     private function failWithExpiredToken(TokenExpiredException $e): void

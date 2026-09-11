@@ -29,12 +29,14 @@ use App\Services\Social\LinkedInPublisher;
 use App\Services\Social\PinterestPublisher;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -310,6 +312,50 @@ test('publish does not report a platform-unavailable retry', function () {
 
     Exceptions::assertNothingReported();
     expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Retrying);
+});
+
+test('publish log includes media so Nightwatch can tell a CDN miss from an API rejection', function () {
+    Exceptions::fake();
+
+    $this->post->update([
+        'media' => [[
+            'url' => 'https://cdn.trypost.it/media/2026-01/clip.mp4',
+            'mime_type' => 'video/mp4',
+            'size' => 4_194_304,
+            'path' => 'media/2026-01/clip.mp4',
+            'original_filename' => 'clip.mp4',
+        ]],
+    ]);
+
+    $logs = [];
+    Log::listen(function (MessageLogged $event) use (&$logs): void {
+        $logs[] = $event;
+    });
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(
+        new LinkedInPublishException(
+            userMessage: 'LinkedIn could not process the media.',
+            category: ErrorCategory::ServerError,
+            rawResponse: '{"status":"ERROR","detail":"download failed"}',
+        )
+    );
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
+
+    $entry = collect($logs)->first(
+        fn (MessageLogged $event): bool => $event->message === 'Social publish failed'
+    );
+
+    expect($entry)->not->toBeNull()
+        ->and($entry->level)->toBe('error')
+        ->and(data_get($entry->context, 'media.0.url'))->toBe('https://cdn.trypost.it/media/2026-01/clip.mp4')
+        ->and(data_get($entry->context, 'media.0.mime_type'))->toBe('video/mp4')
+        ->and(data_get($entry->context, 'media.0.size'))->toBe(4_194_304)
+        ->and(data_get($entry->context, 'media.0.type'))->toBe('video')
+        ->and(data_get($entry->context, 'content_type'))->toBe('linkedin_post')
+        ->and(data_get($entry->context, 'raw_response'))->toBe('{"status":"ERROR","detail":"download failed"}');
 });
 
 test('publish reports when platform-unavailable retries are exhausted', function () {

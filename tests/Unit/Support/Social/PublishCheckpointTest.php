@@ -20,6 +20,14 @@ test('tiktokDerivativePaths returns an array or an empty list', function () {
         ->and(PublishCheckpoint::tiktokDerivativePaths(null))->toBe([]);
 });
 
+test('tiktokStatus reads a non-empty status', function () {
+    expect(PublishCheckpoint::tiktokStatus([
+        PublishCheckpoint::TIKTOK_STATUS => 'PROCESSING_DOWNLOAD',
+    ]))->toBe('PROCESSING_DOWNLOAD')
+        ->and(PublishCheckpoint::tiktokStatus(['tiktok_status' => '']))->toBeNull()
+        ->and(PublishCheckpoint::tiktokStatus(null))->toBeNull();
+});
+
 test('instagramWorkflow returns a non-empty array when present', function () {
     $workflow = ['stage' => 'final_container', 'container_id' => 'c1'];
 
@@ -28,4 +36,12 @@ test('instagramWorkflow returns a non-empty array when present', function () {
     ]))->toBe($workflow)
         ->and(PublishCheckpoint::instagramWorkflow(['instagram_workflow' => []]))->toBeNull()
         ->and(PublishCheckpoint::instagramWorkflow(null))->toBeNull();
+});
+
+test('instagramStatus reads a non-empty status', function () {
+    expect(PublishCheckpoint::instagramStatus([
+        PublishCheckpoint::INSTAGRAM_STATUS => 'IN_PROGRESS',
+    ]))->toBe('IN_PROGRESS')
+        ->and(PublishCheckpoint::instagramStatus(['instagram_status' => '']))->toBeNull()
+        ->and(PublishCheckpoint::instagramStatus(null))->toBeNull();
 });

@@ -494,6 +494,7 @@ test('instagram publisher resumes a processing carousel child without recreating
                 'child_container_ids' => ['child-1', 'child-2'],
                 'processing_child_container_ids' => ['child-2'],
             ],
+            'instagram_status' => 'IN_PROGRESS',
         ])->and($exception->retryDelaySeconds)->toBe(10)
             ->and($exception->maxRetries)->toBe(90);
 
@@ -652,11 +653,19 @@ test('instagram publisher handles media processing error', function () {
         ], 200),
         'https://graph.instagram.com/v25.0/container-123*' => Http::response([
             'status_code' => 'ERROR',
+            'status' => 'Media download has failed. Please check the video URL.',
         ], 200),
     ]);
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(Exception::class, 'Instagram media processing failed');
+        ->toThrow(function (InstagramPublishException $exception): void {
+            expect($exception->getMessage())->toBe('Instagram media processing failed')
+                ->and($exception->rawResponse)->toContain('Media download has failed')
+                ->and($exception->rawResponse)->toContain('ERROR');
+        });
+
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), 'container-123')
+        && str_contains((string) data_get($request->data(), 'fields', ''), 'status'));
 });
 
 test('instagram publisher resumes media processing without creating another container', function () {
@@ -697,6 +706,7 @@ test('instagram publisher resumes media processing without creating another cont
                 'stage' => 'final_container',
                 'container_id' => 'container-123',
             ],
+            'instagram_status' => 'IN_PROGRESS',
         ])->and($exception->retryDelaySeconds)->toBe(10)
             ->and($exception->maxRetries)->toBe(90);
 
@@ -739,6 +749,7 @@ test('instagram publisher does not publish a container that never finishes proce
                     'stage' => 'final_container',
                     'container_id' => 'container-123',
                 ],
+                'instagram_status' => 'IN_PROGRESS',
             ]);
         });
 
@@ -1007,11 +1018,17 @@ test('instagram publisher fails a resumed container that reports ERROR', functio
     ]);
 
     Http::fake([
-        'https://graph.instagram.com/v25.0/container-123*' => Http::response(['status_code' => 'ERROR'], 200),
+        'https://graph.instagram.com/v25.0/container-123*' => Http::response([
+            'status_code' => 'ERROR',
+            'status' => 'Media download has failed. Please check the video URL.',
+        ], 200),
     ]);
 
     expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
-        ->toThrow(InstagramPublishException::class, 'Instagram media processing failed');
+        ->toThrow(function (InstagramPublishException $exception): void {
+            expect($exception->getMessage())->toBe('Instagram media processing failed')
+                ->and($exception->rawResponse)->toContain('Media download has failed');
+        });
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/media_publish'));
     Http::assertNotSent(fn ($request) => $request->method() === 'POST' && str_contains($request->url(), '/media'));

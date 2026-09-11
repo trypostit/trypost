@@ -16,6 +16,7 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 use Throwable;
 
 class XPublisher
@@ -360,6 +361,8 @@ class XPublisher
 
     private function waitForProcessing(string $mediaId, int $maxAttempts = 20): void
     {
+        $lastProcessingInfo = null;
+
         for ($i = 0; $i < $maxAttempts; $i++) {
             // Official status endpoint: GET /2/media/upload?media_id=...&command=STATUS
             // (not GET /2/media/{id} — that path is not the upload-status contract).
@@ -371,7 +374,7 @@ class XPublisher
 
             if ($response->failed()) {
                 Log::error('X media status check error', ['body' => $this->redactResponseBody($response->body())]);
-                sleep(3);
+                Sleep::for(3)->seconds();
 
                 continue;
             }
@@ -385,6 +388,7 @@ class XPublisher
                 return;
             }
 
+            $lastProcessingInfo = $processingInfo;
             $state = data_get($processingInfo, 'state', 'unknown');
 
             if ($state === 'succeeded') {
@@ -405,15 +409,21 @@ class XPublisher
                 );
             }
 
-            // Wait before checking again
-            $waitTime = (int) data_get($processingInfo, 'check_after_secs', 3);
-            sleep(max(0, $waitTime));
+            Sleep::for(max(0, (int) data_get($processingInfo, 'check_after_secs', 3)))->seconds();
         }
+
+        $rawResponse = is_array($lastProcessingInfo) ? json_encode($lastProcessingInfo) : null;
+
+        Log::error('X media processing timed out', [
+            'media_id' => $mediaId,
+            'processing_info' => $lastProcessingInfo,
+        ]);
 
         throw new XPublishException(
             userMessage: 'X media processing timed out. Please try again.',
             category: ErrorCategory::ServerError,
             platformErrorCode: 'media-processing-timeout',
+            rawResponse: $rawResponse,
         );
     }
 

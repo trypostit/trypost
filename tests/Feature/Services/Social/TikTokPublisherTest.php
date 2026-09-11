@@ -106,7 +106,10 @@ test('tiktok publisher does not report success before processing completes', fun
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(function (PlatformUnavailableException $exception): void {
-            expect($exception->context)->toBe(['tiktok_publish_id' => 'pub_processing'])
+            expect($exception->context)->toBe([
+                'tiktok_publish_id' => 'pub_processing',
+                'tiktok_status' => 'PROCESSING_DOWNLOAD',
+            ])
                 ->and($exception->retryDelaySeconds)->toBe(30)
                 ->and($exception->maxRetries)->toBe(120);
         });
