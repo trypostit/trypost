@@ -251,8 +251,10 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         Log::warning('Publish rescheduled: platform unavailable', [
             'post_platform_id' => $this->postPlatform->id,
             'platform' => $this->postPlatform->platform->value,
+            'content_type' => $this->postPlatform->content_type?->value,
             'next_attempt_at' => $nextAttemptAt->toIso8601String(),
             ...$context,
+            'media' => $this->mediaSnapshot($this->postPlatform),
         ]);
 
         $this->postPlatform->update([

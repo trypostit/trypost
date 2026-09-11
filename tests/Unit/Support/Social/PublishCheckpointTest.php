@@ -45,3 +45,11 @@ test('instagramStatus reads a non-empty status', function () {
         ->and(PublishCheckpoint::instagramStatus(['instagram_status' => '']))->toBeNull()
         ->and(PublishCheckpoint::instagramStatus(null))->toBeNull();
 });
+
+test('instagramStatusDetail reads a non-empty Graph status', function () {
+    expect(PublishCheckpoint::instagramStatusDetail([
+        PublishCheckpoint::INSTAGRAM_STATUS_DETAIL => 'In progress: Media is still being processed.',
+    ]))->toBe('In progress: Media is still being processed.')
+        ->and(PublishCheckpoint::instagramStatusDetail(['instagram_status_detail' => '']))->toBeNull()
+        ->and(PublishCheckpoint::instagramStatusDetail(null))->toBeNull();
+});

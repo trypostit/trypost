@@ -21,6 +21,8 @@ final class PublishCheckpoint
 
     public const string INSTAGRAM_STATUS = 'instagram_status';
 
+    public const string INSTAGRAM_STATUS_DETAIL = 'instagram_status_detail';
+
     /**
      * @param  array<string, mixed>|null  $context
      */
@@ -69,6 +71,16 @@ final class PublishCheckpoint
     public static function instagramStatus(?array $context): ?string
     {
         $value = data_get($context, self::INSTAGRAM_STATUS);
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $context
+     */
+    public static function instagramStatusDetail(?array $context): ?string
+    {
+        $value = data_get($context, self::INSTAGRAM_STATUS_DETAIL);
 
         return is_string($value) && $value !== '' ? $value : null;
     }

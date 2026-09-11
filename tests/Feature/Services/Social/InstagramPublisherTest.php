@@ -744,16 +744,72 @@ test('instagram publisher does not publish a container that never finishes proce
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(function (PlatformUnavailableException $exception): void {
-            expect($exception->context)->toBe([
-                'instagram_workflow' => [
-                    'stage' => 'final_container',
-                    'container_id' => 'container-123',
-                ],
-                'instagram_status' => 'IN_PROGRESS',
-            ]);
+            expect($exception->getMessage())->toBe('Instagram is still processing container container-123 (status_code=IN_PROGRESS)')
+                ->and($exception->context)->toBe([
+                    'instagram_workflow' => [
+                        'stage' => 'final_container',
+                        'container_id' => 'container-123',
+                    ],
+                    'instagram_status' => 'IN_PROGRESS',
+                ]);
         });
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/media_publish'));
+});
+
+test('instagram publisher puts the Graph status text on a still-processing exception', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'container-123']),
+        'https://graph.instagram.com/v25.0/container-123*' => Http::response([
+            'status_code' => 'IN_PROGRESS',
+            'status' => 'In progress: Media is still being processed.',
+        ]),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->getMessage())->toBe(
+                'Instagram is still processing container container-123 (status_code=IN_PROGRESS, status=In progress: Media is still being processed.)'
+            )->and($exception->context['instagram_status'] ?? null)->toBe('IN_PROGRESS')
+                ->and($exception->context['instagram_status_detail'] ?? null)->toBe(
+                    'In progress: Media is still being processed.'
+                );
+        });
+});
+
+test('instagram publisher fails when Graph only returns an Error status string', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'container-123']),
+        'https://graph.instagram.com/v25.0/container-123*' => Http::response([
+            'status' => 'Error: Media download has failed. Please check the video URL.',
+        ]),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(function (InstagramPublishException $exception): void {
+            expect($exception->getMessage())->toBe('Instagram media processing failed')
+                ->and($exception->rawResponse)->toContain('Media download has failed');
+        });
 });
 
 test('instagram publisher retries a transient Graph rate-limit on container status', function (int $code) {

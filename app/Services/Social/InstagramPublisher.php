@@ -368,7 +368,12 @@ class InstagramPublisher
             throw $this->pendingContainerException($containerId, $workflow, $statusResponse->status());
         }
 
-        $statusCode = (string) ($statusResponse->json()['status_code'] ?? '');
+        $payload = $statusResponse->json();
+        $graphStatus = trim((string) data_get($payload, 'status', ''));
+        $statusCode = $this->resolveContainerStatusCode(
+            (string) data_get($payload, 'status_code', ''),
+            $graphStatus,
+        );
         $status = ContainerStatus::tryFrom($statusCode);
 
         return match ($status) {
@@ -383,8 +388,32 @@ class InstagramPublisher
                 $containerId,
                 $workflow,
                 statusCode: $statusCode !== '' ? $statusCode : null,
+                graphStatus: $graphStatus !== '' ? $graphStatus : null,
             ),
         };
+    }
+
+    /**
+     * Meta documents both fields; in practice ERROR sometimes arrives only
+     * as `status` ("Error: Media download has failed…") with an empty
+     * `status_code`. Treating that as still-processing burns the retry
+     * budget and Nightwatch only shows "still processing container".
+     */
+    private function resolveContainerStatusCode(string $statusCode, string $graphStatus): string
+    {
+        if ($statusCode !== '') {
+            return $statusCode;
+        }
+
+        if (ContainerStatus::tryFrom($graphStatus) instanceof ContainerStatus) {
+            return $graphStatus;
+        }
+
+        if (str_starts_with(strtolower($graphStatus), 'error')) {
+            return ContainerStatus::Error->value;
+        }
+
+        return '';
     }
 
     /**
@@ -469,7 +498,7 @@ class InstagramPublisher
     /**
      * @param  array<string, mixed>  $workflow
      */
-    private function pendingContainerException(string $containerId, array $workflow, ?int $httpStatus = null, ?string $statusCode = null): PlatformUnavailableException
+    private function pendingContainerException(string $containerId, array $workflow, ?int $httpStatus = null, ?string $statusCode = null, ?string $graphStatus = null): PlatformUnavailableException
     {
         $context = [PublishCheckpoint::INSTAGRAM_WORKFLOW => $workflow];
 
@@ -477,8 +506,23 @@ class InstagramPublisher
             $context[PublishCheckpoint::INSTAGRAM_STATUS] = $statusCode;
         }
 
+        if (is_string($graphStatus) && $graphStatus !== '') {
+            $context[PublishCheckpoint::INSTAGRAM_STATUS_DETAIL] = $graphStatus;
+        }
+
+        $detail = collect([
+            is_string($statusCode) && $statusCode !== '' ? "status_code={$statusCode}" : null,
+            is_string($graphStatus) && $graphStatus !== '' ? "status={$graphStatus}" : null,
+        ])->filter()->implode(', ');
+
+        $message = "Instagram is still processing container {$containerId}";
+
+        if ($detail !== '') {
+            $message .= " ({$detail})";
+        }
+
         return new PlatformUnavailableException(
-            message: "Instagram is still processing container {$containerId}",
+            message: $message,
             httpStatus: $httpStatus,
             context: $context,
             retryDelaySeconds: self::STATUS_RETRY_DELAY_SECONDS,

@@ -470,6 +470,50 @@ test('publish reschedules platform unavailable retry via Bus dispatch (not marke
     });
 });
 
+test('publish warning log for an in-flight retry includes media and content type', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Mail::fake();
+
+    $this->post->update([
+        'media' => [[
+            'url' => 'https://cdn.trypost.it/media/2026-01/clip.mp4',
+            'mime_type' => 'video/mp4',
+            'size' => 4_194_304,
+            'path' => 'media/2026-01/clip.mp4',
+            'original_filename' => 'clip.mp4',
+        ]],
+    ]);
+
+    $logs = [];
+    Log::listen(function (MessageLogged $event) use (&$logs): void {
+        $logs[] = $event;
+    });
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(
+        new PlatformUnavailableException(
+            'Instagram is still processing container 18630170011019893 (status_code=IN_PROGRESS)',
+            context: ['instagram_status' => 'IN_PROGRESS'],
+        )
+    );
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
+
+    $entry = collect($logs)->first(
+        fn (MessageLogged $event): bool => $event->message === 'Publish rescheduled: platform unavailable'
+    );
+
+    expect($entry)->not->toBeNull()
+        ->and($entry->level)->toBe('warning')
+        ->and(data_get($entry->context, 'content_type'))->toBe('linkedin_post')
+        ->and(data_get($entry->context, 'instagram_status'))->toBe('IN_PROGRESS')
+        ->and(data_get($entry->context, 'media.0.url'))->toBe('https://cdn.trypost.it/media/2026-01/clip.mp4')
+        ->and(data_get($entry->context, 'media.0.mime_type'))->toBe('video/mp4')
+        ->and(data_get($entry->context, 'media.0.type'))->toBe('video');
+});
+
 test('publish reschedules when pinterest video processing times out', function () {
     Bus::fake([PublishToSocialPlatform::class]);
     Event::fake();
