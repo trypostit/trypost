@@ -472,7 +472,7 @@ test('publish reschedules platform unavailable retry via Bus dispatch (not marke
 
 test('publish warning log for an in-flight retry includes media and content type', function () {
     Bus::fake([PublishToSocialPlatform::class]);
-    Event::fake();
+    Event::fake([PostPlatformStatusUpdated::class]);
     Mail::fake();
 
     $this->post->update([
