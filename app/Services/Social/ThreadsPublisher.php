@@ -57,7 +57,9 @@ class ThreadsPublisher
                 );
             }
 
-            return $this->publishTextPost($userId, $accessToken, $content);
+            return $this->publishWithRetry(
+                fn (): array => $this->publishTextPost($userId, $accessToken, $content),
+            );
         }
 
         $firstMedia = $media->first();
@@ -66,18 +68,18 @@ class ThreadsPublisher
         // Single media
         if ($media->count() === 1) {
             if ($isVideo) {
-                return $this->publishMediaWithRetry(
+                return $this->publishWithRetry(
                     fn (): array => $this->publishVideoPost($userId, $accessToken, $content, $firstMedia),
                 );
             }
 
-            return $this->publishMediaWithRetry(
+            return $this->publishWithRetry(
                 fn (): array => $this->publishImagePost($userId, $accessToken, $content, $firstMedia),
             );
         }
 
         // Multiple media - carousel
-        return $this->publishMediaWithRetry(
+        return $this->publishWithRetry(
             fn (): array => $this->publishCarousel($userId, $accessToken, $content, $media),
         );
     }
@@ -280,7 +282,7 @@ class ThreadsPublisher
      * @param  callable(): array{id: string, url: ?string}  $publish
      * @return array{id: string, url: ?string}
      */
-    private function publishMediaWithRetry(callable $publish): array
+    private function publishWithRetry(callable $publish): array
     {
         for ($attempt = 1; $attempt <= self::MEDIA_PUBLICATION_MAX_ATTEMPTS; $attempt++) {
             try {
@@ -313,7 +315,7 @@ class ThreadsPublisher
 
         if ($publishResponse->failed()) {
             if (ThreadsMediaContainerNotFoundException::matches($publishResponse)) {
-                throw ThreadsMediaContainerNotFoundException::fromApiResponse($publishResponse);
+                throw ThreadsMediaContainerNotFoundException::fromApiResponse($publishResponse, $containerId);
             }
 
             Log::error('Threads publish failed', [

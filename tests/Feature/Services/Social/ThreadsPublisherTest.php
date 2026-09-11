@@ -172,6 +172,86 @@ test('threads publisher recreates a missing image container before retrying publ
     Log::shouldNotHaveReceived('error');
 });
 
+test('threads publisher recreates a missing text container before retrying publication', function () {
+    Log::spy();
+
+    $containerCreations = 0;
+    $publicationAttempts = 0;
+
+    Http::fake(function ($request) use (&$containerCreations, &$publicationAttempts) {
+        if (str_ends_with($request->url(), '/123456789/threads')) {
+            $containerCreations++;
+
+            return Http::response(['id' => "container-{$containerCreations}"], 200);
+        }
+
+        if (str_ends_with($request->url(), '/123456789/threads_publish')) {
+            $publicationAttempts++;
+
+            if ($publicationAttempts === 1) {
+                return Http::response([
+                    'error' => [
+                        'message' => 'The requested resource does not exist',
+                        'code' => 24,
+                        'error_subcode' => 4279009,
+                        'error_user_title' => 'Media Not Found',
+                        'error_user_msg' => 'The media with id container-1 cannot be found.',
+                    ],
+                ], 400);
+            }
+
+            return Http::response(['id' => 'post-after-retry'], 200);
+        }
+
+        return Http::response([
+            'permalink' => 'https://www.threads.net/@testuser/post/RETRY',
+        ], 200);
+    });
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('post-after-retry')
+        ->and($containerCreations)->toBe(2)
+        ->and($publicationAttempts)->toBe(2);
+
+    Log::shouldHaveReceived('warning')->once();
+    Log::shouldNotHaveReceived('error');
+});
+
+test('threads publisher stops after three missing text containers', function () {
+    $publicationAttempts = 0;
+
+    Http::fake(function ($request) use (&$publicationAttempts) {
+        if (str_ends_with($request->url(), '/123456789/threads')) {
+            return Http::response(['id' => 'container-text'], 200);
+        }
+
+        if (str_ends_with($request->url(), '/123456789/threads_publish')) {
+            $publicationAttempts++;
+
+            return Http::response([
+                'error' => [
+                    'message' => 'The requested resource does not exist',
+                    'code' => 24,
+                    'error_subcode' => 4279009,
+                    'error_user_msg' => 'The media with id container-text cannot be found.',
+                ],
+            ], 400);
+        }
+
+        return Http::response([], 500);
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(function (ThreadsMediaContainerNotFoundException $exception): void {
+            expect($exception->userMessage)->toBe('Threads could not find the processed media. Please try again.')
+                ->and($exception->getMessage())->toContain('container_id=container-text')
+                ->and($exception->getMessage())->toContain('error_user_msg=The media with id container-text cannot be found.');
+        });
+
+    expect($publicationAttempts)->toBe(3);
+});
+
 test('threads publisher does not retry a missing media response from container creation', function () {
     $this->post->update([
         'media' => [[

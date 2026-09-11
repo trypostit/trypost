@@ -92,6 +92,17 @@ test('exception message matches user message', function () {
     expect($exception->getMessage())->toBe('Rate limit exceeded.');
 });
 
+test('exception message can carry Nightwatch detail without changing userMessage', function () {
+    $exception = new TestPlatformException(
+        userMessage: 'Rate limit exceeded.',
+        category: ErrorCategory::RateLimit,
+        message: 'Rate limit exceeded. (code=4)',
+    );
+
+    expect($exception->userMessage)->toBe('Rate limit exceeded.')
+        ->and($exception->getMessage())->toBe('Rate limit exceeded. (code=4)');
+});
+
 test('fromApiResponse creates exception from response', function () {
     $exception = TestPlatformException::fromApiResponse(['error' => 'test']);
 

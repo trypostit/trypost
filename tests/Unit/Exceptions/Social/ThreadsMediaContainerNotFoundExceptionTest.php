@@ -27,7 +27,29 @@ test('matches code 24 subcode 4279009', function () {
     expect($exception->platformErrorCode)->toBe('24')
         ->and($exception->category)->toBe(ErrorCategory::ServerError)
         ->and($exception->userMessage)->toBe('Threads could not find the processed media. Please try again.')
+        ->and($exception->getMessage())->toBe(
+            'Threads could not find the processed media. Please try again. (code=24, error_subcode=4279009, error_user_msg=The media with id 17979429000118151 cannot be found.)'
+        )
         ->and($exception->rawResponse)->toContain('4279009');
+});
+
+test('fromApiResponse puts the container id on the Nightwatch message', function () {
+    $response = Http::response([
+        'error' => [
+            'message' => 'The requested resource does not exist',
+            'type' => 'OAuthException',
+            'code' => 24,
+            'error_subcode' => 4279009,
+            'error_user_msg' => 'The media with id 17979429000118151 cannot be found.',
+        ],
+    ], 400);
+
+    $fakeResponse = Http::fake(['*' => $response])->post('https://graph.threads.net/test');
+    $exception = ThreadsMediaContainerNotFoundException::fromApiResponse($fakeResponse, '17979429000118151');
+
+    expect($exception->userMessage)->toBe('Threads could not find the processed media. Please try again.')
+        ->and($exception->getMessage())->toContain('container_id=17979429000118151')
+        ->and($exception->getMessage())->toContain('error_user_msg=The media with id 17979429000118151 cannot be found.');
 });
 
 test('does not match code 24 without the missing media subcode', function () {

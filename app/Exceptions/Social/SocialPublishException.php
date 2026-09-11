@@ -14,8 +14,9 @@ abstract class SocialPublishException extends RuntimeException
         public readonly ErrorCategory $category,
         public readonly ?string $platformErrorCode = null,
         public readonly ?string $rawResponse = null,
+        ?string $message = null,
     ) {
-        parent::__construct($userMessage);
+        parent::__construct($message ?? $userMessage);
     }
 
     /**

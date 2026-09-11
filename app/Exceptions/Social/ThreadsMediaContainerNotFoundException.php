@@ -19,14 +19,26 @@ final class ThreadsMediaContainerNotFoundException extends ThreadsPublishExcepti
             && $response->json('error.error_subcode') === self::ERROR_SUBCODE;
     }
 
-    public static function fromApiResponse(mixed $response): static
+    public static function fromApiResponse(mixed $response, ?string $containerId = null): static
     {
         /** @var Response $response */
+        $payload = $response->json();
+        $errorUserMsg = trim((string) data_get($payload, 'error.error_user_msg', ''));
+        $errorMessage = trim((string) data_get($payload, 'error.message', ''));
+        $userMessage = 'Threads could not find the processed media. Please try again.';
+        $detail = collect([
+            is_string($containerId) && $containerId !== '' ? "container_id={$containerId}" : null,
+            'code='.self::ERROR_CODE,
+            'error_subcode='.self::ERROR_SUBCODE,
+            $errorUserMsg !== '' ? "error_user_msg={$errorUserMsg}" : ($errorMessage !== '' ? "message={$errorMessage}" : null),
+        ])->filter()->implode(', ');
+
         return new self(
-            userMessage: 'Threads could not find the processed media. Please try again.',
+            userMessage: $userMessage,
             category: ErrorCategory::ServerError,
             platformErrorCode: (string) self::ERROR_CODE,
             rawResponse: $response->body(),
+            message: $detail !== '' ? "{$userMessage} ({$detail})" : $userMessage,
         );
     }
 }
