@@ -12,6 +12,7 @@ use App\Enums\UserWorkspace\Role;
 use App\Events\PostPlatformStatusUpdated;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
+use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\Social\LinkedInPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Jobs\PublishToSocialPlatform;
@@ -334,8 +335,8 @@ test('publish log includes media so Nightwatch can tell a CDN miss from an API r
 
     $publisher = Mockery::mock(LinkedInPublisher::class);
     $publisher->shouldReceive('publish')->andThrow(
-        new LinkedInPublishException(
-            userMessage: 'LinkedIn could not process the media.',
+        new InstagramPublishException(
+            userMessage: 'Instagram media processing failed',
             category: ErrorCategory::ServerError,
             rawResponse: '{"status":"ERROR","detail":"download failed"}',
         )
@@ -350,6 +351,7 @@ test('publish log includes media so Nightwatch can tell a CDN miss from an API r
 
     expect($entry)->not->toBeNull()
         ->and($entry->level)->toBe('error')
+        ->and(data_get($entry->context, 'platform'))->toBe('linkedin')
         ->and(data_get($entry->context, 'media.0.url'))->toBe('https://cdn.trypost.it/media/2026-01/clip.mp4')
         ->and(data_get($entry->context, 'media.0.mime_type'))->toBe('video/mp4')
         ->and(data_get($entry->context, 'media.0.size'))->toBe(4_194_304)

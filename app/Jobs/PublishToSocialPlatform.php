@@ -278,12 +278,12 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     private function reportCaughtPublishFailure(Throwable $e, array $context = []): void
     {
         Log::error('Social publish failed', [
+            ...(method_exists($e, 'context') ? $e->context() : []),
             'post_platform_id' => $this->postPlatform->id,
             'platform' => $this->postPlatform->platform->value,
             'content_type' => $this->postPlatform->content_type?->value,
             'exception' => $e::class,
             'message' => $e->getMessage(),
-            ...(method_exists($e, 'context') ? $e->context() : []),
             ...$context,
             'media' => $this->mediaSnapshot($this->postPlatform),
         ]);
