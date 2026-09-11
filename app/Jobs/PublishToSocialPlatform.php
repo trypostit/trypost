@@ -142,27 +142,16 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                         $this->reportCaughtPublishFailure($refreshError, [
                             'phase' => 'token_refresh',
                         ]);
+                        $this->failWithExpiredToken($e);
+                        break;
                     }
                 }
 
-                $this->reportCaughtPublishFailure($e, [
-                    'category' => ErrorCategory::TokenExpired->value,
-                    'platform_error_code' => $e->platformErrorCode,
-                ]);
-
-                $this->markPlatformAsFailed($e->getMessage(), [
-                    'category' => ErrorCategory::TokenExpired->value,
-                    'platform_error_code' => $e->platformErrorCode,
-                    'failed_at' => now()->toIso8601String(),
-                ]);
-                $this->postPlatform->socialAccount->markAsTokenExpired($e->getMessage());
+                $this->reportCaughtPublishFailure($e);
+                $this->failWithExpiredToken($e);
                 break;
             } catch (SocialPublishException $e) {
-                $this->reportCaughtPublishFailure($e, [
-                    'category' => $e->category->value,
-                    'platform_error_code' => $e->platformErrorCode,
-                    'raw_response' => $e->context()['raw_response'],
-                ]);
+                $this->reportCaughtPublishFailure($e);
                 $this->markPlatformAsFailed($e->userMessage, [
                     'category' => $e->category->value,
                     'platform_error_code' => $e->platformErrorCode,
@@ -173,9 +162,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 ]);
                 break;
             } catch (Throwable $e) {
-                $this->reportCaughtPublishFailure($e, [
-                    'category' => ErrorCategory::Unknown->value,
-                ]);
+                $this->reportCaughtPublishFailure($e);
                 $this->markPlatformAsFailed($this->safeFailureMessage($e), [
                     'category' => ErrorCategory::Unknown->value,
                     'failed_at' => now()->toIso8601String(),
@@ -246,11 +233,8 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
         if ($retryCount > $maxRetries) {
             $this->reportCaughtPublishFailure($e, [
-                'category' => ErrorCategory::PlatformUnavailable->value,
-                'http_status' => $e->httpStatus,
                 'retry_count' => $retryCount,
                 'max_retries' => $maxRetries,
-                'detail' => $e->getMessage(),
             ]);
 
             $this->markPlatformAsFailed(
@@ -285,8 +269,8 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
     /**
      * Caught publish failures never reach Nightwatch unless we report() them.
-     * Retry-in-progress stays a warning so a long TikTok/Instagram poll does
-     * not flood the exception stream.
+     * report() feeds Exceptions; the structured log carries post/platform ids
+     * Nightwatch's exception record does not. In-flight retries stay warnings.
      *
      * @param  array<string, mixed>  $context
      */
@@ -297,10 +281,21 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             'platform' => $this->postPlatform->platform->value,
             'exception' => $e::class,
             'message' => $e->getMessage(),
+            ...(method_exists($e, 'context') ? $e->context() : []),
             ...$context,
         ]);
 
         report($e);
+    }
+
+    private function failWithExpiredToken(TokenExpiredException $e): void
+    {
+        $this->markPlatformAsFailed($e->getMessage(), [
+            'category' => ErrorCategory::TokenExpired->value,
+            'platform_error_code' => $e->platformErrorCode,
+            'failed_at' => now()->toIso8601String(),
+        ]);
+        $this->postPlatform->socialAccount->markAsTokenExpired($e->getMessage());
     }
 
     /**

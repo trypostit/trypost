@@ -14,4 +14,14 @@ class TokenExpiredException extends Exception
     ) {
         parent::__construct($message);
     }
+
+    /**
+     * @return array{platform_error_code: ?string}
+     */
+    public function context(): array
+    {
+        return [
+            'platform_error_code' => $this->platformErrorCode,
+        ];
+    }
 }

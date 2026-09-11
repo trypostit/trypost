@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\SocialPublishException;
+use App\Exceptions\TokenExpiredException;
 
 // Concrete implementation for testing the abstract class
 class TestPlatformException extends SocialPublishException
@@ -53,6 +55,27 @@ test('context returns null for optional fields when not provided', function () {
         'platform_error_code' => null,
         'user_message' => 'Something went wrong.',
         'raw_response' => null,
+    ]);
+});
+
+test('platform unavailable context includes http status and checkpoint keys', function () {
+    $exception = new PlatformUnavailableException(
+        message: 'TikTok is still processing publish_id pub_stuck',
+        httpStatus: 503,
+        context: ['tiktok_publish_id' => 'pub_stuck'],
+    );
+
+    expect($exception->context())->toBe([
+        'http_status' => 503,
+        'tiktok_publish_id' => 'pub_stuck',
+    ]);
+});
+
+test('token expired context includes the platform error code', function () {
+    $exception = new TokenExpiredException('Token expired', '190');
+
+    expect($exception->context())->toBe([
+        'platform_error_code' => '190',
     ]);
 });
 
