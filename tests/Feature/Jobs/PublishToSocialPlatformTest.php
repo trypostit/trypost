@@ -33,6 +33,7 @@ use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
@@ -209,6 +210,116 @@ test('publish keeps the vetted user message from a publish exception', function 
     $this->postPlatform->refresh();
     expect($this->postPlatform->status)->toBe(PlatformStatus::Failed);
     expect($this->postPlatform->error_message)->toBe('LinkedIn rejected this post.');
+});
+
+test('publish reports caught publish exceptions so Nightwatch sees them', function () {
+    Event::fake();
+    Exceptions::fake();
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(new LinkedInPublishException(
+        userMessage: 'X media processing timed out. Please try again.',
+        category: ErrorCategory::ServerError,
+        platformErrorCode: 'media-processing-timeout',
+        rawResponse: '{"processing_info":{"state":"in_progress"}}',
+    ));
+
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
+    Exceptions::assertReported(LinkedInPublishException::class);
+    $this->postPlatform->refresh();
+    expect($this->postPlatform->status)->toBe(PlatformStatus::Failed)
+        ->and($this->postPlatform->error_message)->toBe('X media processing timed out. Please try again.');
+});
+
+test('publish reports user-facing publish exceptions so Nightwatch still gets the payload', function () {
+    Event::fake();
+    Exceptions::fake();
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(new LinkedInPublishException(
+        userMessage: 'LinkedIn rejected this post.',
+        category: ErrorCategory::ContentPolicy,
+    ));
+
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
+    Exceptions::assertReported(LinkedInPublishException::class);
+});
+
+test('publish reports unexpected errors so Nightwatch sees them', function () {
+    Event::fake();
+    Exceptions::fake();
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(new TypeError('API Error'));
+
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
+    Exceptions::assertReported(TypeError::class);
+    $this->postPlatform->refresh();
+    expect($this->postPlatform->error_message)->toBe('An unexpected error occurred while publishing. Please try again.');
+});
+
+test('publish reports token expiry so Nightwatch sees it', function () {
+    Event::fake();
+    Exceptions::fake();
+    Mail::fake();
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(new TokenExpiredException('Token expired', '401'));
+
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
+    Exceptions::assertReported(TokenExpiredException::class);
+});
+
+test('publish does not report a platform-unavailable retry', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Exceptions::fake();
+    Mail::fake();
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(
+        new PlatformUnavailableException('LinkedIn 503', 503)
+    );
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
+    Exceptions::assertNothingReported();
+    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Retrying);
+});
+
+test('publish reports when platform-unavailable retries are exhausted', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Exceptions::fake();
+    Mail::fake();
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(
+        new PlatformUnavailableException('TikTok is still processing publish_id pub_stuck', 503)
+    );
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    $this->postPlatform->update([
+        'error_context' => ['retry_count' => PublishToSocialPlatform::MAX_PLATFORM_UNAVAILABLE_RETRIES],
+    ]);
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
+    Exceptions::assertReported(PlatformUnavailableException::class);
+    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Failed);
 });
 
 test('publish never leaks a raw internal error to the failure record (and the email)', function () {

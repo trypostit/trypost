@@ -139,19 +139,14 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                         $this->rescheduleForRetry($refreshError);
                         break;
                     } catch (Throwable $refreshError) {
-                        Log::error('Token refresh failed during publish retry', [
-                            'post_platform_id' => $this->postPlatform->id,
-                            'platform' => $this->postPlatform->platform->value,
-                            'error' => $refreshError->getMessage(),
+                        $this->reportCaughtPublishFailure($refreshError, [
+                            'phase' => 'token_refresh',
                         ]);
                     }
                 }
 
-                // All attempts exhausted or refresh failed
-                Log::error('Token expired while publishing to social platform', [
-                    'post_platform_id' => $this->postPlatform->id,
-                    'platform' => $this->postPlatform->platform->value,
-                    'error' => $e->getMessage(),
+                $this->reportCaughtPublishFailure($e, [
+                    'category' => ErrorCategory::TokenExpired->value,
                     'platform_error_code' => $e->platformErrorCode,
                 ]);
 
@@ -163,7 +158,11 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 $this->postPlatform->socialAccount->markAsTokenExpired($e->getMessage());
                 break;
             } catch (SocialPublishException $e) {
-                Log::error('Social publish failed: '.$e->userMessage);
+                $this->reportCaughtPublishFailure($e, [
+                    'category' => $e->category->value,
+                    'platform_error_code' => $e->platformErrorCode,
+                    'raw_response' => $e->context()['raw_response'],
+                ]);
                 $this->markPlatformAsFailed($e->userMessage, [
                     'category' => $e->category->value,
                     'platform_error_code' => $e->platformErrorCode,
@@ -174,10 +173,8 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 ]);
                 break;
             } catch (Throwable $e) {
-                Log::error('Failed to publish to social platform', [
-                    'post_platform_id' => $this->postPlatform->id,
-                    'platform' => $this->postPlatform->platform->value,
-                    'error' => $e->getMessage(),
+                $this->reportCaughtPublishFailure($e, [
+                    'category' => ErrorCategory::Unknown->value,
                 ]);
                 $this->markPlatformAsFailed($this->safeFailureMessage($e), [
                     'category' => ErrorCategory::Unknown->value,
@@ -248,10 +245,12 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         ];
 
         if ($retryCount > $maxRetries) {
-            Log::warning('Publish retries exhausted: platform unavailable', [
-                'post_platform_id' => $this->postPlatform->id,
-                'platform' => $this->postPlatform->platform->value,
-                ...$context,
+            $this->reportCaughtPublishFailure($e, [
+                'category' => ErrorCategory::PlatformUnavailable->value,
+                'http_status' => $e->httpStatus,
+                'retry_count' => $retryCount,
+                'max_retries' => $maxRetries,
+                'detail' => $e->getMessage(),
             ]);
 
             $this->markPlatformAsFailed(
@@ -282,6 +281,26 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         ]);
 
         self::dispatch($this->postPlatform, $retryCount)->delay($nextAttemptAt);
+    }
+
+    /**
+     * Caught publish failures never reach Nightwatch unless we report() them.
+     * Retry-in-progress stays a warning so a long TikTok/Instagram poll does
+     * not flood the exception stream.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    private function reportCaughtPublishFailure(Throwable $e, array $context = []): void
+    {
+        Log::error('Social publish failed', [
+            'post_platform_id' => $this->postPlatform->id,
+            'platform' => $this->postPlatform->platform->value,
+            'exception' => $e::class,
+            'message' => $e->getMessage(),
+            ...$context,
+        ]);
+
+        report($e);
     }
 
     /**
