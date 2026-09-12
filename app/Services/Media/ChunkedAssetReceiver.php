@@ -34,9 +34,6 @@ final class ChunkedAssetReceiver
     }
 
     /**
-     * Duration is measured in the browser (the server has no ffprobe) and only
-     * meaningful for videos; anything else ignores the header.
-     *
      * @return array<string, float>
      */
     private function videoMeta(string $fileName, ?float $duration): array

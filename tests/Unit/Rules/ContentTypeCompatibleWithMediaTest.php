@@ -158,7 +158,7 @@ test('a gif passes on content types that accept gifs', function () {
 });
 
 test('an image over the content type cap is rejected by size', function () {
-    // 2 000 001 bytes: one byte over Bluesky's lexicon maxSize, and under 2 MiB — proves decimal, not MiB.
+    // One byte over the lexicon's 2 000 000, still under 2 MiB.
     $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/jpeg', 'size' => 2_000_001]];
 
     $errors = runMediaRule(ContentType::BlueskyPost->value, $media);
@@ -212,8 +212,6 @@ test('a pdf over the content type cap is rejected by size', function () {
 });
 
 test('media without a size is not checked against byte caps', function () {
-    // Legacy snapshots written before `size` was recorded, and external URLs
-    // the API has not downloaded yet, carry no size — we cannot judge them.
     $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/mp4']];
 
     expect(runMediaRule(ContentType::InstagramReel->value, $media))->toBe([]);

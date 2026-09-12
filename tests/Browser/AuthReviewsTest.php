@@ -15,8 +15,7 @@ test('every review renders once for readers and once for the marquee loop', func
 
     $page->assertVisible('@auth-reviews');
 
-    // Photos load asynchronously; `naturalWidth` is 0 until each one has, so
-    // poll from the page instead of reading right after the section mounts.
+    // `naturalWidth` is 0 until each photo has loaded.
     $result = $page->script(<<<'JS'
         (async () => {
             const select = () => [...document.querySelectorAll('[data-testid="auth-reviews"] figure')];

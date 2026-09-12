@@ -986,7 +986,6 @@ test('x publisher keeps tweet_video category for videos larger than 15MB', funct
             return false;
         }
 
-        // amplify_video is the Ads-creative category; a regular Post stays tweet_video regardless of size.
         return data_get($request->data(), 'media_category') === 'tweet_video'
             && data_get($request->data(), 'total_bytes') > 15 * 1024 * 1024;
     });

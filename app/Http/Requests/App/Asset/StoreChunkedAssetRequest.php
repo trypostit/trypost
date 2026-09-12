@@ -11,8 +11,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * Validates a chunked upload request. The chunk metadata (offset / total
  * size / filename) is encoded in the `Content-Range` and `X-File-Name`
  * headers, not in the body, so we lift it into the request bag via
- * `prepareForValidation` and then run standard rules against it. The optional
- * `X-Media-Duration` header carries the browser-measured video duration.
+ * `prepareForValidation` and then run standard rules against it.
  */
 class StoreChunkedAssetRequest extends FormRequest
 {
@@ -55,9 +54,6 @@ class StoreChunkedAssetRequest extends FormRequest
         ];
     }
 
-    /**
-     * Browser-measured video duration in seconds, when the client sent one.
-     */
     public function duration(): ?float
     {
         return transform($this->validated('duration'), fn (mixed $seconds) => (float) $seconds);

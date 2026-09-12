@@ -345,10 +345,7 @@ class BlueskyPublisher
         try {
             $fileSize = filesize($tempFile);
 
-            // Bluesky caps videos at 300 MB (app.bsky.embed.video maxSize, decimal
-            // bytes); skip oversized files rather than burning an upload that the
-            // service will reject. The editor/API cap in ContentType::BlueskyPost
-            // is the same number, so this is a safety net, not the primary gate.
+            // Skip oversized files rather than burning an upload the service will reject.
             if ($fileSize > (int) config('trypost.platforms.bluesky.video_max_bytes')) {
                 Log::error('Bluesky video exceeds size limit', ['url' => $url, 'size' => $fileSize]);
 
@@ -544,11 +541,8 @@ class BlueskyPublisher
 
     /**
      * Map a video mime type to the [Content-Type, file extension] the upload
-     * should carry. The lexicon (`app.bsky.video.uploadVideo` input encoding and
-     * `app.bsky.embed.video#video.accept`) is MP4 only, which is why
-     * ContentType::BlueskyPost rejects MOV upstream. The other branches are kept
-     * for posts stored before that gate existed: the video service transcodes,
-     * so a non-MP4 upload may still succeed, and a failure degrades to text.
+     * should carry. The lexicon is MP4 only (ContentType::BlueskyPost rejects
+     * MOV upstream); the other branches remain for posts stored before that gate.
      *
      * @return array{0: string, 1: string}
      */

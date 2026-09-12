@@ -320,21 +320,17 @@ test('media byte caps never exceed the global upload hard limits', function () {
 });
 
 test('bluesky caps use the lexicon decimal byte values, not mebibytes', function () {
-    // Raise the hard limits so the clamp cannot mask the enum's own values.
     config()->set('trypost.media.max_size_mb.image', 1024);
     config()->set('trypost.media.max_size_mb.video', 4096);
 
     expect(ContentType::BlueskyPost->maxImageBytes())->toBe(2_000_000)
         ->and(ContentType::BlueskyPost->maxVideoBytes())->toBe(300_000_000)
-        // 300 MiB would let a 305 MB file through the editor only to be refused by the PDS.
         ->and(ContentType::BlueskyPost->maxVideoBytes())->toBeLessThan(300 * 1024 * 1024)
         ->and(ContentType::BlueskyPost->maxImageBytes())->toBeLessThan(2 * 1024 * 1024);
 });
 
 test('bluesky publisher skip threshold is never below the advertised video cap', function () {
-    // The editor/API advertise ContentType::BlueskyPost->maxVideoBytes(); the publisher
-    // silently drops videos over trypost.platforms.bluesky.video_max_bytes. If the config
-    // default fell below the enum, a video the UI accepted would publish as text.
+    // Otherwise a video the editor accepted would silently publish as text.
     expect((int) config('trypost.platforms.bluesky.video_max_bytes'))
         ->toBeGreaterThanOrEqual(ContentType::BlueskyPost->maxVideoBytes());
 });

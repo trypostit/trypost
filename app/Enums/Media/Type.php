@@ -71,9 +71,7 @@ enum Type: string
     }
 
     /**
-     * Extensions this type resolves from when classifying stored files.
-     * Broader than extensions() (the upload allow-list) so legacy formats
-     * already on disk still classify.
+     * Broader than extensions() so legacy formats already on disk still classify.
      *
      * @return array<int, string>
      */
@@ -150,10 +148,6 @@ enum Type: string
         return $mimeType === self::GIF_MIME;
     }
 
-    /**
-     * Whether the file is QuickTime/MOV. Bluesky's video lexicon is MP4 only,
-     * so the editor and ContentTypeCompatibleWithMedia reject MOV there.
-     */
     public static function isMov(?string $mimeType, ?string $path = null): bool
     {
         return $mimeType === self::MOV_MIME || self::extensionOf($path) === 'mov';

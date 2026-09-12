@@ -88,7 +88,6 @@ export const isDocument = (item: ClassifiableMedia | null | undefined): boolean 
 /** Whether the item is an animated GIF — several platforms treat it specially. */
 export const isGif = (item: ClassifiableMedia | null | undefined): boolean => (item?.mime_type ?? '') === GIF_MIME;
 
-/** Whether the item is QuickTime/MOV — Bluesky's video lexicon is MP4 only. */
 export const isMov = (item: ClassifiableMedia | null | undefined): boolean => {
     if ((item?.mime_type ?? '') === MOV_MIME) {
         return true;

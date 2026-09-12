@@ -343,10 +343,7 @@ class XPublisher
     }
 
     /**
-     * X's `media_category` for a Post attachment. Videos are always `tweet_video`
-     * (20 min / 8 GB default entitlement): `amplify_video` is the Ads-creative
-     * category per the media upload docs, and choosing it by file size used to
-     * send every video over 15 MB down the wrong path.
+     * Videos are always `tweet_video`; `amplify_video` is the Ads-creative category.
      */
     private function getMediaCategory(string $mimeType): ?string
     {

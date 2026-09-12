@@ -146,6 +146,8 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
         $hasImage = collect($media)->contains(fn ($item) => $this->isImage((array) $item));
         $hasVideo = collect($media)->contains(fn ($item) => $this->isVideo((array) $item));
         $hasDocument = collect($media)->contains(fn ($item) => $this->isDocument((array) $item));
+        $hasGif = collect($media)->contains(fn ($item) => MediaType::isGif(data_get($item, 'mime_type')));
+        $hasMov = collect($media)->contains(fn ($item) => $this->isMov((array) $item));
 
         if ($hasImage && ! $contentType->supportsImage()) {
             $fail("{$contentType->label()} does not support images.");
@@ -168,14 +170,11 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
             $fail("{$contentType->label()} can't combine an image and a video in the same post.");
         }
 
-        if (! $contentType->acceptsGif() && collect($media)->contains(fn ($item) => MediaType::isGif(data_get($item, 'mime_type')))) {
+        if ($hasGif && ! $contentType->acceptsGif()) {
             $fail("{$contentType->label()} does not accept GIF. Use a still image or choose a different network.");
         }
 
-        if (! $contentType->acceptsMov() && collect($media)->contains(fn ($item) => MediaType::isMov(
-            data_get($item, 'mime_type'),
-            data_get($item, 'original_filename') ?? data_get($item, 'path'),
-        ))) {
+        if ($hasMov && ! $contentType->acceptsMov()) {
             $fail("{$contentType->label()} does not accept MOV videos. Use MP4.");
         }
 
@@ -183,13 +182,8 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
     }
 
     /**
-     * Server-side mirror of the editor's per-item size / duration checks, so the
-     * REST API and MCP cannot store media the network will reject at publish
-     * (the ~1 GB Instagram Reel that motivated this: Meta's cap is 300 MB).
-     *
-     * Best-effort by design: `size` is present on every snapshot we write, but
-     * video `meta.duration` is measured client-side and only exists when the
-     * dashboard uploaded the file — an item without it is not checked.
+     * Server-side mirror of the editor's size / duration checks. Duration is
+     * measured in the browser, so an item without `meta.duration` is not checked.
      *
      * @param  array<int, mixed>  $media
      * @param  Closure(string, ?string=): PotentiallyTranslatedString  $fail
@@ -198,29 +192,27 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
     {
         $label = $contentType->label();
 
+        $maxDuration = $contentType->maxVideoDurationSec();
+
         foreach ($media as $item) {
             $item = (array) $item;
             $size = (int) data_get($item, 'size', 0);
+            $duration = data_get($item, 'meta.duration');
 
-            if ($size > 0) {
-                [$kind, $max] = match (true) {
-                    $this->isDocument($item) => ['a PDF', $contentType->maxDocumentBytes()],
-                    $this->isVideo($item) => ['a video', $contentType->maxVideoBytes()],
-                    default => ['an image', $contentType->maxImageBytes()],
-                };
+            [$kind, $max] = match (true) {
+                $this->isDocument($item) => ['a PDF', $contentType->maxDocumentBytes()],
+                $this->isVideo($item) => ['a video', $contentType->maxVideoBytes()],
+                default => ['an image', $contentType->maxImageBytes()],
+            };
 
-                if ($max !== null && $size > $max) {
-                    $fail("{$label} accepts {$kind} of up to ".$this->formatBytes($max, $max).' (yours is '.$this->formatBytes($size, $max, 1).').');
+            if ($size > 0 && $max !== null && $size > $max) {
+                $fail("{$label} accepts {$kind} of up to {$this->formatBytes($max, $max)} (yours is {$this->formatBytes($size, $max, 1)}).");
 
-                    return;
-                }
+                return;
             }
 
-            $duration = data_get($item, 'meta.duration');
-            $maxDuration = $contentType->maxVideoDurationSec();
-
-            if ($maxDuration !== null && is_numeric($duration) && $this->isVideo($item) && (float) $duration > $maxDuration) {
-                $fail("{$label} accepts videos of up to ".$this->formatDuration($maxDuration).' (yours is '.$this->formatDuration((int) ceil((float) $duration)).').');
+            if ($maxDuration !== null && $this->isVideo($item) && is_numeric($duration) && (float) $duration > $maxDuration) {
+                $fail("{$label} accepts videos of up to {$this->formatDuration($maxDuration)} (yours is {$this->formatDuration((int) ceil((float) $duration))}).");
 
                 return;
             }
@@ -228,10 +220,8 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
     }
 
     /**
-     * Mirror of `formatBytes` / `usesDecimalUnits` in useMedia.ts: a cap declared
-     * in decimal megabytes (Bluesky's lexicon: 2 000 000 / 300 000 000) renders
-     * both the cap and the file size in decimal units, so the user reads
-     * "300 MB", not "286 MB".
+     * Mirrors `formatBytes` in useMedia.ts: a cap declared in decimal megabytes
+     * (Bluesky) renders both numbers in decimal units — "300 MB", not "286 MB".
      */
     private function formatBytes(int $bytes, int $cap, int $precision = 0): string
     {
@@ -262,6 +252,17 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
         $rest = $seconds % 60;
 
         return $rest === 0 ? "{$minutes} min" : "{$minutes} min {$rest}s";
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function isMov(array $item): bool
+    {
+        return MediaType::isMov(
+            data_get($item, 'mime_type'),
+            data_get($item, 'original_filename') ?? data_get($item, 'path'),
+        );
     }
 
     /**

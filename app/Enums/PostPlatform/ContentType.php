@@ -183,11 +183,8 @@ enum ContentType: string
     /**
      * Maximum video duration in seconds for this content type, when the
      * platform publishes a hard cap via API. Null when unlimited or unknown.
-     *
-     * TikTok is the developer-upload ceiling (10 min); `creator_info` may return
-     * a lower per-creator cap, which TikTokPublisher enforces at publish time.
-     * Bluesky is the video service limit announced by @bsky.app on 2026-08-26
-     * (the lexicon carries no duration).
+     * TikTok's `creator_info` may lower the 10 min ceiling per account; the
+     * publisher enforces that.
      *
      * Single source of truth for web (via Inertia shared props), REST API,
      * and MCP content-type listings.
@@ -237,8 +234,7 @@ enum ContentType: string
     }
 
     /**
-     * Whether QuickTime/MOV is accepted. Global upload still allows MOV;
-     * Bluesky's video lexicon is MP4 only, so the editor and API reject MOV there.
+     * Bluesky's video lexicon is MP4 only.
      */
     public function acceptsMov(): bool
     {
@@ -252,11 +248,7 @@ enum ContentType: string
      * Per-type image size cap in bytes, capped at the global upload hard limit
      * (trypost.media.max_size_mb.image). Null when images are not accepted or
      * the platform has no tighter editor-side limit than that hard cap.
-     *
-     * Telegram is 5 MB because we publish via URL, not multipart (10 MB).
-     * Discord's official attachment ceiling is 20 MiB; Cloud images clamp to 10 MB.
-     * Bluesky's lexicon declares `maxSize` in decimal bytes (2 000 000), so it is
-     * kept exact rather than rounded to MiB.
+     * Telegram is the URL-publish limit (5 MB), not the multipart one.
      */
     public function maxImageBytes(): ?int
     {
@@ -282,19 +274,8 @@ enum ContentType: string
      * Per-type video size cap in bytes, capped at the global upload hard limit
      * (trypost.media.max_size_mb.video). Null when videos are not accepted or
      * the platform has no tighter editor-side limit than that hard cap.
-     *
-     * Non-obvious caps:
-     * - Instagram feed / story: 100 MB (carousel `media_type=VIDEO` / story).
-     *   A lone feed video publishes as a Reel — pick InstagramReel for longer clips.
-     * - Instagram reel: 300 MB (Graph `video_url` pull), not 1 GB.
-     * - X: 8 GB / 20 min is the `tweet_video` default entitlement (Premium is
-     *   16 GB / 125 min); `dm_video` is 512 MB / 140 s and does not apply.
-     * - Bluesky: the lexicon's `maxSize` is 300 000 000 decimal bytes — kept
-     *   exact, since 300 MiB would let a 305 MB file through.
-     *   `trypost.platforms.bluesky.video_max_bytes` (the publisher's skip
-     *   threshold) must never be lower than this; a test pins the two together.
-     * - Telegram: 20 MB — we publish via URL, not multipart (50 MB).
-     * - Discord: 20 MiB bot attachment default.
+     * X is the `tweet_video` default entitlement (Premium allows more);
+     * Telegram is the URL-publish limit (20 MB), not the multipart one.
      */
     public function maxVideoBytes(): ?int
     {
@@ -475,8 +456,7 @@ enum ContentType: string
     }
 
     /**
-     * Decimal megabytes, for platforms whose lexicon declares the cap in
-     * plain bytes (Bluesky: 2 000 000 / 300 000 000) rather than MiB.
+     * For caps declared in plain decimal bytes (Bluesky's lexicon), not MiB.
      */
     private static function bytesFromDecimalMb(int $megabytes): int
     {
