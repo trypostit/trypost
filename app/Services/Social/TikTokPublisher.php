@@ -372,7 +372,8 @@ class TikTokPublisher
         }
 
         $data = $response->json();
-        $status = PublishStatus::tryFrom((string) data_get($data, 'data.status', ''));
+        $statusValue = (string) data_get($data, 'data.status', '');
+        $status = PublishStatus::tryFrom($statusValue);
 
         return match ($status) {
             PublishStatus::PublishComplete => data_get($data, 'data', []),
@@ -380,7 +381,10 @@ class TikTokPublisher
                 (string) data_get($data, 'data.fail_reason', 'Unknown error'),
                 json_encode($data),
             ),
-            default => throw $this->pendingPublishException($publishId),
+            default => throw $this->pendingPublishException(
+                $publishId,
+                status: $statusValue !== '' ? $statusValue : null,
+            ),
         };
     }
 
@@ -420,12 +424,18 @@ class TikTokPublisher
         ]);
     }
 
-    private function pendingPublishException(string $publishId, ?int $httpStatus = null): PlatformUnavailableException
+    private function pendingPublishException(string $publishId, ?int $httpStatus = null, ?string $status = null): PlatformUnavailableException
     {
+        $context = [PublishCheckpoint::TIKTOK_PUBLISH_ID => $publishId];
+
+        if (is_string($status) && $status !== '') {
+            $context[PublishCheckpoint::TIKTOK_STATUS] = $status;
+        }
+
         return new PlatformUnavailableException(
             message: "TikTok is still processing publish_id {$publishId}",
             httpStatus: $httpStatus,
-            context: [PublishCheckpoint::TIKTOK_PUBLISH_ID => $publishId],
+            context: $context,
             retryDelaySeconds: self::STATUS_RETRY_DELAY_SECONDS,
             maxRetries: self::STATUS_MAX_RETRIES,
         );

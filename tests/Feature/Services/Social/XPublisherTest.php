@@ -16,6 +16,7 @@ use App\Services\Social\XPublisher;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 
 /**
  * Official X upload STATUS: GET /2/media/upload?media_id=...&command=STATUS
@@ -1115,6 +1116,67 @@ test('x publisher fails when media processing reports failed', function () {
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(XPublishException::class, 'X could not process the uploaded media');
+});
+
+test('x publisher times out media processing with the last status payload', function () {
+    Sleep::fake();
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/clip.mp4',
+                'url' => 'https://example.com/media/2026-01/clip.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'clip.mp4',
+            ],
+        ],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_proc_timeout']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response([
+                'data' => [
+                    'id' => 'media_proc_timeout',
+                    'processing_info' => ['state' => 'pending', 'check_after_secs' => 0],
+                ],
+            ], 200);
+        }
+
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response([
+                'data' => [
+                    'processing_info' => [
+                        'state' => 'in_progress',
+                        'check_after_secs' => 0,
+                        'progress_percent' => 40,
+                    ],
+                ],
+            ], 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(function (XPublishException $exception): void {
+            expect($exception->getMessage())->toBe('X media processing timed out. Please try again.')
+                ->and($exception->platformErrorCode)->toBe('media-processing-timeout')
+                ->and($exception->rawResponse)->toContain('in_progress')
+                ->and($exception->rawResponse)->toContain('40');
+        });
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/2/tweets'));
 });
 
 test('x publisher fails when tweet rejects invalid media ids', function () {

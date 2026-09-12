@@ -24,7 +24,7 @@ abstract class SocialPublishException extends RuntimeException
     public function context(): array
     {
         return [
-            'platform' => static::platform(),
+            'platform' => $this->platform(),
             'category' => $this->category->value,
             'platform_error_code' => $this->platformErrorCode,
             'user_message' => $this->userMessage,

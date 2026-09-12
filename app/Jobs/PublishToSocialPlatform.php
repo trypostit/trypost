@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\Media\Type as MediaType;
 use App\Enums\Notification\Channel;
 use App\Enums\Notification\Type;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
@@ -139,31 +140,19 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                         $this->rescheduleForRetry($refreshError);
                         break;
                     } catch (Throwable $refreshError) {
-                        Log::error('Token refresh failed during publish retry', [
-                            'post_platform_id' => $this->postPlatform->id,
-                            'platform' => $this->postPlatform->platform->value,
-                            'error' => $refreshError->getMessage(),
+                        $this->reportCaughtPublishFailure($refreshError, [
+                            'phase' => 'token_refresh',
                         ]);
+                        $this->failWithExpiredToken($e);
+                        break;
                     }
                 }
 
-                // All attempts exhausted or refresh failed
-                Log::error('Token expired while publishing to social platform', [
-                    'post_platform_id' => $this->postPlatform->id,
-                    'platform' => $this->postPlatform->platform->value,
-                    'error' => $e->getMessage(),
-                    'platform_error_code' => $e->platformErrorCode,
-                ]);
-
-                $this->markPlatformAsFailed($e->getMessage(), [
-                    'category' => ErrorCategory::TokenExpired->value,
-                    'platform_error_code' => $e->platformErrorCode,
-                    'failed_at' => now()->toIso8601String(),
-                ]);
-                $this->postPlatform->socialAccount->markAsTokenExpired($e->getMessage());
+                $this->reportCaughtPublishFailure($e);
+                $this->failWithExpiredToken($e);
                 break;
             } catch (SocialPublishException $e) {
-                Log::error('Social publish failed: '.$e->userMessage);
+                $this->reportCaughtPublishFailure($e);
                 $this->markPlatformAsFailed($e->userMessage, [
                     'category' => $e->category->value,
                     'platform_error_code' => $e->platformErrorCode,
@@ -174,11 +163,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 ]);
                 break;
             } catch (Throwable $e) {
-                Log::error('Failed to publish to social platform', [
-                    'post_platform_id' => $this->postPlatform->id,
-                    'platform' => $this->postPlatform->platform->value,
-                    'error' => $e->getMessage(),
-                ]);
+                $this->reportCaughtPublishFailure($e);
                 $this->markPlatformAsFailed($this->safeFailureMessage($e), [
                     'category' => ErrorCategory::Unknown->value,
                     'failed_at' => now()->toIso8601String(),
@@ -248,10 +233,9 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         ];
 
         if ($retryCount > $maxRetries) {
-            Log::warning('Publish retries exhausted: platform unavailable', [
-                'post_platform_id' => $this->postPlatform->id,
-                'platform' => $this->postPlatform->platform->value,
-                ...$context,
+            $this->reportCaughtPublishFailure($e, [
+                'retry_count' => $retryCount,
+                'max_retries' => $maxRetries,
             ]);
 
             $this->markPlatformAsFailed(
@@ -282,6 +266,73 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         ]);
 
         self::dispatch($this->postPlatform, $retryCount)->delay($nextAttemptAt);
+    }
+
+    /**
+     * Caught publish failures never reach Nightwatch unless we report() them.
+     * report() feeds Exceptions; the structured log carries post/platform ids
+     * Nightwatch's exception record does not. In-flight retries stay warnings.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    private function reportCaughtPublishFailure(Throwable $e, array $context = []): void
+    {
+        Log::error('Social publish failed', [
+            ...(method_exists($e, 'context') ? $e->context() : []),
+            'post_platform_id' => $this->postPlatform->id,
+            'platform' => $this->postPlatform->platform->value,
+            'content_type' => $this->postPlatform->content_type?->value,
+            'exception' => $e::class,
+            'message' => $e->getMessage(),
+            ...$context,
+            'media' => $this->mediaSnapshot($this->postPlatform),
+        ]);
+
+        report($e);
+    }
+
+    /**
+     * Nightwatch's exception record is class/message/stack only. The
+     * structured log needs the media the platform tried to pull so a
+     * CDN miss can be told from an API rejection.
+     *
+     * @return list<array{url: ?string, mime_type: ?string, size: ?int, type: ?string}>
+     */
+    private function mediaSnapshot(PostPlatform $postPlatform): array
+    {
+        $media = $postPlatform->post?->media;
+
+        if (! is_array($media)) {
+            return [];
+        }
+
+        return array_values(array_map(function (mixed $item): array {
+            $item = is_array($item) ? $item : [];
+            $url = data_get($item, 'url');
+            $mimeType = data_get($item, 'mime_type');
+            $path = data_get($item, 'original_filename') ?? data_get($item, 'path');
+            $type = MediaType::classify(
+                is_string($mimeType) ? $mimeType : null,
+                is_string($path) ? $path : null,
+            );
+
+            return [
+                'url' => is_string($url) ? $url : null,
+                'mime_type' => is_string($mimeType) ? $mimeType : null,
+                'size' => is_numeric(data_get($item, 'size')) ? (int) data_get($item, 'size') : null,
+                'type' => $type?->value,
+            ];
+        }, $media));
+    }
+
+    private function failWithExpiredToken(TokenExpiredException $e): void
+    {
+        $this->markPlatformAsFailed($e->getMessage(), [
+            'category' => ErrorCategory::TokenExpired->value,
+            'platform_error_code' => $e->platformErrorCode,
+            'failed_at' => now()->toIso8601String(),
+        ]);
+        $this->postPlatform->socialAccount->markAsTokenExpired($e->getMessage());
     }
 
     /**
