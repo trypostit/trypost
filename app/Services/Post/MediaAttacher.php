@@ -47,7 +47,7 @@ class MediaAttacher
 
             if (($alt = data_get($entry, 'alt')) !== null
                 && MediaType::classify(data_get($item, 'mime_type'), data_get($item, 'path')) === MediaType::Image) {
-                $item['meta'] = ['alt_text' => $alt];
+                $item['meta'] = [...data_get($item, 'meta', []), 'alt_text' => $alt];
             }
 
             $attached[] = $item;
@@ -91,8 +91,8 @@ class MediaAttacher
                 continue;
             }
 
-            if (($meta = data_get($item, 'meta')) !== null) {
-                $hosted['meta'] = $meta;
+            if (is_array($meta = data_get($item, 'meta'))) {
+                $hosted['meta'] = [...data_get($hosted, 'meta', []), ...$meta];
             }
 
             $media[] = $hosted;
@@ -134,15 +134,7 @@ class MediaAttacher
             $name = basename(parse_url($url, PHP_URL_PATH) ?? '') ?: 'download.bin';
             $media = $workspace->addMediaFromPath($download['path'], $name, 'assets');
 
-            return [
-                'id' => $media->id,
-                'path' => $media->path,
-                'url' => $media->url,
-                'type' => $media->type,
-                'mime_type' => $media->mime_type,
-                'original_filename' => $media->original_filename,
-                'size' => $media->size,
-            ];
+            return $media->toPostSnapshot();
         } finally {
             @unlink($download['path']);
         }

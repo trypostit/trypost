@@ -134,15 +134,7 @@ class PostController extends Controller
 
         $media = $post->workspace->addMedia($file, 'assets');
 
-        $post->appendMedia([[
-            'id' => $media->id,
-            'path' => $media->path,
-            'url' => $media->url,
-            'type' => $media->type,
-            'mime_type' => $media->mime_type,
-            'original_filename' => $media->original_filename,
-            'size' => $media->size,
-        ]]);
+        $post->appendMedia([$media->toPostSnapshot()]);
 
         $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
 

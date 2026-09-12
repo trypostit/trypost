@@ -54,6 +54,19 @@ class ChunkedCloudUploader
         return config("filesystems.disks.{$disk}.driver") === 's3';
     }
 
+    public function readRange(string $key, int $offset, int $length): string
+    {
+        $end = $offset + $length - 1;
+
+        $result = $this->s3()->getObject([
+            'Bucket' => $this->bucket(),
+            'Key' => $key,
+            'Range' => "bytes={$offset}-{$end}",
+        ]);
+
+        return (string) $result['Body'];
+    }
+
     /**
      * @return array{done: bool, progress: int, path?: string, size?: int, mime_type?: string}
      */

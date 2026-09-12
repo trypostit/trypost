@@ -22,7 +22,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
 #[IsDestructive]
-#[Description('Publish a draft post — either immediately or scheduled for a future time. The post must already have at least one enabled platform. Use update-post-tool first to set content/platforms.')]
+#[Description('Publish a draft post — either immediately or scheduled for a future time. The post must already have at least one enabled platform. Use update-post-tool first to set content/platforms. Before queueing, the attached media is validated against every enabled content_type (file size, video duration, GIF, MOV — see list-content-types-tool); a cap violation returns a per-platform error and nothing is published.')]
 class PublishPostTool extends Tool
 {
     use AuthorizesMcpTool;

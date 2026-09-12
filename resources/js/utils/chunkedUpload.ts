@@ -46,7 +46,7 @@ export const uploadChunked = async (options: ChunkedUploadOptions): Promise<Chun
     const uploadId = crypto.randomUUID();
     let uploadedBytes = 0;
 
-    // The server cannot measure video duration; the browser sends it with the chunks.
+    // The server reads the duration from the file; the browser value is the fallback for containers without one.
     const isVideo = (fromMimeType(file.type) ?? fromExtension(file.name)) === MediaType.Video;
     const duration = isVideo ? await probeVideoDuration(file) : null;
 

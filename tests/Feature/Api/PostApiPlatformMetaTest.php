@@ -9,7 +9,9 @@ use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $result = createApiTestToken();
@@ -141,6 +143,31 @@ it('rejects publishing a Bluesky post whose stored video is a MOV', function () 
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['platforms.0.content_type'])
         ->assertJsonFragment(['Post does not accept MOV videos. Use MP4.']);
+});
+
+it('rejects publishing when the uploaded video runs past the content type duration cap', function () {
+    Storage::fake();
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $post->id, 'social_account_id' => $instagram->id,
+        'platform' => Platform::Instagram, 'content_type' => ContentType::InstagramStory, 'enabled' => true,
+    ]);
+
+    // Minimal MP4: ftyp + moov[mvhd v0, timescale 1, duration 90 s]. The server reads the duration itself.
+    $mvhd = pack('N', 108).'mvhd'."\0\0\0\0".pack('N', 0).pack('N', 0).pack('N', 1).pack('N', 90).str_repeat("\0", 80);
+    $file = UploadedFile::fake()->createWithContent('story.mp4', pack('N', 16).'ftypisom'.pack('N', 0).pack('N', 8 + strlen($mvhd)).'moov'.$mvhd);
+    $file->mimeTypeToReport = 'video/mp4';
+
+    $this->withHeaders($this->headers + ['Accept' => 'application/json'])
+        ->post(route('api.posts.store-media', $post), ['media' => $file])
+        ->assertOk();
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), ['status' => PostStatus::Publishing->value])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.content_type'])
+        ->assertJsonFragment(['Story accepts videos of up to 1 min (yours is 1 min 30s).']);
 });
 
 it('rejects publishing a LinkedIn post with a GIF', function () {

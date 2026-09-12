@@ -16,7 +16,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Download images, videos, or PDF documents from public URLs and attach them to a post. Each URL is fetched, stored, and registered as a Media record on the workspace. Allowed types are intersected with the platforms enabled on the post (e.g. nothing accepted if no platform supports the media type).')]
+#[Description('Download images, videos, or PDF documents from public URLs and attach them to a post. Each URL is fetched, stored, and registered as a Media record on the workspace. Allowed types are intersected with the platforms enabled on the post (e.g. nothing accepted if no platform supports the media type). Video duration is measured on the server. Per-network size, duration, GIF and MOV caps (see list-content-types-tool) are enforced when the post is scheduled or published.')]
 class AttachMediaFromUrlTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -65,7 +65,7 @@ class AttachMediaFromUrlTool extends Tool
                     'alt' => $u->string()->description('Optional accessibility alt text for the image (ignored for video/PDF, which have no alt text).'),
                 ]))
                 ->required()
-                ->description('Media to attach. Max 10 per call. Per-type size caps match config trypost.media (image/video/document). Allowed types: image/jpeg, image/png, image/gif, image/webp, video/mp4, video/quicktime, application/pdf.'),
+                ->description('Media to attach. Max 10 per call. Allowed types: image/jpeg, image/png, image/gif, image/webp, video/mp4, video/quicktime, application/pdf. The workspace-wide per-type size ceilings apply on download; stricter per-network caps apply at schedule/publish.'),
         ];
     }
 }

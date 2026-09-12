@@ -17,7 +17,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Attach a Media uploaded via RequestMediaUploadTool to a post. The upload_token is the value returned by RequestMediaUploadTool; the Media is resolved by that token within the current workspace, then appended to the post.')]
+#[Description('Attach a Media uploaded via request-media-upload-tool to a post. The upload_token is the value returned by request-media-upload-tool; the Media is resolved by that token within the current workspace, then appended to the post. The media type must be accepted by the platforms enabled on the post. Size, video duration, GIF and MOV caps per content_type (see list-content-types-tool) are checked when the post is scheduled or published, not here.')]
 class AttachMediaFromUploadTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -58,21 +58,7 @@ class AttachMediaFromUploadTool extends Tool
             return Response::error('No enabled platform on this post accepts this media type.');
         }
 
-        $item = [
-            'id' => $media->id,
-            'path' => $media->path,
-            'url' => $media->url,
-            'type' => $media->type,
-            'mime_type' => $media->mime_type,
-            'original_filename' => $media->original_filename,
-            'size' => $media->size,
-        ];
-
-        if (($alt = data_get($validated, 'alt')) !== null && $media->isImage()) {
-            $item['meta'] = ['alt_text' => $alt];
-        }
-
-        $post->appendMedia([$item]);
+        $post->appendMedia([$media->toPostSnapshot(data_get($validated, 'alt'))]);
 
         $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
 

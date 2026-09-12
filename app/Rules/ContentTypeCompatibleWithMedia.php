@@ -182,8 +182,8 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
     }
 
     /**
-     * Server-side mirror of the editor's size / duration checks. Duration is
-     * measured in the browser, so an item without `meta.duration` is not checked.
+     * Server-side mirror of the editor's size / duration checks. `meta.duration`
+     * is read from the file on upload; an item without it is not checked.
      *
      * @param  array<int, mixed>  $media
      * @param  Closure(string, ?string=): PotentiallyTranslatedString  $fail

@@ -150,6 +150,18 @@ test('chunked cloud uploader uploads parts and completes multipart', function ()
     expect(Cache::get('chunked-cloud-upload:id-1'))->toBeNull();
 });
 
+test('chunked cloud uploader reads a byte range from the stored object', function () {
+    $client = Mockery::mock(S3Client::class);
+    $client->shouldReceive('getObject')
+        ->once()
+        ->with(['Bucket' => 'test-bucket', 'Key' => 'medias/clip.mp4', 'Range' => 'bytes=40-55'])
+        ->andReturn(new Result(['Body' => 'sixteen bytes!!!']));
+
+    $uploader = new ChunkedCloudUploader(Cache::store(), $client, 'test-bucket', 'r2');
+
+    expect($uploader->readRange('medias/clip.mp4', 40, 16))->toBe('sixteen bytes!!!');
+});
+
 test('chunked cloud uploader rejects undersized non-final parts', function () {
     $uploader = new ChunkedCloudUploader(
         Cache::store(),
@@ -306,9 +318,19 @@ test('chunked upload stores image on local disk', function () {
     Storage::disk('local')->assertExists(test()->workspace->getMedia('assets')->first()->path);
 });
 
-// ─── Browser-measured duration (X-Media-Duration) ───────────────
+// ─── Video duration (server probe, X-Media-Duration fallback) ───
 
-test('chunked upload stores the browser-measured duration on videos', function () {
+test('chunked upload reads the duration from the assembled file and ignores the browser value', function () {
+    config(['filesystems.default' => 'local']);
+    Storage::fake('local');
+    seedChunkedUploadWorkspace();
+
+    postChunkedAsset('clip.mp4', file_get_contents(base_path('tests/Fixtures/sample.mp4')), uploadId: Str::uuid()->toString(), duration: '61.437')->assertSuccessful();
+
+    expect(test()->workspace->getMedia('assets')->first()->meta)->toEqual(['duration' => 1.0]);
+});
+
+test('chunked upload falls back to the browser duration when the file carries none', function () {
     config(['filesystems.default' => 'local']);
     Storage::fake('local');
     seedChunkedUploadWorkspace();
@@ -318,7 +340,29 @@ test('chunked upload stores the browser-measured duration on videos', function (
     expect(test()->workspace->getMedia('assets')->first()->meta)->toEqual(['duration' => 61.44]);
 });
 
-test('chunked upload stores the duration on the multipart path too', function () {
+test('chunked upload probes the duration from object storage on the multipart path', function () {
+    config(['filesystems.default' => 's3', 'filesystems.disks.s3.driver' => 's3']);
+    Storage::fake('s3');
+    seedChunkedUploadWorkspace();
+
+    $bytes = file_get_contents(base_path('tests/Fixtures/sample.mp4'));
+
+    $fake = Mockery::mock(ChunkedCloudUploader::class);
+    $fake->shouldReceive('shouldUseMultipart')->with('clip.mp4')->andReturn(true);
+    $fake->shouldReceive('receiveChunk')->once()->andReturn([
+        'done' => true, 'progress' => 100, 'path' => 'medias/clip.mp4', 'size' => strlen($bytes), 'mime_type' => 'video/mp4',
+    ]);
+    $fake->shouldReceive('readRange')
+        ->with('medias/clip.mp4', Mockery::type('int'), Mockery::type('int'))
+        ->andReturnUsing(fn (string $key, int $offset, int $length) => substr($bytes, $offset, $length));
+    app()->instance(ChunkedCloudUploader::class, $fake);
+
+    postChunkedAsset('clip.mp4', 'fake-video!!', uploadId: Str::uuid()->toString(), duration: '600')->assertSuccessful();
+
+    expect(test()->workspace->getMedia('assets')->first()->meta)->toEqual(['duration' => 1.0]);
+});
+
+test('chunked upload keeps the browser duration when object storage cannot be probed', function () {
     config(['filesystems.default' => 's3', 'filesystems.disks.s3.driver' => 's3']);
     Storage::fake('s3');
     seedChunkedUploadWorkspace();
@@ -328,6 +372,7 @@ test('chunked upload stores the duration on the multipart path too', function ()
     $fake->shouldReceive('receiveChunk')->once()->andReturn([
         'done' => true, 'progress' => 100, 'path' => 'medias/clip.mp4', 'size' => 12, 'mime_type' => 'video/mp4',
     ]);
+    $fake->shouldReceive('readRange')->andThrow(new RuntimeException('range GET failed'));
     app()->instance(ChunkedCloudUploader::class, $fake);
 
     postChunkedAsset('clip.mp4', 'fake-video!!', uploadId: Str::uuid()->toString(), duration: '600')->assertSuccessful();

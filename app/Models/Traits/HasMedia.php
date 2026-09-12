@@ -8,6 +8,7 @@ use App\Enums\Media\Type;
 use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\VideoDurationProbe;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -102,7 +103,7 @@ trait HasMedia
             'mime_type' => $normalizedMime,
             'size' => strlen($normalizedBytes),
             'order' => 0,
-            'meta' => array_merge($this->getMediaMetaFromBytes($normalizedBytes, $type, $meta), $meta),
+            'meta' => array_merge($this->getMediaMetaFromBytes($normalizedBytes, $type, $meta), $this->withVideoDuration($meta, $type, $file->getPathname())),
         ]);
     }
 
@@ -127,6 +128,7 @@ trait HasMedia
 
         $type = $this->getMediaType($mimeType);
         $extension = pathinfo($originalFilename, PATHINFO_EXTENSION);
+        $meta = $this->withVideoDuration($meta, $type, $filePath);
 
         $stored = $type === Type::Image->value
             ? $this->storeImageFromPath($filePath, $mimeType, $type, $extension, $meta)
@@ -274,6 +276,21 @@ trait HasMedia
         }
 
         return $meta;
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     * @return array<string, mixed>
+     */
+    private function withVideoDuration(array $meta, string $type, string $filePath): array
+    {
+        if ($type !== Type::Video->value) {
+            return $meta;
+        }
+
+        $duration = VideoDurationProbe::fromFile($filePath);
+
+        return $duration === null ? $meta : [...$meta, 'duration' => round($duration, 2)];
     }
 
     /**

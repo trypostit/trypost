@@ -74,6 +74,33 @@ class Media extends Model
         return MediaType::classify($this->mime_type, $this->path) === MediaType::Document;
     }
 
+    /**
+     * The item stored in `posts.media` for this asset. Carries `meta` so the
+     * publish-time checks can read the measured duration.
+     *
+     * @return array<string, mixed>
+     */
+    public function toPostSnapshot(?string $alt = null): array
+    {
+        $meta = is_array($this->meta) ? $this->meta : [];
+
+        if (filled($alt) && $this->isImage()) {
+            $meta['alt_text'] = $alt;
+        }
+
+        $item = [
+            'id' => $this->id,
+            'path' => $this->path,
+            'url' => $this->url,
+            'type' => $this->type->value,
+            'mime_type' => $this->mime_type,
+            'original_filename' => $this->original_filename,
+            'size' => $this->size,
+        ];
+
+        return $meta === [] ? $item : [...$item, 'meta' => $meta];
+    }
+
     public function getTemporaryUrl(int $expirationMinutes = 60): string
     {
         return Storage::temporaryUrl(

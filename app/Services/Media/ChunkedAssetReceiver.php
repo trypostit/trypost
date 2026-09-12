@@ -7,6 +7,8 @@ namespace App\Services\Media;
 use App\Enums\Media\Type as MediaType;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\VideoDurationProbe;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
@@ -72,15 +74,17 @@ final class ChunkedAssetReceiver
         }
 
         $path = (string) data_get($result, 'path');
+        $mimeType = (string) data_get($result, 'mime_type');
+        $size = (int) data_get($result, 'size');
 
         try {
             $media = $workspace->addMediaFromStoredPath(
                 $path,
                 $fileName,
-                (string) data_get($result, 'mime_type'),
-                (int) data_get($result, 'size'),
+                $mimeType,
+                $size,
                 'assets',
-                $meta,
+                $this->withStoredVideoDuration($meta, $mimeType, $path, $size),
             );
         } catch (Throwable $exception) {
             Storage::delete($path);
@@ -89,6 +93,33 @@ final class ChunkedAssetReceiver
         }
 
         return ChunkReceipt::completed($media);
+    }
+
+    /**
+     * The multipart object never touches local disk, so the probe reads the
+     * atom headers straight from object storage with ranged GETs.
+     *
+     * @param  array<string, mixed>  $meta
+     * @return array<string, mixed>
+     */
+    private function withStoredVideoDuration(array $meta, string $mimeType, string $path, int $size): array
+    {
+        if (MediaType::classify($mimeType) !== MediaType::Video) {
+            return $meta;
+        }
+
+        try {
+            $duration = VideoDurationProbe::fromReader(
+                fn (int $offset, int $length): string => $this->cloud->readRange($path, $offset, $length),
+                $size,
+            );
+        } catch (Throwable $exception) {
+            Log::warning('Could not probe video duration from object storage', ['path' => $path, 'error' => $exception->getMessage()]);
+
+            return $meta;
+        }
+
+        return $duration === null ? $meta : [...$meta, 'duration' => round($duration, 2)];
     }
 
     /**
