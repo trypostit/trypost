@@ -24,7 +24,7 @@ export const formatBytes = (bytes: number, decimal = false): string => {
     return bytes + ' B';
 };
 
-/** Caps declared in decimal megabytes (Bluesky) render as "300 MB", not "286.1 MB". */
+/** Caps declared in decimal megabytes (Bluesky) render as "300.0 MB", not "286.1 MB". */
 const sizeParams = (cap: number, size: number): Record<string, string> => {
     const decimal = cap % 1_000_000 === 0 && cap % (1024 * 1024) !== 0;
 

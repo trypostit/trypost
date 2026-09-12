@@ -142,7 +142,7 @@ it('rejects publishing a Bluesky post whose stored video is a MOV', function () 
         ->putJson(route('api.posts.update', $post), ['status' => PostStatus::Publishing->value])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['platforms.0.content_type'])
-        ->assertJsonFragment(['Post does not accept MOV videos. Use MP4.']);
+        ->assertJsonFragment(['This platform does not accept MOV videos. Use MP4.']);
 });
 
 it('rejects publishing when the uploaded video runs past the content type duration cap', function () {
@@ -167,7 +167,7 @@ it('rejects publishing when the uploaded video runs past the content type durati
         ->putJson(route('api.posts.update', $post), ['status' => PostStatus::Publishing->value])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['platforms.0.content_type'])
-        ->assertJsonFragment(['Story accepts videos of up to 1 min (yours is 1 min 30s).']);
+        ->assertJsonFragment(['Video is 1min 30s long, but this post type allows up to 1min.']);
 });
 
 it('rejects publishing a LinkedIn post with a GIF', function () {
@@ -192,7 +192,7 @@ it('rejects publishing a LinkedIn post with a GIF', function () {
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['platforms.0.content_type'])
-        ->assertJsonFragment(['Post does not accept GIF. Use a still image or choose a different network.']);
+        ->assertJsonFragment(['This platform does not accept GIF. Remove the GIF or choose a different network.']);
 });
 
 it('rejects publishing an Instagram Reel whose stored video exceeds 300 MB', function () {

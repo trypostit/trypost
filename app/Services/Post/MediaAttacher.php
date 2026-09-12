@@ -9,6 +9,7 @@ use App\Models\Media;
 use App\Models\Post;
 use App\Models\Workspace;
 use App\Services\Brand\SafeHttpFetcher;
+use App\Support\PostMediaRules;
 use RuntimeException;
 use Throwable;
 
@@ -134,7 +135,7 @@ class MediaAttacher
             $name = basename(parse_url($url, PHP_URL_PATH) ?? '') ?: 'download.bin';
             $media = $workspace->addMediaFromPath($download['path'], $name, 'assets');
 
-            return $media->toPostSnapshot();
+            return PostMediaRules::snapshot($media);
         } finally {
             @unlink($download['path']);
         }

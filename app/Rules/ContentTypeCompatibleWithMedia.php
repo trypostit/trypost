@@ -134,7 +134,7 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
         $count = count($media);
 
         if ($contentType->requiresMedia() && $count === 0) {
-            $fail("{$contentType->label()} requires at least one media file.");
+            $fail(trans('posts.form.warnings.requires_media'));
 
             return;
         }
@@ -150,48 +150,47 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
         $hasMov = collect($media)->contains(fn ($item) => $this->isMov((array) $item));
 
         if ($hasImage && ! $contentType->supportsImage()) {
-            $fail("{$contentType->label()} does not support images.");
+            $fail(trans('posts.form.warnings.no_image_allowed'));
         }
 
         if ($hasVideo && ! $contentType->supportsVideo()) {
-            $fail("{$contentType->label()} does not support videos.");
+            $fail(trans('posts.form.warnings.no_video_allowed'));
         }
 
         if ($hasDocument && ! $contentType->supportsDocument()) {
-            $fail("{$contentType->label()} does not support PDF documents.");
+            $fail(trans('posts.form.warnings.no_document_allowed'));
         }
 
         // A PDF document is always published on its own (LinkedIn document post).
         if ($hasDocument && $count > 1) {
-            $fail('A PDF document must be the only attachment.');
+            $fail(trans('posts.form.warnings.document_not_alone'));
         }
 
         if ($hasImage && $hasVideo && ! $contentType->supportsMixedMedia()) {
-            $fail("{$contentType->label()} can't combine an image and a video in the same post.");
+            $fail(trans('posts.form.warnings.no_mixed_media'));
         }
 
         if ($hasGif && ! $contentType->acceptsGif()) {
-            $fail("{$contentType->label()} does not accept GIF. Use a still image or choose a different network.");
+            $fail(trans('posts.form.warnings.gif_not_allowed'));
         }
 
         if ($hasMov && ! $contentType->acceptsMov()) {
-            $fail("{$contentType->label()} does not accept MOV videos. Use MP4.");
+            $fail(trans('posts.form.warnings.mov_not_allowed'));
         }
 
         $this->failOnSizeAndDurationCaps($contentType, $media, $fail);
     }
 
     /**
-     * Server-side mirror of the editor's size / duration checks. `meta.duration`
-     * is read from the file on upload; an item without it is not checked.
+     * Server-side mirror of the editor's size / duration checks, sharing its
+     * messages. `meta.duration` is read from the file on upload; an item
+     * without it is not checked.
      *
      * @param  array<int, mixed>  $media
      * @param  Closure(string, ?string=): PotentiallyTranslatedString  $fail
      */
     private function failOnSizeAndDurationCaps(ContentType $contentType, array $media, Closure $fail): void
     {
-        $label = $contentType->label();
-
         $maxDuration = $contentType->maxVideoDurationSec();
 
         foreach ($media as $item) {
@@ -199,20 +198,26 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
             $size = (int) data_get($item, 'size', 0);
             $duration = data_get($item, 'meta.duration');
 
-            [$kind, $max] = match (true) {
-                $this->isDocument($item) => ['a PDF', $contentType->maxDocumentBytes()],
-                $this->isVideo($item) => ['a video', $contentType->maxVideoBytes()],
-                default => ['an image', $contentType->maxImageBytes()],
+            [$key, $max] = match (true) {
+                $this->isDocument($item) => ['document_too_large', $contentType->maxDocumentBytes()],
+                $this->isVideo($item) => ['video_too_large', $contentType->maxVideoBytes()],
+                default => ['image_too_large', $contentType->maxImageBytes()],
             };
 
             if ($size > 0 && $max !== null && $size > $max) {
-                $fail("{$label} accepts {$kind} of up to {$this->formatBytes($max, $max)} (yours is {$this->formatBytes($size, $max, 1)}).");
+                $fail(trans("posts.form.warnings.{$key}", [
+                    'max' => $this->formatBytes($max, $max),
+                    'current' => $this->formatBytes($size, $max, 1),
+                ]));
 
                 return;
             }
 
             if ($maxDuration !== null && $this->isVideo($item) && is_numeric($duration) && (float) $duration > $maxDuration) {
-                $fail("{$label} accepts videos of up to {$this->formatDuration($maxDuration)} (yours is {$this->formatDuration((int) ceil((float) $duration))}).");
+                $fail(trans('posts.form.warnings.video_too_long', [
+                    'max' => $this->formatDuration($maxDuration),
+                    'current' => $this->formatDuration((int) ceil((float) $duration)),
+                ]));
 
                 return;
             }
@@ -242,6 +247,9 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
         return number_format($value, $precision).' '.$suffix;
     }
 
+    /**
+     * Mirrors `formatDurationWords` in date.ts.
+     */
     private function formatDuration(int $seconds): string
     {
         if ($seconds < 60) {
@@ -251,7 +259,7 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
         $minutes = intdiv($seconds, 60);
         $rest = $seconds % 60;
 
-        return $rest === 0 ? "{$minutes} min" : "{$minutes} min {$rest}s";
+        return $rest === 0 ? "{$minutes}min" : "{$minutes}min {$rest}s";
     }
 
     /**

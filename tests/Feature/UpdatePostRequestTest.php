@@ -108,7 +108,7 @@ test('publishing a bluesky post with a mov video is rejected', function () {
             ],
         ]);
 
-    $response->assertSessionHasErrors(['platforms.0.content_type' => 'Post does not accept MOV videos. Use MP4.']);
+    $response->assertSessionHasErrors(['platforms.0.content_type' => 'This platform does not accept MOV videos. Use MP4.']);
 });
 
 test('publishing a bluesky post with an oversized image is rejected server-side', function () {

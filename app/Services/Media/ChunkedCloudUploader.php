@@ -56,15 +56,11 @@ class ChunkedCloudUploader
 
     public function readRange(string $key, int $offset, int $length): string
     {
-        $end = $offset + $length - 1;
-
-        $result = $this->s3()->getObject([
+        return (string) $this->s3()->getObject([
             'Bucket' => $this->bucket(),
             'Key' => $key,
-            'Range' => "bytes={$offset}-{$end}",
-        ]);
-
-        return (string) $result['Body'];
+            'Range' => sprintf('bytes=%d-%d', $offset, $offset + $length - 1),
+        ])['Body'];
     }
 
     /**

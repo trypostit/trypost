@@ -27,7 +27,7 @@ test('fails when content type requires media and none provided', function () {
     $errors = runMediaRule(ContentType::InstagramReel->value, []);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('requires at least one media file');
+    expect($errors[0])->toContain('requires at least one image or video');
 });
 
 test('fails when content type does not support images and an image is present', function () {
@@ -36,7 +36,7 @@ test('fails when content type does not support images and an image is present', 
     $errors = runMediaRule(ContentType::TikTokVideo->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('does not support images');
+    expect($errors[0])->toContain('accepts only videos');
 });
 
 test('fails when content type does not support video and a video is present', function () {
@@ -45,7 +45,7 @@ test('fails when content type does not support video and a video is present', fu
     $errors = runMediaRule(ContentType::PinterestPin->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('does not support videos');
+    expect($errors[0])->toContain('does not accept videos');
 });
 
 test('youtube short rejects images', function () {
@@ -53,7 +53,7 @@ test('youtube short rejects images', function () {
 
     $errors = runMediaRule(ContentType::YouTubeShort->value, $media);
 
-    expect($errors[0])->toContain('does not support images');
+    expect($errors[0])->toContain('accepts only videos');
 });
 
 test('passes when image-only content type receives an image', function () {
@@ -77,7 +77,7 @@ test('facebook story rejects images', function () {
     $errors = runMediaRule(ContentType::FacebookStory->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('does not support images');
+    expect($errors[0])->toContain('accepts only videos');
 });
 
 test('instagram story accepts images', function () {
@@ -103,7 +103,7 @@ test('bluesky rejects an image and a video in the same post', function () {
     $errors = runMediaRule(ContentType::BlueskyPost->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain("can't combine an image and a video");
+    expect($errors[0])->toContain("can't be combined in the same post");
 });
 
 test('bluesky still accepts an image-only or video-only post', function () {
@@ -120,7 +120,7 @@ test('bluesky rejects a mov video', function () {
     $errors = runMediaRule(ContentType::BlueskyPost->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('does not accept MOV');
+    expect($errors[0])->toContain('does not accept MOV videos');
 });
 
 test('bluesky rejects a mov video identified only by filename', function () {
@@ -129,7 +129,7 @@ test('bluesky rejects a mov video identified only by filename', function () {
     $errors = runMediaRule(ContentType::BlueskyPost->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('does not accept MOV');
+    expect($errors[0])->toContain('does not accept MOV videos');
 });
 
 test('x still accepts a mov video', function () {
@@ -164,7 +164,7 @@ test('an image over the content type cap is rejected by size', function () {
     $errors = runMediaRule(ContentType::BlueskyPost->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('accepts an image of up to');
+    expect($errors[0])->toContain('Image exceeds the');
     expect($errors[0])->toContain('2 MB');
 });
 
@@ -174,7 +174,7 @@ test('decimal caps are reported in decimal units for both the cap and the file',
     $errors = runMediaRule(ContentType::BlueskyPost->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('up to 300 MB (yours is 305.0 MB)');
+    expect($errors[0])->toContain('300 MB limit for this post type (yours is 305.0 MB)');
 });
 
 test('binary caps keep binary units', function () {
@@ -183,7 +183,7 @@ test('binary caps keep binary units', function () {
     $errors = runMediaRule(ContentType::InstagramReel->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('up to 300 MB (yours is 320.0 MB)');
+    expect($errors[0])->toContain('300 MB limit for this post type (yours is 320.0 MB)');
 });
 
 test('an image exactly at the content type cap passes', function () {
@@ -198,7 +198,7 @@ test('a video over the content type cap is rejected by size', function () {
     $errors = runMediaRule(ContentType::InstagramReel->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('accepts a video of up to');
+    expect($errors[0])->toContain('Video exceeds the');
 });
 
 test('a pdf over the content type cap is rejected by size', function () {
@@ -208,7 +208,7 @@ test('a pdf over the content type cap is rejected by size', function () {
     $errors = runMediaRule(ContentType::LinkedInPost->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('accepts a PDF of up to');
+    expect($errors[0])->toContain('PDF exceeds the');
 });
 
 test('media without a size is not checked against byte caps', function () {
@@ -223,8 +223,8 @@ test('a video longer than the content type cap is rejected by duration', functio
     $errors = runMediaRule(ContentType::InstagramStory->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('accepts videos of up to 1 min');
-    expect($errors[0])->toContain('1 min 2s');
+    expect($errors[0])->toContain('allows up to 1min');
+    expect($errors[0])->toContain('Video is 1min 2s long');
 });
 
 test('a video within the duration cap passes and a video without duration is not checked', function () {
@@ -252,7 +252,7 @@ test('bluesky rejects an animated gif combined with a video', function () {
     $errors = runMediaRule(ContentType::BlueskyPost->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain("can't combine an image and a video");
+    expect($errors[0])->toContain("can't be combined in the same post");
 });
 
 test('a mixed-media content type accepts an image and a video together', function () {
@@ -286,7 +286,7 @@ test('a pdf must be the only attachment on linkedin', function () {
     $errors = runMediaRule(ContentType::LinkedInPost->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('must be the only attachment');
+    expect($errors[0])->toContain('must be posted on its own');
 });
 
 test('linkedin rejects mixing an image and a video', function () {
@@ -298,7 +298,7 @@ test('linkedin rejects mixing an image and a video', function () {
     $errors = runMediaRule(ContentType::LinkedInPost->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain("can't combine an image and a video");
+    expect($errors[0])->toContain("can't be combined in the same post");
 });
 
 test('a pdf is rejected on content types that do not support documents', function () {
@@ -307,7 +307,7 @@ test('a pdf is rejected on content types that do not support documents', functio
     $errors = runMediaRule(ContentType::XPost->value, $media);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('does not support PDF documents');
+    expect($errors[0])->toContain('does not accept PDF documents');
 });
 
 test('falls back to stored media when the request omits the media key', function () {
@@ -330,7 +330,7 @@ test('falls back to stored media when the request omits the media key', function
         });
 
     expect($xErrors)->toHaveCount(1);
-    expect($xErrors[0])->toContain('does not support PDF documents');
+    expect($xErrors[0])->toContain('does not accept PDF documents');
 });
 
 test('request media takes precedence over the stored fallback', function () {
@@ -347,7 +347,7 @@ test('request media takes precedence over the stored fallback', function () {
         });
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('must be the only attachment');
+    expect($errors[0])->toContain('must be posted on its own');
 });
 
 test('does nothing for invalid content type values', function () {

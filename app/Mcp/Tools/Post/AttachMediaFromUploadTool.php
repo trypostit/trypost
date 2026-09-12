@@ -58,7 +58,7 @@ class AttachMediaFromUploadTool extends Tool
             return Response::error('No enabled platform on this post accepts this media type.');
         }
 
-        $post->appendMedia([$media->toPostSnapshot(data_get($validated, 'alt'))]);
+        $post->appendMedia([PostMediaRules::snapshot($media, data_get($validated, 'alt'))]);
 
         $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
 
