@@ -28,6 +28,8 @@ const GIF_MIME = 'image/gif';
 const MOV_MIME = 'video/quicktime';
 const PDF_MIME = 'application/pdf';
 
+const extensionOf = (nameOrPath: string | null | undefined): string => nameOrPath?.split('.').pop()?.toLowerCase() ?? '';
+
 /** The `accept` attribute value for a file input that takes any media we allow. */
 export const acceptAttribute = (): string => Object.values(ALLOWED_MIME_TYPES).flat().join(',');
 
@@ -54,7 +56,7 @@ export const fromMimeType = (mime: string | null | undefined): MediaType | null 
 export const fromExtension = (nameOrPath: string | null | undefined): MediaType | null => {
     if (! nameOrPath) return null;
 
-    const ext = nameOrPath.split('.').pop()?.toLowerCase() ?? '';
+    const ext = extensionOf(nameOrPath);
 
     if (IMAGE_EXTENSIONS.includes(ext)) return MediaType.Image;
     if (VIDEO_EXTENSIONS.includes(ext)) return MediaType.Video;
@@ -88,13 +90,5 @@ export const isDocument = (item: ClassifiableMedia | null | undefined): boolean 
 /** Whether the item is an animated GIF — several platforms treat it specially. */
 export const isGif = (item: ClassifiableMedia | null | undefined): boolean => (item?.mime_type ?? '') === GIF_MIME;
 
-export const isMov = (item: ClassifiableMedia | null | undefined): boolean => {
-    if ((item?.mime_type ?? '') === MOV_MIME) {
-        return true;
-    }
-
-    const name = item?.original_filename ?? item?.path ?? '';
-    const ext = name.split('.').pop()?.toLowerCase() ?? '';
-
-    return ext === 'mov';
-};
+export const isMov = (item: ClassifiableMedia | null | undefined): boolean =>
+    item?.mime_type === MOV_MIME || extensionOf(item?.original_filename ?? item?.path) === 'mov';

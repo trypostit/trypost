@@ -25,13 +25,11 @@ export const formatBytes = (bytes: number, decimal = false): string => {
 };
 
 /** Caps declared in decimal megabytes (Bluesky) render as "300 MB", not "286.1 MB". */
-export const usesDecimalUnits = (cap: number | undefined): boolean =>
-    cap !== undefined && cap % 1_000_000 === 0 && cap % (1024 * 1024) !== 0;
+const sizeParams = (cap: number, size: number): Record<string, string> => {
+    const decimal = cap % 1_000_000 === 0 && cap % (1024 * 1024) !== 0;
 
-const sizeParams = (cap: number, size: number): Record<string, string> => ({
-    max: formatBytes(cap, usesDecimalUnits(cap)),
-    current: formatBytes(size, usesDecimalUnits(cap)),
-});
+    return { max: formatBytes(cap, decimal), current: formatBytes(size, decimal) };
+};
 
 const formatAspect = (ratio: number): string => ratio.toFixed(2);
 
@@ -51,7 +49,6 @@ export const getMediaValidationWarning = (
     const documents = media.filter(isDocument);
     const images = media.filter(isImage);
     const gifs = media.filter(isGif);
-    const movs = media.filter(isMov);
     const total = media.length;
 
     if (rules.requiresMedia && total === 0) {
@@ -81,7 +78,7 @@ export const getMediaValidationWarning = (
     if (! rules.acceptsGif && gifs.length > 0) {
         return { key: 'gif_not_allowed', params: {} };
     }
-    if (! rules.acceptsMov && movs.length > 0) {
+    if (! rules.acceptsMov && media.some(isMov)) {
         return { key: 'mov_not_allowed', params: {} };
     }
 
@@ -154,7 +151,6 @@ export const getMediaItemIssue = (item: MediaItem, contentType: string): string 
     const itemIsVideo = isVideo(item);
     const itemIsDocument = isDocument(item);
     const itemIsGif = isGif(item);
-    const itemIsMov = isMov(item);
 
     if (itemIsDocument) {
         if (! rules.acceptDocuments) return 'no_document_allowed';
@@ -166,7 +162,7 @@ export const getMediaItemIssue = (item: MediaItem, contentType: string): string 
     if (itemIsVideo && ! rules.acceptVideos) return 'no_video_allowed';
     if (! itemIsVideo && ! rules.acceptImages) return 'no_image_allowed';
     if (itemIsGif && ! rules.acceptsGif) return 'gif_not_allowed';
-    if (itemIsMov && ! rules.acceptsMov) return 'mov_not_allowed';
+    if (isMov(item) && ! rules.acceptsMov) return 'mov_not_allowed';
 
     const size = item.size ?? 0;
     if (itemIsVideo && rules.maxVideoBytes && size > rules.maxVideoBytes) return 'video_too_large';
