@@ -237,7 +237,7 @@ return [
             'video_poll_seconds' => env('BLUESKY_VIDEO_POLL_SECONDS', 2),
             // Gradually back off status checks to at most this interval.
             'video_poll_max_seconds' => env('BLUESKY_VIDEO_POLL_MAX_SECONDS', 30),
-            // app.bsky.embed.video maxSize; keep >= ContentType::BLUESKY_VIDEO_MAX_BYTES.
+            // app.bsky.embed.video maxSize; keep >= ContentType::BlueskyPost->maxVideoBytes().
             'video_max_bytes' => env('BLUESKY_VIDEO_MAX_BYTES', 300_000_000),
             // PLC directory, used to resolve an account's real PDS host from its DID.
             'plc_directory' => env('BLUESKY_PLC_DIRECTORY', 'https://plc.directory'),

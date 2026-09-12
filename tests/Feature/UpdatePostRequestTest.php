@@ -133,7 +133,7 @@ test('publishing a bluesky post with an oversized image is rejected server-side'
                 'type' => 'image',
                 'mime_type' => 'image/jpeg',
                 'original_filename' => 'big.jpg',
-                'size' => ContentType::BLUESKY_IMAGE_MAX_BYTES + 1,
+                'size' => 2_000_001,
             ]],
             'platforms' => [
                 ['id' => $blueskyPlatform->id, 'content_type' => ContentType::BlueskyPost->value],

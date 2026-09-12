@@ -62,14 +62,6 @@ enum ContentType: string
      */
     public const CAROUSEL_FORMAT = 'instagram_carousel';
 
-    /**
-     * Bluesky blob ceilings, in the decimal bytes the lexicons declare:
-     * `app.bsky.embed.images#image.maxSize` and `app.bsky.embed.video#video.maxSize`.
-     */
-    public const BLUESKY_IMAGE_MAX_BYTES = 2_000_000;
-
-    public const BLUESKY_VIDEO_MAX_BYTES = 300_000_000;
-
     public function label(): string
     {
         return match ($this) {
@@ -275,7 +267,7 @@ enum ContentType: string
             self::PinterestPin, self::PinterestCarousel => self::bytesFromMb(20),
             self::XPost => self::bytesFromMb(5),
             self::ThreadsPost => self::bytesFromMb(8),
-            self::BlueskyPost => self::BLUESKY_IMAGE_MAX_BYTES,
+            self::BlueskyPost => self::bytesFromDecimalMb(2),
             self::TikTokPhoto => self::bytesFromMb(20),
             self::MastodonPost => self::bytesFromMb(10),
             self::DiscordMessage => self::bytesFromMb(20),
@@ -316,7 +308,7 @@ enum ContentType: string
             self::PinterestVideoPin => self::bytesFromGb(2),
             self::XPost => self::bytesFromGb(8),
             self::ThreadsPost => self::bytesFromGb(1),
-            self::BlueskyPost => self::BLUESKY_VIDEO_MAX_BYTES,
+            self::BlueskyPost => self::bytesFromDecimalMb(300),
             self::TikTokVideo => self::bytesFromGb(4),
             self::MastodonPost => self::bytesFromMb(40),
             self::DiscordMessage => self::bytesFromMb(20),
@@ -480,6 +472,15 @@ enum ContentType: string
     private static function bytesFromGb(int $gigabytes): int
     {
         return $gigabytes * 1024 * 1024 * 1024;
+    }
+
+    /**
+     * Decimal megabytes, for platforms whose lexicon declares the cap in
+     * plain bytes (Bluesky: 2 000 000 / 300 000 000) rather than MiB.
+     */
+    private static function bytesFromDecimalMb(int $megabytes): int
+    {
+        return $megabytes * 1_000_000;
     }
 
     /**

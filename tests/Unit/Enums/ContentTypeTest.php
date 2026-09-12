@@ -320,11 +320,15 @@ test('media byte caps never exceed the global upload hard limits', function () {
 });
 
 test('bluesky caps use the lexicon decimal byte values, not mebibytes', function () {
-    expect(ContentType::BLUESKY_IMAGE_MAX_BYTES)->toBe(2_000_000)
-        ->and(ContentType::BLUESKY_VIDEO_MAX_BYTES)->toBe(300_000_000)
+    // Raise the hard limits so the clamp cannot mask the enum's own values.
+    config()->set('trypost.media.max_size_mb.image', 1024);
+    config()->set('trypost.media.max_size_mb.video', 4096);
+
+    expect(ContentType::BlueskyPost->maxImageBytes())->toBe(2_000_000)
+        ->and(ContentType::BlueskyPost->maxVideoBytes())->toBe(300_000_000)
         // 300 MiB would let a 305 MB file through the editor only to be refused by the PDS.
-        ->and(ContentType::BLUESKY_VIDEO_MAX_BYTES)->toBeLessThan(300 * 1024 * 1024)
-        ->and(ContentType::BLUESKY_IMAGE_MAX_BYTES)->toBeLessThan(2 * 1024 * 1024);
+        ->and(ContentType::BlueskyPost->maxVideoBytes())->toBeLessThan(300 * 1024 * 1024)
+        ->and(ContentType::BlueskyPost->maxImageBytes())->toBeLessThan(2 * 1024 * 1024);
 });
 
 test('bluesky publisher skip threshold is never below the advertised video cap', function () {
