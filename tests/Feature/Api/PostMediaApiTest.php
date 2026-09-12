@@ -67,6 +67,9 @@ it('attaches media from url', function () {
 
     expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
     expect($this->post->fresh()->media)->toHaveCount(1);
+
+    // The snapshot carries `size` so ContentTypeCompatibleWithMedia can enforce byte caps on publish.
+    expect(data_get($this->post->fresh()->media, '0.size'))->toBe(Media::sole()->size)->toBeGreaterThan(0);
 });
 
 it('attaches media from url with alt text', function () {
@@ -229,6 +232,7 @@ it('uploads a media file and attaches it to the post', function () {
 
     expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
     expect($this->post->fresh()->media)->toHaveCount(1);
+    expect(data_get($this->post->fresh()->media, '0.size'))->toBe(Media::sole()->size)->toBeGreaterThan(0);
 });
 
 it('rejects upload of an unsupported mime type', function () {

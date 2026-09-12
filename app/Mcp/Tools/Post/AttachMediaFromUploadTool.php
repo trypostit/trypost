@@ -65,6 +65,7 @@ class AttachMediaFromUploadTool extends Tool
             'type' => $media->type,
             'mime_type' => $media->mime_type,
             'original_filename' => $media->original_filename,
+            'size' => $media->size,
         ];
 
         if (($alt = data_get($validated, 'alt')) !== null && $media->isImage()) {

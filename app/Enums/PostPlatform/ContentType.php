@@ -62,6 +62,14 @@ enum ContentType: string
      */
     public const CAROUSEL_FORMAT = 'instagram_carousel';
 
+    /**
+     * Bluesky blob ceilings, in the decimal bytes the lexicons declare:
+     * `app.bsky.embed.images#image.maxSize` and `app.bsky.embed.video#video.maxSize`.
+     */
+    public const BLUESKY_IMAGE_MAX_BYTES = 2_000_000;
+
+    public const BLUESKY_VIDEO_MAX_BYTES = 300_000_000;
+
     public function label(): string
     {
         return match ($this) {
@@ -182,8 +190,12 @@ enum ContentType: string
 
     /**
      * Maximum video duration in seconds for this content type, when the
-     * platform publishes a hard cap via API. Null when unlimited, unknown,
-     * or enforced dynamically (e.g. TikTok creator_info).
+     * platform publishes a hard cap via API. Null when unlimited or unknown.
+     *
+     * TikTok is the developer-upload ceiling (10 min); `creator_info` may return
+     * a lower per-creator cap, which TikTokPublisher enforces at publish time.
+     * Bluesky is the video service limit announced by @bsky.app on 2026-08-26
+     * (the lexicon carries no duration).
      *
      * Single source of truth for web (via Inertia shared props), REST API,
      * and MCP content-type listings.
@@ -202,7 +214,8 @@ enum ContentType: string
             self::PinterestVideoPin => 15 * 60,
             self::XPost => 20 * 60,
             self::ThreadsPost => 5 * 60,
-            self::BlueskyPost => 60,
+            self::BlueskyPost => 10 * 60,
+            self::TikTokVideo => 10 * 60,
             default => null,
         };
     }
@@ -250,6 +263,8 @@ enum ContentType: string
      *
      * Telegram is 5 MB because we publish via URL, not multipart (10 MB).
      * Discord's official attachment ceiling is 20 MiB; Cloud images clamp to 10 MB.
+     * Bluesky's lexicon declares `maxSize` in decimal bytes (2 000 000), so it is
+     * kept exact rather than rounded to MiB.
      */
     public function maxImageBytes(): ?int
     {
@@ -260,7 +275,7 @@ enum ContentType: string
             self::PinterestPin, self::PinterestCarousel => self::bytesFromMb(20),
             self::XPost => self::bytesFromMb(5),
             self::ThreadsPost => self::bytesFromMb(8),
-            self::BlueskyPost => self::bytesFromMb(2),
+            self::BlueskyPost => self::BLUESKY_IMAGE_MAX_BYTES,
             self::TikTokPhoto => self::bytesFromMb(20),
             self::MastodonPost => self::bytesFromMb(10),
             self::DiscordMessage => self::bytesFromMb(20),
@@ -280,7 +295,12 @@ enum ContentType: string
      * - Instagram feed / story: 100 MB (carousel `media_type=VIDEO` / story).
      *   A lone feed video publishes as a Reel — pick InstagramReel for longer clips.
      * - Instagram reel: 300 MB (Graph `video_url` pull), not 1 GB.
-     * - X: 1 GB `tweet_video` (Post upload), not `dm_video` (512 MB / 140 s).
+     * - X: 8 GB / 20 min is the `tweet_video` default entitlement (Premium is
+     *   16 GB / 125 min); `dm_video` is 512 MB / 140 s and does not apply.
+     * - Bluesky: the lexicon's `maxSize` is 300 000 000 decimal bytes — kept
+     *   exact, since 300 MiB would let a 305 MB file through.
+     *   `trypost.platforms.bluesky.video_max_bytes` (the publisher's skip
+     *   threshold) must never be lower than this; a test pins the two together.
      * - Telegram: 20 MB — we publish via URL, not multipart (50 MB).
      * - Discord: 20 MiB bot attachment default.
      */
@@ -294,9 +314,9 @@ enum ContentType: string
             self::LinkedInPost, self::LinkedInPagePost => self::bytesFromGb(5),
             self::YouTubeShort => self::bytesFromGb(256),
             self::PinterestVideoPin => self::bytesFromGb(2),
-            self::XPost => self::bytesFromGb(1),
+            self::XPost => self::bytesFromGb(8),
             self::ThreadsPost => self::bytesFromGb(1),
-            self::BlueskyPost => self::bytesFromMb(300),
+            self::BlueskyPost => self::BLUESKY_VIDEO_MAX_BYTES,
             self::TikTokVideo => self::bytesFromGb(4),
             self::MastodonPost => self::bytesFromMb(40),
             self::DiscordMessage => self::bytesFromMb(20),

@@ -27,7 +27,7 @@ test('inertia shares content type media rules for the frontend', function () {
             ->where('contentTypeMediaRules.discord_message.accepts_gif', true)
             ->where('contentTypeMediaRules.bluesky_post.accepts_mov', false)
             ->where('contentTypeMediaRules.facebook_reel.max_video_duration_sec', 90)
-            ->where('contentTypeMediaRules.tiktok_video.max_video_duration_sec', null)
+            ->where('contentTypeMediaRules.tiktok_video.max_video_duration_sec', 10 * 60)
             ->where('contentTypeMediaRules.linkedin_post.max_document_bytes', 100 * 1024 * 1024)
         );
 });

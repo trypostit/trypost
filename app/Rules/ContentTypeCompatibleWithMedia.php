@@ -10,6 +10,7 @@ use App\Models\Post;
 use Closure;
 use Illuminate\Contracts\Validation\DataAwareRule;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Support\Number;
 use Illuminate\Translation\PotentiallyTranslatedString;
 use Illuminate\Validation\ValidationException;
 
@@ -167,12 +168,75 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
             $fail("{$contentType->label()} can't combine an image and a video in the same post.");
         }
 
+        if (! $contentType->acceptsGif() && collect($media)->contains(fn ($item) => MediaType::isGif(data_get($item, 'mime_type')))) {
+            $fail("{$contentType->label()} does not accept GIF. Use a still image or choose a different network.");
+        }
+
         if (! $contentType->acceptsMov() && collect($media)->contains(fn ($item) => MediaType::isMov(
             data_get($item, 'mime_type'),
             data_get($item, 'original_filename') ?? data_get($item, 'path'),
         ))) {
             $fail("{$contentType->label()} does not accept MOV videos. Use MP4.");
         }
+
+        $this->failOnSizeAndDurationCaps($contentType, $media, $fail);
+    }
+
+    /**
+     * Server-side mirror of the editor's per-item size / duration checks, so the
+     * REST API and MCP cannot store media the network will reject at publish
+     * (the ~1 GB Instagram Reel that motivated this: Meta's cap is 300 MB).
+     *
+     * Best-effort by design: `size` is present on every snapshot we write, but
+     * video `meta.duration` is measured client-side and only exists when the
+     * dashboard uploaded the file — an item without it is not checked.
+     *
+     * @param  array<int, mixed>  $media
+     * @param  Closure(string, ?string=): PotentiallyTranslatedString  $fail
+     */
+    private function failOnSizeAndDurationCaps(ContentType $contentType, array $media, Closure $fail): void
+    {
+        $label = $contentType->label();
+
+        foreach ($media as $item) {
+            $item = (array) $item;
+            $size = (int) data_get($item, 'size', 0);
+
+            if ($size > 0) {
+                [$kind, $max] = match (true) {
+                    $this->isDocument($item) => ['a PDF', $contentType->maxDocumentBytes()],
+                    $this->isVideo($item) => ['a video', $contentType->maxVideoBytes()],
+                    default => ['an image', $contentType->maxImageBytes()],
+                };
+
+                if ($max !== null && $size > $max) {
+                    $fail("{$label} accepts {$kind} of up to ".Number::fileSize($max).' (yours is '.Number::fileSize($size, 1).').');
+
+                    return;
+                }
+            }
+
+            $duration = data_get($item, 'meta.duration');
+            $maxDuration = $contentType->maxVideoDurationSec();
+
+            if ($maxDuration !== null && is_numeric($duration) && $this->isVideo($item) && (float) $duration > $maxDuration) {
+                $fail("{$label} accepts videos of up to ".$this->formatDuration($maxDuration).' (yours is '.$this->formatDuration((int) ceil((float) $duration)).').');
+
+                return;
+            }
+        }
+    }
+
+    private function formatDuration(int $seconds): string
+    {
+        if ($seconds < 60) {
+            return "{$seconds}s";
+        }
+
+        $minutes = intdiv($seconds, 60);
+        $rest = $seconds % 60;
+
+        return $rest === 0 ? "{$minutes} min" : "{$minutes} min {$rest}s";
     }
 
     /**

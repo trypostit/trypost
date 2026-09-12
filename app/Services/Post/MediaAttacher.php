@@ -141,6 +141,7 @@ class MediaAttacher
                 'type' => $media->type,
                 'mime_type' => $media->mime_type,
                 'original_filename' => $media->original_filename,
+                'size' => $media->size,
             ];
         } finally {
             @unlink($download['path']);

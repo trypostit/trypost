@@ -141,6 +141,7 @@ class PostController extends Controller
             'type' => $media->type,
             'mime_type' => $media->mime_type,
             'original_filename' => $media->original_filename,
+            'size' => $media->size,
         ]]);
 
         $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
