@@ -84,6 +84,7 @@ class AssetController extends Controller
             (int) $request->validated('range_end'),
             (int) $request->validated('total_size'),
             (string) $request->validated('upload_id'),
+            $request->duration(),
         )->toResponse();
     }
 

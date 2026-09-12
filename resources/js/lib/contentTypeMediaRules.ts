@@ -9,6 +9,7 @@ export type MediaRules = {
     acceptDocuments?: boolean;
     requiresMedia: boolean;
     acceptsGif: boolean;
+    acceptsMov: boolean;
     forbidsMixedMedia?: boolean;
     maxImageBytes?: number;
     maxVideoBytes?: number;
@@ -30,6 +31,7 @@ export type ContentTypeMediaRule = {
     accept_documents: boolean;
     requires_media: boolean;
     accepts_gif: boolean;
+    accepts_mov: boolean;
     forbids_mixed_media: boolean;
     max_image_bytes: number | null;
     max_video_bytes: number | null;
@@ -63,6 +65,7 @@ export const toMediaRules = (rule: ContentTypeMediaRule): MediaRules => {
         acceptVideos: rule.accept_videos,
         requiresMedia: rule.requires_media,
         acceptsGif: rule.accepts_gif,
+        acceptsMov: rule.accepts_mov,
     };
 
     if (rule.min_files !== null) {

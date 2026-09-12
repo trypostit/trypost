@@ -32,7 +32,9 @@ test('content type exposes max video duration in seconds', function () {
     expect(ContentType::InstagramReel->maxVideoDurationSec())->toBe(15 * 60);
     expect(ContentType::FacebookReel->maxVideoDurationSec())->toBe(90);
     expect(ContentType::YouTubeShort->maxVideoDurationSec())->toBe(3 * 60);
-    expect(ContentType::TikTokVideo->maxVideoDurationSec())->toBeNull();
+    expect(ContentType::XPost->maxVideoDurationSec())->toBe(20 * 60);
+    expect(ContentType::BlueskyPost->maxVideoDurationSec())->toBe(10 * 60);
+    expect(ContentType::TikTokVideo->maxVideoDurationSec())->toBe(10 * 60);
 });
 
 test('media rules for frontend expose the full editor rule set keyed by content type', function () {
@@ -45,20 +47,22 @@ test('media rules for frontend expose the full editor rule set keyed by content 
         'accept_images' => false,
         'accept_videos' => true,
         'requires_media' => true,
-        'max_video_bytes' => 1 * 1024 * 1024 * 1024,
+        'max_video_bytes' => 300 * 1024 * 1024,
         'max_video_duration_sec' => 900,
         'aspect_ratio_min' => 0.5,
         'aspect_ratio_max' => 0.6,
     ]);
 
     expect($rules['facebook_reel']['max_video_duration_sec'])->toBe(90);
-    expect($rules['tiktok_video']['max_video_duration_sec'])->toBeNull();
+    expect($rules['tiktok_video']['max_video_duration_sec'])->toBe(10 * 60);
     expect($rules['linkedin_post']['max_document_bytes'])->toBe(100 * 1024 * 1024);
     expect($rules['pinterest_carousel']['min_files'])->toBe(2);
     expect($rules['x_post']['accepts_gif'])->toBeTrue();
     expect($rules['instagram_feed']['requires_media'])->toBeTrue();
     expect($rules['discord_message']['accepts_gif'])->toBeTrue();
     expect($rules['telegram_post']['accepts_gif'])->toBeTrue();
+    expect($rules['bluesky_post']['accepts_mov'])->toBeFalse();
+    expect($rules['x_post']['accepts_mov'])->toBeTrue();
 });
 
 test('listing array mirrors media capability fields for api and mcp', function () {
@@ -198,7 +202,7 @@ test('media rules preserve pre-centralization editor limits for mapped types', f
             'accepts_gif' => false,
             'max_files' => 1,
             'max_video_duration_sec' => 900,
-            'max_video_bytes' => min(1 * $gb, $hardVideo),
+            'max_video_bytes' => min(300 * $mb, $hardVideo),
         ],
         'youtube_short' => [
             'requires_media' => true,
@@ -232,19 +236,49 @@ test('media rules preserve pre-centralization editor limits for mapped types', f
         'x_post' => [
             'requires_media' => false,
             'accepts_gif' => true,
+            'accepts_mov' => true,
             'max_files' => 4,
-            'max_video_duration_sec' => 140,
-            'max_video_bytes' => min(512 * $mb, $hardVideo),
+            'max_video_duration_sec' => 20 * 60,
+            'max_video_bytes' => min(8 * $gb, $hardVideo),
+        ],
+        'bluesky_post' => [
+            'requires_media' => false,
+            'accepts_gif' => true,
+            'accepts_mov' => false,
+            'max_files' => 4,
+            'max_video_duration_sec' => 10 * 60,
+            // Lexicon maxSize is decimal bytes, not MiB.
+            'max_image_bytes' => min(2_000_000, $hardImage),
+            'max_video_bytes' => min(300_000_000, $hardVideo),
         ],
         'discord_message' => [
             'requires_media' => false,
             'accepts_gif' => true,
+            'accepts_mov' => true,
             'max_files' => 10,
+            'max_image_bytes' => min(20 * $mb, $hardImage),
+            'max_video_bytes' => min(20 * $mb, $hardVideo),
         ],
         'telegram_post' => [
             'requires_media' => false,
             'accepts_gif' => true,
+            'accepts_mov' => true,
             'max_files' => 10,
+            'max_image_bytes' => min(5 * $mb, $hardImage),
+            'max_video_bytes' => min(20 * $mb, $hardVideo),
+        ],
+        'tiktok_video' => [
+            'requires_media' => true,
+            'accepts_gif' => false,
+            'max_files' => 1,
+            'max_video_duration_sec' => 10 * 60,
+            'max_video_bytes' => min(4 * $gb, $hardVideo),
+        ],
+        'tiktok_photo' => [
+            'requires_media' => true,
+            'accepts_gif' => false,
+            'max_files' => 35,
+            'max_image_bytes' => min(20 * $mb, $hardImage),
         ],
     ];
 
@@ -283,6 +317,22 @@ test('media byte caps never exceed the global upload hard limits', function () {
     expect(ContentType::YouTubeShort->maxVideoBytes())->toBe($hardVideo)
         ->and(ContentType::PinterestPin->maxImageBytes())->toBe($hardImage)
         ->and(ContentType::FacebookPost->maxVideoBytes())->toBe($hardVideo);
+});
+
+test('bluesky caps use the lexicon decimal byte values, not mebibytes', function () {
+    config()->set('trypost.media.max_size_mb.image', 1024);
+    config()->set('trypost.media.max_size_mb.video', 4096);
+
+    expect(ContentType::BlueskyPost->maxImageBytes())->toBe(2_000_000)
+        ->and(ContentType::BlueskyPost->maxVideoBytes())->toBe(300_000_000)
+        ->and(ContentType::BlueskyPost->maxVideoBytes())->toBeLessThan(300 * 1024 * 1024)
+        ->and(ContentType::BlueskyPost->maxImageBytes())->toBeLessThan(2 * 1024 * 1024);
+});
+
+test('bluesky publisher skip threshold is never below the advertised video cap', function () {
+    // Otherwise a video the editor accepted would silently publish as text.
+    expect((int) config('trypost.platforms.bluesky.video_max_bytes'))
+        ->toBeGreaterThanOrEqual(ContentType::BlueskyPost->maxVideoBytes());
 });
 
 test('can get content types for platform', function () {

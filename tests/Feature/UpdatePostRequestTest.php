@@ -80,6 +80,100 @@ test('publishing a tiktok post with privacy_level passes privacy_level validatio
     $response->assertSessionDoesntHaveErrors(['platforms.0.meta.privacy_level']);
 });
 
+test('publishing a bluesky post with a mov video is rejected', function () {
+    $blueskyAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Bluesky,
+    ]);
+    $blueskyPlatform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $blueskyAccount->id,
+        'platform' => Platform::Bluesky,
+        'content_type' => ContentType::BlueskyPost,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => [[
+                'id' => 'test-media-mov',
+                'path' => 'media/2026-01/clip.mov',
+                'url' => 'https://example.com/media/2026-01/clip.mov',
+                'type' => 'video',
+                'mime_type' => 'video/quicktime',
+                'original_filename' => 'clip.mov',
+            ]],
+            'platforms' => [
+                ['id' => $blueskyPlatform->id, 'content_type' => ContentType::BlueskyPost->value],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors(['platforms.0.content_type' => 'This platform does not accept MOV videos. Use MP4.']);
+});
+
+test('publishing a bluesky post with an oversized image is rejected server-side', function () {
+    $blueskyAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Bluesky,
+    ]);
+    $blueskyPlatform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $blueskyAccount->id,
+        'platform' => Platform::Bluesky,
+        'content_type' => ContentType::BlueskyPost,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => [[
+                'id' => 'test-media-big',
+                'path' => 'media/2026-01/big.jpg',
+                'url' => 'https://example.com/media/2026-01/big.jpg',
+                'type' => 'image',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'big.jpg',
+                'size' => 2_000_001,
+            ]],
+            'platforms' => [
+                ['id' => $blueskyPlatform->id, 'content_type' => ContentType::BlueskyPost->value],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.content_type');
+});
+
+test('saving a draft does not enforce media compatibility', function () {
+    $blueskyAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Bluesky,
+    ]);
+    $blueskyPlatform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $blueskyAccount->id,
+        'platform' => Platform::Bluesky,
+        'content_type' => ContentType::BlueskyPost,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'media' => [[
+                'id' => 'test-media-mov',
+                'path' => 'media/2026-01/clip.mov',
+                'url' => 'https://example.com/media/2026-01/clip.mov',
+                'type' => 'video',
+                'mime_type' => 'video/quicktime',
+                'original_filename' => 'clip.mov',
+            ]],
+            'platforms' => [
+                ['id' => $blueskyPlatform->id, 'content_type' => ContentType::BlueskyPost->value],
+            ],
+        ]);
+
+    $response->assertSessionDoesntHaveErrors(['platforms.0.content_type']);
+});
+
 test('publishing a pinterest post without board_id is rejected', function () {
     $pinterestAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,

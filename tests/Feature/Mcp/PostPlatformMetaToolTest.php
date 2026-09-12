@@ -263,7 +263,52 @@ test('publish post rejects a LinkedIn post that mixes a PDF with an image', func
     $response = TryPostServer::actingAs($this->user)
         ->tool(PublishPostTool::class, ['post_id' => $post->id]);
 
-    $response->assertHasErrors(['A PDF document must be the only attachment.']);
+    $response->assertHasErrors(['A PDF must be posted on its own, without other images or videos.']);
+});
+
+test('publish post rejects a Bluesky post whose stored video is a MOV', function () {
+    $bluesky = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Bluesky]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'media' => [
+            ['id' => 'vid-1', 'path' => 'medias/clip.mov', 'url' => 'https://example.com/clip.mov', 'type' => 'video', 'mime_type' => 'video/quicktime', 'original_filename' => 'clip.mov'],
+        ],
+    ]);
+    PostPlatform::factory()->create([
+        'post_id' => $post->id, 'social_account_id' => $bluesky->id,
+        'platform' => Platform::Bluesky, 'content_type' => ContentType::BlueskyPost, 'enabled' => true,
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id]);
+
+    $response->assertHasErrors(['This platform does not accept MOV videos. Use MP4.']);
+});
+
+test('publish post rejects an Instagram Reel whose stored video exceeds 300 MB', function () {
+    $instagram = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Instagram]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'media' => [
+            ['id' => 'vid-1', 'path' => 'medias/reel.mp4', 'url' => 'https://example.com/reel.mp4', 'type' => 'video', 'mime_type' => 'video/mp4', 'original_filename' => 'reel.mp4', 'size' => 900 * 1024 * 1024],
+        ],
+    ]);
+    PostPlatform::factory()->create([
+        'post_id' => $post->id, 'social_account_id' => $instagram->id,
+        'platform' => Platform::Instagram, 'content_type' => ContentType::InstagramReel, 'enabled' => true,
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id]);
+
+    $response->assertHasErrors();
+    expect($post->fresh()->status)->toBe(PostStatus::Draft);
 });
 
 test('publish post succeeds for a Discord platform with a channel', function () {

@@ -1,6 +1,6 @@
 import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import date from '@/date';
-import { isDocument, isGif, isImage, isVideo } from '@/lib/mediaType';
+import { isDocument, isGif, isImage, isMov, isVideo } from '@/lib/mediaType';
 import type { MediaItem } from '@/types/media';
 
 export type { MediaItem } from '@/types/media';
@@ -16,11 +16,19 @@ export interface MediaValidationWarning {
     params: Record<string, string>;
 }
 
-export const formatBytes = (bytes: number): string => {
-    if (bytes >= 1024 * 1024 * 1024) return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
-    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-    if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+export const formatBytes = (bytes: number, decimal = false): string => {
+    const unit = decimal ? 1000 : 1024;
+    if (bytes >= unit ** 3) return (bytes / unit ** 3).toFixed(1) + ' GB';
+    if (bytes >= unit ** 2) return (bytes / unit ** 2).toFixed(1) + ' MB';
+    if (bytes >= unit) return (bytes / unit).toFixed(1) + ' KB';
     return bytes + ' B';
+};
+
+/** Caps declared in decimal megabytes (Bluesky) render as "300.0 MB", not "286.1 MB". */
+const sizeParams = (cap: number, size: number): Record<string, string> => {
+    const decimal = cap % 1_000_000 === 0 && cap % (1024 * 1024) !== 0;
+
+    return { max: formatBytes(cap, decimal), current: formatBytes(size, decimal) };
 };
 
 const formatAspect = (ratio: number): string => ratio.toFixed(2);
@@ -70,6 +78,9 @@ export const getMediaValidationWarning = (
     if (! rules.acceptsGif && gifs.length > 0) {
         return { key: 'gif_not_allowed', params: {} };
     }
+    if (! rules.acceptsMov && media.some(isMov)) {
+        return { key: 'mov_not_allowed', params: {} };
+    }
 
     for (const m of media) {
         const size = m.size ?? 0;
@@ -81,7 +92,7 @@ export const getMediaValidationWarning = (
             if (rules.maxDocumentBytes && size > rules.maxDocumentBytes) {
                 return {
                     key: 'document_too_large',
-                    params: { max: formatBytes(rules.maxDocumentBytes), current: formatBytes(size) },
+                    params: sizeParams(rules.maxDocumentBytes, size),
                 };
             }
             continue;
@@ -91,7 +102,7 @@ export const getMediaValidationWarning = (
             if (rules.maxVideoBytes && size > rules.maxVideoBytes) {
                 return {
                     key: 'video_too_large',
-                    params: { max: formatBytes(rules.maxVideoBytes), current: formatBytes(size) },
+                    params: sizeParams(rules.maxVideoBytes, size),
                 };
             }
             if (rules.maxVideoDurationSec && duration > rules.maxVideoDurationSec) {
@@ -103,7 +114,7 @@ export const getMediaValidationWarning = (
         } else if (rules.maxImageBytes && size > rules.maxImageBytes) {
             return {
                 key: 'image_too_large',
-                params: { max: formatBytes(rules.maxImageBytes), current: formatBytes(size) },
+                params: sizeParams(rules.maxImageBytes, size),
             };
         }
 
@@ -151,6 +162,7 @@ export const getMediaItemIssue = (item: MediaItem, contentType: string): string 
     if (itemIsVideo && ! rules.acceptVideos) return 'no_video_allowed';
     if (! itemIsVideo && ! rules.acceptImages) return 'no_image_allowed';
     if (itemIsGif && ! rules.acceptsGif) return 'gif_not_allowed';
+    if (isMov(item) && ! rules.acceptsMov) return 'mov_not_allowed';
 
     const size = item.size ?? 0;
     if (itemIsVideo && rules.maxVideoBytes && size > rules.maxVideoBytes) return 'video_too_large';

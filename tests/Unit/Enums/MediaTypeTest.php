@@ -10,12 +10,6 @@ test('media type has correct values', function () {
     expect(Type::Document->value)->toBe('document');
 });
 
-test('media type has labels', function () {
-    expect(Type::Image->label())->toBe('Imagem');
-    expect(Type::Video->label())->toBe('Vídeo');
-    expect(Type::Document->label())->toBe('Documento');
-});
-
 test('media type has allowed mime types', function () {
     expect(Type::Image->allowedMimeTypes())->toContain('image/jpeg', 'image/png');
     expect(Type::Video->allowedMimeTypes())->toContain('video/mp4', 'video/quicktime');
@@ -100,4 +94,12 @@ test('isGif only matches the gif mime', function () {
     expect(Type::isGif('image/gif'))->toBeTrue();
     expect(Type::isGif('image/png'))->toBeFalse();
     expect(Type::isGif(null))->toBeFalse();
+});
+
+test('isMov matches quicktime mime or a mov extension', function () {
+    expect(Type::isMov('video/quicktime'))->toBeTrue();
+    expect(Type::isMov('video/mp4', 'clip.mov'))->toBeTrue();
+    expect(Type::isMov('video/mp4', 'clip.MP4'))->toBeFalse();
+    expect(Type::isMov('video/mp4'))->toBeFalse();
+    expect(Type::isMov(null))->toBeFalse();
 });

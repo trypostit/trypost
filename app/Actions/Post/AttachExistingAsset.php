@@ -7,6 +7,7 @@ namespace App\Actions\Post;
 use App\Actions\Media\FindWorkspaceAsset;
 use App\Models\Media;
 use App\Models\Post;
+use App\Support\PostMediaRules;
 use App\Support\PostStatusRules;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -63,37 +64,9 @@ class AttachExistingAsset
             }
 
             $fresh->update([
-                'media' => collect($fresh->media ?? [])->push(self::snapshot($asset, $alt))->all(),
+                'media' => collect($fresh->media ?? [])->push(PostMediaRules::snapshot($asset, $alt))->all(),
             ]);
             $post->setRawAttributes($fresh->getAttributes(), true);
         });
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private static function snapshot(Media $media, ?string $alt): array
-    {
-        $item = [
-            'id' => $media->id,
-            'path' => $media->path,
-            'url' => $media->url,
-            'type' => $media->type->value,
-            'mime_type' => $media->mime_type,
-            'original_filename' => $media->original_filename,
-            'size' => $media->size,
-        ];
-
-        $meta = is_array($media->meta) ? $media->meta : [];
-
-        if (filled($alt) && $media->isImage()) {
-            $meta['alt_text'] = $alt;
-        }
-
-        if ($meta !== []) {
-            $item['meta'] = $meta;
-        }
-
-        return $item;
     }
 }

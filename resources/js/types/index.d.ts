@@ -77,6 +77,7 @@ export interface ContentTypeMediaRule {
     accept_documents: boolean;
     requires_media: boolean;
     accepts_gif: boolean;
+    accepts_mov: boolean;
     forbids_mixed_media: boolean;
     max_image_bytes: number | null;
     max_video_bytes: number | null;

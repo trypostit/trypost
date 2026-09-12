@@ -23,6 +23,7 @@ use App\Http\Resources\Api\PostPreviewResource;
 use App\Http\Resources\Api\PostResource;
 use App\Models\Post;
 use App\Services\Post\MediaAttacher;
+use App\Support\PostMediaRules;
 use App\Support\PostStatusRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -134,14 +135,7 @@ class PostController extends Controller
 
         $media = $post->workspace->addMedia($file, 'assets');
 
-        $post->appendMedia([[
-            'id' => $media->id,
-            'path' => $media->path,
-            'url' => $media->url,
-            'type' => $media->type,
-            'mime_type' => $media->mime_type,
-            'original_filename' => $media->original_filename,
-        ]]);
+        $post->appendMedia([PostMediaRules::snapshot($media)]);
 
         $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
 

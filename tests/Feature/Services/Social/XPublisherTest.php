@@ -940,7 +940,7 @@ test('x publisher uses chunked upload for images larger than 5MB', function () {
         && $request->body() === '{}');
 });
 
-test('x publisher uses amplify_video category for videos larger than 15MB', function () {
+test('x publisher keeps tweet_video category for videos larger than 15MB', function () {
     $this->post->update([
         'media' => [
             [
@@ -986,7 +986,7 @@ test('x publisher uses amplify_video category for videos larger than 15MB', func
             return false;
         }
 
-        return data_get($request->data(), 'media_category') === 'amplify_video'
+        return data_get($request->data(), 'media_category') === 'tweet_video'
             && data_get($request->data(), 'total_bytes') > 15 * 1024 * 1024;
     });
 });

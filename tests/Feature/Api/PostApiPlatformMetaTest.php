@@ -9,7 +9,9 @@ use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $result = createApiTestToken();
@@ -118,6 +120,103 @@ it('rejects publishing a LinkedIn post that mixes a PDF with an image', function
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['platforms.0.content_type']);
+});
+
+it('rejects publishing a Bluesky post whose stored video is a MOV', function () {
+    $bluesky = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Bluesky]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'media' => [[
+            'id' => 'vid-1', 'path' => 'medias/clip.mov', 'url' => 'https://example.com/clip.mov',
+            'type' => 'video', 'mime_type' => 'video/quicktime', 'original_filename' => 'clip.mov',
+        ]],
+    ]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $post->id, 'social_account_id' => $bluesky->id,
+        'platform' => Platform::Bluesky, 'content_type' => ContentType::BlueskyPost, 'enabled' => true,
+    ]);
+
+    // No media or content_type resubmitted: the stored state alone must be enough to block publish.
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), ['status' => PostStatus::Publishing->value])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.content_type'])
+        ->assertJsonFragment(['This platform does not accept MOV videos. Use MP4.']);
+});
+
+it('rejects publishing when the uploaded video runs past the content type duration cap', function () {
+    Storage::fake();
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $post->id, 'social_account_id' => $instagram->id,
+        'platform' => Platform::Instagram, 'content_type' => ContentType::InstagramStory, 'enabled' => true,
+    ]);
+
+    // Minimal MP4: ftyp + moov[mvhd v0, timescale 1, duration 90 s]. The server reads the duration itself.
+    $mvhd = pack('N', 108).'mvhd'."\0\0\0\0".pack('N', 0).pack('N', 0).pack('N', 1).pack('N', 90).str_repeat("\0", 80);
+    $file = UploadedFile::fake()->createWithContent('story.mp4', pack('N', 16).'ftypisom'.pack('N', 0).pack('N', 8 + strlen($mvhd)).'moov'.$mvhd);
+    $file->mimeTypeToReport = 'video/mp4';
+
+    $this->withHeaders($this->headers + ['Accept' => 'application/json'])
+        ->post(route('api.posts.store-media', $post), ['media' => $file])
+        ->assertOk();
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), ['status' => PostStatus::Publishing->value])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.content_type'])
+        ->assertJsonFragment(['Video is 1min 30s long, but this post type allows up to 1min.']);
+});
+
+it('rejects publishing a LinkedIn post with a GIF', function () {
+    $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'media' => [[
+            'id' => 'gif-1', 'path' => 'medias/loop.gif', 'url' => 'https://example.com/loop.gif',
+            'type' => 'image', 'mime_type' => 'image/gif', 'original_filename' => 'loop.gif',
+        ]],
+    ]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $post->id, 'social_account_id' => $linkedin->id,
+        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInPost, 'enabled' => true,
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Publishing->value,
+            'platforms' => [['id' => $platform->id, 'content_type' => ContentType::LinkedInPost->value]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.content_type'])
+        ->assertJsonFragment(['This platform does not accept GIF. Remove the GIF or choose a different network.']);
+});
+
+it('rejects publishing an Instagram Reel whose stored video exceeds 300 MB', function () {
+    $instagram = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Instagram]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'media' => [[
+            'id' => 'vid-1', 'path' => 'medias/reel.mp4', 'url' => 'https://example.com/reel.mp4',
+            'type' => 'video', 'mime_type' => 'video/mp4', 'original_filename' => 'reel.mp4',
+            'size' => 900 * 1024 * 1024,
+        ]],
+    ]);
+    $platform = PostPlatform::factory()->create([
+        'post_id' => $post->id, 'social_account_id' => $instagram->id,
+        'platform' => Platform::Instagram, 'content_type' => ContentType::InstagramReel, 'enabled' => true,
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), ['status' => PostStatus::Publishing->value])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.content_type']);
+
+    expect($post->fresh()->status)->not->toBe(PostStatus::Publishing);
 });
 
 it('publishes a valid LinkedIn document without resubmitting content_type', function () {

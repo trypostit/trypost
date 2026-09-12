@@ -184,7 +184,7 @@ class XPublisher
             }
 
             $fileSize = filesize($tempFile);
-            $mediaCategory = $this->getMediaCategory($mimeType, $fileSize);
+            $mediaCategory = $this->getMediaCategory($mimeType);
 
             $isVideo = MediaType::classify($mimeType) === MediaType::Video;
             $isGif = MediaType::isGif($mimeType);
@@ -342,10 +342,13 @@ class XPublisher
         ];
     }
 
-    private function getMediaCategory(string $mimeType, int $fileSize): ?string
+    /**
+     * Videos are always `tweet_video`; `amplify_video` is the Ads-creative category.
+     */
+    private function getMediaCategory(string $mimeType): ?string
     {
         if (MediaType::classify($mimeType) === MediaType::Video) {
-            return $fileSize > 15 * 1024 * 1024 ? 'amplify_video' : 'tweet_video';
+            return 'tweet_video';
         }
 
         if (MediaType::isGif($mimeType)) {

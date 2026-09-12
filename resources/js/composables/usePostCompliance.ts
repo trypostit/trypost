@@ -107,6 +107,7 @@ const COMPLIANCE_KEY_BY_WARNING: Record<string, string> = {
     no_mixed_media: 'no_mixed_media',
     document_not_alone: 'document_not_alone',
     gif_not_allowed: 'no_gifs',
+    mov_not_allowed: 'no_movs',
     image_too_large: 'image_too_large',
     video_too_large: 'video_too_large',
     document_too_large: 'document_too_large',

@@ -15,9 +15,22 @@ test('every review renders once for readers and once for the marquee loop', func
 
     $page->assertVisible('@auth-reviews');
 
+    // `naturalWidth` is 0 until each photo has loaded.
     $result = $page->script(<<<'JS'
-        (() => {
-            const figures = [...document.querySelectorAll('[data-testid="auth-reviews"] figure')];
+        (async () => {
+            const select = () => [...document.querySelectorAll('[data-testid="auth-reviews"] figure')];
+            const loaded = (figure) => {
+                const img = figure.querySelector('img');
+                return img !== null && img.complete && img.naturalWidth > 0;
+            };
+
+            for (let i = 0; i < 200; i++) {
+                const current = select();
+                if (current.length > 0 && current.every(loaded)) break;
+                await new Promise((r) => setTimeout(r, 50));
+            }
+
+            const figures = select();
 
             return {
                 total: figures.length,

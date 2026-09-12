@@ -177,6 +177,16 @@ test('stores a video upload via the streaming path', function () {
         ->and(Storage::exists($media->path))->toBeTrue();
 });
 
+test('stores the duration read from the video file on the signed upload path', function () {
+    $token = (string) Str::uuid();
+    $file = UploadedFile::fake()->createWithContent('clip.mp4', file_get_contents(base_path('tests/Fixtures/sample.mp4')));
+    $file->mimeTypeToReport = 'video/mp4';
+
+    $this->post(signedUploadUrl($this->workspace, $token), ['media' => $file])->assertCreated();
+
+    expect(Media::where('upload_token', $token)->sole()->meta)->toEqual(['duration' => 1.0]);
+});
+
 test('releases the upload token when media persistence fails', function () {
     $token = (string) Str::uuid();
     $file = UploadedFile::fake()->create('clip.mp4', 256, 'video/mp4');
