@@ -197,7 +197,7 @@ return [
             'no_mixed_media' => 'Immagini e video non possono essere combinati nello stesso post.',
             'document_not_alone' => 'Un PDF deve essere pubblicato da solo, senza altre immagini o video.',
             'gif_not_allowed' => 'Questa piattaforma non accetta GIF. Rimuovi la GIF o scegli un\'altra rete.',
-            'mov_not_allowed' => 'Questa piattaforma non accetta video MOV. Usa MP4 o scegli un\'altra rete.',
+            'mov_not_allowed' => 'Questa piattaforma non accetta video MOV. Usa MP4.',
             'image_too_large' => 'L\'immagine supera il limite di :max per questo tipo di post (la tua è :current).',
             'video_too_large' => 'Il video supera il limite di :max per questo tipo di post (il tuo è :current).',
             'document_too_large' => 'Il PDF supera il limite di :max per questo tipo di post (il tuo è :current).',

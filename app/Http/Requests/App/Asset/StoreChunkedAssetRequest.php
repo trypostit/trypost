@@ -11,7 +11,8 @@ use Illuminate\Foundation\Http\FormRequest;
  * Validates a chunked upload request. The chunk metadata (offset / total
  * size / filename) is encoded in the `Content-Range` and `X-File-Name`
  * headers, not in the body, so we lift it into the request bag via
- * `prepareForValidation` and then run standard rules against it.
+ * `prepareForValidation` and then run standard rules against it. The optional
+ * `X-Media-Duration` header carries the browser-measured video duration.
  */
 class StoreChunkedAssetRequest extends FormRequest
 {
@@ -30,6 +31,7 @@ class StoreChunkedAssetRequest extends FormRequest
             'total_size' => $parsed[2] ?? null,
             'file_name' => strtolower(rawurldecode((string) $this->header('X-File-Name', 'upload'))),
             'upload_id' => $this->header('X-Upload-Id'),
+            'duration' => $this->header('X-Media-Duration'),
         ]);
     }
 
@@ -49,6 +51,7 @@ class StoreChunkedAssetRequest extends FormRequest
             'total_size' => ['required', 'integer', 'min:1', 'max:'.MediaType::Video->maxSizeInBytes()],
             'file_name' => ['required', 'string', 'ends_with:'.implode(',', $allowedSuffixes)],
             'upload_id' => ['required', 'string', 'uuid'],
+            'duration' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 

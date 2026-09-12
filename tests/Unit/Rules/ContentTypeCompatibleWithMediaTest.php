@@ -168,6 +168,24 @@ test('an image over the content type cap is rejected by size', function () {
     expect($errors[0])->toContain('2 MB');
 });
 
+test('decimal caps are reported in decimal units for both the cap and the file', function () {
+    $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/mp4', 'size' => 305_000_000]];
+
+    $errors = runMediaRule(ContentType::BlueskyPost->value, $media);
+
+    expect($errors)->toHaveCount(1);
+    expect($errors[0])->toContain('up to 300 MB (yours is 305.0 MB)');
+});
+
+test('binary caps keep binary units', function () {
+    $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/mp4', 'size' => 320 * 1024 * 1024]];
+
+    $errors = runMediaRule(ContentType::InstagramReel->value, $media);
+
+    expect($errors)->toHaveCount(1);
+    expect($errors[0])->toContain('up to 300 MB (yours is 320.0 MB)');
+});
+
 test('an image exactly at the content type cap passes', function () {
     $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/jpeg', 'size' => 2_000_000]];
 

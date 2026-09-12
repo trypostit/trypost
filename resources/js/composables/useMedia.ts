@@ -16,12 +16,21 @@ export interface MediaValidationWarning {
     params: Record<string, string>;
 }
 
-export const formatBytes = (bytes: number): string => {
-    if (bytes >= 1024 * 1024 * 1024) return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
-    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-    if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+export const formatBytes = (bytes: number, decimal = false): string => {
+    const unit = decimal ? 1000 : 1024;
+    if (bytes >= unit ** 3) return (bytes / unit ** 3).toFixed(1) + ' GB';
+    if (bytes >= unit ** 2) return (bytes / unit ** 2).toFixed(1) + ' MB';
+    if (bytes >= unit) return (bytes / unit).toFixed(1) + ' KB';
     return bytes + ' B';
 };
+
+/**
+ * Whether a cap was declared in decimal megabytes (Bluesky's lexicon says
+ * 2 000 000 / 300 000 000), so both the cap and the file size are shown in the
+ * same unit system — "300 MB" rather than a puzzling "286.1 MB".
+ */
+export const usesDecimalUnits = (cap: number | undefined): boolean =>
+    cap !== undefined && cap % 1_000_000 === 0 && cap % (1024 * 1024) !== 0;
 
 const formatAspect = (ratio: number): string => ratio.toFixed(2);
 
@@ -34,7 +43,7 @@ export const getMediaValidationWarning = (
     contentType: string,
     media: MediaItem[],
 ): MediaValidationWarning | null => {
-    if (! contentType) return { key: 'no_variant', params: {} };
+    if (!contentType) return { key: 'no_variant', params: {} };
 
     const rules = getMediaRulesForContentType(contentType);
     const videos = media.filter(isVideo);
@@ -48,18 +57,24 @@ export const getMediaValidationWarning = (
         return { key: 'requires_media', params: {} };
     }
     if (total > rules.maxFiles) {
-        return { key: 'max_files_exceeded', params: { max: String(rules.maxFiles), current: String(total) } };
+        return {
+            key: 'max_files_exceeded',
+            params: { max: String(rules.maxFiles), current: String(total) },
+        };
     }
     if (rules.minFiles && total < rules.minFiles) {
-        return { key: 'min_files_required', params: { min: String(rules.minFiles), current: String(total) } };
+        return {
+            key: 'min_files_required',
+            params: { min: String(rules.minFiles), current: String(total) },
+        };
     }
-    if (! rules.acceptVideos && videos.length > 0) {
+    if (!rules.acceptVideos && videos.length > 0) {
         return { key: 'no_video_allowed', params: {} };
     }
-    if (! rules.acceptImages && images.length > 0) {
+    if (!rules.acceptImages && images.length > 0) {
         return { key: 'no_image_allowed', params: {} };
     }
-    if (! rules.acceptDocuments && documents.length > 0) {
+    if (!rules.acceptDocuments && documents.length > 0) {
         return { key: 'no_document_allowed', params: {} };
     }
     if (rules.forbidsMixedMedia && videos.length > 0 && images.length > 0) {
@@ -68,10 +83,10 @@ export const getMediaValidationWarning = (
     if (rules.acceptDocuments && documents.length > 0 && total > 1) {
         return { key: 'document_not_alone', params: {} };
     }
-    if (! rules.acceptsGif && gifs.length > 0) {
+    if (!rules.acceptsGif && gifs.length > 0) {
         return { key: 'gif_not_allowed', params: {} };
     }
-    if (! rules.acceptsMov && movs.length > 0) {
+    if (!rules.acceptsMov && movs.length > 0) {
         return { key: 'mov_not_allowed', params: {} };
     }
 
@@ -85,7 +100,16 @@ export const getMediaValidationWarning = (
             if (rules.maxDocumentBytes && size > rules.maxDocumentBytes) {
                 return {
                     key: 'document_too_large',
-                    params: { max: formatBytes(rules.maxDocumentBytes), current: formatBytes(size) },
+                    params: {
+                        max: formatBytes(
+                            rules.maxDocumentBytes,
+                            usesDecimalUnits(rules.maxDocumentBytes),
+                        ),
+                        current: formatBytes(
+                            size,
+                            usesDecimalUnits(rules.maxDocumentBytes),
+                        ),
+                    },
                 };
             }
             continue;
@@ -95,34 +119,66 @@ export const getMediaValidationWarning = (
             if (rules.maxVideoBytes && size > rules.maxVideoBytes) {
                 return {
                     key: 'video_too_large',
-                    params: { max: formatBytes(rules.maxVideoBytes), current: formatBytes(size) },
+                    params: {
+                        max: formatBytes(
+                            rules.maxVideoBytes,
+                            usesDecimalUnits(rules.maxVideoBytes),
+                        ),
+                        current: formatBytes(
+                            size,
+                            usesDecimalUnits(rules.maxVideoBytes),
+                        ),
+                    },
                 };
             }
-            if (rules.maxVideoDurationSec && duration > rules.maxVideoDurationSec) {
+            if (
+                rules.maxVideoDurationSec &&
+                duration > rules.maxVideoDurationSec
+            ) {
                 return {
                     key: 'video_too_long',
-                    params: { max: date.formatDurationWords(rules.maxVideoDurationSec), current: date.formatDurationWords(duration) },
+                    params: {
+                        max: date.formatDurationWords(
+                            rules.maxVideoDurationSec,
+                        ),
+                        current: date.formatDurationWords(duration),
+                    },
                 };
             }
         } else if (rules.maxImageBytes && size > rules.maxImageBytes) {
             return {
                 key: 'image_too_large',
-                params: { max: formatBytes(rules.maxImageBytes), current: formatBytes(size) },
+                params: {
+                    max: formatBytes(
+                        rules.maxImageBytes,
+                        usesDecimalUnits(rules.maxImageBytes),
+                    ),
+                    current: formatBytes(
+                        size,
+                        usesDecimalUnits(rules.maxImageBytes),
+                    ),
+                },
             };
         }
 
-        if (width > 0 && height > 0 && ! (rules.autoFitsImage && isImage(m))) {
+        if (width > 0 && height > 0 && !(rules.autoFitsImage && isImage(m))) {
             const ratio = width / height;
             if (rules.aspectRatioMin && ratio < rules.aspectRatioMin) {
                 return {
                     key: 'aspect_ratio_too_narrow',
-                    params: { current: formatAspect(ratio), min: formatAspect(rules.aspectRatioMin) },
+                    params: {
+                        current: formatAspect(ratio),
+                        min: formatAspect(rules.aspectRatioMin),
+                    },
                 };
             }
             if (rules.aspectRatioMax && ratio > rules.aspectRatioMax) {
                 return {
                     key: 'aspect_ratio_too_wide',
-                    params: { current: formatAspect(ratio), max: formatAspect(rules.aspectRatioMax) },
+                    params: {
+                        current: formatAspect(ratio),
+                        max: formatAspect(rules.aspectRatioMax),
+                    },
                 };
             }
         }
@@ -137,8 +193,11 @@ export const getMediaValidationWarning = (
  * (count, requires_media) are NOT checked here — use getMediaValidationWarning
  * for those.
  */
-export const getMediaItemIssue = (item: MediaItem, contentType: string): string | null => {
-    if (! contentType) return null;
+export const getMediaItemIssue = (
+    item: MediaItem,
+    contentType: string,
+): string | null => {
+    if (!contentType) return null;
 
     const rules = getMediaRulesForContentType(contentType);
     const itemIsVideo = isVideo(item);
@@ -147,32 +206,41 @@ export const getMediaItemIssue = (item: MediaItem, contentType: string): string 
     const itemIsMov = isMov(item);
 
     if (itemIsDocument) {
-        if (! rules.acceptDocuments) return 'no_document_allowed';
+        if (!rules.acceptDocuments) return 'no_document_allowed';
         const docSize = item.size ?? 0;
-        if (rules.maxDocumentBytes && docSize > rules.maxDocumentBytes) return 'document_too_large';
+        if (rules.maxDocumentBytes && docSize > rules.maxDocumentBytes)
+            return 'document_too_large';
         return null;
     }
 
-    if (itemIsVideo && ! rules.acceptVideos) return 'no_video_allowed';
-    if (! itemIsVideo && ! rules.acceptImages) return 'no_image_allowed';
-    if (itemIsGif && ! rules.acceptsGif) return 'gif_not_allowed';
-    if (itemIsMov && ! rules.acceptsMov) return 'mov_not_allowed';
+    if (itemIsVideo && !rules.acceptVideos) return 'no_video_allowed';
+    if (!itemIsVideo && !rules.acceptImages) return 'no_image_allowed';
+    if (itemIsGif && !rules.acceptsGif) return 'gif_not_allowed';
+    if (itemIsMov && !rules.acceptsMov) return 'mov_not_allowed';
 
     const size = item.size ?? 0;
-    if (itemIsVideo && rules.maxVideoBytes && size > rules.maxVideoBytes) return 'video_too_large';
-    if (! itemIsVideo && rules.maxImageBytes && size > rules.maxImageBytes) return 'image_too_large';
+    if (itemIsVideo && rules.maxVideoBytes && size > rules.maxVideoBytes)
+        return 'video_too_large';
+    if (!itemIsVideo && rules.maxImageBytes && size > rules.maxImageBytes)
+        return 'image_too_large';
 
     const duration = item.meta?.duration ?? 0;
-    if (itemIsVideo && rules.maxVideoDurationSec && duration > rules.maxVideoDurationSec) {
+    if (
+        itemIsVideo &&
+        rules.maxVideoDurationSec &&
+        duration > rules.maxVideoDurationSec
+    ) {
         return 'video_too_long';
     }
 
     const width = item.meta?.width ?? 0;
     const height = item.meta?.height ?? 0;
-    if (width > 0 && height > 0 && ! (rules.autoFitsImage && isImage(item))) {
+    if (width > 0 && height > 0 && !(rules.autoFitsImage && isImage(item))) {
         const ratio = width / height;
-        if (rules.aspectRatioMin && ratio < rules.aspectRatioMin) return 'aspect_ratio_too_narrow';
-        if (rules.aspectRatioMax && ratio > rules.aspectRatioMax) return 'aspect_ratio_too_wide';
+        if (rules.aspectRatioMin && ratio < rules.aspectRatioMin)
+            return 'aspect_ratio_too_narrow';
+        if (rules.aspectRatioMax && ratio > rules.aspectRatioMax)
+            return 'aspect_ratio_too_wide';
     }
 
     return null;

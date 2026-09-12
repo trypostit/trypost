@@ -197,7 +197,7 @@ return [
             'no_mixed_media' => 'Afbeeldingen en een video kunnen niet in dezelfde post worden gecombineerd.',
             'document_not_alone' => 'Een PDF moet apart worden geplaatst, zonder andere afbeeldingen of video\'s.',
             'gif_not_allowed' => 'Dit platform accepteert geen GIF. Verwijder de GIF of kies een ander netwerk.',
-            'mov_not_allowed' => 'Dit platform accepteert geen MOV-video\'s. Gebruik MP4 of kies een ander netwerk.',
+            'mov_not_allowed' => 'Dit platform accepteert geen MOV-video\'s. Gebruik MP4.',
             'image_too_large' => 'De afbeelding overschrijdt de limiet van :max voor dit posttype (die van jou is :current).',
             'video_too_large' => 'De video overschrijdt de limiet van :max voor dit posttype (die van jou is :current).',
             'document_too_large' => 'De PDF overschrijdt de limiet van :max voor dit posttype (die van jou is :current).',

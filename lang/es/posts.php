@@ -197,7 +197,7 @@ return [
             'no_mixed_media' => 'No se pueden combinar imágenes y un video en la misma publicación.',
             'document_not_alone' => 'Un PDF debe publicarse solo, sin otras imágenes ni videos.',
             'gif_not_allowed' => 'Esta red no acepta GIF. Elimínalo o selecciona otra red.',
-            'mov_not_allowed' => 'Esta red no acepta vídeos MOV. Usa MP4 o selecciona otra red.',
+            'mov_not_allowed' => 'Esta red no acepta vídeos MOV. Usa MP4.',
             'image_too_large' => 'La imagen supera el límite de :max (la tuya es :current).',
             'video_too_large' => 'El video supera el límite de :max (el tuyo es :current).',
             'document_too_large' => 'El PDF supera el límite de :max (el tuyo es :current).',

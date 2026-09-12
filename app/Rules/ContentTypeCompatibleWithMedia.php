@@ -210,7 +210,7 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
                 };
 
                 if ($max !== null && $size > $max) {
-                    $fail("{$label} accepts {$kind} of up to ".Number::fileSize($max).' (yours is '.Number::fileSize($size, 1).').');
+                    $fail("{$label} accepts {$kind} of up to ".$this->formatBytes($max, $max).' (yours is '.$this->formatBytes($size, $max, 1).').');
 
                     return;
                 }
@@ -225,6 +225,31 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
                 return;
             }
         }
+    }
+
+    /**
+     * Mirror of `formatBytes` / `usesDecimalUnits` in useMedia.ts: a cap declared
+     * in decimal megabytes (Bluesky's lexicon: 2 000 000 / 300 000 000) renders
+     * both the cap and the file size in decimal units, so the user reads
+     * "300 MB", not "286 MB".
+     */
+    private function formatBytes(int $bytes, int $cap, int $precision = 0): string
+    {
+        $decimal = $cap % 1_000_000 === 0 && $cap % (1024 * 1024) !== 0;
+
+        if (! $decimal) {
+            return Number::fileSize($bytes, $precision);
+        }
+
+        $unit = 1000;
+        [$value, $suffix] = match (true) {
+            $bytes >= $unit ** 3 => [$bytes / $unit ** 3, 'GB'],
+            $bytes >= $unit ** 2 => [$bytes / $unit ** 2, 'MB'],
+            $bytes >= $unit => [$bytes / $unit, 'KB'],
+            default => [$bytes, 'B'],
+        };
+
+        return number_format($value, $precision).' '.$suffix;
     }
 
     private function formatDuration(int $seconds): string

@@ -199,7 +199,7 @@ return [
             'no_mixed_media' => 'Görseller ve bir video aynı gönderide birleştirilemez.',
             'document_not_alone' => 'Bir PDF, başka görsel veya video olmadan tek başına paylaşılmalıdır.',
             'gif_not_allowed' => 'Bu platform GIF kabul etmez. GIF\'i kaldırın veya farklı bir ağ seçin.',
-            'mov_not_allowed' => 'Bu platform MOV videoları kabul etmez. MP4 kullanın veya farklı bir ağ seçin.',
+            'mov_not_allowed' => 'Bu platform MOV videoları kabul etmez. MP4 kullanın.',
             'image_too_large' => 'Görsel, bu gönderi türü için :max sınırını aşıyor (sizinki :current).',
             'video_too_large' => 'Video, bu gönderi türü için :max sınırını aşıyor (sizinki :current).',
             'document_too_large' => 'PDF, bu gönderi türü için :max sınırını aşıyor (sizinki :current).',

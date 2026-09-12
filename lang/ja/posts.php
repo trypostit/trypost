@@ -197,7 +197,7 @@ return [
             'no_mixed_media' => '画像と動画を同じ投稿にまとめることはできません。',
             'document_not_alone' => 'PDF は単独で投稿する必要があり、他の画像や動画と一緒には投稿できません。',
             'gif_not_allowed' => 'このプラットフォームは GIF を受け付けません。GIF を削除するか、別のネットワークを選択してください。',
-            'mov_not_allowed' => 'このプラットフォームは MOV 動画を受け付けません。MP4 を使うか、別のネットワークを選択してください。',
+            'mov_not_allowed' => 'このプラットフォームは MOV 動画を受け付けません。MP4 を使用してください。',
             'image_too_large' => '画像がこの投稿タイプの上限 :max を超えています（現在 :current）。',
             'video_too_large' => '動画がこの投稿タイプの上限 :max を超えています（現在 :current）。',
             'document_too_large' => 'PDF がこの投稿タイプの上限 :max を超えています（現在 :current）。',

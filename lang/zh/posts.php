@@ -197,7 +197,7 @@ return [
             'no_mixed_media' => '图片和视频不能出现在同一条帖子中。',
             'document_not_alone' => 'PDF 必须单独发布，不能附带其他图片或视频。',
             'gif_not_allowed' => '此平台不接受 GIF。请移除 GIF 或改选其他平台。',
-            'mov_not_allowed' => '此平台不接受 MOV 视频。请使用 MP4，或选择其他网络。',
+            'mov_not_allowed' => '此平台不接受 MOV 视频。请使用 MP4。',
             'image_too_large' => '图片超出此帖子类型的 :max 上限（你的为 :current）。',
             'video_too_large' => '视频超出此帖子类型的 :max 上限（你的为 :current）。',
             'document_too_large' => 'PDF 超出此帖子类型的 :max 上限（你的为 :current）。',

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Media;
 
+use App\Enums\Media\Type as MediaType;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Storage;
@@ -22,14 +23,34 @@ final class ChunkedAssetReceiver
         int $rangeEnd,
         int $totalSize,
         string $attemptId,
+        ?float $duration = null,
     ): ChunkReceipt {
         $identifier = md5("{$user->id}{$fileName}{$totalSize}{$attemptId}");
+        $meta = $this->videoMeta($fileName, $duration);
 
         return $this->cloud->shouldUseMultipart($fileName)
-            ? $this->receiveViaMultipart($workspace, $identifier, $fileName, $chunk, $rangeStart, $rangeEnd, $totalSize)
-            : $this->receiveViaLocalAssemble($workspace, $identifier, $fileName, $chunk, $rangeStart, $rangeEnd, $totalSize);
+            ? $this->receiveViaMultipart($workspace, $identifier, $fileName, $chunk, $rangeStart, $rangeEnd, $totalSize, $meta)
+            : $this->receiveViaLocalAssemble($workspace, $identifier, $fileName, $chunk, $rangeStart, $rangeEnd, $totalSize, $meta);
     }
 
+    /**
+     * Duration is measured in the browser (the server has no ffprobe) and only
+     * meaningful for videos; anything else ignores the header.
+     *
+     * @return array<string, float>
+     */
+    private function videoMeta(string $fileName, ?float $duration): array
+    {
+        if ($duration === null || $duration <= 0 || MediaType::classify(null, $fileName) !== MediaType::Video) {
+            return [];
+        }
+
+        return ['duration' => round($duration, 2)];
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     */
     private function receiveViaMultipart(
         Workspace $workspace,
         string $identifier,
@@ -38,6 +59,7 @@ final class ChunkedAssetReceiver
         int $rangeStart,
         int $rangeEnd,
         int $totalSize,
+        array $meta,
     ): ChunkReceipt {
         $result = $this->cloud->receiveChunk(
             $identifier,
@@ -61,6 +83,7 @@ final class ChunkedAssetReceiver
                 (string) data_get($result, 'mime_type'),
                 (int) data_get($result, 'size'),
                 'assets',
+                $meta,
             );
         } catch (Throwable $exception) {
             Storage::delete($path);
@@ -71,6 +94,9 @@ final class ChunkedAssetReceiver
         return ChunkReceipt::completed($media);
     }
 
+    /**
+     * @param  array<string, mixed>  $meta
+     */
     private function receiveViaLocalAssemble(
         Workspace $workspace,
         string $identifier,
@@ -79,6 +105,7 @@ final class ChunkedAssetReceiver
         int $rangeStart,
         int $rangeEnd,
         int $totalSize,
+        array $meta,
     ): ChunkReceipt {
         $tempFile = storage_path("app/private/chunks/{$identifier}");
 
@@ -93,7 +120,7 @@ final class ChunkedAssetReceiver
         }
 
         try {
-            $media = $workspace->addMediaFromPath($tempFile, $fileName, 'assets');
+            $media = $workspace->addMediaFromPath($tempFile, $fileName, 'assets', $meta);
         } finally {
             @unlink($tempFile);
         }

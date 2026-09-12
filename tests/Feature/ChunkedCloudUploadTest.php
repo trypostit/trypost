@@ -44,7 +44,7 @@ function fakeMp4Bytes(): string
     return "\0\0\0\x18ftypmp42\0\0\0\0mp42isom".str_repeat("\0", 64);
 }
 
-function postChunkedAsset(string $fileName, string $content, int $rangeStart = 0, ?int $totalSize = null, ?string $uploadId = null): TestResponse
+function postChunkedAsset(string $fileName, string $content, int $rangeStart = 0, ?int $totalSize = null, ?string $uploadId = null, ?string $duration = null): TestResponse
 {
     $totalSize ??= strlen($content);
     $rangeEnd = $rangeStart + strlen($content) - 1;
@@ -58,6 +58,10 @@ function postChunkedAsset(string $fileName, string $content, int $rangeStart = 0
 
     if ($uploadId !== null) {
         $headers['HTTP_X_UPLOAD_ID'] = $uploadId;
+    }
+
+    if ($duration !== null) {
+        $headers['HTTP_X_MEDIA_DURATION'] = $duration;
     }
 
     return test()->actingAs(test()->user)->call(
@@ -300,6 +304,57 @@ test('chunked upload stores image on local disk', function () {
     $response->assertSuccessful();
     $response->assertJson(['done' => true, 'type' => 'image']);
     Storage::disk('local')->assertExists(test()->workspace->getMedia('assets')->first()->path);
+});
+
+// ─── Browser-measured duration (X-Media-Duration) ───────────────
+
+test('chunked upload stores the browser-measured duration on videos', function () {
+    config(['filesystems.default' => 'local']);
+    Storage::fake('local');
+    seedChunkedUploadWorkspace();
+
+    postChunkedAsset('clip.mp4', fakeMp4Bytes(), uploadId: Str::uuid()->toString(), duration: '61.437')->assertSuccessful();
+
+    expect(test()->workspace->getMedia('assets')->first()->meta)->toEqual(['duration' => 61.44]);
+});
+
+test('chunked upload stores the duration on the multipart path too', function () {
+    config(['filesystems.default' => 's3', 'filesystems.disks.s3.driver' => 's3']);
+    Storage::fake('s3');
+    seedChunkedUploadWorkspace();
+
+    $fake = Mockery::mock(ChunkedCloudUploader::class);
+    $fake->shouldReceive('shouldUseMultipart')->with('clip.mp4')->andReturn(true);
+    $fake->shouldReceive('receiveChunk')->once()->andReturn([
+        'done' => true, 'progress' => 100, 'path' => 'medias/clip.mp4', 'size' => 12, 'mime_type' => 'video/mp4',
+    ]);
+    app()->instance(ChunkedCloudUploader::class, $fake);
+
+    postChunkedAsset('clip.mp4', 'fake-video!!', uploadId: Str::uuid()->toString(), duration: '600')->assertSuccessful();
+
+    expect(test()->workspace->getMedia('assets')->first()->meta)->toEqual(['duration' => 600.0]);
+});
+
+test('chunked upload ignores the duration header on images and without it stores no duration', function () {
+    config(['filesystems.default' => 'local']);
+    Storage::fake('local');
+    seedChunkedUploadWorkspace();
+
+    postChunkedAsset('photo.png', file_get_contents(__DIR__.'/../fixtures/1x1.png'), uploadId: Str::uuid()->toString(), duration: '12')->assertSuccessful();
+    postChunkedAsset('clip.mp4', fakeMp4Bytes(), uploadId: Str::uuid()->toString())->assertSuccessful();
+
+    $byName = test()->workspace->getMedia('assets')->get()->keyBy('original_filename');
+    expect($byName['photo.png']->meta)->not->toHaveKey('duration');
+    expect($byName['clip.mp4']->meta ?? [])->not->toHaveKey('duration');
+});
+
+test('chunked upload rejects a non-numeric or negative duration header', function () {
+    config(['filesystems.default' => 'local']);
+    Storage::fake('local');
+    seedChunkedUploadWorkspace();
+
+    postChunkedAsset('clip.mp4', fakeMp4Bytes(), uploadId: Str::uuid()->toString(), duration: 'abc')->assertUnprocessable();
+    postChunkedAsset('clip.mp4', fakeMp4Bytes(), uploadId: Str::uuid()->toString(), duration: '-1')->assertUnprocessable();
 });
 
 // ─── HTTP: object storage ────────────────────────────────────────

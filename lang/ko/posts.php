@@ -197,7 +197,7 @@ return [
             'no_mixed_media' => '이미지와 동영상은 같은 게시물에 함께 넣을 수 없습니다.',
             'document_not_alone' => 'PDF는 다른 이미지나 동영상 없이 단독으로 게시해야 합니다.',
             'gif_not_allowed' => '이 플랫폼은 GIF를 허용하지 않습니다. GIF를 제거하거나 다른 네트워크를 선택하세요.',
-            'mov_not_allowed' => '이 플랫폼은 MOV 동영상을 허용하지 않습니다. MP4를 사용하거나 다른 네트워크를 선택하세요.',
+            'mov_not_allowed' => '이 플랫폼은 MOV 동영상을 허용하지 않습니다. MP4를 사용하세요.',
             'image_too_large' => '이미지가 이 게시물 유형의 :max 한도를 초과합니다 (현재 :current).',
             'video_too_large' => '동영상이 이 게시물 유형의 :max 한도를 초과합니다 (현재 :current).',
             'document_too_large' => 'PDF가 이 게시물 유형의 :max 한도를 초과합니다 (현재 :current).',
