@@ -56,6 +56,14 @@ class StoreChunkedAssetRequest extends FormRequest
     }
 
     /**
+     * Browser-measured video duration in seconds, when the client sent one.
+     */
+    public function duration(): ?float
+    {
+        return transform($this->validated('duration'), fn (mixed $seconds) => (float) $seconds);
+    }
+
+    /**
      * @return array<string, string>
      */
     public function messages(): array

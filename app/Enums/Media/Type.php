@@ -10,6 +10,12 @@ enum Type: string
     case Video = 'video';
     case Document = 'document';
 
+    private const GIF_MIME = 'image/gif';
+
+    private const MOV_MIME = 'video/quicktime';
+
+    private const PDF_MIME = 'application/pdf';
+
     public function label(): string
     {
         return match ($this) {
@@ -28,10 +34,10 @@ enum Type: string
      * if PHP reports `video/quicktime`. Accepting MOV avoids forcing
      * iPhone users to transcode before uploading.
      *
-     * WebM is rejected: X / IG / TikTok / FB / Pinterest / Bluesky /
-     * Threads all reject the Matroska + VP8/VP9 stack. Without
-     * server-side transcoding, accepting WebM would just produce
-     * platform-specific publish failures down the line.
+     * WebM is rejected: X / IG / FB / Pinterest / Threads refuse the
+     * Matroska + VP8/VP9 stack outright, and only TikTok and Bluesky
+     * would transcode it. Without server-side transcoding, accepting
+     * WebM would just produce platform-specific publish failures.
      *
      * Document accepts PDF only — the swipeable LinkedIn document
      * (carousel) format. PPTX/DOCX are also valid LinkedIn documents
@@ -43,9 +49,9 @@ enum Type: string
     public function allowedMimeTypes(): array
     {
         return match ($this) {
-            self::Image => ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-            self::Video => ['video/mp4', 'video/quicktime'],
-            self::Document => ['application/pdf'],
+            self::Image => ['image/jpeg', 'image/png', self::GIF_MIME, 'image/webp'],
+            self::Video => ['video/mp4', self::MOV_MIME],
+            self::Document => [self::PDF_MIME],
         };
     }
 
@@ -60,6 +66,22 @@ enum Type: string
         return match ($this) {
             self::Image => ['jpg', 'jpeg', 'png', 'gif', 'webp'],
             self::Video => ['mp4', 'mov'],
+            self::Document => ['pdf'],
+        };
+    }
+
+    /**
+     * Extensions this type resolves from when classifying stored files.
+     * Broader than extensions() (the upload allow-list) so legacy formats
+     * already on disk still classify.
+     *
+     * @return array<int, string>
+     */
+    private function classifiableExtensions(): array
+    {
+        return match ($this) {
+            self::Image => ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'heic', 'heif'],
+            self::Video => ['mp4', 'mov', 'avi', 'wmv', 'webm', 'mkv', 'm4v'],
             self::Document => ['pdf'],
         };
     }
@@ -85,13 +107,7 @@ enum Type: string
      */
     public static function fromMime(string $mime): ?self
     {
-        foreach (self::cases() as $type) {
-            if (in_array($mime, $type->allowedMimeTypes(), true)) {
-                return $type;
-            }
-        }
-
-        return null;
+        return array_find(self::cases(), fn (self $type) => in_array($mime, $type->allowedMimeTypes(), true));
     }
 
     /**
@@ -103,32 +119,26 @@ enum Type: string
      */
     public static function classify(?string $mimeType, ?string $path = null): ?self
     {
-        if (filled($mimeType)) {
-            return match (true) {
-                str_starts_with($mimeType, 'image/') => self::Image,
-                str_starts_with($mimeType, 'video/') => self::Video,
-                $mimeType === 'application/pdf' => self::Document,
-                default => null,
-            };
+        if (blank($mimeType)) {
+            return self::fromExtension(self::extensionOf($path));
         }
 
-        return self::fromExtension($path ? pathinfo($path, PATHINFO_EXTENSION) : null);
+        return match (true) {
+            str_starts_with($mimeType, 'image/') => self::Image,
+            str_starts_with($mimeType, 'video/') => self::Video,
+            $mimeType === self::PDF_MIME => self::Document,
+            default => null,
+        };
     }
 
     /**
-     * Classify by filename extension. Broader than extensions() (the upload
-     * allow-list) so already-stored files in legacy formats still resolve.
+     * Classify by filename extension (see classifiableExtensions()).
      */
     public static function fromExtension(?string $extension): ?self
     {
         $extension = strtolower((string) $extension);
 
-        return match (true) {
-            in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'heic', 'heif'], true) => self::Image,
-            in_array($extension, ['mp4', 'mov', 'avi', 'wmv', 'webm', 'mkv', 'm4v'], true) => self::Video,
-            $extension === 'pdf' => self::Document,
-            default => null,
-        };
+        return array_find(self::cases(), fn (self $type) => in_array($extension, $type->classifiableExtensions(), true));
     }
 
     /**
@@ -137,7 +147,7 @@ enum Type: string
      */
     public static function isGif(?string $mimeType): bool
     {
-        return $mimeType === 'image/gif';
+        return $mimeType === self::GIF_MIME;
     }
 
     /**
@@ -146,10 +156,11 @@ enum Type: string
      */
     public static function isMov(?string $mimeType, ?string $path = null): bool
     {
-        if ($mimeType === 'video/quicktime') {
-            return true;
-        }
+        return $mimeType === self::MOV_MIME || self::extensionOf($path) === 'mov';
+    }
 
-        return strtolower((string) pathinfo((string) $path, PATHINFO_EXTENSION)) === 'mov';
+    private static function extensionOf(?string $path): string
+    {
+        return strtolower(pathinfo((string) $path, PATHINFO_EXTENSION));
     }
 }
