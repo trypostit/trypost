@@ -91,6 +91,7 @@ trait HasMedia
 
         $filename = Str::uuid().'.'.$normalizedExt;
         $path = "medias/{$filename}";
+        $meta = $this->withVideoDuration($meta, $type, $file->getPathname());
 
         Storage::put($path, $normalizedBytes);
 
@@ -103,7 +104,7 @@ trait HasMedia
             'mime_type' => $normalizedMime,
             'size' => strlen($normalizedBytes),
             'order' => 0,
-            'meta' => array_merge($this->getMediaMetaFromBytes($normalizedBytes, $type, $meta), $this->withVideoDuration($meta, $type, $file->getPathname())),
+            'meta' => array_merge($this->getMediaMetaFromBytes($normalizedBytes, $type, $meta), $meta),
         ]);
     }
 

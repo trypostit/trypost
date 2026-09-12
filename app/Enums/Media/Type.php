@@ -16,15 +16,6 @@ enum Type: string
 
     private const PDF_MIME = 'application/pdf';
 
-    public function label(): string
-    {
-        return match ($this) {
-            self::Image => 'Imagem',
-            self::Video => 'Vídeo',
-            self::Document => 'Documento',
-        };
-    }
-
     /**
      * Allow-list of MIME types we accept on upload / URL fetch.
      *

@@ -143,11 +143,12 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
             return;
         }
 
-        $hasImage = collect($media)->contains(fn ($item) => $this->isImage((array) $item));
-        $hasVideo = collect($media)->contains(fn ($item) => $this->isVideo((array) $item));
-        $hasDocument = collect($media)->contains(fn ($item) => $this->isDocument((array) $item));
-        $hasGif = collect($media)->contains(fn ($item) => MediaType::isGif(data_get($item, 'mime_type')));
-        $hasMov = collect($media)->contains(fn ($item) => $this->isMov((array) $item));
+        $items = collect($media)->map(fn (mixed $item): array => (array) $item);
+        $hasImage = $items->contains($this->isImage(...));
+        $hasVideo = $items->contains($this->isVideo(...));
+        $hasDocument = $items->contains($this->isDocument(...));
+        $hasGif = $items->contains($this->isGif(...));
+        $hasMov = $items->contains($this->isMov(...));
 
         if ($hasImage && ! $contentType->supportsImage()) {
             $fail(trans('posts.form.warnings.no_image_allowed'));
@@ -178,7 +179,7 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
             $fail(trans('posts.form.warnings.mov_not_allowed'));
         }
 
-        $this->failOnSizeAndDurationCaps($contentType, $media, $fail);
+        $this->failOnSizeAndDurationCaps($contentType, $items->all(), $fail);
     }
 
     /**
@@ -186,7 +187,7 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
      * messages. `meta.duration` is read from the file on upload; an item
      * without it is not checked.
      *
-     * @param  array<int, mixed>  $media
+     * @param  array<int, array<string, mixed>>  $media
      * @param  Closure(string, ?string=): PotentiallyTranslatedString  $fail
      */
     private function failOnSizeAndDurationCaps(ContentType $contentType, array $media, Closure $fail): void
@@ -194,7 +195,6 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
         $maxDuration = $contentType->maxVideoDurationSec();
 
         foreach ($media as $item) {
-            $item = (array) $item;
             $size = (int) data_get($item, 'size', 0);
             $duration = data_get($item, 'meta.duration');
 
@@ -236,15 +236,10 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
             return Number::fileSize($bytes, $precision);
         }
 
-        $unit = 1000;
-        [$value, $suffix] = match (true) {
-            $bytes >= $unit ** 3 => [$bytes / $unit ** 3, 'GB'],
-            $bytes >= $unit ** 2 => [$bytes / $unit ** 2, 'MB'],
-            $bytes >= $unit => [$bytes / $unit, 'KB'],
-            default => [$bytes, 'B'],
-        };
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $exponent = min((int) floor(log(max($bytes, 1), 1000)), count($units) - 1);
 
-        return number_format($value, $precision).' '.$suffix;
+        return sprintf('%s %s', Number::format($bytes / 1000 ** $exponent, $precision), $units[$exponent]);
     }
 
     /**
@@ -260,6 +255,14 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
         $rest = $seconds % 60;
 
         return $rest === 0 ? "{$minutes}min" : "{$minutes}min {$rest}s";
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function isGif(array $item): bool
+    {
+        return MediaType::isGif(data_get($item, 'mime_type'));
     }
 
     /**
