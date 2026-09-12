@@ -101,3 +101,11 @@ test('isGif only matches the gif mime', function () {
     expect(Type::isGif('image/png'))->toBeFalse();
     expect(Type::isGif(null))->toBeFalse();
 });
+
+test('isMov matches quicktime mime or a mov extension', function () {
+    expect(Type::isMov('video/quicktime'))->toBeTrue();
+    expect(Type::isMov('video/mp4', 'clip.mov'))->toBeTrue();
+    expect(Type::isMov('video/mp4', 'clip.MP4'))->toBeFalse();
+    expect(Type::isMov('video/mp4'))->toBeFalse();
+    expect(Type::isMov(null))->toBeFalse();
+});

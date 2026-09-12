@@ -20,6 +20,7 @@ const DEFAULT_RULES: MediaRules = {
     acceptVideos: true,
     requiresMedia: false,
     acceptsGif: false,
+    acceptsMov: true,
 };
 
 export const getMediaRulesForContentType = (contentType: string): MediaRules => {

@@ -114,6 +114,30 @@ test('bluesky still accepts an image-only or video-only post', function () {
     expect(runMediaRule(ContentType::BlueskyPost->value, $video))->toBe([]);
 });
 
+test('bluesky rejects a mov video', function () {
+    $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/quicktime']];
+
+    $errors = runMediaRule(ContentType::BlueskyPost->value, $media);
+
+    expect($errors)->toHaveCount(1);
+    expect($errors[0])->toContain('does not accept MOV');
+});
+
+test('bluesky rejects a mov video identified only by filename', function () {
+    $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/mp4', 'original_filename' => 'clip.mov']];
+
+    $errors = runMediaRule(ContentType::BlueskyPost->value, $media);
+
+    expect($errors)->toHaveCount(1);
+    expect($errors[0])->toContain('does not accept MOV');
+});
+
+test('x still accepts a mov video', function () {
+    $media = [['type' => MediaType::Video->value, 'mime_type' => 'video/quicktime']];
+
+    expect(runMediaRule(ContentType::XPost->value, $media))->toBe([]);
+});
+
 test('bluesky rejects an animated gif combined with a video', function () {
     // A GIF counts as an image, so gif + video is still mixed media.
     $media = [

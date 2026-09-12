@@ -32,6 +32,8 @@ test('content type exposes max video duration in seconds', function () {
     expect(ContentType::InstagramReel->maxVideoDurationSec())->toBe(15 * 60);
     expect(ContentType::FacebookReel->maxVideoDurationSec())->toBe(90);
     expect(ContentType::YouTubeShort->maxVideoDurationSec())->toBe(3 * 60);
+    expect(ContentType::XPost->maxVideoDurationSec())->toBe(20 * 60);
+    expect(ContentType::BlueskyPost->maxVideoDurationSec())->toBe(60);
     expect(ContentType::TikTokVideo->maxVideoDurationSec())->toBeNull();
 });
 
@@ -45,7 +47,7 @@ test('media rules for frontend expose the full editor rule set keyed by content 
         'accept_images' => false,
         'accept_videos' => true,
         'requires_media' => true,
-        'max_video_bytes' => 1 * 1024 * 1024 * 1024,
+        'max_video_bytes' => 300 * 1024 * 1024,
         'max_video_duration_sec' => 900,
         'aspect_ratio_min' => 0.5,
         'aspect_ratio_max' => 0.6,
@@ -59,6 +61,8 @@ test('media rules for frontend expose the full editor rule set keyed by content 
     expect($rules['instagram_feed']['requires_media'])->toBeTrue();
     expect($rules['discord_message']['accepts_gif'])->toBeTrue();
     expect($rules['telegram_post']['accepts_gif'])->toBeTrue();
+    expect($rules['bluesky_post']['accepts_mov'])->toBeFalse();
+    expect($rules['x_post']['accepts_mov'])->toBeTrue();
 });
 
 test('listing array mirrors media capability fields for api and mcp', function () {
@@ -198,7 +202,7 @@ test('media rules preserve pre-centralization editor limits for mapped types', f
             'accepts_gif' => false,
             'max_files' => 1,
             'max_video_duration_sec' => 900,
-            'max_video_bytes' => min(1 * $gb, $hardVideo),
+            'max_video_bytes' => min(300 * $mb, $hardVideo),
         ],
         'youtube_short' => [
             'requires_media' => true,
@@ -232,19 +236,48 @@ test('media rules preserve pre-centralization editor limits for mapped types', f
         'x_post' => [
             'requires_media' => false,
             'accepts_gif' => true,
+            'accepts_mov' => true,
             'max_files' => 4,
-            'max_video_duration_sec' => 140,
-            'max_video_bytes' => min(512 * $mb, $hardVideo),
+            'max_video_duration_sec' => 20 * 60,
+            'max_video_bytes' => min(1 * $gb, $hardVideo),
+        ],
+        'bluesky_post' => [
+            'requires_media' => false,
+            'accepts_gif' => true,
+            'accepts_mov' => false,
+            'max_files' => 4,
+            'max_video_duration_sec' => 60,
+            'max_image_bytes' => min(2 * $mb, $hardImage),
+            'max_video_bytes' => min(300 * $mb, $hardVideo),
         ],
         'discord_message' => [
             'requires_media' => false,
             'accepts_gif' => true,
+            'accepts_mov' => true,
             'max_files' => 10,
+            'max_image_bytes' => min(20 * $mb, $hardImage),
+            'max_video_bytes' => min(20 * $mb, $hardVideo),
         ],
         'telegram_post' => [
             'requires_media' => false,
             'accepts_gif' => true,
+            'accepts_mov' => true,
             'max_files' => 10,
+            'max_image_bytes' => min(5 * $mb, $hardImage),
+            'max_video_bytes' => min(20 * $mb, $hardVideo),
+        ],
+        'tiktok_video' => [
+            'requires_media' => true,
+            'accepts_gif' => false,
+            'max_files' => 1,
+            'max_video_duration_sec' => null,
+            'max_video_bytes' => min(4 * $gb, $hardVideo),
+        ],
+        'tiktok_photo' => [
+            'requires_media' => true,
+            'accepts_gif' => false,
+            'max_files' => 35,
+            'max_image_bytes' => min(20 * $mb, $hardImage),
         ],
     ];
 

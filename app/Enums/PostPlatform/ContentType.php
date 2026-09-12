@@ -200,7 +200,7 @@ enum ContentType: string
             self::LinkedInPost, self::LinkedInPagePost => 10 * 60,
             self::YouTubeShort => 3 * 60,
             self::PinterestVideoPin => 15 * 60,
-            self::XPost => 140,
+            self::XPost => 20 * 60,
             self::ThreadsPost => 5 * 60,
             self::BlueskyPost => 60,
             default => null,
@@ -232,9 +232,24 @@ enum ContentType: string
     }
 
     /**
+     * Whether QuickTime/MOV is accepted. Global upload still allows MOV;
+     * Bluesky's video lexicon is MP4 only, so the editor and API reject MOV there.
+     */
+    public function acceptsMov(): bool
+    {
+        return match ($this) {
+            self::BlueskyPost => false,
+            default => true,
+        };
+    }
+
+    /**
      * Per-type image size cap in bytes, capped at the global upload hard limit
      * (trypost.media.max_size_mb.image). Null when images are not accepted or
      * the platform has no tighter editor-side limit than that hard cap.
+     *
+     * Telegram is 5 MB because we publish via URL, not multipart (10 MB).
+     * Discord's official attachment ceiling is 20 MiB; Cloud images clamp to 10 MB.
      */
     public function maxImageBytes(): ?int
     {
@@ -245,7 +260,11 @@ enum ContentType: string
             self::PinterestPin, self::PinterestCarousel => self::bytesFromMb(20),
             self::XPost => self::bytesFromMb(5),
             self::ThreadsPost => self::bytesFromMb(8),
+            self::BlueskyPost => self::bytesFromMb(2),
+            self::TikTokPhoto => self::bytesFromMb(20),
             self::MastodonPost => self::bytesFromMb(10),
+            self::DiscordMessage => self::bytesFromMb(20),
+            self::TelegramPost => self::bytesFromMb(5),
             default => null,
         };
 
@@ -256,21 +275,32 @@ enum ContentType: string
      * Per-type video size cap in bytes, capped at the global upload hard limit
      * (trypost.media.max_size_mb.video). Null when videos are not accepted or
      * the platform has no tighter editor-side limit than that hard cap.
+     *
+     * Non-obvious caps:
+     * - Instagram feed / story: 100 MB (carousel `media_type=VIDEO` / story).
+     *   A lone feed video publishes as a Reel — pick InstagramReel for longer clips.
+     * - Instagram reel: 300 MB (Graph `video_url` pull), not 1 GB.
+     * - X: 1 GB `tweet_video` (Post upload), not `dm_video` (512 MB / 140 s).
+     * - Telegram: 20 MB — we publish via URL, not multipart (50 MB).
+     * - Discord: 20 MiB bot attachment default.
      */
     public function maxVideoBytes(): ?int
     {
         $bytes = match ($this) {
             self::InstagramFeed, self::InstagramStory => self::bytesFromMb(100),
-            self::InstagramReel => self::bytesFromGb(1),
+            self::InstagramReel => self::bytesFromMb(300),
             self::FacebookPost => self::bytesFromGb(10),
             self::FacebookReel, self::FacebookStory => self::bytesFromGb(1),
             self::LinkedInPost, self::LinkedInPagePost => self::bytesFromGb(5),
             self::YouTubeShort => self::bytesFromGb(256),
             self::PinterestVideoPin => self::bytesFromGb(2),
-            self::XPost => self::bytesFromMb(512),
+            self::XPost => self::bytesFromGb(1),
             self::ThreadsPost => self::bytesFromGb(1),
-            self::BlueskyPost => self::bytesFromMb(100),
+            self::BlueskyPost => self::bytesFromMb(300),
+            self::TikTokVideo => self::bytesFromGb(4),
             self::MastodonPost => self::bytesFromMb(40),
+            self::DiscordMessage => self::bytesFromMb(20),
+            self::TelegramPost => self::bytesFromMb(20),
             default => null,
         };
 
@@ -327,6 +357,7 @@ enum ContentType: string
      *     accept_documents: bool,
      *     requires_media: bool,
      *     accepts_gif: bool,
+     *     accepts_mov: bool,
      *     forbids_mixed_media: bool,
      *     max_image_bytes: int|null,
      *     max_video_bytes: int|null,
@@ -350,6 +381,7 @@ enum ContentType: string
             'accept_documents' => $this->supportsDocument(),
             'requires_media' => $this->requiresMedia(),
             'accepts_gif' => $this->acceptsGif(),
+            'accepts_mov' => $this->acceptsMov(),
             'forbids_mixed_media' => ! $this->supportsMixedMedia(),
             'max_image_bytes' => $this->maxImageBytes(),
             'max_video_bytes' => $this->maxVideoBytes(),
@@ -376,6 +408,7 @@ enum ContentType: string
      *     accept_videos: bool,
      *     accept_documents: bool,
      *     accepts_gif: bool,
+     *     accepts_mov: bool,
      *     forbids_mixed_media: bool,
      *     max_video_duration_sec: int|null,
      *     max_image_bytes: int|null,
@@ -396,6 +429,7 @@ enum ContentType: string
             'accept_videos' => $this->supportsVideo(),
             'accept_documents' => $this->supportsDocument(),
             'accepts_gif' => $this->acceptsGif(),
+            'accepts_mov' => $this->acceptsMov(),
             'forbids_mixed_media' => ! $this->supportsMixedMedia(),
             'max_video_duration_sec' => $this->maxVideoDurationSec(),
             'max_image_bytes' => $this->maxImageBytes(),

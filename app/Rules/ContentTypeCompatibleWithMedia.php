@@ -166,6 +166,13 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
         if ($hasImage && $hasVideo && ! $contentType->supportsMixedMedia()) {
             $fail("{$contentType->label()} can't combine an image and a video in the same post.");
         }
+
+        if (! $contentType->acceptsMov() && collect($media)->contains(fn ($item) => MediaType::isMov(
+            data_get($item, 'mime_type'),
+            data_get($item, 'original_filename') ?? data_get($item, 'path'),
+        ))) {
+            $fail("{$contentType->label()} does not accept MOV videos. Use MP4.");
+        }
     }
 
     /**

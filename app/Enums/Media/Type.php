@@ -139,4 +139,17 @@ enum Type: string
     {
         return $mimeType === 'image/gif';
     }
+
+    /**
+     * Whether the file is QuickTime/MOV. Bluesky's video lexicon is MP4 only,
+     * so the editor and ContentTypeCompatibleWithMedia reject MOV there.
+     */
+    public static function isMov(?string $mimeType, ?string $path = null): bool
+    {
+        if ($mimeType === 'video/quicktime') {
+            return true;
+        }
+
+        return strtolower((string) pathinfo((string) $path, PATHINFO_EXTENSION)) === 'mov';
+    }
 }
