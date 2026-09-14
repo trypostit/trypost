@@ -33,6 +33,9 @@ const showPassword = ref(false);
 const showEmailForm = ref(false);
 
 const page = usePage();
+const passwordLoginEnabled = computed(() =>
+    Boolean(page.props.passwordLoginEnabled),
+);
 const hasSocial = computed(
     () =>
         Boolean(page.props.googleAuthEnabled) ||
@@ -56,7 +59,7 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
                 <SocialLogin mode="signup" hide-divider :invite="invite" />
 
                 <Button
-                    v-if="!showEmailForm"
+                    v-if="!showEmailForm && passwordLoginEnabled"
                     type="button"
                     variant="outline"
                     class="w-full"
@@ -68,6 +71,7 @@ const emailFormVisible = computed(() => !hasSocial.value || showEmailForm.value)
             </div>
 
             <Form
+                v-if="passwordLoginEnabled"
                 v-bind="store.form()"
                 :reset-on-success="['password']"
                 v-slot="{ errors, processing }"

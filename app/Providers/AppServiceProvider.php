@@ -32,6 +32,7 @@ use App\Services\PostHogService;
 use App\Socialite\DiscordProvider;
 use App\Socialite\InstagramProvider;
 use App\Socialite\LinkedInPageExtendSocialite;
+use App\Socialite\OidcProvider;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -188,6 +189,14 @@ class AppServiceProvider extends ServiceProvider
             $config = $app['config']['services.instagram'];
 
             return Socialite::buildProvider(InstagramProvider::class, $config);
+        });
+
+        // Generic OpenID Connect (login/signup) - endpoints come from the
+        // provider's discovery document.
+        Socialite::extend('oidc', function ($app) {
+            $config = $app['config']['services.oidc'];
+
+            return Socialite::buildProvider(OidcProvider::class, $config);
         });
 
         Socialite::extend('discord', function ($app) {

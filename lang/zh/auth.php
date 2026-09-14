@@ -55,11 +55,18 @@ return [
     'google_signup' => '使用 Google 注册',
     'github_login' => '使用 GitHub 登录',
     'github_signup' => '使用 GitHub 注册',
+    'oidc_login' => '使用 :provider 登录',
+    'oidc_signup' => '使用 :provider 注册',
+    'oidc_group_denied' => '你的账户不属于任何可以使用此应用的群组。',
+    'oidc_email_missing' => '你的身份提供商未返回邮箱地址。',
+    'oidc_email_unverified' => '你的邮箱地址尚未在身份提供商处验证。',
+    'oidc_failed' => '单点登录失败，请重试。',
     'github_email_unavailable' => '无法从 GitHub 获取你的邮箱。请将你的 GitHub 邮箱设为公开，或授予邮箱权限后重试。',
 
     'login' => [
         'title' => '登录你的账户',
         'description' => '请在下方输入你的邮箱和密码以登录',
+        'description_without_password' => '请使用你的组织账户登录以继续',
         'page_title' => '登录',
         'email' => '邮箱地址',
         'password' => '密码',

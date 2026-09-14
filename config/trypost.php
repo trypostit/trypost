@@ -157,6 +157,39 @@ return [
 
     'github_auth_enabled' => env('GITHUB_AUTH_ENABLED', false),
 
+    // Instances behind an identity provider usually want the local password
+    // form gone. Ignored while no other provider is configured, so a single
+    // variable can never lock everybody out.
+    'password_login_enabled' => env('PASSWORD_LOGIN_ENABLED', true),
+
+    'oidc_auth_enabled' => env('OIDC_AUTH_ENABLED', false),
+    'oidc_display_name' => env('OIDC_DISPLAY_NAME', 'SSO'),
+    // Ends the session at the identity provider too, so logging out really
+    // logs out instead of silently signing straight back in.
+    'oidc_logout_enabled' => env('OIDC_LOGOUT_ENABLED', true),
+    // Where the provider sends the browser after logout. Leave empty unless
+    // the exact same URI is registered with the provider - a mismatch makes
+    // providers reject the logout entirely.
+    'oidc_post_logout_redirect_uri' => env('OIDC_POST_LOGOUT_REDIRECT_URI'),
+    // Group handling. The claim is whatever the provider puts the group names
+    // in; allowed_groups gates who may sign in at all.
+    'oidc_groups_claim' => env('OIDC_GROUPS_CLAIM', 'groups'),
+    'oidc_allowed_groups' => env('OIDC_ALLOWED_GROUPS', ''),
+    // Self-hosted teams usually want provider group membership to be the only
+    // onboarding step, so new OIDC users can be placed on the shared account
+    // instead of needing a separate invite each.
+    'oidc_auto_join_enabled' => env('OIDC_AUTO_JOIN_ENABLED', false),
+    'oidc_auto_join_role' => env('OIDC_AUTO_JOIN_ROLE', 'member'),
+    // Groups whose members administer the workspace. Set this and the role of
+    // every OIDC user follows the provider on each sign-in, which is what lets
+    // an instance run without a standing local admin account.
+    'oidc_admin_groups' => env('OIDC_ADMIN_GROUPS', ''),
+    // Hand the account over to group management entirely by clearing its
+    // owner. Ownership outranks the workspace role, so whoever holds it sits
+    // outside the group system for good.
+    'oidc_release_ownership' => env('OIDC_RELEASE_OWNERSHIP', false),
+    'oidc_auto_join_account_id' => env('OIDC_AUTO_JOIN_ACCOUNT_ID'),
+
     /*
     |--------------------------------------------------------------------------
     | Social Platforms

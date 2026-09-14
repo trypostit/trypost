@@ -57,11 +57,18 @@ return [
     'google_signup' => 'Google ile kayıt ol',
     'github_login' => 'GitHub ile giriş yap',
     'github_signup' => 'GitHub ile kayıt ol',
+    'oidc_login' => ':provider ile giriş yap',
+    'oidc_signup' => ':provider ile kayıt ol',
+    'oidc_group_denied' => 'Hesabınız bu uygulamayı kullanabilecek bir grupta değil.',
+    'oidc_email_missing' => 'Kimlik sağlayıcınız bir e-posta adresi döndürmedi.',
+    'oidc_email_unverified' => 'E-posta adresiniz kimlik sağlayıcınızda doğrulanmamış.',
+    'oidc_failed' => 'Çoklu oturum açma başarısız oldu. Lütfen tekrar deneyin.',
     'github_email_unavailable' => 'GitHub\'dan e-postanız alınamadı. GitHub e-postanızı herkese açık yapın veya e-posta iznini verin, ardından tekrar deneyin.',
 
     'login' => [
         'title' => 'Hesabınıza giriş yapın',
         'description' => 'Giriş yapmak için e-posta ve parolanızı aşağıya girin',
+        'description_without_password' => 'Devam etmek için kurum hesabınızla giriş yapın',
         'page_title' => 'Giriş yap',
         'email' => 'E-posta adresi',
         'password' => 'Parola',
