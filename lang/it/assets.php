@@ -52,4 +52,14 @@ return [
         'no_results_description' => 'Prova un altro termine di ricerca.',
         'powered_by' => 'Powered by GIPHY',
     ],
+
+    'webdav' => [
+        'up' => 'Cartella superiore',
+        'import' => 'Importa :count selezionati',
+        'loading' => 'Caricamento della cartella...',
+        'empty' => 'Questa cartella è vuota.',
+        'unreachable' => 'Impossibile raggiungere la condivisione.',
+        'import_failed' => 'Impossibile importare questi file.',
+        'import_partial' => '{1} Impossibile importare :names.|[2,*] Impossibile importare :count file: :names',
+    ],
 ];

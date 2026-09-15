@@ -52,4 +52,13 @@ return [
         'no_results_description' => 'Try a different search term.',
         'powered_by' => 'Powered by GIPHY',
     ],
+    'webdav' => [
+        'up' => 'Up one folder',
+        'import' => 'Import :count selected',
+        'loading' => 'Loading the folder...',
+        'empty' => 'This folder is empty.',
+        'unreachable' => 'The share could not be reached.',
+        'import_failed' => 'Those files could not be imported.',
+        'import_partial' => '{1} :names could not be imported.|[2,*] :count files could not be imported: :names',
+    ],
 ];

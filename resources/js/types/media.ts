@@ -1,6 +1,6 @@
 import type { MediaType } from '@/lib/mediaType';
 
-export type MediaSource = 'ai' | 'unsplash' | 'giphy';
+export type MediaSource = 'ai' | 'unsplash' | 'giphy' | 'webdav';
 
 export type SourceMetaValue = string | number | boolean | null | SourceMetaValue[];
 

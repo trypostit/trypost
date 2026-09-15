@@ -54,4 +54,13 @@ return [
         'no_results_description' => 'Versuche einen anderen Suchbegriff.',
         'powered_by' => 'Bereitgestellt von GIPHY',
     ],
+    'webdav' => [
+        'up' => 'Eine Ebene höher',
+        'import' => ':count ausgewählte übernehmen',
+        'loading' => 'Ordner wird geladen …',
+        'empty' => 'Dieser Ordner ist leer.',
+        'unreachable' => 'Die Freigabe ist nicht erreichbar.',
+        'import_failed' => 'Diese Dateien konnten nicht übernommen werden.',
+        'import_partial' => '{1} :names konnte nicht übernommen werden.|[2,*] :count Dateien konnten nicht übernommen werden: :names',
+    ],
 ];

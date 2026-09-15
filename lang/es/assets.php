@@ -54,4 +54,14 @@ return [
         'no_results_description' => 'Prueba con otro término de búsqueda.',
         'powered_by' => 'Powered by GIPHY',
     ],
+
+    'webdav' => [
+        'up' => 'Subir un nivel',
+        'import' => 'Importar :count seleccionados',
+        'loading' => 'Cargando la carpeta...',
+        'empty' => 'Esta carpeta está vacía.',
+        'unreachable' => 'No se pudo acceder al recurso compartido.',
+        'import_failed' => 'No se pudieron importar esos archivos.',
+        'import_partial' => '{1} No se pudo importar :names.|[2,*] No se pudieron importar :count archivos: :names',
+    ],
 ];

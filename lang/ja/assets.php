@@ -52,4 +52,14 @@ return [
         'no_results_description' => '別のキーワードで検索してみてください。',
         'powered_by' => 'Powered by GIPHY',
     ],
+
+    'webdav' => [
+        'up' => '一つ上のフォルダー',
+        'import' => '選択した :count 件を取り込む',
+        'loading' => 'フォルダーを読み込んでいます...',
+        'empty' => 'このフォルダーは空です。',
+        'unreachable' => '共有に接続できませんでした。',
+        'import_failed' => 'これらのファイルを取り込めませんでした。',
+        'import_partial' => '{1} :names を取り込めませんでした。|[2,*] :count 件のファイルを取り込めませんでした: :names',
+    ],
 ];

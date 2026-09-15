@@ -127,6 +127,19 @@ return [
         'host' => env('POSTHOG_HOST', 'https://us.i.posthog.com'),
     ],
 
+    // Read-only WebDAV share (Nextcloud, ownCloud, ...) offered as a media
+    // source in the editor, so files a team already keeps there do not have to
+    // be downloaded and uploaded again.
+    'webdav' => [
+        'url' => env('WEBDAV_URL'),
+        'username' => env('WEBDAV_USERNAME'),
+        'password' => env('WEBDAV_PASSWORD'),
+        // Optional folder inside the share to confine browsing to.
+        'root' => env('WEBDAV_ROOT', ''),
+        'label' => env('WEBDAV_LABEL', 'Files'),
+        'max_import_bytes' => ((int) env('WEBDAV_MAX_IMPORT_MB', 512)) * 1024 * 1024,
+    ],
+
     'unsplash' => [
         'access_key' => env('UNSPLASH_ACCESS_KEY'),
         'secret_key' => env('UNSPLASH_SECRET_KEY'),
