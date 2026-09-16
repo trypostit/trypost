@@ -1200,3 +1200,46 @@ test('mastodon verify throws TokenExpiredException on a bare 403 from verify_cre
 
     Http::assertSentCount(1);
 });
+
+test('verifies a vk community-token account via groups.getById', function () {
+    $api = rtrim((string) config('trypost.platforms.vk.api'), '/');
+
+    Http::fake([
+        "{$api}/groups.getById*" => Http::response([
+            'response' => ['groups' => [['id' => 123456, 'name' => 'Test Community']]],
+        ], 200),
+    ]);
+
+    $account = SocialAccount::factory()->vk()->create([
+        'meta' => [
+            'owner_id' => -123456,
+            'is_group' => true,
+            'community_token' => true,
+        ],
+    ]);
+
+    $verifier = new ConnectionVerifier;
+
+    expect($verifier->verify($account))->toBeTrue();
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/groups.getById'));
+});
+
+test('verifies a vk user-token account via users.get', function () {
+    $api = rtrim((string) config('trypost.platforms.vk.api'), '/');
+
+    Http::fake([
+        "{$api}/users.get*" => Http::response([
+            'response' => [['id' => 111, 'first_name' => 'Test', 'last_name' => 'User']],
+        ], 200),
+    ]);
+
+    $account = SocialAccount::factory()->vk()->create();
+
+    $verifier = new ConnectionVerifier;
+
+    expect($verifier->verify($account))->toBeTrue();
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/users.get'));
+});

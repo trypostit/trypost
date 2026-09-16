@@ -13,6 +13,7 @@ export const Platform = {
     Mastodon: 'mastodon',
     Telegram: 'telegram',
     Discord: 'discord',
+    Vk: 'vk',
 } as const;
 
 export type PlatformValue = (typeof Platform)[keyof typeof Platform];

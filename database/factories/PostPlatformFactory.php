@@ -90,6 +90,14 @@ class PostPlatformFactory extends Factory
         ]);
     }
 
+    public function vk(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'platform' => Platform::Vk,
+            'content_type' => ContentType::VkPost,
+        ]);
+    }
+
     public function mastodon(): static
     {
         return $this->state(fn (array $attributes) => [

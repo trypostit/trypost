@@ -22,6 +22,7 @@ enum Platform: string
     case Mastodon = 'mastodon';
     case Telegram = 'telegram';
     case Discord = 'discord';
+    case Vk = 'vk';
 
     public function network(): string
     {
@@ -60,6 +61,7 @@ enum Platform: string
             self::Mastodon => 'Mastodon',
             self::Telegram => 'Telegram',
             self::Discord => 'Discord',
+            self::Vk => 'VK',
         };
     }
 
@@ -79,6 +81,7 @@ enum Platform: string
             self::Mastodon => '#6364FF',
             self::Telegram => '#26A5E4',
             self::Discord => '#5865F2',
+            self::Vk => '#0077FF',
         };
     }
 
@@ -97,6 +100,7 @@ enum Platform: string
             self::Mastodon => [MediaType::Image, MediaType::Video],
             self::Telegram => [MediaType::Image, MediaType::Video],
             self::Discord => [MediaType::Image, MediaType::Video],
+            self::Vk => [MediaType::Image, MediaType::Video],
         };
     }
 
@@ -115,6 +119,7 @@ enum Platform: string
             self::Mastodon => 4,
             self::Telegram => 10,
             self::Discord => 10,
+            self::Vk => 10,
         };
     }
 
@@ -138,7 +143,7 @@ enum Platform: string
             self::Threads => 1000,
             self::Pinterest => 500,
             self::Discord => 1024,
-            self::TikTok, self::YouTube, self::Telegram => null,
+            self::TikTok, self::YouTube, self::Telegram, self::Vk => null,
         };
     }
 
@@ -172,6 +177,7 @@ enum Platform: string
      *  - Mastodon: 500 default; instances may be higher (we stay conservative)
      *  - Telegram: 4096 for a text message (media captions are capped at 1024,
      *    handled in the publisher by sending long text as its own message)
+     *  - VK: 15895 characters for a wall post
      */
     public function maxContentLength(): int
     {
@@ -188,6 +194,7 @@ enum Platform: string
             self::Mastodon => 500,
             self::Telegram => 4096,
             self::Discord => 2000,
+            self::Vk => 15895,
         };
     }
 
@@ -233,6 +240,8 @@ enum Platform: string
             self::Telegram => 400,
             // Discord — conversational community posts read best when concise
             self::Discord => 280,
+            // VK — feed favors short posts; long reads live in Articles
+            self::Vk => 400,
         };
     }
 
@@ -256,6 +265,7 @@ enum Platform: string
             self::Mastodon => ['write:statuses'],
             self::Telegram => [],
             self::Discord => [],
+            self::Vk => [],
         };
     }
 
@@ -274,6 +284,7 @@ enum Platform: string
             self::Mastodon => true,
             self::Telegram => true,
             self::Discord => true,
+            self::Vk => true,
         };
     }
 
@@ -410,6 +421,7 @@ enum Platform: string
                 self::Mastodon => 'MASTODON_ENABLED',
                 self::Telegram => 'TELEGRAM_ENABLED',
                 self::Discord => 'DISCORD_ENABLED',
+                self::Vk => 'VK_ENABLED',
             }, true),
         );
     }
