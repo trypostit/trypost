@@ -25,6 +25,8 @@ class InstagramController extends SocialController
         'instagram_business_basic',
         'instagram_business_content_publish',
         'instagram_business_manage_insights',
+        // first comment after publish (FirstCommentPoster)
+        'instagram_business_manage_comments',
     ];
 
     public function connect(Request $request): Response

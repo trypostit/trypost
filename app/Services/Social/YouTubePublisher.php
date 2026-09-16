@@ -14,6 +14,8 @@ use Google\Service\Exception;
 use Google\Service\YouTube;
 use Google\Service\YouTube\Video;
 use Google\Service\YouTube\VideoSnippet;
+use Google\Service\YouTube\GeoPoint;
+use Google\Service\YouTube\VideoRecordingDetails;
 use Google\Service\YouTube\VideoStatus;
 use Google_Http_MediaFileUpload;
 use Illuminate\Support\Facades\Http;
@@ -29,7 +31,7 @@ class YouTubePublisher
     {
         $this->validateContentLength($postPlatform);
 
-        $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
+        $content = $postPlatform->resolvedContent() ? app(ContentSanitizer::class)->sanitize($postPlatform->resolvedContent(), $postPlatform->platform) : null;
 
         $account = $postPlatform->socialAccount;
 
@@ -92,8 +94,8 @@ class YouTubePublisher
             );
         }
 
-        $title = $this->buildTitle($content);
-        $description = $content;
+        $title = $this->resolveTitle($postPlatform, $content);
+        $description = $this->resolveDescription($postPlatform, $content);
 
         $tempFile = tempnam(sys_get_temp_dir(), 'yt_upload_');
         $handle = null;
@@ -130,7 +132,19 @@ class YouTubePublisher
             $snippet = new VideoSnippet;
             $snippet->setTitle($title);
             $snippet->setDescription($description);
-            $snippet->setCategoryId('22');
+            $snippet->setCategoryId((string) (data_get($postPlatform->meta, 'category_id') ?: '22'));
+
+            $tags = array_values(array_filter(array_map(
+                fn ($tag) => trim((string) $tag),
+                (array) data_get($postPlatform->meta, 'tags', []),
+            )));
+            if ($tags !== []) {
+                $snippet->setTags($tags);
+            }
+
+            if (filled($language = data_get($postPlatform->meta, 'default_language'))) {
+                $snippet->setDefaultLanguage((string) $language);
+            }
 
             $status = new VideoStatus;
             $status->setPrivacyStatus('public');
@@ -140,8 +154,26 @@ class YouTubePublisher
             $video->setSnippet($snippet);
             $video->setStatus($status);
 
+            $parts = 'snippet,status';
+
+            $recording = data_get($postPlatform->meta, 'recording_location');
+            if (is_array($recording) && isset($recording['lat'], $recording['lng'])) {
+                $location = new GeoPoint;
+                $location->setLatitude((float) $recording['lat']);
+                $location->setLongitude((float) $recording['lng']);
+
+                $details = new VideoRecordingDetails;
+                $details->setLocation($location);
+                if (filled($recording['description'] ?? null)) {
+                    $details->setLocationDescription((string) $recording['description']);
+                }
+
+                $video->setRecordingDetails($details);
+                $parts .= ',recordingDetails';
+            }
+
             // Initialize resumable upload request
-            $insertRequest = $youtube->videos->insert('snippet,status', $video);
+            $insertRequest = $youtube->videos->insert($parts, $video);
 
             $mediaUpload = new Google_Http_MediaFileUpload(
                 $client,
@@ -219,6 +251,30 @@ class YouTubePublisher
         }
 
         return $title.$shortsTag;
+    }
+
+    /**
+     * The video title: the per-platform `meta.title` when set (YouTube caps
+     * titles at 100 chars — the shared `title` meta rule enforces that),
+     * otherwise derived from the first line of the content as before.
+     */
+    private function resolveTitle(PostPlatform $postPlatform, string $content): string
+    {
+        $title = trim((string) data_get($postPlatform->meta, 'title'));
+
+        return $title !== '' ? $title : $this->buildTitle($content);
+    }
+
+    /**
+     * The video description: the per-platform `meta.description` when the user
+     * provided one (YouTube allows 5000 chars and renders links clickable),
+     * otherwise the post content — the pre-meta behavior.
+     */
+    private function resolveDescription(PostPlatform $postPlatform, string $content): string
+    {
+        $description = trim((string) data_get($postPlatform->meta, 'description'));
+
+        return $description !== '' ? $description : $content;
     }
 
     private function handleGoogleError(Exception $e): never

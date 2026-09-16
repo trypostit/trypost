@@ -101,7 +101,7 @@ const activeContentType = computed((): string | undefined => {
             <PhoneMockup v-if="activePlatform">
                 <PlatformPreview
                     :platform="activePlatform.platform"
-                    :content="content"
+                    :content="(platformMeta?.[activePlatform.id]?.content as string) || content"
                     :media="media"
                     :social-account="activePlatform.social_account"
                     :content-type="activeContentType"

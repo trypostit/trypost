@@ -53,6 +53,20 @@ class PostPlatform extends Model
         ];
     }
 
+    /**
+     * The text this platform row publishes: the per-platform `meta.content`
+     * override when the user provided one (a short copy for X next to a long
+     * Instagram caption, without splitting the post), otherwise the post's
+     * shared content. Publishers and publish-time length validation must read
+     * content through this method, never `post->content` directly.
+     */
+    public function resolvedContent(): ?string
+    {
+        $override = trim((string) data_get($this->meta, 'content'));
+
+        return $override !== '' ? $override : $this->post?->content;
+    }
+
     public function post(): BelongsTo
     {
         return $this->belongsTo(Post::class);

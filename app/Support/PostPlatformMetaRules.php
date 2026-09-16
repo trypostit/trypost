@@ -59,6 +59,37 @@ class PostPlatformMetaRules
             'platforms.*.meta.brand_content_toggle' => ['sometimes', 'boolean'],
             'platforms.*.meta.brand_organic_toggle' => ['sometimes', 'boolean'],
 
+            // YouTube — full video description (YouTube allows 5000 chars with
+            // clickable links; without it the publisher falls back to the post
+            // content, which is capped at the 100-char Shorts title).
+            'platforms.*.meta.description' => ['sometimes', 'nullable', 'string', 'max:5000'],
+
+            // First comment posted right after a successful publish (YouTube and
+            // Instagram). Capped at Instagram's comment limit, the stricter of
+            // the two.
+            'platforms.*.meta.first_comment' => ['sometimes', 'nullable', 'string', 'max:2200'],
+
+            // Any platform — caption override for this platform row only. The
+            // platform's own hard cap is enforced at publish time against the
+            // resolved text (PostPlatform::resolvedContent()).
+            'platforms.*.meta.content' => ['sometimes', 'nullable', 'string', 'max:16000'],
+
+            // Instagram / Facebook — place tag. Meta closed place search to
+            // third parties, so the ID is entered by hand; location_name is
+            // only for display in the editor.
+            'platforms.*.meta.location_id' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'platforms.*.meta.location_name' => ['sometimes', 'nullable', 'string', 'max:200'],
+
+            // YouTube (title reuses the shared 100-char `title` rule below)
+            'platforms.*.meta.tags' => ['sometimes', 'nullable', 'array', 'max:30'],
+            'platforms.*.meta.tags.*' => ['required', 'string', 'max:100'],
+            'platforms.*.meta.category_id' => ['sometimes', 'nullable', 'string', 'max:10'],
+            'platforms.*.meta.default_language' => ['sometimes', 'nullable', 'string', 'max:12'],
+            'platforms.*.meta.recording_location' => ['sometimes', 'nullable', 'array'],
+            'platforms.*.meta.recording_location.lat' => ['required_with:platforms.*.meta.recording_location', 'numeric', 'between:-90,90'],
+            'platforms.*.meta.recording_location.lng' => ['required_with:platforms.*.meta.recording_location', 'numeric', 'between:-180,180'],
+            'platforms.*.meta.recording_location.description' => ['sometimes', 'nullable', 'string', 'max:200'],
+
             // Pinterest
             'platforms.*.meta.board_id' => ['sometimes', 'nullable', 'string'],
             'platforms.*.meta.title' => ['sometimes', 'nullable', 'string', 'max:100'],
@@ -90,6 +121,8 @@ class PostPlatformMetaRules
             'platforms.*.meta.link.url' => __('posts.form.pinterest.link_invalid'),
             'platforms.*.meta.link.max' => __('posts.form.pinterest.link_max'),
             'platforms.*.meta.title.max' => __('posts.form.pinterest.title_max'),
+            'platforms.*.meta.description.max' => __('posts.form.youtube.description_max'),
+            'platforms.*.meta.first_comment.max' => __('posts.form.first_comment.max'),
         ];
     }
 
@@ -103,6 +136,8 @@ class PostPlatformMetaRules
         return [
             'platforms.*.meta.title' => __('posts.form.pinterest.title'),
             'platforms.*.meta.link' => __('posts.form.pinterest.link'),
+            'platforms.*.meta.description' => __('posts.form.youtube.description'),
+            'platforms.*.meta.first_comment' => __('posts.form.first_comment.label'),
         ];
     }
 
