@@ -142,6 +142,21 @@ return [
             'document_title' => 'Documenttitel',
             'document_title_placeholder' => 'Getoond op je PDF-documentpost',
         ],
+        'youtube' => [
+            'settings' => 'YouTube-instellingen',
+            'posting_to' => 'Publiceren op',
+            'description' => 'Beschrijving',
+            'description_placeholder' => 'Volledige videobeschrijving: feiten, links, hashtags…',
+            'description_hint' => 'Tot 5000 tekens, links zijn klikbaar. Indien leeg wordt de berichttekst gebruikt.',
+            'description_max' => 'De beschrijving mag niet langer zijn dan 5000 tekens.',
+        ],
+        'first_comment' => [
+            'label' => 'Eerste reactie',
+            'placeholder' => 'Link en extra\'s voor de eerste reactie…',
+            'hint' => 'Direct na publicatie door je kanaal geplaatst.',
+            'hint_instagram' => 'Direct na het bericht geplaatst — dé plek voor links die Instagram-bijschriften niet klikbaar maken. Verbind het account één keer opnieuw om de reactietoestemming te geven.',
+            'max' => 'De eerste reactie mag niet langer zijn dan 2200 tekens.',
+        ],
         'pinterest' => [
             'settings' => 'Pinterest-instellingen',
             'posting_to' => 'Posten naar',

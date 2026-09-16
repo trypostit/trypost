@@ -173,6 +173,26 @@ test('youtube publisher throws exception with null content', function () {
         ->toThrow(Exception::class, 'YouTube Shorts require a title');
 });
 
+test('youtube publisher resolves description from platform meta with content fallback', function () {
+    $publisher = new YouTubePublisher;
+    $reflection = new ReflectionClass($publisher);
+    $method = $reflection->getMethod('resolveDescription');
+    $method->setAccessible(true);
+
+    // No meta: falls back to the post content (pre-meta behavior)
+    $this->postPlatform->meta = null;
+    expect($method->invoke($publisher, $this->postPlatform, 'Post content'))->toBe('Post content');
+
+    // Meta description wins over the content
+    $this->postPlatform->meta = ['description' => "Full description\nhttps://example.com/map"];
+    expect($method->invoke($publisher, $this->postPlatform, 'Post content'))
+        ->toBe("Full description\nhttps://example.com/map");
+
+    // Whitespace-only meta description falls back to content
+    $this->postPlatform->meta = ['description' => '   '];
+    expect($method->invoke($publisher, $this->postPlatform, 'Post content'))->toBe('Post content');
+});
+
 test('youtube publisher builds correct title with shorts tag', function () {
     $publisher = new YouTubePublisher;
     $reflection = new ReflectionClass($publisher);

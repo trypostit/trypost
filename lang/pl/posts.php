@@ -142,6 +142,21 @@ return [
             'document_title' => 'Tytuł dokumentu',
             'document_title_placeholder' => 'Wyświetlany w Twoim poście z dokumentem PDF',
         ],
+        'youtube' => [
+            'settings' => 'Ustawienia YouTube',
+            'posting_to' => 'Publikowanie na',
+            'description' => 'Opis',
+            'description_placeholder' => 'Pełny opis filmu: informacje, linki, hasztagi…',
+            'description_hint' => 'Do 5000 znaków, linki są klikalne. Gdy pusto, używany jest tekst posta.',
+            'description_max' => 'Opis nie może przekraczać 5000 znaków.',
+        ],
+        'first_comment' => [
+            'label' => 'Pierwszy komentarz',
+            'placeholder' => 'Link i dodatki do pierwszego komentarza…',
+            'hint' => 'Publikowany przez Twój kanał zaraz po opublikowaniu filmu.',
+            'hint_instagram' => 'Publikowany zaraz po poście — klasyczne miejsce na linki, których opisy na Instagramie nie czynią klikalnymi. Połącz konto ponownie, aby nadać uprawnienie do komentarzy.',
+            'max' => 'Pierwszy komentarz nie może przekraczać 2200 znaków.',
+        ],
         'pinterest' => [
             'settings' => 'Ustawienia Pinterest',
             'posting_to' => 'Publikowanie na',
