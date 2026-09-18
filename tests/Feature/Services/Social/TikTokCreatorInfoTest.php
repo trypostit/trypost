@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\TikTok\PrivacyLevel;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -28,7 +29,11 @@ test('it returns full creator payload from api response', function () {
                 'creator_nickname' => 'Paulo',
                 'creator_username' => 'paulocastellano',
                 'creator_avatar_url' => 'https://cdn.tiktok.com/avatar.jpg',
-                'privacy_level_options' => ['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'SELF_ONLY'],
+                'privacy_level_options' => [
+                    PrivacyLevel::PublicToEveryone->value,
+                    PrivacyLevel::MutualFollowFriends->value,
+                    PrivacyLevel::SelfOnly->value,
+                ],
                 'comment_disabled' => false,
                 'duet_disabled' => true,
                 'stitch_disabled' => true,
@@ -42,7 +47,11 @@ test('it returns full creator payload from api response', function () {
     expect($info['creator_nickname'])->toBe('Paulo')
         ->and($info['creator_username'])->toBe('paulocastellano')
         ->and($info['creator_avatar_url'])->toBe('https://cdn.tiktok.com/avatar.jpg')
-        ->and($info['privacy_level_options'])->toBe(['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'SELF_ONLY'])
+        ->and($info['privacy_level_options'])->toBe([
+            PrivacyLevel::PublicToEveryone->value,
+            PrivacyLevel::MutualFollowFriends->value,
+            PrivacyLevel::SelfOnly->value,
+        ])
         ->and($info['comment_disabled'])->toBeFalse()
         ->and($info['duet_disabled'])->toBeTrue()
         ->and($info['stitch_disabled'])->toBeTrue()
@@ -87,7 +96,7 @@ test('it refreshes the token before calling when expired', function () {
         ], 200),
         $this->api.'/post/publish/creator_info/query/' => Http::response([
             'data' => [
-                'privacy_level_options' => ['PUBLIC_TO_EVERYONE'],
+                'privacy_level_options' => [PrivacyLevel::PublicToEveryone->value],
             ],
         ], 200),
     ]);
@@ -96,4 +105,25 @@ test('it refreshes the token before calling when expired', function () {
 
     Http::assertSent(fn ($request) => str_contains($request->url(), '/oauth/token/'));
     expect($this->account->fresh()->access_token)->toBe('new-token');
+});
+
+test('it drops unknown privacy options returned by creator info', function () {
+    Http::fake([
+        $this->api.'/post/publish/creator_info/query/' => Http::response([
+            'data' => [
+                'privacy_level_options' => [
+                    PrivacyLevel::PublicToEveryone->value,
+                    'EVERYONE',
+                    PrivacyLevel::SelfOnly->value,
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $info = $this->service->fetch($this->account);
+
+    expect($info['privacy_level_options'])->toBe([
+        PrivacyLevel::PublicToEveryone->value,
+        PrivacyLevel::SelfOnly->value,
+    ]);
 });

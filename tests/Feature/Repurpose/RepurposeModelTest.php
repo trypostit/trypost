@@ -7,6 +7,7 @@ use App\Enums\Repurpose\ItemStatus;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
@@ -27,7 +28,7 @@ test('a repurpose belongs to a workspace, a source account and many items', func
 
 test('destinations round-trip as an array', function () {
     $destinations = [
-        ['social_account_id' => (string) Str::uuid(), 'content_type' => 'tiktok_video', 'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE']],
+        ['social_account_id' => (string) Str::uuid(), 'content_type' => 'tiktok_video', 'meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value]],
     ];
 
     $repurpose = Repurpose::factory()->create(['destinations' => $destinations]);

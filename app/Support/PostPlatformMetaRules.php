@@ -6,6 +6,7 @@ namespace App\Support;
 
 use App\Enums\PostPlatform\AspectRatio;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Models\Post;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -19,18 +20,6 @@ use Illuminate\Validation\Validator;
  */
 class PostPlatformMetaRules
 {
-    /**
-     * TikTok content visibility options.
-     *
-     * @var array<int, string>
-     */
-    public const TIKTOK_PRIVACY_LEVELS = [
-        'PUBLIC_TO_EVERYONE',
-        'MUTUAL_FOLLOW_FRIENDS',
-        'FOLLOWER_OF_CREATOR',
-        'SELF_ONLY',
-    ];
-
     /**
      * Validation rules for `platforms.*.meta` and all its per-platform sub-keys.
      * Spread into a FormRequest/MCP tool rule set as the complete meta contract.
@@ -49,7 +38,7 @@ class PostPlatformMetaRules
             'platforms.*.meta.document_title' => ['sometimes', 'nullable', 'string', 'max:300'],
 
             // TikTok
-            'platforms.*.meta.privacy_level' => ['sometimes', 'nullable', 'string', Rule::in(self::TIKTOK_PRIVACY_LEVELS)],
+            'platforms.*.meta.privacy_level' => ['sometimes', 'nullable', 'string', Rule::enum(PrivacyLevel::class)],
             'platforms.*.meta.auto_add_music' => ['sometimes', 'boolean'],
             'platforms.*.meta.allow_comments' => ['sometimes', 'boolean'],
             'platforms.*.meta.allow_duet' => ['sometimes', 'boolean'],
@@ -163,10 +152,28 @@ class PostPlatformMetaRules
     public static function requiredMetaViolation(?Platform $platform, mixed $meta): ?array
     {
         return match (true) {
-            $platform === Platform::TikTok && blank(data_get($meta, 'privacy_level')) => ['privacy_level', trans('posts.form.tiktok.privacy_required')],
+            $platform === Platform::TikTok => self::tiktokPrivacyViolation($meta),
             $platform === Platform::Pinterest && blank(data_get($meta, 'board_id')) => ['board_id', trans('posts.form.pinterest.board_required')],
             $platform === Platform::Discord && blank(data_get($meta, 'channel_id')) => ['channel_id', trans('posts.form.discord.channel_required')],
             default => null,
         };
+    }
+
+    /**
+     * @return array{0: string, 1: string}|null
+     */
+    private static function tiktokPrivacyViolation(mixed $meta): ?array
+    {
+        $privacyLevel = PrivacyLevel::tryFrom((string) data_get($meta, 'privacy_level'));
+
+        if ($privacyLevel === null) {
+            return ['privacy_level', trans('posts.form.tiktok.privacy_required')];
+        }
+
+        if (! $privacyLevel->allowsBrandedContent() && data_get($meta, 'brand_content_toggle')) {
+            return ['privacy_level', trans('posts.form.tiktok.privacy.private_disabled_branded')];
+        }
+
+        return null;
     }
 }

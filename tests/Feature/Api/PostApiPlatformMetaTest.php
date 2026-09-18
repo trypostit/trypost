@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -297,15 +298,31 @@ it('persists per-platform meta across networks on store', function () {
             'platforms' => [
                 ['social_account_id' => $instagram->id, 'content_type' => ContentType::InstagramFeed->value, 'meta' => ['aspect_ratio' => '4:5']],
                 ['social_account_id' => $pinterest->id, 'content_type' => ContentType::PinterestPin->value, 'meta' => ['board_id' => 'board-99']],
-                ['social_account_id' => $tiktok->id, 'content_type' => ContentType::TikTokVideo->value, 'meta' => ['privacy_level' => 'SELF_ONLY', 'allow_comments' => true]],
+                ['social_account_id' => $tiktok->id, 'content_type' => ContentType::TikTokVideo->value, 'meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value, 'allow_comments' => true]],
             ],
         ])
         ->assertCreated();
 
     expect(PostPlatform::where('social_account_id', $instagram->id)->sole()->meta['aspect_ratio'])->toBe('4:5')
         ->and(PostPlatform::where('social_account_id', $pinterest->id)->sole()->meta['board_id'])->toBe('board-99')
-        ->and(PostPlatform::where('social_account_id', $tiktok->id)->sole()->meta['privacy_level'])->toBe('SELF_ONLY')
+        ->and(PostPlatform::where('social_account_id', $tiktok->id)->sole()->meta['privacy_level'])->toBe(PrivacyLevel::SelfOnly->value)
         ->and(PostPlatform::where('social_account_id', $tiktok->id)->sole()->meta['allow_comments'])->toBeTrue();
+});
+
+it('rejects an unknown TikTok privacy level on store', function () {
+    $tiktok = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::TikTok]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Unknown privacy',
+            'platforms' => [[
+                'social_account_id' => $tiktok->id,
+                'content_type' => ContentType::TikTokVideo->value,
+                'meta' => ['privacy_level' => 'EVERYONE'],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.privacy_level']);
 });
 
 it('allows saving a Discord draft without a channel', function () {
@@ -350,6 +367,28 @@ it('rejects publishing without TikTok privacy and Pinterest board', function () 
             'platforms.0.meta.board_id',
             'platforms.1.meta.privacy_level',
         ]);
+});
+
+it('rejects publishing TikTok as self only branded content', function () {
+    $tiktok = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::TikTok]);
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $tiktokPlatform = PostPlatform::factory()->tiktok()->create([
+        'post_id' => $post->id, 'social_account_id' => $tiktok->id, 'enabled' => true, 'meta' => [],
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Publishing->value,
+            'platforms' => [[
+                'id' => $tiktokPlatform->id,
+                'meta' => [
+                    'privacy_level' => PrivacyLevel::SelfOnly->value,
+                    'brand_content_toggle' => true,
+                ],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.privacy_level']);
 });
 
 it('rejects publishing a Discord post without a channel', function () {

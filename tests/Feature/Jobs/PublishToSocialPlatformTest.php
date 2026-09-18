@@ -8,6 +8,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\UserWorkspace\Role;
 use App\Events\PostPlatformStatusUpdated;
 use App\Exceptions\PlatformUnavailableException;
@@ -1167,7 +1168,7 @@ test('tiktok photo publish resumes after a status-fetch token expiry without a s
         'social_account_id' => $account->id,
         'status' => PlatformStatus::Pending,
         'enabled' => true,
-        'meta' => ['privacy_level' => 'SELF_ONLY'],
+        'meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value],
     ]);
 
     $mockOptimizer = Mockery::mock(MediaOptimizer::class);

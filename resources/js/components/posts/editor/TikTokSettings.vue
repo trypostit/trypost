@@ -18,6 +18,12 @@ import {
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { ContentType } from '@/types/content-type';
+import {
+    isTikTokPrivacyLevel,
+    TikTokPrivacyLevel,
+    tiktokPrivacyLabelKey,
+    type TikTokPrivacyLevelValue,
+} from '@/types/tiktok-privacy';
 
 interface SocialAccount {
     id: string;
@@ -32,7 +38,7 @@ interface CreatorInfo {
     creator_nickname: string | null;
     creator_username: string | null;
     creator_avatar_url: string | null;
-    privacy_level_options: string[];
+    privacy_level_options: TikTokPrivacyLevelValue[];
     comment_disabled: boolean;
     duet_disabled: boolean;
     stitch_disabled: boolean;
@@ -77,7 +83,7 @@ const open = ref(false);
 
 const errors = usePageErrors();
 const privacyError = computed<string | undefined>(() => {
-    if (props.meta?.privacy_level) {
+    if (isTikTokPrivacyLevel(props.meta?.privacy_level)) {
         return undefined;
     }
 
@@ -142,17 +148,19 @@ const brandContentToggle = computed({
 
 // Prefer the creator_info API response; fall back to the static list from the Platform enum.
 const allPrivacyOptions = computed(() => {
-    const fromApi = props.creatorInfo?.privacy_level_options ?? [];
-    return fromApi.length > 0 ? fromApi : props.publishConfig?.privacyLevelOptions ?? [];
+    const fromApi = (props.creatorInfo?.privacy_level_options ?? []).filter(isTikTokPrivacyLevel);
+    const fallback = (props.publishConfig?.privacyLevelOptions ?? []).filter(isTikTokPrivacyLevel);
+
+    return fromApi.length > 0 ? fromApi : fallback;
 });
 
-// Render every option creator_info returns. SELF_ONLY is shown but disabled when
+// Render every option creator_info returns. SelfOnly is shown but disabled when
 // Branded Content is checked (TikTok UX Guideline Point 3b — must show interaction,
 // not hide it).
 const privacyOptions = computed(() => allPrivacyOptions.value);
 
 const isSelfOnlyDisabled = (option: string): boolean =>
-    option === 'SELF_ONLY' && brandContentToggle.value;
+    option === TikTokPrivacyLevel.SelfOnly && brandContentToggle.value;
 
 const commentDisabled = computed(() => Boolean(props.creatorInfo?.comment_disabled));
 const duetDisabled = computed(() => Boolean(props.creatorInfo?.duet_disabled));
@@ -171,13 +179,6 @@ const exceedsMaxDuration = computed(() => {
     return props.videoDurationSec > maxDurationSec.value;
 });
 
-const privacyLabelKey: Record<string, string> = {
-    PUBLIC_TO_EVERYONE: 'posts.form.tiktok.privacy.public',
-    MUTUAL_FOLLOW_FRIENDS: 'posts.form.tiktok.privacy.friends',
-    FOLLOWER_OF_CREATOR: 'posts.form.tiktok.privacy.followers',
-    SELF_ONLY: 'posts.form.tiktok.privacy.private',
-};
-
 const hasAnyBrandToggle = computed(() => brandOrganicToggle.value || brandContentToggle.value);
 
 // Label required by TikTok: "Paid partnership" when branded content (with or without organic),
@@ -190,7 +191,7 @@ const promotionalTitleKey = computed(() =>
 // Surface a toast so the user understands why the field reset (TikTok UX Guideline Point 3b
 // requires informing the user when an auto-switch happens).
 watch(brandContentToggle, (value) => {
-    if (value && privacyLevel.value === 'SELF_ONLY') {
+    if (value && privacyLevel.value === TikTokPrivacyLevel.SelfOnly) {
         privacyLevel.value = '';
         toast.warning(trans('posts.form.tiktok.branded_cleared_private'));
     }
@@ -281,7 +282,7 @@ watch(
                             :disabled="isSelfOnlyDisabled(option)"
                             :title="isSelfOnlyDisabled(option) ? $t('posts.form.tiktok.privacy.private_disabled_branded') : undefined"
                         >
-                            {{ $t(privacyLabelKey[option] ?? option) }}
+                            {{ $t(isTikTokPrivacyLevel(option) ? tiktokPrivacyLabelKey[option] : option) }}
                         </SelectItem>
                     </SelectContent>
                 </Select>

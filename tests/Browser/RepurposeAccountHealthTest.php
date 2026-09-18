@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Repurpose\PauseReason;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
@@ -44,7 +45,7 @@ test('a repurpose whose source was deleted explains itself instead of rendering 
         'destinations' => [[
             'social_account_id' => $destination->id,
             'content_type' => 'tiktok_video',
-            'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE'],
+            'meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value],
         ]],
     ]);
 
@@ -81,7 +82,7 @@ test('a switched-off destination is shown as skipped rather than quietly dropped
         'destinations' => [[
             'social_account_id' => $paused->id,
             'content_type' => 'tiktok_video',
-            'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE'],
+            'meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value],
         ]],
     ]);
 

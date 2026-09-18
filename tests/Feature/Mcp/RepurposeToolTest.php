@@ -11,6 +11,7 @@ use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\UserWorkspace\Role;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Repurpose\ActivateRepurposeTool;
@@ -49,7 +50,7 @@ function tiktokDestinationForMcp(SocialAccount $account): array
     return [
         'social_account_id' => $account->id,
         'content_type' => ContentType::TikTokVideo->value,
-        'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE'],
+        'meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value],
     ];
 }
 
@@ -80,7 +81,7 @@ test('destination meta survives a read back through the get tool', function () {
     TryPostServer::actingAs($this->user)
         ->tool(GetRepurposeTool::class, ['repurpose_id' => $repurpose->id])
         ->assertOk()
-        ->assertSee('PUBLIC_TO_EVERYONE');
+        ->assertSee(PrivacyLevel::PublicToEveryone->value);
 });
 
 test('the list tool returns the workspace repurposes and nobody else\'s', function () {

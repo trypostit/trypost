@@ -8,6 +8,7 @@ use App\Enums\Repurpose\ItemStatus;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
@@ -253,7 +254,7 @@ test('an autosave the backend rejects says so instead of failing quietly', funct
         'destinations' => [[
             'social_account_id' => $tiktok->id,
             'content_type' => ContentType::TikTokVideo->value,
-            'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE'],
+            'meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value],
         ]],
     ]);
 

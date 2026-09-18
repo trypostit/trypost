@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Support\PostPlatformMetaRules;
 
 test('custom meta messages only cover pinterest title and link', function () {
@@ -30,4 +32,26 @@ test('shared meta rules still include non-pinterest platform fields', function (
         'platforms.*.meta.title',
         'platforms.*.meta.link',
     ]);
+});
+
+test('tiktok required meta treats missing and unknown privacy as unpublished', function (?array $meta) {
+    expect(PostPlatformMetaRules::requiredMetaViolation(Platform::TikTok, $meta))
+        ->toBe(['privacy_level', trans('posts.form.tiktok.privacy_required')]);
+})->with([
+    'missing' => [[]],
+    'blank' => [['privacy_level' => '']],
+    'unknown' => [['privacy_level' => 'EVERYONE']],
+]);
+
+test('tiktok required meta accepts every privacy level enum value', function (PrivacyLevel $level) {
+    expect(PostPlatformMetaRules::requiredMetaViolation(Platform::TikTok, [
+        'privacy_level' => $level->value,
+    ]))->toBeNull();
+})->with(PrivacyLevel::cases());
+
+test('tiktok required meta rejects self only branded content', function () {
+    expect(PostPlatformMetaRules::requiredMetaViolation(Platform::TikTok, [
+        'privacy_level' => PrivacyLevel::SelfOnly->value,
+        'brand_content_toggle' => true,
+    ]))->toBe(['privacy_level', trans('posts.form.tiktok.privacy.private_disabled_branded')]);
 });

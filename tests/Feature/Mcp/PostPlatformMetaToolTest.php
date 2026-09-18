@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\UserWorkspace\Role;
 use App\Jobs\PublishPost;
 use App\Mcp\Servers\TryPostServer;
@@ -176,6 +177,67 @@ test('publish guard enforces required meta for TikTok and Pinterest', function (
     'tiktok' => ['tiktok', 'privacy_level', 'posts.form.tiktok.privacy_required'],
     'pinterest' => ['pinterest', 'board_id', 'posts.form.pinterest.board_required'],
 ]);
+
+test('create post rejects an unknown TikTok privacy level', function () {
+    $tiktok = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::TikTok]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Unknown privacy',
+            'platforms' => [[
+                'social_account_id' => $tiktok->id,
+                'content_type' => ContentType::TikTokVideo->value,
+                'meta' => ['privacy_level' => 'EVERYONE'],
+            ]],
+        ]);
+
+    $response->assertHasErrors();
+});
+
+test('publish post rejects stored TikTok self only branded content', function () {
+    $tiktok = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::TikTok]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    PostPlatform::factory()->tiktok()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $tiktok->id,
+        'enabled' => true,
+        'meta' => [
+            'privacy_level' => PrivacyLevel::SelfOnly->value,
+            'brand_content_toggle' => true,
+        ],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id]);
+
+    $response->assertHasErrors([__('posts.form.tiktok.privacy.private_disabled_branded')]);
+});
+
+test('publish post rejects a stored unknown TikTok privacy level', function () {
+    $tiktok = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::TikTok]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    PostPlatform::factory()->tiktok()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $tiktok->id,
+        'enabled' => true,
+        'meta' => ['privacy_level' => 'EVERYONE'],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id]);
+
+    $response->assertHasErrors([__('posts.form.tiktok.privacy_required')]);
+});
 
 test('attach media from upload accepts a PDF for a LinkedIn post', function () {
     $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);

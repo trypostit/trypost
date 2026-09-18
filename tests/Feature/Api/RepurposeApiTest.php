@@ -11,6 +11,7 @@ use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\Repurpose;
@@ -35,7 +36,7 @@ function tiktokDestinationPayload(SocialAccount $account): array
     return [
         'social_account_id' => $account->id,
         'content_type' => ContentType::TikTokVideo->value,
-        'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE'],
+        'meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value],
     ];
 }
 
@@ -87,7 +88,7 @@ test('destination meta survives a round trip through the api', function () {
     $this->withHeaders(apiHeaders($this->token))
         ->getJson(route('api.repurposes.show', $id))
         ->assertOk()
-        ->assertJsonPath('destinations.0.meta.privacy_level', 'PUBLIC_TO_EVERYONE');
+        ->assertJsonPath('destinations.0.meta.privacy_level', PrivacyLevel::PublicToEveryone->value);
 });
 
 test('a draft accepts a destination that is still missing its required meta', function () {

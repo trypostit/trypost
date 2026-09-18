@@ -11,6 +11,7 @@ use App\Enums\Repurpose\PauseReason;
 use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\Status as RepurposeStatus;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Events\PostStatusChanged;
 use App\Exceptions\Repurpose\SourceDownloadException;
 use App\Jobs\PublishPost;
@@ -46,7 +47,7 @@ function repurposeWithTwoDestinations(): RepurposeItem
         'workspace_id' => $workspace->id,
         'source_social_account_id' => $source->id,
         'destinations' => [
-            ['social_account_id' => $tiktok->id, 'content_type' => ContentType::TikTokVideo->value, 'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE']],
+            ['social_account_id' => $tiktok->id, 'content_type' => ContentType::TikTokVideo->value, 'meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value]],
             ['social_account_id' => $youtube->id, 'content_type' => ContentType::YouTubeShort->value, 'meta' => []],
         ],
     ]);
@@ -127,7 +128,7 @@ test('destination meta is carried onto the post platform', function () {
         ->where('platform', Platform::TikTok)
         ->sole();
 
-    expect($tiktokPlatform->meta)->toEqual(['privacy_level' => 'PUBLIC_TO_EVERYONE']);
+    expect($tiktokPlatform->meta)->toEqual(['privacy_level' => PrivacyLevel::PublicToEveryone->value]);
 });
 
 test('a caption over a destination limit is shortened for that post only', function () {
@@ -403,7 +404,7 @@ test('an item with no usable destination records why', function () {
         'workspace_id' => $workspace->id,
         'source_social_account_id' => $source->id,
         'destinations' => [
-            ['social_account_id' => $off->id, 'content_type' => ContentType::TikTokVideo->value, 'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE']],
+            ['social_account_id' => $off->id, 'content_type' => ContentType::TikTokVideo->value, 'meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value]],
         ],
     ]);
 

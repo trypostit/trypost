@@ -13,6 +13,7 @@ use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Jobs\Repurpose\ProcessRepurposeItem;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
@@ -47,7 +48,7 @@ function healthDestination(Workspace $workspace): array
     return [
         'social_account_id' => $account->id,
         'content_type' => ContentType::TikTokVideo->value,
-        'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE'],
+        'meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value],
     ];
 }
 
@@ -806,7 +807,7 @@ test('an active repurpose cannot drop the meta its destination needs to publish'
         'destinations' => [[
             'social_account_id' => $tiktok->id,
             'content_type' => ContentType::TikTokVideo->value,
-            'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE'],
+            'meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value],
         ]],
     ]);
 
@@ -820,5 +821,5 @@ test('an active repurpose cannot drop the meta its destination needs to publish'
         ])
         ->assertSessionHasErrors('destinations.0.meta.privacy_level');
 
-    expect(data_get($repurpose->fresh()->destinations, '0.meta.privacy_level'))->toBe('PUBLIC_TO_EVERYONE');
+    expect(data_get($repurpose->fresh()->destinations, '0.meta.privacy_level'))->toBe(PrivacyLevel::PublicToEveryone->value);
 });

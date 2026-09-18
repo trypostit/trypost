@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 
 test('platform has correct labels', function () {
     expect(Platform::LinkedIn->label())->toBe('LinkedIn');
@@ -362,4 +363,8 @@ test('instagram connectable option lists only enabled connect methods', function
         Platform::Instagram->value,
         Platform::InstagramFacebook->value,
     ]);
+});
+
+test('tiktok publish config privacy options come from the privacy level enum', function () {
+    expect(Platform::TikTok->publishConfig()['privacyLevelOptions'])->toBe(PrivacyLevel::values());
 });

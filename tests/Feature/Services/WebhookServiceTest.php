@@ -6,6 +6,7 @@ use App\Enums\Media\Source;
 use App\Enums\Post\CreatedVia;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\Webhook\EventType as WebhookEvent;
 use App\Jobs\DispatchWebhook;
 use App\Models\Post;
@@ -419,7 +420,7 @@ test('postPayload includes failed platform errors', function () {
     $platform = PostPlatform::factory()->failed()->recycle($post, $account)->create([
         'platform' => Platform::TikTok,
         'content_type' => ContentType::TikTokVideo,
-        'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE'],
+        'meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value],
         'error_context' => ['retry_count' => 2],
     ]);
 
@@ -429,7 +430,7 @@ test('postPayload includes failed platform errors', function () {
         ->and(data_get($payload, 'platforms.0.status'))->toBe('failed')
         ->and(data_get($payload, 'platforms.0.error_message'))->toBe('Failed to publish')
         ->and(data_get($payload, 'platforms.0.error_context'))->toEqual(['retry_count' => 2])
-        ->and(data_get($payload, 'platforms.0.meta.privacy_level'))->toBe('PUBLIC_TO_EVERYONE');
+        ->and(data_get($payload, 'platforms.0.meta.privacy_level'))->toBe(PrivacyLevel::PublicToEveryone->value);
 });
 
 test('postPayload accepts integer media ids from generated attachments', function () {

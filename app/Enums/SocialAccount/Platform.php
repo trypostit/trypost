@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Enums\SocialAccount;
 
 use App\Enums\Media\Type as MediaType;
+use App\Enums\TikTok\PrivacyLevel;
 
 enum Platform: string
 {
@@ -480,12 +481,7 @@ enum Platform: string
     {
         return match ($this) {
             self::TikTok => [
-                'privacyLevelOptions' => [
-                    'PUBLIC_TO_EVERYONE',
-                    'MUTUAL_FOLLOW_FRIENDS',
-                    'FOLLOWER_OF_CREATOR',
-                    'SELF_ONLY',
-                ],
+                'privacyLevelOptions' => PrivacyLevel::values(),
                 'musicUsageConfirmationUrl' => 'https://www.tiktok.com/legal/page/global/music-usage-confirmation/en',
                 'brandedContentPolicyUrl' => 'https://www.tiktok.com/legal/page/global/bc-policy/en',
             ],

@@ -9,6 +9,7 @@ import { mediaLimitsDocsUrl } from '@/lib/docs';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';
+import { isTikTokPrivacyLevel, TikTokPrivacyLevel } from '@/types/tiktok-privacy';
 
 export interface CompliancePostPlatform {
     id: string;
@@ -55,15 +56,19 @@ const PLATFORM_META_RULES: Record<string, MetaRule> = {
         const disclosureIncomplete = Boolean(meta.disclose)
             && !meta.brand_organic_toggle
             && !meta.brand_content_toggle;
-        const privacyLevelMissing = !meta.privacy_level;
+        const privacyLevelMissing = !isTikTokPrivacyLevel(meta.privacy_level);
+        const brandedPrivate = meta.privacy_level === TikTokPrivacyLevel.SelfOnly
+            && Boolean(meta.brand_content_toggle);
         let tooltipKey: string | null = null;
         if (disclosureIncomplete) {
             tooltipKey = 'posts.form.tiktok.compliance_incomplete';
+        } else if (brandedPrivate) {
+            tooltipKey = 'posts.form.tiktok.privacy.private_disabled_branded';
         } else if (privacyLevelMissing) {
             tooltipKey = 'posts.form.tiktok.privacy_required';
         }
         return {
-            valid: !disclosureIncomplete && !privacyLevelMissing,
+            valid: !disclosureIncomplete && !privacyLevelMissing && !brandedPrivate,
             tooltipKey,
         };
     },

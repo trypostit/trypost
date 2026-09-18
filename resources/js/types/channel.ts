@@ -1,4 +1,5 @@
 import type { PinterestBoard } from '@/types';
+import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
 
 export interface ChannelAccount {
     id: string;
@@ -15,7 +16,7 @@ export interface ChannelTikTokCreatorInfo {
     creator_nickname: string | null;
     creator_username: string | null;
     creator_avatar_url: string | null;
-    privacy_level_options: string[];
+    privacy_level_options: TikTokPrivacyLevelValue[];
     comment_disabled: boolean;
     duet_disabled: boolean;
     stitch_disabled: boolean;

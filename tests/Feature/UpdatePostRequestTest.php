@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -72,7 +73,7 @@ test('publishing a tiktok post with privacy_level passes privacy_level validatio
                 [
                     'id' => $this->postPlatform->id,
                     'content_type' => ContentType::TikTokVideo->value,
-                    'meta' => ['privacy_level' => 'SELF_ONLY'],
+                    'meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value],
                 ],
             ],
         ]);
@@ -479,6 +480,43 @@ test('saving a pinterest post as draft without board_id skips the board rule', f
         ]);
 
     $response->assertSessionDoesntHaveErrors(['platforms.0.meta.board_id']);
+});
+
+test('publishing a tiktok post with an unknown privacy_level is rejected', function () {
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => $this->mediaPayload,
+            'platforms' => [
+                [
+                    'id' => $this->postPlatform->id,
+                    'content_type' => ContentType::TikTokVideo->value,
+                    'meta' => ['privacy_level' => 'EVERYONE'],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.privacy_level');
+});
+
+test('publishing a tiktok post as self only branded content is rejected', function () {
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => $this->mediaPayload,
+            'platforms' => [
+                [
+                    'id' => $this->postPlatform->id,
+                    'content_type' => ContentType::TikTokVideo->value,
+                    'meta' => [
+                        'privacy_level' => PrivacyLevel::SelfOnly->value,
+                        'brand_content_toggle' => true,
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors(['platforms.0.meta.privacy_level' => trans('posts.form.tiktok.privacy.private_disabled_branded')]);
 });
 
 test('saving a tiktok post as draft without privacy_level skips the privacy_level rule', function () {

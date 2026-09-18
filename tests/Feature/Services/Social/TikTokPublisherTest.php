@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\TikTokPublishException;
 use App\Exceptions\TokenExpiredException;
@@ -99,7 +100,7 @@ test('tiktok publisher persists the public video url when status omits the post 
             'original_filename' => 'test-video.mp4',
         ]],
     ]);
-    $this->postPlatform->update(['meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE']]);
+    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value]]);
 
     Http::fake([
         $this->api.'/post/publish/video/init/' => Http::response([
@@ -190,7 +191,7 @@ test('tiktok publisher checkpoints a video publish_id when status fetch reports 
 });
 
 test('tiktok publisher checkpoints a photo publish_id before polling status', function () {
-    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [[
             'id' => 'test-media-image',
@@ -218,7 +219,7 @@ test('tiktok publisher checkpoints a photo publish_id before polling status', fu
 test('tiktok publisher checkpoints photo derivatives with the publish_id before polling', function () {
     Storage::fake();
 
-    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [[
             'id' => 'oversized',
@@ -264,7 +265,7 @@ test('tiktok publisher checkpoints photo derivatives with the publish_id before 
 test('tiktok publisher keeps photo derivatives when status fetch reports an expired token', function () {
     Storage::fake();
 
-    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [[
             'id' => 'oversized',
@@ -333,7 +334,7 @@ test('tiktok publisher keeps photo derivatives when status fetch reports an expi
 test('tiktok publisher prunes photo derivatives when TikTok confirms the publish failed', function () {
     Storage::fake();
 
-    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [[
             'id' => 'oversized',
@@ -721,7 +722,7 @@ test('tiktok publisher returns null url when username missing', function () {
 
 test('tiktok publisher publishes with user-selected privacy level even when creator info query fails', function () {
     // User has explicitly selected SELF_ONLY in meta. creator_info failure must not block publishing.
-    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
 
     $this->post->update([
         'media' => [
@@ -763,7 +764,7 @@ test('tiktok publisher publishes with user-selected privacy level even when crea
         }
         $body = json_decode($request->body(), true);
 
-        return data_get($body, 'post_info.privacy_level') === 'SELF_ONLY';
+        return data_get($body, 'post_info.privacy_level') === PrivacyLevel::SelfOnly->value;
     });
 });
 
@@ -799,7 +800,7 @@ test('tiktok publisher throws exception when publish fails', function () {
 test('tiktok publisher sends meta settings in video publish request', function () {
     $this->postPlatform->update([
         'meta' => [
-            'privacy_level' => 'PUBLIC_TO_EVERYONE',
+            'privacy_level' => PrivacyLevel::PublicToEveryone->value,
             'allow_comments' => true,
             'allow_duet' => false,
             'allow_stitch' => true,
@@ -824,7 +825,7 @@ test('tiktok publisher sends meta settings in video publish request', function (
     Http::fake([
         $this->api.'/post/publish/creator_info/query/' => Http::response([
             'data' => [
-                'privacy_level_options' => ['PUBLIC_TO_EVERYONE', 'SELF_ONLY'],
+                'privacy_level_options' => [PrivacyLevel::PublicToEveryone->value, PrivacyLevel::SelfOnly->value],
             ],
         ], 200),
         $this->api.'/post/publish/video/init/' => Http::response([
@@ -844,7 +845,7 @@ test('tiktok publisher sends meta settings in video publish request', function (
         $body = json_decode($request->body(), true);
         $postInfo = data_get($body, 'post_info');
 
-        return $postInfo['privacy_level'] === 'PUBLIC_TO_EVERYONE'
+        return $postInfo['privacy_level'] === PrivacyLevel::PublicToEveryone->value
             && $postInfo['disable_comment'] === false
             && $postInfo['disable_duet'] === true
             && $postInfo['disable_stitch'] === false
@@ -857,7 +858,7 @@ test('tiktok publisher sends meta settings in video publish request', function (
 test('tiktok publisher sends auto_add_music for photo posts', function () {
     $this->postPlatform->update([
         'meta' => [
-            'privacy_level' => 'SELF_ONLY',
+            'privacy_level' => PrivacyLevel::SelfOnly->value,
             'allow_comments' => true,
             'auto_add_music' => true,
         ],
@@ -878,7 +879,7 @@ test('tiktok publisher sends auto_add_music for photo posts', function () {
 
     Http::fake([
         $this->api.'/post/publish/creator_info/query/' => Http::response([
-            'data' => ['privacy_level_options' => ['SELF_ONLY']],
+            'data' => ['privacy_level_options' => [PrivacyLevel::SelfOnly->value]],
         ], 200),
         $this->api.'/post/publish/content/init/' => Http::response([
             'data' => ['publish_id' => 'pub_music_123'],
@@ -909,7 +910,7 @@ test('tiktok publisher sends auto_add_music for photo posts', function () {
 test('tiktok publisher does not send auto_add_music for video posts', function () {
     $this->postPlatform->update([
         'meta' => [
-            'privacy_level' => 'SELF_ONLY',
+            'privacy_level' => PrivacyLevel::SelfOnly->value,
             'auto_add_music' => true,
         ],
     ]);
@@ -928,7 +929,7 @@ test('tiktok publisher does not send auto_add_music for video posts', function (
 
     Http::fake([
         $this->api.'/post/publish/creator_info/query/' => Http::response([
-            'data' => ['privacy_level_options' => ['SELF_ONLY']],
+            'data' => ['privacy_level_options' => [PrivacyLevel::SelfOnly->value]],
         ], 200),
         $this->api.'/post/publish/video/init/' => Http::response([
             'data' => ['publish_id' => 'pub_vid_123'],
@@ -953,7 +954,7 @@ test('tiktok publisher does not send auto_add_music for video posts', function (
 
 test('tiktok publisher uses default settings when only privacy_level is set', function () {
     // Only privacy_level is set (required); all other meta keys absent — exercise default toggles.
-    $this->postPlatform->update(['meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE']]);
+    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value]]);
 
     $this->post->update([
         'media' => [
@@ -970,7 +971,7 @@ test('tiktok publisher uses default settings when only privacy_level is set', fu
     Http::fake([
         $this->api.'/post/publish/creator_info/query/' => Http::response([
             'data' => [
-                'privacy_level_options' => ['PUBLIC_TO_EVERYONE', 'FOLLOWER_OF_CREATOR', 'SELF_ONLY'],
+                'privacy_level_options' => [PrivacyLevel::PublicToEveryone->value, PrivacyLevel::FollowerOfCreator->value, PrivacyLevel::SelfOnly->value],
             ],
         ], 200),
         $this->api.'/post/publish/video/init/' => Http::response([
@@ -992,7 +993,7 @@ test('tiktok publisher uses default settings when only privacy_level is set', fu
 
         // privacy_level passes through; all interaction toggles default to OFF to match
         // the UI checkbox state (TikTok UX guideline: none should be checked by default).
-        return $postInfo['privacy_level'] === 'PUBLIC_TO_EVERYONE'
+        return $postInfo['privacy_level'] === PrivacyLevel::PublicToEveryone->value
             && $postInfo['disable_comment'] === true
             && $postInfo['disable_duet'] === true
             && $postInfo['disable_stitch'] === true
@@ -1014,12 +1015,12 @@ test('tiktok publisher sends video caption in title field, never description', f
         ],
         'content' => 'My video caption',
     ]);
-    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
 
     Http::fake([
         $this->api.'/post/publish/creator_info/query/' => Http::response([
             'data' => [
-                'privacy_level_options' => ['SELF_ONLY'],
+                'privacy_level_options' => [PrivacyLevel::SelfOnly->value],
             ],
         ], 200),
         $this->api.'/post/publish/video/init/' => Http::response([
@@ -1064,7 +1065,7 @@ test('tiktok publisher throws when meta.privacy_level is missing and user did no
             'data' => [
                 'creator_nickname' => 'test',
                 'creator_username' => 'test',
-                'privacy_level_options' => ['PUBLIC_TO_EVERYONE', 'SELF_ONLY'],
+                'privacy_level_options' => [PrivacyLevel::PublicToEveryone->value, PrivacyLevel::SelfOnly->value],
                 'comment_disabled' => false,
                 'duet_disabled' => false,
                 'stitch_disabled' => false,
@@ -1077,11 +1078,56 @@ test('tiktok publisher throws when meta.privacy_level is missing and user did no
         ->toThrow(TikTokPublishException::class);
 });
 
+test('tiktok publisher throws when meta.privacy_level is not a known option', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/test-video.mp4',
+            'url' => 'https://example.com/media/2026-01/test-video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'test-video.mp4',
+        ]],
+    ]);
+    $this->postPlatform->update(['meta' => ['privacy_level' => 'EVERYONE']]);
+
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(TikTokPublishException::class);
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/post/publish/video/init/'));
+});
+
+test('tiktok publisher throws when self only is combined with branded content', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/test-video.mp4',
+            'url' => 'https://example.com/media/2026-01/test-video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'test-video.mp4',
+        ]],
+    ]);
+    $this->postPlatform->update([
+        'meta' => [
+            'privacy_level' => PrivacyLevel::SelfOnly->value,
+            'brand_content_toggle' => true,
+        ],
+    ]);
+
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(TikTokPublishException::class);
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/post/publish/video/init/'));
+});
+
 test('tiktok publisher resizes an oversized photo and pulls a hosted compliant copy', function () {
     Storage::fake();
 
     // TikTok rejects images wider than 1080px; this one is 1254px wide.
-    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [
             [
@@ -1135,7 +1181,7 @@ test('tiktok publisher resizes an oversized photo and pulls a hosted compliant c
 test('tiktok publisher passes a compliant photo through without hosting a copy', function () {
     Storage::fake();
 
-    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [
             [
@@ -1178,7 +1224,7 @@ test('tiktok publisher resizes a photo when its dimensions are unknown', functio
     Storage::fake();
 
     // No width/height metadata: fall back to the safe path and host a compliant copy.
-    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [
             [
@@ -1230,7 +1276,7 @@ test('tiktok publisher resizes a photo when its dimensions are unknown', functio
 test('tiktok publisher fails clearly when an oversized photo cannot be downloaded for resizing', function () {
     Storage::fake();
 
-    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [
             [
@@ -1265,7 +1311,7 @@ test('tiktok publisher resizes only the oversized photos in a mixed carousel', f
     Storage::fake();
 
     // TikTok carousels can carry many images; here one is oversized, one is compliant.
-    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [
             [
@@ -1334,7 +1380,7 @@ test('tiktok publisher resizes only the oversized photos in a mixed carousel', f
 test('tiktok publisher prunes the hosted derivative even when publishing fails', function () {
     Storage::fake();
 
-    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [
             [
@@ -1376,7 +1422,7 @@ test('tiktok publisher prunes the hosted derivative even when publishing fails',
 test('tiktok publisher still reports success when derivative cleanup throws on the storage disk', function () {
     // The production default disk (r2) is configured to throw on a failed delete.
     // Cleanup must never turn an already-published post into a reported failure.
-    $this->postPlatform->update(['meta' => ['privacy_level' => 'SELF_ONLY']]);
+    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [
             [

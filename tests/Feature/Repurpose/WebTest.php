@@ -8,6 +8,7 @@ use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -38,7 +39,7 @@ function destinationPayload(SocialAccount $account): array
     return [
         'social_account_id' => $account->id,
         'content_type' => ContentType::TikTokVideo->value,
-        'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE'],
+        'meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value],
     ];
 }
 
