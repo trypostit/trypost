@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePostEcho } from '@/composables/echo/usePostEcho';
-import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
+import { getContentTypeOptions, getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import { getPlatformStatusConfig, getPostStatusConfig } from '@/composables/usePostStatus';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -82,6 +82,16 @@ const getDisplayName = (pp: PostPlatform): string => pp.display_name ?? pp.platf
 const getDisplayUsername = (pp: PostPlatform): string | null => pp.display_username;
 
 const getDisplayAvatar = (pp: PostPlatform): string | null => pp.display_avatar;
+
+/**
+ * The format tag only earns its place where the format was a choice: a
+ * Facebook Reel vs Story vs Post, an Instagram Feed vs Reel. Platforms with a
+ * single content type would just repeat the platform name.
+ */
+const getContentTypeLabelKey = (pp: PostPlatform): string | null =>
+    pp.content_type && getContentTypeOptions(pp.platform).length > 1
+        ? `posts.content_types.${pp.content_type}.label`
+        : null;
 
 const formatDateTime = (value: string | null): string =>
     value ? date.formatDateTime(value) : '';
@@ -239,7 +249,16 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
                                         </span>
                                     </div>
                                     <div class="min-w-0 flex-1">
-                                        <p class="truncate text-sm font-bold text-foreground">{{ getDisplayName(pp) }}</p>
+                                        <div class="flex items-center gap-2">
+                                            <p class="truncate text-sm font-bold text-foreground">{{ getDisplayName(pp) }}</p>
+                                            <Badge
+                                                v-if="getContentTypeLabelKey(pp)"
+                                                variant="outline"
+                                                :data-testid="`content-type-${pp.content_type}`"
+                                            >
+                                                {{ $t(getContentTypeLabelKey(pp)!) }}
+                                            </Badge>
+                                        </div>
                                         <p class="truncate text-xs font-medium text-foreground/60">
                                             <span v-if="getDisplayUsername(pp)">@{{ getDisplayUsername(pp) }} · </span>
                                             {{ getPlatformLabel(pp.platform) }}
