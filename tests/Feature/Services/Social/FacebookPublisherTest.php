@@ -428,6 +428,24 @@ test('facebook publisher rejects an upload_url outside the rupload host', functi
     'not a url' => 'video_123',
 ]);
 
+test('facebook publisher trusts the rupload host from config', function () {
+    config()->set('trypost.platforms.facebook.rupload_host', 'rupload.example.test');
+
+    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
+    $this->post->update(['media' => facebookVideoMedia()]);
+
+    Http::fake([
+        ...facebookVideoUploadFakes('video_stories'),
+        'https://rupload.example.test/*' => Http::response(['success' => true], 200),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('story_456');
+
+    Http::assertSent(fn ($request) => str_starts_with($request->url(), 'https://rupload.example.test/'));
+});
+
 test('facebook publisher maps a rupload rejection and does not finish', function (ContentType $contentType, string $edge) {
     $this->postPlatform->update(['content_type' => $contentType]);
     $this->post->update(['media' => facebookVideoMedia()]);
