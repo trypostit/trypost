@@ -320,7 +320,7 @@ test('facebook publisher fails reel publish when start does not return upload_ur
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(
             FacebookPublishException::class,
-            'Facebook did not return upload_url for reel start.'
+            'Facebook did not start the video upload. Please try again.'
         );
 });
 
@@ -374,6 +374,67 @@ test('facebook publisher rejects image story', function () {
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(FacebookPublishException::class, 'Facebook Stories require a video file.');
+});
+
+test('facebook publisher rejects a reel without a video', function (array $media) {
+    $this->postPlatform->update(['content_type' => ContentType::FacebookReel]);
+    $this->post->update(['media' => $media]);
+
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(FacebookPublishException::class, 'Facebook Reels require a video file.');
+
+    Http::assertNothingSent();
+})->with([
+    'no media' => [[]],
+    'image' => [[[
+        'id' => 'test-media-image',
+        'path' => 'media/2026-01/image.jpg',
+        'url' => 'https://example.com/media/2026-01/image.jpg',
+        'mime_type' => 'image/jpeg',
+        'original_filename' => 'image.jpg',
+    ]]],
+]);
+
+test('facebook publisher rejects a story without media', function () {
+    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
+    $this->post->update(['media' => []]);
+
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(FacebookPublishException::class, 'Facebook Stories require a video file.');
+
+    Http::assertNothingSent();
+});
+
+test('facebook publisher rejects a reel upload_url outside the rupload host', function () {
+    $this->postPlatform->update(['content_type' => ContentType::FacebookReel]);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-reel',
+                'path' => 'media/2026-01/reel.mp4',
+                'url' => 'https://example.com/media/2026-01/reel.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'reel.mp4',
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        '*/page_123/video_reels' => Http::response([
+            'video_id' => 'reel_video_123',
+            'upload_url' => 'https://evil.example/steal-token',
+        ], 200),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(FacebookPublishException::class, 'Facebook returned an invalid upload URL.');
+
+    Http::assertSentCount(1);
 });
 
 test('facebook publisher can publish video story', function () {
@@ -444,7 +505,7 @@ test('facebook publisher fails story publish when start does not return upload_u
     ]);
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(FacebookPublishException::class, 'Facebook did not start the story upload. Please try again.');
+        ->toThrow(FacebookPublishException::class, 'Facebook did not start the video upload. Please try again.');
 
     Http::assertSentCount(1);
 });

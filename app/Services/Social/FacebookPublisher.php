@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Dto\MediaItem;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
@@ -14,6 +15,7 @@ use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
@@ -22,6 +24,8 @@ class FacebookPublisher
 {
     use CropsImageForAspectRatio;
     use HasSocialHttpClient;
+
+    private const int VIDEO_TRANSFER_TIMEOUT_SECONDS = 600;
 
     private const int STORY_UPLOAD_POLL_SECONDS = 5;
 
@@ -35,32 +39,23 @@ class FacebookPublisher
     }
 
     /**
-     * Graph API expects application/x-www-form-urlencoded (or multipart), not JSON.
-     * Sending JSON makes `message` work but silently drops `attached_media[*]` on /feed.
+     * @return array{id: mixed, url: string}
      */
-    private function facebookHttp(): PendingRequest
-    {
-        return $this->socialHttp()->asForm();
-    }
-
     public function publish(PostPlatform $postPlatform): array
     {
         $this->validateContentLength($postPlatform);
 
-        $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
-
         $account = $postPlatform->socialAccount;
         $pageId = $account->platform_user_id;
         $accessToken = $account->access_token;
-
+        $content = $this->sanitizedContent($postPlatform);
         $media = $postPlatform->post->mediaItems;
         $contentType = $postPlatform->content_type;
-        $aspectRatio = data_get($postPlatform->meta, 'aspect_ratio');
 
         return match ($contentType) {
-            ContentType::FacebookReel => $this->publishReel($pageId, $accessToken, $content, $media->first()),
-            ContentType::FacebookStory => $this->publishStory($pageId, $accessToken, $media->first()),
-            ContentType::FacebookPost => $this->publishPost($pageId, $accessToken, $content, $media, $aspectRatio),
+            ContentType::FacebookReel => $this->publishReel($pageId, $accessToken, $content, $this->requireVideo($media->first(), 'Reels')),
+            ContentType::FacebookStory => $this->publishStory($pageId, $accessToken, $this->requireVideo($media->first(), 'Stories')),
+            ContentType::FacebookPost => $this->publishPost($pageId, $accessToken, $content, $media, data_get($postPlatform->meta, 'aspect_ratio')),
             default => throw new FacebookPublishException(
                 userMessage: "Unsupported Facebook content type: {$contentType?->value}",
                 category: ErrorCategory::MediaFormat,
@@ -68,201 +63,134 @@ class FacebookPublisher
         };
     }
 
-    private function publishPost(string $pageId, string $accessToken, ?string $content, $media, ?string $aspectRatio): array
+    /**
+     * @param  Collection<int, MediaItem>  $media
+     * @return array{id: mixed, url: string}
+     */
+    private function publishPost(string $pageId, string $accessToken, ?string $content, Collection $media, ?string $aspectRatio): array
     {
-        // Text only post
         if ($media->isEmpty()) {
-            if ($content === null || $content === '') {
-                throw new FacebookPublishException(
-                    userMessage: 'Facebook text posts require content. Please add text to your post.',
-                    category: ErrorCategory::MediaFormat,
-                );
-            }
-
             return $this->publishTextPost($pageId, $accessToken, $content);
         }
 
         $firstMedia = $media->first();
-        $isVideo = $firstMedia->isVideo();
-        $isImage = $firstMedia->isImage();
 
-        if ($isVideo) {
-            return $this->publishVideoPost($pageId, $accessToken, $content, $firstMedia);
-        }
-
-        if ($isImage) {
-            // Single or multiple images
-            if ($media->count() === 1) {
-                return $this->publishSingleImagePost($pageId, $accessToken, $content, $firstMedia, $aspectRatio);
-            }
-
-            return $this->publishMultiImagePost($pageId, $accessToken, $content, $media, $aspectRatio);
-        }
-
-        throw new FacebookPublishException(
-            userMessage: 'Unsupported media type for Facebook',
-            category: ErrorCategory::MediaFormat,
-        );
+        return match (true) {
+            $firstMedia->isVideo() => $this->publishVideoPost($pageId, $accessToken, $content, $firstMedia),
+            $firstMedia->isImage() && $media->count() === 1 => $this->publishSingleImagePost($pageId, $accessToken, $content, $firstMedia, $aspectRatio),
+            $firstMedia->isImage() => $this->publishMultiImagePost($pageId, $accessToken, $content, $media, $aspectRatio),
+            default => throw new FacebookPublishException(
+                userMessage: 'Unsupported media type for Facebook',
+                category: ErrorCategory::MediaFormat,
+            ),
+        };
     }
 
-    private function publishTextPost(string $pageId, string $accessToken, string $content): array
+    /**
+     * @return array{id: mixed, url: string}
+     */
+    private function publishTextPost(string $pageId, string $accessToken, ?string $content): array
     {
-        $response = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/feed", [
+        if (! filled($content)) {
+            throw new FacebookPublishException(
+                userMessage: 'Facebook text posts require content. Please add text to your post.',
+                category: ErrorCategory::MediaFormat,
+            );
+        }
+
+        $response = $this->postToGraph("{$pageId}/feed", [
             'message' => $content,
             'access_token' => $accessToken,
-        ]);
+        ], 'text post');
 
-        if ($response->failed()) {
-            Log::error('Facebook text post failed', [
-                'status' => $response->status(),
-                'body' => $this->redactResponseBody($response->body()),
-            ]);
-            $this->handleApiError($response);
-        }
-
-        $data = $response->json();
-        $postId = data_get($data, 'id');
-
-        return [
-            'id' => $postId,
-            'url' => "https://www.facebook.com/{$postId}",
-        ];
+        return $this->feedPostResult(data_get($response->json(), 'id'));
     }
 
-    private function publishSingleImagePost(string $pageId, string $accessToken, ?string $content, $media, ?string $aspectRatio): array
+    /**
+     * @return array{id: mixed, url: string}
+     */
+    private function publishSingleImagePost(string $pageId, string $accessToken, ?string $content, MediaItem $media, ?string $aspectRatio): array
     {
-        $payload = [
+        $response = $this->postToGraph("{$pageId}/photos", [
             'url' => $this->cropImageForAspectRatio($media->url, $aspectRatio),
             'access_token' => $accessToken,
-        ];
-
-        if ($content !== null && $content !== '') {
-            $payload['message'] = $content;
-        }
-
-        $alt = $media->altTextFor(Platform::Facebook);
-
-        if ($alt !== null) {
-            $payload['alt_text_custom'] = $alt;
-        }
-
-        $response = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/photos", $payload);
-
-        if ($response->failed()) {
-            Log::error('Facebook single image post failed', [
-                'status' => $response->status(),
-                'body' => $this->redactResponseBody($response->body()),
-            ]);
-            $this->handleApiError($response);
-        }
+            ...$this->optionalField('message', $content),
+            ...$this->altText($media),
+        ], 'single image post');
 
         $data = $response->json();
-        $postId = data_get($data, 'post_id', data_get($data, 'id'));
 
-        return [
-            'id' => $postId,
-            'url' => "https://www.facebook.com/{$postId}",
-        ];
+        return $this->feedPostResult(data_get($data, 'post_id', data_get($data, 'id')));
     }
 
-    private function publishMultiImagePost(string $pageId, string $accessToken, ?string $content, $mediaCollection, ?string $aspectRatio): array
+    /**
+     * Every image is uploaded unpublished and then attached to one feed post. An
+     * image Facebook rejects is skipped so the rest still goes out; the post only
+     * fails when none of them made it.
+     *
+     * @param  Collection<int, MediaItem>  $media
+     * @return array{id: mixed, url: string}
+     */
+    private function publishMultiImagePost(string $pageId, string $accessToken, ?string $content, Collection $media, ?string $aspectRatio): array
     {
-        // Upload each image as unpublished
-        $attachedMedia = [];
+        $photoIds = $media
+            ->filter(fn (MediaItem $item): bool => $item->isImage())
+            ->map(fn (MediaItem $item): ?string => $this->uploadUnpublishedPhoto($pageId, $accessToken, $item, $aspectRatio))
+            ->filter()
+            ->values();
 
-        foreach ($mediaCollection as $media) {
-            if (! $media->isImage()) {
-                continue;
-            }
-
-            $uploadPayload = [
-                'url' => $this->cropImageForAspectRatio($media->url, $aspectRatio),
-                'published' => 'false',
-                'access_token' => $accessToken,
-            ];
-
-            $alt = $media->altTextFor(Platform::Facebook);
-
-            if ($alt !== null) {
-                $uploadPayload['alt_text_custom'] = $alt;
-            }
-
-            $uploadResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/photos", $uploadPayload);
-
-            if ($uploadResponse->failed()) {
-                Log::error('Facebook image upload failed', [
-                    'body' => $this->redactResponseBody($uploadResponse->body()),
-                ]);
-
-                continue;
-            }
-
-            $uploadData = $uploadResponse->json();
-            $attachedMedia[] = ['media_fbid' => $uploadData['id']];
-        }
-
-        if (empty($attachedMedia)) {
+        if ($photoIds->isEmpty()) {
             throw new FacebookPublishException(
                 userMessage: 'Failed to upload any images to Facebook',
                 category: ErrorCategory::ServerError,
             );
         }
 
-        // Create the post with attached media
-        $postData = [
+        $response = $this->postToGraph("{$pageId}/feed", [
             'access_token' => $accessToken,
-        ];
+            ...$this->optionalField('message', $content),
+            ...$photoIds
+                ->mapWithKeys(fn (string $photoId, int $index): array => ["attached_media[{$index}]" => json_encode(['media_fbid' => $photoId])])
+                ->all(),
+        ], 'multi-image post');
 
-        if ($content !== null && $content !== '') {
-            $postData['message'] = $content;
-        }
-
-        foreach ($attachedMedia as $index => $media) {
-            $postData["attached_media[{$index}]"] = json_encode($media);
-        }
-
-        $response = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/feed", $postData);
-
-        if ($response->failed()) {
-            Log::error('Facebook multi-image post failed', [
-                'status' => $response->status(),
-                'body' => $this->redactResponseBody($response->body()),
-            ]);
-            $this->handleApiError($response);
-        }
-
-        $data = $response->json();
-        $postId = data_get($data, 'id');
-
-        return [
-            'id' => $postId,
-            'url' => "https://www.facebook.com/{$postId}",
-        ];
+        return $this->feedPostResult(data_get($response->json(), 'id'));
     }
 
-    private function publishVideoPost(string $pageId, string $accessToken, ?string $content, $media): array
+    private function uploadUnpublishedPhoto(string $pageId, string $accessToken, MediaItem $media, ?string $aspectRatio): ?string
     {
-        $payload = [
-            'file_url' => $media->url,
+        $response = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/photos", [
+            'url' => $this->cropImageForAspectRatio($media->url, $aspectRatio),
+            'published' => 'false',
             'access_token' => $accessToken,
-        ];
-
-        if ($content !== null && $content !== '') {
-            $payload['description'] = $content;
-        }
-
-        $response = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/videos", $payload);
+            ...$this->altText($media),
+        ]);
 
         if ($response->failed()) {
-            Log::error('Facebook video post failed', [
-                'status' => $response->status(),
+            Log::error('Facebook image upload failed', [
                 'body' => $this->redactResponseBody($response->body()),
             ]);
-            $this->handleApiError($response);
+
+            return null;
         }
 
-        $data = $response->json();
-        $videoId = data_get($data, 'id');
+        $photoId = data_get($response->json(), 'id');
+
+        return is_string($photoId) && $photoId !== '' ? $photoId : null;
+    }
+
+    /**
+     * @return array{id: mixed, url: string}
+     */
+    private function publishVideoPost(string $pageId, string $accessToken, ?string $content, MediaItem $media): array
+    {
+        $response = $this->postToGraph("{$pageId}/videos", [
+            'file_url' => $media->url,
+            'access_token' => $accessToken,
+            ...$this->optionalField('description', $content),
+        ], 'video post');
+
+        $videoId = data_get($response->json(), 'id');
 
         return [
             'id' => $videoId,
@@ -270,100 +198,24 @@ class FacebookPublisher
         ];
     }
 
-    private function publishReel(string $pageId, string $accessToken, ?string $content, $media): array
+    /**
+     * @return array{id: mixed, url: string}
+     */
+    private function publishReel(string $pageId, string $accessToken, ?string $content, MediaItem $media): array
     {
-        // Phase 1 (start) — graph endpoint returns video_id + upload_url.
-        $startResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/video_reels", [
-            'upload_phase' => 'start',
-            'access_token' => $accessToken,
-        ]);
+        [$videoId, $uploadUrl] = $this->startVideoUpload($pageId, $accessToken, 'video_reels');
 
-        if ($startResponse->failed()) {
-            $this->handleApiError($startResponse);
-        }
+        $this->uploadVideoBytes($uploadUrl, $accessToken, $media);
 
-        $startData = $startResponse->json();
-        $videoId = data_get($startData, 'video_id');
-        $uploadUrl = data_get($startData, 'upload_url');
-
-        if (! $videoId || ! $uploadUrl) {
-            throw new FacebookPublishException(
-                userMessage: 'Facebook did not return upload_url for reel start.',
-                category: ErrorCategory::ServerError,
-                platformErrorCode: null,
-                rawResponse: $startResponse->body(),
-            );
-        }
-
-        // Phase 2 (transfer, local-file flow) — download our hosted
-        // media then POST raw bytes to upload_url with the Offset and
-        // file_size headers Facebook requires (the docs describe a
-        // hosted-file shortcut with `file_url` in the body, but rupload
-        // rejects it with "Header Offset not convertable to unsigned
-        // long" — the headers are required either way).
-        $tempFile = tempnam(sys_get_temp_dir(), 'fb_reel_');
-
-        try {
-            $download = Http::withOptions(['sink' => $tempFile])
-                ->timeout(600)
-                ->get($media->url);
-
-            if ($download->failed()) {
-                throw new FacebookPublishException(
-                    userMessage: 'Could not download media for Facebook reel.',
-                    category: ErrorCategory::ServerError,
-                    platformErrorCode: (string) $download->status(),
-                    rawResponse: null,
-                );
-            }
-
-            $fileSize = filesize($tempFile);
-            $stream = fopen($tempFile, 'rb');
-
-            try {
-                $uploadResponse = Http::withHeaders([
-                    'Authorization' => "OAuth {$accessToken}",
-                    'Offset' => '0',
-                    'file_size' => (string) $fileSize,
-                ])
-                    ->timeout(600)
-                    ->withBody($stream, $media->mime_type ?? 'video/mp4')
-                    ->post($uploadUrl);
-            } finally {
-                if (is_resource($stream)) {
-                    fclose($stream);
-                }
-            }
-
-            if ($uploadResponse->failed()) {
-                $this->handleApiError($uploadResponse);
-            }
-        } finally {
-            if (! unlink($tempFile)) {
-                Log::warning('Facebook reel temp file cleanup failed', ['path' => $tempFile]);
-            }
-        }
-
-        // Phase 3 (finish) — publish the reel.
-        $finishPayload = [
+        $response = $this->postToGraph("{$pageId}/video_reels", [
             'upload_phase' => 'finish',
             'video_id' => $videoId,
             'video_state' => 'PUBLISHED',
             'access_token' => $accessToken,
-        ];
+            ...$this->optionalField('description', $content),
+        ], 'reel finish');
 
-        if ($content !== null && $content !== '') {
-            $finishPayload['description'] = $content;
-        }
-
-        $finishResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/video_reels", $finishPayload);
-
-        if ($finishResponse->failed()) {
-            $this->handleApiError($finishResponse);
-        }
-
-        $finishData = $finishResponse->json();
-        $reelId = $finishData['id'] ?? $videoId;
+        $reelId = data_get($response->json(), 'id', $videoId);
 
         return [
             'id' => $reelId,
@@ -371,71 +223,23 @@ class FacebookPublisher
         ];
     }
 
-    private function publishStory(string $pageId, string $accessToken, $media): array
+    /**
+     * @return array{id: mixed, url: string}
+     */
+    private function publishStory(string $pageId, string $accessToken, MediaItem $media): array
     {
-        if (! $media->isVideo()) {
-            throw new FacebookPublishException(
-                userMessage: 'Facebook Stories require a video file.',
-                category: ErrorCategory::MediaFormat,
-            );
-        }
+        [$videoId, $uploadUrl] = $this->startVideoUpload($pageId, $accessToken, 'video_stories');
 
-        $startResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/video_stories", [
-            'upload_phase' => 'start',
-            'access_token' => $accessToken,
-        ]);
+        $this->uploadVideoFromUrl($uploadUrl, $accessToken, $media);
+        $this->waitForStoryUpload($videoId, $accessToken);
 
-        if ($startResponse->failed()) {
-            $this->handleApiError($startResponse);
-        }
-
-        $startData = $startResponse->json();
-        $videoId = data_get($startData, 'video_id');
-        $uploadUrl = data_get($startData, 'upload_url');
-
-        if (! filled($videoId) || ! is_string($uploadUrl) || ! filled($uploadUrl)) {
-            throw new FacebookPublishException(
-                userMessage: 'Facebook did not start the story upload. Please try again.',
-                category: ErrorCategory::ServerError,
-                rawResponse: $startResponse->body(),
-            );
-        }
-
-        $this->assertRuploadUrl($uploadUrl);
-
-        $uploadResponse = $this->socialHttp()
-            ->withHeaders([
-                'Authorization' => "OAuth {$accessToken}",
-                'file_url' => $media->url,
-            ])
-            ->send('POST', $uploadUrl);
-
-        if ($uploadResponse->failed()) {
-            Log::error('Facebook video story upload failed', ['body' => $this->redactResponseBody($uploadResponse->body())]);
-            $this->handleApiError($uploadResponse);
-        }
-
-        if (data_get($uploadResponse->json(), 'success') !== true) {
-            throw new FacebookPublishException(
-                userMessage: 'Facebook did not accept the story video. Please try again.',
-                category: ErrorCategory::ServerError,
-                rawResponse: $uploadResponse->body(),
-            );
-        }
-
-        $this->waitForStoryUpload((string) $videoId, $accessToken);
-
-        $finishResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/video_stories", [
+        $response = $this->postToGraph("{$pageId}/video_stories", [
             'upload_phase' => 'finish',
             'video_id' => $videoId,
             'access_token' => $accessToken,
-        ]);
+        ], 'story finish');
 
-        if ($finishResponse->failed()) {
-            $this->handleApiError($finishResponse);
-        }
-
-        $storyId = data_get($finishResponse->json(), 'post_id', $videoId);
+        $storyId = data_get($response->json(), 'post_id', $videoId);
 
         return [
             'id' => $storyId,
@@ -444,8 +248,37 @@ class FacebookPublisher
     }
 
     /**
-     * The story `upload_url` must point at Meta's rupload host. Anything else
-     * would send the Page token and our media URL to a third party.
+     * Phase 1 of Meta's resumable video flow, shared by Reels and Stories: the
+     * Graph edge opens a session and returns the rupload URL the file must go to.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function startVideoUpload(string $pageId, string $accessToken, string $edge): array
+    {
+        $response = $this->postToGraph("{$pageId}/{$edge}", [
+            'upload_phase' => 'start',
+            'access_token' => $accessToken,
+        ], "{$edge} start");
+
+        $videoId = data_get($response->json(), 'video_id');
+        $uploadUrl = data_get($response->json(), 'upload_url');
+
+        if (! filled($videoId) || ! is_string($uploadUrl) || ! filled($uploadUrl)) {
+            throw new FacebookPublishException(
+                userMessage: 'Facebook did not start the video upload. Please try again.',
+                category: ErrorCategory::ServerError,
+                rawResponse: $response->body(),
+            );
+        }
+
+        $this->assertRuploadUrl($uploadUrl);
+
+        return [(string) $videoId, $uploadUrl];
+    }
+
+    /**
+     * The `upload_url` must point at Meta's rupload host. Anything else would
+     * send the Page token and our media URL to a third party.
      */
     private function assertRuploadUrl(string $uploadUrl): void
     {
@@ -461,43 +294,122 @@ class FacebookPublisher
     }
 
     /**
-     * With `file_url` Meta fetches the video from our CDN asynchronously, so
-     * the rupload POST returns before the bytes exist on their side. Calling
-     * `finish` on that empty session is what produced error 6000; wait until
-     * the uploading phase reports complete.
+     * Reels still stream the file through the worker. The hosted `file_url`
+     * shortcut is only verified on Stories; the Reels session rejected it in
+     * the past ("Header Offset not convertable to unsigned long").
+     */
+    private function uploadVideoBytes(string $uploadUrl, string $accessToken, MediaItem $media): void
+    {
+        $tempFile = tempnam(sys_get_temp_dir(), 'fb_reel_');
+
+        if ($tempFile === false) {
+            throw $this->videoPreparationException();
+        }
+
+        try {
+            $download = Http::withOptions(['sink' => $tempFile])
+                ->timeout(self::VIDEO_TRANSFER_TIMEOUT_SECONDS)
+                ->get($media->url);
+
+            if ($download->failed()) {
+                throw new FacebookPublishException(
+                    userMessage: 'Could not download media for Facebook reel.',
+                    category: ErrorCategory::ServerError,
+                    platformErrorCode: (string) $download->status(),
+                );
+            }
+
+            $fileSize = filesize($tempFile);
+            $stream = $fileSize !== false && $fileSize > 0 ? fopen($tempFile, 'rb') : false;
+
+            if ($stream === false) {
+                throw $this->videoPreparationException();
+            }
+
+            try {
+                $uploadResponse = Http::withHeaders([
+                    'Authorization' => "OAuth {$accessToken}",
+                    'Offset' => '0',
+                    'file_size' => (string) $fileSize,
+                ])
+                    ->timeout(self::VIDEO_TRANSFER_TIMEOUT_SECONDS)
+                    ->withBody($stream, $media->mime_type ?? 'video/mp4')
+                    ->post($uploadUrl);
+            } finally {
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
+            }
+
+            if ($uploadResponse->failed()) {
+                $this->handleApiError($uploadResponse);
+            }
+        } finally {
+            if (file_exists($tempFile) && ! unlink($tempFile)) {
+                Log::warning('Facebook reel temp file cleanup failed', ['path' => $tempFile]);
+            }
+        }
+    }
+
+    /**
+     * Stories hand Meta the CDN URL and let it fetch the file (Page Stories API
+     * hosted-file upload). The request is the two headers and no body.
+     */
+    private function uploadVideoFromUrl(string $uploadUrl, string $accessToken, MediaItem $media): void
+    {
+        $response = $this->socialHttp()
+            ->withHeaders([
+                'Authorization' => "OAuth {$accessToken}",
+                'file_url' => $media->url,
+            ])
+            ->send('POST', $uploadUrl);
+
+        if ($response->failed()) {
+            Log::error('Facebook video story upload failed', [
+                'body' => $this->redactResponseBody($response->body()),
+            ]);
+            $this->handleApiError($response);
+        }
+
+        if (data_get($response->json(), 'success') !== true) {
+            throw new FacebookPublishException(
+                userMessage: 'Facebook did not accept the story video. Please try again.',
+                category: ErrorCategory::ServerError,
+                rawResponse: $response->body(),
+            );
+        }
+    }
+
+    /**
+     * With `file_url` Meta fetches the video asynchronously, so the rupload POST
+     * returns before the bytes exist on their side. Calling `finish` on that
+     * empty session is what produced error 6000; wait until the uploading phase
+     * reports complete.
      */
     private function waitForStoryUpload(string $videoId, string $accessToken): void
     {
         for ($attempt = 0; $attempt < self::STORY_UPLOAD_MAX_POLLS; $attempt++) {
-            $statusResponse = $this->socialHttp()->get("{$this->baseUrl}/{$videoId}", [
+            $response = $this->socialHttp()->get("{$this->baseUrl}/{$videoId}", [
                 'fields' => 'status',
                 'access_token' => $accessToken,
             ]);
 
-            if ($statusResponse->failed()) {
-                $this->handleApiError($statusResponse);
+            if ($response->failed()) {
+                $this->handleApiError($response);
             }
 
-            $status = data_get($statusResponse->json(), 'status', []);
-            $videoStatus = data_get($status, 'video_status');
-            $uploadingStatus = data_get($status, 'uploading_phase.status');
-            $detail = data_get($status, 'processing_phase.error.message')
-                ?? data_get($status, 'uploading_phase.error.message');
+            $status = data_get($response->json(), 'status', []);
+            $failure = $this->storyUploadFailure($status);
 
-            if ($detail !== null
-                || in_array($videoStatus, ['error', 'expired'], true)
-                || $uploadingStatus === 'error'
-                || data_get($status, 'processing_phase.status') === 'error') {
+            if ($failure !== null) {
                 throw new FacebookPublishException(
-                    userMessage: is_string($detail) && $detail !== ''
-                        ? $detail
-                        : 'Facebook could not process the story video. Please try another file.',
+                    userMessage: $failure,
                     category: ErrorCategory::MediaFormat,
-                    rawResponse: $statusResponse->body(),
+                    rawResponse: $response->body(),
                 );
             }
 
-            if ($uploadingStatus === 'complete' || in_array($videoStatus, ['ready', 'upload_complete'], true)) {
+            if ($this->storyUploadComplete($status)) {
                 return;
             }
 
@@ -506,6 +418,124 @@ class FacebookPublisher
 
         throw new FacebookPublishException(
             userMessage: 'Facebook took too long to fetch the story video. Please try again.',
+            category: ErrorCategory::ServerError,
+        );
+    }
+
+    /**
+     * The user-facing reason the upload failed, or null while it is still healthy.
+     * Meta reports a processing failure as an `error` object on the phase, not
+     * always as `status: error`, so the message is checked first.
+     *
+     * @param  array<string, mixed>  $status
+     */
+    private function storyUploadFailure(array $status): ?string
+    {
+        $detail = data_get($status, 'processing_phase.error.message')
+            ?? data_get($status, 'uploading_phase.error.message');
+
+        if (is_string($detail) && $detail !== '') {
+            return $detail;
+        }
+
+        $failed = in_array(data_get($status, 'video_status'), ['error', 'expired'], true)
+            || data_get($status, 'uploading_phase.status') === 'error'
+            || data_get($status, 'processing_phase.status') === 'error';
+
+        return $failed ? 'Facebook could not process the story video. Please try another file.' : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $status
+     */
+    private function storyUploadComplete(array $status): bool
+    {
+        return data_get($status, 'uploading_phase.status') === 'complete'
+            || in_array(data_get($status, 'video_status'), ['ready', 'upload_complete'], true);
+    }
+
+    private function requireVideo(?MediaItem $media, string $format): MediaItem
+    {
+        if ($media === null || ! $media->isVideo()) {
+            throw new FacebookPublishException(
+                userMessage: "Facebook {$format} require a video file.",
+                category: ErrorCategory::MediaFormat,
+            );
+        }
+
+        return $media;
+    }
+
+    private function sanitizedContent(PostPlatform $postPlatform): ?string
+    {
+        $content = $postPlatform->post->content;
+
+        return filled($content)
+            ? app(ContentSanitizer::class)->sanitize($content, $postPlatform->platform)
+            : null;
+    }
+
+    /**
+     * Graph API expects application/x-www-form-urlencoded (or multipart), not JSON.
+     * Sending JSON makes `message` work but silently drops `attached_media[*]` on /feed.
+     */
+    private function facebookHttp(): PendingRequest
+    {
+        return $this->socialHttp()->asForm();
+    }
+
+    /**
+     * POST a form payload to a Graph edge and turn any failure into the typed
+     * exception, logging the redacted body under `$label` first.
+     *
+     * @param  array<string, string>  $payload
+     */
+    private function postToGraph(string $path, array $payload, string $label): Response
+    {
+        $response = $this->facebookHttp()->post("{$this->baseUrl}/{$path}", $payload);
+
+        if ($response->failed()) {
+            Log::error("Facebook {$label} failed", [
+                'status' => $response->status(),
+                'body' => $this->redactResponseBody($response->body()),
+            ]);
+            $this->handleApiError($response);
+        }
+
+        return $response;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function optionalField(string $key, ?string $value): array
+    {
+        return filled($value) ? [$key => $value] : [];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function altText(MediaItem $media): array
+    {
+        return $this->optionalField('alt_text_custom', $media->altTextFor(Platform::Facebook));
+    }
+
+    /**
+     * @return array{id: mixed, url: string}
+     */
+    private function feedPostResult(mixed $postId): array
+    {
+        return [
+            'id' => $postId,
+            'url' => "https://www.facebook.com/{$postId}",
+        ];
+    }
+
+    private function videoPreparationException(): FacebookPublishException
+    {
+        return new FacebookPublishException(
+            userMessage: 'Could not prepare the Facebook video for upload.',
             category: ErrorCategory::ServerError,
         );
     }
