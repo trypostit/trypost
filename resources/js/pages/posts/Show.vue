@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePostEcho } from '@/composables/echo/usePostEcho';
-import { getContentTypeOptions, getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
+import { getContentTypeLabelKey, getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import { getPlatformStatusConfig, getPostStatusConfig } from '@/composables/usePostStatus';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -66,7 +66,11 @@ const props = defineProps<{
     post: Post;
 }>();
 
-const enabledPlatforms = computed(() => props.post.platforms.filter((pp) => pp.enabled));
+const enabledPlatforms = computed(() =>
+    props.post.platforms
+        .filter((pp) => pp.enabled)
+        .map((pp) => ({ ...pp, contentTypeLabelKey: getContentTypeLabelKey(pp.platform, pp.content_type) })),
+);
 
 const isPublishing = computed(() => props.post.status === PostStatus.Publishing);
 
@@ -82,16 +86,6 @@ const getDisplayName = (pp: PostPlatform): string => pp.display_name ?? pp.platf
 const getDisplayUsername = (pp: PostPlatform): string | null => pp.display_username;
 
 const getDisplayAvatar = (pp: PostPlatform): string | null => pp.display_avatar;
-
-/**
- * The format tag only earns its place where the format was a choice: a
- * Facebook Reel vs Story vs Post, an Instagram Feed vs Reel. Platforms with a
- * single content type would just repeat the platform name.
- */
-const getContentTypeLabelKey = (pp: PostPlatform): string | null =>
-    pp.content_type && getContentTypeOptions(pp.platform).length > 1
-        ? `posts.content_types.${pp.content_type}.label`
-        : null;
 
 const formatDateTime = (value: string | null): string =>
     value ? date.formatDateTime(value) : '';
@@ -252,11 +246,11 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
                                         <div class="flex items-center gap-2">
                                             <p class="truncate text-sm font-bold text-foreground">{{ getDisplayName(pp) }}</p>
                                             <Badge
-                                                v-if="getContentTypeLabelKey(pp)"
+                                                v-if="pp.contentTypeLabelKey"
                                                 variant="outline"
                                                 :data-testid="`content-type-${pp.content_type}`"
                                             >
-                                                {{ $t(getContentTypeLabelKey(pp)!) }}
+                                                {{ $t(pp.contentTypeLabelKey) }}
                                             </Badge>
                                         </div>
                                         <p class="truncate text-xs font-medium text-foreground/60">
