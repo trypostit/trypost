@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePostEcho } from '@/composables/echo/usePostEcho';
-import { getContentTypeLabelKey, getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
+import { getContentTypeBadgeKey, getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import { getPlatformStatusConfig, getPostStatusConfig } from '@/composables/usePostStatus';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -69,7 +69,7 @@ const props = defineProps<{
 const enabledPlatforms = computed(() =>
     props.post.platforms
         .filter((pp) => pp.enabled)
-        .map((pp) => ({ ...pp, contentTypeLabelKey: getContentTypeLabelKey(pp.platform, pp.content_type) })),
+        .map((pp) => ({ ...pp, contentTypeBadgeKey: getContentTypeBadgeKey(pp.platform, pp.content_type) })),
 );
 
 const isPublishing = computed(() => props.post.status === PostStatus.Publishing);
@@ -246,11 +246,11 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
                                         <div class="flex items-center gap-2">
                                             <p class="truncate text-sm font-bold text-foreground">{{ getDisplayName(pp) }}</p>
                                             <Badge
-                                                v-if="pp.contentTypeLabelKey"
+                                                v-if="pp.contentTypeBadgeKey"
                                                 variant="outline"
                                                 :data-testid="`content-type-${pp.content_type}`"
                                             >
-                                                {{ $t(pp.contentTypeLabelKey) }}
+                                                {{ $t(pp.contentTypeBadgeKey) }}
                                             </Badge>
                                         </div>
                                         <p class="truncate text-xs font-medium text-foreground/60">
