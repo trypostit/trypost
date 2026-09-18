@@ -45,6 +45,22 @@ function facebookStoryVideoMedia(): array
 }
 
 /**
+ * @return array<int, array<string, string>>
+ */
+function facebookReelVideoMedia(): array
+{
+    return [
+        [
+            'id' => 'test-media-reel',
+            'path' => 'media/2026-01/reel.mp4',
+            'url' => 'https://example.com/media/2026-01/reel.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'reel.mp4',
+        ],
+    ];
+}
+
+/**
  * Points the post at a single hosted story video and returns the fakes for the
  * happy path: start hands back the rupload URL, rupload accepts, the status
  * poll reports the upload complete, finish publishes.
@@ -777,6 +793,48 @@ test('facebook publisher throws exception when multi image upload fails', functi
         ->toThrow(Exception::class, 'Failed to upload any images to Facebook');
 });
 
+test('facebook publisher publishes the multi image post with the photos facebook accepted', function () {
+    $mediaItems = [];
+    for ($i = 1; $i <= 3; $i++) {
+        $mediaItems[] = [
+            'id' => "test-media-{$i}",
+            'path' => "media/2026-01/image{$i}.jpg",
+            'url' => "https://example.com/media/2026-01/image{$i}.jpg",
+            'mime_type' => 'image/jpeg',
+            'original_filename' => "image{$i}.jpg",
+        ];
+    }
+    $this->post->update(['media' => $mediaItems]);
+
+    Http::fake([
+        '*/page_123/photos' => Http::sequence()
+            ->push(['id' => 'photo_1'], 200)
+            ->push(['error' => ['message' => 'Upload failed', 'code' => 100]], 400)
+            ->push(['id' => 'photo_3'], 200),
+        '*/page_123/feed' => Http::response(['id' => 'page_123_partial_789'], 200),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('page_123_partial_789');
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/page_123/feed')
+        && ($request->data()['attached_media[0]'] ?? null) === json_encode(['media_fbid' => 'photo_1'])
+        && ($request->data()['attached_media[1]'] ?? null) === json_encode(['media_fbid' => 'photo_3'])
+        && ! array_key_exists('attached_media[2]', $request->data()));
+});
+
+test('facebook publisher rejects a text post that is only whitespace', function () {
+    $this->post->update(['content' => "   \n\t "]);
+
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(FacebookPublishException::class, 'Facebook text posts require content');
+
+    Http::assertNothingSent();
+});
+
 test('facebook publisher throws exception for unsupported media type', function () {
     $this->post->update([
         'media' => [
@@ -831,11 +889,71 @@ test('facebook publisher cleans up temp files after reel upload', function () {
 
     $this->publisher->publish($this->postPlatform);
 
-    // Assert no leftover fb_reel_ temp files exist
-    $tempDir = sys_get_temp_dir();
-    $leftoverFiles = glob("{$tempDir}/fb_reel_*") ?: [];
+    expect(glob(sys_get_temp_dir().'/fb_reel_*') ?: [])->toBeEmpty();
+});
 
-    expect($leftoverFiles)->toBeEmpty();
+test('facebook publisher maps a reel rupload rejection and does not finish', function () {
+    $this->postPlatform->update(['content_type' => ContentType::FacebookReel]);
+    $this->post->update(['media' => facebookReelVideoMedia()]);
+
+    Http::fake([
+        '*/page_123/video_reels' => Http::response([
+            'video_id' => 'reel_video_123',
+            'upload_url' => 'https://rupload.facebook.com/video-upload/v25.0/reel_video_123',
+        ], 200),
+        '*example.com/media/*' => Http::response('fake-video', 200),
+        '*rupload.facebook.com/*' => Http::response([
+            'error' => ['message' => 'Problem with file', 'code' => 6000],
+        ], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(FacebookPublishException::class, 'Problem with file. Try with another file.');
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/page_123/video_reels')
+        && $request['upload_phase'] === 'finish');
+
+    expect(glob(sys_get_temp_dir().'/fb_reel_*') ?: [])->toBeEmpty();
+});
+
+test('facebook publisher fails the reel when the downloaded video is empty', function () {
+    $this->postPlatform->update(['content_type' => ContentType::FacebookReel]);
+    $this->post->update(['media' => facebookReelVideoMedia()]);
+
+    Http::fake([
+        '*/page_123/video_reels' => Http::response([
+            'video_id' => 'reel_video_123',
+            'upload_url' => 'https://rupload.facebook.com/video-upload/v25.0/reel_video_123',
+        ], 200),
+        '*example.com/media/*' => Http::response('', 200),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(FacebookPublishException::class, 'The downloaded Facebook video is empty.');
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'rupload.facebook.com'));
+
+    expect(glob(sys_get_temp_dir().'/fb_reel_*') ?: [])->toBeEmpty();
+});
+
+test('facebook publisher reschedules the reel when the media download cannot be reached', function () {
+    $this->postPlatform->update(['content_type' => ContentType::FacebookReel]);
+    $this->post->update(['media' => facebookReelVideoMedia()]);
+
+    Http::fake([
+        '*/page_123/video_reels' => Http::response([
+            'video_id' => 'reel_video_123',
+            'upload_url' => 'https://rupload.facebook.com/video-upload/v25.0/reel_video_123',
+        ], 200),
+        '*example.com/media/*' => fn () => throw new ConnectionException('cURL error 28: Connection timed out'),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(PlatformUnavailableException::class);
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'rupload.facebook.com'));
+
+    expect(glob(sys_get_temp_dir().'/fb_reel_*') ?: [])->toBeEmpty();
 });
 
 test('facebook publisher can publish single image with null content', function () {

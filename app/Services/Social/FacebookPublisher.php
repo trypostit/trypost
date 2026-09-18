@@ -333,7 +333,15 @@ class FacebookPublisher
             }
 
             $fileSize = filesize($tempFile);
-            $stream = $fileSize !== false && $fileSize > 0 ? fopen($tempFile, 'rb') : false;
+
+            if ($fileSize === false || $fileSize < 1) {
+                throw new FacebookPublishException(
+                    userMessage: 'The downloaded Facebook video is empty.',
+                    category: ErrorCategory::MediaFormat,
+                );
+            }
+
+            $stream = fopen($tempFile, 'rb');
 
             if ($stream === false) {
                 throw $this->videoPreparationException();
