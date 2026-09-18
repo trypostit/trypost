@@ -16,11 +16,16 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 
 class FacebookPublisher
 {
     use CropsImageForAspectRatio;
     use HasSocialHttpClient;
+
+    private const int STORY_UPLOAD_POLL_SECONDS = 5;
+
+    private const int STORY_UPLOAD_MAX_POLLS = 60;
 
     private string $baseUrl;
 
@@ -375,34 +380,50 @@ class FacebookPublisher
             );
         }
 
-        $response = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/video_stories", [
+        $startResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/video_stories", [
             'upload_phase' => 'start',
             'access_token' => $accessToken,
         ]);
 
-        if ($response->failed()) {
-            $this->handleApiError($response);
+        if ($startResponse->failed()) {
+            $this->handleApiError($startResponse);
         }
 
-        $videoId = $response->json()['video_id'] ?? null;
+        $startData = $startResponse->json();
+        $videoId = data_get($startData, 'video_id');
+        $uploadUrl = data_get($startData, 'upload_url');
 
-        if (! $videoId) {
+        if (! filled($videoId) || ! is_string($uploadUrl) || ! filled($uploadUrl)) {
             throw new FacebookPublishException(
-                userMessage: 'Facebook did not accept the story video. Please try again.',
+                userMessage: 'Facebook did not start the story upload. Please try again.',
                 category: ErrorCategory::ServerError,
+                rawResponse: $startResponse->body(),
             );
         }
 
-        $transferResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$videoId}", [
-            'upload_phase' => 'transfer',
-            'video_file_chunk' => $media->url,
-            'access_token' => $accessToken,
-        ]);
+        $this->assertRuploadUrl($uploadUrl);
 
-        if ($transferResponse->failed()) {
-            Log::error('Facebook video story transfer failed', ['body' => $this->redactResponseBody($transferResponse->body())]);
-            $this->handleApiError($transferResponse);
+        $uploadResponse = $this->socialHttp()
+            ->withHeaders([
+                'Authorization' => "OAuth {$accessToken}",
+                'file_url' => $media->url,
+            ])
+            ->send('POST', $uploadUrl);
+
+        if ($uploadResponse->failed()) {
+            Log::error('Facebook video story upload failed', ['body' => $this->redactResponseBody($uploadResponse->body())]);
+            $this->handleApiError($uploadResponse);
         }
+
+        if (data_get($uploadResponse->json(), 'success') !== true) {
+            throw new FacebookPublishException(
+                userMessage: 'Facebook did not accept the story video. Please try again.',
+                category: ErrorCategory::ServerError,
+                rawResponse: $uploadResponse->body(),
+            );
+        }
+
+        $this->waitForStoryUpload((string) $videoId, $accessToken);
 
         $finishResponse = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/video_stories", [
             'upload_phase' => 'finish',
@@ -414,12 +435,79 @@ class FacebookPublisher
             $this->handleApiError($finishResponse);
         }
 
-        $storyId = $finishResponse->json()['post_id'] ?? $videoId;
+        $storyId = data_get($finishResponse->json(), 'post_id', $videoId);
 
         return [
             'id' => $storyId,
             'url' => "https://www.facebook.com/stories/{$pageId}/{$storyId}",
         ];
+    }
+
+    /**
+     * The story `upload_url` must point at Meta's rupload host. Anything else
+     * would send the Page token and our media URL to a third party.
+     */
+    private function assertRuploadUrl(string $uploadUrl): void
+    {
+        $parts = parse_url($uploadUrl);
+
+        if (data_get($parts, 'scheme') !== 'https' || data_get($parts, 'host') !== config('trypost.platforms.facebook.rupload_host')) {
+            throw new FacebookPublishException(
+                userMessage: 'Facebook returned an invalid upload URL.',
+                category: ErrorCategory::ServerError,
+                rawResponse: $uploadUrl,
+            );
+        }
+    }
+
+    /**
+     * With `file_url` Meta fetches the video from our CDN asynchronously, so
+     * the rupload POST returns before the bytes exist on their side. Calling
+     * `finish` on that empty session is what produced error 6000; wait until
+     * the uploading phase reports complete.
+     */
+    private function waitForStoryUpload(string $videoId, string $accessToken): void
+    {
+        for ($attempt = 0; $attempt < self::STORY_UPLOAD_MAX_POLLS; $attempt++) {
+            $statusResponse = $this->socialHttp()->get("{$this->baseUrl}/{$videoId}", [
+                'fields' => 'status',
+                'access_token' => $accessToken,
+            ]);
+
+            if ($statusResponse->failed()) {
+                $this->handleApiError($statusResponse);
+            }
+
+            $status = data_get($statusResponse->json(), 'status', []);
+            $videoStatus = data_get($status, 'video_status');
+            $uploadingStatus = data_get($status, 'uploading_phase.status');
+            $detail = data_get($status, 'processing_phase.error.message')
+                ?? data_get($status, 'uploading_phase.error.message');
+
+            if ($detail !== null
+                || in_array($videoStatus, ['error', 'expired'], true)
+                || $uploadingStatus === 'error'
+                || data_get($status, 'processing_phase.status') === 'error') {
+                throw new FacebookPublishException(
+                    userMessage: is_string($detail) && $detail !== ''
+                        ? $detail
+                        : 'Facebook could not process the story video. Please try another file.',
+                    category: ErrorCategory::MediaFormat,
+                    rawResponse: $statusResponse->body(),
+                );
+            }
+
+            if ($uploadingStatus === 'complete' || in_array($videoStatus, ['ready', 'upload_complete'], true)) {
+                return;
+            }
+
+            Sleep::for(self::STORY_UPLOAD_POLL_SECONDS)->seconds();
+        }
+
+        throw new FacebookPublishException(
+            userMessage: 'Facebook took too long to fetch the story video. Please try again.',
+            category: ErrorCategory::ServerError,
+        );
     }
 
     private function handleApiError(Response $response): never

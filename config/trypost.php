@@ -201,6 +201,7 @@ return [
         'facebook' => [
             'enabled' => env('FACEBOOK_ENABLED', true),
             'graph_api' => env('FACEBOOK_GRAPH_API', 'https://graph.facebook.com/v25.0'),
+            'rupload_host' => env('FACEBOOK_RUPLOAD_HOST', 'rupload.facebook.com'),
         ],
         'instagram' => [
             'enabled' => env('INSTAGRAM_ENABLED', true),
