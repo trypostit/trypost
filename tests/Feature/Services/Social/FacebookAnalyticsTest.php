@@ -83,24 +83,48 @@ test('facebook analytics does not request the deprecated post_impressions metric
     Http::assertNotSent(fn ($request) => str_contains($request['metric'] ?? '', 'post_impressions'));
 });
 
-test('facebook analytics reads reel metrics from the video insights edge', function () {
+test('facebook analytics reads a bare video id from the video insights edge', function (ContentType $contentType) {
     Http::fake([
-        "{$this->graph}/reel_video_123/video_insights*" => Http::response(facebookInsightsResponse([
-            ['name' => 'total_video_impressions', 'value' => 500],
-            ['name' => 'total_video_views', 'value' => 210],
-            ['name' => 'total_video_reactions_by_type_total', 'value' => ['like' => 4, 'love' => 2, 'haha' => 1]],
+        "{$this->graph}/2984721568539922/video_insights*" => Http::response(facebookInsightsResponse([
+            ['name' => 'fb_reels_total_plays', 'value' => 15],
+            ['name' => 'post_video_likes_by_reaction_type', 'value' => ['REACTION_LIKE' => 4, 'REACTION_LOVE' => 2]],
+            ['name' => 'post_video_social_actions', 'value' => ['COMMENT' => 1, 'SHARE' => 2]],
         ])),
     ]);
 
-    $metrics = (new FacebookAnalytics)->fetchPostMetrics(facebookPostPlatform(ContentType::FacebookReel, 'reel_video_123'));
+    $metrics = (new FacebookAnalytics)->fetchPostMetrics(facebookPostPlatform($contentType, '2984721568539922'));
 
     expect($metrics)->toBe([
-        ['label' => 'Impressions', 'value' => 500],
-        ['label' => 'Video Views', 'value' => 210],
-        ['label' => 'Reactions', 'value' => 7],
+        ['label' => 'Video Views', 'value' => 15],
+        ['label' => 'Reactions', 'value' => 6],
+        ['label' => 'Interactions', 'value' => 3],
     ]);
 
-    Http::assertNotSent(fn ($request) => str_starts_with($request->url(), "{$this->graph}/reel_video_123/insights"));
+    Http::assertSent(fn ($request) => str_starts_with($request->url(), "{$this->graph}/2984721568539922/video_insights")
+        && $request['metric'] === 'fb_reels_total_plays,post_video_likes_by_reaction_type,post_video_social_actions');
+
+    Http::assertNotSent(fn ($request) => str_starts_with($request->url(), "{$this->graph}/2984721568539922/insights"));
+})->with([
+    'reel' => ContentType::FacebookReel,
+    'timeline video' => ContentType::FacebookPost,
+]);
+
+test('facebook analytics reads an empty video breakdown as zero', function () {
+    Http::fake([
+        "{$this->graph}/2984721568539922/video_insights*" => Http::response(facebookInsightsResponse([
+            ['name' => 'fb_reels_total_plays', 'value' => 14],
+            ['name' => 'post_video_likes_by_reaction_type', 'value' => []],
+            ['name' => 'post_video_social_actions', 'value' => []],
+        ])),
+    ]);
+
+    $metrics = (new FacebookAnalytics)->fetchPostMetrics(facebookPostPlatform(ContentType::FacebookPost, '2984721568539922'));
+
+    expect($metrics)->toBe([
+        ['label' => 'Video Views', 'value' => 14],
+        ['label' => 'Reactions', 'value' => 0],
+        ['label' => 'Interactions', 'value' => 0],
+    ]);
 });
 
 test('facebook analytics reads story metrics with the story metric family', function () {

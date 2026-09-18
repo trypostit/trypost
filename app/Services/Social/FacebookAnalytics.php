@@ -50,7 +50,7 @@ class FacebookAnalytics
             return ['unsupported' => true, 'reason' => 'missing_post_id'];
         }
 
-        [$edge, $metrics] = $this->postMetricsFor($postPlatform->content_type);
+        [$edge, $metrics] = $this->postMetricsFor($postPlatform);
 
         $response = $this->socialHttp()
             ->get("{$this->baseUrl}/{$postPlatform->platform_post_id}/{$edge}", [
@@ -78,45 +78,56 @@ class FacebookAnalytics
     }
 
     /**
-     * Each Facebook publish type stores a different kind of Graph node, and each
-     * node exposes its own insights: a feed post has `/insights` with `post_*`
-     * metrics, a Reel is a bare video whose numbers live on `/video_insights`,
-     * and a Story only answers to the `story` metric family. Asking a Story or
-     * a Reel for `post_impressions` is a `#100` rejection, not an empty result.
+     * The stored id tells us which Graph node we are looking at, and each node
+     * answers a different insights call:
      *
-     * The `post_impressions*` family is deprecated above Graph API v25, so feed
-     * posts read the `media_view` replacements instead.
+     * - A Story is a story post; only the `story` metric family is valid.
+     * - A feed post (text, photo, carousel) is stored as `{page_id}_{post_id}`
+     *   and has the `/insights` edge with `post_*` metrics.
+     * - A bare id is a video node: Reels and timeline videos both come back from
+     *   Meta as the video's own id. The video node has no `/insights` edge at
+     *   all; its numbers live on `/video_insights`, and Meta reports them with
+     *   the Reels metric names for any short video.
+     *
+     * Asking the wrong node is a `#100` rejection, not an empty result. The
+     * `post_impressions*` family is deprecated above Graph API v25, so feed
+     * posts read the `media_view` replacements.
      *
      * @return array{0: string, 1: array<string, string>}
      */
-    private function postMetricsFor(?ContentType $contentType): array
+    private function postMetricsFor(PostPlatform $postPlatform): array
     {
-        return match ($contentType) {
-            ContentType::FacebookReel => ['video_insights', [
-                'total_video_impressions' => 'analytics.metrics.impressions',
-                'total_video_views' => 'analytics.metrics.video_views',
-                'total_video_reactions_by_type_total' => 'analytics.metrics.reactions',
-            ]],
-            ContentType::FacebookStory => ['insights', [
+        if ($postPlatform->content_type === ContentType::FacebookStory) {
+            return ['insights', [
                 'page_story_impressions_by_story_id' => 'analytics.metrics.impressions',
                 'page_story_impressions_by_story_id_unique' => 'analytics.metrics.reach',
                 'story_interaction' => 'analytics.metrics.interactions',
                 'pages_fb_story_thread_lightweight_reactions' => 'analytics.metrics.reactions',
                 'pages_fb_story_replies' => 'analytics.metrics.replies',
                 'pages_fb_story_shares' => 'analytics.metrics.shares',
-            ]],
-            default => ['insights', [
+            ]];
+        }
+
+        if (str_contains((string) $postPlatform->platform_post_id, '_')) {
+            return ['insights', [
                 'post_media_view' => 'analytics.metrics.impressions',
                 'post_total_media_view_unique' => 'analytics.metrics.reach',
                 'post_reactions_like_total' => 'analytics.metrics.likes',
                 'post_clicks' => 'analytics.metrics.clicks',
-            ]],
-        };
+            ]];
+        }
+
+        return ['video_insights', [
+            'fb_reels_total_plays' => 'analytics.metrics.video_views',
+            'post_video_likes_by_reaction_type' => 'analytics.metrics.reactions',
+            'post_video_social_actions' => 'analytics.metrics.interactions',
+        ]];
     }
 
     /**
-     * Most metrics are a plain count; the `*_by_type_total` family returns one
-     * count per reaction type and is reported as their sum.
+     * Most metrics are a plain count; the `*_by_reaction_type` and
+     * `social_actions` metrics return one count per type and are reported as
+     * their sum. An empty breakdown arrives as `[]`.
      */
     private function metricValue(mixed $value): int
     {
