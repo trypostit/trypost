@@ -17,6 +17,7 @@ use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
@@ -147,7 +148,7 @@ class PinterestPublisher
                 );
             }
 
-            $detectedMime = mime_content_type($tempFile) ?: '';
+            $detectedMime = File::mimeType($tempFile) ?: '';
             if (MediaType::classify($detectedMime) === MediaType::Image && ! MediaType::isGif($detectedMime)) {
                 $optimizer = app(MediaOptimizer::class);
                 $optimizedPath = $optimizer->optimizeImage($tempFile, Platform::Pinterest);

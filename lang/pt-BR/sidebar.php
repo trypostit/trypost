@@ -11,11 +11,13 @@ return [
     'account_settings' => 'Conta e cobrança',
     'workspace_settings' => 'Configurações do workspace',
     'log_out' => 'Sair',
+    'help' => 'Ajuda',
     'workspace' => [
         'connections' => 'Conexões',
         'signatures' => 'Assinaturas',
         'labels' => 'Etiquetas',
         'assets' => 'Mídias',
+        'webhooks' => 'Webhooks',
         'mcp' => 'MCP',
     ],
     'language' => 'Idioma: :name',
@@ -25,9 +27,7 @@ return [
         'others' => 'Outros',
     ],
     'analytics' => 'Analytics',
-    'automations' => 'Automações',
-    'onboarding' => 'Primeiros passos',
-    'onboarding_hint' => 'Complete a configuração',
+    'repurposes' => 'Repost',
     'posts' => [
         'calendar' => 'Calendário',
         'all' => 'Todos',
@@ -41,8 +41,10 @@ return [
     'archive_all' => 'Arquivar tudo',
     'no_notifications' => 'Sem notificações',
     'support' => [
+        'chat' => 'Suporte via chat',
         'docs' => 'Documentação',
         'referral' => 'Ganhe 30% de indicação',
         'discord' => 'Comunidade Discord',
+        'community' => 'Comunidade',
     ],
 ];

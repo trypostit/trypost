@@ -11,11 +11,13 @@ return [
     'account_settings' => '账户与账单',
     'workspace_settings' => '工作区设置',
     'log_out' => '退出登录',
+    'help' => '帮助',
     'workspace' => [
         'connections' => '连接',
         'signatures' => '签名',
         'labels' => '标签',
         'assets' => '素材库',
+        'webhooks' => 'Webhooks',
         'mcp' => 'MCP',
     ],
     'language' => '语言：:name',
@@ -25,9 +27,7 @@ return [
         'others' => '其他',
     ],
     'analytics' => '分析',
-    'automations' => '自动化',
-    'onboarding' => '开始使用',
-    'onboarding_hint' => '完成设置',
+    'repurposes' => 'Repurpose',
     'posts' => [
         'calendar' => '日历',
         'all' => '全部',
@@ -41,8 +41,10 @@ return [
     'archive_all' => '全部归档',
     'no_notifications' => '暂无通知',
     'support' => [
+        'chat' => '在线客服',
         'docs' => '文档',
         'referral' => '赚取 30% 推荐奖励',
         'discord' => 'Discord 社区',
+        'community' => '社区',
     ],
 ];

@@ -35,7 +35,6 @@
 | 📅&nbsp; **One calendar, every network** | Plan a month at a glance, drag any post to a new slot, and publish natively to 12 platforms. No redirects, no "finish in the mobile app." |
 | ✨&nbsp; **An AI copilot that knows your brand** | Captions, hooks, full drafts, and multi-slide carousels in your tone, voice, and colors. It reads your brand profile on every generation. |
 | 🤖&nbsp; **Built for AI agents** | A first-class MCP server and REST API. Claude, Cursor, ChatGPT, or your own scripts can draft, schedule, and publish for you. |
-| ⚙️&nbsp; **Automations that run themselves** | A visual workflow builder: triggers, conditions, RSS, webhooks, and AI generation, all server-side. Set it once, let it post. |
 | 🗂️&nbsp; **Made for many clients** | Workspaces, roles, and approval flows so an agency or freelancer can run a roster of brands without the spreadsheets. |
 
 ## Features
@@ -47,7 +46,7 @@
 | **AI generate &amp; review** | Draft from a prompt, get inline feedback before you publish. |
 | **AI carousel builder** | Prompt to a multi-slide carousel with images, on-brand. |
 | **Brand profile** | Tone, voice, language, and colors applied to every AI call. |
-| **Automations** | Schedule / RSS triggers, conditions, publish steps, and webhooks. |
+| **Repurpose** | Auto-replicate the videos you post outside TryPost to your other networks. |
 | **Asset library** | Reusable workspace media, plus Unsplash and Giphy search built in. |
 | **Signatures &amp; labels** | Reusable hashtag and CTA blocks, color-coded post tags. |
 | **Team collaboration** | Owner / Admin / Member roles, comments with @mentions on drafts. |

@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Enums\UserWorkspace\Role;
-use App\Models\Automation;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\User;
@@ -11,7 +10,7 @@ use App\Models\Workspace;
 
 /**
  * Guards against horizontal overflow on mobile across the layout variants
- * (AuthLayout, default AppLayout, full-width editor, automations detail).
+ * (AuthLayout, default AppLayout, full-width editor).
  * Reproduces the AuthSplitLayout long-name overflow that a fixed grid column
  * caused. Returns the widest offending element on failure for quick triage.
  */
@@ -60,7 +59,6 @@ test('key pages do not overflow horizontally on a phone', function () {
         'content' => 'Launching our new mobile editor today!',
     ]);
     PostPlatform::factory()->count(2)->create(['post_id' => $post->id]);
-    $automation = Automation::factory()->create(['workspace_id' => $workspace->id]);
 
     $this->actingAs($user);
 
@@ -70,7 +68,6 @@ test('key pages do not overflow horizontally on a phone', function () {
         'post editor (full-width)' => route('app.posts.edit', $post),
         'calendar (full-width)' => route('app.calendar'),
         'settings (tabs)' => route('app.api-keys.index'),
-        'automation metrics (detail)' => route('app.automations.metrics', $automation),
     ];
 
     foreach ($pages as $label => $url) {

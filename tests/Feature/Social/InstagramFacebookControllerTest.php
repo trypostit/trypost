@@ -22,6 +22,36 @@ beforeEach(function () {
     $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
 });
 
+test('instagram-facebook authorize url reopens the page selection', function () {
+    $response = $this->actingAs($this->user)->get(route('app.social.instagram-facebook.connect'));
+
+    expect(urldecode((string) $response->headers->get('Location')))
+        ->toStartWith('https://www.facebook.com/')
+        ->toContain('auth_type=rerequest');
+});
+
+test('instagram-facebook connect redirects to oauth provider', function () {
+    $driverMock = Mockery::mock();
+    $driverMock->shouldReceive('usingGraphVersion')->andReturnSelf();
+    $driverMock->shouldReceive('setScopes')->andReturnSelf();
+    $driverMock->shouldReceive('redirectUrl')->andReturnSelf();
+    $driverMock->shouldReceive('reRequest')->once()->andReturnSelf();
+    $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
+        'getTargetUrl' => 'https://www.facebook.com/v25.0/dialog/oauth?test=1',
+    ]));
+
+    Socialite::shouldReceive('driver')
+        ->with('facebook')
+        ->andReturn($driverMock);
+
+    $response = $this->actingAs($this->user)
+        ->get(route('app.social.instagram-facebook.connect'));
+
+    $response->assertRedirect('https://www.facebook.com/v25.0/dialog/oauth?test=1');
+
+    expect(session('social_connect_workspace'))->toBe($this->workspace->id);
+});
+
 test('instagram-facebook callback follows accounts pagination and shows picker', function () {
     session([
         'social_connect_workspace' => $this->workspace->id,
@@ -332,7 +362,7 @@ test('instagram-facebook callback fails without connecting when accounts paginat
     expect($this->workspace->socialAccounts()->where('platform', Platform::InstagramFacebook)->count())->toBe(0);
 });
 
-test('instagram-facebook select skips deferred onboarding progress in self-hosted mode', function () {
+test('instagram-facebook select expires the pending session after a successful pick', function () {
     config()->set('trypost.self_hosted', true);
 
     session([
@@ -363,7 +393,6 @@ test('instagram-facebook select skips deferred onboarding progress in self-hoste
     $response->assertInertia(fn (AssertableInertia $page) => $page
         ->component('accounts/PopupCallback')
         ->where('success', true)
-        ->where('onboardingProgress', false)
     );
 
     $this->assertDatabaseHas('social_accounts', [
@@ -373,8 +402,6 @@ test('instagram-facebook select skips deferred onboarding progress in self-hoste
         'username' => 'mybiz',
     ]);
 
-    // After connect the session is cleared; PopupCallback sets onboardingProgress
-    // inline so Inertia does not deferred-reload this select URL into /accounts.
     $this->actingAs($this->user)
         ->get(route('app.social.instagram-facebook.select-page'))
         ->assertOk()
@@ -382,7 +409,6 @@ test('instagram-facebook select skips deferred onboarding progress in self-hoste
             ->component('accounts/PopupCallback')
             ->where('success', false)
             ->where('message', __('accounts.popup_callback.session_expired'))
-            ->where('onboardingProgress', false)
         );
 });
 
@@ -441,53 +467,10 @@ test('instagram-facebook select page returns popup callback when the session exp
             ->component('accounts/PopupCallback')
             ->where('success', false)
             ->where('message', __('accounts.popup_callback.session_expired'))
-            ->where('onboardingProgress', false)
         );
 });
 
-test('instagram-facebook select shows network_taken when a standalone instagram is already connected', function () {
-    config()->set('trypost.allow_multiple_social_accounts', false);
-
-    SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::Instagram,
-        'platform_user_id' => 'existing-ig',
-    ]);
-
-    session([
-        'social_connect_workspace' => $this->workspace->id,
-        'instagram_facebook_oauth' => [
-            'user_token' => 'user-token',
-            'reconnect_id' => null,
-            'pages' => [
-                [
-                    'page_id' => 'page-1',
-                    'page_name' => 'My Page',
-                    'page_access_token' => 'page-token',
-                    'ig_id' => 'ig-new',
-                    'ig_username' => 'mybiz',
-                    'ig_described' => true,
-                    'ig_name' => 'My Biz',
-                    'ig_picture' => null,
-                ],
-            ],
-        ],
-    ]);
-
-    $response = $this->actingAs($this->user)->post(route('app.social.instagram-facebook.select'), [
-        'page_id' => 'page-1',
-    ]);
-
-    $response->assertOk();
-    $response->assertInertia(fn (AssertableInertia $page) => $page->component('accounts/PopupCallback'));
-    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
-    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', __('accounts.popup_callback.network_taken')));
-
-    expect($this->workspace->socialAccounts()->whereIn('platform', [Platform::Instagram->value, Platform::InstagramFacebook->value])->count())->toBe(1);
-});
-
-test('instagram-facebook callback hides an instagram already connected standalone in multi-account mode', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
+test('instagram-facebook callback hides an instagram already connected standalone', function () {
 
     SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -678,7 +661,6 @@ test('instagram via facebook says the permission is missing when meta lists a pa
 });
 
 test('instagram via facebook does not describe a page it is about to discard', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
 
     SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,

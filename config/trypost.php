@@ -10,11 +10,27 @@ return [
     |--------------------------------------------------------------------------
     |
     | When enabled, the application runs in self-hosted mode which skips
-    | payment/subscription requirements during onboarding.
+    | payment/subscription requirements during welcome.
     |
     */
 
     'self_hosted' => env('SELF_HOSTED', true),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Legal pages
+    |--------------------------------------------------------------------------
+    |
+    | Linked from the auth screens. Platform app reviews (TikTok explicitly)
+    | require Terms and Privacy links to be clearly visible; self-hosted
+    | installs point these at wherever they publish their own documents.
+    |
+    */
+
+    'legal' => [
+        'terms_url' => env('LEGAL_TERMS_URL', 'https://trypost.it/terms'),
+        'privacy_url' => env('LEGAL_PRIVACY_URL', 'https://trypost.it/privacy'),
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -31,32 +47,12 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Multiple social accounts per network
-    |--------------------------------------------------------------------------
-    |
-    | When false (Cloud default), a workspace may connect only one account
-    | per social network. Variants of the same network (LinkedIn profile/page,
-    | Instagram standalone/Facebook) count as one. Reconnecting the same
-    | identity (platform + platform_user_id) still updates the existing row.
-    |
-    | Independent of SELF_HOSTED so Cloud can flip this later without becoming
-    | self-hosted. Self-hosted installs typically set this true.
-    |
-    */
-
-    'allow_multiple_social_accounts' => (bool) env(
-        'ALLOW_MULTIPLE_SOCIAL_ACCOUNTS',
-        env('SELF_HOSTED', true),
-    ),
-
-    /*
-    |--------------------------------------------------------------------------
     | Security
     |--------------------------------------------------------------------------
     |
     | SafeHttpFetcher blocks requests to private/reserved IP ranges (SSRF
     | protection) by default. Self-hosted operators who need to fetch from
-    | their own internal network (e.g. an internal RSS feed or webhook) can
+    | their own internal network (e.g. an internal webhook endpoint) can
     | opt in here. Leave disabled unless you understand the SSRF risk.
     |
     */
@@ -129,13 +125,33 @@ return [
     | Outbound User-Agent
     |--------------------------------------------------------------------------
     |
-    | Branded User-Agent applied to outbound HTTP from automation nodes
-    | (webhook + http_request) so recipients know the request came from
-    | TryPost.it. Self-hosters can override it.
+    | Branded User-Agent applied to outbound HTTP from workspace webhooks so
+    | recipients know the request came from TryPost.it. Self-hosters can
+    | override it.
     |
     */
 
     'user_agent' => env('TRYPOST_USER_AGENT', 'TryPost.it/1.0 (+https://trypost.it)'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Repurpose
+    |--------------------------------------------------------------------------
+    |
+    | How often an active repurpose polls its source network for videos the
+    | workspace published outside TryPost. The scheduler ticks every five
+    | minutes and each repurpose is polled when it is due, so the interval is
+    | a runtime knob rather than a cron expression. Meta's Instagram quota is
+    | an app-wide pool (200 calls per hour per daily active user), so raise
+    | the interval before the pool tightens. `backoff_minutes` is used instead
+    | when the source answers with a rate-limit error.
+    |
+    */
+
+    'repurpose' => [
+        'poll_interval_minutes' => (int) env('REPURPOSE_POLL_INTERVAL_MINUTES', 15),
+        'backoff_minutes' => (int) env('REPURPOSE_BACKOFF_MINUTES', 60),
+    ],
 
     'google_auth_enabled' => env('GOOGLE_AUTH_ENABLED', false),
 
@@ -185,6 +201,7 @@ return [
         'facebook' => [
             'enabled' => env('FACEBOOK_ENABLED', true),
             'graph_api' => env('FACEBOOK_GRAPH_API', 'https://graph.facebook.com/v25.0'),
+            'rupload_host' => env('FACEBOOK_RUPLOAD_HOST', 'rupload.facebook.com'),
         ],
         'instagram' => [
             'enabled' => env('INSTAGRAM_ENABLED', true),
@@ -221,8 +238,8 @@ return [
             'video_poll_seconds' => env('BLUESKY_VIDEO_POLL_SECONDS', 2),
             // Gradually back off status checks to at most this interval.
             'video_poll_max_seconds' => env('BLUESKY_VIDEO_POLL_MAX_SECONDS', 30),
-            // Bluesky rejects videos larger than 100 MB; skip oversized files early.
-            'video_max_bytes' => env('BLUESKY_VIDEO_MAX_BYTES', 100 * 1024 * 1024),
+            // Bluesky rejects videos over 300 MB (app.bsky.embed.video maxSize = 300000000).
+            'video_max_bytes' => env('BLUESKY_VIDEO_MAX_BYTES', 300_000_000),
             // PLC directory, used to resolve an account's real PDS host from its DID.
             'plc_directory' => env('BLUESKY_PLC_DIRECTORY', 'https://plc.directory'),
         ],

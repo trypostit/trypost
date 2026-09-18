@@ -22,32 +22,30 @@ return [
         'welcome_trial' => 'Witamy w TryPost! Twój okres próbny właśnie się rozpoczął.',
     ],
 
-    'legal' => 'Kontynuując, akceptujesz nasze <a href="https://trypost.it/terms" target="_blank">Warunki korzystania z usługi</a> oraz <a href="https://trypost.it/privacy" target="_blank">Politykę prywatności</a>.',
+    'legal' => 'Kontynuując, akceptujesz nasze <a href=":terms_url" target="_blank">Warunki korzystania z usługi</a> oraz <a href=":privacy_url" target="_blank">Politykę prywatności</a>.',
 
-    'slides' => [
-        'calendar' => [
-            'title' => 'Wizualny kalendarz',
-            'description' => 'Planuj i harmonogramuj treści na wszystkich swoich kontach społecznościowych dzięki intuicyjnemu kalendarzowi z funkcją przeciągnij i upuść.',
+    'reviews' => [
+        'eyebrow' => '5/5 w G2',
+        'heading' => 'Uwielbiany przez tych, co publikują',
+        'paulo_dantas' => [
+            'role' => 'Założyciel, chatadv.com.br',
+            'quote' => 'Prostota tworzenia, porządkowania i dystrybucji treści we wszystkich sieciach społecznościowych. Dzięki MCP możemy korzystać z wybranej AI, na przykład Claude lub ChatGPT, aby tworzyć treści i od razu je planować.',
         ],
-        'scheduling' => [
-            'title' => 'Inteligentne planowanie',
-            'description' => 'Planuj posty na LinkedIn, X, Instagram, TikTok, YouTube i nie tylko — wszystko z jednego miejsca.',
+        'diego' => [
+            'role' => 'CEO, Globalfy.com',
+            'quote' => 'Podoba mi się, jak łatwo korzysta się z TryPost. Tworzę post bezpośrednio w Claude, a potem przez MCP publikuję go i planuję na przyszłość. Konfiguracja zajęła mi pięć minut.',
         ],
-        'media' => [
-            'title' => 'Bogate multimedia',
-            'description' => 'Publikuj zdjęcia, karuzele, relacje i rolki. Każda platforma automatycznie otrzymuje właściwy format.',
+        'luiz' => [
+            'role' => 'Twórca treści',
+            'quote' => 'Uwielbiam, jak łatwo podłączam swoje narzędzia i agentów AI oraz planuję posty w 9 sieciach społecznościowych w kilka minut.',
         ],
-        'video' => [
-            'title' => 'Publikowanie wideo',
-            'description' => 'Prześlij film raz i opublikuj go na TikTok, YouTube Shorts, Instagram Reels i Facebook Reels.',
+        'pedro' => [
+            'role' => 'Założyciel, templated.io',
+            'quote' => 'Naprawdę łatwe w użyciu i integracji. Z MCP interfejs jest mi potrzebny tylko do podłączenia kont społecznościowych.',
         ],
-        'team' => [
-            'title' => 'Zespołowe przestrzenie robocze',
-            'description' => 'Zaproś swój zespół, przypisz role i zarządzaj wieloma markami z osobnych przestrzeni roboczych.',
-        ],
-        'signatures' => [
-            'title' => 'Sygnatury',
-            'description' => 'Zapisuj wielokrotnego użytku sygnatury (hasztagi, linki, zakończenia) i dołączaj je do postów jednym kliknięciem.',
+        'paulo_castellano' => [
+            'role' => 'Założyciel, changelogfy.com',
+            'quote' => 'Uwielbiam integrację z MCP, bo pozwala mi zarządzać wszystkimi kontami społecznościowymi z poziomu Claude lub ChatGPT.',
         ],
     ],
 

@@ -6,16 +6,19 @@ namespace App\Http\Controllers\Auth;
 
 use App\Actions\SocialAccount\ToggleSocialAccount;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
+use App\Enums\Repurpose\Status as RepurposeStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\ConnectPopupException;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\App\SocialAccountResource;
+use App\Models\Repurpose;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -71,10 +74,11 @@ class SocialController extends Controller
             ->where('status', PostPlatformStatus::Pending->value)
             ->delete();
 
+        $before = $this->repurposeStatesFor($account);
+
         $account->delete();
 
-        session()->flash('flash.banner', __('accounts.flash.disconnected'));
-        session()->flash('flash.bannerStyle', 'success');
+        $this->flashAccountChange('disconnected', $before);
 
         return back();
     }
@@ -89,11 +93,11 @@ class SocialController extends Controller
             abort(403);
         }
 
+        $before = $this->repurposeStatesFor($account);
+
         ToggleSocialAccount::execute($account);
 
-        $status = $account->is_active ? 'activated' : 'deactivated';
-        session()->flash('flash.banner', __("accounts.flash.{$status}"));
-        session()->flash('flash.bannerStyle', 'success');
+        $this->flashAccountChange($account->is_active ? 'activated' : 'deactivated', $before);
 
         return back();
     }
@@ -151,18 +155,9 @@ class SocialController extends Controller
             ->find($reconnectId);
     }
 
-    /**
-     * Nothing on this network is left to connect: the card being reconnected is
-     * gone from the provider, this login has nothing left to offer, or the
-     * single slot is taken.
-     *
-     * A taken slot is a fact about our own rows, so it stands even when the provider
-     * listing came back short. The other two answers depend on having seen everything.
-     */
     protected function noConnectableIdentities(?SocialAccount $reconnect, string $missingKey, bool $listingComplete = true): Response
     {
         $key = match (true) {
-            ! (bool) config('trypost.allow_multiple_social_accounts') && $reconnect === null => 'network_taken',
             $listingComplete => $reconnect !== null ? $missingKey : 'all_connected',
             default => 'pages_read_incomplete',
         };
@@ -171,13 +166,6 @@ class SocialController extends Controller
     }
 
     /**
-     * Narrow the identities a provider returned to the ones this card may take.
-     *
-     * A reconnect only ever offers its own identity. Otherwise every identity
-     * already connected on this network is dropped — including in multi-account
-     * mode, where the same identity could otherwise be connected twice under two
-     * platforms of one network (Instagram directly and via Facebook).
-     *
      * @param  array<int, array<string, mixed>>  $identities
      * @return array<int, array<string, mixed>>
      */
@@ -202,7 +190,7 @@ class SocialController extends Controller
         )->values()->all();
     }
 
-    protected function redirectToProvider(Request $request, string $driver, array $scopes): SymfonyResponse
+    protected function redirectToProvider(Request $request, string $driver, array $scopes, array $parameters = []): SymfonyResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -211,6 +199,7 @@ class SocialController extends Controller
         return Inertia::location(
             Socialite::driver($driver)
                 ->scopes($scopes)
+                ->with($parameters)
                 ->redirect()
                 ->getTargetUrl()
         );
@@ -278,10 +267,6 @@ class SocialController extends Controller
      * Render the Inertia page that notifies the opener and closes the connect
      * popup. Used by both the GET OAuth callbacks (a fresh popup page load) and
      * the XHR selection submits (an Inertia visit that swaps to this page).
-     *
-     * Always pass `onboardingProgress` as inline false so it overrides the shared
-     * deferred prop: after select the URL is still the select path, and a deferred
-     * reload would re-GET that route with a cleared session.
      */
     protected function popupCallback(bool $success, string $message, ?string $platform = null): Response
     {
@@ -291,7 +276,43 @@ class SocialController extends Controller
             'success' => $success,
             'message' => $message,
             'platform' => $platform,
-            'onboardingProgress' => false,
         ]);
+    }
+
+    /**
+     * @return Collection<string, RepurposeStatus>
+     */
+    private function repurposeStatesFor(SocialAccount $account): Collection
+    {
+        return Repurpose::query()
+            ->where('workspace_id', $account->workspace_id)
+            ->get()
+            ->filter(fn (Repurpose $repurpose): bool => $repurpose->dependsOn($account))
+            ->pluck('status', 'id');
+    }
+
+    /**
+     * @param  Collection<string, RepurposeStatus>  $before
+     */
+    private function flashAccountChange(string $action, Collection $before): void
+    {
+        $after = Repurpose::query()->whereKey($before->keys())->pluck('status', 'id');
+
+        $paused = $before
+            ->filter(fn (RepurposeStatus $status, string $id): bool => $status !== RepurposeStatus::Paused
+                && $after->get($id) === RepurposeStatus::Paused)
+            ->count();
+
+        $resumed = $before
+            ->filter(fn (RepurposeStatus $status, string $id): bool => $status === RepurposeStatus::Paused
+                && $after->get($id) === RepurposeStatus::Active)
+            ->count();
+
+        session()->flash('flash.banner', match (true) {
+            $paused > 0 => trans_choice("accounts.flash.{$action}_paused_repurposes", $paused, ['count' => $paused]),
+            $resumed > 0 => trans_choice("accounts.flash.{$action}_resumed_repurposes", $resumed, ['count' => $resumed]),
+            default => __("accounts.flash.{$action}"),
+        });
+        session()->flash('flash.bannerStyle', 'success');
     }
 }

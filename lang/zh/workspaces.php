@@ -9,6 +9,13 @@ return [
     'current' => '当前',
     'connections' => ':count 个连接',
     'posts' => ':count 条帖子',
+    'subscription_required' => '订阅后即可创建更多工作区。',
+    'limit_reached' => '当前套餐包含一个工作区。升级后可添加更多。',
+
+    'upgrade_dialog' => [
+        'title' => '升级以添加更多工作区',
+        'description' => '当前套餐包含一个工作区。升级到 Workspaces 可获得无限工作区 — 每个品牌或客户一个。',
+    ],
 
     'create' => [
         'page_title' => '创建你的工作区',

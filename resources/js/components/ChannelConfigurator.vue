@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { IconAlertCircle, IconCircleCheck } from '@tabler/icons-vue';
+import { IconAlertCircle, IconCircleCheck, IconExternalLink } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import DiscordSettings from '@/components/posts/editor/DiscordSettings.vue';
@@ -23,12 +23,10 @@ const props = withDefaults(defineProps<{
     media?: MediaItem[];
     videoDurationSec?: number | null;
     disabled?: boolean;
-    previewOnly?: boolean;
 }>(), {
     media: () => [],
     videoDurationSec: null,
     disabled: false,
-    previewOnly: false,
 });
 
 const emit = defineEmits<{
@@ -40,6 +38,14 @@ const emit = defineEmits<{
 const isSelected = (id: string): boolean => props.selectedIds.includes(id);
 
 const selectedChannels = computed(() => props.channels.filter((channel) => isSelected(channel.id)));
+
+/** Props and listeners every per-platform settings panel takes. */
+const settingsProps = (channel: Channel) => ({
+    socialAccount: channel.socialAccount,
+    meta: channel.meta,
+    disabled: props.disabled,
+    'onUpdate:meta': (value: Record<string, any>) => emit('update:meta', channel.id, value),
+});
 </script>
 
 <template>
@@ -50,13 +56,9 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                     <TooltipTrigger as-child>
                         <button
                             type="button"
-                            class="flex w-20 cursor-pointer flex-col items-center gap-1.5 transition-opacity"
-                            :class="[
-                                channel.issue && !isSelected(channel.id) ? 'cursor-not-allowed opacity-40' : '',
-                                channel.issue && isSelected(channel.id) ? 'opacity-100' : '',
-                                !channel.issue ? 'opacity-100 hover:opacity-90' : '',
-                            ]"
-                            :disabled="Boolean(channel.issue) && !isSelected(channel.id)"
+                            class="flex w-20 cursor-pointer flex-col items-center gap-1.5 transition-opacity hover:opacity-90"
+                            :aria-pressed="isSelected(channel.id)"
+                            :data-testid="`channel-${channel.id}`"
                             @click="emit('toggle', channel.id)"
                         >
                             <div class="relative">
@@ -64,26 +66,23 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                                     :src="channel.avatarUrl"
                                     :name="channel.displayName"
                                     class="size-10 shrink-0 rounded-full border-2"
-                                    :class="[
-                                        channel.issue && isSelected(channel.id) ? 'border-rose-500 shadow-2xs' : '',
-                                        !channel.issue && isSelected(channel.id) ? 'border-foreground shadow-2xs' : '',
-                                        !isSelected(channel.id) ? 'border-foreground/20' : '',
-                                    ]"
+                                    :class="isSelected(channel.id) ? ['shadow-2xs', channel.issue ? 'border-rose-500' : 'border-foreground'] : 'border-foreground/20'"
                                 />
                                 <span class="absolute -bottom-1 -right-1 inline-flex size-5 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs">
                                     <img :src="getPlatformLogo(channel.platform)" :alt="channel.platform" class="size-full object-cover" />
                                 </span>
-                                <Badge
-                                    v-if="channel.issue && isSelected(channel.id)"
-                                    variant="destructive"
-                                    class="absolute -top-1 -right-1 h-4 w-4 p-0"
-                                >
-                                    <IconAlertCircle class="h-2.5 w-2.5" />
-                                </Badge>
-                                <Badge v-else-if="channel.status === PostPlatformStatus.Published" variant="success" class="absolute -top-1 -right-1 h-4 w-4 p-0">
+                                <Badge v-if="channel.status === PostPlatformStatus.Published" variant="success" class="absolute -top-1 -right-1 h-4 w-4 p-0">
                                     <IconCircleCheck class="h-2.5 w-2.5" />
                                 </Badge>
                                 <Badge v-else-if="channel.status === PostPlatformStatus.Failed" variant="destructive" class="absolute -top-1 -right-1 h-4 w-4 p-0 text-[9px]">!</Badge>
+                                <Badge
+                                    v-else-if="channel.issue"
+                                    variant="destructive"
+                                    class="absolute -top-1 -right-1 h-4 w-4 p-0"
+                                    :data-testid="`channel-issue-${channel.id}`"
+                                >
+                                    <IconAlertCircle class="h-2.5 w-2.5" />
+                                </Badge>
                             </div>
                             <span
                                 class="line-clamp-2 text-center text-xs leading-tight"
@@ -102,6 +101,17 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
                             <p v-if="channel.issue" class="mt-1 max-w-xs text-destructive-foreground/90">
                                 {{ channel.issue }}
                             </p>
+                            <a
+                                v-if="channel.issue && channel.issueDocsUrl"
+                                :href="channel.issueDocsUrl"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="mt-1 inline-flex items-center gap-1 font-semibold underline underline-offset-2"
+                                :data-testid="`channel-issue-docs-${channel.id}`"
+                            >
+                                {{ $t('posts.edit.compliance.media_limits_docs') }}
+                                <IconExternalLink class="size-3" />
+                            </a>
                         </div>
                     </TooltipContent>
                 </Tooltip>
@@ -113,71 +123,44 @@ const selectedChannels = computed(() => props.channels.filter((channel) => isSel
         <template v-for="channel in selectedChannels" :key="channel.id">
             <InstagramSettings
                 v-if="channel.platform === Platform.Instagram || channel.platform === Platform.InstagramFacebook"
-                :social-account="channel.socialAccount"
+                v-bind="settingsProps(channel)"
                 :content-type="channel.contentType"
                 :media="media"
-                :meta="channel.meta"
-                :disabled="disabled"
-                :preview-only="previewOnly"
                 @update:content-type="emit('update:contentType', channel.id, $event)"
-                @update:meta="emit('update:meta', channel.id, $event)"
             />
             <FacebookSettings
                 v-else-if="channel.platform === Platform.Facebook"
-                :social-account="channel.socialAccount"
+                v-bind="settingsProps(channel)"
                 :content-type="channel.contentType"
                 :media="media"
-                :meta="channel.meta"
-                :disabled="disabled"
-                :preview-only="previewOnly"
                 @update:content-type="emit('update:contentType', channel.id, $event)"
-                @update:meta="emit('update:meta', channel.id, $event)"
             />
             <TikTokSettings
                 v-else-if="channel.platform === Platform.TikTok"
-                :social-account="channel.socialAccount"
+                v-bind="settingsProps(channel)"
                 :publish-config="channel.publishConfig ?? null"
                 :creator-info="channel.creatorInfo ?? null"
                 :video-duration-sec="videoDurationSec"
                 :content-type="channel.contentType"
                 :content-type-error="channel.contentTypeError"
-                :meta="channel.meta"
-                :disabled="disabled"
-                :preview-only="previewOnly"
                 @update:content-type="emit('update:contentType', channel.id, $event)"
-                @update:meta="emit('update:meta', channel.id, $event)"
             />
             <PinterestSettings
                 v-else-if="channel.platform === Platform.Pinterest"
-                :social-account="channel.socialAccount"
+                v-bind="settingsProps(channel)"
                 :content-type="channel.contentType"
                 :media="media"
                 :boards="channel.boards ?? []"
                 :boards-truncated="channel.boardsTruncated ?? false"
-                :meta="channel.meta"
-                :disabled="disabled"
-                :preview-only="previewOnly"
                 @update:content-type="emit('update:contentType', channel.id, $event)"
-                @update:meta="emit('update:meta', channel.id, $event)"
             />
             <LinkedInSettings
                 v-else-if="channel.platform === Platform.LinkedIn || channel.platform === Platform.LinkedInPage"
-                :social-account="channel.socialAccount"
+                v-bind="settingsProps(channel)"
                 :platform="channel.platform"
                 :media="media"
-                :meta="channel.meta"
-                :disabled="disabled"
-                :preview-only="previewOnly"
-                @update:meta="emit('update:meta', channel.id, $event)"
             />
-            <DiscordSettings
-                v-else-if="channel.platform === Platform.Discord"
-                :social-account="channel.socialAccount"
-                :meta="channel.meta"
-                :disabled="disabled"
-                :preview-only="previewOnly"
-                @update:meta="emit('update:meta', channel.id, $event)"
-            />
+            <DiscordSettings v-else-if="channel.platform === Platform.Discord" v-bind="settingsProps(channel)" />
         </template>
     </div>
 </template>

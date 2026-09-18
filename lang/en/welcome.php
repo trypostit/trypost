@@ -11,8 +11,20 @@ return [
     'subscription_required_owner' => 'Your account owner is :name.',
     'subscription_required_auto' => 'This page updates automatically — no need to refresh.',
     'progress' => 'Welcome progress',
-    'go_to_step' => 'Go to step :step',
-    'step_current' => 'Step :step (current)',
+    'step_of' => 'Step :step of :total',
+    'back' => 'Back',
+    'steps' => [
+        'persona' => 'About you',
+        'goals' => 'Your goals',
+        'referral_source' => 'How you found us',
+        'connect' => 'Social networks',
+        'plan' => 'Plan',
+    ],
+    'preview' => [
+        'heading' => 'Your workspace is taking shape.',
+        'pending' => 'Not chosen yet',
+        'networks_empty' => 'No networks connected yet',
+    ],
     'personas' => [
         'creator' => 'Content creator',
         'freelancer' => 'Freelancer',
@@ -29,7 +41,7 @@ return [
     'goals' => [
         'save_time' => 'Save time by posting everywhere at once',
         'ai_content' => 'Generate posts with TryPost AI',
-        'use_mcp' => 'Create posts from Claude, ChatGPT, or Cursor',
+        'use_mcp' => 'Create posts from Claude, ChatGPT, etc.',
         'plan_calendar' => 'Plan my posts on a calendar',
         'stay_on_brand' => 'Keep every post on brand',
         'grow_audience' => 'Grow my audience and engagement',
@@ -38,6 +50,8 @@ return [
         'just_exploring' => 'Just exploring for now',
         'other' => 'Something else',
     ],
+    'plan_title' => 'Choose your plan',
+    'plan_description' => 'Both plans have the same features. The difference is how many workspaces you get, and you can switch plans whenever you like.',
     'referral_source_title' => 'How did you find us?',
     'referral_source_description' => 'This helps us understand how people discover TryPost.',
     'referral_source' => [

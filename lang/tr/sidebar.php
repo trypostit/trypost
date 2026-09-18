@@ -11,11 +11,13 @@ return [
     'account_settings' => 'Hesap ve faturalandırma',
     'workspace_settings' => 'Çalışma alanı ayarları',
     'log_out' => 'Çıkış yap',
+    'help' => 'Yardım',
     'workspace' => [
         'connections' => 'Bağlantılar',
         'signatures' => 'İmzalar',
         'labels' => 'Etiketler',
         'assets' => 'Varlıklar',
+        'webhooks' => 'Webhooklar',
         'mcp' => 'MCP',
     ],
     'language' => 'Dil: :name',
@@ -25,9 +27,7 @@ return [
         'others' => 'Diğerleri',
     ],
     'analytics' => 'Analitik',
-    'automations' => 'Otomasyonlar',
-    'onboarding' => 'Başlarken',
-    'onboarding_hint' => 'Kurulumu bitir',
+    'repurposes' => 'Repurpose',
     'posts' => [
         'calendar' => 'Takvim',
         'all' => 'Tümü',
@@ -41,8 +41,10 @@ return [
     'archive_all' => 'Tümünü arşivle',
     'no_notifications' => 'Bildirim yok',
     'support' => [
+        'chat' => 'Sohbet desteği',
         'docs' => 'Dokümantasyon',
         'referral' => '%30 referans kazanın',
         'discord' => 'Discord topluluğu',
+        'community' => 'Topluluk',
     ],
 ];

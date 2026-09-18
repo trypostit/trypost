@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Post;
 
+use App\Dto\MediaItem;
 use App\Enums\Media\Type as MediaType;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\Workspace;
 use App\Services\Brand\SafeHttpFetcher;
+use Illuminate\Support\Facades\File;
 use RuntimeException;
 use Throwable;
 
@@ -47,7 +49,7 @@ class MediaAttacher
 
             if (($alt = data_get($entry, 'alt')) !== null
                 && MediaType::classify(data_get($item, 'mime_type'), data_get($item, 'path')) === MediaType::Image) {
-                $item['meta'] = ['alt_text' => $alt];
+                $item['meta'] = [...data_get($item, 'meta', []), 'alt_text' => $alt];
             }
 
             $attached[] = $item;
@@ -91,9 +93,8 @@ class MediaAttacher
                 continue;
             }
 
-            if (($meta = data_get($item, 'meta')) !== null) {
-                $hosted['meta'] = $meta;
-            }
+            // The client's meta (alt text) fills in; what the server measured from the file wins.
+            $hosted['meta'] = [...data_get($item, 'meta') ?? [], ...data_get($hosted, 'meta', [])];
 
             $media[] = $hosted;
             $hostedIds[] = data_get($hosted, 'id');
@@ -134,14 +135,7 @@ class MediaAttacher
             $name = basename(parse_url($url, PHP_URL_PATH) ?? '') ?: 'download.bin';
             $media = $workspace->addMediaFromPath($download['path'], $name, 'assets');
 
-            return [
-                'id' => $media->id,
-                'path' => $media->path,
-                'url' => $media->url,
-                'type' => $media->type,
-                'mime_type' => $media->mime_type,
-                'original_filename' => $media->original_filename,
-            ];
+            return MediaItem::fromMedia($media)->toArray();
         } finally {
             @unlink($download['path']);
         }
@@ -189,7 +183,7 @@ class MediaAttacher
 
         return [
             'path' => $temp,
-            'mime' => mime_content_type($temp) ?: null,
+            'mime' => File::mimeType($temp) ?: null,
             'bytes' => $bytes,
         ];
     }

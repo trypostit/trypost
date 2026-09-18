@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
-use App\DataTransferObjects\MediaItem;
+use App\Dto\MediaItem;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
@@ -14,8 +14,10 @@ use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 use Throwable;
 
 class XPublisher
@@ -163,7 +165,7 @@ class XPublisher
             }
 
             if (blank($mimeType)) {
-                $mimeType = mime_content_type($tempFile) ?: null;
+                $mimeType = File::mimeType($tempFile) ?: null;
             }
 
             if (blank($mimeType)) {
@@ -183,7 +185,7 @@ class XPublisher
             }
 
             $fileSize = filesize($tempFile);
-            $mediaCategory = $this->getMediaCategory($mimeType, $fileSize);
+            $mediaCategory = $this->getMediaCategory($mimeType);
 
             $isVideo = MediaType::classify($mimeType) === MediaType::Video;
             $isGif = MediaType::isGif($mimeType);
@@ -341,10 +343,13 @@ class XPublisher
         ];
     }
 
-    private function getMediaCategory(string $mimeType, int $fileSize): ?string
+    /**
+     * Videos are always `tweet_video`; `amplify_video` is the Ads-creative category.
+     */
+    private function getMediaCategory(string $mimeType): ?string
     {
         if (MediaType::classify($mimeType) === MediaType::Video) {
-            return $fileSize > 15 * 1024 * 1024 ? 'amplify_video' : 'tweet_video';
+            return 'tweet_video';
         }
 
         if (MediaType::isGif($mimeType)) {
@@ -360,6 +365,8 @@ class XPublisher
 
     private function waitForProcessing(string $mediaId, int $maxAttempts = 20): void
     {
+        $lastProcessingInfo = null;
+
         for ($i = 0; $i < $maxAttempts; $i++) {
             // Official status endpoint: GET /2/media/upload?media_id=...&command=STATUS
             // (not GET /2/media/{id} — that path is not the upload-status contract).
@@ -371,7 +378,7 @@ class XPublisher
 
             if ($response->failed()) {
                 Log::error('X media status check error', ['body' => $this->redactResponseBody($response->body())]);
-                sleep(3);
+                Sleep::for(3)->seconds();
 
                 continue;
             }
@@ -385,6 +392,7 @@ class XPublisher
                 return;
             }
 
+            $lastProcessingInfo = $processingInfo;
             $state = data_get($processingInfo, 'state', 'unknown');
 
             if ($state === 'succeeded') {
@@ -405,15 +413,21 @@ class XPublisher
                 );
             }
 
-            // Wait before checking again
-            $waitTime = (int) data_get($processingInfo, 'check_after_secs', 3);
-            sleep(max(0, $waitTime));
+            Sleep::for(max(0, (int) data_get($processingInfo, 'check_after_secs', 3)))->seconds();
         }
+
+        $rawResponse = is_array($lastProcessingInfo) ? json_encode($lastProcessingInfo) : null;
+
+        Log::error('X media processing timed out', [
+            'media_id' => $mediaId,
+            'processing_info' => $lastProcessingInfo,
+        ]);
 
         throw new XPublishException(
             userMessage: 'X media processing timed out. Please try again.',
             category: ErrorCategory::ServerError,
             platformErrorCode: 'media-processing-timeout',
+            rawResponse: $rawResponse,
         );
     }
 

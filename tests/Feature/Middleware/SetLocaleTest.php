@@ -2,84 +2,36 @@
 
 declare(strict_types=1);
 
-use App\Http\Middleware\App\SetLocale;
-use Illuminate\Http\Request;
+use App\Enums\User\Locale;
+use App\Models\User;
 use Illuminate\Support\Facades\View;
-use Symfony\Component\HttpFoundation\Response;
 
-/**
- * Run the middleware with the given `locale` cookie (null = no cookie) and
- * return the response, whose shared `htmlDir` and queued cookies can be asserted.
- */
-function setLocaleResponse(?string $locale): Response
-{
-    $request = Request::create('/', 'GET');
+test('a request renders in the authenticated user locale', function (Locale $locale, string $direction) {
+    $this->actingAs(User::factory()->create(['locale' => $locale]))
+        ->get(route('app.profile.edit'))
+        ->assertOk();
 
-    if ($locale !== null) {
-        $request->cookies->set('locale', $locale);
-    }
+    expect(app()->getLocale())->toBe($locale->value)
+        ->and(View::shared('htmlDir'))->toBe($direction);
+})->with([
+    [Locale::Japanese, 'ltr'],
+    [Locale::PortugueseBrazil, 'ltr'],
+    [Locale::Arabic, 'rtl'],
+]);
 
-    return (new SetLocale)->handle($request, fn () => response('ok'));
-}
+test('a guest request renders in the default locale', function () {
+    $this->get(route('login'))->assertOk();
 
-/** The shared `htmlDir` the Blade root view renders into `<html dir>`. */
-function runSetLocale(?string $locale): string
-{
-    setLocaleResponse($locale);
-
-    return View::shared('htmlDir');
-}
-
-test('shares rtl direction and sets the locale for Arabic', function () {
-    expect(runSetLocale('ar'))->toBe('rtl');
-    expect(app()->getLocale())->toBe('ar');
+    expect(app()->getLocale())->toBe(Locale::DEFAULT->value)
+        ->and(View::shared('htmlDir'))->toBe('ltr');
 });
 
-test('shares ltr direction for a left-to-right locale', function (string $locale) {
-    expect(runSetLocale($locale))->toBe('ltr');
-    expect(app()->getLocale())->toBe($locale);
-})->with(['en', 'uk', 'ja', 'pt-BR', 'de']);
+test('a guest cannot change the rendered locale by submitting one', function () {
+    $this->get(route('login', ['locale' => 'ja']))->assertOk();
 
-test('falls back to the default locale and ltr for an unknown cookie', function () {
-    expect(runSetLocale('sv'))->toBe('ltr');
-    expect(app()->getLocale())->toBe(config('languages.default'));
+    expect(app()->getLocale())->toBe(Locale::DEFAULT->value);
 });
 
-test('falls back to the default locale and ltr when no cookie is set', function () {
-    expect(runSetLocale(null))->toBe('ltr');
-    expect(app()->getLocale())->toBe(config('languages.default'));
-});
-
-test('persists the default locale cookie when the incoming cookie is invalid or absent', function (?string $locale) {
-    $cookie = collect(setLocaleResponse($locale)->headers->getCookies())
-        ->first(fn ($cookie) => $cookie->getName() === 'locale');
-
-    expect($cookie)->not->toBeNull();
-    expect($cookie->getValue())->toBe(config('languages.default'));
-})->with(['sv', null]);
-
-test('does not reset the cookie when a valid locale is present', function () {
-    $cookie = collect(setLocaleResponse('ar')->headers->getCookies())
-        ->first(fn ($cookie) => $cookie->getName() === 'locale');
-
-    expect($cookie)->toBeNull();
-});
-
-test('attaches the locale cookie to a raw Symfony response without crashing', function () {
-    $request = Request::create('/', 'GET');
-
-    $response = (new SetLocale)->handle(
-        $request,
-        fn () => new Response('{"error":"invalid_client"}', 401, [
-            'Content-Type' => 'application/json',
-        ]),
-    );
-
-    expect($response->getStatusCode())->toBe(401);
-
-    $cookie = collect($response->headers->getCookies())
-        ->first(fn ($cookie) => $cookie->getName() === 'locale');
-
-    expect($cookie)->not->toBeNull()
-        ->and($cookie->getValue())->toBe(config('languages.default'));
+test('no locale cookie is written', function () {
+    $this->get(route('login'))->assertCookieMissing('locale');
 });

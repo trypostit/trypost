@@ -126,7 +126,6 @@ test('does not identify connected platforms when self-hosted without PostHog', f
 });
 
 test('updating status on multiple batch-hydrated social accounts does not throw a lazy loading violation', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
 
     $accounts = SocialAccount::factory()->count(2)->create([
         'workspace_id' => $this->workspace->id,

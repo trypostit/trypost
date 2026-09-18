@@ -4,20 +4,22 @@ declare(strict_types=1);
 
 namespace App\Enums\Media;
 
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
+use Symfony\Component\Mime\MimeTypes;
+
 enum Type: string
 {
     case Image = 'image';
     case Video = 'video';
     case Document = 'document';
 
-    public function label(): string
-    {
-        return match ($this) {
-            self::Image => 'Imagem',
-            self::Video => 'Vídeo',
-            self::Document => 'Documento',
-        };
-    }
+    private const GIF_MIME = 'image/gif';
+
+    private const MOV_MIME = 'video/quicktime';
+
+    private const PDF_MIME = 'application/pdf';
 
     /**
      * Allow-list of MIME types we accept on upload / URL fetch.
@@ -28,10 +30,10 @@ enum Type: string
      * if PHP reports `video/quicktime`. Accepting MOV avoids forcing
      * iPhone users to transcode before uploading.
      *
-     * WebM is rejected: X / IG / TikTok / FB / Pinterest / Bluesky /
-     * Threads all reject the Matroska + VP8/VP9 stack. Without
-     * server-side transcoding, accepting WebM would just produce
-     * platform-specific publish failures down the line.
+     * WebM is rejected: X / IG / FB / Pinterest / Threads refuse the
+     * Matroska + VP8/VP9 stack outright, and only TikTok and Bluesky
+     * would transcode it. Without server-side transcoding, accepting
+     * WebM would just produce platform-specific publish failures.
      *
      * Document accepts PDF only — the swipeable LinkedIn document
      * (carousel) format. PPTX/DOCX are also valid LinkedIn documents
@@ -43,9 +45,9 @@ enum Type: string
     public function allowedMimeTypes(): array
     {
         return match ($this) {
-            self::Image => ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-            self::Video => ['video/mp4', 'video/quicktime'],
-            self::Document => ['application/pdf'],
+            self::Image => ['image/jpeg', 'image/png', self::GIF_MIME, 'image/webp'],
+            self::Video => ['video/mp4', self::MOV_MIME],
+            self::Document => [self::PDF_MIME],
         };
     }
 
@@ -85,13 +87,7 @@ enum Type: string
      */
     public static function fromMime(string $mime): ?self
     {
-        foreach (self::cases() as $type) {
-            if (in_array($mime, $type->allowedMimeTypes(), true)) {
-                return $type;
-            }
-        }
-
-        return null;
+        return array_find(self::cases(), fn (self $type) => in_array($mime, $type->allowedMimeTypes(), true));
     }
 
     /**
@@ -103,32 +99,62 @@ enum Type: string
      */
     public static function classify(?string $mimeType, ?string $path = null): ?self
     {
-        if (filled($mimeType)) {
-            return match (true) {
-                str_starts_with($mimeType, 'image/') => self::Image,
-                str_starts_with($mimeType, 'video/') => self::Video,
-                $mimeType === 'application/pdf' => self::Document,
-                default => null,
-            };
-        }
+        $mimeType = self::normalizeMime($mimeType);
 
-        return self::fromExtension($path ? pathinfo($path, PATHINFO_EXTENSION) : null);
+        return $mimeType === ''
+            ? self::fromExtension(self::extensionOf($path))
+            : self::owner($mimeType);
     }
 
     /**
-     * Classify by filename extension. Broader than extensions() (the upload
-     * allow-list) so already-stored files in legacy formats still resolve.
+     * Classify by filename extension. Broader than extensions(): any format the
+     * MIME registry knows as image/*, video/* or PDF resolves, so legacy files
+     * already on disk (heic, mkv, avi, ...) still classify. The registry's order
+     * decides: `.pdf` lists `application/pdf` before `image/pdf`, so it is a
+     * Document, not an Image.
      */
     public static function fromExtension(?string $extension): ?self
     {
-        $extension = strtolower((string) $extension);
+        return collect(self::registeredMimeTypes($extension))->map(self::owner(...))->filter()->first();
+    }
 
-        return match (true) {
-            in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'heic', 'heif'], true) => self::Image,
-            in_array($extension, ['mp4', 'mov', 'avi', 'wmv', 'webm', 'mkv', 'm4v'], true) => self::Video,
-            $extension === 'pdf' => self::Document,
-            default => null,
+    /**
+     * The MIME we accept on upload for a filename extension, or null when the
+     * extension maps to nothing in the allow-list.
+     */
+    public static function mimeTypeFromExtension(?string $extension): ?string
+    {
+        return Arr::first(self::registeredMimeTypes($extension), fn (string $mimeType) => self::fromMime($mimeType) !== null);
+    }
+
+    /**
+     * Image and video own their MIME family (`image/*`, `video/*`), so the
+     * family is the backing value. Document is `application/pdf` alone.
+     * A string without a slash is not a MIME and owns nothing.
+     */
+    private function ownsMime(string $mimeType): bool
+    {
+        return match ($this) {
+            self::Document => $mimeType === self::PDF_MIME,
+            default => Str::is("{$this->value}/*", $mimeType),
         };
+    }
+
+    private static function owner(string $mimeType): ?self
+    {
+        return array_find(self::cases(), fn (self $type) => $type->ownsMime($mimeType));
+    }
+
+    /**
+     * Every MIME the registry lists for an extension — `.mp4` comes back as
+     * `application/mp4` first and `video/mp4` second, which is why callers
+     * pick from the whole list instead of trusting the first entry.
+     *
+     * @return array<int, string>
+     */
+    private static function registeredMimeTypes(?string $extension): array
+    {
+        return MimeTypes::getDefault()->getMimeTypes(Str::lower((string) $extension));
     }
 
     /**
@@ -137,6 +163,37 @@ enum Type: string
      */
     public static function isGif(?string $mimeType): bool
     {
-        return $mimeType === 'image/gif';
+        return self::normalizeMime($mimeType) === self::GIF_MIME;
+    }
+
+    public static function isMov(?string $mimeType, ?string $path = null): bool
+    {
+        return self::normalizeMime($mimeType) === self::MOV_MIME || self::extensionOf($path) === 'mov';
+    }
+
+    /**
+     * Lower-cased extension of a filename, storage key or URL. Mirrors `pathOf`
+     * in mediaType.ts: only an absolute URL is parsed (to drop `?query` and
+     * `#hash`); a bare filename is taken as-is, so `Photo #3.jpg` keeps its
+     * extension.
+     */
+    public static function extensionOf(?string $path): string
+    {
+        $path = (string) $path;
+
+        if (Str::contains($path, '://')) {
+            $path = (string) parse_url($path, PHP_URL_PATH);
+        }
+
+        return Str::lower(File::extension($path));
+    }
+
+    /**
+     * Lower-cased `type/subtype` with any `; codecs=...` parameter dropped, so
+     * comparisons are exact. Mirrors `normalizeMime` in mediaType.ts.
+     */
+    private static function normalizeMime(?string $mimeType): string
+    {
+        return Str::of((string) $mimeType)->before(';')->trim()->lower()->value();
     }
 }

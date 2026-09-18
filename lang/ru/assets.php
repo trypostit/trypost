@@ -26,6 +26,7 @@ return [
     'save_to_assets' => 'Сохранить в медиафайлы',
     'saved' => 'Сохранено в медиафайлы!',
     'create_post' => 'Создать пост',
+    'download' => 'Скачать',
     'add_to_post' => 'Добавить в пост',
     'search_placeholder' => 'Поиск медиа...',
 

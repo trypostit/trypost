@@ -40,6 +40,5 @@ class CheckUpcomingPostConnections extends Command
             VerifyUpcomingPostConnections::dispatch($workspaceId);
         }
 
-        $this->info("Dispatched {$workspaceIds->count()} upcoming-post connection checks.");
     }
 }

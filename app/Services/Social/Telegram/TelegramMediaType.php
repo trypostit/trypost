@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social\Telegram;
 
-use App\DataTransferObjects\MediaItem;
+use App\Dto\MediaItem;
 
 /**
  * Telegram's media kinds, as used both in the `sendMediaGroup` `type` field and

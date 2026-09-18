@@ -35,6 +35,7 @@ return [
         'posts_reach' => 'Portée des publications',
         'quotes' => 'Citations',
         'reach' => 'Portée',
+        'reactions' => 'Réactions',
         'reblogs' => 'Repartages',
         'recent_comments' => 'Commentaires récents',
         'recent_likes' => 'J\'aime récents',

@@ -23,7 +23,7 @@ class WorkspaceInvite extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "You've been invited to join {$this->invite->account->name}",
+            subject: __('mail.workspace_invite.subject', ['account' => $this->invite->account->name]),
         );
     }
 
@@ -35,8 +35,8 @@ class WorkspaceInvite extends Mailable implements ShouldQueue
         return new Content(
             view: 'mail.workspace-invite',
             with: [
-                'title' => "You've been invited to join {$accountName}",
-                'previewText' => "You've been invited to join {$accountName}",
+                'title' => __('mail.workspace_invite.title', ['account' => $accountName]),
+                'previewText' => __('mail.workspace_invite.preview', ['account' => $accountName]),
                 'accountName' => $accountName,
                 'roleLabel' => $roleLabel,
                 'url' => route('app.invites.show', $this->invite),

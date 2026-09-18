@@ -67,6 +67,8 @@ it('attaches media from url', function () {
 
     expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
     expect($this->post->fresh()->media)->toHaveCount(1);
+
+    expect(data_get($this->post->fresh()->media, '0.size'))->toBe(Media::sole()->size)->toBeGreaterThan(0);
 });
 
 it('attaches media from url with alt text', function () {
@@ -85,7 +87,8 @@ it('attaches media from url with alt text', function () {
         ->assertOk()
         ->assertJsonPath('attached_count', 1);
 
-    expect(data_get($this->post->fresh()->media, '0.meta.alt_text'))->toBe('A red bicycle by a wall');
+    // The alt text joins the measured dimensions instead of replacing them.
+    expect(data_get($this->post->fresh()->media, '0.meta'))->toEqual(['width' => 1, 'height' => 1, 'alt_text' => 'A red bicycle by a wall']);
 });
 
 it('does not store alt text on a non-image url', function () {
@@ -229,6 +232,19 @@ it('uploads a media file and attaches it to the post', function () {
 
     expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
     expect($this->post->fresh()->media)->toHaveCount(1);
+    expect(data_get($this->post->fresh()->media, '0.size'))->toBe(Media::sole()->size)->toBeGreaterThan(0);
+});
+
+it('stores the duration read from the video file itself', function () {
+    $file = UploadedFile::fake()->createWithContent('clip.mp4', file_get_contents(base_path('tests/fixtures/sample.mp4')));
+    $file->mimeTypeToReport = 'video/mp4';
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken, 'Accept' => 'application/json'])
+        ->post(route('api.posts.store-media', $this->post), ['media' => $file])
+        ->assertOk();
+
+    expect(Media::sole()->meta)->toEqual(['duration' => 1.0])
+        ->and(data_get($this->post->fresh()->media, '0.meta.duration'))->toEqual(1.0);
 });
 
 it('rejects upload of an unsupported mime type', function () {
@@ -345,6 +361,29 @@ it('persists alt text submitted on a bare external media url', function () {
 
     expect(data_get($media, '0.meta.alt_text'))->toBe('A red car parked on a hill')
         ->and(data_get($media, '0.path'))->not->toBeNull();
+});
+
+it('keeps the measured duration when an external video url is submitted with its own meta', function () {
+    $this->socialAccount->update(['is_active' => true]);
+
+    Http::fake([
+        '93.184.216.34/clip.mp4' => Http::response(file_get_contents(base_path('tests/fixtures/sample.mp4')), 200, ['Content-Type' => 'video/mp4']),
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.store'), [
+            'content' => 'External video post',
+            // A client-sent duration must not replace the one measured from the downloaded file.
+            'media' => [['url' => 'https://93.184.216.34/clip.mp4', 'meta' => ['alt_text' => 'ignored on video', 'duration' => 9999]]],
+            'platforms' => [
+                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
+            ],
+        ])
+        ->assertCreated();
+
+    $media = Post::where('content', 'External video post')->firstOrFail()->media;
+
+    expect(data_get($media, '0.meta'))->toEqual(['duration' => 1.0, 'alt_text' => 'ignored on video']);
 });
 
 it('rejects creating a post when an external media url cannot be fetched', function () {

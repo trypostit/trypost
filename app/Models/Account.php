@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Models\Traits\HasOnboarding;
 use App\Models\Traits\HasUsage;
 use Carbon\CarbonInterface;
 use Database\Factories\AccountFactory;
@@ -13,21 +12,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Billable;
-use Throwable;
 
 class Account extends Model
 {
     /** @use HasFactory<AccountFactory> */
-    use Billable, HasFactory, HasOnboarding, HasUsage, HasUuids;
+    use Billable, HasFactory, HasUsage, HasUuids;
 
     public const SUBSCRIPTION_NAME = 'default';
 
-    /**
-     * Redis/cache key for aggregated post counts across the account's workspaces.
-     * Invalidated by the PostHog usage sync job before re-reading aggregates for analytics.
-     */
     public static function postsCountCacheKey(string $accountId): string
     {
         return "account:{$accountId}:posts_count";
@@ -82,10 +75,6 @@ class Account extends Model
         return $this->subscribed(self::SUBSCRIPTION_NAME);
     }
 
-    /**
-     * Whether the account may use the app (active subscription, or a generic
-     * trial when REQUIRE_CARD_FOR_TRIAL is disabled).
-     */
     public function hasAppAccess(): bool
     {
         if (config('trypost.self_hosted')) {
@@ -98,31 +87,32 @@ class Account extends Model
             || (! $requiresCardForTrial && $this->isOnTrial());
     }
 
-    /**
-     * Align the Stripe subscription quantity with the number of workspaces the
-     * account owns. Each workspace is a billed unit. No-op in self-hosted mode
-     * or when there is no active subscription (e.g. during onboarding).
-     */
-    public function syncWorkspaceQuantity(): void
+    public function workspaceLimit(): ?int
     {
         if (config('trypost.self_hosted')) {
-            return;
+            return null;
         }
 
-        $subscription = $this->subscription(self::SUBSCRIPTION_NAME);
-
-        if (! $subscription || ! $subscription->active()) {
-            return;
+        if ($this->plan === null) {
+            return 1;
         }
 
-        try {
-            $subscription->updateQuantity($this->workspaces()->count());
-        } catch (Throwable $e) {
-            Log::warning('Failed to sync workspace quantity to Stripe', [
-                'account_id' => $this->id,
-                'error' => $e->getMessage(),
-            ]);
+        return $this->plan->workspace_limit;
+    }
+
+    public function canCreateWorkspace(): bool
+    {
+        if (config('trypost.self_hosted')) {
+            return true;
         }
+
+        $limit = $this->workspaceLimit();
+
+        if ($limit === null) {
+            return true;
+        }
+
+        return $this->workspaces()->count() < $limit;
     }
 
     public function isPastDue(): bool

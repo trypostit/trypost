@@ -25,7 +25,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Update a draft post — content, media, scheduled_at, labels, and which platforms are enabled. Cannot edit a post that has already been published.')]
+#[Description('Update a draft post — content, media, scheduled_at, labels, and which platforms are enabled. Cannot edit a post that has already been published. Setting status "scheduled" validates the attached media against every enabled content_type (file size, video duration, GIF, MOV — see list-content-types-tool) and fails with a per-platform error when a cap is exceeded; fix the media or switch content_type. Drafts are never blocked.')]
 class UpdatePostTool extends Tool
 {
     use AuthorizesMcpTool;

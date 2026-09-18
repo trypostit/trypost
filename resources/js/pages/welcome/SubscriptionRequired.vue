@@ -21,6 +21,7 @@ usePoll(10000, { only: ['auth'] });
     <WelcomeLayout
         :title="$t('welcome.subscription_required_title')"
         :description="$t('welcome.subscription_required_description')"
+        size="lg"
     >
         <div
             class="flex flex-col items-center gap-4 text-center"

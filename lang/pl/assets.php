@@ -26,6 +26,7 @@ return [
     'save_to_assets' => 'Zapisz w zasobach',
     'saved' => 'Zapisano w Twoich zasobach!',
     'create_post' => 'Utwórz post',
+    'download' => 'Pobierz',
     'add_to_post' => 'Dodaj do posta',
     'search_placeholder' => 'Szukaj multimediów...',
 

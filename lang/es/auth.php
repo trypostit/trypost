@@ -10,32 +10,30 @@ return [
         'welcome_trial' => '¡Bienvenido a TryPost! Tu prueba ha comenzado.',
     ],
 
-    'legal' => 'Al continuar, aceptas nuestros <a href="https://trypost.it/terms" target="_blank">Términos de Servicio</a> y <a href="https://trypost.it/privacy" target="_blank">Política de Privacidad</a>.',
+    'legal' => 'Al continuar, aceptas nuestros <a href=":terms_url" target="_blank">Términos de Servicio</a> y <a href=":privacy_url" target="_blank">Política de Privacidad</a>.',
 
-    'slides' => [
-        'calendar' => [
-            'title' => 'Calendario Visual',
-            'description' => 'Planifica y programa tu contenido con un calendario intuitivo de arrastrar y soltar en todas tus cuentas sociales.',
+    'reviews' => [
+        'eyebrow' => '5/5 en G2',
+        'heading' => 'Amado por quienes publican cada día',
+        'paulo_dantas' => [
+            'role' => 'Fundador, chatadv.com.br',
+            'quote' => 'La simplicidad de crear, organizar y distribuir contenido en todas las redes sociales. Con MCP podemos usar la IA que preferimos, como Claude o ChatGPT, para crear contenido y programarlo desde ahí.',
         ],
-        'scheduling' => [
-            'title' => 'Programación Inteligente',
-            'description' => 'Programa posts en LinkedIn, X, Instagram, TikTok, YouTube y más — todo desde un solo lugar.',
+        'diego' => [
+            'role' => 'CEO, Globalfy.com',
+            'quote' => 'Me gusta lo fácil que es usar TryPost. Puedo crear una publicación directamente en Claude y luego usar el MCP para publicarla y programarla. Lo configuré en cinco minutos.',
         ],
-        'media' => [
-            'title' => 'Contenido Multimedia',
-            'description' => 'Publica imágenes, carruseles, historias y reels. Cada plataforma recibe el formato correcto automáticamente.',
+        'luiz' => [
+            'role' => 'Creador de contenido',
+            'quote' => 'Me encanta lo fácil que es conectar mis herramientas y agentes de IA y programar mis publicaciones en 9 redes sociales en pocos minutos.',
         ],
-        'video' => [
-            'title' => 'Publicación de Video',
-            'description' => 'Sube videos una vez y publícalos en TikTok, YouTube Shorts, Instagram Reels y Facebook Reels.',
+        'pedro' => [
+            'role' => 'Fundador, templated.io',
+            'quote' => 'Muy fácil de usar e integrar. Con el MCP solo necesito la interfaz para conectar las cuentas de redes sociales.',
         ],
-        'team' => [
-            'title' => 'Workspaces en Equipo',
-            'description' => 'Invita a tu equipo, asigna roles y gestiona múltiples marcas en workspaces separados.',
-        ],
-        'signatures' => [
-            'title' => 'Firmas',
-            'description' => 'Guarda firmas reutilizables (hashtags, links, despedidas) y añádelas a tus posts con un clic.',
+        'paulo_castellano' => [
+            'role' => 'Fundador, changelogfy.com',
+            'quote' => 'Me encanta la integración con MCP porque me permite organizar todas mis cuentas de redes sociales desde Claude o ChatGPT.',
         ],
     ],
 
@@ -124,4 +122,5 @@ return [
         'expired_description' => 'El workspace de esta invitación fue eliminado. Pide al propietario de la cuenta una nueva invitación si aún necesitas acceso.',
         'expired_action' => 'Ir al inicio',
     ],
+
 ];

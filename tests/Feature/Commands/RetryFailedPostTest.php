@@ -72,7 +72,6 @@ test('it queues fresh attempts only for failed enabled platforms', function () {
 
     $this->artisan('posts:retry', ['post' => $this->post->id])
         ->expectsConfirmation('Queue publish attempts for these failed platforms?', 'yes')
-        ->expectsOutput('2 publish attempt(s) queued.')
         ->assertSuccessful();
 
     expect($this->post->fresh()->status)->toBe(PostStatus::Publishing)
@@ -228,7 +227,6 @@ test('it does not change the post when confirmation is declined', function () {
 
     $this->artisan('posts:retry', ['post' => $this->post->id])
         ->expectsConfirmation('Queue publish attempts for these failed platforms?', 'no')
-        ->expectsOutput('Retry cancelled.')
         ->assertSuccessful();
 
     expect($this->post->fresh()->status)->toBe(PostStatus::PartiallyPublished)

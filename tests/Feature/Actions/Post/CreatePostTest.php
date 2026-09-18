@@ -41,7 +41,6 @@ test('execute persists created_via for each entry point', function (CreatedVia $
     'web' => CreatedVia::Web,
     'mcp' => CreatedVia::Mcp,
     'api' => CreatedVia::Api,
-    'automation' => CreatedVia::Automation,
 ]);
 
 test('execute leaves created_via null when omitted', function () {

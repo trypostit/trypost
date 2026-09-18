@@ -9,6 +9,13 @@ return [
     'current' => 'Aktuell',
     'connections' => ':count Verbindungen',
     'posts' => ':count Beiträge',
+    'subscription_required' => 'Abonniere, um weitere Workspaces zu erstellen.',
+    'limit_reached' => 'Dein Tarif umfasst einen Workspace. Upgrade, um weitere hinzuzufügen.',
+
+    'upgrade_dialog' => [
+        'title' => 'Upgrade, um Workspaces hinzuzufügen',
+        'description' => 'Dein Plan enthält einen Workspace. Upgrade auf Workspaces für unbegrenzt viele Workspaces — einen pro Marke oder Kunden.',
+    ],
 
     'create' => [
         'page_title' => 'Erstelle deinen Workspace',

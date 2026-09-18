@@ -4,17 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware\App;
 
-use App\Actions\Onboarding\ResolveOnboardingStatus;
 use App\Enums\Auth\SocialAuthProvider;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\User\Locale;
 use App\Http\Resources\App\HandleInertiaRequests\AuthAccountResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthPlanResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthUserResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthWorkspaceResource;
-use App\Models\User;
+use App\Http\Resources\App\PlanResource;
+use App\Models\Plan;
 use Illuminate\Http\Request;
-use Inertia\DeferProp;
-use Inertia\Inertia;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -51,21 +50,20 @@ class HandleInertiaRequests extends Middleware
                 'hasActiveSubscription' => $account ? $account->hasActiveSubscription() : false,
                 'subscriptionPastDue' => $account ? $account->isPastDue() : false,
             ],
+            'legal' => [
+                'terms' => (string) config('trypost.legal.terms_url'),
+                'privacy' => (string) config('trypost.legal.privacy_url'),
+            ],
             'usage' => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => $account && ! $isSelfHosted ? $account->featureLimits() : null,
-            'onboardingProgress' => $this->onboardingProgress($request, $user),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => $request->session()->get('flash', []),
             'applicationUrl' => config('app.url'),
             'env' => config('app.env'),
             'locale' => app()->getLocale(),
-            'languages' => collect(config('languages.available'))->map(fn ($name, $code) => [
-                'code' => $code,
-                'name' => $name,
-            ])->values()->all(),
+            'languages' => Locale::options(),
             'aiEnabled' => filled(config('ai.providers.'.config('ai.default').'.key')),
             'selfHosted' => $isSelfHosted,
-            'allowMultipleSocialAccounts' => (bool) config('trypost.allow_multiple_social_accounts'),
             'googleAuthEnabled' => SocialAuthProvider::Google->isEnabled(),
             'githubAuthEnabled' => SocialAuthProvider::GitHub->isEnabled(),
         ];
@@ -79,43 +77,15 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::shareOnce($request),
             'contentTypeMediaRules' => fn (): array => ContentType::mediaRulesForFrontend(),
+            'plans' => function (): array {
+                if (config('trypost.self_hosted') || auth()->user()?->account === null) {
+                    return [];
+                }
+
+                return PlanResource::collection(
+                    Plan::active()->orderBy('sort')->get()
+                )->resolve();
+            },
         ];
-    }
-
-    /**
-     * Defer step queries for mid-activation owners; everyone else gets false inline.
-     *
-     * Never defer on Passport consent *views*: Inertia deferred props re-request the
-     * same URL, Passport rotates `authToken` on every authorize hit, and approve then
-     * fails with InvalidAuthTokenException against the stale token still on the page.
-     *
-     * Social OAuth popup close pages set `onboardingProgress` to false in
-     * `SocialController::popupCallback()` so a deferred reload does not re-hit the
-     * select route after the connect session was cleared.
-     */
-    private function onboardingProgress(Request $request, ?User $user): DeferProp|false
-    {
-        if ($this->isPassportConsentViewRequest($request)) {
-            return false;
-        }
-
-        $onboarding = app(ResolveOnboardingStatus::class);
-
-        return $user && $onboarding->canShowProgress($user)
-            ? Inertia::defer(fn (): array|false => $onboarding->sidebarProgress($user))
-            : false;
-    }
-
-    /**
-     * Exact GET consent-view route names only — not approve/deny, and not wildcards
-     * like passport.authorizations.* (those would suppress defer on POST approve too,
-     * which is unnecessary and easy to misread as "all OAuth").
-     */
-    private function isPassportConsentViewRequest(Request $request): bool
-    {
-        return $request->routeIs(
-            'passport.authorizations.authorize',
-            'passport.device.authorizations.authorize',
-        );
     }
 }

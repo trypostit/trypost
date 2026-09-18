@@ -11,8 +11,20 @@ return [
     'subscription_required_owner' => 'Владелец вашего аккаунта — :name.',
     'subscription_required_auto' => 'Эта страница обновляется автоматически — перезагружать не нужно.',
     'progress' => 'Прогресс приветствия',
-    'go_to_step' => 'Перейти к шагу :step',
-    'step_current' => 'Шаг :step (текущий)',
+    'step_of' => 'Шаг :step из :total',
+    'back' => 'Назад',
+    'steps' => [
+        'persona' => 'О вас',
+        'goals' => 'Ваши цели',
+        'referral_source' => 'Как вы нас нашли',
+        'connect' => 'Соцсети',
+        'plan' => 'Тариф',
+    ],
+    'preview' => [
+        'heading' => 'Ваш workspace обретает форму.',
+        'pending' => 'Ещё не выбрано',
+        'networks_empty' => 'Соцсети пока не подключены',
+    ],
     'personas' => [
         'creator' => 'Автор контента',
         'freelancer' => 'Фрилансер',
@@ -29,7 +41,7 @@ return [
     'goals' => [
         'save_time' => 'Экономить время, публикуя всюду сразу',
         'ai_content' => 'Генерировать посты с ИИ TryPost',
-        'use_mcp' => 'Создавать посты через Claude, ChatGPT или Cursor',
+        'use_mcp' => 'Создавать посты через Claude, ChatGPT и др.',
         'plan_calendar' => 'Планировать посты в календаре',
         'stay_on_brand' => 'Держать каждый пост в стиле бренда',
         'grow_audience' => 'Наращивать аудиторию и вовлечённость',
@@ -38,6 +50,8 @@ return [
         'just_exploring' => 'Пока просто знакомлюсь',
         'other' => 'Что-то ещё',
     ],
+    'plan_title' => 'Выберите тариф',
+    'plan_description' => 'У обоих планов одинаковые функции. Разница в количестве workspace, и сменить план можно в любой момент.',
     'referral_source_title' => 'Как вы нас нашли?',
     'referral_source_description' => 'Это помогает нам понять, как люди узнают о TryPost.',
     'referral_source' => [

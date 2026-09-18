@@ -19,9 +19,18 @@ beforeEach(function () {
     $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
 });
 
+test('tiktok authorize url disables auto auth', function () {
+    $response = $this->actingAs($this->user)->get(route('app.social.tiktok.connect'));
+
+    expect(urldecode((string) $response->headers->get('Location')))
+        ->toStartWith('https://www.tiktok.com/v2/auth/authorize')
+        ->toContain('disable_auto_auth=1');
+});
+
 test('tiktok connect redirects to oauth provider', function () {
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('scopes')->andReturnSelf();
+    $driverMock->shouldReceive('with')->with(['disable_auto_auth' => 1])->once()->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
         'getTargetUrl' => 'https://www.tiktok.com/v2/auth/authorize?test=1',
     ]));
@@ -31,10 +40,9 @@ test('tiktok connect redirects to oauth provider', function () {
         ->andReturn($driverMock);
 
     $response = $this->actingAs($this->user)
-        ->withHeader('X-Inertia', 'true')
         ->get(route('app.social.tiktok.connect'));
 
-    $response->assertStatus(409); // Inertia::location returns 409 with X-Inertia header
+    $response->assertRedirect('https://www.tiktok.com/v2/auth/authorize?test=1');
 
     expect(session('social_connect_workspace'))->toBe($this->workspace->id);
 });
@@ -87,8 +95,7 @@ test('tiktok callback fails with expired session', function () {
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', 'Session expired. Please try again.'));
 });
 
-test('user can connect multiple tiktok accounts when multiple social accounts are allowed', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
+test('user can connect multiple tiktok accounts', function () {
 
     SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
@@ -125,45 +132,6 @@ test('user can connect multiple tiktok accounts when multiple social accounts ar
     expect($this->workspace->socialAccounts()->where('platform', Platform::TikTok)->count())->toBe(2);
 });
 
-test('tiktok callback shows network_taken when the network is already connected', function () {
-    config()->set('trypost.allow_multiple_social_accounts', false);
-
-    SocialAccount::factory()->tiktok()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform_user_id' => 'tiktok123',
-    ]);
-
-    session([
-        'social_connect_workspace' => $this->workspace->id,
-    ]);
-
-    $socialiteUser = Mockery::mock(SocialiteUser::class);
-    $socialiteUser->shouldReceive('getId')->andReturn('tiktok456');
-    $socialiteUser->shouldReceive('getNickname')->andReturn('anothertiktoker');
-    $socialiteUser->shouldReceive('getName')->andReturn('Another TikTok User');
-    $socialiteUser->shouldReceive('getAvatar')->andReturn(null);
-    $socialiteUser->token = 'new-access-token';
-    $socialiteUser->refreshToken = 'new-refresh-token';
-    $socialiteUser->expiresIn = 86400;
-    $socialiteUser->approvedScopes = ['user.info.basic', 'user.info.profile', 'video.publish'];
-
-    $socialiteMock = Mockery::mock();
-    $socialiteMock->shouldReceive('scopes')->andReturn($socialiteMock);
-    $socialiteMock->shouldReceive('user')->andReturn($socialiteUser);
-
-    Socialite::shouldReceive('driver')
-        ->with('tiktok')
-        ->andReturn($socialiteMock);
-
-    $response = $this->actingAs($this->user)->get(route('app.social.tiktok.callback'));
-
-    $response->assertOk();
-    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
-    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', __('accounts.popup_callback.network_taken')));
-
-    expect($this->workspace->socialAccounts()->where('platform', Platform::TikTok)->count())->toBe(1);
-});
-
 test('tiktok callback handles oauth errors gracefully', function () {
     session([
         'social_connect_workspace' => $this->workspace->id,
@@ -193,6 +161,7 @@ test('tiktok connect carries a reconnect id into the session', function () {
 
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('scopes')->andReturnSelf();
+    $driverMock->shouldReceive('with')->with(['disable_auto_auth' => 1])->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
         'getTargetUrl' => 'https://www.tiktok.com/v2/auth/authorize?test=1',
     ]));
@@ -200,9 +169,8 @@ test('tiktok connect carries a reconnect id into the session', function () {
     Socialite::shouldReceive('driver')->with('tiktok')->andReturn($driverMock);
 
     $this->actingAs($this->user)
-        ->withHeader('X-Inertia', 'true')
         ->get(route('app.social.tiktok.connect', ['reconnect' => $account->id]))
-        ->assertStatus(409);
+        ->assertRedirect('https://www.tiktok.com/v2/auth/authorize?test=1');
 
     expect(session('social_reconnect_id'))->toBe($account->id);
 });

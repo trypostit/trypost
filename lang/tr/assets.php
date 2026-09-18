@@ -28,6 +28,7 @@ return [
     'save_to_assets' => 'Varlıklara Kaydet',
     'saved' => 'Varlıklarınıza kaydedildi!',
     'create_post' => 'Gönderi oluştur',
+    'download' => 'İndir',
     'add_to_post' => 'Gönderiye ekle',
     'search_placeholder' => 'Medya ara...',
 

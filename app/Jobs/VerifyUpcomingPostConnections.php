@@ -333,10 +333,9 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
                     ->whereBetween('scheduled_at', [now(), now()->addHour()]);
             })
             // socialAccount.workspace is eager-loaded even though this job
-            // never reads it directly — SocialAccountObserver::notifyOnboarding()
+            // never reads it directly — SocialAccountObserver::syncUsage()
             // (fired by the ->update() calls below via markAsTokenExpired())
-            // reads $account->workspace. The observer self-heals with
-            // loadMissing() (see #255), but without this eager load every
+            // reads $account->workspace. Without this eager load every
             // account in the batch triggers its own extra query there.
             ->with(['socialAccount.workspace', 'post'])
             ->get();

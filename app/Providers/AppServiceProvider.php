@@ -8,11 +8,6 @@ use App\Listeners\StripeEventListener;
 use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\AiUsageLog;
-use App\Models\Automation;
-use App\Models\AutomationNodeRun;
-use App\Models\AutomationNodeState;
-use App\Models\AutomationRun;
-use App\Models\AutomationTriggerItem;
 use App\Models\Invite;
 use App\Models\Media;
 use App\Models\Notification;
@@ -21,10 +16,14 @@ use App\Models\Plan;
 use App\Models\Post;
 use App\Models\PostComment;
 use App\Models\PostPlatform;
+use App\Models\Repurpose;
+use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
 use App\Models\Subscription;
 use App\Models\SubscriptionItem;
 use App\Models\User;
+use App\Models\Webhook;
+use App\Models\WebhookLog;
 use App\Models\Workspace;
 use App\Models\WorkspaceInvite;
 use App\Models\WorkspaceLabel;
@@ -98,23 +97,22 @@ class AppServiceProvider extends ServiceProvider
             'accessToken' => AccessToken::class,
             'account' => Account::class,
             'aiUsageLog' => AiUsageLog::class,
-            'automation' => Automation::class,
-            'automationNodeRun' => AutomationNodeRun::class,
-            'automationNodeState' => AutomationNodeState::class,
-            'automationRun' => AutomationRun::class,
-            'automationTriggerItem' => AutomationTriggerItem::class,
             'invite' => Invite::class,
             'media' => Media::class,
             'notification' => Notification::class,
             'notificationPreference' => NotificationPreference::class,
             'plan' => Plan::class,
             'post' => Post::class,
+            'repurpose' => Repurpose::class,
+            'repurposeItem' => RepurposeItem::class,
             'postComment' => PostComment::class,
             'postPlatform' => PostPlatform::class,
             'socialAccount' => SocialAccount::class,
             'subscription' => Subscription::class,
             'subscriptionItem' => SubscriptionItem::class,
             'user' => User::class,
+            'webhook' => Webhook::class,
+            'webhookLog' => WebhookLog::class,
             'workspace' => Workspace::class,
             'workspaceInvite' => WorkspaceInvite::class,
             'workspaceLabel' => WorkspaceLabel::class,
@@ -239,10 +237,10 @@ class AppServiceProvider extends ServiceProvider
         VerifyEmail::toMailUsing(function (User $user, string $url) {
             return (new MailMessage)
                 ->from(config('mail.from.address'), config('mail.from.name'))
-                ->subject('Verify your email address')
+                ->subject(__('mail.email_verification.subject'))
                 ->view('mail.email-verification', [
-                    'title' => 'Verify your email address',
-                    'previewText' => 'Please verify your email address.',
+                    'title' => __('mail.email_verification.subject'),
+                    'previewText' => __('mail.email_verification.preview'),
                     'user' => $user,
                     'url' => $url,
                 ]);
@@ -257,10 +255,10 @@ class AppServiceProvider extends ServiceProvider
 
             return (new MailMessage)
                 ->from(config('mail.from.address'), config('mail.from.name'))
-                ->subject('Reset your password')
+                ->subject(__('mail.password_reset.subject'))
                 ->view('mail.password-reset', [
-                    'title' => 'Reset your password',
-                    'previewText' => 'Reset your password.',
+                    'title' => __('mail.password_reset.subject'),
+                    'previewText' => __('mail.password_reset.preview'),
                     'user' => $user,
                     'url' => $url,
                 ]);

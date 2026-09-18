@@ -1,0 +1,187 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'title' => 'Repurpose',
+    'description' => 'TryPost の外で投稿したものを、他のネットワークへ自動で再投稿します。',
+    'new' => '新しい Repurpose',
+
+    'flow' => [
+        'no_source' => 'ソースアカウントなし',
+        'no_destinations' => '配信先はまだありません',
+    ],
+
+    'publish_mode' => [
+
+        'title' => '公開',
+
+        'description' => '新しい投稿が見つかったときの動作。',
+
+    ],
+
+    'publish_modes' => [
+
+        'publish' => '自動的に公開',
+
+        'publish_hint' => '新しい投稿は見つかった時点で予約されます。',
+
+        'draft' => '下書きとして作成',
+
+        'draft_hint' => '新しい投稿はここで下書きになり、確認してから公開できます。',
+
+    ],
+
+    'formats' => [
+        'reel' => 'リール',
+        'video' => '動画',
+        'story' => 'ストーリーズ',
+    ],
+
+    'source' => [
+        'title' => 'ソース',
+        'description' => 'TryPost がこのアカウントを見張り、下で選んだ形式の新しい投稿を探します。',
+        'account_label' => 'アカウント',
+        'watch_label' => '監視する形式',
+        'needs_reconnect' => '再接続が必要',
+    ],
+
+    'summary' => [
+        'sentence' => ':source に新しい :format を投稿するたびに、:destinations へ再投稿されます。',
+        'no_destinations' => ':source に投稿する新しい :format は、まだ配信先を待っています。',
+        'no_source' => 'この自動化にはソースアカウントがありません。再開するには選択してください。',
+    ],
+
+    'empty' => [
+        'title' => 'Repurpose はまだ設定されていません',
+        'description' => 'TryPost は選んだアカウントを監視し、新しい投稿を指定したネットワークに再投稿します。',
+    ],
+
+    'table' => [
+        'flow' => 'フロー',
+        'status' => 'ステータス',
+        'published' => '再投稿済み',
+        'last_polled' => '最終チェック',
+    ],
+
+    'status' => [
+        'draft' => '下書き',
+        'active' => '有効',
+        'paused' => '一時停止',
+        'disabled' => '無効',
+    ],
+
+    'create' => [
+        'title' => '新しい Repurpose',
+        'description' => 'TryPost が見張るアカウントを選んでください。配信先は次の画面で選びます。',
+        'source_label' => 'ソースアカウント',
+        'source_placeholder' => 'アカウントを選択',
+        'source_search' => 'アカウントを検索',
+        'source_empty' => 'アカウントが見つかりません。',
+        'source_placeholder' => 'アカウントを選択',
+        'no_accounts' => '先に Instagram か Facebook のアカウントを接続してください。動画をダウンロードできるのはこの 2 つだけなので、ソースになれるのもこの 2 つだけです。',
+        'submit' => '作成',
+        'connect' => 'アカウントを接続',
+    ],
+
+    'show' => [
+        'title' => 'Repurpose',
+        'saving' => '保存中...',
+        'saved' => '保存しました',
+    ],
+
+    'tabs' => [
+        'configuration' => '設定',
+        'activity' => 'アクティビティ',
+        'settings' => '設定',
+    ],
+
+    'destinations' => [
+        'paused_note' => 'オフのためスキップされます。再度オンにするまで: :accounts',
+        'title' => '配信先',
+        'description' => '受け取るアカウントを選びます。それぞれ、指定した形式で投稿します。',
+        'hint' => 'キャプションは、そのネットワークの上限を超えたときだけ調整されます。',
+        'none_available' => 'このワークスペースにはまだ他のアカウントが接続されていません。',
+        'publish_as' => '投稿形式',
+    ],
+
+    'status_card' => [
+        'title' => 'ステータス',
+        'activate' => '有効にする',
+        'pause' => '一時停止',
+        'resume' => '再開',
+        'disable' => '無効にする',
+        'watermark' => '監視開始',
+        'last_polled' => '最終チェック',
+        'draft_hint' => '宛先を1つ以上選んでから有効にしてください。有効化した後の投稿だけが複製されます。',
+        'active_hint' => 'TryPost はこのアカウントを定期的に確認し、新しい投稿をすべて複製します。',
+        'paused_hint' => 'チェックを停止中です。再開すると止まった時点から続き、その間の投稿も失われません。',
+        'disabled_hint' => 'オフです。もう一度有効にすると最初からになり、オフの間に投稿したものは対象外のままです。',
+    ],
+
+    'items' => [
+        'source' => 'オリジナル',
+        'published_at' => '投稿日',
+        'status' => 'ステータス',
+        'detail' => '詳細',
+        'posts' => '再投稿先',
+        'view_original' => 'オリジナルを見る',
+        'original_from' => '元投稿 :date',
+        'empty' => [
+            'title' => 'まだ何もありません',
+            'description' => 'このアカウントが TryPost の外で公開した投稿がここに表示されます。',
+        ],
+        'open_post' => '投稿を開く',
+        'statuses' => [
+            'pending' => '待機中',
+            'processing' => '処理中',
+            'published' => '再投稿済み',
+            'drafted' => '下書き',
+            'skipped' => 'スキップ',
+            'failed' => '失敗',
+        ],
+        'reasons' => [
+            'published_via_trypost' => 'すでに TryPost から投稿済み',
+            'media_url_missing' => 'ネットワークがダウンロード可能なファイルを返しませんでした。多くは著作権付き音源が原因です',
+            'download_failed' => '動画をダウンロードできませんでした',
+            'post_creation_failed' => '投稿を作成できませんでした',
+            'no_usable_destinations' => '公開できる配信先がありませんでした',
+        ],
+    ],
+
+    'menu' => [
+
+        'label' => 'その他の操作',
+
+    ],
+
+    'danger' => [
+        'title' => 'この Repurpose を削除',
+        'description' => 'チェックはすぐに止まります。作成済みの投稿はカレンダーに残ります。',
+        'delete' => 'Repurpose を削除',
+    ],
+
+    'health' => [
+        'stopped_itself' => '自動的に停止しました。開いて理由を確認してください',
+        'source_missing' => '複製は停止中です。この自動化にはソースアカウントがありません。選択してから再開してください。',
+        'source_unusable' => '複製は停止中です。監視対象のアカウントを再接続してください。',
+        'no_destinations' => '複製は停止中です。利用できる配信先がありません。追加してから再開してください。',
+        'ready' => '問題は解消しました。この自動化を再開すると複製が再び始まります。',
+    ],
+
+    'errors' => [
+        'source_already_used' => 'このアカウントはすでに別の Repurpose で使われています。そちらを編集してください。',
+        'source_missing' => 'この自動化を開始する前に、監視するアカウントを選択してください。',
+        'source_unusable' => 'この自動化を開始する前に、監視対象のアカウントを再接続してください。',
+        'destinations_required' => '有効にする前に配信先を 1 つ以上選んでください。',
+        'destination_needs_video' => 'その形式は動画に対応していません。',
+        'only_paused_resumes' => '再開できるのは一時停止中の Repurpose だけです。',
+        'only_active_pauses' => '一時停止できるのは有効なリパーパスだけです。',
+        'only_running_disables' => '無効にできるのは稼働中のリパーパスだけです。',
+        'only_idle_activates' => '有効にできるのは下書きまたは無効なリパーパスだけです。',
+        'destination_unavailable' => 'その配信先アカウントは利用できなくなりました。',
+        'destination_is_source' => 'その配信先は、このリパーパスが監視しているアカウント自身です。',
+        'source_unavailable' => 'そのソースアカウントは利用できなくなりました。',
+        'action_failed' => '問題が発生しました。入力内容を確認してもう一度お試しください。',
+    ],
+];

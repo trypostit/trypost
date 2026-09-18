@@ -130,6 +130,38 @@ test('can delete an asset', function () {
     expect(Media::find($media->id))->toBeNull();
 });
 
+test('can download an asset from the current workspace', function () {
+    $media = $this->workspace->addMedia(UploadedFile::fake()->image('vacation-beach.jpg'), 'assets');
+
+    $response = $this->actingAs($this->user)
+        ->get(route('app.assets.download', $media));
+
+    $response->assertOk();
+    $response->assertDownload('vacation-beach.jpg');
+});
+
+test('cannot download an asset from another workspace', function () {
+    $otherWorkspace = Workspace::factory()->create([
+        'account_id' => $this->account->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $media = $otherWorkspace->addMedia(UploadedFile::fake()->image('photo.jpg'), 'assets');
+
+    $response = $this->actingAs($this->user)
+        ->get(route('app.assets.download', $media));
+
+    $response->assertForbidden();
+});
+
+test('asset download requires authentication', function () {
+    $media = $this->workspace->addMedia(UploadedFile::fake()->image('photo.jpg'), 'assets');
+
+    $response = $this->get(route('app.assets.download', $media));
+
+    $response->assertRedirect(route('login'));
+});
+
 test('cannot delete asset from another workspace', function () {
     $otherWorkspace = Workspace::factory()->create([
         'account_id' => $this->account->id,

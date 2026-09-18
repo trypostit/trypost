@@ -30,6 +30,7 @@ class StoreChunkedAssetRequest extends FormRequest
             'total_size' => $parsed[2] ?? null,
             'file_name' => strtolower(rawurldecode((string) $this->header('X-File-Name', 'upload'))),
             'upload_id' => $this->header('X-Upload-Id'),
+            'duration' => $this->header('X-Media-Duration'),
         ]);
     }
 
@@ -49,7 +50,14 @@ class StoreChunkedAssetRequest extends FormRequest
             'total_size' => ['required', 'integer', 'min:1', 'max:'.MediaType::Video->maxSizeInBytes()],
             'file_name' => ['required', 'string', 'ends_with:'.implode(',', $allowedSuffixes)],
             'upload_id' => ['required', 'string', 'uuid'],
+            // Capped at a day so `1e999` (INF, which JSON cannot encode) never reaches the meta column.
+            'duration' => ['nullable', 'numeric', 'min:0', 'max:86400'],
         ];
+    }
+
+    public function duration(): ?float
+    {
+        return transform($this->validated('duration'), fn (mixed $seconds) => (float) $seconds);
     }
 
     /**

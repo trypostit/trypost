@@ -311,7 +311,6 @@ return [
     'account' => [
         'tabs' => [
             'account' => '账户',
-            'usage' => '用量',
             'billing' => '账单',
         ],
         'title' => '账户设置',

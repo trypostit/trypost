@@ -11,11 +11,13 @@ return [
     'account_settings' => 'Аккаунт и оплата',
     'workspace_settings' => 'Настройки workspace',
     'log_out' => 'Выйти',
+    'help' => 'Помощь',
     'workspace' => [
         'connections' => 'Подключения',
         'signatures' => 'Подписи',
         'labels' => 'Метки',
         'assets' => 'Медиафайлы',
+        'webhooks' => 'Вебхуки',
         'mcp' => 'MCP',
     ],
     'language' => 'Язык: :name',
@@ -25,9 +27,7 @@ return [
         'others' => 'Прочее',
     ],
     'analytics' => 'Аналитика',
-    'automations' => 'Автоматизации',
-    'onboarding' => 'Начало работы',
-    'onboarding_hint' => 'Завершите настройку',
+    'repurposes' => 'Repurpose',
     'posts' => [
         'calendar' => 'Календарь',
         'all' => 'Все',
@@ -41,8 +41,10 @@ return [
     'archive_all' => 'Архивировать все',
     'no_notifications' => 'Нет уведомлений',
     'support' => [
+        'chat' => 'Поддержка в чате',
         'docs' => 'Документация',
         'referral' => 'Зарабатывайте 30% по реферальной программе',
         'discord' => 'Сообщество Discord',
+        'community' => 'Сообщество',
     ],
 ];

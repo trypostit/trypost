@@ -90,6 +90,25 @@ class PostPlatform extends Model
     }
 
     /**
+     * "Facebook Page (@handle)" for emails and in-app notifications.
+     * Username first, then display name (live account or the snapshot
+     * kept on this row). When neither is set — or the account is gone
+     * and there is no snapshot — just the platform name, never "(@)".
+     */
+    public function notificationLabel(): string
+    {
+        $identifier = $this->display_username
+            ?: $this->socialAccount?->display_name
+            ?: $this->platform_name;
+
+        if (! filled($identifier) || $identifier === $this->platform->label()) {
+            return $this->platform->label();
+        }
+
+        return "{$this->platform->label()} (@{$identifier})";
+    }
+
+    /**
      * Get avatar URL, falling back to snapshot if account was deleted.
      */
     public function getDisplayAvatarAttribute(): ?string

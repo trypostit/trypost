@@ -26,6 +26,7 @@ return [
     'save_to_assets' => 'حفظ في الوسائط',
     'saved' => 'تم الحفظ في وسائطك!',
     'create_post' => 'إنشاء منشور',
+    'download' => 'تنزيل',
     'add_to_post' => 'إضافة إلى المنشور',
     'search_placeholder' => 'البحث في الوسائط...',
 

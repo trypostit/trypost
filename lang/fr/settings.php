@@ -311,7 +311,6 @@ return [
     'account' => [
         'tabs' => [
             'account' => 'Compte',
-            'usage' => 'Utilisation',
             'billing' => 'Facturation',
         ],
         'title' => 'Paramètres du compte',

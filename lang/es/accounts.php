@@ -6,6 +6,17 @@ return [
     'description' => 'Resumen de todas tus cuentas sociales conectadas',
     'connect_cta' => 'Conectar',
     'connect_another' => 'Conectar otra',
+    'actions' => 'Acciones de la cuenta',
+    'activate' => 'Activar',
+    'deactivate' => 'Desactivar',
+    'active' => 'Activa',
+    'paused' => 'Desactivada',
+    'accounts_count' => ':count cuenta|:count cuentas',
+
+    'variants' => [
+        'linkedin-page' => 'Página',
+        'instagram-facebook' => 'vía Facebook',
+    ],
 
     'not_connected' => 'No conectado',
     'connect' => 'Conectar',
@@ -123,6 +134,9 @@ return [
     ],
 
     'flash' => [
+        'activated_resumed_repurposes' => 'Cuenta activada. :count automatización reanudada.|Cuenta activada. :count automatizaciones reanudadas.',
+        'disconnected_paused_repurposes' => 'Cuenta desconectada. :count automatización en pausa.|Cuenta desconectada. :count automatizaciones en pausa.',
+        'deactivated_paused_repurposes' => 'Cuenta desactivada. :count automatización en pausa.|Cuenta desactivada. :count automatizaciones en pausa.',
         'disconnected' => '¡Cuenta desconectada correctamente!',
         'connected' => '¡Cuenta conectada correctamente!',
         'session_expired' => 'Sesión expirada. Inténtalo de nuevo.',

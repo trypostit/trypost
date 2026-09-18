@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePostEcho } from '@/composables/echo/usePostEcho';
-import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
+import { getContentTypeBadgeKey, getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import { getPlatformStatusConfig, getPostStatusConfig } from '@/composables/usePostStatus';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -66,7 +66,11 @@ const props = defineProps<{
     post: Post;
 }>();
 
-const enabledPlatforms = computed(() => props.post.platforms.filter((pp) => pp.enabled));
+const enabledPlatforms = computed(() =>
+    props.post.platforms
+        .filter((pp) => pp.enabled)
+        .map((pp) => ({ ...pp, contentTypeBadgeKey: getContentTypeBadgeKey(pp.platform, pp.content_type) })),
+);
 
 const isPublishing = computed(() => props.post.status === PostStatus.Publishing);
 
@@ -239,7 +243,16 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
                                         </span>
                                     </div>
                                     <div class="min-w-0 flex-1">
-                                        <p class="truncate text-sm font-bold text-foreground">{{ getDisplayName(pp) }}</p>
+                                        <div class="flex items-center gap-2">
+                                            <p class="truncate text-sm font-bold text-foreground">{{ getDisplayName(pp) }}</p>
+                                            <Badge
+                                                v-if="pp.contentTypeBadgeKey"
+                                                variant="outline"
+                                                :data-testid="`content-type-${pp.content_type}`"
+                                            >
+                                                {{ $t(pp.contentTypeBadgeKey) }}
+                                            </Badge>
+                                        </div>
                                         <p class="truncate text-xs font-medium text-foreground/60">
                                             <span v-if="getDisplayUsername(pp)">@{{ getDisplayUsername(pp) }} · </span>
                                             {{ getPlatformLabel(pp.platform) }}

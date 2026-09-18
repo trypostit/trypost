@@ -86,8 +86,22 @@ export const getPlatformTheme = (platform: string): { bg: string; rotate: string
 export const getPlatformLabel = (platform: string): string =>
     PLATFORM_LABELS[platform] ?? platform;
 
+const translationKeyFor = (contentType: string): string => `posts.content_types.${contentType}.label`;
+
 export const getContentTypeOptions = (platform: string): ContentTypeOption[] =>
     (PLATFORM_CONTENT_TYPES[platform] ?? []).map((value) => ({
         value,
-        labelKey: `posts.content_types.${value}.label`,
+        labelKey: translationKeyFor(value),
     }));
+
+/** Whether the user picks a format on this platform, or it only has one. */
+export const hasMultipleContentTypes = (platform: string): boolean =>
+    getContentTypeOptions(platform).length > 1;
+
+/**
+ * Translation key for the badge that names a published format, or null when
+ * the format was never a choice: tagging "Post" on X would just repeat the
+ * platform name.
+ */
+export const getContentTypeBadgeKey = (platform: string, contentType: string | null): string | null =>
+    contentType && hasMultipleContentTypes(platform) ? translationKeyFor(contentType) : null;

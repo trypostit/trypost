@@ -26,6 +26,7 @@ return [
     'save_to_assets' => 'Save to Assets',
     'saved' => 'Saved to your assets!',
     'create_post' => 'Create post',
+    'download' => 'Download',
     'add_to_post' => 'Add to post',
     'search_placeholder' => 'Search media...',
 

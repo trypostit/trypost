@@ -1,6 +1,17 @@
 import { InertiaLinkProps } from '@inertiajs/vue3';
 import type { Component } from 'vue';
 
+import type { ContentTypeMediaRule } from '@/lib/contentTypeMediaRules';
+import type { AuthPlan, Features, PlanOption } from '@/types/plan';
+import type { WelcomeSummary } from '@/types/welcome';
+
+export type { AuthPlan, BillingInterval, Features, PlanOption } from '@/types/plan';
+export type {
+    WelcomeNetwork,
+    WelcomeStep,
+    WelcomeSummary,
+} from '@/types/welcome';
+
 export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'viewer';
 
 export interface Workspace {
@@ -9,13 +20,6 @@ export interface Workspace {
     logo_url: string | null;
     role?: WorkspaceRole | null;
     [key: string]: unknown;
-}
-
-export interface AuthPlan {
-    id: string;
-    slug: string;
-    name: string;
-    interval: 'monthly' | 'yearly';
 }
 
 export interface AuthAccount {
@@ -47,6 +51,10 @@ export interface Usage {
 export interface FlashData {
     banner?: string;
     bannerStyle?: 'success' | 'danger' | 'info' | 'warning';
+    success?: string;
+    error?: string;
+    warning?: string;
+    info?: string;
     plainToken?: string;
     [key: string]: unknown;
 }
@@ -62,38 +70,23 @@ export interface NavItem {
     badge?: string;
 }
 
-export interface OnboardingProgress {
-    completed: number;
-    total: number;
-}
-
-export interface ContentTypeMediaRule {
-    max_files: number;
-    min_files: number | null;
-    accept_images: boolean;
-    accept_videos: boolean;
-    accept_documents: boolean;
-    requires_media: boolean;
-    accepts_gif: boolean;
-    forbids_mixed_media: boolean;
-    max_image_bytes: number | null;
-    max_video_bytes: number | null;
-    max_document_bytes: number | null;
-    max_video_duration_sec: number | null;
-    aspect_ratio_min: number | null;
-    aspect_ratio_max: number | null;
-    auto_fits_image: boolean;
+export interface LegalLinks {
+    terms: string;
+    privacy: string;
 }
 
 export interface SharedData {
     name: string;
     auth: Auth;
     flash: FlashData;
-    onboardingProgress?: OnboardingProgress | false;
     sidebarOpen: boolean;
     selfHosted: boolean;
-    allowMultipleSocialAccounts: boolean;
+    legal: LegalLinks;
     contentTypeMediaRules?: Record<string, ContentTypeMediaRule>;
+    features?: Features | null;
+    usage?: Usage | null;
+    plans?: PlanOption[];
+    welcome?: WelcomeSummary;
     [key: string]: unknown;
 }
 
@@ -130,6 +123,13 @@ export interface PinterestBoardsPayload {
     truncated: boolean;
 }
 
+export interface Language {
+    code: string;
+    name: string;
+    dir: string;
+    flag: string;
+}
+
 export interface ContentLanguageOption {
     value: string;
     label: string;
@@ -150,4 +150,3 @@ export interface AiTemplate {
     supported_formats: string[];
     applies_brand_visuals: boolean;
 }
-

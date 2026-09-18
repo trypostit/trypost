@@ -35,6 +35,7 @@ return [
         'posts_reach' => 'Copertura dei post',
         'quotes' => 'Citazioni',
         'reach' => 'Copertura',
+        'reactions' => 'Reazioni',
         'reblogs' => 'Reblog',
         'recent_comments' => 'Commenti recenti',
         'recent_likes' => 'Mi piace recenti',

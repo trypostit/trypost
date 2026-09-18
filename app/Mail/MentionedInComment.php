@@ -27,7 +27,7 @@ class MentionedInComment extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: __('mail.mentioned.subject', ['name' => $this->author->name]),
+            subject: __('mail.mentioned_in_comment.subject', ['name' => $this->author->name]),
         );
     }
 
@@ -36,7 +36,7 @@ class MentionedInComment extends Mailable implements ShouldQueue
         return new Content(
             view: 'mail.mentioned-in-comment',
             with: [
-                'title' => __('mail.mentioned.title', ['name' => $this->author->name]),
+                'title' => __('mail.mentioned_in_comment.title', ['name' => $this->author->name]),
                 'previewText' => Str::limit($this->excerpt, 100),
                 'authorName' => $this->author->name,
                 'excerpt' => $this->excerpt,

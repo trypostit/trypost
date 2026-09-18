@@ -26,4 +26,15 @@ class PlatformUnavailableException extends Exception
     ) {
         parent::__construct($message);
     }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function context(): array
+    {
+        return array_filter([
+            'http_status' => $this->httpStatus,
+            ...$this->context,
+        ], fn (mixed $value): bool => $value !== null);
+    }
 }

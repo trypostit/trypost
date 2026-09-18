@@ -19,9 +19,20 @@ beforeEach(function () {
     $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
 });
 
+test('discord authorize url asks for the bot scope and leaves the server picker open', function () {
+    $response = $this->actingAs($this->user)->get(route('app.social.discord.connect'));
+
+    expect(urldecode((string) $response->headers->get('Location')))
+        ->toStartWith('https://discord.com/api/oauth2/authorize')
+        ->toContain('scope=bot identify guilds')
+        ->toContain('permissions=248832')
+        ->not->toContain('disable_guild_select');
+});
+
 test('discord connect redirects to the oauth provider', function () {
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('scopes')->andReturnSelf();
+    $driverMock->shouldReceive('with')->with([])->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
         'getTargetUrl' => 'https://discord.com/api/oauth2/authorize?test=1',
     ]));
@@ -29,9 +40,8 @@ test('discord connect redirects to the oauth provider', function () {
     Socialite::shouldReceive('driver')->with('discord')->andReturn($driverMock);
 
     $this->actingAs($this->user)
-        ->withHeader('X-Inertia', 'true')
         ->get(route('app.social.discord.connect'))
-        ->assertStatus(409); // Inertia::location
+        ->assertRedirect('https://discord.com/api/oauth2/authorize?test=1');
 
     expect(session('social_connect_workspace'))->toBe($this->workspace->id);
 });
@@ -81,8 +91,7 @@ test('discord callback fails gracefully when no server was authorized', function
     expect($this->workspace->socialAccounts()->where('platform', Platform::Discord)->count())->toBe(0);
 });
 
-test('user can connect multiple discord accounts when multiple social accounts are allowed', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
+test('user can connect multiple discord accounts', function () {
 
     SocialAccount::factory()->discord()->create([
         'workspace_id' => $this->workspace->id,
@@ -109,37 +118,6 @@ test('user can connect multiple discord accounts when multiple social accounts a
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::Discord)->count())->toBe(2);
-});
-
-test('discord callback shows network_taken when the network is already connected', function () {
-    config()->set('trypost.allow_multiple_social_accounts', false);
-
-    SocialAccount::factory()->discord()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform_user_id' => '999000111',
-    ]);
-
-    session(['social_connect_workspace' => $this->workspace->id]);
-
-    $socialiteUser = Mockery::mock(SocialiteUser::class);
-    $socialiteUser->shouldReceive('getId')->andReturn('888000222');
-    $socialiteUser->shouldReceive('getNickname')->andReturn('Another Server');
-    $socialiteUser->shouldReceive('getName')->andReturn('Another Server');
-    $socialiteUser->shouldReceive('getAvatar')->andReturn(null);
-    $socialiteUser->token = 'discord-access-token';
-    $socialiteUser->refreshToken = 'discord-refresh-token';
-    $socialiteUser->expiresIn = null;
-    $socialiteUser->approvedScopes = ['bot', 'identify', 'guilds'];
-
-    Socialite::shouldReceive('driver')->with('discord')->andReturn(Mockery::mock(['user' => $socialiteUser]));
-
-    $response = $this->actingAs($this->user)->get(route('app.social.discord.callback'));
-
-    $response->assertOk();
-    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
-    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', __('accounts.popup_callback.network_taken')));
-
-    expect($this->workspace->socialAccounts()->where('platform', Platform::Discord)->count())->toBe(1);
 });
 
 test('discord callback reconnects the original card', function () {

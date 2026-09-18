@@ -10,6 +10,7 @@ use App\Models\Post;
 use Closure;
 use Illuminate\Contracts\Validation\DataAwareRule;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Support\Number;
 use Illuminate\Translation\PotentiallyTranslatedString;
 use Illuminate\Validation\ValidationException;
 
@@ -70,10 +71,12 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
     public static function entriesForUpdate(Post $post, ?array $requestPlatforms): array
     {
         if (is_array($requestPlatforms)) {
+            $stored = $post->postPlatforms()->get()->keyBy('id');
+
             return collect($requestPlatforms)->map(fn ($platform, $index): array => [
                 'key' => "platforms.{$index}.content_type",
                 'content_type' => data_get($platform, 'content_type')
-                    ?? $post->postPlatforms()->where('id', data_get($platform, 'id'))->first()?->content_type?->value,
+                    ?? $stored->get(data_get($platform, 'id'))?->content_type?->value,
             ])->all();
         }
 
@@ -95,21 +98,16 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
     public static function errorsFor(array $entries, array $media): array
     {
         $errors = [];
+        $rule = new self($media);
 
-        foreach ($entries as $entry) {
-            $contentType = data_get($entry, 'content_type');
-
+        foreach ($entries as ['key' => $key, 'content_type' => $contentType]) {
             if ($contentType === null) {
                 continue;
             }
 
-            (new self($media))->validate(
-                $entry['key'],
-                (string) $contentType,
-                function (string $message) use (&$errors, $entry): void {
-                    $errors[$entry['key']] = $message;
-                },
-            );
+            $rule->validate($key, $contentType, function (string $message) use (&$errors, $key): void {
+                $errors[$key] = $message;
+            });
         }
 
         return $errors;
@@ -121,86 +119,223 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         $contentType = ContentType::tryFrom((string) $value);
+
         if (! $contentType) {
             return;
         }
 
-        // Use the request's media when present; otherwise fall back to the
-        // post's stored media so partial publish/schedule updates still validate.
-        $media = array_key_exists('media', $this->data)
-            ? (array) data_get($this->data, 'media', [])
-            : (array) ($this->fallbackMedia ?? []);
-        $count = count($media);
+        $media = $this->media();
 
-        if ($contentType->requiresMedia() && $count === 0) {
-            $fail("{$contentType->label()} requires at least one media file.");
+        if ($media === []) {
+            if ($contentType->requiresMedia()) {
+                $fail(trans('posts.form.warnings.requires_media'));
+            }
 
             return;
         }
 
-        if ($count === 0) {
+        // One message per platform, like `firstWarning` in useMedia.ts: a kind violation
+        // ("does not accept GIF") is the root cause, so a size violation on the same
+        // item must not overwrite it in errorsFor().
+        if ($this->failOnKindRules($contentType, $media, $fail)) {
             return;
         }
 
-        $hasImage = collect($media)->contains(fn ($item) => $this->isImage((array) $item));
-        $hasVideo = collect($media)->contains(fn ($item) => $this->isVideo((array) $item));
-        $hasDocument = collect($media)->contains(fn ($item) => $this->isDocument((array) $item));
+        $this->failOnSizeAndDurationCaps($contentType, $media, $fail);
+    }
 
-        if ($hasImage && ! $contentType->supportsImage()) {
-            $fail("{$contentType->label()} does not support images.");
+    /**
+     * Request `media` when the key is present (including an empty list);
+     * otherwise the stored fallback so a partial publish still validates.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function media(): array
+    {
+        return collect(data_get($this->data, 'media', $this->fallbackMedia))
+            ->map(fn (mixed $item): array => (array) $item)
+            ->all();
+    }
+
+    /**
+     * Reports the first kind violation, in the editor's priority order.
+     *
+     * @param  array<int, array<string, mixed>>  $media
+     * @param  Closure(string, ?string=): PotentiallyTranslatedString  $fail
+     * @return bool Whether a violation was reported.
+     */
+    private function failOnKindRules(ContentType $contentType, array $media, Closure $fail): bool
+    {
+        $items = collect($media);
+        $types = $items->map($this->typeOf(...));
+        $hasImage = $types->contains(MediaType::Image);
+        $hasVideo = $types->contains(MediaType::Video);
+        $hasDocument = $types->contains(MediaType::Document);
+
+        $violations = [
+            'no_video_allowed' => $hasVideo && ! $contentType->supportsVideo(),
+            'no_image_allowed' => $hasImage && ! $contentType->supportsImage(),
+            'no_document_allowed' => $hasDocument && ! $contentType->supportsDocument(),
+            'no_mixed_media' => $hasImage && $hasVideo && ! $contentType->supportsMixedMedia(),
+            'document_not_alone' => $hasDocument && $items->count() > 1,
+            'gif_not_allowed' => $items->contains($this->isGif(...)) && ! $contentType->acceptsGif(),
+            'mov_not_allowed' => $items->contains($this->isMov(...)) && ! $contentType->acceptsMov(),
+        ];
+
+        $key = array_find_key($violations, fn (bool $failed): bool => $failed);
+
+        if ($key === null) {
+            return false;
         }
 
-        if ($hasVideo && ! $contentType->supportsVideo()) {
-            $fail("{$contentType->label()} does not support videos.");
+        $fail(trans("posts.form.warnings.{$key}"));
+
+        return true;
+    }
+
+    /**
+     * Server-side mirror of the editor's size / duration checks, so API and MCP
+     * clients get the same early warning the editor shows. `size` and
+     * `meta.duration` are the item's own values (written by the server on upload,
+     * resubmitted by the client); an item without them is not checked. This is a
+     * courtesy check, not a security boundary — the network enforces its own caps.
+     *
+     * @param  array<int, array<string, mixed>>  $media
+     * @param  Closure(string, ?string=): PotentiallyTranslatedString  $fail
+     */
+    private function failOnSizeAndDurationCaps(ContentType $contentType, array $media, Closure $fail): void
+    {
+        $maxDuration = $contentType->maxVideoDurationSec();
+
+        foreach ($media as $item) {
+            $size = (int) data_get($item, 'size', 0);
+            [$key, $max] = $this->byteCap($contentType, $item);
+
+            if ($max !== null && $size > $max) {
+                $fail(trans("posts.form.warnings.{$key}", [
+                    'max' => $this->formatBytes($max, $max),
+                    'current' => $this->formatBytes($size, $max, 1),
+                ]));
+
+                return;
+            }
+
+            $duration = data_get($item, 'meta.duration');
+
+            if ($maxDuration !== null && is_numeric($duration) && $duration > $maxDuration && $this->typeOf($item) === MediaType::Video) {
+                $fail(trans('posts.form.warnings.video_too_long', [
+                    'max' => $this->formatDuration($maxDuration),
+                    'current' => $this->formatDuration((int) ceil((float) $duration)),
+                ]));
+
+                return;
+            }
+        }
+    }
+
+    /**
+     * The cap an item is measured against; none when nothing identifies the item.
+     *
+     * @param  array<string, mixed>  $item
+     * @return array{0: string|null, 1: int|null}
+     */
+    private function byteCap(ContentType $contentType, array $item): array
+    {
+        return match ($this->typeOf($item)) {
+            MediaType::Document => ['document_too_large', $contentType->maxDocumentBytes()],
+            MediaType::Video => ['video_too_large', $contentType->maxVideoBytes()],
+            MediaType::Image => ['image_too_large', $contentType->maxImageBytes()],
+            null => [null, null],
+        };
+    }
+
+    /**
+     * Mirrors `formatBytes` in useMedia.ts: a cap declared in decimal megabytes
+     * (Bluesky) renders both numbers in decimal units — "300 MB", not "286 MB".
+     */
+    private function formatBytes(int $bytes, int $cap, int $precision = 0): string
+    {
+        return $this->isDecimalCap($cap)
+            ? $this->formatDecimalBytes($bytes, $precision)
+            : Number::fileSize($bytes, $precision);
+    }
+
+    /**
+     * A cap built with ContentType::bytesFromDecimalMb(): a whole number of
+     * megabytes that is not also a whole number of mebibytes.
+     */
+    private function isDecimalCap(int $cap): bool
+    {
+        return $cap % 1_000_000 === 0 && $cap % (1024 * 1024) !== 0;
+    }
+
+    private function formatDecimalBytes(int $bytes, int $precision): string
+    {
+        if ($bytes < 1_000) {
+            return "{$bytes} B";
         }
 
-        if ($hasDocument && ! $contentType->supportsDocument()) {
-            $fail("{$contentType->label()} does not support PDF documents.");
-        }
+        [$divisor, $unit] = match (true) {
+            $bytes >= 1_000_000_000 => [1_000_000_000, 'GB'],
+            $bytes >= 1_000_000 => [1_000_000, 'MB'],
+            default => [1_000, 'KB'],
+        };
 
-        // A PDF document is always published on its own (LinkedIn document post).
-        if ($hasDocument && $count > 1) {
-            $fail('A PDF document must be the only attachment.');
-        }
+        $value = Number::format($bytes / $divisor, $precision);
 
-        if ($hasImage && $hasVideo && ! $contentType->supportsMixedMedia()) {
-            $fail("{$contentType->label()} can't combine an image and a video in the same post.");
-        }
+        return "{$value} {$unit}";
+    }
+
+    /**
+     * Mirrors `formatDurationWords` in date.ts: "45s", "5min", "5min 30s".
+     */
+    private function formatDuration(int $seconds): string
+    {
+        $minutes = intdiv($seconds, 60);
+        $rest = $seconds % 60;
+
+        return match (true) {
+            $minutes === 0 => "{$rest}s",
+            $rest === 0 => "{$minutes}min",
+            default => "{$minutes}min {$rest}s",
+        };
     }
 
     /**
      * @param  array<string, mixed>  $item
      */
-    private function isImage(array $item): bool
+    private function isGif(array $item): bool
     {
-        return $this->isType($item, MediaType::Image);
+        return MediaType::isGif(data_get($item, 'mime_type'));
     }
 
     /**
      * @param  array<string, mixed>  $item
      */
-    private function isVideo(array $item): bool
+    private function isMov(array $item): bool
     {
-        return $this->isType($item, MediaType::Video);
+        return MediaType::isMov(data_get($item, 'mime_type'), $this->fileNameOf($item));
     }
 
     /**
-     * @param  array<string, mixed>  $item
-     */
-    private function isDocument(array $item): bool
-    {
-        return $this->isType($item, MediaType::Document);
-    }
-
-    /**
-     * A media item matches a type when it carries that explicit `type`, or when
-     * its MIME classifies as that type.
+     * Mirrors `classify()` in mediaType.ts and `MediaItem::kind()`: the explicit
+     * `type` wins, otherwise the item classifies by MIME, then by filename — so
+     * an item without a MIME is still measured against the right cap instead of
+     * the image one.
      *
      * @param  array<string, mixed>  $item
      */
-    private function isType(array $item, MediaType $type): bool
+    private function typeOf(array $item): ?MediaType
     {
-        return data_get($item, 'type') === $type->value
-            || MediaType::classify(data_get($item, 'mime_type')) === $type;
+        return MediaType::tryFrom((string) data_get($item, 'type', ''))
+            ?? MediaType::classify(data_get($item, 'mime_type'), $this->fileNameOf($item));
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function fileNameOf(array $item): ?string
+    {
+        return data_get($item, 'original_filename') ?? data_get($item, 'path');
     }
 }

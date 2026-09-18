@@ -22,32 +22,30 @@ return [
         'welcome_trial' => 'TryPost へようこそ！トライアルが開始されました。',
     ],
 
-    'legal' => '続行すると、<a href="https://trypost.it/terms" target="_blank">利用規約</a>および<a href="https://trypost.it/privacy" target="_blank">プライバシーポリシー</a>に同意したものとみなされます。',
+    'legal' => '続行すると、<a href=":terms_url" target="_blank">利用規約</a>および<a href=":privacy_url" target="_blank">プライバシーポリシー</a>に同意したものとみなされます。',
 
-    'slides' => [
-        'calendar' => [
-            'title' => 'ビジュアルカレンダー',
-            'description' => '直感的なドラッグ＆ドロップのカレンダーで、すべてのソーシャルアカウントのコンテンツを計画・スケジュールできます。',
+    'reviews' => [
+        'eyebrow' => 'G2で5/5',
+        'heading' => '毎日投稿する人に愛される',
+        'paulo_dantas' => [
+            'role' => '創業者, chatadv.com.br',
+            'quote' => 'あらゆるSNS向けにコンテンツを作成し、整理し、配信できる手軽さです。MCPを使えば、ClaudeやChatGPTなど好きなAIでコンテンツを作り、そのまま予約投稿できます。',
         ],
-        'scheduling' => [
-            'title' => 'スマートスケジューリング',
-            'description' => 'LinkedIn、X、Instagram、TikTok、YouTube など、複数のプラットフォームへの投稿を 1 か所からスケジュールできます。',
+        'diego' => [
+            'role' => 'CEO, Globalfy.com',
+            'quote' => 'TryPostは本当に使いやすいです。Claudeで直接投稿を作り、MCPで公開したり予約したりできます。設定は5分で終わりました。',
         ],
-        'media' => [
-            'title' => 'リッチメディア',
-            'description' => '画像、カルーセル、ストーリー、リールを公開できます。各プラットフォームに最適な形式が自動で適用されます。',
+        'luiz' => [
+            'role' => 'コンテンツクリエイター',
+            'quote' => 'AIツールやエージェントを簡単につなげて、9つのSNSへの投稿を数分で予約できるところが気に入っています。',
         ],
-        'video' => [
-            'title' => '動画の公開',
-            'description' => '動画を一度アップロードすれば、TikTok、YouTube ショート、Instagram リール、Facebook リールに公開できます。',
+        'pedro' => [
+            'role' => '創業者, templated.io',
+            'quote' => '導入も利用もとても簡単です。MCPのおかげで、画面を開くのはSNSアカウントを連携するときだけです。',
         ],
-        'team' => [
-            'title' => 'チームワークスペース',
-            'description' => 'チームを招待し、役割を割り当て、複数のブランドを別々のワークスペースで管理できます。',
-        ],
-        'signatures' => [
-            'title' => '署名',
-            'description' => '再利用できる署名（ハッシュタグ、リンク、締めの一言）を保存し、ワンクリックで投稿に追加できます。',
+        'paulo_castellano' => [
+            'role' => '創業者, changelogfy.com',
+            'quote' => 'MCP連携が本当に気に入っています。ClaudeやChatGPTからすべてのSNSアカウントを管理できます。',
         ],
     ],
 

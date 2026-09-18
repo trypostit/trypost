@@ -26,6 +26,7 @@ return [
     'save_to_assets' => 'Enregistrer dans les médias',
     'saved' => 'Enregistré dans vos médias !',
     'create_post' => 'Créer une publication',
+    'download' => 'Télécharger',
     'add_to_post' => 'Ajouter à la publication',
     'search_placeholder' => 'Rechercher un média...',
 

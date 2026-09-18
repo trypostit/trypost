@@ -2,10 +2,10 @@
 import { Form } from '@inertiajs/vue3';
 
 import WorkspaceController from '@/actions/App/Http/Controllers/App/WorkspaceController';
-import DeleteWorkspace from '@/components/settings/DeleteWorkspace.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import InputError from '@/components/InputError.vue';
 import PhotoUpload from '@/components/PhotoUpload.vue';
+import DeleteWorkspace from '@/components/settings/DeleteWorkspace.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

@@ -63,29 +63,29 @@
               <tr>
                 <td class="sm-px-6" style="border-radius: 4px; background-color: #fffffe; padding: 48px; font-size: 16px; color: #27272a; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05)">
                   <p style="margin-top: 0; line-height: 24px">
-                    Hi {{ $user->name }},
+                    {{ __('mail.email_verification.greeting', ['name' => $user->name]) }}
                   </p>
                   <p style="line-height: 24px">
-                    Please confirm your email address by clicking the button below:
+                    {{ __('mail.email_verification.body') }}
                   </p>
                   <div role="separator" style="line-height: 24px">&zwj;</div>
                   <div style="text-align: center">
                     <div>
-                      <a href="{{ $url }}" style="display: inline-block; text-decoration: none; padding: 16px 24px; font-size: 16px; line-height: 1; border-radius: 8px; background-color: #262626; color: #ffffff">
+                      <a href="{{ $url }}" style="display: inline-block; text-decoration: none; padding: 16px 24px; font-size: 16px; line-height: 1; border-radius: 8px; background-color: #7c3aed; color: #ffffff">
                         <!--[if mso]><i style="mso-font-width: 150%; mso-text-raise: 31px" hidden>&emsp;</i><![endif]-->
-                        <span style="mso-text-raise: 16px">Verify Email Address &rarr;</span>
+                        <span style="mso-text-raise: 16px">{{ __('mail.email_verification.button') }}</span>
                         <!--[if mso]><i hidden style="mso-font-width: 150%">&emsp;&#8203;</i><![endif]-->
                       </a>
                     </div>
                   </div>
                   <div role="separator" style="line-height: 24px">&zwj;</div>
                   <p style="line-height: 24px">
-                    If you did not create an account, you can safely ignore this email.
+                    {{ __('mail.email_verification.ignore') }}
                   </p>
                   <p style="margin-bottom: 0; line-height: 24px">
-                    Best regards,
+                    {{ __('mail.layout.signoff') }}
                     <br>
-                    The TryPost Team
+                    {{ __('mail.layout.team') }}
                   </p>
                 </td>
               </tr>
@@ -95,7 +95,7 @@
         <tr>
           <td align="center" style="padding: 24px; text-align: center; font-size: 12px; color: #52525b">
             <p style="margin: 0 0 8px">
-              Open-source social media scheduling tool
+              {{ __('mail.layout.tagline') }}
             </p>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-left: auto; margin-right: auto; margin-top: 12px">
               <tr>
@@ -120,7 +120,7 @@
                   </a>
                 </td>
                 <td style="padding-left: 4px; padding-right: 4px">
-                  <a href="https://www.instagram.com/trypost.it" target="_blank">
+                  <a href="https://www.instagram.com/trypost.en" target="_blank">
                     <img src="{{ asset('/images/emails/social/instagram.png') }}" width="20" height="20" alt="Instagram" style="max-width: 100%; vertical-align: middle">
                   </a>
                 </td>

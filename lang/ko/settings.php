@@ -311,7 +311,6 @@ return [
     'account' => [
         'tabs' => [
             'account' => '계정',
-            'usage' => '사용량',
             'billing' => '결제',
         ],
         'title' => '계정 설정',

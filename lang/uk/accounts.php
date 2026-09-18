@@ -6,6 +6,17 @@ return [
     'description' => 'Огляд усіх підключених соціальних акаунтів',
     'connect_cta' => 'Підключити',
     'connect_another' => 'Підключити ще',
+    'actions' => 'Дії з акаунтом',
+    'activate' => 'Увімкнути',
+    'deactivate' => 'Вимкнути',
+    'active' => 'Активний',
+    'paused' => 'Вимкнений',
+    'accounts_count' => ':count акаунт|:count акаунти|:count акаунтів',
+
+    'variants' => [
+        'linkedin-page' => 'Сторінка',
+        'instagram-facebook' => 'через Facebook',
+    ],
 
     'not_connected' => 'Не підключено',
     'connect' => 'Підключити',
@@ -123,6 +134,9 @@ return [
     ],
 
     'flash' => [
+        'activated_resumed_repurposes' => 'Обліковий запис увімкнено. Відновлено :count автоматизацію.|Обліковий запис увімкнено. Відновлено автоматизацій: :count.',
+        'disconnected_paused_repurposes' => 'Обліковий запис відключено. Призупинено :count автоматизацію.|Обліковий запис відключено. Призупинено автоматизацій: :count.',
+        'deactivated_paused_repurposes' => 'Обліковий запис вимкнено. Призупинено :count автоматизацію.|Обліковий запис вимкнено. Призупинено автоматизацій: :count.',
         'disconnected' => 'Акаунт успішно від’єднано!',
         'connected' => 'Акаунт успішно підключено!',
         'session_expired' => 'Сесію завершено. Спробуйте ще раз.',

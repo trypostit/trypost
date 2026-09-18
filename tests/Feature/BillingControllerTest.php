@@ -2,16 +2,11 @@
 
 declare(strict_types=1);
 
-use App\Enums\PostHog\OnboardingEvent;
 use App\Enums\UserWorkspace\Role;
-use App\Jobs\PostHog\SendEvent;
 use App\Models\Account;
 use App\Models\Plan;
-use App\Models\Post;
-use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Support\Facades\Bus;
 
 beforeEach(function () {
     config(['trypost.billing.require_card_for_trial' => true]);
@@ -44,11 +39,14 @@ test('subscribe redirects to welcome', function () {
     $response->assertRedirect(route('app.welcome.persona'));
 });
 
-test('swapToYearly redirects to calendar in self hosted mode', function () {
+test('changePlan redirects to calendar in self hosted mode', function () {
     config(['trypost.self_hosted' => true]);
 
     $response = $this->actingAs($this->user)
-        ->post(route('app.billing.swap-to-yearly'));
+        ->post(route('app.billing.change-plan'), [
+            'plan_id' => Plan::where('slug', 'socials')->value('id'),
+            'interval' => 'yearly',
+        ]);
 
     $response->assertRedirect(route('app.calendar'));
 });
@@ -153,78 +151,29 @@ test('billing processing shows processing page', function () {
     $response->assertInertia(fn ($page) => $page
         ->component('billing/Processing', false)
         ->has('subscriptionActive')
-        ->where('redirectToOnboarding', true)
+        ->missing('redirectToOnboarding')
     );
 });
 
-test('billing processing skips onboarding when already completed', function () {
-    config(['trypost.self_hosted' => false]);
-    $this->user->account->forceFill(['onboarding_completed_at' => now()])->save();
-
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.billing.processing'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('redirectToOnboarding', false));
-});
-
-test('billing processing skips onboarding when dismissed', function () {
-    config(['trypost.self_hosted' => false]);
-    $this->user->account->forceFill(['onboarding_dismissed_at' => now()])->save();
-
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.billing.processing'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('redirectToOnboarding', false));
-});
-
-test('billing processing does not send members to onboarding', function () {
+test('billing processing keeps auth.plan null until the webhook writes plan_id', function () {
     config(['trypost.self_hosted' => false]);
 
-    $member = User::factory()->create(['account_id' => $this->account->id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
-    $member->update(['current_workspace_id' => $this->workspace->id]);
-
-    $this->actingAs($member->fresh())
-        ->get(route('app.billing.processing'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('redirectToOnboarding', false));
-});
-
-test('billing processing still sends satisfied-but-unstamped owners to onboarding', function () {
-    config(['trypost.self_hosted' => false]);
+    $this->account->update(['plan_id' => null]);
     $this->account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
         'stripe_id' => 'sub_test_'.fake()->uuid(),
         'stripe_status' => 'active',
-        'stripe_price' => 'price_test',
-        'quantity' => 1,
+        'stripe_price' => 'price_123',
     ]);
-    mcpAccessToken($this->user, mcpOauthClient(), $this->workspace);
-    SocialAccount::withoutEvents(fn () => SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-    ]));
-    Post::withoutEvents(fn () => Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]));
 
-    Bus::fake();
-
-    // Processing no longer stamps — the owner finishes via /onboarding Continue.
     $this->actingAs($this->user->fresh())
         ->get(route('app.billing.processing'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
+            ->component('billing/Processing', false)
             ->where('subscriptionActive', true)
-            ->where('redirectToOnboarding', true)
+            ->where('auth.plan', null)
         );
-
-    expect($this->account->fresh()->onboarding_completed_at)->toBeNull();
-
-    Bus::assertNotDispatched(
-        SendEvent::class,
-        fn (SendEvent $event): bool => data_get($event->payload, 'event') === OnboardingEvent::Completed->value,
-    );
 });
 
 test('shared auth.plan exposes name slug and interval via AuthPlanResource', function () {
@@ -298,8 +247,7 @@ test('member cannot access billing index', function () {
     $this->actingAs($member)->get(route('app.billing.index'))->assertForbidden();
 });
 
-// Swap-to-yearly tests
-test('swapToYearly forbids a non-owner', function () {
+test('changePlan forbids a non-owner', function () {
     config(['trypost.self_hosted' => false]);
 
     $member = User::factory()->create(['account_id' => $this->account->id]);
@@ -314,14 +262,17 @@ test('swapToYearly forbids a non-owner', function () {
     ]);
 
     $this->actingAs($member)
-        ->post(route('app.billing.swap-to-yearly'))
+        ->post(route('app.billing.change-plan'), [
+            'plan_id' => Plan::where('slug', 'socials')->value('id'),
+            'interval' => 'yearly',
+        ])
         ->assertForbidden();
 });
 
-test('swapToYearly is a no-op when already on annual billing', function () {
+test('changePlan writes plan_id and flashes when already on that price', function () {
     config(['trypost.self_hosted' => false]);
 
-    $plan = Plan::where('slug', 'workspace')->first();
+    $plan = Plan::where('slug', 'socials')->first();
     $plan->update([
         'stripe_monthly_price_id' => 'price_monthly',
         'stripe_yearly_price_id' => 'price_yearly',
@@ -337,12 +288,20 @@ test('swapToYearly is a no-op when already on annual billing', function () {
     $this->user->unsetRelation('account');
 
     $this->actingAs($this->user)
-        ->post(route('app.billing.swap-to-yearly'))
-        ->assertRedirect(route('app.billing.index'));
+        ->post(route('app.billing.change-plan'), [
+            'plan_id' => $plan->id,
+            'interval' => 'yearly',
+        ])
+        ->assertRedirect(route('app.billing.index'))
+        ->assertSessionHas('flash.success', __('billing.flash.plan_changed', [
+            'plan' => $plan->name,
+        ]));
+
+    expect($this->account->fresh()->plan_id)->toBe($plan->id);
 });
 
-test('swapToYearly requires authentication', function () {
-    $response = $this->post(route('app.billing.swap-to-yearly'));
+test('changePlan requires authentication', function () {
+    $response = $this->post(route('app.billing.change-plan'));
 
     $response->assertRedirect(route('login'));
 });

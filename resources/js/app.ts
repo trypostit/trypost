@@ -8,7 +8,7 @@ import type { DefineComponent } from 'vue';
 import { createApp, h } from 'vue';
 
 import { initializeDataLayer } from './datalayer';
-import dayjs from './dayjs';
+import { bootLocale, i18nConfig, syncLocale } from './language';
 import { syncContentTypeMediaRules } from './lib/contentTypeMediaRules';
 import { capturePageview, initializePostHog, syncPostHogContext } from './posthog';
 import type { Auth } from './types';
@@ -23,11 +23,7 @@ createInertiaApp({
             import.meta.glob<DefineComponent>('./pages/**/*.vue'),
         ),
     setup({ el, App, props, plugin }) {
-        // Get locale from shared Inertia props
-        const locale = (props.initialPage.props as { locale?: string })?.locale || 'en';
-
-        // Set dayjs locale based on user's language
-        dayjs.locale(locale.toLowerCase());
+        const locale = bootLocale(props.initialPage.props);
 
         const auth = props.initialPage.props.auth as Auth | undefined;
         const flash = props.initialPage.props.flash as
@@ -50,6 +46,13 @@ createInertiaApp({
         syncContentTypeMediaRules(props.initialPage);
         capturePageview();
 
+        // `success`, not `navigate`: switching language answers with `back()`,
+        // which keeps the same URL, so Inertia updates the props without
+        // reporting a navigation.
+        router.on('success', (event) => {
+            syncLocale(event.detail.page.props);
+        });
+
         router.on('navigate', (event) => {
             syncPostHogContext(event.detail.page);
             syncContentTypeMediaRules(event.detail.page);
@@ -57,13 +60,7 @@ createInertiaApp({
         });
 
         createApp({ render: () => h(App, props) })
-            .use(i18nVue, {
-                lang: locale,
-                resolve: async (lang: string) => {
-                    const langs = import.meta.glob('../../lang/*.json');
-                    return await langs[`../../lang/php_${lang}.json`]();
-                },
-            })
+            .use(i18nVue, i18nConfig(locale))
             .use(plugin)
             .mount(el);
     },

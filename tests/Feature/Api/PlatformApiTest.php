@@ -34,6 +34,7 @@ it('lists content types per platform', function () {
                             'accept_videos',
                             'accept_documents',
                             'accepts_gif',
+                            'accepts_mov',
                             'forbids_mixed_media',
                             'max_video_duration_sec',
                             'max_image_bytes',
@@ -51,7 +52,7 @@ it('lists content types per platform', function () {
     $pinterestTypes = collect($platforms->firstWhere('platform', 'pinterest')['content_types']);
 
     expect($instagramTypes->firstWhere('value', 'instagram_reel')['max_video_duration_sec'])->toBe(900);
-    expect($instagramTypes->firstWhere('value', 'instagram_reel')['max_video_bytes'])->toBe(1 * 1024 * 1024 * 1024);
+    expect($instagramTypes->firstWhere('value', 'instagram_reel')['max_video_bytes'])->toBe(300 * 1024 * 1024);
     expect($instagramTypes->firstWhere('value', 'instagram_reel')['accept_images'])->toBeFalse();
     expect($facebookTypes->firstWhere('value', 'facebook_reel')['max_video_duration_sec'])->toBe(90);
     expect($pinterestTypes->firstWhere('value', 'pinterest_carousel')['min_media_count'])->toBe(2);

@@ -22,6 +22,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AssetController extends Controller
 {
@@ -84,6 +85,7 @@ class AssetController extends Controller
             (int) $request->validated('range_end'),
             (int) $request->validated('total_size'),
             (string) $request->validated('upload_id'),
+            $request->duration(),
         )->toResponse();
     }
 
@@ -150,7 +152,27 @@ class AssetController extends Controller
         return new MediaResource($media);
     }
 
+    public function download(Request $request, Media $media): StreamedResponse
+    {
+        $this->authorizeWorkspaceAsset($request, $media);
+
+        $filename = filled($media->original_filename)
+            ? $media->original_filename
+            : basename($media->path);
+
+        return Storage::download($media->path, $filename);
+    }
+
     public function destroy(Request $request, Media $media): RedirectResponse
+    {
+        $this->authorizeWorkspaceAsset($request, $media);
+
+        $media->delete();
+
+        return back();
+    }
+
+    private function authorizeWorkspaceAsset(Request $request, Media $media): void
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -159,9 +181,5 @@ class AssetController extends Controller
         if ($media->mediable_type !== $workspace->getMorphClass() || $media->mediable_id !== $workspace->id) {
             abort(SymfonyResponse::HTTP_FORBIDDEN);
         }
-
-        $media->delete();
-
-        return back();
     }
 }

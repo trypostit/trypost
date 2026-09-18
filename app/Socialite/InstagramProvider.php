@@ -27,6 +27,7 @@ class InstagramProvider extends AbstractProvider implements ProviderInterface
             'response_type' => 'code',
             'scope' => implode(',', $this->getScopes()),
             'state' => $state,
+            'force_reauth' => 'true',
         ]);
     }
 

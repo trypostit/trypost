@@ -7,6 +7,7 @@ import LabelBadge from '@/components/labels/LabelBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import type { PlatformIssue } from '@/composables/usePostCompliance';
 import { isVideo } from '@/lib/mediaType';
 import type { PinterestBoard, PinterestBoardsPayload } from '@/types';
 import type { Channel } from '@/types/channel';
@@ -76,7 +77,7 @@ const props = defineProps<{
     platformConfigs: Record<string, PlatformConfig>;
     platformMeta: Record<string, Record<string, any>>;
     platformContentTypes: Record<string, string>;
-    platformIssues?: Record<string, string>;
+    platformIssues?: Record<string, PlatformIssue>;
     tiktokCreatorInfos?: Record<string, TikTokCreatorInfo> | null;
     pinterestBoards?: Record<string, PinterestBoardsPayload> | null;
     media?: MediaItem[];
@@ -144,7 +145,8 @@ const channels = computed<Channel[]>(() =>
         socialAccount: pp.social_account,
         contentType: props.platformContentTypes[pp.id] ?? pp.content_type ?? '',
         meta: props.platformMeta[pp.id] ?? {},
-        issue: props.platformIssues?.[pp.id] ?? null,
+        issue: props.platformIssues?.[pp.id]?.message ?? null,
+        issueDocsUrl: props.platformIssues?.[pp.id]?.docsUrl ?? null,
         status: pp.status,
         contentTypeError: contentTypeErrorFor(pp),
         publishConfig: getPublishConfig(pp),

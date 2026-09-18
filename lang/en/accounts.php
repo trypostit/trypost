@@ -6,6 +6,17 @@ return [
     'description' => 'Overview of all your connected social accounts',
     'connect_cta' => 'Connect',
     'connect_another' => 'Connect another',
+    'actions' => 'Account actions',
+    'activate' => 'Turn on',
+    'deactivate' => 'Turn off',
+    'active' => 'Active',
+    'paused' => 'Off',
+    'accounts_count' => ':count account|:count accounts',
+
+    'variants' => [
+        'linkedin-page' => 'Page',
+        'instagram-facebook' => 'via Facebook',
+    ],
 
     'not_connected' => 'Not connected',
     'connect' => 'Connect',
@@ -123,6 +134,9 @@ return [
     ],
 
     'flash' => [
+        'activated_resumed_repurposes' => 'Account switched on. :count automation resumed.|Account switched on. :count automations resumed.',
+        'disconnected_paused_repurposes' => 'Account disconnected. :count automation paused.|Account disconnected. :count automations paused.',
+        'deactivated_paused_repurposes' => 'Account switched off. :count automation paused.|Account switched off. :count automations paused.',
         'disconnected' => 'Account disconnected successfully!',
         'connected' => 'Account connected successfully!',
         'session_expired' => 'Session expired. Please try again.',
