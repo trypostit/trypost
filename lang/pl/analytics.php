@@ -35,6 +35,7 @@ return [
         'posts_reach' => 'Zasięg postów',
         'quotes' => 'Cytaty',
         'reach' => 'Zasięg',
+        'reactions' => 'Reakcje',
         'reblogs' => 'Podania dalej',
         'recent_comments' => 'Ostatnie komentarze',
         'recent_likes' => 'Ostatnie polubienia',

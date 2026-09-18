@@ -37,6 +37,7 @@ return [
         'posts_reach' => 'Gönderi Erişimi',
         'quotes' => 'Alıntılar',
         'reach' => 'Erişim',
+        'reactions' => 'Tepkiler',
         'reblogs' => 'Yeniden Bloglamalar',
         'recent_comments' => 'Son Yorumlar',
         'recent_likes' => 'Son Beğeniler',

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Enums\PostPlatform\ContentType;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
@@ -38,6 +39,9 @@ class FacebookAnalytics
         });
     }
 
+    /**
+     * @return array<int, array{label: string, value: int}>|array{unsupported: true, reason: string}
+     */
     public function fetchPostMetrics(PostPlatform $postPlatform): array
     {
         $account = $postPlatform->socialAccount;
@@ -46,29 +50,80 @@ class FacebookAnalytics
             return ['unsupported' => true, 'reason' => 'missing_post_id'];
         }
 
+        [$edge, $metrics] = $this->postMetricsFor($postPlatform->content_type);
+
         $response = $this->socialHttp()
-            ->get("{$this->baseUrl}/{$postPlatform->platform_post_id}/insights", [
-                'metric' => 'post_impressions,post_impressions_unique,post_reactions_like_total,post_clicks',
+            ->get("{$this->baseUrl}/{$postPlatform->platform_post_id}/{$edge}", [
+                'metric' => implode(',', array_keys($metrics)),
                 'access_token' => $account->access_token,
             ]);
 
         if ($response->failed()) {
             Log::warning('Facebook post metrics fetch failed', [
+                'content_type' => $postPlatform->content_type?->value,
                 'body' => $this->redactResponseBody($response->body()),
             ]);
 
             return ['unsupported' => true, 'reason' => 'api_error'];
         }
 
-        $insights = data_get($response->json(), 'data', []);
-
-        return collect($insights)
-            ->map(fn (array $item) => [
-                'label' => ucfirst(str_replace('_', ' ', data_get($item, 'name', ''))),
-                'value' => (int) data_get($item, 'values.0.value', 0),
+        return collect(data_get($response->json(), 'data', []))
+            ->map(fn (array $item): array => [
+                'label' => __($metrics[data_get($item, 'name')] ?? 'analytics.metrics.'.data_get($item, 'name', '')),
+                'value' => $this->metricValue(data_get($item, 'values.0.value')),
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Each Facebook publish type stores a different kind of Graph node, and each
+     * node exposes its own insights: a feed post has `/insights` with `post_*`
+     * metrics, a Reel is a bare video whose numbers live on `/video_insights`,
+     * and a Story only answers to the `story` metric family. Asking a Story or
+     * a Reel for `post_impressions` is a `#100` rejection, not an empty result.
+     *
+     * The `post_impressions*` family is deprecated above Graph API v25, so feed
+     * posts read the `media_view` replacements instead.
+     *
+     * @return array{0: string, 1: array<string, string>}
+     */
+    private function postMetricsFor(?ContentType $contentType): array
+    {
+        return match ($contentType) {
+            ContentType::FacebookReel => ['video_insights', [
+                'total_video_impressions' => 'analytics.metrics.impressions',
+                'total_video_views' => 'analytics.metrics.video_views',
+                'total_video_reactions_by_type_total' => 'analytics.metrics.reactions',
+            ]],
+            ContentType::FacebookStory => ['insights', [
+                'page_story_impressions_by_story_id' => 'analytics.metrics.impressions',
+                'page_story_impressions_by_story_id_unique' => 'analytics.metrics.reach',
+                'story_interaction' => 'analytics.metrics.interactions',
+                'pages_fb_story_thread_lightweight_reactions' => 'analytics.metrics.reactions',
+                'pages_fb_story_replies' => 'analytics.metrics.replies',
+                'pages_fb_story_shares' => 'analytics.metrics.shares',
+            ]],
+            default => ['insights', [
+                'post_media_view' => 'analytics.metrics.impressions',
+                'post_total_media_view_unique' => 'analytics.metrics.reach',
+                'post_reactions_like_total' => 'analytics.metrics.likes',
+                'post_clicks' => 'analytics.metrics.clicks',
+            ]],
+        };
+    }
+
+    /**
+     * Most metrics are a plain count; the `*_by_type_total` family returns one
+     * count per reaction type and is reported as their sum.
+     */
+    private function metricValue(mixed $value): int
+    {
+        if (is_array($value)) {
+            return (int) collect($value)->sum();
+        }
+
+        return (int) $value;
     }
 
     private function fetchMetricsFromApi(SocialAccount $account, CarbonInterface $since, CarbonInterface $until): array
