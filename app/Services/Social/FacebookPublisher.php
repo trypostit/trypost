@@ -13,6 +13,7 @@ use App\Exceptions\Social\SocialPublishException;
 use App\Models\PostPlatform;
 use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Services\Social\Meta\GraphError;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
@@ -215,7 +216,7 @@ class FacebookPublisher
             ...$this->optionalField('description', $content),
         ], 'reel finish');
 
-        $reelId = data_get($response->json(), 'id', $videoId);
+        $reelId = data_get($response->json(), 'id') ?? $videoId;
 
         return [
             'id' => $reelId,
@@ -239,7 +240,7 @@ class FacebookPublisher
             'access_token' => $accessToken,
         ], 'story finish');
 
-        $storyId = data_get($response->json(), 'post_id', $videoId);
+        $storyId = data_get($response->json(), 'post_id') ?? $videoId;
 
         return [
             'id' => $storyId,
@@ -260,8 +261,9 @@ class FacebookPublisher
             'access_token' => $accessToken,
         ], "{$edge} start");
 
-        $videoId = data_get($response->json(), 'video_id');
-        $uploadUrl = data_get($response->json(), 'upload_url');
+        $data = $response->json();
+        $videoId = data_get($data, 'video_id');
+        $uploadUrl = data_get($data, 'upload_url');
 
         if (! filled($videoId) || ! is_string($uploadUrl) || ! filled($uploadUrl)) {
             throw new FacebookPublishException(
@@ -395,7 +397,18 @@ class FacebookPublisher
             ]);
 
             if ($response->failed()) {
-                $this->handleApiError($response);
+                if (! GraphError::isTransientFailure($response)) {
+                    $this->handleApiError($response);
+                }
+
+                Log::warning('Facebook story status check failed transiently', [
+                    'video_id' => $videoId,
+                    'status' => $response->status(),
+                    'body' => $this->redactResponseBody($response->body()),
+                ]);
+                Sleep::for(self::STORY_UPLOAD_POLL_SECONDS)->seconds();
+
+                continue;
             }
 
             $status = data_get($response->json(), 'status', []);

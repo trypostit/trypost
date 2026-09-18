@@ -496,6 +496,48 @@ test('facebook publisher waits for the story upload before finishing', function 
     ]);
 });
 
+test('facebook publisher keeps polling the story status through a transient graph error', function () {
+    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
+    $this->post->update(['media' => facebookStoryVideoMedia()]);
+
+    $graph = config('trypost.platforms.facebook.graph_api');
+
+    Http::fake([
+        ...facebookStoryFakes(),
+        "{$graph}/story_video_123?fields=status*" => Http::sequence()
+            ->push(['error' => ['message' => 'Service temporarily unavailable', 'code' => 2]], 500)
+            ->push(['status' => ['video_status' => 'processing', 'uploading_phase' => ['status' => 'complete']]], 200),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('video_story_post_123');
+
+    Sleep::assertSleptTimes(1);
+});
+
+test('facebook publisher stops polling the story status on a confirmed graph rejection', function () {
+    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
+    $this->post->update(['media' => facebookStoryVideoMedia()]);
+
+    $graph = config('trypost.platforms.facebook.graph_api');
+
+    Http::fake([
+        ...facebookStoryFakes(),
+        "{$graph}/story_video_123?fields=status*" => Http::response([
+            'error' => ['message' => 'Unsupported get request.', 'type' => 'GraphMethodException', 'code' => 100],
+        ], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(FacebookPublishException::class, 'Unsupported get request.');
+
+    Sleep::assertNeverSlept();
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/page_123/video_stories')
+        && $request['upload_phase'] === 'finish');
+});
+
 test('facebook publisher fails story publish when start does not return upload_url', function () {
     $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
     $this->post->update(['media' => facebookStoryVideoMedia()]);
