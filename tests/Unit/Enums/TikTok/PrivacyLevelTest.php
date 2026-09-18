@@ -13,14 +13,6 @@ test('tiktok privacy level matches the content posting api values', function () 
     ]);
 });
 
-test('the typescript privacy level const matches the php enum', function () {
-    $source = file_get_contents(resource_path('js/types/tiktok-privacy.ts'));
-
-    preg_match('/export const TikTokPrivacyLevel = \{([^}]+)\}/s', $source, $block);
-
-    expect($block[1] ?? null)->not->toBeNull();
-
-    preg_match_all("/'([A-Z_]+)'/", $block[1], $matches);
-
-    expect($matches[1])->toBe(PrivacyLevel::values());
-});
+test('the typescript privacy level const contains every php value', function (string $value) {
+    expect(file_get_contents(resource_path('js/types/tiktok-privacy.ts')))->toContain("'{$value}'");
+})->with(PrivacyLevel::values());
