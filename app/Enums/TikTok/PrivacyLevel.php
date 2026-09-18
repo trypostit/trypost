@@ -21,23 +21,6 @@ enum PrivacyLevel: string
      */
     public static function values(): array
     {
-        return array_map(fn (self $level) => $level->value, self::cases());
-    }
-
-    /**
-     * Keep only values the Content Posting API accepts, in the given order.
-     * Unknown creator_info options are dropped so they never reach the editor
-     * or a publish payload.
-     *
-     * @param  iterable<mixed>  $options
-     * @return list<string>
-     */
-    public static function knownValues(iterable $options): array
-    {
-        return collect($options)
-            ->map(fn (mixed $option): ?string => self::tryFrom((string) $option)?->value)
-            ->filter()
-            ->values()
-            ->all();
+        return array_column(self::cases(), 'value');
     }
 }

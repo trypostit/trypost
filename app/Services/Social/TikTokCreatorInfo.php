@@ -84,7 +84,10 @@ class TikTokCreatorInfo
             'creator_nickname' => data_get($data, 'creator_nickname'),
             'creator_username' => data_get($data, 'creator_username'),
             'creator_avatar_url' => data_get($data, 'creator_avatar_url'),
-            'privacy_level_options' => PrivacyLevel::knownValues(data_get($data, 'privacy_level_options', [])),
+            'privacy_level_options' => array_values(array_intersect(
+                (array) data_get($data, 'privacy_level_options', []),
+                PrivacyLevel::values(),
+            )),
             'comment_disabled' => (bool) data_get($data, 'comment_disabled', false),
             'duet_disabled' => (bool) data_get($data, 'duet_disabled', false),
             'stitch_disabled' => (bool) data_get($data, 'stitch_disabled', false),

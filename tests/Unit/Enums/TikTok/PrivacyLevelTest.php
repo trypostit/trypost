@@ -13,20 +13,6 @@ test('tiktok privacy level matches the content posting api values', function () 
     ]);
 });
 
-test('known values keep recognized options in order and drop unknowns', function () {
-    expect(PrivacyLevel::knownValues([
-        PrivacyLevel::PublicToEveryone->value,
-        'EVERYONE',
-        PrivacyLevel::SelfOnly->value,
-        '',
-        PrivacyLevel::FollowerOfCreator->value,
-    ]))->toBe([
-        PrivacyLevel::PublicToEveryone->value,
-        PrivacyLevel::SelfOnly->value,
-        PrivacyLevel::FollowerOfCreator->value,
-    ]);
-});
-
 test('the typescript privacy level const matches the php enum', function () {
     $source = file_get_contents(resource_path('js/types/tiktok-privacy.ts'));
 
