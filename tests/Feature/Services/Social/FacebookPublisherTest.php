@@ -31,60 +31,49 @@ function facebookJpegBytes(int $width = 1200, int $height = 800): string
 /**
  * @return array<int, array<string, string>>
  */
-function facebookStoryVideoMedia(): array
+function facebookVideoMedia(): array
 {
     return [
         [
-            'id' => 'test-media-video-story',
-            'path' => 'media/2026-01/story.mp4',
-            'url' => 'https://example.com/media/2026-01/story.mp4',
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/video.mp4',
+            'url' => 'https://example.com/media/2026-01/video.mp4',
             'mime_type' => 'video/mp4',
-            'original_filename' => 'story.mp4',
+            'original_filename' => 'video.mp4',
         ],
     ];
 }
 
 /**
- * @return array<int, array<string, string>>
- */
-function facebookReelVideoMedia(): array
-{
-    return [
-        [
-            'id' => 'test-media-reel',
-            'path' => 'media/2026-01/reel.mp4',
-            'url' => 'https://example.com/media/2026-01/reel.mp4',
-            'mime_type' => 'video/mp4',
-            'original_filename' => 'reel.mp4',
-        ],
-    ];
-}
-
-/**
- * Points the post at a single hosted story video and returns the fakes for the
- * happy path: start hands back the rupload URL, rupload accepts, the status
- * poll reports the upload complete, finish publishes.
+ * Happy-path fakes for Meta's resumable video flow on a Page edge: start hands
+ * back the rupload URL, rupload accepts the hosted file, the status poll
+ * reports the fetch complete, finish publishes.
  *
  * @return array<string, mixed>
  */
-function facebookStoryFakes(): array
+function facebookVideoUploadFakes(string $edge): array
 {
     $graph = config('trypost.platforms.facebook.graph_api');
     $rupload = 'https://'.config('trypost.platforms.facebook.rupload_host');
 
     return [
-        '*/page_123/video_stories' => Http::sequence()
+        "*/page_123/{$edge}" => Http::sequence()
             ->push([
-                'video_id' => 'story_video_123',
-                'upload_url' => "{$rupload}/video-upload/v25.0/story_video_123",
+                'video_id' => 'video_123',
+                'upload_url' => "{$rupload}/video-upload/v25.0/video_123",
             ], 200)
-            ->push(['success' => true, 'post_id' => 'video_story_post_123'], 200),
+            ->push(['success' => true, 'id' => 'reel_456', 'post_id' => 'story_456'], 200),
         "{$rupload}/*" => Http::response(['success' => true], 200),
-        "{$graph}/story_video_123?fields=status*" => Http::response([
+        "{$graph}/video_123?fields=status*" => Http::response([
             'status' => ['video_status' => 'processing', 'uploading_phase' => ['status' => 'complete']],
         ], 200),
     ];
 }
+
+dataset('facebook resumable video formats', [
+    'reel' => [ContentType::FacebookReel, 'video_reels'],
+    'story' => [ContentType::FacebookStory, 'video_stories'],
+]);
 
 beforeEach(function () {
     Sleep::fake();
@@ -264,117 +253,6 @@ test('facebook publisher can publish video post', function () {
     });
 });
 
-test('facebook publisher can publish reel', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookReel]);
-
-    $this->post->update([
-
-        'media' => [
-            [
-                'id' => 'test-media-reel',
-                'path' => 'media/2026-01/reel.mp4',
-                'url' => 'https://example.com/media/2026-01/reel.mp4',
-                'mime_type' => 'video/mp4',
-                'original_filename' => 'reel.mp4',
-            ],
-        ],
-
-    ]);
-
-    Http::fake([
-        '*/page_123/video_reels' => Http::sequence()
-            ->push([
-                'video_id' => 'reel_video_123',
-                'upload_url' => 'https://rupload.facebook.com/video-upload/v25.0/reel_video_123',
-            ], 200)
-            ->push(['id' => 'reel_123', 'success' => true], 200),
-        '*example.com/media/*' => Http::response('fake-video-binary-content', 200),
-        '*rupload.facebook.com/*' => Http::response(['success' => true], 200),
-    ]);
-
-    $result = $this->publisher->publish($this->postPlatform);
-
-    expect($result)->toHaveKey('id');
-    expect($result['id'])->toBe('reel_123');
-    expect($result['url'])->toBe('https://www.facebook.com/reel/reel_123');
-
-    // Assert the transfer phase: POST raw bytes to upload_url (rupload
-    // host) with OAuth header and the required Offset + file_size
-    // headers Facebook's rupload validator demands.
-    Http::assertSent(function ($request) {
-        if (! str_contains($request->url(), 'rupload.facebook.com')) {
-            return false;
-        }
-
-        return ($request->header('Offset')[0] ?? null) === '0'
-            && ($request->header('file_size')[0] ?? null) === (string) strlen('fake-video-binary-content')
-            && str_starts_with($request->header('Authorization')[0] ?? '', 'OAuth ');
-    });
-});
-
-test('facebook publisher fails reel publish when start does not return upload_url', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookReel]);
-
-    $this->post->update([
-        'media' => [
-            [
-                'id' => 'test-media-reel',
-                'path' => 'media/2026-01/reel.mp4',
-                'url' => 'https://example.com/media/2026-01/reel.mp4',
-                'mime_type' => 'video/mp4',
-                'original_filename' => 'reel.mp4',
-            ],
-        ],
-    ]);
-
-    // Missing upload_url in the start response — should not silently
-    // proceed to a broken transfer (which is what the old code did).
-    Http::fake([
-        '*/page_123/video_reels' => Http::response([
-            'video_id' => 'reel_video_123',
-        ], 200),
-    ]);
-
-    expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(
-            FacebookPublishException::class,
-            'Facebook did not start the video upload. Please try again.'
-        );
-});
-
-test('facebook publisher fails reel publish with typed exception when media download fails', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookReel]);
-
-    $this->post->update([
-        'media' => [
-            [
-                'id' => 'test-media-reel',
-                'path' => 'media/2026-01/reel.mp4',
-                'url' => 'https://example.com/media/2026-01/reel.mp4',
-                'mime_type' => 'video/mp4',
-                'original_filename' => 'reel.mp4',
-            ],
-        ],
-    ]);
-
-    // start succeeds, but the media URL returns 404 — should surface as
-    // a typed FacebookPublishException (ServerError) instead of leaking
-    // a generic Exception that would land in the 'unknown' bucket.
-    Http::fake([
-        '*/page_123/video_reels' => Http::response([
-            'video_id' => 'reel_video_123',
-            'upload_url' => 'https://rupload.facebook.com/video-upload/v25.0/reel_video_123',
-        ], 200),
-        '*example.com/media/*' => Http::response('', 404),
-    ]);
-
-    expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(
-            FacebookPublishException::class,
-            'Could not download media for Facebook reel.'
-        );
-});
-
 test('facebook publisher rejects image story', function () {
     $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
 
@@ -427,24 +305,114 @@ test('facebook publisher rejects a story without media', function () {
     Http::assertNothingSent();
 });
 
-test('facebook publisher rejects a reel upload_url outside the rupload host', function () {
+test('facebook publisher can publish reel', function () {
     $this->postPlatform->update(['content_type' => ContentType::FacebookReel]);
+    $this->post->update(['media' => facebookVideoMedia()]);
 
-    $this->post->update([
-        'media' => [
-            [
-                'id' => 'test-media-reel',
-                'path' => 'media/2026-01/reel.mp4',
-                'url' => 'https://example.com/media/2026-01/reel.mp4',
-                'mime_type' => 'video/mp4',
-                'original_filename' => 'reel.mp4',
-            ],
-        ],
-    ]);
+    Http::fake(facebookVideoUploadFakes('video_reels'));
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('reel_456');
+    expect($result['url'])->toBe('https://www.facebook.com/reel/reel_456');
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/page_123/video_reels')
+        && $request['upload_phase'] === 'finish'
+        && $request['video_id'] === 'video_123'
+        && $request['video_state'] === 'PUBLISHED'
+        && $request['description'] === 'Check out this Facebook post!');
+});
+
+test('facebook publisher can publish video story', function () {
+    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
+    $this->post->update(['media' => facebookVideoMedia()]);
+
+    Http::fake(facebookVideoUploadFakes('video_stories'));
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('story_456');
+    expect($result['url'])->toBe('https://www.facebook.com/stories/page_123/story_456');
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/page_123/video_stories')
+        && $request['upload_phase'] === 'finish'
+        && $request['video_id'] === 'video_123'
+        && ! array_key_exists('video_state', $request->data()));
+});
+
+test('facebook publisher hands meta the hosted url and never downloads the video', function (ContentType $contentType, string $edge) {
+    $this->postPlatform->update(['content_type' => $contentType]);
+    $this->post->update(['media' => facebookVideoMedia()]);
+
+    Http::fake(facebookVideoUploadFakes($edge));
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), config('trypost.platforms.facebook.rupload_host'))) {
+            return false;
+        }
+
+        return $request->method() === 'POST'
+            && ($request->header('file_url')[0] ?? null) === 'https://example.com/media/2026-01/video.mp4'
+            && str_starts_with($request->header('Authorization')[0] ?? '', 'OAuth ')
+            && $request->body() === '';
+    });
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'example.com/media'));
+
+    Http::assertNotSent(fn ($request) => $request->method() === 'POST'
+        && str_contains($request->url(), config('trypost.platforms.facebook.graph_api').'/video_123'));
+
+    Sleep::assertNeverSlept();
+
+    expect(glob(sys_get_temp_dir().'/fb_reel_*') ?: [])->toBeEmpty();
+})->with('facebook resumable video formats');
+
+test('facebook publisher waits for meta to fetch the video before finishing', function (ContentType $contentType, string $edge) {
+    $this->postPlatform->update(['content_type' => $contentType]);
+    $this->post->update(['media' => facebookVideoMedia()]);
+
+    $graph = config('trypost.platforms.facebook.graph_api');
 
     Http::fake([
-        '*/page_123/video_reels' => Http::response([
-            'video_id' => 'reel_video_123',
+        ...facebookVideoUploadFakes($edge),
+        "{$graph}/video_123?fields=status*" => Http::sequence()
+            ->push(['status' => ['video_status' => 'processing', 'uploading_phase' => ['status' => 'not_started']]], 200)
+            ->push(['status' => ['video_status' => 'processing', 'uploading_phase' => ['status' => 'in_progress', 'bytes_transfered' => 1024]]], 200)
+            ->push(['status' => ['video_status' => 'processing', 'uploading_phase' => ['status' => 'complete']]], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Sleep::assertSleptTimes(2);
+    Sleep::assertSequence([
+        Sleep::for(5)->seconds(),
+        Sleep::for(5)->seconds(),
+    ]);
+})->with('facebook resumable video formats');
+
+test('facebook publisher fails when start does not return upload_url', function (ContentType $contentType, string $edge) {
+    $this->postPlatform->update(['content_type' => $contentType]);
+    $this->post->update(['media' => facebookVideoMedia()]);
+
+    Http::fake([
+        "*/page_123/{$edge}" => Http::response(['video_id' => 'video_123'], 200),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(FacebookPublishException::class, 'Facebook did not start the video upload. Please try again.');
+
+    Http::assertSentCount(1);
+})->with('facebook resumable video formats');
+
+test('facebook publisher rejects an upload_url outside the rupload host', function (ContentType $contentType, string $edge) {
+    $this->postPlatform->update(['content_type' => $contentType]);
+    $this->post->update(['media' => facebookVideoMedia()]);
+
+    Http::fake([
+        "*/page_123/{$edge}" => Http::response([
+            'video_id' => 'video_123',
             'upload_url' => 'https://evil.example/steal-token',
         ], 200),
     ]);
@@ -453,141 +421,107 @@ test('facebook publisher rejects a reel upload_url outside the rupload host', fu
         ->toThrow(FacebookPublishException::class, 'Facebook returned an invalid upload URL.');
 
     Http::assertSentCount(1);
-});
+})->with('facebook resumable video formats');
 
-test('facebook publisher can publish video story', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
-    $this->post->update(['media' => facebookStoryVideoMedia()]);
-
-    Http::fake(facebookStoryFakes());
-
-    $result = $this->publisher->publish($this->postPlatform);
-
-    expect($result['id'])->toBe('video_story_post_123');
-    expect($result['url'])->toBe('https://www.facebook.com/stories/page_123/video_story_post_123');
-
-    Http::assertSent(function ($request) {
-        if (! str_contains($request->url(), config('trypost.platforms.facebook.rupload_host'))) {
-            return false;
-        }
-
-        return $request->method() === 'POST'
-            && ($request->header('file_url')[0] ?? null) === 'https://example.com/media/2026-01/story.mp4'
-            && str_starts_with($request->header('Authorization')[0] ?? '', 'OAuth ')
-            && $request->body() === '';
-    });
-
-    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'example.com/media'));
-
-    Http::assertNotSent(fn ($request) => $request->method() === 'POST'
-        && str_contains($request->url(), config('trypost.platforms.facebook.graph_api').'/story_video_123'));
-
-    Http::assertSent(fn ($request) => str_contains($request->url(), '/page_123/video_stories')
-        && $request['upload_phase'] === 'finish'
-        && $request['video_id'] === 'story_video_123');
-
-    Sleep::assertNeverSlept();
-});
-
-test('facebook publisher waits for the story upload before finishing', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
-    $this->post->update(['media' => facebookStoryVideoMedia()]);
-
-    $graph = config('trypost.platforms.facebook.graph_api');
-
-    Http::fake([
-        ...facebookStoryFakes(),
-        "{$graph}/story_video_123?fields=status*" => Http::sequence()
-            ->push(['status' => ['video_status' => 'processing', 'uploading_phase' => ['status' => 'not_started']]], 200)
-            ->push(['status' => ['video_status' => 'processing', 'uploading_phase' => ['status' => 'in_progress', 'bytes_transfered' => 1024]]], 200)
-            ->push(['status' => ['video_status' => 'processing', 'uploading_phase' => ['status' => 'complete']]], 200),
-    ]);
-
-    $result = $this->publisher->publish($this->postPlatform);
-
-    expect($result['id'])->toBe('video_story_post_123');
-
-    Sleep::assertSleptTimes(2);
-    Sleep::assertSequence([
-        Sleep::for(5)->seconds(),
-        Sleep::for(5)->seconds(),
-    ]);
-});
-
-test('facebook publisher reschedules the story when rupload cannot be reached', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
-    $this->post->update(['media' => facebookStoryVideoMedia()]);
+test('facebook publisher maps a rupload rejection and does not finish', function (ContentType $contentType, string $edge) {
+    $this->postPlatform->update(['content_type' => $contentType]);
+    $this->post->update(['media' => facebookVideoMedia()]);
 
     $rupload = 'https://'.config('trypost.platforms.facebook.rupload_host');
 
     Http::fake([
-        ...facebookStoryFakes(),
+        ...facebookVideoUploadFakes($edge),
+        "{$rupload}/*" => Http::response(['error' => ['message' => 'Problem with file', 'code' => 6000]], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(FacebookPublishException::class, 'Problem with file. Try with another file.');
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), "/page_123/{$edge}")
+        && $request['upload_phase'] === 'finish');
+})->with('facebook resumable video formats');
+
+test('facebook publisher does not finish when rupload does not confirm success', function (ContentType $contentType, string $edge) {
+    $this->postPlatform->update(['content_type' => $contentType]);
+    $this->post->update(['media' => facebookVideoMedia()]);
+
+    $rupload = 'https://'.config('trypost.platforms.facebook.rupload_host');
+
+    Http::fake([
+        ...facebookVideoUploadFakes($edge),
+        "{$rupload}/*" => Http::response(['success' => false], 200),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(FacebookPublishException::class, 'Facebook did not accept the video. Please try again.');
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), "/page_123/{$edge}")
+        && $request['upload_phase'] === 'finish');
+})->with('facebook resumable video formats');
+
+test('facebook publisher reschedules when rupload cannot be reached', function (ContentType $contentType, string $edge) {
+    $this->postPlatform->update(['content_type' => $contentType]);
+    $this->post->update(['media' => facebookVideoMedia()]);
+
+    $rupload = 'https://'.config('trypost.platforms.facebook.rupload_host');
+
+    Http::fake([
+        ...facebookVideoUploadFakes($edge),
         "{$rupload}/*" => fn () => throw new ConnectionException('cURL error 28: Connection timed out after 10003 milliseconds'),
     ]);
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(function (PlatformUnavailableException $exception): void {
             expect($exception->retryDelaySeconds)->toBe(60)
-                ->and($exception->getMessage())->toContain('story upload unreachable');
+                ->and($exception->getMessage())->toContain('video upload unreachable');
         });
 
-    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/page_123/video_stories')
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), "/page_123/{$edge}")
         && $request['upload_phase'] === 'finish');
-});
+})->with('facebook resumable video formats');
 
-test('facebook publisher reschedules the story when the status check cannot be reached', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
-    $this->post->update(['media' => facebookStoryVideoMedia()]);
-
-    $graph = config('trypost.platforms.facebook.graph_api');
-
-    Http::fake([
-        ...facebookStoryFakes(),
-        "{$graph}/story_video_123?fields=status*" => fn () => throw new ConnectionException('cURL error 28: Operation timed out'),
-    ]);
-
-    expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(PlatformUnavailableException::class);
-});
-
-test('facebook publisher reschedules a graph post when facebook cannot be reached', function () {
-    Http::fake([
-        '*/page_123/feed' => fn () => throw new ConnectionException('cURL error 28: Connection timed out'),
-    ]);
-
-    expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(PlatformUnavailableException::class);
-});
-
-test('facebook publisher keeps polling the story status through a transient graph error', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
-    $this->post->update(['media' => facebookStoryVideoMedia()]);
+test('facebook publisher reschedules when the status check cannot be reached', function (ContentType $contentType, string $edge) {
+    $this->postPlatform->update(['content_type' => $contentType]);
+    $this->post->update(['media' => facebookVideoMedia()]);
 
     $graph = config('trypost.platforms.facebook.graph_api');
 
     Http::fake([
-        ...facebookStoryFakes(),
-        "{$graph}/story_video_123?fields=status*" => Http::sequence()
+        ...facebookVideoUploadFakes($edge),
+        "{$graph}/video_123?fields=status*" => fn () => throw new ConnectionException('cURL error 28: Operation timed out'),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(PlatformUnavailableException::class);
+})->with('facebook resumable video formats');
+
+test('facebook publisher keeps polling the video status through a transient graph error', function (ContentType $contentType, string $edge) {
+    $this->postPlatform->update(['content_type' => $contentType]);
+    $this->post->update(['media' => facebookVideoMedia()]);
+
+    $graph = config('trypost.platforms.facebook.graph_api');
+
+    Http::fake([
+        ...facebookVideoUploadFakes($edge),
+        "{$graph}/video_123?fields=status*" => Http::sequence()
             ->push(['error' => ['message' => 'Service temporarily unavailable', 'code' => 2]], 500)
             ->push(['status' => ['video_status' => 'processing', 'uploading_phase' => ['status' => 'complete']]], 200),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform);
-
-    expect($result['id'])->toBe('video_story_post_123');
+    $this->publisher->publish($this->postPlatform);
 
     Sleep::assertSleptTimes(1);
-});
+})->with('facebook resumable video formats');
 
-test('facebook publisher stops polling the story status on a confirmed graph rejection', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
-    $this->post->update(['media' => facebookStoryVideoMedia()]);
+test('facebook publisher stops polling the video status on a confirmed graph rejection', function (ContentType $contentType, string $edge) {
+    $this->postPlatform->update(['content_type' => $contentType]);
+    $this->post->update(['media' => facebookVideoMedia()]);
 
     $graph = config('trypost.platforms.facebook.graph_api');
 
     Http::fake([
-        ...facebookStoryFakes(),
-        "{$graph}/story_video_123?fields=status*" => Http::response([
+        ...facebookVideoUploadFakes($edge),
+        "{$graph}/video_123?fields=status*" => Http::response([
             'error' => ['message' => 'Unsupported get request.', 'type' => 'GraphMethodException', 'code' => 100],
         ], 400),
     ]);
@@ -597,68 +531,19 @@ test('facebook publisher stops polling the story status on a confirmed graph rej
 
     Sleep::assertNeverSlept();
 
-    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/page_123/video_stories')
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), "/page_123/{$edge}")
         && $request['upload_phase'] === 'finish');
-});
+})->with('facebook resumable video formats');
 
-test('facebook publisher fails story publish when start does not return upload_url', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
-    $this->post->update(['media' => facebookStoryVideoMedia()]);
-
-    Http::fake([
-        '*/page_123/video_stories' => Http::response(['video_id' => 'story_video_123'], 200),
-    ]);
-
-    expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(FacebookPublishException::class, 'Facebook did not start the video upload. Please try again.');
-
-    Http::assertSentCount(1);
-});
-
-test('facebook publisher rejects a story upload_url outside the rupload host', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
-    $this->post->update(['media' => facebookStoryVideoMedia()]);
-
-    Http::fake([
-        '*/page_123/video_stories' => Http::response([
-            'video_id' => 'story_video_123',
-            'upload_url' => 'https://evil.example/steal-token',
-        ], 200),
-    ]);
-
-    expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(FacebookPublishException::class, 'Facebook returned an invalid upload URL.');
-
-    Http::assertSentCount(1);
-});
-
-test('facebook publisher does not finish the story when rupload does not confirm success', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
-    $this->post->update(['media' => facebookStoryVideoMedia()]);
-
-    $rupload = 'https://'.config('trypost.platforms.facebook.rupload_host');
-
-    Http::fake([
-        ...facebookStoryFakes(),
-        "{$rupload}/*" => Http::response(['success' => false], 200),
-    ]);
-
-    expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(FacebookPublishException::class, 'Facebook did not accept the story video. Please try again.');
-
-    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/page_123/video_stories')
-        && $request['upload_phase'] === 'finish');
-});
-
-test('facebook publisher surfaces the story processing error instead of finishing', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
-    $this->post->update(['media' => facebookStoryVideoMedia()]);
+test('facebook publisher surfaces the video processing error instead of finishing', function (ContentType $contentType, string $edge) {
+    $this->postPlatform->update(['content_type' => $contentType]);
+    $this->post->update(['media' => facebookVideoMedia()]);
 
     $graph = config('trypost.platforms.facebook.graph_api');
 
     Http::fake([
-        ...facebookStoryFakes(),
-        "{$graph}/story_video_123?fields=status*" => Http::response([
+        ...facebookVideoUploadFakes($edge),
+        "{$graph}/video_123?fields=status*" => Http::response([
             'status' => [
                 'video_status' => 'processing',
                 'uploading_phase' => ['status' => 'complete'],
@@ -673,47 +558,54 @@ test('facebook publisher surfaces the story processing error instead of finishin
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(FacebookPublishException::class, 'Resolution too low. Video must have a minimum resolution of 540p.');
 
-    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/page_123/video_stories')
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), "/page_123/{$edge}")
         && $request['upload_phase'] === 'finish');
-});
+})->with('facebook resumable video formats');
 
-test('facebook publisher fails the story when the upload session expires', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
-    $this->post->update(['media' => facebookStoryVideoMedia()]);
+test('facebook publisher fails when the upload session expires', function (ContentType $contentType, string $edge) {
+    $this->postPlatform->update(['content_type' => $contentType]);
+    $this->post->update(['media' => facebookVideoMedia()]);
 
     $graph = config('trypost.platforms.facebook.graph_api');
 
     Http::fake([
-        ...facebookStoryFakes(),
-        "{$graph}/story_video_123?fields=status*" => Http::response([
-            'status' => ['video_status' => 'expired'],
-        ], 200),
+        ...facebookVideoUploadFakes($edge),
+        "{$graph}/video_123?fields=status*" => Http::response(['status' => ['video_status' => 'expired']], 200),
     ]);
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(FacebookPublishException::class, 'Facebook could not process the story video. Please try another file.');
-});
+        ->toThrow(FacebookPublishException::class, 'Facebook could not process the video. Please try another file.');
+})->with('facebook resumable video formats');
 
-test('facebook publisher gives up on a story upload that never completes', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
-    $this->post->update(['media' => facebookStoryVideoMedia()]);
+test('facebook publisher gives up on a video fetch that never completes', function (ContentType $contentType, string $edge) {
+    $this->postPlatform->update(['content_type' => $contentType]);
+    $this->post->update(['media' => facebookVideoMedia()]);
 
     $graph = config('trypost.platforms.facebook.graph_api');
 
     Http::fake([
-        ...facebookStoryFakes(),
-        "{$graph}/story_video_123?fields=status*" => Http::response([
+        ...facebookVideoUploadFakes($edge),
+        "{$graph}/video_123?fields=status*" => Http::response([
             'status' => ['video_status' => 'processing', 'uploading_phase' => ['status' => 'in_progress']],
         ], 200),
     ]);
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(FacebookPublishException::class, 'Facebook took too long to fetch the story video. Please try again.');
+        ->toThrow(FacebookPublishException::class, 'Facebook took too long to fetch the video. Please try again.');
 
     Sleep::assertSleptTimes(60);
 
-    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/page_123/video_stories')
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), "/page_123/{$edge}")
         && $request['upload_phase'] === 'finish');
+})->with('facebook resumable video formats');
+
+test('facebook publisher reschedules a graph post when facebook cannot be reached', function () {
+    Http::fake([
+        '*/page_123/feed' => fn () => throw new ConnectionException('cURL error 28: Connection timed out'),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(PlatformUnavailableException::class);
 });
 
 test('facebook publisher throws exception on api error', function () {
@@ -859,103 +751,6 @@ test('facebook publisher throws exception for text post with null content', func
         ->toThrow(Exception::class, 'Facebook text posts require content');
 });
 
-test('facebook publisher cleans up temp files after reel upload', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookReel]);
-
-    $this->post->update([
-
-        'media' => [
-            [
-                'id' => 'test-media-reel',
-                'path' => 'media/2026-01/reel.mp4',
-                'url' => 'https://example.com/media/2026-01/reel.mp4',
-                'mime_type' => 'video/mp4',
-                'original_filename' => 'reel.mp4',
-            ],
-        ],
-
-    ]);
-
-    Http::fake([
-        '*/page_123/video_reels' => Http::sequence()
-            ->push([
-                'video_id' => 'reel_video_cleanup_123',
-                'upload_url' => 'https://rupload.facebook.com/video-upload/v25.0/reel_video_cleanup_123',
-            ], 200)
-            ->push(['id' => 'reel_cleanup_456', 'success' => true], 200),
-        '*example.com/media/*' => Http::response('fake-video', 200),
-        '*rupload.facebook.com/*' => Http::response(['success' => true], 200),
-    ]);
-
-    $this->publisher->publish($this->postPlatform);
-
-    expect(glob(sys_get_temp_dir().'/fb_reel_*') ?: [])->toBeEmpty();
-});
-
-test('facebook publisher maps a reel rupload rejection and does not finish', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookReel]);
-    $this->post->update(['media' => facebookReelVideoMedia()]);
-
-    Http::fake([
-        '*/page_123/video_reels' => Http::response([
-            'video_id' => 'reel_video_123',
-            'upload_url' => 'https://rupload.facebook.com/video-upload/v25.0/reel_video_123',
-        ], 200),
-        '*example.com/media/*' => Http::response('fake-video', 200),
-        '*rupload.facebook.com/*' => Http::response([
-            'error' => ['message' => 'Problem with file', 'code' => 6000],
-        ], 400),
-    ]);
-
-    expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(FacebookPublishException::class, 'Problem with file. Try with another file.');
-
-    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/page_123/video_reels')
-        && $request['upload_phase'] === 'finish');
-
-    expect(glob(sys_get_temp_dir().'/fb_reel_*') ?: [])->toBeEmpty();
-});
-
-test('facebook publisher fails the reel when the downloaded video is empty', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookReel]);
-    $this->post->update(['media' => facebookReelVideoMedia()]);
-
-    Http::fake([
-        '*/page_123/video_reels' => Http::response([
-            'video_id' => 'reel_video_123',
-            'upload_url' => 'https://rupload.facebook.com/video-upload/v25.0/reel_video_123',
-        ], 200),
-        '*example.com/media/*' => Http::response('', 200),
-    ]);
-
-    expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(FacebookPublishException::class, 'The downloaded Facebook video is empty.');
-
-    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'rupload.facebook.com'));
-
-    expect(glob(sys_get_temp_dir().'/fb_reel_*') ?: [])->toBeEmpty();
-});
-
-test('facebook publisher reschedules the reel when the media download cannot be reached', function () {
-    $this->postPlatform->update(['content_type' => ContentType::FacebookReel]);
-    $this->post->update(['media' => facebookReelVideoMedia()]);
-
-    Http::fake([
-        '*/page_123/video_reels' => Http::response([
-            'video_id' => 'reel_video_123',
-            'upload_url' => 'https://rupload.facebook.com/video-upload/v25.0/reel_video_123',
-        ], 200),
-        '*example.com/media/*' => fn () => throw new ConnectionException('cURL error 28: Connection timed out'),
-    ]);
-
-    expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(PlatformUnavailableException::class);
-
-    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'rupload.facebook.com'));
-
-    expect(glob(sys_get_temp_dir().'/fb_reel_*') ?: [])->toBeEmpty();
-});
-
 test('facebook publisher can publish single image with null content', function () {
     $this->post->update([
         'content' => null,
@@ -1079,16 +874,7 @@ test('reel post without description omits description from payload (finish phase
         ],
     ]);
 
-    Http::fake([
-        '*/page_123/video_reels' => Http::sequence()
-            ->push([
-                'video_id' => 'reel_video_123',
-                'upload_url' => 'https://rupload.facebook.com/video-upload/v25.0/reel_video_123',
-            ], 200)
-            ->push(['id' => 'reel_123', 'success' => true], 200),
-        '*example.com/media/*' => Http::response('fake-video-binary-content', 200),
-        '*rupload.facebook.com/*' => Http::response(['success' => true], 200),
-    ]);
+    Http::fake(facebookVideoUploadFakes('video_reels'));
 
     $this->publisher->publish($this->postPlatform);
 
