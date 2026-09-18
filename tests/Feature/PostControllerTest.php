@@ -1172,6 +1172,88 @@ test('platform metrics dispatches TikTok analytics for TikTok platform', functio
     $response->assertJsonFragment(['label' => 'Likes', 'value' => 11]);
 });
 
+test('platform metrics dispatches LinkedIn analytics for LinkedIn platform', function () {
+    $linkedinAccount = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addDay(),
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $pp = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $linkedinAccount->id,
+        'platform' => Platform::LinkedIn,
+        'content_type' => ContentType::LinkedInPost,
+        'status' => Status::Published,
+        'platform_post_id' => 'urn:li:share:7503082467755646976',
+    ]);
+
+    $api = config('trypost.platforms.linkedin.api');
+
+    Http::fake([
+        "{$api}/v2/socialActions/*" => Http::response([
+            'likesSummary' => ['totalLikes' => 1],
+            'commentsSummary' => ['aggregatedTotalComments' => 0],
+        ], 200),
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]));
+
+    $response->assertOk();
+    $response->assertJsonFragment(['label' => 'Likes', 'value' => 1]);
+    $response->assertJsonFragment(['label' => 'Comments', 'value' => 0]);
+});
+
+test('platform metrics dispatches LinkedIn Page analytics for LinkedIn Page platform', function () {
+    $pageAccount = SocialAccount::factory()->linkedinPage()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addDay(),
+        'platform_user_id' => '99920311',
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $pp = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $pageAccount->id,
+        'platform' => Platform::LinkedInPage,
+        'content_type' => ContentType::LinkedInPagePost,
+        'status' => Status::Published,
+        'platform_post_id' => 'urn:li:ugcPost:7504988143797075969',
+    ]);
+
+    $api = config('trypost.platforms.linkedin-page.api');
+
+    Http::fake([
+        "{$api}/rest/organizationalEntityShareStatistics*" => Http::response([
+            'elements' => [[
+                'totalShareStatistics' => [
+                    'impressionCount' => 99,
+                    'clickCount' => 14,
+                    'likeCount' => 0,
+                    'commentCount' => 0,
+                    'shareCount' => 0,
+                ],
+            ]],
+        ], 200),
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]));
+
+    $response->assertOk();
+    $response->assertJsonFragment(['label' => 'Impressions', 'value' => 99]);
+    $response->assertJsonFragment(['label' => 'Clicks', 'value' => 14]);
+});
+
 test('show page renders for non-editable posts', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,

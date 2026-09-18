@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Enums\SocialAccount\Status;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
@@ -44,7 +45,7 @@ class LinkedInPageAnalytics
 
     public function fetchPostMetrics(PostPlatform $postPlatform): array
     {
-        $account = $postPlatform->socialAccount;
+        $account = $this->tokenAccount($postPlatform);
 
         if (! $account || ! $postPlatform->platform_post_id) {
             return ['unsupported' => true, 'reason' => 'missing_post_id'];
@@ -52,14 +53,22 @@ class LinkedInPageAnalytics
 
         if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
+            $account->refresh();
         }
 
-        // platform_post_id is the share URN (e.g., "urn:li:share:12345").
-        $shareUrn = urlencode($postPlatform->platform_post_id);
+        $this->accessToken = $account->access_token;
 
-        $response = $this->socialHttp()
-            ->withToken($account->access_token)
-            ->get("{$this->baseUrl}/socialActions/{$shareUrn}");
+        // Per-post lifetime stats. /rest/socialActions 403s
+        // (partnerApiSocialActions) with a Page token; this endpoint is the
+        // official org share-statistics path and already works for account
+        // analytics. Filter with ugcPosts vs shares to match the stored URN.
+        // @see https://learn.microsoft.com/en-us/linkedin/marketing/community-management/organizations/share-statistics
+        $org = rawurlencode("urn:li:organization:{$account->platform_user_id}");
+        $shareUrn = rawurlencode($postPlatform->platform_post_id);
+        $filter = str_contains($postPlatform->platform_post_id, 'ugcPost') ? 'ugcPosts' : 'shares';
+
+        $response = $this->getHttpClient()
+            ->get("{$this->baseUrl}/organizationalEntityShareStatistics?q=organizationalEntity&organizationalEntity={$org}&{$filter}=List({$shareUrn})");
 
         if ($response->failed()) {
             Log::warning('LinkedIn Page post metrics fetch failed', [
@@ -69,12 +78,40 @@ class LinkedInPageAnalytics
             return ['unsupported' => true, 'reason' => 'api_error'];
         }
 
-        $data = $response->json();
+        $stats = data_get($response->json(), 'elements.0.totalShareStatistics', []);
 
         return [
-            ['label' => __('analytics.metrics.likes'), 'value' => (int) data_get($data, 'likesSummary.totalLikes', 0)],
-            ['label' => __('analytics.metrics.comments'), 'value' => (int) data_get($data, 'commentsSummary.aggregatedTotalComments', 0)],
+            ['label' => __('analytics.metrics.impressions'), 'value' => (int) data_get($stats, 'impressionCount', 0)],
+            ['label' => __('analytics.metrics.clicks'), 'value' => (int) data_get($stats, 'clickCount', 0)],
+            ['label' => __('analytics.metrics.likes'), 'value' => (int) data_get($stats, 'likeCount', 0)],
+            ['label' => __('analytics.metrics.comments'), 'value' => (int) data_get($stats, 'commentCount', 0)],
+            ['label' => __('analytics.metrics.shares'), 'value' => (int) data_get($stats, 'shareCount', 0)],
         ];
+    }
+
+    /**
+     * Published rows keep their URN after the original account is deleted
+     * (`post_platforms.social_account_id` is nullOnDelete). Reuse any
+     * connected Page token on the same workspace so reconnects still
+     * surface impressions.
+     */
+    private function tokenAccount(PostPlatform $postPlatform): ?SocialAccount
+    {
+        if ($postPlatform->socialAccount) {
+            return $postPlatform->socialAccount;
+        }
+
+        $workspaceId = $postPlatform->post?->workspace_id;
+
+        if (! $workspaceId) {
+            return null;
+        }
+
+        return SocialAccount::query()
+            ->where('workspace_id', $workspaceId)
+            ->where('platform', $postPlatform->platform)
+            ->where('status', Status::Connected)
+            ->first();
     }
 
     private function fetchMetricsFromApi(SocialAccount $account, CarbonInterface $since, CarbonInterface $until): array

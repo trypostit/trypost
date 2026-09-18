@@ -11,6 +11,7 @@ use App\Services\Social\BlueskyAnalytics;
 use App\Services\Social\Discord\DiscordAnalytics;
 use App\Services\Social\FacebookAnalytics;
 use App\Services\Social\InstagramAnalytics;
+use App\Services\Social\LinkedInAnalytics;
 use App\Services\Social\LinkedInPageAnalytics;
 use App\Services\Social\MastodonAnalytics;
 use App\Services\Social\PinterestAnalytics;
@@ -76,6 +77,7 @@ class PostMetricsFetcher
             Platform::Instagram, Platform::InstagramFacebook => app(InstagramAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::Facebook => app(FacebookAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::Threads => app(ThreadsAnalytics::class)->fetchPostMetrics($postPlatform),
+            Platform::LinkedIn => app(LinkedInAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::LinkedInPage => app(LinkedInPageAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::YouTube => app(YouTubeAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::Pinterest => app(PinterestAnalytics::class)->fetchPostMetrics($postPlatform),
