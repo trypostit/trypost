@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Status;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 class LinkedInAnalytics
@@ -26,12 +27,60 @@ class LinkedInAnalytics
      */
     public function fetchPostMetrics(PostPlatform $postPlatform): array
     {
-        $account = $this->tokenAccount($postPlatform);
-
-        if (! $account || ! $postPlatform->platform_post_id) {
+        if (! $postPlatform->platform_post_id) {
             return ['unsupported' => true, 'reason' => 'missing_post_id'];
         }
 
+        $bound = $postPlatform->socialAccount;
+        $accounts = $bound ? collect([$bound]) : $this->connectedWorkspaceAccounts($postPlatform);
+
+        if ($accounts->isEmpty()) {
+            return ['unsupported' => true, 'reason' => 'missing_post_id'];
+        }
+
+        foreach ($accounts as $account) {
+            $metrics = $this->metricsFrom($account, $postPlatform);
+
+            if ($metrics !== null) {
+                return $metrics;
+            }
+
+            if ($bound) {
+                return ['unsupported' => true, 'reason' => 'api_error'];
+            }
+        }
+
+        return ['unsupported' => true, 'reason' => 'api_error'];
+    }
+
+    /**
+     * Disconnect deletes the social account and nulls `social_account_id`.
+     * A workspace may have several member LinkedIns, so try each connected
+     * token until one can read this URN.
+     *
+     * @return Collection<int, SocialAccount>
+     */
+    private function connectedWorkspaceAccounts(PostPlatform $postPlatform): Collection
+    {
+        $workspaceId = $postPlatform->post?->workspace_id;
+
+        if (! $workspaceId) {
+            return collect();
+        }
+
+        return SocialAccount::query()
+            ->where('workspace_id', $workspaceId)
+            ->where('platform', $postPlatform->platform)
+            ->where('status', Status::Connected)
+            ->orderBy('created_at')
+            ->get();
+    }
+
+    /**
+     * @return array<int, array{label: string, value: int}>|null
+     */
+    private function metricsFrom(SocialAccount $account, PostPlatform $postPlatform): ?array
+    {
         if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
             $account->refresh();
@@ -49,7 +98,7 @@ class LinkedInAnalytics
                 'body' => $this->redactResponseBody($response->body()),
             ]);
 
-            return ['unsupported' => true, 'reason' => 'api_error'];
+            return null;
         }
 
         $data = $response->json();
@@ -58,30 +107,5 @@ class LinkedInAnalytics
             ['label' => __('analytics.metrics.likes'), 'value' => (int) data_get($data, 'likesSummary.totalLikes', 0)],
             ['label' => __('analytics.metrics.comments'), 'value' => (int) data_get($data, 'commentsSummary.aggregatedTotalComments', 0)],
         ];
-    }
-
-    /**
-     * Published rows keep their URN after the original account is deleted
-     * (`post_platforms.social_account_id` is nullOnDelete). Reuse any
-     * connected member token on the same workspace so reconnects still
-     * surface likes/comments.
-     */
-    private function tokenAccount(PostPlatform $postPlatform): ?SocialAccount
-    {
-        if ($postPlatform->socialAccount) {
-            return $postPlatform->socialAccount;
-        }
-
-        $workspaceId = $postPlatform->post?->workspace_id;
-
-        if (! $workspaceId) {
-            return null;
-        }
-
-        return SocialAccount::query()
-            ->where('workspace_id', $workspaceId)
-            ->where('platform', $postPlatform->platform)
-            ->where('status', Status::Connected)
-            ->first();
     }
 }

@@ -91,6 +91,32 @@ test('linkedin member post metrics return unsupported when the share id is missi
         ->toBe(['unsupported' => true, 'reason' => 'missing_post_id']);
 });
 
+test('linkedin member post metrics skip a workspace token that cannot read the share', function () {
+    $this->postPlatform->update(['social_account_id' => null]);
+
+    SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addDay(),
+    ]);
+
+    Http::preventStrayRequests();
+    Http::fake([
+        "{$this->api}/v2/socialActions/*" => Http::sequence()
+            ->push(['message' => 'ACCESS_DENIED'], 403)
+            ->push([
+                'likesSummary' => ['totalLikes' => 12],
+                'commentsSummary' => ['aggregatedTotalComments' => 1],
+            ], 200),
+    ]);
+
+    expect((new LinkedInAnalytics)->fetchPostMetrics($this->postPlatform->fresh()))->toEqual([
+        ['label' => __('analytics.metrics.likes'), 'value' => 12],
+        ['label' => __('analytics.metrics.comments'), 'value' => 1],
+    ]);
+
+    Http::assertSentCount(2);
+});
+
 test('linkedin member post metrics reuse a workspace token when the published row lost its account', function () {
     $this->postPlatform->update(['social_account_id' => null]);
 

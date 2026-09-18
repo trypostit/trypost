@@ -10,6 +10,7 @@ use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -45,12 +46,66 @@ class LinkedInPageAnalytics
 
     public function fetchPostMetrics(PostPlatform $postPlatform): array
     {
-        $account = $this->tokenAccount($postPlatform);
-
-        if (! $account || ! $postPlatform->platform_post_id) {
+        if (! $postPlatform->platform_post_id) {
             return ['unsupported' => true, 'reason' => 'missing_post_id'];
         }
 
+        $bound = $postPlatform->socialAccount;
+        $accounts = $bound ? collect([$bound]) : $this->connectedWorkspaceAccounts($postPlatform);
+
+        if ($accounts->isEmpty()) {
+            return ['unsupported' => true, 'reason' => 'missing_post_id'];
+        }
+
+        foreach ($accounts as $account) {
+            $metrics = $this->metricsFrom($account, $postPlatform, requireHit: $bound === null);
+
+            if ($metrics !== null) {
+                return $metrics;
+            }
+
+            if ($bound) {
+                return ['unsupported' => true, 'reason' => 'api_error'];
+            }
+        }
+
+        return ['unsupported' => true, 'reason' => 'api_error'];
+    }
+
+    /**
+     * Disconnect deletes the social account and nulls `social_account_id`.
+     * A workspace may have several Pages, so try each connected token
+     * until one owns this URN (empty `elements` means the wrong org).
+     *
+     * @return Collection<int, SocialAccount>
+     */
+    private function connectedWorkspaceAccounts(PostPlatform $postPlatform): Collection
+    {
+        $workspaceId = $postPlatform->post?->workspace_id;
+
+        if (! $workspaceId) {
+            return collect();
+        }
+
+        return SocialAccount::query()
+            ->where('workspace_id', $workspaceId)
+            ->where('platform', $postPlatform->platform)
+            ->where('status', Status::Connected)
+            ->orderBy('created_at')
+            ->get();
+    }
+
+    /**
+     * Per-post lifetime stats. `/rest/socialActions` 403s
+     * (`partnerApiSocialActions`) with a Page token; this endpoint is the
+     * official org share-statistics path.
+     *
+     * @see https://learn.microsoft.com/en-us/linkedin/marketing/community-management/organizations/share-statistics
+     *
+     * @return array<int, array{label: string, value: int}>|null
+     */
+    private function metricsFrom(SocialAccount $account, PostPlatform $postPlatform, bool $requireHit): ?array
+    {
         if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
             $account->refresh();
@@ -58,11 +113,6 @@ class LinkedInPageAnalytics
 
         $this->accessToken = $account->access_token;
 
-        // Per-post lifetime stats. /rest/socialActions 403s
-        // (partnerApiSocialActions) with a Page token; this endpoint is the
-        // official org share-statistics path and already works for account
-        // analytics. Filter with ugcPosts vs shares to match the stored URN.
-        // @see https://learn.microsoft.com/en-us/linkedin/marketing/community-management/organizations/share-statistics
         $org = rawurlencode("urn:li:organization:{$account->platform_user_id}");
         $shareUrn = rawurlencode($postPlatform->platform_post_id);
         $filter = str_contains($postPlatform->platform_post_id, 'ugcPost') ? 'ugcPosts' : 'shares';
@@ -75,11 +125,24 @@ class LinkedInPageAnalytics
                 'body' => $this->redactResponseBody($response->body()),
             ]);
 
-            return ['unsupported' => true, 'reason' => 'api_error'];
+            return null;
         }
 
-        $stats = data_get($response->json(), 'elements.0.totalShareStatistics', []);
+        $stats = data_get($response->json(), 'elements.0.totalShareStatistics');
 
+        if (! is_array($stats)) {
+            return $requireHit ? null : $this->postMetricsFromStats([]);
+        }
+
+        return $this->postMetricsFromStats($stats);
+    }
+
+    /**
+     * @param  array<string, mixed>  $stats
+     * @return array<int, array{label: string, value: int}>
+     */
+    private function postMetricsFromStats(array $stats): array
+    {
         return [
             ['label' => __('analytics.metrics.impressions'), 'value' => (int) data_get($stats, 'impressionCount', 0)],
             ['label' => __('analytics.metrics.clicks'), 'value' => (int) data_get($stats, 'clickCount', 0)],
@@ -87,31 +150,6 @@ class LinkedInPageAnalytics
             ['label' => __('analytics.metrics.comments'), 'value' => (int) data_get($stats, 'commentCount', 0)],
             ['label' => __('analytics.metrics.shares'), 'value' => (int) data_get($stats, 'shareCount', 0)],
         ];
-    }
-
-    /**
-     * Published rows keep their URN after the original account is deleted
-     * (`post_platforms.social_account_id` is nullOnDelete). Reuse any
-     * connected Page token on the same workspace so reconnects still
-     * surface impressions.
-     */
-    private function tokenAccount(PostPlatform $postPlatform): ?SocialAccount
-    {
-        if ($postPlatform->socialAccount) {
-            return $postPlatform->socialAccount;
-        }
-
-        $workspaceId = $postPlatform->post?->workspace_id;
-
-        if (! $workspaceId) {
-            return null;
-        }
-
-        return SocialAccount::query()
-            ->where('workspace_id', $workspaceId)
-            ->where('platform', $postPlatform->platform)
-            ->where('status', Status::Connected)
-            ->first();
     }
 
     private function fetchMetricsFromApi(SocialAccount $account, CarbonInterface $since, CarbonInterface $until): array

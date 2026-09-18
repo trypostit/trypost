@@ -127,6 +127,46 @@ test('linkedin page post metrics filter share URNs with the shares list', functi
     Http::assertSent(fn ($request) => str_contains($request->url(), 'shares=List('));
 });
 
+test('linkedin page post metrics skip a workspace page that does not own the share', function () {
+    $this->socialAccount->update(['token_expires_at' => now()->addDay()]);
+    $this->postPlatform->update(['social_account_id' => null]);
+
+    SocialAccount::factory()->linkedinPage()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addDay(),
+        'platform_user_id' => '99920311',
+    ]);
+
+    $api = config('trypost.platforms.linkedin-page.api');
+
+    Http::preventStrayRequests();
+    Http::fake([
+        "{$api}/rest/organizationalEntityShareStatistics*" => Http::sequence()
+            ->push(['elements' => []], 200)
+            ->push([
+                'elements' => [[
+                    'totalShareStatistics' => [
+                        'impressionCount' => 99,
+                        'clickCount' => 14,
+                        'likeCount' => 0,
+                        'commentCount' => 0,
+                        'shareCount' => 0,
+                    ],
+                ]],
+            ], 200),
+    ]);
+
+    expect((new LinkedInPageAnalytics)->fetchPostMetrics($this->postPlatform->fresh()))->toEqual([
+        ['label' => __('analytics.metrics.impressions'), 'value' => 99],
+        ['label' => __('analytics.metrics.clicks'), 'value' => 14],
+        ['label' => __('analytics.metrics.likes'), 'value' => 0],
+        ['label' => __('analytics.metrics.comments'), 'value' => 0],
+        ['label' => __('analytics.metrics.shares'), 'value' => 0],
+    ]);
+
+    Http::assertSentCount(2);
+});
+
 test('linkedin page post metrics reuse a workspace token when the published row lost its account', function () {
     $this->socialAccount->update(['token_expires_at' => now()->addDay()]);
     $this->postPlatform->update(['social_account_id' => null]);
