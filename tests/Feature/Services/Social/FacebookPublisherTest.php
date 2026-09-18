@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\FacebookPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
@@ -12,6 +13,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\FacebookPublisher;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
@@ -494,6 +496,51 @@ test('facebook publisher waits for the story upload before finishing', function 
         Sleep::for(5)->seconds(),
         Sleep::for(5)->seconds(),
     ]);
+});
+
+test('facebook publisher reschedules the story when rupload cannot be reached', function () {
+    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
+    $this->post->update(['media' => facebookStoryVideoMedia()]);
+
+    $rupload = 'https://'.config('trypost.platforms.facebook.rupload_host');
+
+    Http::fake([
+        ...facebookStoryFakes(),
+        "{$rupload}/*" => fn () => throw new ConnectionException('cURL error 28: Connection timed out after 10003 milliseconds'),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->retryDelaySeconds)->toBe(60)
+                ->and($exception->getMessage())->toContain('story upload unreachable');
+        });
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/page_123/video_stories')
+        && $request['upload_phase'] === 'finish');
+});
+
+test('facebook publisher reschedules the story when the status check cannot be reached', function () {
+    $this->postPlatform->update(['content_type' => ContentType::FacebookStory]);
+    $this->post->update(['media' => facebookStoryVideoMedia()]);
+
+    $graph = config('trypost.platforms.facebook.graph_api');
+
+    Http::fake([
+        ...facebookStoryFakes(),
+        "{$graph}/story_video_123?fields=status*" => fn () => throw new ConnectionException('cURL error 28: Operation timed out'),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(PlatformUnavailableException::class);
+});
+
+test('facebook publisher reschedules a graph post when facebook cannot be reached', function () {
+    Http::fake([
+        '*/page_123/feed' => fn () => throw new ConnectionException('cURL error 28: Connection timed out'),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(PlatformUnavailableException::class);
 });
 
 test('facebook publisher keeps polling the story status through a transient graph error', function () {

@@ -7,6 +7,7 @@ namespace App\Services\Social;
 use App\Dto\MediaItem;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\FacebookPublishException;
 use App\Exceptions\Social\SocialPublishException;
@@ -14,6 +15,8 @@ use App\Models\PostPlatform;
 use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Meta\GraphError;
+use Closure;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
@@ -31,6 +34,8 @@ class FacebookPublisher
     private const int STORY_UPLOAD_POLL_SECONDS = 5;
 
     private const int STORY_UPLOAD_MAX_POLLS = 60;
+
+    private const int UNREACHABLE_RETRY_DELAY_SECONDS = 60;
 
     private string $baseUrl;
 
@@ -160,12 +165,15 @@ class FacebookPublisher
 
     private function uploadUnpublishedPhoto(string $pageId, string $accessToken, MediaItem $media, ?string $aspectRatio): ?string
     {
-        $response = $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/photos", [
-            'url' => $this->cropImageForAspectRatio($media->url, $aspectRatio),
-            'published' => 'false',
-            'access_token' => $accessToken,
-            ...$this->altText($media),
-        ]);
+        $response = $this->reachOrRetry(
+            fn (): Response => $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/photos", [
+                'url' => $this->cropImageForAspectRatio($media->url, $aspectRatio),
+                'published' => 'false',
+                'access_token' => $accessToken,
+                ...$this->altText($media),
+            ]),
+            'image upload',
+        );
 
         if ($response->failed()) {
             Log::error('Facebook image upload failed', [
@@ -309,9 +317,12 @@ class FacebookPublisher
         }
 
         try {
-            $download = Http::withOptions(['sink' => $tempFile])
-                ->timeout(self::VIDEO_TRANSFER_TIMEOUT_SECONDS)
-                ->get($media->url);
+            $download = $this->reachOrRetry(
+                fn (): Response => Http::withOptions(['sink' => $tempFile])
+                    ->timeout(self::VIDEO_TRANSFER_TIMEOUT_SECONDS)
+                    ->get($media->url),
+                'media download',
+            );
 
             if ($download->failed()) {
                 throw new FacebookPublishException(
@@ -329,14 +340,17 @@ class FacebookPublisher
             }
 
             try {
-                $uploadResponse = Http::withHeaders([
-                    'Authorization' => "OAuth {$accessToken}",
-                    'Offset' => '0',
-                    'file_size' => (string) $fileSize,
-                ])
-                    ->timeout(self::VIDEO_TRANSFER_TIMEOUT_SECONDS)
-                    ->withBody($stream, $media->mime_type ?? 'video/mp4')
-                    ->post($uploadUrl);
+                $uploadResponse = $this->reachOrRetry(
+                    fn (): Response => Http::withHeaders([
+                        'Authorization' => "OAuth {$accessToken}",
+                        'Offset' => '0',
+                        'file_size' => (string) $fileSize,
+                    ])
+                        ->timeout(self::VIDEO_TRANSFER_TIMEOUT_SECONDS)
+                        ->withBody($stream, $media->mime_type ?? 'video/mp4')
+                        ->post($uploadUrl),
+                    'reel upload',
+                );
             } finally {
                 if (is_resource($stream)) {
                     fclose($stream);
@@ -359,12 +373,15 @@ class FacebookPublisher
      */
     private function uploadVideoFromUrl(string $uploadUrl, string $accessToken, MediaItem $media): void
     {
-        $response = $this->socialHttp()
-            ->withHeaders([
-                'Authorization' => "OAuth {$accessToken}",
-                'file_url' => $media->url,
-            ])
-            ->send('POST', $uploadUrl);
+        $response = $this->reachOrRetry(
+            fn (): Response => $this->socialHttp()
+                ->withHeaders([
+                    'Authorization' => "OAuth {$accessToken}",
+                    'file_url' => $media->url,
+                ])
+                ->send('POST', $uploadUrl),
+            'story upload',
+        );
 
         if ($response->failed()) {
             Log::error('Facebook video story upload failed', [
@@ -391,10 +408,13 @@ class FacebookPublisher
     private function waitForStoryUpload(string $videoId, string $accessToken): void
     {
         for ($attempt = 0; $attempt < self::STORY_UPLOAD_MAX_POLLS; $attempt++) {
-            $response = $this->socialHttp()->get("{$this->baseUrl}/{$videoId}", [
-                'fields' => 'status',
-                'access_token' => $accessToken,
-            ]);
+            $response = $this->reachOrRetry(
+                fn (): Response => $this->socialHttp()->get("{$this->baseUrl}/{$videoId}", [
+                    'fields' => 'status',
+                    'access_token' => $accessToken,
+                ]),
+                'story status',
+            );
 
             if ($response->failed()) {
                 if (! GraphError::isTransientFailure($response)) {
@@ -505,7 +525,10 @@ class FacebookPublisher
      */
     private function postToGraph(string $path, array $payload, string $label): Response
     {
-        $response = $this->facebookHttp()->post("{$this->baseUrl}/{$path}", $payload);
+        $response = $this->reachOrRetry(
+            fn (): Response => $this->facebookHttp()->post("{$this->baseUrl}/{$path}", $payload),
+            $label,
+        );
 
         if ($response->failed()) {
             Log::error("Facebook {$label} failed", [
@@ -516,6 +539,26 @@ class FacebookPublisher
         }
 
         return $response;
+    }
+
+    /**
+     * A connection that never completes (DNS, TCP or TLS timeout) says nothing
+     * about the post or the token, so it is rescheduled instead of reported as
+     * an unexpected failure. Facebook's Graph and rupload hosts drop connections
+     * often enough for this to matter.
+     *
+     * @param  Closure(): Response  $request
+     */
+    private function reachOrRetry(Closure $request, string $label): Response
+    {
+        try {
+            return $request();
+        } catch (ConnectionException $exception) {
+            throw new PlatformUnavailableException(
+                message: "Facebook {$label} unreachable: {$exception->getMessage()}",
+                retryDelaySeconds: self::UNREACHABLE_RETRY_DELAY_SECONDS,
+            );
+        }
     }
 
     /**
