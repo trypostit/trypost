@@ -34,6 +34,9 @@ class InstagramAnalytics
         });
     }
 
+    /**
+     * @return array<int, array{label: string, value: int}>|array{unsupported: true, reason: string}
+     */
     public function fetchPostMetrics(PostPlatform $postPlatform): array
     {
         $account = $postPlatform->socialAccount;
@@ -50,37 +53,66 @@ class InstagramAnalytics
 
         $this->accessToken = $account->access_token;
 
-        // Per-post metric set differs by content type. Reels/Stories expose
-        // different fields than feed posts. Pick the right set per type.
-        $metrics = match ($postPlatform->content_type) {
-            ContentType::InstagramReel => 'reach,likes,comments,shares,saved,plays',
-            ContentType::InstagramStory => 'reach,impressions,replies',
-            default => 'reach,likes,comments,shares,saved,total_interactions',
-        };
+        $metrics = $this->postMetricsFor($postPlatform);
 
         $response = $this->socialHttp()
             ->get("{$this->baseUrl}/{$postPlatform->platform_post_id}/insights", [
-                'metric' => $metrics,
+                'metric' => implode(',', array_keys($metrics)),
                 'access_token' => $this->accessToken,
             ]);
 
         if ($response->failed()) {
             Log::warning('Instagram post metrics fetch failed', [
+                'content_type' => $postPlatform->content_type?->value,
                 'body' => $this->redactResponseBody($response->body()),
             ]);
 
             return ['unsupported' => true, 'reason' => 'api_error'];
         }
 
-        $data = data_get($response->json(), 'data', []);
-
-        return collect($data)
-            ->map(fn (array $item) => [
-                'label' => ucfirst(str_replace('_', ' ', data_get($item, 'name', ''))),
+        return collect(data_get($response->json(), 'data', []))
+            ->filter(fn (array $item): bool => isset($metrics[data_get($item, 'name')]))
+            ->map(fn (array $item): array => [
+                'label' => __($metrics[data_get($item, 'name')]),
                 'value' => (int) data_get($item, 'values.0.value', 0),
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Meta retired `plays` (Reels) and `impressions` (Stories created after
+     * 2024-07-02) from Instagram media insights. Either name fails the whole
+     * request, so the card comes back empty. `views` is the replacement on the
+     * same `/insights` edge for Reels, Stories, and feed.
+     *
+     * @return array<string, string>
+     */
+    private function postMetricsFor(PostPlatform $postPlatform): array
+    {
+        return match ($postPlatform->content_type) {
+            ContentType::InstagramReel => [
+                'reach' => 'analytics.metrics.reach',
+                'likes' => 'analytics.metrics.likes',
+                'comments' => 'analytics.metrics.comments',
+                'shares' => 'analytics.metrics.shares',
+                'saved' => 'analytics.metrics.saves',
+                'views' => 'analytics.metrics.views',
+            ],
+            ContentType::InstagramStory => [
+                'reach' => 'analytics.metrics.reach',
+                'views' => 'analytics.metrics.views',
+                'replies' => 'analytics.metrics.replies',
+            ],
+            default => [
+                'reach' => 'analytics.metrics.reach',
+                'likes' => 'analytics.metrics.likes',
+                'comments' => 'analytics.metrics.comments',
+                'shares' => 'analytics.metrics.shares',
+                'saved' => 'analytics.metrics.saves',
+                'total_interactions' => 'analytics.metrics.interactions',
+            ],
+        };
     }
 
     private function fetchMetricsFromApi(SocialAccount $account, CarbonInterface $since, CarbonInterface $until): array
