@@ -44,14 +44,18 @@ class PostMetricsFetcher
         return $post->postPlatforms
             ->where('enabled', true)
             ->values()
-            ->map(fn (PostPlatform $pp) => [
-                'post_platform_id' => $pp->id,
-                'platform' => $pp->platform->value,
-                'status' => $pp->status->value,
-                'platform_post_id' => $pp->platform_post_id,
-                'platform_url' => $pp->platform_url,
-                'metrics' => $this->forPlatform($pp),
-            ]);
+            ->map(function (PostPlatform $pp): array {
+                $metrics = $this->forPlatform($pp);
+
+                return [
+                    'post_platform_id' => $pp->id,
+                    'platform' => $pp->platform->value,
+                    'status' => $pp->status->value,
+                    'platform_post_id' => $pp->platform_post_id,
+                    'platform_url' => $pp->platform_url,
+                    'metrics' => $metrics,
+                ];
+            });
     }
 
     /**
@@ -63,7 +67,14 @@ class PostMetricsFetcher
             return ['unsupported' => true, 'reason' => 'not_published'];
         }
 
-        return Cache::remember("post_metrics:{$postPlatform->id}", 300, fn () => match ($postPlatform->platform) {
+        $cacheKey = "post_metrics:{$postPlatform->id}";
+        $cached = Cache::get($cacheKey);
+
+        if (is_array($cached) && ! isset($cached['unsupported'])) {
+            return $cached;
+        }
+
+        $metrics = match ($postPlatform->platform) {
             Platform::X => app(XAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::Bluesky => app(BlueskyAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::Mastodon => app(MastodonAnalytics::class)->fetchPostMetrics($postPlatform),
@@ -77,6 +88,12 @@ class PostMetricsFetcher
             Platform::Pinterest => app(PinterestAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::TikTok => app(TikTokAnalytics::class)->fetchPostMetrics($postPlatform),
             default => ['unsupported' => true, 'reason' => 'platform_not_supported'],
-        });
+        };
+
+        if (! isset($metrics['unsupported'])) {
+            Cache::put($cacheKey, $metrics, 300);
+        }
+
+        return $metrics;
     }
 }

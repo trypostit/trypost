@@ -88,6 +88,47 @@ test('tiktok publisher can publish video', function () {
     });
 });
 
+test('tiktok publisher persists the public video url when status omits the post id', function () {
+    $this->post->update([
+        'content' => 'Construam produtos globais e faturem em dólar.',
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/test-video.mp4',
+            'url' => 'https://example.com/media/2026-01/test-video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'test-video.mp4',
+        ]],
+    ]);
+    $this->postPlatform->update(['meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE']]);
+
+    Http::fake([
+        $this->api.'/post/publish/video/init/' => Http::response([
+            'data' => ['publish_id' => 'v_pub_url~v2-1.missing-id'],
+        ], 200),
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'data' => [
+                'status' => 'PUBLISH_COMPLETE',
+                'publicaly_available_post_id' => [],
+            ],
+        ], 200),
+        $this->api.'/video/list/*' => Http::response([
+            'data' => [
+                'videos' => [[
+                    'id' => '7682891910226234644',
+                    'title' => 'Construam produtos globais e faturem em dólar.',
+                ]],
+                'has_more' => false,
+            ],
+            'error' => ['code' => 'ok'],
+        ]),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('7682891910226234644')
+        ->and($result['url'])->toBe('https://www.tiktok.com/@tiktoker/video/7682891910226234644');
+});
+
 test('tiktok publisher does not report success before processing completes', function () {
     $this->post->update([
         'media' => [[

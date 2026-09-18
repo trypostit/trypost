@@ -132,6 +132,10 @@ test('tiktok analytics waits when publish status has no public post id yet', fun
             ],
             'error' => ['code' => 'ok'],
         ]),
+        $this->api.'/video/list/*' => Http::response([
+            'data' => ['videos' => [], 'has_more' => false],
+            'error' => ['code' => 'ok'],
+        ]),
     ]);
 
     $metrics = (new TikTokAnalytics)->fetchPostMetrics(
@@ -141,6 +145,59 @@ test('tiktok analytics waits when publish status has no public post id yet', fun
     expect($metrics)->toBe(['unsupported' => true, 'reason' => 'missing_post_id']);
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/video/query/'));
+});
+
+test('tiktok analytics matches a publish id to the public video by caption', function () {
+    $this->post->update([
+        'content' => 'Eu bato nessa tecla há 7 anos: construam produtos globais.',
+    ]);
+
+    $videoId = '7682891910226234644';
+    $postPlatform = tiktokPostPlatform('v_pub_url~v2-1.7682889326782842900');
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'data' => [
+                'status' => 'PUBLISH_COMPLETE',
+                'publicaly_available_post_id' => [],
+            ],
+            'error' => ['code' => 'ok'],
+        ]),
+        $this->api.'/video/list/*' => Http::response([
+            'data' => [
+                'videos' => [[
+                    'id' => $videoId,
+                    'title' => 'Eu bato nessa tecla há 7 anos: construam produtos globais.',
+                    'view_count' => 661,
+                    'like_count' => 13,
+                    'comment_count' => 2,
+                    'share_count' => 1,
+                ]],
+                'has_more' => false,
+            ],
+            'error' => ['code' => 'ok'],
+        ]),
+        $this->api.'/video/query/*' => Http::response(tiktokVideoQueryResponse($videoId, [
+            'view_count' => 661,
+            'like_count' => 13,
+            'comment_count' => 2,
+            'share_count' => 1,
+        ])),
+    ]);
+
+    $metrics = (new TikTokAnalytics)->fetchPostMetrics($postPlatform);
+
+    expect($metrics)->toBe([
+        ['label' => __('analytics.metrics.views'), 'value' => 661],
+        ['label' => __('analytics.metrics.likes'), 'value' => 13],
+        ['label' => __('analytics.metrics.comments'), 'value' => 2],
+        ['label' => __('analytics.metrics.shares'), 'value' => 1],
+    ]);
+
+    $postPlatform->refresh();
+
+    expect($postPlatform->platform_post_id)->toBe($videoId)
+        ->and($postPlatform->platform_url)->toBe("https://www.tiktok.com/@tiktoker/video/{$videoId}");
 });
 
 test('tiktok analytics reports a missing platform post id as unsupported', function () {

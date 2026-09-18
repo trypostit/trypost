@@ -480,6 +480,10 @@ class TikTokPublisher
         $postId = data_get($statusData, 'publicaly_available_post_id.0');
         $postId = is_string($postId) && $postId !== '' ? $postId : null;
 
+        if ($postId === null && data_get($postPlatform->meta ?? [], 'privacy_level') !== 'SELF_ONLY') {
+            $postId = app(TikTokAnalytics::class)->findVideoIdByCaption($postPlatform);
+        }
+
         return [
             'id' => $postId ?? $publishId,
             'url' => $this->buildTikTokUrl($postPlatform->socialAccount, $postId),
