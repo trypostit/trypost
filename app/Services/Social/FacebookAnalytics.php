@@ -68,8 +68,9 @@ class FacebookAnalytics
         }
 
         return collect(data_get($response->json(), 'data', []))
+            ->filter(fn (array $item): bool => isset($metrics[data_get($item, 'name')]))
             ->map(fn (array $item): array => [
-                'label' => __($metrics[data_get($item, 'name')] ?? 'analytics.metrics.'.data_get($item, 'name', '')),
+                'label' => __($metrics[data_get($item, 'name')]),
                 'value' => $this->metricValue(data_get($item, 'values.0.value')),
             ])
             ->values()

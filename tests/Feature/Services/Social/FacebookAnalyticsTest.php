@@ -130,6 +130,23 @@ test('facebook analytics reads story metrics with the story metric family', func
         && ! str_contains($request['metric'], 'post_'));
 });
 
+test('facebook analytics ignores metrics it did not ask for', function () {
+    Http::fake([
+        "{$this->graph}/page_123_post_456/insights*" => Http::response(facebookInsightsResponse([
+            ['name' => 'post_media_view', 'value' => 12],
+            ['name' => 'post_some_new_metric', 'value' => 99],
+            ['name' => 'post_clicks', 'value' => 1],
+        ])),
+    ]);
+
+    $metrics = (new FacebookAnalytics)->fetchPostMetrics(facebookPostPlatform(ContentType::FacebookPost, 'page_123_post_456'));
+
+    expect($metrics)->toBe([
+        ['label' => 'Impressions', 'value' => 12],
+        ['label' => 'Clicks', 'value' => 1],
+    ]);
+});
+
 test('facebook analytics reports an api rejection as unsupported', function () {
     Http::fake([
         "{$this->graph}/story_post_123/insights*" => Http::response([

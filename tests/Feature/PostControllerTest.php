@@ -1151,6 +1151,33 @@ test('show page renders for non-editable posts', function () {
     );
 });
 
+test('show page exposes the content type of each platform', function () {
+    $facebookAccount = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Published,
+    ]);
+
+    PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $facebookAccount->id,
+        'platform' => Platform::Facebook,
+        'content_type' => ContentType::FacebookReel,
+        'enabled' => true,
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.show', $post))
+        ->assertInertia(fn ($page) => $page
+            ->component('posts/Show', false)
+            ->where('post.platforms.0.content_type', ContentType::FacebookReel->value)
+        );
+});
+
 test('show page redirects editable posts to edit', function () {
     foreach ([PostStatus::Draft, PostStatus::Scheduled] as $status) {
         $post = Post::factory()->create([
