@@ -406,14 +406,14 @@ test('facebook publisher fails when start does not return upload_url', function 
     Http::assertSentCount(1);
 })->with('facebook resumable video formats');
 
-test('facebook publisher rejects an upload_url outside the rupload host', function (ContentType $contentType, string $edge) {
+test('facebook publisher rejects an upload_url outside the rupload host', function (ContentType $contentType, string $edge, string $uploadUrl) {
     $this->postPlatform->update(['content_type' => $contentType]);
     $this->post->update(['media' => facebookVideoMedia()]);
 
     Http::fake([
         "*/page_123/{$edge}" => Http::response([
             'video_id' => 'video_123',
-            'upload_url' => 'https://evil.example/steal-token',
+            'upload_url' => $uploadUrl,
         ], 200),
     ]);
 
@@ -421,7 +421,12 @@ test('facebook publisher rejects an upload_url outside the rupload host', functi
         ->toThrow(FacebookPublishException::class, 'Facebook returned an invalid upload URL.');
 
     Http::assertSentCount(1);
-})->with('facebook resumable video formats');
+})->with('facebook resumable video formats')->with([
+    'another host' => 'https://evil.example/steal-token',
+    'plain http' => 'http://rupload.facebook.com/video-upload/v25.0/video_123',
+    'userinfo trick' => 'https://rupload.facebook.com@evil.example/video-upload/v25.0/video_123',
+    'not a url' => 'video_123',
+]);
 
 test('facebook publisher maps a rupload rejection and does not finish', function (ContentType $contentType, string $edge) {
     $this->postPlatform->update(['content_type' => $contentType]);
@@ -480,7 +485,7 @@ test('facebook publisher reschedules when rupload cannot be reached', function (
         && $request['upload_phase'] === 'finish');
 })->with('facebook resumable video formats');
 
-test('facebook publisher reschedules when the status check cannot be reached', function (ContentType $contentType, string $edge) {
+test('facebook publisher reschedules when the status check cannot be reached and keeps the token out of the message', function (ContentType $contentType, string $edge) {
     $this->postPlatform->update(['content_type' => $contentType]);
     $this->post->update(['media' => facebookVideoMedia()]);
 
@@ -488,11 +493,16 @@ test('facebook publisher reschedules when the status check cannot be reached', f
 
     Http::fake([
         ...facebookVideoUploadFakes($edge),
-        "{$graph}/video_123?fields=status*" => fn () => throw new ConnectionException('cURL error 28: Operation timed out'),
+        "{$graph}/video_123?fields=status*" => fn ($request) => throw new ConnectionException("cURL error 28: Operation timed out for {$request->url()}"),
     ]);
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(PlatformUnavailableException::class);
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->getMessage())
+                ->toContain('video status unreachable')
+                ->toContain('access_token=[REDACTED]')
+                ->not->toContain($this->socialAccount->access_token);
+        });
 })->with('facebook resumable video formats');
 
 test('facebook publisher keeps polling the video status through a transient graph error', function (ContentType $contentType, string $edge) {
@@ -593,7 +603,7 @@ test('facebook publisher gives up on a video fetch that never completes', functi
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(FacebookPublishException::class, 'Facebook took too long to fetch the video. Please try again.');
 
-    Sleep::assertSleptTimes(60);
+    Sleep::assertSleptTimes(59);
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), "/page_123/{$edge}")
         && $request['upload_phase'] === 'finish');

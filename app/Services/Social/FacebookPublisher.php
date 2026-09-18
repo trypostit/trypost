@@ -123,7 +123,7 @@ class FacebookPublisher
 
         $data = $response->json();
 
-        return $this->feedPostResult(data_get($data, 'post_id', data_get($data, 'id')));
+        return $this->feedPostResult(data_get($data, 'post_id') ?? data_get($data, 'id'));
     }
 
     /**
@@ -172,17 +172,18 @@ class FacebookPublisher
             'image upload',
         );
 
-        if ($response->failed()) {
+        $photoId = data_get($response->json(), 'id');
+
+        if ($response->failed() || ! is_string($photoId) || $photoId === '') {
             Log::error('Facebook image upload failed', [
+                'status' => $response->status(),
                 'body' => $this->redactResponseBody($response->body()),
             ]);
 
             return null;
         }
 
-        $photoId = data_get($response->json(), 'id');
-
-        return is_string($photoId) && $photoId !== '' ? $photoId : null;
+        return $photoId;
     }
 
     /**
@@ -302,8 +303,9 @@ class FacebookPublisher
     private function assertRuploadUrl(string $uploadUrl): void
     {
         $parts = parse_url($uploadUrl);
+        $allowedHost = config('trypost.platforms.facebook.rupload_host');
 
-        if (data_get($parts, 'scheme') !== 'https' || data_get($parts, 'host') !== config('trypost.platforms.facebook.rupload_host')) {
+        if (data_get($parts, 'scheme') !== 'https' || data_get($parts, 'host') !== $allowedHost) {
             throw new FacebookPublishException(
                 userMessage: 'Facebook returned an invalid upload URL.',
                 category: ErrorCategory::ServerError,
@@ -345,7 +347,11 @@ class FacebookPublisher
 
     private function waitForVideoUpload(string $videoId, string $accessToken): void
     {
-        for ($attempt = 0; $attempt < self::VIDEO_UPLOAD_MAX_POLLS; $attempt++) {
+        for ($attempt = 1; $attempt <= self::VIDEO_UPLOAD_MAX_POLLS; $attempt++) {
+            if ($attempt > 1) {
+                Sleep::for(self::VIDEO_UPLOAD_POLL_SECONDS)->seconds();
+            }
+
             $response = $this->reachOrRetry(
                 fn (): Response => $this->socialHttp()->get("{$this->baseUrl}/{$videoId}", [
                     'fields' => 'status',
@@ -364,7 +370,6 @@ class FacebookPublisher
                     'status' => $response->status(),
                     'body' => $this->redactResponseBody($response->body()),
                 ]);
-                Sleep::for(self::VIDEO_UPLOAD_POLL_SECONDS)->seconds();
 
                 continue;
             }
@@ -383,8 +388,6 @@ class FacebookPublisher
             if ($this->videoUploadComplete($status)) {
                 return;
             }
-
-            Sleep::for(self::VIDEO_UPLOAD_POLL_SECONDS)->seconds();
         }
 
         throw new FacebookPublishException(
@@ -483,7 +486,9 @@ class FacebookPublisher
      * A connection that never completes (DNS, TCP or TLS timeout) says nothing
      * about the post or the token, so it is rescheduled instead of reported as
      * an unexpected failure. Facebook's Graph and rupload hosts drop connections
-     * often enough for this to matter.
+     * often enough for this to matter. cURL quotes the full URL in its message,
+     * query string included, so the message is redacted before it reaches
+     * error_context or the logs.
      *
      * @param  Closure(): Response  $request
      */
@@ -493,7 +498,7 @@ class FacebookPublisher
             return $request();
         } catch (ConnectionException $exception) {
             throw new PlatformUnavailableException(
-                message: "Facebook {$label} unreachable: {$exception->getMessage()}",
+                message: "Facebook {$label} unreachable: ".$this->redactResponseBody($exception->getMessage()),
                 retryDelaySeconds: self::UNREACHABLE_RETRY_DELAY_SECONDS,
             );
         }
