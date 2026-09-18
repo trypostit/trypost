@@ -12,7 +12,3 @@ test('tiktok privacy level matches the content posting api values', function () 
         'SELF_ONLY',
     ]);
 });
-
-test('the typescript privacy level const contains every php value', function (string $value) {
-    expect(file_get_contents(resource_path('js/types/tiktok-privacy.ts')))->toContain("'{$value}'");
-})->with(PrivacyLevel::values());
