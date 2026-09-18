@@ -21,11 +21,18 @@ class TikTokAnalytics
 
     private const string VIDEO_METRIC_FIELDS = 'id,like_count,comment_count,share_count,view_count';
 
-    private const string VIDEO_LIST_FIELDS = 'id,title,create_time,share_url,like_count,comment_count,share_count,view_count';
+    private const string VIDEO_LIST_FIELDS = 'id,title,create_time';
 
     private const int VIDEO_LIST_PAGE_SIZE = 20;
 
     private const int VIDEO_LIST_MAX_PAGES = 5;
+
+    /**
+     * `published_at` is stamped after TikTok finishes processing, which can trail
+     * the video's `create_time` by up to the status-poll window (~1 h). A day of
+     * slack keeps our own video inside the scan on slow publishes.
+     */
+    private const int PUBLISH_CLOCK_SLACK_SECONDS = 86400;
 
     /**
      * @var array<string, string>
@@ -174,6 +181,11 @@ class TikTokAnalytics
         return $this->digitsOrNull($response->json('data.publicaly_available_post_id.0'));
     }
 
+    /**
+     * `video/list` is sorted by `create_time` desc, so scanning stops at the
+     * first video older than the publish — anything past it cannot be ours, and
+     * an older repost with the same caption must never be claimed.
+     */
     private function matchVideoFromRecentList(PostPlatform $postPlatform): ?string
     {
         if (PrivacyLevel::tryFrom((string) data_get($postPlatform->meta, 'privacy_level')) === PrivacyLevel::SelfOnly) {
@@ -188,6 +200,7 @@ class TikTokAnalytics
             return null;
         }
 
+        $notBefore = ($postPlatform->published_at ?? now())->getTimestamp() - self::PUBLISH_CLOCK_SLACK_SECONDS;
         $cursor = null;
 
         for ($page = 0; $page < self::VIDEO_LIST_MAX_PAGES; $page++) {
@@ -211,6 +224,10 @@ class TikTokAnalytics
             $data = $response->json('data', []);
 
             foreach (data_get($data, 'videos', []) as $video) {
+                if ((int) data_get($video, 'create_time', 0) < $notBefore) {
+                    return null;
+                }
+
                 $videoId = $this->digitsOrNull(data_get($video, 'id'));
                 $title = $this->normalizeCaption((string) data_get($video, 'title', ''));
 
@@ -219,11 +236,11 @@ class TikTokAnalytics
                 }
             }
 
-            if (! data_get($data, 'has_more')) {
+            $cursor = data_get($data, 'cursor');
+
+            if (! data_get($data, 'has_more') || blank($cursor)) {
                 return null;
             }
-
-            $cursor = data_get($data, 'cursor');
         }
 
         return null;

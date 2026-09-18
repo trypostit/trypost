@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Models\Post;
@@ -9,6 +10,7 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Post\PostMetricsFetcher;
 use App\Services\Social\TikTokAnalytics;
 use Illuminate\Support\Facades\Http;
 
@@ -217,10 +219,7 @@ test('tiktok analytics matches a publish id to the public video by caption', fun
                 'videos' => [[
                     'id' => $videoId,
                     'title' => 'Eu bato nessa tecla há 7 anos: construam produtos globais.',
-                    'view_count' => 661,
-                    'like_count' => 13,
-                    'comment_count' => 2,
-                    'share_count' => 1,
+                    'create_time' => now()->getTimestamp(),
                 ]],
                 'has_more' => false,
             ],
@@ -247,6 +246,59 @@ test('tiktok analytics matches a publish id to the public video by caption', fun
 
     expect($postPlatform->platform_post_id)->toBe($videoId)
         ->and($postPlatform->platform_url)->toBe("https://www.tiktok.com/@tiktoker/video/{$videoId}");
+});
+
+test('tiktok analytics stops scanning at videos older than the publish instead of claiming a same-caption repost', function () {
+    $this->post->update(['content' => 'Same caption, posted twice']);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => []],
+            'error' => ['code' => 'ok'],
+        ]),
+        $this->api.'/video/list/*' => Http::response([
+            'data' => [
+                'videos' => [[
+                    'id' => '7000000000000000002',
+                    'title' => 'Same caption, posted twice',
+                    'create_time' => now()->subDays(3)->getTimestamp(),
+                ]],
+                'has_more' => true,
+                'cursor' => now()->subDays(3)->getTimestampMs(),
+            ],
+            'error' => ['code' => 'ok'],
+        ]),
+    ]);
+
+    $postPlatform = tiktokPostPlatform('v_pub_url~v2-1.repost');
+    $postPlatform->update(['published_at' => now()]);
+
+    expect((new TikTokAnalytics)->fetchPostMetrics($postPlatform))
+        ->toBe(['unsupported' => true, 'reason' => 'missing_post_id'])
+        ->and($postPlatform->fresh()->platform_post_id)->toBe('v_pub_url~v2-1.repost');
+
+    Http::assertSentCount(2);
+});
+
+test('tiktok analytics forPost returns the backfilled video url alongside the metrics', function () {
+    $videoId = '7685359243088103444';
+    $postPlatform = tiktokPostPlatform('v_pub_url~v2-1.backfill');
+    $postPlatform->update(['status' => PostPlatformStatus::Published]);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => [$videoId]],
+            'error' => ['code' => 'ok'],
+        ]),
+        $this->api.'/video/query/*' => Http::response(tiktokVideoQueryResponse($videoId, ['view_count' => 5])),
+    ]);
+
+    $platforms = app(PostMetricsFetcher::class)->forPost($this->post->fresh());
+
+    expect($platforms->first())->toMatchArray([
+        'platform_post_id' => $videoId,
+        'platform_url' => "https://www.tiktok.com/@tiktoker/video/{$videoId}",
+    ])->and($platforms->first()['metrics'][0])->toBe(['label' => __('analytics.metrics.views'), 'value' => 5]);
 });
 
 test('tiktok analytics reports a missing platform post id as unsupported', function () {

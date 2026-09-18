@@ -117,6 +117,7 @@ test('tiktok publisher persists the public video url when status omits the post 
                 'videos' => [[
                     'id' => '7682891910226234644',
                     'title' => 'Construam produtos globais e faturem em dólar.',
+                    'create_time' => now()->getTimestamp(),
                 ]],
                 'has_more' => false,
             ],
