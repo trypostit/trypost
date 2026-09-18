@@ -55,6 +55,7 @@ class FacebookAnalytics
         $response = $this->socialHttp()
             ->get("{$this->baseUrl}/{$postPlatform->platform_post_id}/{$edge}", [
                 'metric' => implode(',', array_keys($metrics)),
+                'period' => 'lifetime',
                 'access_token' => $account->access_token,
             ]);
 
@@ -91,7 +92,9 @@ class FacebookAnalytics
      *
      * Asking the wrong node is a `#100` rejection, not an empty result. The
      * `post_impressions*` family is deprecated above Graph API v25, so feed
-     * posts read the `media_view` replacements.
+     * posts read the `media_view` replacements. Every call pins
+     * `period=lifetime`: without it Meta returns some post metrics twice, once
+     * per period, and the card would show the same label two times.
      *
      * @return array{0: string, 1: array<string, string>}
      */

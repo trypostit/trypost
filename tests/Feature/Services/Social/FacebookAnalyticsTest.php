@@ -72,8 +72,23 @@ test('facebook analytics reads feed post metrics from the post insights edge', f
     ]);
 
     Http::assertSent(fn ($request) => str_starts_with($request->url(), "{$this->graph}/page_123_post_456/insights")
-        && $request['metric'] === 'post_media_view,post_total_media_view_unique,post_reactions_like_total,post_clicks');
+        && $request['metric'] === 'post_media_view,post_total_media_view_unique,post_reactions_like_total,post_clicks'
+        && $request['period'] === 'lifetime');
 });
+
+test('facebook analytics asks every node for lifetime values only', function (ContentType $contentType, string $platformPostId, string $edge) {
+    Http::fake();
+
+    (new FacebookAnalytics)->fetchPostMetrics(facebookPostPlatform($contentType, $platformPostId));
+
+    Http::assertSent(fn ($request) => str_starts_with($request->url(), "{$this->graph}/{$platformPostId}/{$edge}")
+        && $request['period'] === 'lifetime');
+})->with([
+    'feed post' => [ContentType::FacebookPost, 'page_123_post_456', 'insights'],
+    'timeline video' => [ContentType::FacebookPost, '2984721568539922', 'video_insights'],
+    'reel' => [ContentType::FacebookReel, '2984721568539922', 'video_insights'],
+    'story' => [ContentType::FacebookStory, 'story_post_123', 'insights'],
+]);
 
 test('facebook analytics does not request the deprecated post_impressions metrics', function () {
     Http::fake();
