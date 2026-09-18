@@ -766,6 +766,9 @@ test('tiktok publisher publishes with user-selected privacy level even when crea
 
         return data_get($body, 'post_info.privacy_level') === PrivacyLevel::SelfOnly->value;
     });
+
+    // A private post never shows up on video/list, so no caption lookup is attempted.
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/video/list/'));
 });
 
 test('tiktok publisher throws exception when publish fails', function () {

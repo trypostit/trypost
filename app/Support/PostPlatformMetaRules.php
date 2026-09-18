@@ -170,7 +170,7 @@ class PostPlatformMetaRules
             return ['privacy_level', trans('posts.form.tiktok.privacy_required')];
         }
 
-        if (! $privacyLevel->allowsBrandedContent() && data_get($meta, 'brand_content_toggle')) {
+        if ($privacyLevel === PrivacyLevel::SelfOnly && data_get($meta, 'brand_content_toggle')) {
             return ['privacy_level', trans('posts.form.tiktok.privacy.private_disabled_branded')];
         }
 

@@ -34,21 +34,10 @@ enum PrivacyLevel: string
      */
     public static function knownValues(iterable $options): array
     {
-        $values = [];
-
-        foreach ($options as $option) {
-            $level = self::tryFrom((string) $option);
-
-            if ($level instanceof self) {
-                $values[] = $level->value;
-            }
-        }
-
-        return $values;
-    }
-
-    public function allowsBrandedContent(): bool
-    {
-        return $this !== self::SelfOnly;
+        return collect($options)
+            ->map(fn (mixed $option): ?string => self::tryFrom((string) $option)?->value)
+            ->filter()
+            ->values()
+            ->all();
     }
 }

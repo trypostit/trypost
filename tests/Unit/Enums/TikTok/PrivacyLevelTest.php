@@ -6,11 +6,6 @@ use App\Enums\TikTok\PrivacyLevel;
 
 test('tiktok privacy level matches the content posting api values', function () {
     expect(PrivacyLevel::values())->toBe([
-        PrivacyLevel::PublicToEveryone->value,
-        PrivacyLevel::MutualFollowFriends->value,
-        PrivacyLevel::FollowerOfCreator->value,
-        PrivacyLevel::SelfOnly->value,
-    ])->and(PrivacyLevel::values())->toBe([
         'PUBLIC_TO_EVERYONE',
         'MUTUAL_FOLLOW_FRIENDS',
         'FOLLOWER_OF_CREATOR',
@@ -31,15 +26,6 @@ test('known values keep recognized options in order and drop unknowns', function
         PrivacyLevel::FollowerOfCreator->value,
     ]);
 });
-
-test('only self only forbids branded content', function (PrivacyLevel $level, bool $allowed) {
-    expect($level->allowsBrandedContent())->toBe($allowed);
-})->with([
-    'public' => [PrivacyLevel::PublicToEveryone, true],
-    'friends' => [PrivacyLevel::MutualFollowFriends, true],
-    'followers' => [PrivacyLevel::FollowerOfCreator, true],
-    'private' => [PrivacyLevel::SelfOnly, false],
-]);
 
 test('the typescript privacy level const matches the php enum', function () {
     $source = file_get_contents(resource_path('js/types/tiktok-privacy.ts'));

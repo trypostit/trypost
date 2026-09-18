@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -53,6 +54,7 @@ function tiktokPostPlatform(?string $platformPostId = '7685359243088103444'): Po
         'platform' => Platform::TikTok,
         'platform_post_id' => $platformPostId,
         'platform_url' => 'https://www.tiktok.com/@tiktoker',
+        'meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value],
     ]);
 }
 
@@ -123,7 +125,9 @@ test('tiktok analytics resolves a publish id then persists the public video id',
         && data_get($request->data(), 'filters.video_ids') === [$videoId]);
 });
 
-test('tiktok analytics waits when publish status has no public post id yet', function () {
+test('tiktok analytics reports missing_post_id when neither status nor the video list resolve the publish id', function () {
+    $this->post->update(['content' => 'Still in review']);
+
     Http::fake([
         $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => [
@@ -144,7 +148,52 @@ test('tiktok analytics waits when publish status has no public post id yet', fun
 
     expect($metrics)->toBe(['unsupported' => true, 'reason' => 'missing_post_id']);
 
+    Http::assertSentCount(2);
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/video/query/'));
+});
+
+test('tiktok analytics never matches an untitled video from the list', function () {
+    $this->post->update(['content' => 'A caption that no listed video carries']);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => []],
+            'error' => ['code' => 'ok'],
+        ]),
+        $this->api.'/video/list/*' => Http::response([
+            'data' => [
+                'videos' => [['id' => '7000000000000000001', 'title' => '']],
+                'has_more' => false,
+            ],
+            'error' => ['code' => 'ok'],
+        ]),
+    ]);
+
+    $postPlatform = tiktokPostPlatform('v_pub_url~v2-1.untitled');
+
+    expect((new TikTokAnalytics)->fetchPostMetrics($postPlatform))
+        ->toBe(['unsupported' => true, 'reason' => 'missing_post_id'])
+        ->and($postPlatform->fresh()->platform_post_id)->toBe('v_pub_url~v2-1.untitled');
+});
+
+test('tiktok analytics does not scan the video list for a self only post', function () {
+    $this->post->update(['content' => 'Private caption']);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => []],
+            'error' => ['code' => 'ok'],
+        ]),
+    ]);
+
+    $postPlatform = tiktokPostPlatform('v_pub_url~v2-1.private');
+    $postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
+
+    expect((new TikTokAnalytics)->fetchPostMetrics($postPlatform))
+        ->toBe(['unsupported' => true, 'reason' => 'missing_post_id']);
+
+    Http::assertSentCount(1);
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/video/list/'));
 });
 
 test('tiktok analytics matches a publish id to the public video by caption', function () {

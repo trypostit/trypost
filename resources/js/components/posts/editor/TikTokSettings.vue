@@ -147,19 +147,16 @@ const brandContentToggle = computed({
 });
 
 // Prefer the creator_info API response; fall back to the static list from the Platform enum.
-const allPrivacyOptions = computed(() => {
+// Every option is rendered. SelfOnly is shown but disabled when Branded Content is
+// checked (TikTok UX Guideline Point 3b — must show interaction, not hide it).
+const privacyOptions = computed<TikTokPrivacyLevelValue[]>(() => {
     const fromApi = (props.creatorInfo?.privacy_level_options ?? []).filter(isTikTokPrivacyLevel);
     const fallback = (props.publishConfig?.privacyLevelOptions ?? []).filter(isTikTokPrivacyLevel);
 
     return fromApi.length > 0 ? fromApi : fallback;
 });
 
-// Render every option creator_info returns. SelfOnly is shown but disabled when
-// Branded Content is checked (TikTok UX Guideline Point 3b — must show interaction,
-// not hide it).
-const privacyOptions = computed(() => allPrivacyOptions.value);
-
-const isSelfOnlyDisabled = (option: string): boolean =>
+const isSelfOnlyDisabled = (option: TikTokPrivacyLevelValue): boolean =>
     option === TikTokPrivacyLevel.SelfOnly && brandContentToggle.value;
 
 const commentDisabled = computed(() => Boolean(props.creatorInfo?.comment_disabled));
@@ -282,7 +279,7 @@ watch(
                             :disabled="isSelfOnlyDisabled(option)"
                             :title="isSelfOnlyDisabled(option) ? $t('posts.form.tiktok.privacy.private_disabled_branded') : undefined"
                         >
-                            {{ $t(isTikTokPrivacyLevel(option) ? tiktokPrivacyLabelKey[option] : option) }}
+                            {{ $t(tiktokPrivacyLabelKey[option]) }}
                         </SelectItem>
                     </SelectContent>
                 </Select>

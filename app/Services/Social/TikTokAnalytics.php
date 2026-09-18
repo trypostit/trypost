@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Social;
 
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
@@ -112,8 +113,9 @@ class TikTokAnalytics
     /**
      * Public posts often stay on a Content Posting `publish_id` because TikTok
      * omits `publicaly_available_post_id` even after PUBLISH_COMPLETE. The video
-     * still shows up on `video/list` with the caption we sent — match that and
-     * persist the real item id so the show-page link stops pointing at the profile.
+     * still shows up on `video/list` with the caption we sent — match that so
+     * the show-page link stops pointing at the profile. SELF_ONLY posts never
+     * appear on the list, so they are not looked up.
      */
     public function findVideoIdByCaption(PostPlatform $postPlatform): ?string
     {
@@ -136,93 +138,9 @@ class TikTokAnalytics
             return $stored;
         }
 
-        return $this->resolveVideoIdFromPublish($postPlatform, $stored)
-            ?? $this->persistResolvedVideo($postPlatform, $this->matchVideoFromRecentList($postPlatform));
-    }
+        $videoId = $this->publicVideoIdFromStatus($stored) ?? $this->matchVideoFromRecentList($postPlatform);
 
-    private function resolveVideoIdFromPublish(PostPlatform $postPlatform, string $publishId): ?string
-    {
-        $response = $this->getHttpClient()
-            ->post("{$this->baseUrl}/post/publish/status/fetch/", [
-                'publish_id' => $publishId,
-            ]);
-
-        if ($response->failed()) {
-            Log::warning('TikTok publish status fetch for metrics failed', [
-                'body' => $this->redactResponseBody($response->body()),
-            ]);
-
-            return $this->persistResolvedVideo($postPlatform, $this->matchVideoFromRecentList($postPlatform));
-        }
-
-        $videoId = data_get($response->json(), 'data.publicaly_available_post_id.0');
-        $videoId = is_scalar($videoId) ? (string) $videoId : '';
-
-        if ($videoId === '' || ! ctype_digit($videoId)) {
-            return $this->persistResolvedVideo($postPlatform, $this->matchVideoFromRecentList($postPlatform));
-        }
-
-        return $this->persistResolvedVideo($postPlatform, $videoId);
-    }
-
-    private function matchVideoFromRecentList(PostPlatform $postPlatform): ?string
-    {
-        $postPlatform->loadMissing('post');
-
-        $caption = $this->normalizeCaption(
-            (string) ($postPlatform->post?->content ?? '')
-        );
-
-        if ($caption === '') {
-            return null;
-        }
-
-        $cursor = null;
-
-        for ($page = 0; $page < self::VIDEO_LIST_MAX_PAGES; $page++) {
-            $payload = ['max_count' => self::VIDEO_LIST_PAGE_SIZE];
-
-            if (is_int($cursor) || (is_string($cursor) && $cursor !== '')) {
-                $payload['cursor'] = $cursor;
-            }
-
-            $response = $this->getHttpClient()
-                ->post("{$this->baseUrl}/video/list/?fields=".self::VIDEO_LIST_FIELDS, $payload);
-
-            if ($response->failed()) {
-                Log::warning('TikTok video list match failed', [
-                    'body' => $this->redactResponseBody($response->body()),
-                ]);
-
-                return null;
-            }
-
-            foreach (data_get($response->json(), 'data.videos', []) as $video) {
-                if (! is_array($video)) {
-                    continue;
-                }
-
-                $videoId = is_scalar(data_get($video, 'id')) ? (string) data_get($video, 'id') : '';
-                $title = $this->normalizeCaption((string) data_get($video, 'title', ''));
-
-                if ($videoId !== '' && ctype_digit($videoId) && $this->captionsMatch($caption, $title)) {
-                    return $videoId;
-                }
-            }
-
-            if (! data_get($response->json(), 'data.has_more')) {
-                return null;
-            }
-
-            $cursor = data_get($response->json(), 'data.cursor');
-        }
-
-        return null;
-    }
-
-    private function persistResolvedVideo(PostPlatform $postPlatform, ?string $videoId): ?string
-    {
-        if ($videoId === null || $videoId === '' || ! ctype_digit($videoId)) {
+        if ($videoId === null) {
             return null;
         }
 
@@ -238,11 +156,95 @@ class TikTokAnalytics
         return $videoId;
     }
 
+    private function publicVideoIdFromStatus(string $publishId): ?string
+    {
+        $response = $this->getHttpClient()
+            ->post("{$this->baseUrl}/post/publish/status/fetch/", [
+                'publish_id' => $publishId,
+            ]);
+
+        if ($response->failed()) {
+            Log::warning('TikTok publish status fetch for metrics failed', [
+                'body' => $this->redactResponseBody($response->body()),
+            ]);
+
+            return null;
+        }
+
+        return $this->digitsOrNull($response->json('data.publicaly_available_post_id.0'));
+    }
+
+    private function matchVideoFromRecentList(PostPlatform $postPlatform): ?string
+    {
+        if (PrivacyLevel::tryFrom((string) data_get($postPlatform->meta, 'privacy_level')) === PrivacyLevel::SelfOnly) {
+            return null;
+        }
+
+        $postPlatform->loadMissing('post');
+
+        $caption = $this->normalizeCaption((string) $postPlatform->post?->content);
+
+        if ($caption === '') {
+            return null;
+        }
+
+        $cursor = null;
+
+        for ($page = 0; $page < self::VIDEO_LIST_MAX_PAGES; $page++) {
+            $payload = ['max_count' => self::VIDEO_LIST_PAGE_SIZE];
+
+            if (filled($cursor)) {
+                $payload['cursor'] = $cursor;
+            }
+
+            $response = $this->getHttpClient()
+                ->post("{$this->baseUrl}/video/list/?fields=".self::VIDEO_LIST_FIELDS, $payload);
+
+            if ($response->failed()) {
+                Log::warning('TikTok video list match failed', [
+                    'body' => $this->redactResponseBody($response->body()),
+                ]);
+
+                return null;
+            }
+
+            $data = $response->json('data', []);
+
+            foreach (data_get($data, 'videos', []) as $video) {
+                $videoId = $this->digitsOrNull(data_get($video, 'id'));
+                $title = $this->normalizeCaption((string) data_get($video, 'title', ''));
+
+                if ($videoId !== null && $this->captionsMatch($caption, $title)) {
+                    return $videoId;
+                }
+            }
+
+            if (! data_get($data, 'has_more')) {
+                return null;
+            }
+
+            $cursor = data_get($data, 'cursor');
+        }
+
+        return null;
+    }
+
+    /**
+     * `video/list` titles may be a truncated form of the caption we posted, so a
+     * prefix match in either direction counts. An empty title never matches:
+     * `str_starts_with($x, '')` is true and would claim any untitled video.
+     */
     private function captionsMatch(string $posted, string $title): bool
     {
-        return $posted === $title
-            || str_starts_with($posted, $title)
-            || str_starts_with($title, $posted);
+        return $title !== ''
+            && (str_starts_with($posted, $title) || str_starts_with($title, $posted));
+    }
+
+    private function digitsOrNull(mixed $value): ?string
+    {
+        $value = is_scalar($value) ? (string) $value : '';
+
+        return ctype_digit($value) ? $value : null;
     }
 
     private function normalizeCaption(string $text): string

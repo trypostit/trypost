@@ -67,14 +67,7 @@ class PostMetricsFetcher
             return ['unsupported' => true, 'reason' => 'not_published'];
         }
 
-        $cacheKey = "post_metrics:{$postPlatform->id}";
-        $cached = Cache::get($cacheKey);
-
-        if (is_array($cached) && ! isset($cached['unsupported'])) {
-            return $cached;
-        }
-
-        $metrics = match ($postPlatform->platform) {
+        return Cache::remember("post_metrics:{$postPlatform->id}", 300, fn () => match ($postPlatform->platform) {
             Platform::X => app(XAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::Bluesky => app(BlueskyAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::Mastodon => app(MastodonAnalytics::class)->fetchPostMetrics($postPlatform),
@@ -88,12 +81,6 @@ class PostMetricsFetcher
             Platform::Pinterest => app(PinterestAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::TikTok => app(TikTokAnalytics::class)->fetchPostMetrics($postPlatform),
             default => ['unsupported' => true, 'reason' => 'platform_not_supported'],
-        };
-
-        if (! isset($metrics['unsupported'])) {
-            Cache::put($cacheKey, $metrics, 300);
-        }
-
-        return $metrics;
+        });
     }
 }
