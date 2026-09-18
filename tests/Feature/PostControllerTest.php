@@ -1127,6 +1127,51 @@ test('platform metrics dispatches X analytics for X platform', function () {
     $response->assertJsonFragment(['label' => 'Likes', 'value' => 42]);
 });
 
+test('platform metrics dispatches TikTok analytics for TikTok platform', function () {
+    $tiktokAccount = SocialAccount::factory()->tiktok()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => 'tiktoker',
+        'token_expires_at' => now()->addDays(1),
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $pp = PostPlatform::factory()->tiktok()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $tiktokAccount->id,
+        'platform' => Platform::TikTok,
+        'status' => Status::Published,
+        'platform_post_id' => '7685359243088103444',
+    ]);
+
+    $api = config('trypost.platforms.tiktok.api');
+
+    Http::fake([
+        $api.'/video/query/*' => Http::response([
+            'data' => [
+                'videos' => [[
+                    'id' => '7685359243088103444',
+                    'view_count' => 220,
+                    'like_count' => 11,
+                    'comment_count' => 2,
+                    'share_count' => 1,
+                ]],
+            ],
+            'error' => ['code' => 'ok'],
+        ]),
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]));
+
+    $response->assertOk();
+    $response->assertJsonFragment(['label' => 'Views', 'value' => 220]);
+    $response->assertJsonFragment(['label' => 'Likes', 'value' => 11]);
+});
+
 test('show page renders for non-editable posts', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,

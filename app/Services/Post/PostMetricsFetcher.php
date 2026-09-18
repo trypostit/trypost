@@ -16,6 +16,7 @@ use App\Services\Social\MastodonAnalytics;
 use App\Services\Social\PinterestAnalytics;
 use App\Services\Social\Telegram\TelegramAnalytics;
 use App\Services\Social\ThreadsAnalytics;
+use App\Services\Social\TikTokAnalytics;
 use App\Services\Social\XAnalytics;
 use App\Services\Social\YouTubeAnalytics;
 use Illuminate\Support\Collection;
@@ -74,6 +75,7 @@ class PostMetricsFetcher
             Platform::LinkedInPage => app(LinkedInPageAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::YouTube => app(YouTubeAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::Pinterest => app(PinterestAnalytics::class)->fetchPostMetrics($postPlatform),
+            Platform::TikTok => app(TikTokAnalytics::class)->fetchPostMetrics($postPlatform),
             default => ['unsupported' => true, 'reason' => 'platform_not_supported'],
         });
     }
