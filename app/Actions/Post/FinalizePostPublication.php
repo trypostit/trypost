@@ -76,7 +76,7 @@ class FinalizePostPublication
                 fn ($query) => $query->whereIn('status', self::FAILURE_STATUSES),
             )
             ->get()
-            ->map(fn (PostPlatform $pp): string => $pp->platform->label().' (@'.data_get($pp, 'socialAccount.username', '').')')
+            ->map(fn (PostPlatform $pp): string => $pp->notificationLabel())
             ->implode(', ');
 
         SendNotification::dispatch(
