@@ -69,28 +69,28 @@
               <tr>
                 <td class="sm-px-6" style="border-radius: 4px; background-color: #fffffe; padding: 48px; font-size: 16px; color: #3f3f46; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05)">
                   <h1 class="sm-leading-8" style="margin: 0 0 24px; font-size: 24px; font-weight: 600; color: #000001">
-                    Account Disconnected
+                    {{ __('mail.account_disconnected.heading') }}
                   </h1>
                   <p style="margin: 0; line-height: 24px">
-                    Your <strong>{{ $platformName }}</strong> account <strong>{{ $accountName }}</strong> has been disconnected from the <strong>{{ $workspaceName }}</strong> workspace.
+                    {!! __('mail.account_disconnected.intro', ['platform' => '<strong>'.e($platformName).'</strong>', 'account' => '<strong>'.e($accountName).'</strong>', 'workspace' => '<strong>'.e($workspaceName).'</strong>']) !!}
                   </p>
                   <p style="margin: 16px 0 0; line-height: 24px">
-                    This may have happened because:
+                    {{ __('mail.account_disconnected.reasons_title') }}
                   </p>
                   <ul style="margin: 8px 0 0; padding-left: 20px; line-height: 24px">
-                    <li>Your access token expired</li>
-                    <li>You revoked access to TryPost</li>
-                    <li>There was an authentication error</li>
+                    <li>{{ __('mail.account_disconnected.reason_expired') }}</li>
+                    <li>{{ __('mail.account_disconnected.reason_revoked') }}</li>
+                    <li>{{ __('mail.account_disconnected.reason_error') }}</li>
                   </ul>
                   <p style="margin: 16px 0 0; line-height: 24px">
-                    Please reconnect your account to continue scheduling and publishing posts.
+                    {{ __('mail.account_disconnected.reconnect_cta') }}
                   </p>
                   <div role="separator" style="line-height: 24px">&zwj;</div>
                   <div style="display: flex; align-items: center; justify-content: center">
                     <div>
-                      <a href="{{ $url }}" style="display: inline-block; text-decoration: none; padding: 16px 24px; font-size: 16px; line-height: 1; border-radius: 8px; background-color: #262626; color: #ffffff">
+                      <a href="{{ $url }}" style="display: inline-block; text-decoration: none; padding: 16px 24px; font-size: 16px; line-height: 1; border-radius: 8px; background-color: #7c3aed; color: #ffffff">
                         <!--[if mso]><i style="mso-font-width: 150%; mso-text-raise: 31px" hidden>&emsp;</i><![endif]-->
-                        <span style="mso-text-raise: 16px">Reconnect Account &rarr;</span>
+                        <span style="mso-text-raise: 16px">{{ __('mail.account_disconnected.button') }}</span>
                         <!--[if mso]><i hidden style="mso-font-width: 150%">&emsp;&#8203;</i><![endif]-->
                       </a>
                     </div>
@@ -103,11 +103,11 @@
         <tr>
           <td align="center" style="padding: 24px; text-align: center; font-size: 12px; color: #52525b">
             <p style="margin: 0 0 8px">
-              Open-source social media scheduling tool
+              {{ __('mail.layout.tagline') }}
             </p>
             <p style="margin: 8px 0 0">
               <a href="{{ route('app.notifications.preferences') }}" target="_blank" class="hover-i-text-decoration-underline" style="color: #52525b; text-decoration: none">
-                Manage notifications
+                {{ __('mail.layout.manage_notifications') }}
               </a>
             </p>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-left: auto; margin-right: auto; margin-top: 16px">
@@ -133,7 +133,7 @@
                   </a>
                 </td>
                 <td style="padding-left: 4px; padding-right: 4px">
-                  <a href="https://www.instagram.com/trypost.it" target="_blank">
+                  <a href="https://www.instagram.com/trypost.en" target="_blank">
                     <img src="{{ asset('/images/emails/social/instagram.png') }}" width="20" height="20" alt="Instagram" style="max-width: 100%; vertical-align: middle">
                   </a>
                 </td>

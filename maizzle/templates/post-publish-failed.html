@@ -9,16 +9,16 @@
             <tr>
               <td class="p-12 sm:px-6 text-base text-zinc-700 bg-white rounded shadow-sm">
                 <h1 class="m-0 mb-6 text-2xl sm:leading-8 text-black font-semibold">
-                  @{{ $title }}
+                  @{{ __('mail.post_publish_failed.heading') }}
                 </h1>
 
                 <p class="m-0 leading-6">
-                  @{{ $body }}
+                  @{{ __('mail.post_publish_failed.body', ['workspace' => $workspaceName]) }}
                 </p>
 
                 <div class="mt-4 p-4 bg-zinc-50 rounded">
                   <p class="m-0 text-sm font-semibold text-zinc-900">
-                    Failed platforms:
+                    @{{ __('mail.post_publish_failed.platforms_title') }}
                   </p>
                   <ul class="m-0 mt-2 pl-5 leading-6 text-sm">
                     @foreach($failedPlatforms as $platform)
@@ -36,7 +36,7 @@
 
                 <div class="flex items-center justify-center">
                   <x-button href="@{{ $url }}">
-                    View Post &rarr;
+                    @{{ __('mail.post_publish_failed.button') }}
                   </x-button>
                 </div>
               </td>

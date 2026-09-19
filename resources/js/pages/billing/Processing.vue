@@ -1,36 +1,33 @@
 <script setup lang="ts">
-import { Head, router, usePoll } from '@inertiajs/vue3';
+import { Head, router, usePage, usePoll } from '@inertiajs/vue3';
 import { IconLoader2 } from '@tabler/icons-vue';
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
-import { accounts, onboarding } from '@/routes/app';
+import { calendar } from '@/routes/app';
+import type { SharedData } from '@/types';
 
 const props = defineProps<{
     subscriptionActive: boolean;
-    redirectToOnboarding: boolean;
 }>();
 
-// Polls `auth` alongside so `auth.plan.interval` is fresh once the Stripe
-// webhook creates the local Subscription row — at /billing/processing's
-// initial render that row doesn't exist yet, so the interval would default
-// to 'monthly' even for a yearly purchase.
+const page = usePage<SharedData>();
+
+// Poll `auth` so `auth.plan` is set after the webhook writes plan_id.
 const { stop } = usePoll(2000, {
-    only: ['subscriptionActive', 'redirectToOnboarding', 'auth'],
+    only: ['subscriptionActive', 'auth'],
 });
 
 const finishing = ref(false);
 
+const purchaseReady = computed(
+    (): boolean => props.subscriptionActive && page.props.auth.plan !== null,
+);
+
 const goNext = (): void => {
-    router.visit(
-        props.redirectToOnboarding ? onboarding.url() : accounts.url(),
-    );
+    router.visit(calendar.url());
 };
 
-// A trial-with-card subscription is already `subscribed()` (status
-// `trialing`) by the time the webhook lands, so the user frequently reaches
-// this page already active — the false → true poll transition never
-// happens. `checkout.completed` fires from the Stripe webhook server-side,
-// independent of this page, so there's nothing to wait for once active.
+// Card-required trials are already `subscribed()` (`trialing`) on first paint.
 const completePurchase = (): void => {
     if (finishing.value) {
         return;
@@ -40,17 +37,14 @@ const completePurchase = (): void => {
     goNext();
 };
 
-watch(
-    () => props.subscriptionActive,
-    (active) => {
-        if (active) {
-            completePurchase();
-        }
-    },
-);
+watch(purchaseReady, (ready) => {
+    if (ready) {
+        completePurchase();
+    }
+});
 
 onMounted(() => {
-    if (props.subscriptionActive) {
+    if (purchaseReady.value) {
         completePurchase();
     }
 });

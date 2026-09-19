@@ -40,6 +40,7 @@ return [
         'posts_reach' => 'وصول المنشورات',
         'quotes' => 'الاقتباسات',
         'reach' => 'الوصول',
+        'reactions' => 'التفاعلات',
         'reblogs' => 'إعادات التدوين',
         'recent_comments' => 'أحدث التعليقات',
         'recent_likes' => 'أحدث الإعجابات',

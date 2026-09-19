@@ -40,6 +40,7 @@ return [
         'posts_reach' => 'Охоплення постів',
         'quotes' => 'Цитати',
         'reach' => 'Охоплення',
+        'reactions' => 'Реакції',
         'reblogs' => 'Репости',
         'recent_comments' => 'Нещодавні коментарі',
         'recent_likes' => 'Нещодавні вподобання',

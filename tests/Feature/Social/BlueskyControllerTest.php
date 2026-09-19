@@ -80,8 +80,7 @@ test('user cannot connect bluesky with invalid credentials', function () {
     ]);
 });
 
-test('user can connect multiple bluesky accounts when multiple social accounts are allowed', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
+test('user can connect multiple bluesky accounts', function () {
 
     SocialAccount::factory()->bluesky()->create([
         'workspace_id' => $this->workspace->id,
@@ -111,40 +110,6 @@ test('user can connect multiple bluesky accounts when multiple social accounts a
     $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::Bluesky)->count())->toBe(2);
-});
-
-test('bluesky store shows network_taken when the network is already connected', function () {
-    config()->set('trypost.allow_multiple_social_accounts', false);
-
-    SocialAccount::factory()->bluesky()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform_user_id' => 'did:plc:existing123',
-    ]);
-
-    Http::fake([
-        'https://bsky.social/xrpc/com.atproto.server.createSession' => Http::response([
-            'did' => 'did:plc:newuser456',
-            'handle' => 'newuser.bsky.social',
-            'accessJwt' => 'test-access-token',
-            'refreshJwt' => 'test-refresh-token',
-        ], 200),
-        'https://bsky.social/xrpc/app.bsky.actor.getProfile*' => Http::response([
-            'did' => 'did:plc:newuser456',
-            'handle' => 'newuser.bsky.social',
-            'displayName' => 'New User',
-        ], 200),
-    ]);
-
-    $response = $this->actingAs($this->user)->post(route('app.social.bluesky.store'), [
-        'identifier' => 'newuser.bsky.social',
-        'password' => 'xxxx-xxxx-xxxx-xxxx',
-    ]);
-
-    $response->assertOk();
-    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', false));
-    $response->assertInertia(fn (AssertableInertia $page) => $page->where('message', __('accounts.popup_callback.network_taken')));
-
-    expect($this->workspace->socialAccounts()->where('platform', Platform::Bluesky)->count())->toBe(1);
 });
 
 test('bluesky connection validates required fields', function () {

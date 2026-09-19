@@ -42,16 +42,25 @@ class ChunkedCloudUploader
             return false;
         }
 
-        $type = MediaType::fromExtension(pathinfo($fileName, PATHINFO_EXTENSION));
-
-        return in_array($type, [MediaType::Video, MediaType::Document], true);
+        return in_array(MediaType::classify(null, $fileName), [MediaType::Video, MediaType::Document], true);
     }
 
     public function isObjectStorageDisk(?string $disk = null): bool
     {
-        $disk ??= $this->diskName();
+        return $this->diskOption('driver', $disk) === 's3';
+    }
 
-        return config("filesystems.disks.{$disk}.driver") === 's3';
+    public function readRange(string $key, int $offset, int $length): string
+    {
+        $lastByte = $offset + $length - 1;
+
+        $object = $this->s3()->getObject([
+            'Bucket' => $this->bucket(),
+            'Key' => $key,
+            'Range' => "bytes={$offset}-{$lastByte}",
+        ]);
+
+        return (string) data_get($object, 'Body');
     }
 
     /**
@@ -175,7 +184,7 @@ class ChunkedCloudUploader
      */
     private function startUpload(string $fileName, string $firstChunk): array
     {
-        $extension = strtolower((string) pathinfo($fileName, PATHINFO_EXTENSION));
+        $extension = MediaType::extensionOf($fileName);
         $filename = Str::uuid().".{$extension}";
         $key = "medias/{$filename}";
         $mimeType = $this->detectMimeType($firstChunk, $extension);
@@ -225,8 +234,7 @@ class ChunkedCloudUploader
             return $detected;
         }
 
-        return MediaType::fromExtension($extension)?->allowedMimeTypes()[0]
-            ?? 'application/octet-stream';
+        return MediaType::mimeTypeFromExtension($extension) ?? 'application/octet-stream';
     }
 
     private function s3(): S3Client
@@ -250,11 +258,18 @@ class ChunkedCloudUploader
             return $this->bucket;
         }
 
-        return (string) config("filesystems.disks.{$this->diskName()}.bucket");
+        return (string) $this->diskOption('bucket');
     }
 
     private function diskName(): string
     {
         return $this->disk ?? (string) config('filesystems.default');
+    }
+
+    private function diskOption(string $key, ?string $disk = null): mixed
+    {
+        $disk ??= $this->diskName();
+
+        return config("filesystems.disks.{$disk}.{$key}");
     }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social\Telegram;
 
-use App\DataTransferObjects\MediaItem;
+use App\Dto\MediaItem;
 use App\Exceptions\Social\TelegramPublishException;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;

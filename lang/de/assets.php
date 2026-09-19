@@ -28,6 +28,7 @@ return [
     'save_to_assets' => 'In Assets speichern',
     'saved' => 'In deinen Assets gespeichert!',
     'create_post' => 'Beitrag erstellen',
+    'download' => 'Herunterladen',
     'add_to_post' => 'Zum Beitrag hinzufügen',
     'search_placeholder' => 'Medien suchen...',
 

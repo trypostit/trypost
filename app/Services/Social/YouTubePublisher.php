@@ -209,13 +209,13 @@ class YouTubePublisher
     {
         $maxLength = 100;
         $shortsTag = ' #Shorts';
-        $availableLength = $maxLength - strlen($shortsTag);
+        $availableLength = $maxLength - mb_strlen($shortsTag);
 
         $firstLine = explode("\n", $content)[0];
         $title = explode('.', $firstLine)[0];
 
-        if (strlen($title) > $availableLength) {
-            $title = substr($title, 0, $availableLength - 3).'...';
+        if (mb_strlen($title) > $availableLength) {
+            $title = mb_substr($title, 0, $availableLength - 3).'...';
         }
 
         return $title.$shortsTag;

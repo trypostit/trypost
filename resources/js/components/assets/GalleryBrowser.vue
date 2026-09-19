@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { router, useHttp } from '@inertiajs/vue3';
-import { IconCloudUpload, IconFileTypePdf, IconLoader2, IconPencilPlus, IconPhoto, IconPlus, IconSearch, IconTrash } from '@tabler/icons-vue';
+import { IconCloudUpload, IconDownload, IconFileTypePdf, IconLoader2, IconPencilPlus, IconPhoto, IconPlus, IconSearch, IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
@@ -15,10 +15,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import debounce from '@/debounce';
 import { acceptAttribute, classify, isDocument, isVideo, MediaType } from '@/lib/mediaType';
-import { destroy as assetsDestroy, search as assetsSearch, storeChunked as assetsStoreChunked, storeFromUrl } from '@/routes/app/assets';
+import { destroy as assetsDestroy, download as assetsDownload, search as assetsSearch, storeChunked as assetsStoreChunked, storeFromUrl } from '@/routes/app/assets';
 import { search as giphySearch, trending as giphyTrending } from '@/routes/app/assets/giphy';
 import { search as unsplashSearch, trending as unsplashTrending } from '@/routes/app/assets/unsplash';
 import { store as storePost } from '@/routes/app/posts';
+import type { SourceMetaValue } from '@/types/media';
 import { uploadChunked } from '@/utils/chunkedUpload';
 
 interface AssetMedia {
@@ -74,7 +75,7 @@ interface PickedMedia {
     size?: number;
     meta?: { width?: number; height?: number; duration?: number };
     source?: 'ai' | 'unsplash' | 'giphy';
-    source_meta?: Record<string, unknown>;
+    source_meta?: Record<string, SourceMetaValue>;
 }
 
 const props = defineProps<{
@@ -729,15 +730,40 @@ onUnmounted(() => {
                                         <TooltipContent>{{ trans('assets.create_post') }}</TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    class="size-8 bg-rose-100 hover:bg-rose-200"
-                                    data-testid="gallery-asset-delete"
-                                    @click.stop="handleDelete(asset.id)"
-                                >
-                                    <IconTrash class="size-4 text-rose-700" />
-                                </Button>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger as-child>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                class="size-8"
+                                                as="a"
+                                                :href="assetsDownload.url(asset.id)"
+                                                data-testid="gallery-asset-download"
+                                                @click.stop
+                                            >
+                                                <IconDownload class="size-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>{{ trans('assets.download') }}</TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger as-child>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                class="size-8 bg-rose-100 hover:bg-rose-200"
+                                                data-testid="gallery-asset-delete"
+                                                @click.stop="handleDelete(asset.id)"
+                                            >
+                                                <IconTrash class="size-4 text-rose-700" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>{{ trans('assets.delete.title') }}</TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                             </div>
                             <div class="space-y-0.5">
                                 <p class="truncate text-xs font-semibold text-white">{{ asset.original_filename }}</p>

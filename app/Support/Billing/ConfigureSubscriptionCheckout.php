@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Billing;
 
 use App\Models\Account;
+use App\Models\Plan;
 use Laravel\Cashier\SubscriptionBuilder;
 use RuntimeException;
 use Stripe\Subscription as StripeSubscription;
@@ -17,30 +18,21 @@ final class ConfigureSubscriptionCheckout
     public const MIN_CHECKOUT_TRIAL_DAYS = 2;
 
     /**
-     * Apply env-driven checkout options to a subscription builder.
-     *
-     * Precedence when REQUIRE_CARD_FOR_TRIAL is enabled:
-     * 1. Qualifying first-month coupon → withCoupon, no trialDays (card charge now).
-     * 2. Else first-time customer + CASHIER_TRIAL_DAYS > 0 → trialDays (clamped to ≥ 2).
-     * 3. Else plain checkout (immediate full price) — including re-subscribers.
-     *
-     * CASHIER_ALLOW_PROMOTION_CODES enables the Checkout promo field only when no
-     * coupon is applied — Stripe rejects discounts + allow_promotion_codes together.
-     *
-     * @throws RuntimeException when a coupon would be applied while
-     *                          allow_promotion_codes is also enabled.
+     * @throws RuntimeException when a coupon would apply with allow_promotion_codes enabled
      */
-    public static function apply(SubscriptionBuilder $subscription, Account $account): SubscriptionBuilder
+    public static function apply(SubscriptionBuilder $subscription, Account $account, ?Plan $plan = null): SubscriptionBuilder
     {
-        if (self::shouldApplyFirstMonthCoupon($account)) {
+        $couponId = self::firstMonthCouponId($account, $plan);
+
+        if ($couponId !== null) {
             if ((bool) config('cashier.allow_promotion_codes', false)) {
                 throw new RuntimeException(
-                    'Cannot apply STRIPE_FIRST_MONTH_COUPON_ID while CASHIER_ALLOW_PROMOTION_CODES is enabled: '
+                    'Cannot apply a first-month coupon while CASHIER_ALLOW_PROMOTION_CODES is enabled: '
                     .'Stripe Checkout rejects discounts and allow_promotion_codes on the same session.'
                 );
             }
 
-            return $subscription->withCoupon((string) config('cashier.first_month_coupon_id'));
+            return $subscription->withCoupon($couponId);
         }
 
         if (
@@ -61,33 +53,26 @@ final class ConfigureSubscriptionCheckout
         return $subscription;
     }
 
-    /**
-     * Fixed amount_off first-month coupons only fit a new customer checking out a
-     * single workspace. A subscription that never left incomplete never became
-     * real, so a retry after a failed first attempt still qualifies; any started
-     * subscription (even canceled) does not.
-     */
-    private static function shouldApplyFirstMonthCoupon(Account $account): bool
+    private static function firstMonthCouponId(Account $account, ?Plan $plan): ?string
     {
-        if (! (bool) config('trypost.billing.require_card_for_trial', true)) {
-            return false;
+        if ($plan === null || ! (bool) config('trypost.billing.require_card_for_trial', true)) {
+            return null;
         }
 
-        $couponId = config('cashier.first_month_coupon_id');
+        if (! self::isFirstTimeSubscriber($account)) {
+            return null;
+        }
+
+        $couponId = config("cashier.first_month_coupon_ids.{$plan->slug->value}");
 
         if (! is_string($couponId) || $couponId === '') {
-            return false;
+            return null;
         }
 
-        return $account->workspaces()->count() === 1
-            && self::isFirstTimeSubscriber($account);
+        return $couponId;
     }
 
-    /**
-     * True when the account has never had a real Stripe subscription. Rows that
-     * stayed in incomplete / incomplete_expired never became billable, so a
-     * retry after a failed first Checkout still counts as first-time.
-     */
+    /** Incomplete / incomplete_expired never became billable, so retries still count as first-time. */
     private static function isFirstTimeSubscriber(Account $account): bool
     {
         return ! $account->subscriptions()

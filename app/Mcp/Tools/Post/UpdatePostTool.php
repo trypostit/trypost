@@ -25,7 +25,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Update a draft post — content, media, scheduled_at, labels, and which platforms are enabled. Cannot edit a post that has already been published.')]
+#[Description('Update a draft post — content, media, scheduled_at, labels, and which platforms are enabled. Cannot edit a post that has already been published. Setting status "scheduled" validates the attached media against every enabled content_type (file size, video duration, GIF, MOV — see list-content-types-tool) and fails with a per-platform error when a cap is exceeded; fix the media or switch content_type. Drafts are never blocked.')]
 class UpdatePostTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -119,7 +119,7 @@ class UpdatePostTool extends Tool
                 ->items($schema->object(fn ($p) => [
                     'id' => $p->string()->required()->description('UUID of the post_platform row (from get-post-tool / list-posts-tool).'),
                     'content_type' => $p->string()->description('New content_type for this platform.'),
-                    'meta' => $p->object()->description('Per-platform metadata override. Instagram/Facebook: aspect_ratio. TikTok: privacy_level (required to publish) + flags. Pinterest: board_id (required to publish — call ListPinterestBoardsTool first), title (≤100), link (destination URL). Pin description comes from the post content. Discord: channel_id (required to publish — call ListDiscordChannelsTool first), mentions, embeds. Merged with existing meta.'),
+                    'meta' => $p->object()->description('Per-platform metadata override. Instagram/Facebook: aspect_ratio. TikTok: privacy_level PUBLIC_TO_EVERYONE|MUTUAL_FOLLOW_FRIENDS|FOLLOWER_OF_CREATOR|SELF_ONLY (required to publish) + flags. SELF_ONLY cannot be combined with brand_content_toggle. Pinterest: board_id (required to publish — call ListPinterestBoardsTool first), title (≤100), link (destination URL). Pin description comes from the post content. Discord: channel_id (required to publish — call ListDiscordChannelsTool first), mentions, embeds. Merged with existing meta.'),
                 ]))
                 ->description('Platforms to enable for publishing. Any platform NOT listed will be disabled. Pass an empty array to disable all.'),
         ];

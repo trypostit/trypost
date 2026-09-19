@@ -40,6 +40,7 @@ return [
         'posts_reach' => '投稿リーチ',
         'quotes' => '引用',
         'reach' => 'リーチ',
+        'reactions' => 'リアクション',
         'reblogs' => 'リブログ',
         'recent_comments' => '最近のコメント',
         'recent_likes' => '最近のいいね',

@@ -16,11 +16,11 @@
 // Playwright is resolved from the repo's node_modules, so the script works
 // regardless of where it is invoked.
 
-import { createRequire } from 'module';
 import { readFileSync, writeFileSync, unlinkSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { createRequire } from 'module';
 import { tmpdir } from 'os';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..');

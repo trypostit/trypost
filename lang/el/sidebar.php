@@ -11,11 +11,13 @@ return [
     'account_settings' => 'Λογαριασμός και χρέωση',
     'workspace_settings' => 'Ρυθμίσεις workspace',
     'log_out' => 'Αποσύνδεση',
+    'help' => 'Βοήθεια',
     'workspace' => [
         'connections' => 'Συνδέσεις',
         'signatures' => 'Υπογραφές',
         'labels' => 'Ετικέτες',
         'assets' => 'Στοιχεία',
+        'webhooks' => 'Webhooks',
         'mcp' => 'MCP',
     ],
     'language' => 'Γλώσσα: :name',
@@ -25,9 +27,7 @@ return [
         'others' => 'Άλλα',
     ],
     'analytics' => 'Στατιστικά',
-    'automations' => 'Αυτοματισμοί',
-    'onboarding' => 'Ξεκινώντας',
-    'onboarding_hint' => 'Ολοκλήρωση ρύθμισης',
+    'repurposes' => 'Repurpose',
     'posts' => [
         'calendar' => 'Ημερολόγιο',
         'all' => 'Όλες',
@@ -41,8 +41,10 @@ return [
     'archive_all' => 'Αρχειοθέτηση όλων',
     'no_notifications' => 'Δεν υπάρχουν ειδοποιήσεις',
     'support' => [
+        'chat' => 'Υποστήριξη μέσω chat',
         'docs' => 'Τεκμηρίωση',
         'referral' => 'Κερδίστε 30% από συστάσεις',
         'discord' => 'Κοινότητα Discord',
+        'community' => 'Κοινότητα',
     ],
 ];

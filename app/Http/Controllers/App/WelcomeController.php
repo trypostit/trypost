@@ -5,18 +5,22 @@ declare(strict_types=1);
 namespace App\Http\Controllers\App;
 
 use App\Actions\Billing\StartSubscriptionCheckout;
-use App\Enums\Plan\Slug;
+use App\Enums\Billing\Interval;
 use App\Enums\PostHog\CheckoutEvent;
 use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
+use App\Enums\SocialAccount\Status;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
 use App\Http\Requests\App\Welcome\StoreWelcomeConnectRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeGoalsRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
+use App\Http\Requests\App\Welcome\StoreWelcomePlanRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeReferralSourceRequest;
+use App\Http\Resources\App\PlanResource;
 use App\Http\Resources\App\SocialAccountResource;
+use App\Http\Resources\App\WelcomeSummaryResource;
 use App\Models\Plan;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
@@ -34,9 +38,12 @@ class WelcomeController extends Controller
             return $redirect;
         }
 
+        $user = $request->user();
+
         return Inertia::render('welcome/Persona', [
             'personas' => array_map(fn (Persona $persona): string => $persona->value, Persona::cases()),
-            'selected' => $request->user()->persona?->value,
+            'selected' => $user->persona?->value,
+            'welcome' => WelcomeSummaryResource::make($user),
         ]);
     }
 
@@ -75,6 +82,7 @@ class WelcomeController extends Controller
         return Inertia::render('welcome/Goals', [
             'goals' => array_map(fn (Goal $goal): string => $goal->value, Goal::cases()),
             'selected' => $user->goals ?? [],
+            'welcome' => WelcomeSummaryResource::make($user),
         ]);
     }
 
@@ -113,6 +121,7 @@ class WelcomeController extends Controller
         return Inertia::render('welcome/ReferralSource', [
             'sources' => array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases()),
             'selected' => $user->referral_source?->value,
+            'welcome' => WelcomeSummaryResource::make($user),
         ]);
     }
 
@@ -148,7 +157,8 @@ class WelcomeController extends Controller
             return $redirect;
         }
 
-        $workspace = $request->user()->currentWorkspace;
+        $user = $request->user();
+        $workspace = $user->currentWorkspace;
 
         abort_unless($workspace !== null, Response::HTTP_NOT_FOUND);
 
@@ -157,14 +167,12 @@ class WelcomeController extends Controller
             'accounts' => SocialAccountResource::collection(
                 $workspace->socialAccounts()->orderBy('id')->get(),
             )->resolve(),
+            'welcome' => WelcomeSummaryResource::make($user),
         ]);
     }
 
-    public function storeConnect(
-        StoreWelcomeConnectRequest $request,
-        StartSubscriptionCheckout $checkout,
-        PostHogService $postHog,
-    ): Response|RedirectResponse {
+    public function storeConnect(StoreWelcomeConnectRequest $request, PostHogService $postHog): RedirectResponse
+    {
         if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireReferral: true)) {
             return $redirect;
         }
@@ -172,30 +180,57 @@ class WelcomeController extends Controller
         abort_unless($request->user()->currentWorkspace !== null, Response::HTTP_NOT_FOUND);
 
         $user = $request->user();
-        $platforms = $request->connectedPlatforms();
-
-        $plan = Plan::where('slug', Slug::Workspace)->firstOrFail();
-        $priceId = $plan->stripe_monthly_price_id;
-
-        abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Monthly price is not configured.');
-
-        $response = $checkout->redirect(
-            $user->account,
-            $priceId,
-            route('app.welcome.connect'),
-        );
 
         try {
             $postHog->capture(
                 $user->id,
                 WelcomeEvent::Connect->value,
-                ['platforms' => $platforms],
+                ['platforms' => $request->connectedPlatforms()],
                 $user->account,
             );
+        } catch (Throwable $e) {
+            report($e);
+        }
+
+        return redirect()->route('app.welcome.plan');
+    }
+
+    public function plan(Request $request): InertiaResponse|RedirectResponse
+    {
+        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireReferral: true, requireConnect: true)) {
+            return $redirect;
+        }
+
+        return Inertia::render('welcome/Plan', [
+            'plans' => PlanResource::collection(
+                Plan::active()->orderBy('sort')->get(),
+            )->resolve(),
+            'welcome' => WelcomeSummaryResource::make($request->user()),
+        ]);
+    }
+
+    public function storePlan(
+        StoreWelcomePlanRequest $request,
+        StartSubscriptionCheckout $checkout,
+        PostHogService $postHog,
+    ): Response|RedirectResponse {
+        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireReferral: true, requireConnect: true)) {
+            return $redirect;
+        }
+
+        $user = $request->user();
+        $plan = Plan::active()->findOrFail($request->validated('plan_id'));
+        $priceId = Interval::Monthly->priceIdFor($plan);
+
+        abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
+
+        $response = $checkout->redirect($user->account, $priceId, route('app.welcome.plan'), $plan);
+
+        try {
             $postHog->capture(
                 $user->id,
                 CheckoutEvent::Started->value,
-                ['plan_name' => $plan->name, 'interval' => 'monthly'],
+                ['plan_name' => $plan->name, 'interval' => Interval::Monthly->value],
                 $user->account,
             );
         } catch (Throwable $e) {
@@ -226,6 +261,7 @@ class WelcomeController extends Controller
         Request $request,
         bool $requireGoals = false,
         bool $requireReferral = false,
+        bool $requireConnect = false,
     ): ?RedirectResponse {
         if ($redirect = $this->redirectIfUnavailable($request)) {
             return $redirect;
@@ -243,6 +279,13 @@ class WelcomeController extends Controller
 
         if ($requireReferral && ! $user->referral_source) {
             return redirect()->route('app.welcome.referral-source');
+        }
+
+        if ($requireConnect && ! $user->currentWorkspace?->socialAccounts()
+            ->where('status', Status::Connected)
+            ->exists()
+        ) {
+            return redirect()->route('app.welcome.connect');
         }
 
         return null;

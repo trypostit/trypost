@@ -10,21 +10,8 @@ use App\Models\Post;
 use App\Support\BillingCycle;
 use Illuminate\Support\Facades\Cache;
 
-/**
- * Provides account-level usage counts and plan-resolved feature limits.
- *
- * `featureLimits()` resolves the account's per-cycle credit allotment directly
- * from BillingCycle, computed fresh from the plan, workspace count, and billing
- * interval — no caching, so there is nothing to invalidate.
- */
 trait HasUsage
 {
-    /**
-     * Cache TTL for the per-account post count. Posts are unbounded by plan
-     * limits and not used for any quota gating, so a few minutes of staleness
-     * is acceptable in exchange for skipping a potentially heavy aggregate
-     * query on every authenticated request.
-     */
     private const POST_COUNT_CACHE_TTL = 300;
 
     /**
@@ -49,13 +36,11 @@ trait HasUsage
     }
 
     /**
-     * @return array{monthlyCreditsLimit: int}
+     * @return array{workspaceLimit: int|null}
      */
     public function featureLimits(): array
     {
-        return [
-            'monthlyCreditsLimit' => BillingCycle::for($this)->creditAllotment(),
-        ];
+        return ['workspaceLimit' => $this->workspaceLimit()];
     }
 
     /**

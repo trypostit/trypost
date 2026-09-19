@@ -313,7 +313,6 @@ return [
     'account' => [
         'tabs' => [
             'account' => 'Hesap',
-            'usage' => 'Kullanım',
             'billing' => 'Faturalandırma',
         ],
         'title' => 'Hesap Ayarları',

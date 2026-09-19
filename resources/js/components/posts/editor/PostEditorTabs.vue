@@ -5,8 +5,10 @@ import CommentsTab from '@/components/posts/editor/CommentsTab.vue';
 import PreviewTab from '@/components/posts/editor/PreviewTab.vue';
 import ScheduleTab from '@/components/posts/editor/ScheduleTab.vue';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type { PlatformIssue } from '@/composables/usePostCompliance';
 import type { PinterestBoardsPayload } from '@/types';
 import type { MediaItem } from '@/types/media';
+import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
 
 interface SocialAccount {
     id: string;
@@ -44,7 +46,7 @@ interface TikTokCreatorInfo {
     creator_nickname: string | null;
     creator_username: string | null;
     creator_avatar_url: string | null;
-    privacy_level_options: string[];
+    privacy_level_options: TikTokPrivacyLevelValue[];
     comment_disabled: boolean;
     duet_disabled: boolean;
     stitch_disabled: boolean;
@@ -59,7 +61,7 @@ const props = defineProps<{
     selectedPlatformIds: string[];
     platformMeta: Record<string, Record<string, any>>;
     platformContentTypes: Record<string, string>;
-    platformIssues: Record<string, string>;
+    platformIssues: Record<string, PlatformIssue>;
     platformConfigs: Record<string, any>;
     labels: { id: string; name: string; color: string }[];
     selectedLabelIds: string[];

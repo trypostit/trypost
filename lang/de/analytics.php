@@ -42,6 +42,7 @@ return [
         'posts_reach' => 'Beitrags-Reichweite',
         'quotes' => 'Zitate',
         'reach' => 'Reichweite',
+        'reactions' => 'Reaktionen',
         'reblogs' => 'Reblogs',
         'recent_comments' => 'Neueste Kommentare',
         'recent_likes' => 'Neueste Likes',

@@ -3,10 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'beta' => '测试版',
 
     'back' => '返回',
-
-    'beta' => '测试版',
 
     'confirm_modal' => [
         'cannot_be_undone' => '此操作无法撤销。',

@@ -10,7 +10,6 @@ use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
 
 test('it dispatches refresh jobs for rotating tokens near expiry and extension tokens well ahead of expiry', function () {
-    config()->set('trypost.allow_multiple_social_accounts', true);
     Queue::fake();
 
     $workspace = Workspace::factory()->create();
@@ -193,6 +192,5 @@ test('the command reports accounts in the window, not jobs it cannot know landed
     // RefreshSocialToken is unique per account, so a second dispatch while the
     // first is in flight is silently discarded. dispatch() still returns a
     // PendingDispatch either way, so a "dispatched" count would be a guess.
-    $this->artisan('social:refresh-expiring-tokens')
-        ->expectsOutput('1 accounts due for a token refresh.');
+    $this->artisan('social:refresh-expiring-tokens')->assertSuccessful();
 });

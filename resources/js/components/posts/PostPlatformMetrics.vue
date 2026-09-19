@@ -110,7 +110,7 @@ onMounted(async () => {
                 <Tooltip>
                     <TooltipTrigger as-child>
                         <span class="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                            <IconUsers class="size-4" :stroke="1.75" />
+                            <IconUsers class="size-4" stroke-width="1.75" />
                             <span class="font-semibold tabular-nums text-foreground">{{
                                 formatNumberCompact(subscribers.value)
                             }}</span>
@@ -126,7 +126,7 @@ onMounted(async () => {
                 <Tooltip>
                     <TooltipTrigger as-child>
                         <span class="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                            <IconMessageCircle class="size-4" :stroke="1.75" />
+                            <IconMessageCircle class="size-4" stroke-width="1.75" />
                             <span class="font-semibold tabular-nums text-foreground">{{
                                 formatNumberCompact(comments.value)
                             }}</span>

@@ -3,10 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'beta' => 'Beta',
 
     'back' => 'Indietro',
-
-    'beta' => 'Beta',
 
     'confirm_modal' => [
         'cannot_be_undone' => 'Questa azione non può essere annullata.',

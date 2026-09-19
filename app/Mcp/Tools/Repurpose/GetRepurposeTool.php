@@ -1,0 +1,54 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Mcp\Tools\Repurpose;
+
+use App\Http\Resources\Api\RepurposeResource;
+use App\Mcp\Concerns\AuthorizesMcpTool;
+use App\Mcp\Concerns\ResolvesWorkspaceRepurpose;
+use App\Mcp\Requests\Repurpose\RepurposeIdRequest;
+use App\Models\Repurpose;
+use App\Models\Workspace;
+use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Laravel\Mcp\Request;
+use Laravel\Mcp\Response;
+use Laravel\Mcp\ResponseFactory;
+use Laravel\Mcp\Server\Attributes\Description;
+use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+
+#[Description('Read one repurpose, including the format it watches, its destinations and the last polling error.')]
+#[IsReadOnly]
+class GetRepurposeTool extends Tool
+{
+    use AuthorizesMcpTool, ResolvesWorkspaceRepurpose;
+
+    public function handle(Request $request): Response|ResponseFactory
+    {
+        $workspace = $this->authorizeCurrentWorkspace($request, 'manageRepurposes', 'Not authorized to manage repurposes.');
+
+        if (! $workspace instanceof Workspace) {
+            return $workspace;
+        }
+
+        $validated = $request->validate(RepurposeIdRequest::rules());
+        $repurpose = $this->repurposeInWorkspace($workspace, $validated['repurpose_id']);
+
+        if (! $repurpose instanceof Repurpose) {
+            return $repurpose;
+        }
+
+        return Response::structured((new RepurposeResource($repurpose))->resolve());
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function schema(JsonSchema $schema): array
+    {
+        return [
+            'repurpose_id' => $schema->string()->required()->description('The repurpose to read.'),
+        ];
+    }
+}

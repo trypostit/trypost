@@ -18,6 +18,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useGuestLocale } from '@/composables/useGuestLocale';
 import { usePageErrors } from '@/composables/usePageErrors';
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { register } from '@/routes';
@@ -29,6 +30,8 @@ defineProps<{
     email?: string | null;
     invite?: string | null;
 }>();
+
+const { chosen } = useGuestLocale();
 
 const showPassword = ref(false);
 
@@ -60,6 +63,8 @@ const pageErrors = usePageErrors();
                 v-slot="{ errors, processing }"
                 class="flex flex-col gap-6"
             >
+                <input type="hidden" name="locale" :value="chosen ?? ''" />
+
                 <input
                     v-if="invite"
                     type="hidden"
@@ -164,6 +169,7 @@ const pageErrors = usePageErrors();
 
                     <Button
                         type="submit"
+                        data-testid="login-submit"
                         class="mt-4 w-full"
                         :tabindex="4"
                         :disabled="processing"
@@ -179,9 +185,12 @@ const pageErrors = usePageErrors();
                     class="text-center text-sm text-muted-foreground"
                 >
                     {{ $t('auth.login.no_account') }}
-                    <TextLink :href="register()" :tabindex="5">{{
-                        $t('auth.login.sign_up')
-                    }}</TextLink>
+                    <TextLink
+                        :href="register()"
+                        :tabindex="5"
+                        data-testid="login-sign-up-link"
+                        >{{ $t('auth.login.sign_up') }}</TextLink
+                    >
                 </div>
             </Form>
 

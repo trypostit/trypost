@@ -1,0 +1,187 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'title' => 'Repurpose',
+    'description' => 'Ripubblica automaticamente sulle altre reti ciò che pubblichi fuori da TryPost.',
+    'new' => 'Nuovo repurpose',
+
+    'flow' => [
+        'no_source' => 'Nessun account di origine',
+        'no_destinations' => 'Nessuna destinazione',
+    ],
+
+    'publish_mode' => [
+
+        'title' => 'Pubblicazione',
+
+        'description' => 'Cosa succede quando compare un nuovo post.',
+
+    ],
+
+    'publish_modes' => [
+
+        'publish' => 'Pubblica automaticamente',
+
+        'publish_hint' => 'Ogni nuovo post viene programmato appena viene trovato.',
+
+        'draft' => 'Crea come bozza',
+
+        'draft_hint' => 'Ogni nuovo post diventa una bozza da rivedere e pubblicare qui.',
+
+    ],
+
+    'formats' => [
+        'reel' => 'Reels',
+        'video' => 'Video',
+        'story' => 'Storie',
+    ],
+
+    'source' => [
+        'title' => 'Origine',
+        'description' => 'TryPost tiene d\'occhio questo account per i nuovi post del formato qui sotto.',
+        'account_label' => 'Account',
+        'watch_label' => 'Osserva',
+        'needs_reconnect' => 'Da riconnettere',
+    ],
+
+    'summary' => [
+        'sentence' => 'Ogni nuovo :format che pubblichi su :source viene ripubblicato su :destinations.',
+        'no_destinations' => 'Ogni nuovo :format che pubblichi su :source sta aspettando una destinazione.',
+        'no_source' => 'Questa automazione non ha un account di origine. Scegline uno per riavviarla.',
+    ],
+
+    'empty' => [
+        'title' => 'Nessun repurpose configurato',
+        'description' => 'TryPost monitora l\'account che scegli e ripubblica ogni nuovo post sulle reti selezionate.',
+    ],
+
+    'table' => [
+        'flow' => 'Flusso',
+        'status' => 'Stato',
+        'published' => 'Replicati',
+        'last_polled' => 'Ultimo controllo',
+    ],
+
+    'status' => [
+        'draft' => 'Bozza',
+        'active' => 'Attivo',
+        'paused' => 'In pausa',
+        'disabled' => 'Disattivato',
+    ],
+
+    'create' => [
+        'title' => 'Nuovo repurpose',
+        'description' => 'Scegli l\'account che TryPost deve seguire. Le destinazioni si scelgono nella schermata successiva.',
+        'source_label' => 'Account di origine',
+        'source_placeholder' => 'Scegli un account',
+        'source_search' => 'Cerca account',
+        'source_empty' => 'Nessun account trovato.',
+        'source_placeholder' => 'Seleziona un account',
+        'no_accounts' => 'Collega prima un account Instagram o Facebook. Solo questi possono essere origine, perché sono le uniche reti che permettono di scaricare il video.',
+        'submit' => 'Crea',
+        'connect' => 'Collega un account',
+    ],
+
+    'show' => [
+        'title' => 'Repurpose',
+        'saving' => 'Salvataggio in corso...',
+        'saved' => 'Salvato',
+    ],
+
+    'tabs' => [
+        'configuration' => 'Configurazione',
+        'activity' => 'Attività',
+        'settings' => 'Impostazioni',
+    ],
+
+    'destinations' => [
+        'paused_note' => 'Disattivati e ignorati finché non li riattivi: :accounts',
+        'title' => 'Destinazioni',
+        'description' => 'Scegli gli account che lo riceveranno. Ognuno pubblica nel formato che imposti.',
+        'hint' => 'La didascalia viene adattata per rete solo quando supera il limite di quella rete.',
+        'none_available' => 'Nessun altro account è collegato in questo workspace.',
+        'publish_as' => 'Pubblica come',
+    ],
+
+    'status_card' => [
+        'title' => 'Stato',
+        'activate' => 'Attiva',
+        'pause' => 'Metti in pausa',
+        'resume' => 'Riprendi',
+        'disable' => 'Disattiva',
+        'watermark' => 'In ascolto da',
+        'last_polled' => 'Ultimo controllo',
+        'draft_hint' => 'Scegli almeno una destinazione, poi attiva. Vengono replicati solo i post pubblicati dopo l\'attivazione.',
+        'active_hint' => 'TryPost controlla questo account con regolarità e replica ogni nuovo post.',
+        'paused_hint' => 'I controlli sono sospesi. Riprendendo si riparte da dove si era fermato e non si perde nulla.',
+        'disabled_hint' => 'Disattivato. Riattivandolo si riparte da zero: ciò che hai pubblicato mentre era spento resta fuori.',
+    ],
+
+    'items' => [
+        'source' => 'Originale',
+        'published_at' => 'Pubblicato',
+        'status' => 'Stato',
+        'detail' => 'Dettaglio',
+        'posts' => 'Replicato su',
+        'view_original' => 'Vedi originale',
+        'original_from' => 'originale del :date',
+        'empty' => [
+            'title' => 'Ancora niente',
+            'description' => 'I post che questo account pubblica fuori da TryPost appariranno qui.',
+        ],
+        'open_post' => 'Apri post',
+        'statuses' => [
+            'pending' => 'In coda',
+            'processing' => 'In elaborazione',
+            'published' => 'Replicato',
+            'drafted' => 'Bozza',
+            'skipped' => 'Ignorato',
+            'failed' => 'Non riuscito',
+        ],
+        'reasons' => [
+            'published_via_trypost' => 'Già pubblicato tramite TryPost',
+            'media_url_missing' => 'La rete non ha fornito un file scaricabile, di solito per audio protetto da copyright',
+            'download_failed' => 'Non è stato possibile scaricare il video',
+            'post_creation_failed' => 'Impossibile creare i post',
+            'no_usable_destinations' => 'Nessuna destinazione era disponibile per pubblicare',
+        ],
+    ],
+
+    'menu' => [
+
+        'label' => 'Altre azioni',
+
+    ],
+
+    'danger' => [
+        'title' => 'Elimina questo repurpose',
+        'description' => 'I controlli si fermano subito. I post già creati restano nel tuo calendario.',
+        'delete' => 'Elimina repurpose',
+    ],
+
+    'health' => [
+        'stopped_itself' => 'Si è fermata da sola: aprila per vedere perché',
+        'source_missing' => 'La replica è in pausa: questa automazione non ha un account di origine. Scegline uno e riprendila.',
+        'source_unusable' => 'La replica è in pausa: l\'account monitorato deve essere ricollegato.',
+        'no_destinations' => 'La replica è in pausa: nessuna destinazione disponibile. Aggiungine una e riprendila.',
+        'ready' => 'Il problema è risolto. Riprendi questa automazione per ricominciare a replicare.',
+    ],
+
+    'errors' => [
+        'source_already_used' => 'Questo account alimenta già un altro repurpose. Modifica quello.',
+        'source_missing' => 'Scegli un account da monitorare prima di avviare questa automazione.',
+        'source_unusable' => 'Riconnetti l\'account monitorato prima di avviare questa automazione.',
+        'destinations_required' => 'Scegli almeno una destinazione prima di attivare.',
+        'destination_needs_video' => 'Quel formato non accetta video.',
+        'only_paused_resumes' => 'Solo un repurpose in pausa può essere ripreso.',
+        'only_active_pauses' => 'Solo un repurpose attivo può essere messo in pausa.',
+        'only_running_disables' => 'Solo un repurpose in esecuzione può essere disattivato.',
+        'only_idle_activates' => 'Solo una bozza o un repurpose disattivato può essere attivato.',
+        'destination_unavailable' => 'Quell\'account di destinazione non è più disponibile.',
+        'destination_is_source' => 'Quella destinazione è l\'account che questo repurpose osserva.',
+        'source_unavailable' => 'Quell\'account di origine non è più disponibile.',
+        'action_failed' => 'Qualcosa è andato storto. Controlla il modulo e riprova.',
+    ],
+];

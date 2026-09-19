@@ -240,25 +240,193 @@ Checkout options are configured only via env — do not hardcode trial/coupon/pr
 | --- | --- | --- | --- |
 | `REQUIRE_CARD_FOR_TRIAL` | `trypost.billing.require_card_for_trial` | `true` | `true`: app access only after Stripe Checkout (no generic signup trial). `false`: generic `accounts.trial_ends_at` trial without a card |
 | `CASHIER_TRIAL_DAYS` | `cashier.trial_days` | `8` | Card-required Checkout: `trialDays(N)` for **first-time** subscribers when no first-month coupon is applied (`0` = off). Re-subscribers skip trial. No-card mode: length of the generic signup trial |
-| `STRIPE_FIRST_MONTH_COUPON_ID` | `cashier.first_month_coupon_id` | empty | Optional. When set for a qualifying first-time single-workspace checkout, applies `withCoupon` and **skips** trial. Empty = trial mode |
+| `STRIPE_SOCIALS_FIRST_MONTH_COUPON_ID` | `cashier.first_month_coupon_ids.socials` | empty | Optional. `$18` off Socials monthly (`$19` → `$1`). When set for a qualifying first-time **monthly** checkout of that plan, applies `withCoupon` and **skips** trial. Empty = trial mode |
+| `STRIPE_WORKSPACES_FIRST_MONTH_COUPON_ID` | `cashier.first_month_coupon_ids.workspaces` | empty | Optional. `$88` off Workspaces monthly (`$99` → `$1`). Same qualification as the Socials coupon. Never reuse one coupon on the other plan |
 | `CASHIER_ALLOW_PROMOTION_CODES` | `cashier.allow_promotion_codes` | `false` | When `true` and no coupon is applied, show the Checkout promo-code field |
 
 Standing constraints:
 - Stripe rejects `discounts` (coupon) and `allow_promotion_codes` on the same session — if both would apply, `ConfigureSubscriptionCheckout` must throw (fail loud). Never “prefer one silently.” Envs may both be set when the account does **not** qualify for the coupon (no throw).
 - A set first-month coupon wins over trial (`trialDays` is skipped for that checkout).
 - Empty coupon + card required + first-time must use `trialDays` — do **not** reintroduce a required-coupon throw.
-- Coupon qualification stays: card required, exactly one workspace, no prior real subscription (`incomplete` / `incomplete_expired` still qualify).
+- Coupon qualification stays: card required, no prior real subscription (`incomplete` / `incomplete_expired` still qualify), **and** the checkout price is that plan's **monthly** price. Workspace count is irrelevant — Socials is already capped at one, and a first-time Workspaces subscriber qualifies the same way.
+- First-month coupons are **per plan**. Socials is `$18` off, Workspaces is `$88` off. Never apply one plan's coupon to the other price, and never apply either coupon to a yearly price — `$190 − $18` is not `$1`.
+- Welcome checkout (`app.welcome.plan`) is monthly only. Yearly stays on the billing change-plan picker for existing subscribers (they do not get a first-month coupon).
 - Prefer documenting durable billing decisions here (and in `AGENTS.md`) — do **not** create a `.ai/` rules folder for this project.
+
+## Plans and the workspace limit
+
+TryPost sells two plans. Both are flat: Stripe subscription **quantity is never
+used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
+
+| slug | name | price | workspace_limit |
+| --- | --- | --- | --- |
+| `socials` | Socials | $19/mo, $190/yr | 1 |
+| `workspaces` | Workspaces | $99/mo, $990/yr | `null` (unlimited) |
+| `workspace` | Workspace (legacy, archived) | $12/mo per workspace | 1 |
+
+- The cap lives in `plans.workspace_limit`, **not** in code. `null` on that
+  column means unlimited. Read it through `Account::workspaceLimit()` /
+  `Account::canCreateWorkspace()` — never compare `plan->slug` to decide what
+  an account may do. A **missing** `plan_id` is not unlimited: it may create
+  only the signup workspace (`count === 0`).
+- `WorkspacePolicy::create()` is owner-only. The cap is not a permission: GET
+  `/workspaces/create` still renders at the cap (the upgrade dialog opens on
+  submit). POST is redirected back to create with `workspaces.limit_reached`,
+  not 403'd.
+- First-month coupon qualification is card required + first-time subscriber +
+  that plan's monthly price. Workspace count is not part of it.
+  (`incomplete` / `incomplete_expired` still qualify; coupon +
+  `allow_promotion_codes` still throws.) Each plan has its own coupon.
+- Welcome is monthly only so the `$1` first month can exist. Billing keeps
+  yearly for subscribers swapping interval.
+- The legacy plan is archived: it never appears in the picker, so nobody can move
+  back to it. Its `workspace_limit` is 1 because it costs less than Socials.
+- Plan choice is a welcome step (`app.welcome.plan`) and the same `PlanPicker`
+  component drives upgrade/downgrade on the billing page (`app.billing.change-plan`).
+  A change is a `swap()` to another price id. `accounts.plan_id` is written by
+  `changePlan` after a successful `swap()` only when the subscription is
+  `active` or `trialing` (so create works before the webhook). Welcome checkout
+  never writes it — `StartSubscriptionCheckout` **clears** a leftover `plan_id`
+  so Processing cannot treat a stale Workspaces row as paid. The
+  `customer.subscription.created` / `updated` webhook writes on `active` /
+  `trialing`, **clears** on `unpaid` / `canceled` / `incomplete_expired`, and
+  leaves `past_due` / `incomplete` alone. `deleted` always clears.
+- **There is no AI credit ceiling.** `AiUsageLog` / `RecordAiUsage` still record
+  every AI call for cost visibility, but nothing meters or blocks a user.
+  `AccountPolicy::useAi` checks app access and nothing else.
 
 ## Multiple social accounts per network
 
-One connected identity per social network per workspace is the Cloud default. This is **not** tied to `SELF_HOSTED` — Cloud cannot flip that flag, but it can flip this one.
+A workspace may connect as many accounts of the same network as it wants (two
+LinkedIns, three Instagrams, ...). There is **no** one-per-network rule and no
+flag for it: `ALLOW_MULTIPLE_SOCIAL_ACCOUNTS` was removed in September 2026, along
+with `SocialAccount::occupiesNetwork()` and the observer's `creating` guard. Do
+not reintroduce either. What still holds:
 
-| Env | Config | Default | Effect |
-| --- | --- | --- | --- |
-| `ALLOW_MULTIPLE_SOCIAL_ACCOUNTS` | `trypost.allow_multiple_social_accounts` | `false` (falls back to `SELF_HOSTED` when unset) | `true`: a workspace may connect more than one account of the same network (two LinkedIns, two Instagrams, …). `false`: one per network (LinkedIn profile + page count as one; Instagram standalone + Instagram-via-Facebook count as one). Reconnecting the same `platform` + `platform_user_id` still updates the existing row. Shared to Inertia as `allowMultipleSocialAccounts`. |
+- Reconnecting the same `platform` + `platform_user_id` updates the existing row
+ (`SocialAccount::connectIdentity()`), and the identity pickers drop identities
+ already connected on that network, so one identity can never be seated twice
+ under two platforms of one network (Instagram directly and via Facebook).
+- `Platform::network()` still collapses variants (LinkedIn profile/page,
+ Instagram standalone/Facebook) — that grouping drives the accounts UI, not a cap.
+- `accounts.popup_callback.network_taken` / `accounts.telegram.network_taken` stay
+ in the lang files because `NetworkAlreadyConnectedException` still uses the key
+ for a reconnect that collides on the unique identity index.
 
-Self-hosted compose / `.env.example` set this `true`. When the env is unset, the config falls back to `SELF_HOSTED` so existing self-hosted installs keep multiple accounts. Do **not** use `selfHosted` for the occupancy check (observer, Telegram connect, `NetworkConnectGrid`).
+## UI locale (`users.locale`)
+
+The user's UI language lives in the database, on `users.locale`, cast to
+`App\Enums\User\Locale`. That enum is the single source of truth for the
+supported locales — there is no `config/languages.php` any more, and a case is
+only valid if `lang/<value>` exists (`LocalizationParityTest` enforces both that
+and parity with `ContentLanguage`).
+
+- **There is no `locale` cookie.** The app stored the locale in the database
+  until March 2026, moved it to a forever cookie, and moved it back here. Do not
+  reintroduce the cookie: a second source of truth is what made the switcher and
+  the register page disagree the first time.
+- **`SetLocale` has exactly one rule:** an authenticated request renders in
+  `Auth::user()->locale`, everything else in `Locale::DEFAULT`. It does not look
+  at the request body, old input or `Accept-Language`. A logged-out visitor
+  therefore always gets English from the server, including validation messages.
+- **The auth switcher is client-side only.** It calls `loadLanguageAsync`, so
+  changing language on login or register costs no round trip and touches nothing
+  on the server. `useGuestLocale` holds the choice at module scope so it survives
+  Inertia navigation between those screens, and it sets `document.documentElement.dir`
+  from the picked language — for a guest that is the *only* source of direction,
+  since the middleware renders `htmlDir` from the default on every request.
+- **Register submits `locale` as a required hidden field** and creates the user
+  with it. **Login submits it only once the visitor picks a language** — the
+  field goes out empty otherwise, and an empty value leaves `users.locale`
+  untouched. This asymmetry is load-bearing: the login screen always renders in
+  `Locale::DEFAULT`, so an always-sent field would reset every non-English user
+  to English on each login. Forgot and reset password do not send it at all.
+- Google and GitHub signups store `Locale::DEFAULT`: they have no picker, and the
+  OAuth callback tells you nothing reliable about the person.
+
+## PostHog person properties
+
+`App\Jobs\PostHog\SyncUser` is the only place that writes person properties, and
+the distinction between its two buckets is load-bearing:
+
+- **`$set_once`** — first-touch facts that must never be rewritten: `signed_up_at`
+  and the attribution keys (`utm_*`, `gclid`, `fbclid`, …). A later sync must not
+  overwrite where a user originally came from.
+- **Top level** — current state, overwritten on every sync: `$email`, `$name`, and
+  `locale`.
+
+`locale` mirrors `users.locale` and is what the PostHog email automations (the
+onboarding cadence and friends) read to decide which translation to send, so it
+has to reflect the language the user picked *now* — never `$set_once`. Anything
+that changes `users.locale` must dispatch `SyncUser`; `ProfileController@updateLanguage`
+does, and registration already does via `CreateUser`.
+
+Do not reach for `$browser_language` / `$browser_language_prefix` instead. They
+are captured automatically by posthog-js but only as **event** properties on
+`$pageview`, so they cannot segment a person or feed an automation — and they
+report the browser's language at that pageview, not the language the user chose.
+
+Before adding a person property, check what the project already has with the
+PostHog MCP (`read-data-schema` with `{"kind": "entity_properties", "entity":
+"person"}`) rather than guessing a name; overwriting an existing property is
+silent and retroactive.
+
+## Emails (Maizzle + i18n)
+
+**Every email the app sends is fully translated into all 16 supported locales,
+and every new email must be too.** There is no English-only email left in the
+codebase, and adding one is a regression — not a gap to fill in later.
+
+**Every email is built with Maizzle, and every string in it goes through
+`__()`.** Both halves are mandatory, with no exceptions for "small",
+"transactional", "internal" or "temporary" emails:
+
+- **Maizzle, always.** Email HTML is authored in `maizzle/templates/<slug>.html`
+  and compiled to `resources/views/mail/<slug>.blade.php` by
+  `cd maizzle && npm run build`. Never hand-write a Blade view under
+  `resources/views/mail/`, never use Laravel's markdown mailables, and **never
+  edit the Blade files** — they are build output and the next build overwrites
+  them. A one-off email written outside Maizzle loses the shared layout, header,
+  footer and inlined CSS, and silently drops out of the translation workflow.
+- **i18n, always.** No user-visible string may be a literal — not in the
+  template, not in the Mailable, not in a notification closure. Subject, preview
+  text, headings, body copy, button labels and footer chrome all resolve through
+  `__()` / `trans_choice()` against `lang/*/mail.php`, in all 16 locales. A
+  literal is invisible to `LocalizationParityTest`, so it ships and stays broken.
+
+How that works in practice:
+
+- **Maizzle eats one `{`-level.** Write `@{{ ... }}` in the template to emit Blade
+  `{{ ... }}`; write `{!! ... !!}` as-is (it passes through via
+  `posthtml.expressions.unescapeDelimiters`). A `{{ }}` written directly is
+  evaluated by Maizzle at build time and disappears.
+- **Copy lives in the template, not in the Mailable.** Body text is
+  `@{{ __('mail.<slug>.<key>') }}` inside the template; the Mailable resolves only
+  the envelope metadata the layout needs — `subject`, `title`, `previewText` — and
+  otherwise passes **data** (`$workspaceName`, `$endpoint`, `$publishedPlatforms`),
+  never sentences. Injecting resolved strings as view variables is what the
+  disconnected-connections email used to do, and it meant every new sentence had
+  to be threaded through PHP while the template gave no hint it was translatable.
+- **One `lang/*/mail.php` block per template**, keyed by the slug with dashes as
+  underscores (`post-published.html` => `post_published`). Shared chrome (footer
+  tagline, sign-off) lives under `layout`. Keys go in all 16 locales;
+  `LocalizationParityTest` fails on drift. Feature lang files must not carry email
+  copy — `webhooks.mail.*` moved here for that reason.
+- **The recipient's locale is automatic.** `User` implements
+  `HasLocalePreference`, so `Mail::to($user)` and `$user->notify(...)` localize on
+  their own; never add a `->locale()` call at a send site. Two consequences:
+  `Mail::to($user->email)` (a bare string) silently loses it, so always pass the
+  model; and the invite is the one exception — the recipient has no account yet,
+  so `CreateInvite` explicitly sends in the inviter's locale.
+- **`trans_choice` must handle zero.** The last plural segment is `[0,*]`, not
+  `[2,*]`: `PostAtRisk` can report a count of 0 when rows disappear between
+  dispatch and send, and an unmatched count renders a stray leading space.
+
+New email checklist: add the template, add the `mail.<slug>` block to all 16
+locales, write a Mailable that passes data plus the three metadata strings, send
+with `Mail::to($user)`, run the Maizzle build, and cover it with a render test —
+`tests/Feature/Mail/MailRenderingTest.php` exists because copy moving into the
+view turns a forgotten variable into a runtime-only failure.
 
 ## Icons (@tabler/icons-vue)
 
@@ -285,7 +453,7 @@ Self-hosted compose / `.env.example` set this `true`. When the env is unset, the
 - Always use normal pagination (`->paginate()`). NEVER use cursor pagination (`->cursorPaginate()`).
 - All paginated lists must use Inertia's scroll pagination (`Inertia::scroll()` on the backend with `<InfiniteScroll>` on the frontend). NEVER use traditional page-based pagination with page links/buttons.
 - The page size ALWAYS comes from `config('app.pagination.default')` — never a magic number, and never a `perPage`/`per_page` value supplied by the request or frontend. Action/service list methods must NOT accept a `$perPage` parameter; call `->paginate((int) config('app.pagination.default'))` directly.
-    - The only exception is the public REST API (`app/Http/Controllers/Api`), which uses its own fixed, documented page size (15) as a stable API contract.
+    - **This includes the public REST API** (`app/Http/Controllers/Api`). It used to pin its own page size of 15 as a stable contract; that exception is gone, so a list endpoint reads the same config as everything else. Changing `app.pagination.default` therefore changes the API's page size too — deliberate, and the reason a list response always carries `meta.per_page` for clients to read rather than assume.
 
 ## Form Validation
 
@@ -344,6 +512,7 @@ Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` d
     - `@my-element` resolves to `[data-testid="my-element"]`, so add `data-testid="my-element"` in the Vue component and use `$page->click('@my-element')`.
     - Bind it for repeated elements: `:data-testid="`connect-${platform.value}`"`.
 - Assertions do NOT auto-wait on SPA paint. Wait for the element to mount and lay out first — see the `waitFor*TestId()` helper at the top of `tests/Browser/WelcomeConnectTest.php` and copy the pattern under a file-unique name (these helpers are global functions; a duplicated name collides across test files).
+- **Never `sleep()` in a browser test.** The HTTP server that serves the page runs inside the same PHP process (an Amp loop that only ticks while Pest awaits Playwright), so a blocking `sleep()` starves every asset request: the page stays blank, the Vue app never mounts, and screenshots come out empty. Poll from the page with `$page->script(...)` (as the `waitFor*TestId()` helpers do) — that keeps the loop running.
 - `BrowserTestCase` sets `$fakesVite = false` on purpose: these tests load real built assets, so faking Vite blanks the app.
 - End page assertions with `->assertNoJavaScriptErrors()`.
 - CI runs them un-parallelised (`php artisan test tests/Browser --compact`) against `npm run build` output, so keep them independent of a running dev server.
@@ -435,3 +604,51 @@ Standing constraints:
 - NEVER add `Co-Authored-By` lines to commit messages.
 - NEVER commit, push, or open PRs unless explicitly asked by the user.
 - Always create a new branch for feature work before making changes.
+
+## Repurpose account health
+
+A repurpose depends on social accounts it does not own the lifecycle of. Three
+decisions govern how it reacts, and each exists because the obvious alternative
+was tried and was wrong.
+
+- **A switched-off destination is skipped, never an error.** Deactivating an
+  account means "don't post here", which `ProcessRepurposeItem` already honours.
+  So `ActivateRepurpose::assertDestinationsPublishable()` requires **one** usable
+  destination, not all of them, and the destination rule in the repurpose
+  FormRequests carries **no** `is_active` clause. Requiring either is what used
+  to block editing *and* resuming any repurpose that listed a paused account.
+  Keep the `workspace_id` clause — that is tenancy, not health. The
+  `source_social_account_id` rules stay strict: a source genuinely must work.
+- **`repurposes.paused_reason` is not UI copy.** NULL means the user paused it.
+  Its only two jobs are deciding the watermark on resume (a system pause starts
+  from `now()`, a user pause keeps its place) and deciding whether the system may
+  auto-resume. Banners derive from current account health instead, so they can
+  say "ready to resume" once the cause is fixed. **Never clear it in
+  `UpdateRepurpose`** — that destroys the record that the pause was systemic, and
+  the next Resume replays the entire backlog.
+- **Source and destination are deliberately asymmetric.** A dead source stops the
+  automation; a dead destination keeps flowing to the publisher, which fails the
+  post visibly and lets the user retry it after reconnecting. Skipping a
+  destination at job time would be permanent for that item, since items are never
+  retried.
+
+`RepurposeAccountSync` runs from `SocialAccountObserver` and must never throw:
+`deleting` runs inside `$account->delete()`, and `persistIdentity()` wraps a
+reconnect in a transaction, so an exception there would 500 a disconnect or roll
+back a reconnect. It reads account health **from the database**, not from the
+model it was handed — `is_active` is absent from `SocialAccountFactory`, and
+strict mode exempts recently-created models from the missing-attribute
+exception, so a healthy account read back as `null` and silently skipped
+auto-resume.
+
+No email is sent when a repurpose stops. `markAsTokenExpired()` and
+`VerifyWorkspaceConnections` already email about the account, and reconnecting is
+what auto-resumes the repurpose; deleting or switching an account off is
+something the user just did, so the flash on the accounts page reports the count
+instead.
+
+`VerifyWorkspaceConnections` is the **only** thing that promotes an account back
+to `Connected`, because it does so after a real `verify()` call. A successful
+token refresh is not that proof — the refresh token being valid says nothing
+about whether publishing still works — so `RefreshSocialToken` must not promote,
+even though it would let a paused repurpose resume sooner.

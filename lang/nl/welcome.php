@@ -11,8 +11,20 @@ return [
     'subscription_required_owner' => 'De accounteigenaar is :name.',
     'subscription_required_auto' => 'Deze pagina vernieuwt automatisch — verversen is niet nodig.',
     'progress' => 'Welkomstvoortgang',
-    'go_to_step' => 'Ga naar stap :step',
-    'step_current' => 'Stap :step (huidig)',
+    'step_of' => 'Stap :step van :total',
+    'back' => 'Terug',
+    'steps' => [
+        'persona' => 'Over jou',
+        'goals' => 'Je doelen',
+        'referral_source' => 'Hoe je ons vond',
+        'connect' => 'Sociale netwerken',
+        'plan' => 'Abonnement',
+    ],
+    'preview' => [
+        'heading' => 'Je workspace krijgt vorm.',
+        'pending' => 'Nog niet gekozen',
+        'networks_empty' => 'Nog geen netwerken verbonden',
+    ],
     'personas' => [
         'creator' => 'Contentmaker',
         'freelancer' => 'Freelancer',
@@ -29,7 +41,7 @@ return [
     'goals' => [
         'save_time' => 'Tijd besparen door overal tegelijk te posten',
         'ai_content' => 'Posts genereren met TryPost AI',
-        'use_mcp' => 'Posts maken via Claude, ChatGPT of Cursor',
+        'use_mcp' => 'Posts maken via Claude, ChatGPT, enz.',
         'plan_calendar' => 'Mijn posts plannen op een kalender',
         'stay_on_brand' => 'Elke post in lijn met mijn merk houden',
         'grow_audience' => 'Mijn publiek en betrokkenheid laten groeien',
@@ -38,6 +50,8 @@ return [
         'just_exploring' => 'Voorlopig gewoon aan het verkennen',
         'other' => 'Iets anders',
     ],
+    'plan_title' => 'Kies je abonnement',
+    'plan_description' => 'Beide plannen hebben dezelfde functies. Het verschil is het aantal workspaces, en je kunt wisselen wanneer je wilt.',
     'referral_source_title' => 'Hoe heb je ons gevonden?',
     'referral_source_description' => 'Dit helpt ons te begrijpen hoe mensen TryPost ontdekken.',
     'referral_source' => [

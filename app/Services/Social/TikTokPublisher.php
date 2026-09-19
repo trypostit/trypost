@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
-use App\DataTransferObjects\MediaItem;
+use App\Dto\MediaItem;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\TikTok\PublishStatus;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
@@ -14,6 +15,7 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Support\PostPlatformMetaRules;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Http\Client\PendingRequest;
@@ -98,23 +100,23 @@ class TikTokPublisher
     }
 
     /**
-     * Resolve the user-selected privacy_level from meta, throwing when missing.
-     * TikTok UX Guideline Point 2b forbids any default — the user must pick
-     * explicitly. The FormRequest validates this upstream; this is the safety
-     * net for queue/job paths that bypass the request layer.
+     * Resolve the user-selected privacy_level from meta. TikTok UX Guideline
+     * Point 2b forbids any default — the user must pick explicitly. The
+     * FormRequest enforces the same rules upstream; this is the safety net for
+     * queue/job paths that bypass the request layer.
      */
-    private function resolveRequiredPrivacyLevel(PostPlatform $postPlatform): string
+    private function resolveRequiredPrivacyLevel(PostPlatform $postPlatform): PrivacyLevel
     {
-        $privacyLevel = data_get($postPlatform->meta ?? [], 'privacy_level');
+        $violation = PostPlatformMetaRules::requiredMetaViolation(Platform::TikTok, $postPlatform->meta);
 
-        if (blank($privacyLevel)) {
+        if ($violation !== null) {
             throw new TikTokPublishException(
-                userMessage: 'TikTok privacy level is required. Please open the post and pick a visibility option.',
+                userMessage: $violation[1],
                 category: ErrorCategory::ContentPolicy,
             );
         }
 
-        return (string) $privacyLevel;
+        return PrivacyLevel::from((string) data_get($postPlatform->meta, 'privacy_level'));
     }
 
     /**
@@ -130,7 +132,7 @@ class TikTokPublisher
 
         $postInfo = [
             'title' => $content ?? '',
-            'privacy_level' => $this->resolveRequiredPrivacyLevel($postPlatform),
+            'privacy_level' => $this->resolveRequiredPrivacyLevel($postPlatform)->value,
             'disable_duet' => ! data_get($meta, 'allow_duet', false),
             'disable_comment' => ! data_get($meta, 'allow_comments', false),
             'disable_stitch' => ! data_get($meta, 'allow_stitch', false),
@@ -165,7 +167,7 @@ class TikTokPublisher
 
         $postInfo = [
             'description' => $content ?? '',
-            'privacy_level' => $this->resolveRequiredPrivacyLevel($postPlatform),
+            'privacy_level' => $this->resolveRequiredPrivacyLevel($postPlatform)->value,
             'disable_comment' => ! data_get($meta, 'allow_comments', false),
         ];
 
@@ -372,7 +374,8 @@ class TikTokPublisher
         }
 
         $data = $response->json();
-        $status = PublishStatus::tryFrom((string) data_get($data, 'data.status', ''));
+        $statusValue = (string) data_get($data, 'data.status', '');
+        $status = PublishStatus::tryFrom($statusValue);
 
         return match ($status) {
             PublishStatus::PublishComplete => data_get($data, 'data', []),
@@ -380,7 +383,10 @@ class TikTokPublisher
                 (string) data_get($data, 'data.fail_reason', 'Unknown error'),
                 json_encode($data),
             ),
-            default => throw $this->pendingPublishException($publishId),
+            default => throw $this->pendingPublishException(
+                $publishId,
+                status: $statusValue !== '' ? $statusValue : null,
+            ),
         };
     }
 
@@ -420,12 +426,18 @@ class TikTokPublisher
         ]);
     }
 
-    private function pendingPublishException(string $publishId, ?int $httpStatus = null): PlatformUnavailableException
+    private function pendingPublishException(string $publishId, ?int $httpStatus = null, ?string $status = null): PlatformUnavailableException
     {
+        $context = [PublishCheckpoint::TIKTOK_PUBLISH_ID => $publishId];
+
+        if (is_string($status) && $status !== '') {
+            $context[PublishCheckpoint::TIKTOK_STATUS] = $status;
+        }
+
         return new PlatformUnavailableException(
             message: "TikTok is still processing publish_id {$publishId}",
             httpStatus: $httpStatus,
-            context: [PublishCheckpoint::TIKTOK_PUBLISH_ID => $publishId],
+            context: $context,
             retryDelaySeconds: self::STATUS_RETRY_DELAY_SECONDS,
             maxRetries: self::STATUS_MAX_RETRIES,
         );
@@ -469,6 +481,10 @@ class TikTokPublisher
         $statusData = $this->waitForPublishStatus($publishId);
         $postId = data_get($statusData, 'publicaly_available_post_id.0');
         $postId = is_string($postId) && $postId !== '' ? $postId : null;
+
+        if ($postId === null) {
+            $postId = app(TikTokAnalytics::class)->findVideoIdByCaption($postPlatform);
+        }
 
         return [
             'id' => $postId ?? $publishId,

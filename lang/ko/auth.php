@@ -24,30 +24,28 @@ return [
 
     'legal' => '계속 진행하면 <a href=":terms_url" target="_blank">서비스 약관</a> 및 <a href=":privacy_url" target="_blank">개인정보 처리방침</a>에 동의하는 것입니다.',
 
-    'slides' => [
-        'calendar' => [
-            'title' => '비주얼 캘린더',
-            'description' => '직관적인 드래그 앤 드롭 캘린더로 모든 소셜 계정의 콘텐츠를 계획하고 예약하세요.',
+    'reviews' => [
+        'eyebrow' => 'G2에서 5/5',
+        'heading' => '매일 게시하는 사람들의 선택',
+        'paulo_dantas' => [
+            'role' => '창업자, chatadv.com.br',
+            'quote' => '모든 소셜 네트워크에 콘텐츠를 만들고 정리하고 배포하는 과정이 단순합니다. MCP 덕분에 Claude나 ChatGPT처럼 원하는 AI로 콘텐츠를 만들고 바로 예약할 수 있습니다.',
         ],
-        'scheduling' => [
-            'title' => '스마트 예약',
-            'description' => 'LinkedIn, X, Instagram, TikTok, YouTube 등 여러 채널의 게시물을 한 곳에서 예약하세요.',
+        'diego' => [
+            'role' => 'CEO, Globalfy.com',
+            'quote' => 'TryPost는 정말 쓰기 쉽습니다. Claude에서 바로 게시물을 만들고 MCP로 발행하거나 예약할 수 있습니다. 설정은 5분 만에 끝났습니다.',
         ],
-        'media' => [
-            'title' => '리치 미디어',
-            'description' => '이미지, 캐러셀, 스토리, 릴스를 게시하세요. 각 플랫폼에 맞는 형식이 자동으로 적용됩니다.',
+        'luiz' => [
+            'role' => '콘텐츠 크리에이터',
+            'quote' => 'AI 도구와 에이전트를 연결하고 9개 소셜 미디어에 게시물을 몇 분 만에 예약할 수 있어서 정말 좋습니다.',
         ],
-        'video' => [
-            'title' => '동영상 게시',
-            'description' => '동영상을 한 번 업로드하여 TikTok, YouTube Shorts, Instagram Reels, Facebook Reels에 게시하세요.',
+        'pedro' => [
+            'role' => '창업자, templated.io',
+            'quote' => '사용하고 연동하기가 정말 쉽습니다. MCP 덕분에 소셜 계정을 연결할 때만 화면을 열면 됩니다.',
         ],
-        'team' => [
-            'title' => '팀 워크스페이스',
-            'description' => '팀을 초대하고 역할을 지정하며 별도의 워크스페이스에서 여러 브랜드를 관리하세요.',
-        ],
-        'signatures' => [
-            'title' => '서명',
-            'description' => '재사용 가능한 서명(해시태그, 링크, 맺음말)을 저장하고 클릭 한 번으로 게시물에 추가하세요.',
+        'paulo_castellano' => [
+            'role' => '창업자, changelogfy.com',
+            'quote' => 'MCP 연동이 정말 마음에 듭니다. Claude나 ChatGPT에서 모든 소셜 미디어 계정을 관리할 수 있습니다.',
         ],
     ],
 

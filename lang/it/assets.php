@@ -26,6 +26,7 @@ return [
     'save_to_assets' => 'Salva nelle risorse',
     'saved' => 'Salvato nelle tue risorse!',
     'create_post' => 'Crea post',
+    'download' => 'Scarica',
     'add_to_post' => 'Aggiungi al post',
     'search_placeholder' => 'Cerca media...',
 

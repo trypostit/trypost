@@ -8,6 +8,10 @@ use App\Actions\User\DeleteUser;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Settings\ProfileDeleteRequest;
 use App\Http\Requests\App\Settings\ProfileUpdateRequest;
+use App\Http\Requests\App\Settings\UpdateLanguageRequest;
+use App\Http\Requests\App\Settings\UploadPhotoRequest;
+use App\Jobs\PostHog\SyncUser;
+use App\Services\PostHogService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -40,12 +44,8 @@ class ProfileController extends Controller
         return to_route('app.profile.edit');
     }
 
-    public function uploadPhoto(Request $request): RedirectResponse
+    public function uploadPhoto(UploadPhotoRequest $request): RedirectResponse
     {
-        $request->validate([
-            'photo' => ['required', 'image', 'max:2048'],
-        ]);
-
         $user = $request->user();
         $user->clearMediaCollection('avatar');
         $user->addMedia($request->file('photo'), 'avatar');
@@ -69,15 +69,15 @@ class ProfileController extends Controller
         return back();
     }
 
-    public function updateLanguage(Request $request): RedirectResponse
+    public function updateLanguage(UpdateLanguageRequest $request): RedirectResponse
     {
-        $request->validate([
-            'locale' => ['required', 'string', 'in:'.implode(',', array_keys(config('languages.available')))],
-        ]);
+        $request->user()->update(['locale' => $request->validated('locale')]);
 
-        return back()->withCookie(
-            cookie()->forever('locale', $request->locale, '/', config('session.domain'))
-        );
+        if (PostHogService::shouldTrack()) {
+            SyncUser::dispatch((string) $request->user()->id);
+        }
+
+        return back();
     }
 
     public function destroy(ProfileDeleteRequest $request): RedirectResponse

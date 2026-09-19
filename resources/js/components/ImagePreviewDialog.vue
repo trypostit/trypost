@@ -3,7 +3,7 @@ import { IconChevronLeft, IconChevronRight } from '@tabler/icons-vue';
 import { computed, onUnmounted, ref, watch } from 'vue';
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { MediaType } from '@/lib/mediaType';
+import { isDocument, isImage, isVideo, MediaType } from '@/lib/mediaType';
 
 interface PreviewItem {
     url: string;
@@ -89,7 +89,7 @@ defineExpose({ open, openCollection, close });
             <DialogTitle class="sr-only">Media preview</DialogTitle>
             <div class="relative flex justify-center" @click.self="close">
                 <img
-                    v-if="currentItem && currentItem.type === 'image'"
+                    v-if="currentItem && isImage(currentItem)"
                     :src="currentItem.url"
                     alt="Preview"
                     class="max-h-[85vh] max-w-full cursor-pointer rounded-2xl object-contain"
@@ -97,7 +97,7 @@ defineExpose({ open, openCollection, close });
                 />
 
                 <video
-                    v-else-if="currentItem && currentItem.type === 'video'"
+                    v-else-if="currentItem && isVideo(currentItem)"
                     :key="currentItem.url"
                     :src="currentItem.url"
                     data-testid="lightbox-video"
@@ -110,7 +110,7 @@ defineExpose({ open, openCollection, close });
                 />
 
                 <iframe
-                    v-else-if="currentItem && currentItem.type === 'document'"
+                    v-else-if="currentItem && isDocument(currentItem)"
                     :key="currentItem.url"
                     :src="currentItem.url"
                     title="PDF preview"

@@ -6,6 +6,17 @@ return [
     'description' => 'Обзор всех подключённых социальных аккаунтов',
     'connect_cta' => 'Подключить',
     'connect_another' => 'Подключить ещё',
+    'actions' => 'Действия с аккаунтом',
+    'activate' => 'Включить',
+    'deactivate' => 'Отключить',
+    'active' => 'Активен',
+    'paused' => 'Отключён',
+    'accounts_count' => ':count аккаунт|:count аккаунта|:count аккаунтов',
+
+    'variants' => [
+        'linkedin-page' => 'Страница',
+        'instagram-facebook' => 'через Facebook',
+    ],
 
     'not_connected' => 'Не подключено',
     'connect' => 'Подключить',
@@ -124,6 +135,9 @@ return [
     ],
 
     'flash' => [
+        'activated_resumed_repurposes' => 'Аккаунт включён. Возобновлена :count автоматизация.|Аккаунт включён. Возобновлено автоматизаций: :count.',
+        'disconnected_paused_repurposes' => 'Аккаунт отключён. Приостановлена :count автоматизация.|Аккаунт отключён. Приостановлено автоматизаций: :count.',
+        'deactivated_paused_repurposes' => 'Аккаунт выключен. Приостановлена :count автоматизация.|Аккаунт выключен. Приостановлено автоматизаций: :count.',
         'disconnected' => 'Аккаунт успешно отключён!',
         'connected' => 'Аккаунт успешно подключён!',
         'session_expired' => 'Сессия истекла. Попробуйте ещё раз.',

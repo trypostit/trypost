@@ -4,13 +4,10 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Observers\AccessTokenObserver;
-use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Laravel\Passport\Token;
 
-#[ObservedBy(AccessTokenObserver::class)]
 class AccessToken extends Token
 {
     /**
@@ -177,22 +174,6 @@ class AccessToken extends Token
         }
 
         return $this->expires_at === null || ! $this->expires_at->isPast();
-    }
-
-    /**
-     * Bound MCP grant that unlocks the account onboarding checklist
-     * (account-owner grant + usable + createPost on the bound workspace).
-     */
-    public function unlocksOnboardingChecklist(?User $user = null): bool
-    {
-        $user ??= $this->user;
-        $workspace = $this->workspace;
-
-        return $user instanceof User
-            && $workspace instanceof Workspace
-            && $user->isAccountOwner()
-            && $this->isUsableMcpGrant($user, $workspace)
-            && $user->can('createPost', $workspace);
     }
 
     /**

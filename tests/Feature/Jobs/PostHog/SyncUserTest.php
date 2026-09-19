@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\User\Locale;
 use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\SyncAccountUsage;
 use App\Jobs\PostHog\SyncUser;
@@ -156,4 +157,30 @@ test('job is queued on the posthog connection queue', function () {
     $job = new SyncUser((string) $this->user->id);
 
     expect($job->queue)->toBe('posthog');
+});
+
+test('handle forwards the stored locale as an overwritable person property', function () {
+    $this->user->update(['locale' => Locale::Japanese]);
+    Queue::fake();
+
+    (new SyncUser((string) $this->user->id))->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, function ($job) {
+        return $job->payload['properties']['locale'] === 'ja'
+            && ! array_key_exists('locale', $job->payload['properties']['$set_once']);
+    });
+});
+
+test('handle forwards the new locale after the user switches language', function () {
+    $this->user->update(['locale' => Locale::English]);
+
+    $this->user->update(['locale' => Locale::PortugueseBrazil]);
+    Queue::fake();
+
+    (new SyncUser((string) $this->user->id))->handle(app(PostHogService::class));
+
+    Queue::assertPushed(
+        SendEvent::class,
+        fn ($job) => $job->payload['properties']['locale'] === 'pt-BR',
+    );
 });

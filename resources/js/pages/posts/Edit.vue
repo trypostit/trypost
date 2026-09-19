@@ -27,6 +27,7 @@ import { destroy as destroyPost, update as updatePost } from '@/routes/app/posts
 import type { PinterestBoardsPayload } from '@/types';
 import type { MediaItem } from '@/types/media';
 import { PostStatus } from '@/types/post';
+import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
 
 interface SocialAccount {
     id: string;
@@ -75,7 +76,7 @@ interface TikTokCreatorInfo {
     creator_nickname: string | null;
     creator_username: string | null;
     creator_avatar_url: string | null;
-    privacy_level_options: string[];
+    privacy_level_options: TikTokPrivacyLevelValue[];
     comment_disabled: boolean;
     duet_disabled: boolean;
     stitch_disabled: boolean;

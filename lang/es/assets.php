@@ -28,6 +28,7 @@ return [
     'save_to_assets' => 'Guardar en la biblioteca',
     'saved' => '¡Guardado en tu biblioteca!',
     'create_post' => 'Crear post',
+    'download' => 'Descargar',
     'add_to_post' => 'Agregar al post',
     'search_placeholder' => 'Buscar media...',
 

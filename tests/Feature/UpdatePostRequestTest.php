@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -72,12 +73,143 @@ test('publishing a tiktok post with privacy_level passes privacy_level validatio
                 [
                     'id' => $this->postPlatform->id,
                     'content_type' => ContentType::TikTokVideo->value,
-                    'meta' => ['privacy_level' => 'SELF_ONLY'],
+                    'meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value],
                 ],
             ],
         ]);
 
     $response->assertSessionDoesntHaveErrors(['platforms.0.meta.privacy_level']);
+});
+
+test('scheduling a bluesky post with a mov video is not rejected on format', function () {
+    $blueskyAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Bluesky,
+    ]);
+    $blueskyPlatform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $blueskyAccount->id,
+        'platform' => Platform::Bluesky,
+        'content_type' => ContentType::BlueskyPost,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Scheduled->value,
+            'scheduled_at' => now()->addHour()->toIso8601String(),
+            'media' => [[
+                'id' => 'test-media-mov',
+                'path' => 'media/2026-01/clip.mov',
+                'url' => 'https://example.com/media/2026-01/clip.mov',
+                'type' => 'video',
+                'mime_type' => 'video/quicktime',
+                'original_filename' => 'clip.mov',
+            ]],
+            'platforms' => [
+                ['id' => $blueskyPlatform->id, 'content_type' => ContentType::BlueskyPost->value],
+            ],
+        ]);
+
+    $response->assertSessionDoesntHaveErrors(['platforms.0.content_type']);
+});
+
+test('publishing a bluesky post with an oversized video is rejected server-side', function () {
+    $blueskyAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Bluesky,
+    ]);
+    $blueskyPlatform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $blueskyAccount->id,
+        'platform' => Platform::Bluesky,
+        'content_type' => ContentType::BlueskyPost,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => [[
+                'id' => 'test-media-big',
+                'path' => 'media/2026-01/big.mp4',
+                'url' => 'https://example.com/media/2026-01/big.mp4',
+                'type' => 'video',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'big.mp4',
+                'size' => 300_000_001,
+            ]],
+            'platforms' => [
+                ['id' => $blueskyPlatform->id, 'content_type' => ContentType::BlueskyPost->value],
+            ],
+        ]);
+
+    // Bluesky's cap is decimal, so both numbers render in decimal units.
+    $response->assertSessionHasErrors([
+        'platforms.0.content_type' => trans('posts.form.warnings.video_too_large', ['max' => '300 MB', 'current' => '300.0 MB']),
+    ]);
+});
+
+test('publishing a bluesky post with a video over the duration cap is rejected server-side', function () {
+    $blueskyAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Bluesky,
+    ]);
+    $blueskyPlatform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $blueskyAccount->id,
+        'platform' => Platform::Bluesky,
+        'content_type' => ContentType::BlueskyPost,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => [[
+                'id' => 'test-media-long',
+                'path' => 'media/2026-01/long.mp4',
+                'url' => 'https://example.com/media/2026-01/long.mp4',
+                'type' => 'video',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'long.mp4',
+                'size' => 50_000_000,
+                'meta' => ['duration' => 601.5],
+            ]],
+            'platforms' => [
+                ['id' => $blueskyPlatform->id, 'content_type' => ContentType::BlueskyPost->value],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors(['platforms.0.content_type' => 'Video is 10min 2s long, but this post type allows up to 10min.']);
+});
+
+test('saving a draft does not enforce media compatibility', function () {
+    $blueskyAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Bluesky,
+    ]);
+    $blueskyPlatform = PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $blueskyAccount->id,
+        'platform' => Platform::Bluesky,
+        'content_type' => ContentType::BlueskyPost,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'media' => [[
+                'id' => 'test-media-mov',
+                'path' => 'media/2026-01/clip.mov',
+                'url' => 'https://example.com/media/2026-01/clip.mov',
+                'type' => 'video',
+                'mime_type' => 'video/quicktime',
+                'original_filename' => 'clip.mov',
+            ]],
+            'platforms' => [
+                ['id' => $blueskyPlatform->id, 'content_type' => ContentType::BlueskyPost->value],
+            ],
+        ]);
+
+    $response->assertSessionDoesntHaveErrors(['platforms.0.content_type']);
 });
 
 test('publishing a pinterest post without board_id is rejected', function () {
@@ -348,6 +480,43 @@ test('saving a pinterest post as draft without board_id skips the board rule', f
         ]);
 
     $response->assertSessionDoesntHaveErrors(['platforms.0.meta.board_id']);
+});
+
+test('publishing a tiktok post with an unknown privacy_level is rejected', function () {
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => $this->mediaPayload,
+            'platforms' => [
+                [
+                    'id' => $this->postPlatform->id,
+                    'content_type' => ContentType::TikTokVideo->value,
+                    'meta' => ['privacy_level' => 'EVERYONE'],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.privacy_level');
+});
+
+test('publishing a tiktok post as self only branded content is rejected', function () {
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'media' => $this->mediaPayload,
+            'platforms' => [
+                [
+                    'id' => $this->postPlatform->id,
+                    'content_type' => ContentType::TikTokVideo->value,
+                    'meta' => [
+                        'privacy_level' => PrivacyLevel::SelfOnly->value,
+                        'brand_content_toggle' => true,
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors(['platforms.0.meta.privacy_level' => trans('posts.form.tiktok.privacy.private_disabled_branded')]);
 });
 
 test('saving a tiktok post as draft without privacy_level skips the privacy_level rule', function () {

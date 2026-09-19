@@ -40,13 +40,10 @@ test('accounts index shows platforms and connected accounts', function () {
         ->has('platforms')
         ->has('platforms.0.network')
         ->has('connectedAccounts', 1)
-        ->where('allowMultipleSocialAccounts', false)
     );
 });
 
-test('accounts index still lists every same-network account when multiples are disabled', function () {
-    config()->set('trypost.allow_multiple_social_accounts', false);
-
+test('accounts index lists every account of the same network', function () {
     [$first, $second] = SocialAccount::withoutEvents(fn () => [
         SocialAccount::factory()->create([
             'workspace_id' => $this->workspace->id,
@@ -215,7 +212,7 @@ test('a connected instagram-facebook account is still returned so it surfaces un
     );
 });
 
-test('an unsubscribed account can disconnect during onboarding (no active subscription required)', function () {
+test('an unsubscribed account can disconnect without an active subscription', function () {
     config(['trypost.self_hosted' => false]);
 
     $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);

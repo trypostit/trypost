@@ -26,6 +26,7 @@ return [
     'save_to_assets' => 'Opslaan in assets',
     'saved' => 'Opgeslagen in je assets!',
     'create_post' => 'Post aanmaken',
+    'download' => 'Downloaden',
     'add_to_post' => 'Toevoegen aan post',
     'search_placeholder' => 'Media zoeken...',
 

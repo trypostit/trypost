@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Enums\SocialAccount;
 
 use App\Enums\Media\Type as MediaType;
+use App\Enums\TikTok\PrivacyLevel;
 
 enum Platform: string
 {
@@ -24,12 +25,6 @@ enum Platform: string
     case Discord = 'discord';
     case GoogleBusiness = 'google_business';
 
-    /**
-     * The social network this platform belongs to. Variants that represent the
-     * same network (LinkedIn profile vs. company page, Instagram standalone vs.
-     * Facebook-linked) collapse to one key so a workspace may connect only one
-     * account per network.
-     */
     public function network(): string
     {
         return match ($this) {
@@ -40,9 +35,6 @@ enum Platform: string
     }
 
     /**
-     * All platform values that share this platform's network, used to enforce
-     * the one-account-per-network rule across variants.
-     *
      * @return array<int, string>
      */
     public function networkPlatformValues(): array
@@ -394,6 +386,18 @@ enum Platform: string
         return array_map(fn (self $platform) => $platform->queue(), self::cases());
     }
 
+    /**
+     * @return array<string>
+     */
+    public static function enabledQueues(): array
+    {
+        return collect(self::cases())
+            ->filter(fn (self $platform): bool => $platform->isEnabled())
+            ->map(fn (self $platform): string => $platform->queue())
+            ->values()
+            ->all();
+    }
+
     public function instagramGraphBaseUrl(): string
     {
         return match ($this) {
@@ -404,7 +408,25 @@ enum Platform: string
 
     public function isEnabled(): bool
     {
-        return config("trypost.platforms.{$this->value}.enabled", true);
+        return (bool) config(
+            "trypost.platforms.{$this->value}.enabled",
+            env(match ($this) {
+                self::LinkedIn => 'LINKEDIN_ENABLED',
+                self::LinkedInPage => 'LINKEDIN_PAGE_ENABLED',
+                self::X => 'X_ENABLED',
+                self::TikTok => 'TIKTOK_ENABLED',
+                self::YouTube => 'YOUTUBE_ENABLED',
+                self::Facebook => 'FACEBOOK_ENABLED',
+                self::Instagram => 'INSTAGRAM_ENABLED',
+                self::InstagramFacebook => 'INSTAGRAM_FACEBOOK_ENABLED',
+                self::Threads => 'THREADS_ENABLED',
+                self::Pinterest => 'PINTEREST_ENABLED',
+                self::Bluesky => 'BLUESKY_ENABLED',
+                self::Mastodon => 'MASTODON_ENABLED',
+                self::Telegram => 'TELEGRAM_ENABLED',
+                self::Discord => 'DISCORD_ENABLED',
+            }, true),
+        );
     }
 
     /**
@@ -439,12 +461,6 @@ enum Platform: string
     }
 
     /**
-     * Connectable platforms shaped for Inertia account/onboarding grids.
-     * Sorted alphabetically by label (ASC, case-insensitive).
-     *
-     * Instagram includes `connect_methods` so the connect dialog only lists
-     * OAuth entry points that are actually enabled (self-hosters may disable one).
-     *
      * @return list<array{value: string, label: string, network: string, connect_methods?: list<string>}>
      */
     public static function connectableOptions(): array
@@ -479,12 +495,7 @@ enum Platform: string
     {
         return match ($this) {
             self::TikTok => [
-                'privacyLevelOptions' => [
-                    'PUBLIC_TO_EVERYONE',
-                    'MUTUAL_FOLLOW_FRIENDS',
-                    'FOLLOWER_OF_CREATOR',
-                    'SELF_ONLY',
-                ],
+                'privacyLevelOptions' => PrivacyLevel::values(),
                 'musicUsageConfirmationUrl' => 'https://www.tiktok.com/legal/page/global/music-usage-confirmation/en',
                 'brandedContentPolicyUrl' => 'https://www.tiktok.com/legal/page/global/bc-policy/en',
             ],

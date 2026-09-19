@@ -3,10 +3,9 @@
 declare(strict_types=1);
 
 return [
+    'beta' => '베타',
 
     'back' => '뒤로',
-
-    'beta' => '베타',
 
     'confirm_modal' => [
         'cannot_be_undone' => '이 작업은 되돌릴 수 없습니다.',

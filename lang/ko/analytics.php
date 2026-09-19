@@ -40,6 +40,7 @@ return [
         'posts_reach' => '게시물 도달수',
         'quotes' => '인용',
         'reach' => '도달수',
+        'reactions' => '반응',
         'reblogs' => '리블로그',
         'recent_comments' => '최근 댓글',
         'recent_likes' => '최근 좋아요',

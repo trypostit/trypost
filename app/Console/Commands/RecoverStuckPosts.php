@@ -81,6 +81,5 @@ class RecoverStuckPosts extends Command
                 $count++;
             });
 
-        $this->info("Recovered {$count} stuck posts.");
     }
 }

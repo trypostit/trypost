@@ -26,6 +26,7 @@ return [
     'save_to_assets' => '에셋에 저장',
     'saved' => '에셋에 저장되었습니다!',
     'create_post' => '게시물 만들기',
+    'download' => '다운로드',
     'add_to_post' => '게시물에 추가',
     'search_placeholder' => '미디어 검색...',
 

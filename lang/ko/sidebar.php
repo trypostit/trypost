@@ -11,11 +11,13 @@ return [
     'account_settings' => '계정 및 결제',
     'workspace_settings' => '워크스페이스 설정',
     'log_out' => '로그아웃',
+    'help' => '도움말',
     'workspace' => [
         'connections' => '연결',
         'signatures' => '서명',
         'labels' => '라벨',
         'assets' => '에셋',
+        'webhooks' => '웹훅',
         'mcp' => 'MCP',
     ],
     'language' => '언어: :name',
@@ -25,9 +27,7 @@ return [
         'others' => '기타',
     ],
     'analytics' => '분석',
-    'automations' => '자동화',
-    'onboarding' => '시작하기',
-    'onboarding_hint' => '설정 마치기',
+    'repurposes' => 'Repurpose',
     'posts' => [
         'calendar' => '캘린더',
         'all' => '전체',
@@ -41,8 +41,10 @@ return [
     'archive_all' => '모두 보관',
     'no_notifications' => '알림 없음',
     'support' => [
+        'chat' => '채팅 지원',
         'docs' => '문서',
         'referral' => '30% 추천 수익 받기',
         'discord' => 'Discord 커뮤니티',
+        'community' => '커뮤니티',
     ],
 ];

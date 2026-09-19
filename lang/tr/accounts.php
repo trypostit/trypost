@@ -8,6 +8,17 @@ return [
     'description' => 'Bağlı tüm sosyal hesaplarınıza genel bakış',
     'connect_cta' => 'Bağla',
     'connect_another' => 'Başka birini bağla',
+    'actions' => 'Hesap işlemleri',
+    'activate' => 'Aç',
+    'deactivate' => 'Kapat',
+    'active' => 'Aktif',
+    'paused' => 'Kapalı',
+    'accounts_count' => ':count hesap|:count hesap',
+
+    'variants' => [
+        'linkedin-page' => 'Sayfa',
+        'instagram-facebook' => 'Facebook üzerinden',
+    ],
 
     'not_connected' => 'Bağlı değil',
     'connect' => 'Bağla',
@@ -126,6 +137,9 @@ return [
     ],
 
     'flash' => [
+        'activated_resumed_repurposes' => 'Hesap açıldı. :count otomasyon devam ediyor.|Hesap açıldı. :count otomasyon devam ediyor.',
+        'disconnected_paused_repurposes' => 'Hesap bağlantısı kesildi. :count otomasyon duraklatıldı.|Hesap bağlantısı kesildi. :count otomasyon duraklatıldı.',
+        'deactivated_paused_repurposes' => 'Hesap kapatıldı. :count otomasyon duraklatıldı.|Hesap kapatıldı. :count otomasyon duraklatıldı.',
         'disconnected' => 'Hesap bağlantısı başarıyla kesildi!',
         'connected' => 'Hesap başarıyla bağlandı!',
         'session_expired' => 'Oturum süresi doldu. Lütfen tekrar deneyin.',

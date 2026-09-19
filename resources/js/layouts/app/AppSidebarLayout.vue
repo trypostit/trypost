@@ -4,6 +4,7 @@ import { onBeforeUnmount, onMounted } from 'vue';
 
 import AppHeader from '@/components/AppHeader.vue';
 import AppSidebar from '@/components/AppSidebar.vue';
+import HelpMenu from '@/components/HelpMenu.vue';
 import Toast from '@/components/Toast.vue';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { heartbeat as heartbeatRoute } from '@/routes/app/presence';
@@ -76,5 +77,6 @@ onBeforeUnmount(() => {
             </div>
         </SidebarInset>
     </SidebarProvider>
+    <HelpMenu />
     <Toast />
 </template>

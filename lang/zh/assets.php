@@ -26,6 +26,7 @@ return [
     'save_to_assets' => '保存到素材库',
     'saved' => '已保存到你的素材库！',
     'create_post' => '创建帖子',
+    'download' => '下载',
     'add_to_post' => '添加到帖子',
     'search_placeholder' => '搜索媒体…',
 

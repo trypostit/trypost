@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\UserWorkspace\Role;
 use App\Jobs\PublishPost;
 use App\Mcp\Servers\TryPostServer;
@@ -177,6 +178,67 @@ test('publish guard enforces required meta for TikTok and Pinterest', function (
     'pinterest' => ['pinterest', 'board_id', 'posts.form.pinterest.board_required'],
 ]);
 
+test('create post rejects an unknown TikTok privacy level', function () {
+    $tiktok = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::TikTok]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Unknown privacy',
+            'platforms' => [[
+                'social_account_id' => $tiktok->id,
+                'content_type' => ContentType::TikTokVideo->value,
+                'meta' => ['privacy_level' => 'EVERYONE'],
+            ]],
+        ]);
+
+    $response->assertHasErrors();
+});
+
+test('publish post rejects stored TikTok self only branded content', function () {
+    $tiktok = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::TikTok]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    PostPlatform::factory()->tiktok()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $tiktok->id,
+        'enabled' => true,
+        'meta' => [
+            'privacy_level' => PrivacyLevel::SelfOnly->value,
+            'brand_content_toggle' => true,
+        ],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id]);
+
+    $response->assertHasErrors([__('posts.form.tiktok.privacy.private_disabled_branded')]);
+});
+
+test('publish post rejects a stored unknown TikTok privacy level', function () {
+    $tiktok = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::TikTok]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    PostPlatform::factory()->tiktok()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $tiktok->id,
+        'enabled' => true,
+        'meta' => ['privacy_level' => 'EVERYONE'],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id]);
+
+    $response->assertHasErrors([__('posts.form.tiktok.privacy_required')]);
+});
+
 test('attach media from upload accepts a PDF for a LinkedIn post', function () {
     $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
 
@@ -263,7 +325,58 @@ test('publish post rejects a LinkedIn post that mixes a PDF with an image', func
     $response = TryPostServer::actingAs($this->user)
         ->tool(PublishPostTool::class, ['post_id' => $post->id]);
 
-    $response->assertHasErrors(['A PDF document must be the only attachment.']);
+    $response->assertHasErrors(['A PDF must be posted on its own, without other images or videos.']);
+});
+
+test('publish post accepts a Bluesky post whose stored video is a MOV', function () {
+    Queue::fake();
+
+    $bluesky = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Bluesky]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'media' => [
+            ['id' => 'vid-1', 'path' => 'medias/clip.mov', 'url' => 'https://example.com/clip.mov', 'type' => 'video', 'mime_type' => 'video/quicktime', 'original_filename' => 'clip.mov'],
+        ],
+    ]);
+    PostPlatform::factory()->create([
+        'post_id' => $post->id, 'social_account_id' => $bluesky->id,
+        'platform' => Platform::Bluesky, 'content_type' => ContentType::BlueskyPost, 'enabled' => true,
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, [
+            'post_id' => $post->id,
+            'scheduled_at' => '2037-12-31T15:30:00Z',
+        ]);
+
+    $response->assertOk();
+    expect($post->fresh()->status)->toBe(PostStatus::Scheduled);
+});
+
+test('publish post rejects an Instagram Reel whose stored video exceeds 300 MB', function () {
+    $instagram = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Instagram]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'media' => [
+            ['id' => 'vid-1', 'path' => 'medias/reel.mp4', 'url' => 'https://example.com/reel.mp4', 'type' => 'video', 'mime_type' => 'video/mp4', 'original_filename' => 'reel.mp4', 'size' => 900 * 1024 * 1024],
+        ],
+    ]);
+    PostPlatform::factory()->create([
+        'post_id' => $post->id, 'social_account_id' => $instagram->id,
+        'platform' => Platform::Instagram, 'content_type' => ContentType::InstagramReel, 'enabled' => true,
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id]);
+
+    $response->assertHasErrors([trans('posts.form.warnings.video_too_large', ['max' => '300 MB', 'current' => '900.0 MB'])]);
+    expect($post->fresh()->status)->toBe(PostStatus::Draft);
 });
 
 test('publish post succeeds for a Discord platform with a channel', function () {

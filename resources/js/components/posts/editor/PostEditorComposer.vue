@@ -2,6 +2,7 @@
 import {
     IconAlertTriangle,
     IconAlt,
+    IconExternalLink,
     IconFileTypePdf,
     IconGripVertical,
     IconHash,
@@ -26,6 +27,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import date from '@/date';
+import { mediaLimitsDocsUrl } from '@/lib/docs';
 import { classify, isDocument, isImage, isVideo, MediaType } from '@/lib/mediaType';
 import type { MediaItem } from '@/types/media';
 
@@ -326,6 +328,16 @@ const onAltTextSave = (alt: string): void => {
                                             <img :src="getPlatformLogo(iss.platform)" :alt="iss.platform" class="size-3 object-contain" />
                                             <span class="font-medium">{{ getPlatformLabel(iss.platform) }}:</span>
                                             <span class="opacity-80">{{ issueLabel(iss.reason) }}</span>
+                                            <a
+                                                :href="mediaLimitsDocsUrl(iss.platform)"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                class="inline-flex shrink-0 opacity-80 hover:opacity-100"
+                                                :title="$t('posts.edit.compliance.media_limits_docs')"
+                                                :aria-label="$t('posts.edit.compliance.media_limits_docs')"
+                                            >
+                                                <IconExternalLink class="size-3" />
+                                            </a>
                                         </li>
                                     </ul>
                                 </TooltipContent>

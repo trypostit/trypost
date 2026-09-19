@@ -10,12 +10,6 @@ test('media type has correct values', function () {
     expect(Type::Document->value)->toBe('document');
 });
 
-test('media type has labels', function () {
-    expect(Type::Image->label())->toBe('Imagem');
-    expect(Type::Video->label())->toBe('Vídeo');
-    expect(Type::Document->label())->toBe('Documento');
-});
-
 test('media type has allowed mime types', function () {
     expect(Type::Image->allowedMimeTypes())->toContain('image/jpeg', 'image/png');
     expect(Type::Video->allowedMimeTypes())->toContain('video/mp4', 'video/quicktime');
@@ -46,6 +40,8 @@ test('media type resolves from mime', function () {
     expect(Type::fromMime('video/mp4'))->toBe(Type::Video);
     expect(Type::fromMime('application/pdf'))->toBe(Type::Document);
     expect(Type::fromMime('not-a-mime'))->toBeNull();
+    expect(Type::fromMime('image'))->toBeNull();
+    expect(Type::fromMime('video'))->toBeNull();
 });
 
 test('media type document max size in mb is read from config', function () {
@@ -71,6 +67,18 @@ test('classify falls back to the file extension when the mime is missing', funct
     expect(Type::classify(null, null))->toBeNull();
 });
 
+test('extensions outside the upload allow-list still classify but never yield an upload mime', function () {
+    // The Symfony registry knows these, so a stored `clip.3gp` is a video for cap/multipart purposes...
+    expect(Type::classify(null, 'clip.3gp'))->toBe(Type::Video);
+    expect(Type::classify(null, 'clip.flv'))->toBe(Type::Video);
+    expect(Type::classify(null, 'layers.psd'))->toBe(Type::Image);
+    // ...but the upload path only recognises MIMEs from the allow-list, so these get none.
+    expect(Type::mimeTypeFromExtension('3gp'))->toBeNull();
+    expect(Type::mimeTypeFromExtension('flv'))->toBeNull();
+    expect(Type::mimeTypeFromExtension('psd'))->toBeNull();
+    expect(Type::mimeTypeFromExtension('mov'))->toBe('video/quicktime');
+});
+
 test('classify prefers the mime over the extension', function () {
     // A mismatched extension never overrides a present, recognized mime.
     expect(Type::classify('video/mp4', 'thing.png'))->toBe(Type::Video);
@@ -81,6 +89,7 @@ test('classify prefers the mime over the extension', function () {
 test('fromExtension classifies broadly and is case-insensitive', function () {
     expect(Type::fromExtension('JPG'))->toBe(Type::Image);
     expect(Type::fromExtension('webm'))->toBe(Type::Video);
+    // The registry also lists `image/pdf` for .pdf; MIME order must win over case order.
     expect(Type::fromExtension('pdf'))->toBe(Type::Document);
     expect(Type::fromExtension('txt'))->toBeNull();
     expect(Type::fromExtension(null))->toBeNull();
@@ -96,8 +105,29 @@ test('fromExtension covers every legacy image and video extension', function () 
     }
 });
 
+test('mimeTypeFromExtension returns the allow-listed mime, not the registry\'s first guess', function () {
+    // The registry lists application/mp4 before video/mp4 and audio/x-ms-wmv before video/x-ms-wmv.
+    expect(Type::mimeTypeFromExtension('mp4'))->toBe('video/mp4');
+    expect(Type::mimeTypeFromExtension('MOV'))->toBe('video/quicktime');
+    expect(Type::mimeTypeFromExtension('jpg'))->toBe('image/jpeg');
+    expect(Type::mimeTypeFromExtension('pdf'))->toBe('application/pdf');
+
+    // Classifiable but not accepted on upload — no MIME to claim.
+    expect(Type::mimeTypeFromExtension('heic'))->toBeNull();
+    expect(Type::mimeTypeFromExtension('txt'))->toBeNull();
+    expect(Type::mimeTypeFromExtension(null))->toBeNull();
+});
+
 test('isGif only matches the gif mime', function () {
     expect(Type::isGif('image/gif'))->toBeTrue();
     expect(Type::isGif('image/png'))->toBeFalse();
     expect(Type::isGif(null))->toBeFalse();
+});
+
+test('isMov matches quicktime mime or a mov extension', function () {
+    expect(Type::isMov('video/quicktime'))->toBeTrue();
+    expect(Type::isMov('video/mp4', 'clip.mov'))->toBeTrue();
+    expect(Type::isMov('video/mp4', 'clip.MP4'))->toBeFalse();
+    expect(Type::isMov('video/mp4'))->toBeFalse();
+    expect(Type::isMov(null))->toBeFalse();
 });

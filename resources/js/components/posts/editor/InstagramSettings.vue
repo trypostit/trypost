@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { IconAlertTriangle, IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
-import { computed, ref, watch } from 'vue';
+import { IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
+import { computed, ref } from 'vue';
 
+import MediaRulesWarning from '@/components/posts/editor/MediaRulesWarning.vue';
 import { Avatar } from '@/components/ui/avatar';
-import { getMediaValidationWarning } from '@/composables/useMedia';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
-import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
+import { Platform } from '@/types/platform';
 
 interface SocialAccount {
     id: string;
@@ -24,13 +24,11 @@ interface Props {
     media: MediaItem[];
     meta?: Record<string, any>;
     disabled?: boolean;
-    previewOnly?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
     disabled: false,
     meta: () => ({}),
-    previewOnly: false,
 });
 
 const emit = defineEmits<{
@@ -40,24 +38,12 @@ const emit = defineEmits<{
 
 const open = ref(false);
 
-const allVariants = [
+const variants = [
     { value: ContentType.InstagramFeed, labelKey: 'posts.form.instagram.variant.feed' },
     { value: ContentType.InstagramReel, labelKey: 'posts.form.instagram.variant.reel' },
     { value: ContentType.InstagramStory, labelKey: 'posts.form.instagram.variant.story' },
 ] as const;
 
-const variants = computed(() => filterImageCapableVariants(allVariants, props.previewOnly));
-
-watch(
-    () => [props.previewOnly, props.contentType, variants.value] as const,
-    () => {
-        const fallback = fallbackImageCapableVariant(props.contentType, variants.value);
-        if (fallback) {
-            emit('update:contentType', fallback);
-        }
-    },
-    { immediate: true },
-);
 
 const aspectRatios = [
     { value: '1:1', labelKey: 'posts.form.instagram.aspect.square' },
@@ -78,8 +64,6 @@ const pickAspectRatio = (value: string) => {
     if (props.disabled) return;
     emit('update:meta', { ...props.meta, aspect_ratio: value });
 };
-
-const warning = computed(() => getMediaValidationWarning(props.contentType, props.media));
 </script>
 
 <template>
@@ -154,13 +138,7 @@ const warning = computed(() => getMediaValidationWarning(props.contentType, prop
                 </div>
             </div>
 
-            <p
-                v-if="warning && !previewOnly"
-                class="flex items-start gap-2 rounded-lg border-2 border-foreground bg-rose-50 p-2 text-xs font-semibold text-rose-700"
-            >
-                <IconAlertTriangle class="mt-0.5 size-3.5 shrink-0" />
-                {{ $t(`posts.form.warnings.${warning.key}`, warning.params) }}
-            </p>
+            <MediaRulesWarning :content-type="contentType" :media="media" :platform="Platform.Instagram" />
         </div>
     </div>
 </template>

@@ -6,6 +6,17 @@ return [
     'description' => '연결된 모든 소셜 계정 개요',
     'connect_cta' => '연결',
     'connect_another' => '다른 계정 연결',
+    'actions' => '계정 작업',
+    'activate' => '켜기',
+    'deactivate' => '끄기',
+    'active' => '활성',
+    'paused' => '꺼짐',
+    'accounts_count' => '계정 :count개',
+
+    'variants' => [
+        'linkedin-page' => '페이지',
+        'instagram-facebook' => 'Facebook 경유',
+    ],
 
     'not_connected' => '연결 안 됨',
     'connect' => '연결',
@@ -124,6 +135,9 @@ return [
     ],
 
     'flash' => [
+        'activated_resumed_repurposes' => '계정을 켰습니다. 자동화 :count개를 재개했습니다.|계정을 켰습니다. 자동화 :count개를 재개했습니다.',
+        'disconnected_paused_repurposes' => '계정 연결을 해제했습니다. 자동화 :count개를 중단했습니다.|계정 연결을 해제했습니다. 자동화 :count개를 중단했습니다.',
+        'deactivated_paused_repurposes' => '계정을 껐습니다. 자동화 :count개를 중단했습니다.|계정을 껐습니다. 자동화 :count개를 중단했습니다.',
         'disconnected' => '계정 연결이 해제되었습니다!',
         'connected' => '계정이 연결되었습니다!',
         'session_expired' => '세션이 만료되었습니다. 다시 시도해 주세요.',

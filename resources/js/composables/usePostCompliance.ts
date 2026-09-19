@@ -1,15 +1,16 @@
 import { trans } from 'laravel-vue-i18n';
 import { computed, type ComputedRef, type Ref } from 'vue';
 
-
 import { getMediaItemIssue, getMediaValidationWarning } from '@/composables/useMedia';
 import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
+import { mediaLimitsDocsUrl } from '@/lib/docs';
 import { GOOGLE_BUSINESS_EVENT_TOPIC_TYPES } from '@/lib/googleBusiness';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';
+import { isTikTokPrivacyLevel, TikTokPrivacyLevel } from '@/types/tiktok-privacy';
 
 export interface CompliancePostPlatform {
     id: string;
@@ -21,6 +22,14 @@ export interface CompliancePostPlatform {
 
 export interface CompliancePost {
     post_platforms: CompliancePostPlatform[];
+}
+
+// Why a channel can't publish as-is. `docsUrl` points at the network's media
+// limits when the blocker is the attached media; null for editor-side gaps
+// (missing variant, missing text) the docs wouldn't help with.
+export interface PlatformIssue {
+    message: string;
+    docsUrl: string | null;
 }
 
 export const PLATFORM_VARIANTS: Record<string, string[]> = {
@@ -48,15 +57,19 @@ const PLATFORM_META_RULES: Record<string, MetaRule> = {
         const disclosureIncomplete = Boolean(meta.disclose)
             && !meta.brand_organic_toggle
             && !meta.brand_content_toggle;
-        const privacyLevelMissing = !meta.privacy_level;
+        const privacyLevelMissing = !isTikTokPrivacyLevel(meta.privacy_level);
+        const brandedPrivate = meta.privacy_level === TikTokPrivacyLevel.SelfOnly
+            && Boolean(meta.brand_content_toggle);
         let tooltipKey: string | null = null;
         if (disclosureIncomplete) {
             tooltipKey = 'posts.form.tiktok.compliance_incomplete';
+        } else if (brandedPrivate) {
+            tooltipKey = 'posts.form.tiktok.privacy.private_disabled_branded';
         } else if (privacyLevelMissing) {
             tooltipKey = 'posts.form.tiktok.privacy_required';
         }
         return {
-            valid: !disclosureIncomplete && !privacyLevelMissing,
+            valid: !disclosureIncomplete && !privacyLevelMissing && !brandedPrivate,
             tooltipKey,
         };
     },
@@ -93,7 +106,7 @@ const PLATFORM_META_RULES: Record<string, MetaRule> = {
 
 /**
  * Evaluates a platform's publish-time meta requirements. Single source of truth
- * shared by the post editor's compliance gate and the automation Generate node.
+ * for the post editor's compliance gate.
  */
 export const evaluatePlatformMeta = (
     platform: string,
@@ -129,6 +142,7 @@ const COMPLIANCE_KEY_BY_WARNING: Record<string, string> = {
     no_mixed_media: 'no_mixed_media',
     document_not_alone: 'document_not_alone',
     gif_not_allowed: 'no_gifs',
+    mov_not_allowed: 'no_movs',
     image_too_large: 'image_too_large',
     video_too_large: 'video_too_large',
     document_too_large: 'document_too_large',
@@ -218,18 +232,18 @@ export const usePostCompliance = (opts: UsePostComplianceOptions) => {
         return result;
     });
 
-    const platformIssues = computed<Record<string, string>>(() => {
-        const issues: Record<string, string> = {};
+    const platformIssues = computed<Record<string, PlatformIssue>>(() => {
+        const issues: Record<string, PlatformIssue> = {};
 
         for (const pp of post.value.post_platforms) {
             const contentType = platformContentTypes.value[pp.id];
             if (!contentType) {
-                issues[pp.id] = trans('posts.edit.compliance.no_content_type');
+                issues[pp.id] = { message: trans('posts.edit.compliance.no_content_type'), docsUrl: null };
                 continue;
             }
 
             if (CONTENT_TYPES_REQUIRING_TEXT.has(contentType) && content.value.trim() === '') {
-                issues[pp.id] = trans('posts.edit.compliance.requires_text');
+                issues[pp.id] = { message: trans('posts.edit.compliance.requires_text'), docsUrl: null };
                 continue;
             }
 
@@ -239,7 +253,7 @@ export const usePostCompliance = (opts: UsePostComplianceOptions) => {
             const isSelected = selectedPlatformIds.value.includes(pp.id);
             if (!isSelected && firstCompatibleVariant(pp.platform, media.value)) continue;
 
-            issues[pp.id] = reason;
+            issues[pp.id] = { message: reason, docsUrl: mediaLimitsDocsUrl(pp.platform) };
         }
 
         return issues;
@@ -274,7 +288,7 @@ export const usePostCompliance = (opts: UsePostComplianceOptions) => {
 
         const mediaReasons = selectedPlatforms.value
             .filter((pp) => platformIssues.value[pp.id])
-            .map((pp) => `${pp.platform_name ?? pp.platform}: ${platformIssues.value[pp.id]}`);
+            .map((pp) => `${pp.platform_name ?? pp.platform}: ${platformIssues.value[pp.id].message}`);
 
         const lengthReasons = contentLengthOverflows.value.map((overflow) => trans('posts.form.content_exceeds_platform', {
             platform: getPlatformLabel(overflow.platform),

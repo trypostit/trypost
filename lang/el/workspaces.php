@@ -9,6 +9,13 @@ return [
     'current' => 'Τρέχον',
     'connections' => ':count συνδέσεις',
     'posts' => ':count δημοσιεύσεις',
+    'subscription_required' => 'Εγγραφείτε για να δημιουργήσετε περισσότερα workspaces.',
+    'limit_reached' => 'Το πλάνο σας περιλαμβάνει ένα workspace. Κάντε αναβάθμιση για να προσθέσετε περισσότερα.',
+
+    'upgrade_dialog' => [
+        'title' => 'Κάντε αναβάθμιση για περισσότερα workspaces',
+        'description' => 'Το πλάνο σας περιλαμβάνει ένα workspace. Αναβαθμίστε σε Workspaces για απεριόριστα workspaces — ένα ανά brand ή πελάτη.',
+    ],
 
     'create' => [
         'page_title' => 'Δημιουργήστε το workspace σας',

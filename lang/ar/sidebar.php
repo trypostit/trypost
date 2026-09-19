@@ -11,11 +11,13 @@ return [
     'account_settings' => 'الحساب والفوترة',
     'workspace_settings' => 'إعدادات مساحة العمل',
     'log_out' => 'تسجيل الخروج',
+    'help' => 'مساعدة',
     'workspace' => [
         'connections' => 'الاتصالات',
         'signatures' => 'التوقيعات',
         'labels' => 'التسميات',
         'assets' => 'الوسائط',
+        'webhooks' => 'Webhooks',
         'mcp' => 'MCP',
     ],
     'language' => 'اللغة: :name',
@@ -25,9 +27,7 @@ return [
         'others' => 'أخرى',
     ],
     'analytics' => 'التحليلات',
-    'automations' => 'الأتمتة',
-    'onboarding' => 'البدء',
-    'onboarding_hint' => 'أكمل الإعداد',
+    'repurposes' => 'Repurpose',
     'posts' => [
         'calendar' => 'التقويم',
         'all' => 'الكل',
@@ -41,8 +41,10 @@ return [
     'archive_all' => 'أرشفة الكل',
     'no_notifications' => 'لا توجد إشعارات',
     'support' => [
+        'chat' => 'الدعم عبر الدردشة',
         'docs' => 'التوثيق',
         'referral' => 'اربح عمولة إحالة 30%',
         'discord' => 'مجتمع Discord',
+        'community' => 'المجتمع',
     ],
 ];

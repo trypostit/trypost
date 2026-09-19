@@ -56,13 +56,13 @@ test('connect step shows the grid and keeps continue disabled without a social a
 
     $page = visit(route('app.welcome.connect'));
 
-    waitForWelcomeTestId($page, 'welcome-start-checkout');
+    waitForWelcomeTestId($page, 'welcome-connect-continue');
 
     $page->assertRoute('app.welcome.connect')
         ->assertVisible('@welcome-connect-grid')
-        ->assertVisible('@welcome-start-checkout')
-        ->assertDisabled('@welcome-start-checkout')
-        ->assertVisible('@welcome-step-4')
+        ->assertVisible('@welcome-connect-continue')
+        ->assertDisabled('@welcome-connect-continue')
+        ->assertVisible('@welcome-step-connect')
         ->assertNoJavaScriptErrors();
 });
 
@@ -78,11 +78,11 @@ test('connect step enables continue when a social account is connected', functio
 
     $page = visit(route('app.welcome.connect'));
 
-    waitForWelcomeTestId($page, 'welcome-start-checkout');
+    waitForWelcomeTestId($page, 'welcome-connect-continue');
 
     $page->assertRoute('app.welcome.connect')
         ->assertVisible('@welcome-connect-grid')
-        ->assertEnabled('@welcome-start-checkout')
+        ->assertEnabled('@welcome-connect-continue')
         ->assertNoJavaScriptErrors();
 });
 
@@ -95,9 +95,9 @@ test('connect step can go back to referral', function () {
 
     $page = visit(route('app.welcome.connect'));
 
-    waitForWelcomeTestId($page, 'welcome-step-3');
+    waitForWelcomeTestId($page, 'welcome-back');
 
-    $page->click('@welcome-step-3');
+    $page->click('@welcome-back');
 
     waitForWelcomeTestId($page, 'welcome-referral-continue');
 
@@ -116,5 +116,32 @@ test('connect step redirects to persona when prior steps are missing', function 
     $page = visit(route('app.welcome.connect'));
 
     $page->assertRoute('app.welcome.persona')
+        ->assertNoJavaScriptErrors();
+});
+
+test('connect step shows the backend error when the account disappears before submitting', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = welcomeOwnerOnConnectStep();
+    $account = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $user->current_workspace_id,
+    ]);
+
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.welcome.connect'));
+
+    waitForWelcomeTestId($page, 'welcome-connect-continue');
+
+    $page->assertEnabled('@welcome-connect-continue');
+
+    $account->delete();
+
+    $page->click('@welcome-connect-continue');
+
+    waitForWelcomeTestId($page, 'welcome-connect-error');
+
+    $page->assertVisible('@welcome-connect-error')
+        ->assertSee(trans('welcome.connect.required'))
         ->assertNoJavaScriptErrors();
 });

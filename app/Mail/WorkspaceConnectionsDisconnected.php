@@ -24,9 +24,7 @@ class WorkspaceConnectionsDisconnected extends Mailable implements ShouldQueue
     public function __construct(
         public Workspace $workspace,
         public Collection $disconnectedAccounts
-    ) {
-        $this->locale = config('app.locale');
-    }
+    ) {}
 
     public function envelope(): Envelope
     {
@@ -36,7 +34,7 @@ class WorkspaceConnectionsDisconnected extends Mailable implements ShouldQueue
             subject: trans_choice('mail.workspace_connections_disconnected.subject', $count, [
                 'count' => $count,
                 'workspace' => $this->workspace->name,
-            ], $this->locale),
+            ]),
         );
     }
 
@@ -44,24 +42,16 @@ class WorkspaceConnectionsDisconnected extends Mailable implements ShouldQueue
     {
         $count = $this->disconnectedAccounts->count();
         $workspaceName = $this->workspace->name;
-        $locale = $this->locale;
 
         return new Content(
             view: 'mail.workspace-connections-disconnected',
             with: [
-                'title' => __('mail.workspace_connections_disconnected.title', [], $locale),
+                'title' => __('mail.workspace_connections_disconnected.title'),
                 'previewText' => trans_choice('mail.workspace_connections_disconnected.subject', $count, [
                     'count' => $count,
                     'workspace' => $workspaceName,
-                ], $locale),
-                'intro' => __('mail.workspace_connections_disconnected.intro', ['workspace' => $workspaceName], $locale),
-                'reasonsTitle' => __('mail.workspace_connections_disconnected.reasons_title', [], $locale),
-                'reasonExpired' => __('mail.workspace_connections_disconnected.reason_expired', [], $locale),
-                'reasonRevoked' => __('mail.workspace_connections_disconnected.reason_revoked', [], $locale),
-                'reasonChanged' => __('mail.workspace_connections_disconnected.reason_changed', [], $locale),
-                'reconnectCta' => __('mail.workspace_connections_disconnected.reconnect_cta', [], $locale),
-                'buttonText' => __('mail.workspace_connections_disconnected.button', [], $locale),
-                'workspace' => $this->workspace,
+                ]),
+                'workspaceName' => $workspaceName,
                 'disconnectedAccounts' => $this->disconnectedAccounts,
                 'url' => route('app.accounts'),
             ],

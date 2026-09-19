@@ -15,6 +15,7 @@ use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -286,7 +287,7 @@ abstract class AbstractLinkedInPublisher
         try {
             $this->downloadToTempFile($mediaItem->url, $tempFile);
 
-            $detectedMime = mime_content_type($tempFile) ?: '';
+            $detectedMime = File::mimeType($tempFile) ?: '';
             if (MediaType::classify($detectedMime) === MediaType::Image && ! MediaType::isGif($detectedMime)) {
                 $optimizedPath = app(MediaOptimizer::class)->optimizeImage($tempFile, $this->platform());
                 @unlink($tempFile);

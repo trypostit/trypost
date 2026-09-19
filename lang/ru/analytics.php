@@ -40,6 +40,7 @@ return [
         'posts_reach' => 'Охват постов',
         'quotes' => 'Цитаты',
         'reach' => 'Охват',
+        'reactions' => 'Реакции',
         'reblogs' => 'Реблоги',
         'recent_comments' => 'Недавние комментарии',
         'recent_likes' => 'Недавние лайки',

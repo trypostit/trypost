@@ -5,7 +5,7 @@ import {
     toMediaRules,
     type MediaRules,
 } from '@/lib/contentTypeMediaRules';
-import { fromMimeType, MediaType } from '@/lib/mediaType';
+import { classifyBy, MediaType } from '@/lib/mediaType';
 
 export type { MediaRules };
 
@@ -20,6 +20,7 @@ const DEFAULT_RULES: MediaRules = {
     acceptVideos: true,
     requiresMedia: false,
     acceptsGif: false,
+    acceptsMov: true,
 };
 
 export const getMediaRulesForContentType = (contentType: string): MediaRules => {
@@ -55,7 +56,8 @@ export const useMediaRules = (contentType: Ref<string> | ComputedRef<string>) =>
 
     const isValidFileType = computed(() => {
         return (file: File): boolean => {
-            const type = fromMimeType(file.type);
+            // Windows reports an empty `type` for .mov without QuickTime; the server classifies by extension then, so do the same.
+            const type = classifyBy(file.type, file.name);
 
             if (type === MediaType.Image && !rules.value.acceptImages) {
                 return false;

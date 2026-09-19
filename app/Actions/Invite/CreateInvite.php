@@ -14,15 +14,19 @@ class CreateInvite
 {
     public static function execute(Workspace $workspace, array $data): Invite
     {
+        $inviter = auth()->user();
+
         $invite = Invite::create([
             'account_id' => $workspace->account_id,
-            'invited_by' => auth()->id(),
+            'invited_by' => $inviter->id,
             'email' => data_get($data, 'email'),
             'role' => WorkspaceRole::from(data_get($data, 'role')),
             'workspaces' => [$workspace->id],
         ]);
 
-        Mail::to($invite->email)->send(new WorkspaceInviteMail($invite));
+        Mail::to($invite->email)
+            ->locale($inviter->preferredLocale())
+            ->send(new WorkspaceInviteMail($invite));
 
         return $invite;
     }

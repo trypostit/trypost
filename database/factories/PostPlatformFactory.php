@@ -7,6 +7,7 @@ namespace Database\Factories;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -111,7 +112,7 @@ class PostPlatformFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::TikTok,
             'content_type' => ContentType::TikTokVideo,
-            'meta' => ['privacy_level' => 'SELF_ONLY'],
+            'meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value],
         ]);
     }
 

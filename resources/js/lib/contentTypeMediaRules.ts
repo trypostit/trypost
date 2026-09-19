@@ -9,6 +9,7 @@ export type MediaRules = {
     acceptDocuments?: boolean;
     requiresMedia: boolean;
     acceptsGif: boolean;
+    acceptsMov: boolean;
     forbidsMixedMedia?: boolean;
     maxImageBytes?: number;
     maxVideoBytes?: number;
@@ -30,6 +31,7 @@ export type ContentTypeMediaRule = {
     accept_documents: boolean;
     requires_media: boolean;
     accepts_gif: boolean;
+    accepts_mov: boolean;
     forbids_mixed_media: boolean;
     max_image_bytes: number | null;
     max_video_bytes: number | null;
@@ -56,54 +58,22 @@ export const mediaRuleFor = (contentType: string): ContentTypeMediaRule | undefi
     return cachedRules?.[contentType];
 };
 
-export const toMediaRules = (rule: ContentTypeMediaRule): MediaRules => {
-    const mapped: MediaRules = {
-        maxFiles: rule.max_files,
-        acceptImages: rule.accept_images,
-        acceptVideos: rule.accept_videos,
-        requiresMedia: rule.requires_media,
-        acceptsGif: rule.accepts_gif,
-    };
-
-    if (rule.min_files !== null) {
-        mapped.minFiles = rule.min_files;
-    }
-
-    if (rule.accept_documents) {
-        mapped.acceptDocuments = true;
-    }
-
-    if (rule.forbids_mixed_media) {
-        mapped.forbidsMixedMedia = true;
-    }
-
-    if (rule.max_image_bytes !== null) {
-        mapped.maxImageBytes = rule.max_image_bytes;
-    }
-
-    if (rule.max_video_bytes !== null) {
-        mapped.maxVideoBytes = rule.max_video_bytes;
-    }
-
-    if (rule.max_document_bytes !== null) {
-        mapped.maxDocumentBytes = rule.max_document_bytes;
-    }
-
-    if (rule.max_video_duration_sec !== null) {
-        mapped.maxVideoDurationSec = rule.max_video_duration_sec;
-    }
-
-    if (rule.aspect_ratio_min !== null) {
-        mapped.aspectRatioMin = rule.aspect_ratio_min;
-    }
-
-    if (rule.aspect_ratio_max !== null) {
-        mapped.aspectRatioMax = rule.aspect_ratio_max;
-    }
-
-    if (rule.auto_fits_image) {
-        mapped.autoFitsImage = true;
-    }
-
-    return mapped;
-};
+/** A null cap from the server is simply no cap: every consumer reads the optional fields with `??` / `&&`. */
+export const toMediaRules = (rule: ContentTypeMediaRule): MediaRules => ({
+    maxFiles: rule.max_files,
+    minFiles: rule.min_files ?? undefined,
+    acceptImages: rule.accept_images,
+    acceptVideos: rule.accept_videos,
+    acceptDocuments: rule.accept_documents,
+    requiresMedia: rule.requires_media,
+    acceptsGif: rule.accepts_gif,
+    acceptsMov: rule.accepts_mov,
+    forbidsMixedMedia: rule.forbids_mixed_media,
+    maxImageBytes: rule.max_image_bytes ?? undefined,
+    maxVideoBytes: rule.max_video_bytes ?? undefined,
+    maxDocumentBytes: rule.max_document_bytes ?? undefined,
+    maxVideoDurationSec: rule.max_video_duration_sec ?? undefined,
+    aspectRatioMin: rule.aspect_ratio_min ?? undefined,
+    aspectRatioMax: rule.aspect_ratio_max ?? undefined,
+    autoFitsImage: rule.auto_fits_image,
+});

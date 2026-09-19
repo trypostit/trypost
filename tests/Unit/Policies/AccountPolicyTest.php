@@ -20,21 +20,63 @@ beforeEach(function () {
 });
 
 test('swapPlan allows the account owner', function () {
-    $response = $this->policy->swapPlan($this->owner, $this->account);
+    subscribeAccount($this->account);
+
+    $response = $this->policy->swapPlan(
+        $this->owner,
+        $this->account->fresh(),
+        Plan::where('slug', Slug::Workspaces)->firstOrFail(),
+    );
 
     expect($response->allowed())->toBeTrue();
 });
 
 test('swapPlan denies a non-owner', function () {
+    subscribeAccount($this->account);
     $member = User::factory()->create(['account_id' => $this->account->id]);
 
-    $response = $this->policy->swapPlan($member, $this->account);
+    $response = $this->policy->swapPlan(
+        $member,
+        $this->account->fresh(),
+        Plan::where('slug', Slug::Workspaces)->firstOrFail(),
+    );
 
     expect($response->denied())->toBeTrue();
     expect($response->message())->toBe(__('billing.flash.cannot_manage'));
 });
 
-test('useAi allows when subscribed and credits remain', function () {
+test('swapPlan denies when the account is not subscribed', function () {
+    $response = $this->policy->swapPlan(
+        $this->owner,
+        $this->account->fresh(),
+        Plan::where('slug', Slug::Workspaces)->firstOrFail(),
+    );
+
+    expect($response->denied())->toBeTrue();
+    expect($response->message())->toBe(__('billing.flash.subscription_required'));
+});
+
+test('swapPlan denies when the account holds more workspaces than the target allows', function () {
+    subscribeAccount($this->account);
+    Workspace::factory()->count(2)->create([
+        'account_id' => $this->account->id,
+        'user_id' => $this->owner->id,
+    ]);
+
+    $response = $this->policy->swapPlan(
+        $this->owner,
+        $this->account->fresh(),
+        Plan::where('slug', Slug::Socials)->firstOrFail(),
+    );
+
+    expect($response->denied())->toBeTrue();
+    expect($response->message())->toBe(__('billing.flash.too_many_workspaces', [
+        'count' => 2,
+        'limit' => 1,
+    ]));
+});
+
+test('useAi allows when subscribed', function () {
     config()->set('trypost.self_hosted', false);
     Workspace::factory()->create([
         'account_id' => $this->account->id,
@@ -60,7 +102,7 @@ test('useAi denies when there is no active subscription', function () {
     expect($response->message())->toBe(__('billing.flash.subscription_required'));
 });
 
-test('useAi denies when monthly credits are exhausted', function () {
+test('useAi allows a subscribed account regardless of recorded AI usage', function () {
     config()->set('trypost.self_hosted', false);
     $workspace = Workspace::factory()->create([
         'account_id' => $this->account->id,
@@ -68,17 +110,14 @@ test('useAi denies when monthly credits are exhausted', function () {
     ]);
     subscribeAccount($this->account);
 
-    AiUsageLog::factory()->text(credits: 2500)->create([
+    AiUsageLog::factory()->text(credits: 999999)->create([
         'account_id' => $this->account->id,
         'workspace_id' => $workspace->id,
     ]);
 
     $response = $this->policy->useAi($this->owner, $this->account->fresh());
 
-    expect($response->denied())->toBeTrue();
-    expect($response->message())->toBe(__('billing.flash.credits_exhausted', [
-        'limit' => '2500',
-    ]));
+    expect($response->allowed())->toBeTrue();
 });
 
 test('useAi always allows when self-hosted', function () {

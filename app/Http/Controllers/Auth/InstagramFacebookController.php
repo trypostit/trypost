@@ -65,6 +65,7 @@ class InstagramFacebookController extends MetaController
             ->usingGraphVersion($this->graphVersion())
             ->setScopes($this->scopes)
             ->redirectUrl(route('app.social.instagram-facebook.callback'))
+            ->reRequest()
             ->redirect()
             ->getTargetUrl();
 

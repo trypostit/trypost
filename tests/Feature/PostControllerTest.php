@@ -1127,6 +1127,133 @@ test('platform metrics dispatches X analytics for X platform', function () {
     $response->assertJsonFragment(['label' => 'Likes', 'value' => 42]);
 });
 
+test('platform metrics dispatches TikTok analytics for TikTok platform', function () {
+    $tiktokAccount = SocialAccount::factory()->tiktok()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => 'tiktoker',
+        'token_expires_at' => now()->addDays(1),
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $pp = PostPlatform::factory()->tiktok()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $tiktokAccount->id,
+        'platform' => Platform::TikTok,
+        'status' => Status::Published,
+        'platform_post_id' => '7685359243088103444',
+    ]);
+
+    $api = config('trypost.platforms.tiktok.api');
+
+    Http::fake([
+        $api.'/video/query/*' => Http::response([
+            'data' => [
+                'videos' => [[
+                    'id' => '7685359243088103444',
+                    'view_count' => 220,
+                    'like_count' => 11,
+                    'comment_count' => 2,
+                    'share_count' => 1,
+                ]],
+            ],
+            'error' => ['code' => 'ok'],
+        ]),
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]));
+
+    $response->assertOk();
+    $response->assertJsonFragment(['label' => 'Views', 'value' => 220]);
+    $response->assertJsonFragment(['label' => 'Likes', 'value' => 11]);
+});
+
+test('platform metrics dispatches LinkedIn analytics for LinkedIn platform', function () {
+    $linkedinAccount = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addDay(),
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $pp = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $linkedinAccount->id,
+        'platform' => Platform::LinkedIn,
+        'content_type' => ContentType::LinkedInPost,
+        'status' => Status::Published,
+        'platform_post_id' => 'urn:li:share:7503082467755646976',
+    ]);
+
+    $api = config('trypost.platforms.linkedin.api');
+
+    Http::fake([
+        "{$api}/v2/socialActions/*" => Http::response([
+            'likesSummary' => ['totalLikes' => 1],
+            'commentsSummary' => ['aggregatedTotalComments' => 0],
+        ], 200),
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]));
+
+    $response->assertOk();
+    $response->assertJsonFragment(['label' => 'Likes', 'value' => 1]);
+    $response->assertJsonFragment(['label' => 'Comments', 'value' => 0]);
+});
+
+test('platform metrics dispatches LinkedIn Page analytics for LinkedIn Page platform', function () {
+    $pageAccount = SocialAccount::factory()->linkedinPage()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addDay(),
+        'platform_user_id' => '99920311',
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $pp = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $pageAccount->id,
+        'platform' => Platform::LinkedInPage,
+        'content_type' => ContentType::LinkedInPagePost,
+        'status' => Status::Published,
+        'platform_post_id' => 'urn:li:ugcPost:7504988143797075969',
+    ]);
+
+    $api = config('trypost.platforms.linkedin-page.api');
+
+    Http::fake([
+        "{$api}/rest/organizationalEntityShareStatistics*" => Http::response([
+            'elements' => [[
+                'totalShareStatistics' => [
+                    'impressionCount' => 99,
+                    'clickCount' => 14,
+                    'likeCount' => 0,
+                    'commentCount' => 0,
+                    'shareCount' => 0,
+                ],
+            ]],
+        ], 200),
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]));
+
+    $response->assertOk();
+    $response->assertJsonFragment(['label' => 'Impressions', 'value' => 99]);
+    $response->assertJsonFragment(['label' => 'Clicks', 'value' => 14]);
+});
+
 test('show page renders for non-editable posts', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -1149,6 +1276,33 @@ test('show page renders for non-editable posts', function () {
         ->component('posts/Show', false)
         ->has('post.platforms', 1)
     );
+});
+
+test('show page exposes the content type of each platform', function () {
+    $facebookAccount = SocialAccount::factory()->facebook()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Published,
+    ]);
+
+    PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $facebookAccount->id,
+        'platform' => Platform::Facebook,
+        'content_type' => ContentType::FacebookReel,
+        'enabled' => true,
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.show', $post))
+        ->assertInertia(fn ($page) => $page
+            ->component('posts/Show', false)
+            ->where('post.platforms.0.content_type', ContentType::FacebookReel->value)
+        );
 });
 
 test('show page redirects editable posts to edit', function () {

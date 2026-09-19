@@ -56,4 +56,5 @@ test('agent can request URL, client uploads, agent attaches to post', function (
         ->assertOk();
 
     expect($this->post->fresh()->media)->toHaveCount(1);
+    expect(data_get($this->post->fresh()->media, '0.size'))->toBeInt()->toBeGreaterThan(0);
 });

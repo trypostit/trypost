@@ -73,12 +73,22 @@ const showsFacebook = () => props.methods.includes(Platform.InstagramFacebook);
                         <IconBrandInstagram class="size-5" />
                     </span>
                     <span class="min-w-0 flex-1">
-                        <span class="block text-sm font-semibold text-foreground">{{
-                            $t('accounts.instagram_connect.standalone_title')
-                        }}</span>
-                        <span class="mt-0.5 block text-xs font-normal text-muted-foreground">{{
-                            $t('accounts.instagram_connect.standalone_description')
-                        }}</span>
+                        <span
+                            class="block text-sm font-semibold text-foreground"
+                            >{{
+                                $t(
+                                    'accounts.instagram_connect.standalone_title',
+                                )
+                            }}</span
+                        >
+                        <span
+                            class="mt-0.5 block text-xs font-normal text-muted-foreground"
+                            >{{
+                                $t(
+                                    'accounts.instagram_connect.standalone_description',
+                                )
+                            }}</span
+                        >
                     </span>
                 </Button>
 
@@ -95,12 +105,20 @@ const showsFacebook = () => props.methods.includes(Platform.InstagramFacebook);
                         <IconBrandFacebook class="size-5" />
                     </span>
                     <span class="min-w-0 flex-1">
-                        <span class="block text-sm font-semibold text-foreground">{{
-                            $t('accounts.instagram_connect.facebook_title')
-                        }}</span>
-                        <span class="mt-0.5 block text-xs font-normal text-muted-foreground">{{
-                            $t('accounts.instagram_connect.facebook_description')
-                        }}</span>
+                        <span
+                            class="block text-sm font-semibold text-foreground"
+                            >{{
+                                $t('accounts.instagram_connect.facebook_title')
+                            }}</span
+                        >
+                        <span
+                            class="mt-0.5 block text-xs font-normal text-muted-foreground"
+                            >{{
+                                $t(
+                                    'accounts.instagram_connect.facebook_description',
+                                )
+                            }}</span
+                        >
                     </span>
                 </Button>
             </div>

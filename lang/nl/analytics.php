@@ -40,6 +40,7 @@ return [
         'posts_reach' => 'Postbereik',
         'quotes' => 'Citaten',
         'reach' => 'Bereik',
+        'reactions' => 'Reacties',
         'reblogs' => 'Reblogs',
         'recent_comments' => 'Recente reacties',
         'recent_likes' => 'Recente likes',

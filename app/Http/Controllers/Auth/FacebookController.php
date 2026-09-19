@@ -51,6 +51,7 @@ class FacebookController extends MetaController
             Socialite::driver($this->driver)
                 ->usingGraphVersion($this->graphVersion())
                 ->setScopes($this->scopes)
+                ->reRequest()
                 ->redirect()
                 ->getTargetUrl()
         );

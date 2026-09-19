@@ -40,6 +40,7 @@ return [
         'posts_reach' => '帖子触达',
         'quotes' => '引用',
         'reach' => '触达',
+        'reactions' => '互动表情',
         'reblogs' => '转发',
         'recent_comments' => '近期评论',
         'recent_likes' => '近期点赞',

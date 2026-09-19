@@ -11,8 +11,20 @@ return [
     'subscription_required_owner' => 'Il proprietario del tuo account è :name.',
     'subscription_required_auto' => 'Questa pagina si aggiorna automaticamente: non serve ricaricarla.',
     'progress' => 'Progresso di benvenuto',
-    'go_to_step' => 'Vai al passaggio :step',
-    'step_current' => 'Passaggio :step (attuale)',
+    'step_of' => 'Passaggio :step di :total',
+    'back' => 'Indietro',
+    'steps' => [
+        'persona' => 'Su di te',
+        'goals' => 'I tuoi obiettivi',
+        'referral_source' => 'Come ci hai trovato',
+        'connect' => 'Social network',
+        'plan' => 'Piano',
+    ],
+    'preview' => [
+        'heading' => 'Il tuo workspace sta prendendo forma.',
+        'pending' => 'Non ancora scelto',
+        'networks_empty' => 'Nessun social connesso per ora',
+    ],
     'personas' => [
         'creator' => 'Creatore di contenuti',
         'freelancer' => 'Freelance',
@@ -29,7 +41,7 @@ return [
     'goals' => [
         'save_time' => 'Risparmiare tempo pubblicando ovunque in una volta',
         'ai_content' => 'Generare post con l\'IA di TryPost',
-        'use_mcp' => 'Creare post da Claude, ChatGPT o Cursor',
+        'use_mcp' => 'Creare post da Claude, ChatGPT, ecc.',
         'plan_calendar' => 'Pianificare i miei post su un calendario',
         'stay_on_brand' => 'Mantenere ogni post in linea con il brand',
         'grow_audience' => 'Far crescere il mio pubblico e il coinvolgimento',
@@ -38,6 +50,8 @@ return [
         'just_exploring' => 'Sto solo dando un\'occhiata',
         'other' => 'Qualcos\'altro',
     ],
+    'plan_title' => 'Scegli il tuo piano',
+    'plan_description' => 'I due piani hanno le stesse funzionalità. Cambia solo il numero di workspace, e puoi cambiare piano quando vuoi.',
     'referral_source_title' => 'Come ci hai trovato?',
     'referral_source_description' => 'Questo ci aiuta a capire come le persone scoprono TryPost.',
     'referral_source' => [

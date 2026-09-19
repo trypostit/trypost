@@ -15,9 +15,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
-import { fallbackImageCapableVariant, filterImageCapableVariants } from '@/lib/aiGenerateVariants';
 import { ContentType } from '@/types/content-type';
+import {
+    isTikTokPrivacyLevel,
+    TikTokPrivacyLevel,
+    tiktokPrivacyLabelKey,
+    type TikTokPrivacyLevelValue,
+} from '@/types/tiktok-privacy';
 
 interface SocialAccount {
     id: string;
@@ -32,7 +38,7 @@ interface CreatorInfo {
     creator_nickname: string | null;
     creator_username: string | null;
     creator_avatar_url: string | null;
-    privacy_level_options: string[];
+    privacy_level_options: TikTokPrivacyLevelValue[];
     comment_disabled: boolean;
     duet_disabled: boolean;
     stitch_disabled: boolean;
@@ -48,7 +54,6 @@ interface Props {
     contentTypeError?: string;
     meta: Record<string, any>;
     disabled?: boolean;
-    previewOnly?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -56,7 +61,6 @@ const props = withDefaults(defineProps<Props>(), {
     videoDurationSec: null,
     contentTypeError: undefined,
     disabled: false,
-    previewOnly: false,
 });
 
 const emit = defineEmits<{
@@ -64,23 +68,11 @@ const emit = defineEmits<{
     'update:contentType': [value: string];
 }>();
 
-const allVariants = [
+const variants = [
     { value: ContentType.TikTokVideo, labelKey: 'posts.form.tiktok.variant.video' },
     { value: ContentType.TikTokPhoto, labelKey: 'posts.form.tiktok.variant.photo' },
 ] as const;
 
-const variants = computed(() => filterImageCapableVariants(allVariants, props.previewOnly));
-
-watch(
-    () => [props.previewOnly, props.contentType, variants.value] as const,
-    () => {
-        const fallback = fallbackImageCapableVariant(props.contentType, variants.value);
-        if (fallback) {
-            emit('update:contentType', fallback);
-        }
-    },
-    { immediate: true },
-);
 
 const pickVariant = (value: string) => {
     if (props.disabled) return;
@@ -88,6 +80,15 @@ const pickVariant = (value: string) => {
 };
 
 const open = ref(false);
+
+const errors = usePageErrors();
+const privacyError = computed<string | undefined>(() => {
+    if (isTikTokPrivacyLevel(props.meta?.privacy_level)) {
+        return undefined;
+    }
+
+    return Object.entries(errors.value).find(([key]) => key.endsWith('.meta.privacy_level'))?.[1];
+});
 
 const updateMeta = (patch: Record<string, any>) => {
     emit('update:meta', { ...props.meta, ...patch });
@@ -146,18 +147,17 @@ const brandContentToggle = computed({
 });
 
 // Prefer the creator_info API response; fall back to the static list from the Platform enum.
-const allPrivacyOptions = computed(() => {
-    const fromApi = props.creatorInfo?.privacy_level_options ?? [];
-    return fromApi.length > 0 ? fromApi : props.publishConfig?.privacyLevelOptions ?? [];
+// Every option is rendered. SelfOnly is shown but disabled when Branded Content is
+// checked (TikTok UX Guideline Point 3b — must show interaction, not hide it).
+const privacyOptions = computed<TikTokPrivacyLevelValue[]>(() => {
+    const fromApi = (props.creatorInfo?.privacy_level_options ?? []).filter(isTikTokPrivacyLevel);
+    const fallback = (props.publishConfig?.privacyLevelOptions ?? []).filter(isTikTokPrivacyLevel);
+
+    return fromApi.length > 0 ? fromApi : fallback;
 });
 
-// Render every option creator_info returns. SELF_ONLY is shown but disabled when
-// Branded Content is checked (TikTok UX Guideline Point 3b — must show interaction,
-// not hide it).
-const privacyOptions = computed(() => allPrivacyOptions.value);
-
-const isSelfOnlyDisabled = (option: string): boolean =>
-    option === 'SELF_ONLY' && brandContentToggle.value;
+const isSelfOnlyDisabled = (option: TikTokPrivacyLevelValue): boolean =>
+    option === TikTokPrivacyLevel.SelfOnly && brandContentToggle.value;
 
 const commentDisabled = computed(() => Boolean(props.creatorInfo?.comment_disabled));
 const duetDisabled = computed(() => Boolean(props.creatorInfo?.duet_disabled));
@@ -176,13 +176,6 @@ const exceedsMaxDuration = computed(() => {
     return props.videoDurationSec > maxDurationSec.value;
 });
 
-const privacyLabelKey: Record<string, string> = {
-    PUBLIC_TO_EVERYONE: 'posts.form.tiktok.privacy.public',
-    MUTUAL_FOLLOW_FRIENDS: 'posts.form.tiktok.privacy.friends',
-    FOLLOWER_OF_CREATOR: 'posts.form.tiktok.privacy.followers',
-    SELF_ONLY: 'posts.form.tiktok.privacy.private',
-};
-
 const hasAnyBrandToggle = computed(() => brandOrganicToggle.value || brandContentToggle.value);
 
 // Label required by TikTok: "Paid partnership" when branded content (with or without organic),
@@ -195,7 +188,7 @@ const promotionalTitleKey = computed(() =>
 // Surface a toast so the user understands why the field reset (TikTok UX Guideline Point 3b
 // requires informing the user when an auto-switch happens).
 watch(brandContentToggle, (value) => {
-    if (value && privacyLevel.value === 'SELF_ONLY') {
+    if (value && privacyLevel.value === TikTokPrivacyLevel.SelfOnly) {
         privacyLevel.value = '';
         toast.warning(trans('posts.form.tiktok.branded_cleared_private'));
     }
@@ -275,7 +268,7 @@ watch(
             <div class="space-y-2">
                 <Label class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t("posts.form.tiktok.privacy_level") }}</Label>
                 <Select v-model="privacyLevel" :disabled="props.disabled">
-                    <SelectTrigger class="w-full">
+                    <SelectTrigger class="w-full" :aria-invalid="privacyError ? true : undefined">
                         <SelectValue :placeholder="$t('posts.form.tiktok.privacy_placeholder')" />
                     </SelectTrigger>
                     <SelectContent>
@@ -286,10 +279,11 @@ watch(
                             :disabled="isSelfOnlyDisabled(option)"
                             :title="isSelfOnlyDisabled(option) ? $t('posts.form.tiktok.privacy.private_disabled_branded') : undefined"
                         >
-                            {{ $t(privacyLabelKey[option] ?? option) }}
+                            {{ $t(tiktokPrivacyLabelKey[option]) }}
                         </SelectItem>
                     </SelectContent>
                 </Select>
+                <InputError :message="privacyError" />
                 <p class="text-xs font-medium text-foreground/60">{{ $t("posts.form.tiktok.privacy_hint") }}</p>
                 <p
                     v-if="brandContentToggle"
@@ -301,7 +295,7 @@ watch(
             </div>
 
             <!-- Max duration warning -->
-            <p v-if="isVideoPost && exceedsMaxDuration && !previewOnly" class="flex items-start gap-2 rounded-lg border-2 border-foreground bg-rose-50 p-2 text-xs font-semibold text-rose-700">
+            <p v-if="isVideoPost && exceedsMaxDuration" class="flex items-start gap-2 rounded-lg border-2 border-foreground bg-rose-50 p-2 text-xs font-semibold text-rose-700">
                 <IconAlertTriangle class="mt-0.5 size-3.5 shrink-0" />
                 {{ $t('posts.form.tiktok.max_duration_exceeded', { duration: String(videoDurationSec ?? 0), max: String(maxDurationSec ?? 0) }) }}
             </p>

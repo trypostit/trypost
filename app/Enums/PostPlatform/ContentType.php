@@ -188,8 +188,9 @@ enum ContentType: string
 
     /**
      * Maximum video duration in seconds for this content type, when the
-     * platform publishes a hard cap via API. Null when unlimited, unknown,
-     * or enforced dynamically (e.g. TikTok creator_info).
+     * platform publishes a hard cap via API. Null when unlimited or unknown.
+     * TikTok's `creator_info` may lower the 10 min ceiling per account; the
+     * editor reads it per account and TikTok rejects longer uploads itself.
      *
      * Single source of truth for web (via Inertia shared props), REST API,
      * and MCP content-type listings.
@@ -206,9 +207,10 @@ enum ContentType: string
             self::LinkedInPost, self::LinkedInPagePost => 10 * 60,
             self::YouTubeShort => 3 * 60,
             self::PinterestVideoPin => 15 * 60,
-            self::XPost => 140,
+            self::XPost => 20 * 60,
             self::ThreadsPost => 5 * 60,
-            self::BlueskyPost => 60,
+            self::BlueskyPost => 10 * 60,
+            self::TikTokVideo => 10 * 60,
             default => null,
         };
     }
@@ -238,9 +240,23 @@ enum ContentType: string
     }
 
     /**
+     * Every network we publish to accepts QuickTime/MOV. Bluesky's stored
+     * embed lexicon is `video/mp4`, but its video service accepts MOV
+     * (`video/quicktime`) and transcodes it — same list as the official app.
+     */
+    public function acceptsMov(): bool
+    {
+        return true;
+    }
+
+    /**
      * Per-type image size cap in bytes, capped at the global upload hard limit
      * (trypost.media.max_size_mb.image). Null when images are not accepted or
      * the platform has no tighter editor-side limit than that hard cap.
+     * Telegram is the URL-publish limit (5 MB), not the multipart one.
+     * Bluesky's blob limit is 2 MB, but BlueskyPublisher re-encodes every
+     * non-GIF image under it, so capping the original here would only block
+     * posts that publish fine.
      */
     public function maxImageBytes(): ?int
     {
@@ -251,7 +267,10 @@ enum ContentType: string
             self::PinterestPin, self::PinterestCarousel => self::bytesFromMb(20),
             self::XPost => self::bytesFromMb(5),
             self::ThreadsPost => self::bytesFromMb(8),
+            self::TikTokPhoto => self::bytesFromMb(20),
             self::MastodonPost => self::bytesFromMb(10),
+            self::DiscordMessage => self::bytesFromMb(20),
+            self::TelegramPost => self::bytesFromMb(5),
             default => null,
         };
 
@@ -262,21 +281,26 @@ enum ContentType: string
      * Per-type video size cap in bytes, capped at the global upload hard limit
      * (trypost.media.max_size_mb.video). Null when videos are not accepted or
      * the platform has no tighter editor-side limit than that hard cap.
+     * X is the `tweet_video` default entitlement (Premium allows more);
+     * Telegram is the URL-publish limit (20 MB), not the multipart one.
      */
     public function maxVideoBytes(): ?int
     {
         $bytes = match ($this) {
             self::InstagramFeed, self::InstagramStory => self::bytesFromMb(100),
-            self::InstagramReel => self::bytesFromGb(1),
+            self::InstagramReel => self::bytesFromMb(300),
             self::FacebookPost => self::bytesFromGb(10),
             self::FacebookReel, self::FacebookStory => self::bytesFromGb(1),
             self::LinkedInPost, self::LinkedInPagePost => self::bytesFromGb(5),
             self::YouTubeShort => self::bytesFromGb(256),
             self::PinterestVideoPin => self::bytesFromGb(2),
-            self::XPost => self::bytesFromMb(512),
+            self::XPost => self::bytesFromGb(8),
             self::ThreadsPost => self::bytesFromGb(1),
-            self::BlueskyPost => self::bytesFromMb(100),
+            self::BlueskyPost => self::bytesFromDecimalMb(300),
+            self::TikTokVideo => self::bytesFromGb(4),
             self::MastodonPost => self::bytesFromMb(40),
+            self::DiscordMessage => self::bytesFromMb(20),
+            self::TelegramPost => self::bytesFromMb(20),
             default => null,
         };
 
@@ -333,6 +357,7 @@ enum ContentType: string
      *     accept_documents: bool,
      *     requires_media: bool,
      *     accepts_gif: bool,
+     *     accepts_mov: bool,
      *     forbids_mixed_media: bool,
      *     max_image_bytes: int|null,
      *     max_video_bytes: int|null,
@@ -356,6 +381,7 @@ enum ContentType: string
             'accept_documents' => $this->supportsDocument(),
             'requires_media' => $this->requiresMedia(),
             'accepts_gif' => $this->acceptsGif(),
+            'accepts_mov' => $this->acceptsMov(),
             'forbids_mixed_media' => ! $this->supportsMixedMedia(),
             'max_image_bytes' => $this->maxImageBytes(),
             'max_video_bytes' => $this->maxVideoBytes(),
@@ -382,6 +408,7 @@ enum ContentType: string
      *     accept_videos: bool,
      *     accept_documents: bool,
      *     accepts_gif: bool,
+     *     accepts_mov: bool,
      *     forbids_mixed_media: bool,
      *     max_video_duration_sec: int|null,
      *     max_image_bytes: int|null,
@@ -402,6 +429,7 @@ enum ContentType: string
             'accept_videos' => $this->supportsVideo(),
             'accept_documents' => $this->supportsDocument(),
             'accepts_gif' => $this->acceptsGif(),
+            'accepts_mov' => $this->acceptsMov(),
             'forbids_mixed_media' => ! $this->supportsMixedMedia(),
             'max_video_duration_sec' => $this->maxVideoDurationSec(),
             'max_image_bytes' => $this->maxImageBytes(),
@@ -415,13 +443,9 @@ enum ContentType: string
      */
     public static function mediaRulesForFrontend(): array
     {
-        $rules = [];
-
-        foreach (self::cases() as $type) {
-            $rules[$type->value] = $type->mediaRules();
-        }
-
-        return $rules;
+        return collect(self::cases())
+            ->mapWithKeys(fn (self $type) => [$type->value => $type->mediaRules()])
+            ->all();
     }
 
     private static function bytesFromMb(int $megabytes): int
@@ -432,6 +456,14 @@ enum ContentType: string
     private static function bytesFromGb(int $gigabytes): int
     {
         return $gigabytes * 1024 * 1024 * 1024;
+    }
+
+    /**
+     * For caps declared in plain decimal bytes (Bluesky's lexicon), not MiB.
+     */
+    private static function bytesFromDecimalMb(int $megabytes): int
+    {
+        return $megabytes * 1_000_000;
     }
 
     /**

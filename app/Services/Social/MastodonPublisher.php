@@ -12,6 +12,7 @@ use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -86,7 +87,7 @@ class MastodonPublisher
             }
 
             // Optimize images (skip GIFs)
-            $detectedMime = mime_content_type($tempFile) ?: '';
+            $detectedMime = File::mimeType($tempFile) ?: '';
             if (MediaType::classify($detectedMime) === MediaType::Image && ! MediaType::isGif($detectedMime)) {
                 $optimizer = app(MediaOptimizer::class);
                 $optimizedPath = $optimizer->optimizeImage($tempFile, Platform::Mastodon);

@@ -40,6 +40,7 @@ return [
         'posts_reach' => 'Posts Reach',
         'quotes' => 'Quotes',
         'reach' => 'Reach',
+        'reactions' => 'Reactions',
         'reblogs' => 'Reblogs',
         'recent_comments' => 'Recent Comments',
         'recent_likes' => 'Recent Likes',

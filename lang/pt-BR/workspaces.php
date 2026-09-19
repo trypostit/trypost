@@ -9,6 +9,13 @@ return [
     'current' => 'Atual',
     'connections' => ':count conexões',
     'posts' => ':count posts',
+    'subscription_required' => 'Assine para criar mais workspaces.',
+    'limit_reached' => 'Seu plano inclui um workspace. Faça upgrade para adicionar mais.',
+
+    'upgrade_dialog' => [
+        'title' => 'Faça upgrade para criar mais workspaces',
+        'description' => 'Seu plano inclui um workspace. Faça upgrade para Workspaces e tenha workspaces ilimitados — um para cada marca ou cliente.',
+    ],
 
     'create' => [
         'page_title' => 'Crie seu workspace',

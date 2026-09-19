@@ -32,7 +32,6 @@ test('dispatches the job once per workspace with at-risk posts, even with multip
     }
 
     $this->artisan('social:check-upcoming-connections')
-        ->expectsOutput('Dispatched 1 upcoming-post connection checks.')
         ->assertSuccessful();
 
     Queue::assertPushed(VerifyUpcomingPostConnections::class, fn ($job) => $job->workspaceId === $workspace->id);
@@ -79,7 +78,6 @@ test('dispatches nothing when the only at-risk post_platform was already warned 
     ]);
 
     $this->artisan('social:check-upcoming-connections')
-        ->expectsOutput('Dispatched 0 upcoming-post connection checks.')
         ->assertSuccessful();
 
     Queue::assertNothingPushed();
@@ -103,7 +101,6 @@ test('dispatches nothing when the only at-risk post_platform is disabled', funct
     ]);
 
     $this->artisan('social:check-upcoming-connections')
-        ->expectsOutput('Dispatched 0 upcoming-post connection checks.')
         ->assertSuccessful();
 
     Queue::assertNothingPushed();
@@ -130,7 +127,6 @@ test('dispatches nothing when the only at-risk post_platform is on a paused acco
     ]);
 
     $this->artisan('social:check-upcoming-connections')
-        ->expectsOutput('Dispatched 0 upcoming-post connection checks.')
         ->assertSuccessful();
 
     Queue::assertNothingPushed();
@@ -154,7 +150,6 @@ test('dispatches nothing when the only at-risk post is still a draft', function 
     ]);
 
     $this->artisan('social:check-upcoming-connections')
-        ->expectsOutput('Dispatched 0 upcoming-post connection checks.')
         ->assertSuccessful();
 
     Queue::assertNothingPushed();

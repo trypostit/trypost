@@ -46,18 +46,6 @@ test('a viewer cannot delete a post', function () {
     $this->assertDatabaseHas('posts', ['id' => $this->post->id]);
 });
 
-test('a viewer cannot create an automation', function () {
-    $this->actingAs($this->viewer)
-        ->post(route('app.automations.store'))
-        ->assertForbidden();
-});
-
-test('a member can create an automation', function () {
-    $this->actingAs($this->member)
-        ->post(route('app.automations.store'))
-        ->assertRedirect();
-});
-
 test('a viewer can comment on a post', function () {
     $this->actingAs($this->viewer)
         ->postJson(route('app.posts.comments.store', $this->post), ['body' => 'Looks good!'])

@@ -72,7 +72,7 @@ test('does not store alt text on a non-image upload', function () {
     $response->assertOk();
 
     expect(data_get($this->post->fresh()->media, '0.type'))->toBe('video')
-        ->and(data_get($this->post->fresh()->media, '0.meta'))->toBeNull();
+        ->and(data_get($this->post->fresh()->media, '0.meta.alt_text'))->toBeNull();
 });
 
 test('rejects alt text over the max length', function () {

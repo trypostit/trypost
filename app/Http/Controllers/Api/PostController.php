@@ -9,6 +9,7 @@ use App\Actions\Post\CreatePost;
 use App\Actions\Post\DeletePost;
 use App\Actions\Post\HostInlineMedia;
 use App\Actions\Post\UpdatePost;
+use App\Dto\MediaItem;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\CreatedVia;
@@ -37,7 +38,7 @@ class PostController extends Controller
         $posts = $request->user()->currentWorkspace->posts()
             ->with(['postPlatforms.socialAccount', 'user', 'labels'])
             ->latest('scheduled_at')
-            ->paginate(15);
+            ->paginate((int) config('app.pagination.default'));
 
         return PostResource::collection($posts);
     }
@@ -134,14 +135,7 @@ class PostController extends Controller
 
         $media = $post->workspace->addMedia($file, 'assets');
 
-        $post->appendMedia([[
-            'id' => $media->id,
-            'path' => $media->path,
-            'url' => $media->url,
-            'type' => $media->type,
-            'mime_type' => $media->mime_type,
-            'original_filename' => $media->original_filename,
-        ]]);
+        $post->appendMedia([MediaItem::fromMedia($media)->toArray()]);
 
         $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
 

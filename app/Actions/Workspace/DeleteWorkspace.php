@@ -78,8 +78,6 @@ class DeleteWorkspace
 
         $settlement->flush();
 
-        $account?->syncWorkspaceQuantity();
-
         if (PostHogService::isEnabled()) {
             SyncAccountUsage::dispatch($accountId, null);
         }

@@ -26,6 +26,7 @@ return [
     'save_to_assets' => 'アセットに保存',
     'saved' => 'アセットに保存しました！',
     'create_post' => '投稿を作成',
+    'download' => 'ダウンロード',
     'add_to_post' => '投稿に追加',
     'search_placeholder' => 'メディアを検索...',
 

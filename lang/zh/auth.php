@@ -24,30 +24,28 @@ return [
 
     'legal' => '继续即表示你同意我们的<a href=":terms_url" target="_blank">服务条款</a>和<a href=":privacy_url" target="_blank">隐私政策</a>。',
 
-    'slides' => [
-        'calendar' => [
-            'title' => '可视化日历',
-            'description' => '通过直观的拖放日历，跨所有社交账号规划和安排你的内容。',
+    'reviews' => [
+        'eyebrow' => 'G2 上 5/5',
+        'heading' => '每天发布内容的人都爱用',
+        'paulo_dantas' => [
+            'role' => '创始人，chatadv.com.br',
+            'quote' => '在所有社交网络上创建、整理和分发内容都很简单。有了 MCP，我们可以用自己喜欢的 AI，比如 Claude 或 ChatGPT，直接创建内容并安排发布。',
         ],
-        'scheduling' => [
-            'title' => '智能排期',
-            'description' => '在一个地方向 LinkedIn、X、Instagram、TikTok、YouTube 等平台安排发帖。',
+        'diego' => [
+            'role' => 'CEO，Globalfy.com',
+            'quote' => '我喜欢 TryPost 的简单。我可以直接在 Claude 里写好帖子，再用 MCP 发布或安排到以后发送。五分钟就配置好了。',
         ],
-        'media' => [
-            'title' => '丰富媒体',
-            'description' => '发布图片、轮播、快拍和 Reels。每个平台都会自动获得合适的格式。',
+        'luiz' => [
+            'role' => '内容创作者',
+            'quote' => '我很喜欢连接 AI 工具和智能体的过程，几分钟就能把内容安排到 9 个社交平台。',
         ],
-        'video' => [
-            'title' => '视频发布',
-            'description' => '一次上传视频，即可发布到 TikTok、YouTube Shorts、Instagram Reels 和 Facebook Reels。',
+        'pedro' => [
+            'role' => '创始人，templated.io',
+            'quote' => '使用和集成都非常简单。有了 MCP，我只需要在界面里连接社交账号。',
         ],
-        'team' => [
-            'title' => '团队工作区',
-            'description' => '邀请团队成员、分配角色，并在独立的工作区中管理多个品牌。',
-        ],
-        'signatures' => [
-            'title' => '签名',
-            'description' => '保存可复用的签名（话题标签、链接、落款），一键附加到帖子中。',
+        'paulo_castellano' => [
+            'role' => '创始人，changelogfy.com',
+            'quote' => '我非常喜欢 MCP 集成，它让我可以在 Claude 或 ChatGPT 里管理所有社交媒体账号。',
         ],
     ],
 

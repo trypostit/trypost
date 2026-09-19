@@ -8,6 +8,17 @@ return [
     'description' => 'Übersicht über alle deine verbundenen Social-Media-Konten',
     'connect_cta' => 'Verbinden',
     'connect_another' => 'Weitere verbinden',
+    'actions' => 'Kontoaktionen',
+    'activate' => 'Aktivieren',
+    'deactivate' => 'Deaktivieren',
+    'active' => 'Aktiv',
+    'paused' => 'Deaktiviert',
+    'accounts_count' => ':count Konto|:count Konten',
+
+    'variants' => [
+        'linkedin-page' => 'Seite',
+        'instagram-facebook' => 'über Facebook',
+    ],
 
     'not_connected' => 'Nicht verbunden',
     'connect' => 'Verbinden',
@@ -126,6 +137,9 @@ return [
     ],
 
     'flash' => [
+        'activated_resumed_repurposes' => 'Konto aktiviert. :count Automatisierung fortgesetzt.|Konto aktiviert. :count Automatisierungen fortgesetzt.',
+        'disconnected_paused_repurposes' => 'Konto getrennt. :count Automatisierung pausiert.|Konto getrennt. :count Automatisierungen pausiert.',
+        'deactivated_paused_repurposes' => 'Konto deaktiviert. :count Automatisierung pausiert.|Konto deaktiviert. :count Automatisierungen pausiert.',
         'disconnected' => 'Konto erfolgreich getrennt!',
         'connected' => 'Konto erfolgreich verbunden!',
         'session_expired' => 'Sitzung abgelaufen. Bitte versuche es erneut.',

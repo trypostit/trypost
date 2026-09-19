@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Enums\TikTok\PrivacyLevel;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Illuminate\Http\Client\PendingRequest;
@@ -83,7 +84,10 @@ class TikTokCreatorInfo
             'creator_nickname' => data_get($data, 'creator_nickname'),
             'creator_username' => data_get($data, 'creator_username'),
             'creator_avatar_url' => data_get($data, 'creator_avatar_url'),
-            'privacy_level_options' => data_get($data, 'privacy_level_options', []),
+            'privacy_level_options' => array_values(array_intersect(
+                (array) data_get($data, 'privacy_level_options', []),
+                PrivacyLevel::values(),
+            )),
             'comment_disabled' => (bool) data_get($data, 'comment_disabled', false),
             'duet_disabled' => (bool) data_get($data, 'duet_disabled', false),
             'stitch_disabled' => (bool) data_get($data, 'stitch_disabled', false),

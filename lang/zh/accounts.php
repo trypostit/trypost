@@ -6,6 +6,17 @@ return [
     'description' => '查看你所有已连接的社交账号',
     'connect_cta' => '连接',
     'connect_another' => '连接另一个',
+    'actions' => '账号操作',
+    'activate' => '启用',
+    'deactivate' => '停用',
+    'active' => '已启用',
+    'paused' => '已停用',
+    'accounts_count' => ':count 个账号',
+
+    'variants' => [
+        'linkedin-page' => '主页',
+        'instagram-facebook' => '通过 Facebook',
+    ],
 
     'not_connected' => '未连接',
     'connect' => '连接',
@@ -124,6 +135,9 @@ return [
     ],
 
     'flash' => [
+        'activated_resumed_repurposes' => '账号已开启。已恢复 :count 个自动化。|账号已开启。已恢复 :count 个自动化。',
+        'disconnected_paused_repurposes' => '账号已断开连接。已暂停 :count 个自动化。|账号已断开连接。已暂停 :count 个自动化。',
+        'deactivated_paused_repurposes' => '账号已关闭。已暂停 :count 个自动化。|账号已关闭。已暂停 :count 个自动化。',
         'disconnected' => '账号已成功断开连接！',
         'connected' => '账号连接成功！',
         'session_expired' => '会话已过期，请重试。',

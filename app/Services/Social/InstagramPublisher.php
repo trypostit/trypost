@@ -353,7 +353,7 @@ class InstagramPublisher
     {
         $statusResponse = $this->sendGraphRequest(
             fn (): Response => $this->socialHttp()->get("{$this->baseUrl}/{$containerId}", [
-                'fields' => 'status_code',
+                'fields' => 'status_code,status',
                 'access_token' => $accessToken,
             ]),
             $containerId,
@@ -368,19 +368,22 @@ class InstagramPublisher
             throw $this->pendingContainerException($containerId, $workflow, $statusResponse->status());
         }
 
-        $status = ContainerStatus::tryFrom((string) ($statusResponse->json()['status_code'] ?? ''));
+        $statusCode = (string) ($statusResponse->json()['status_code'] ?? '');
+        $status = ContainerStatus::tryFrom($statusCode);
 
         return match ($status) {
             ContainerStatus::Finished, ContainerStatus::Published => $status,
-            ContainerStatus::Error => throw new InstagramPublishException(
-                userMessage: 'Instagram media processing failed',
-                category: ErrorCategory::ServerError,
-            ),
+            ContainerStatus::Error => throw $this->mediaProcessingFailedException($statusResponse),
             ContainerStatus::Expired => throw new InstagramPublishException(
                 userMessage: 'Media container expired. Please try again in a few minutes.',
                 category: ErrorCategory::ServerError,
+                rawResponse: $this->redactResponseBody($statusResponse->body()),
             ),
-            default => throw $this->pendingContainerException($containerId, $workflow),
+            default => throw $this->pendingContainerException(
+                $containerId,
+                $workflow,
+                statusCode: $statusCode !== '' ? $statusCode : null,
+            ),
         };
     }
 
@@ -466,14 +469,37 @@ class InstagramPublisher
     /**
      * @param  array<string, mixed>  $workflow
      */
-    private function pendingContainerException(string $containerId, array $workflow, ?int $httpStatus = null): PlatformUnavailableException
+    private function pendingContainerException(string $containerId, array $workflow, ?int $httpStatus = null, ?string $statusCode = null): PlatformUnavailableException
     {
+        $context = [PublishCheckpoint::INSTAGRAM_WORKFLOW => $workflow];
+
+        if (is_string($statusCode) && $statusCode !== '') {
+            $context[PublishCheckpoint::INSTAGRAM_STATUS] = $statusCode;
+        }
+
         return new PlatformUnavailableException(
             message: "Instagram is still processing container {$containerId}",
             httpStatus: $httpStatus,
-            context: [PublishCheckpoint::INSTAGRAM_WORKFLOW => $workflow],
+            context: $context,
             retryDelaySeconds: self::STATUS_RETRY_DELAY_SECONDS,
             maxRetries: self::STATUS_MAX_RETRIES,
+        );
+    }
+
+    private function mediaProcessingFailedException(Response $response): InstagramPublishException
+    {
+        $body = $this->redactResponseBody($response->body());
+
+        Log::error('Instagram media processing failed', [
+            'status_code' => data_get($response->json(), 'status_code'),
+            'status' => data_get($response->json(), 'status'),
+            'body' => $body,
+        ]);
+
+        return new InstagramPublishException(
+            userMessage: 'Instagram media processing failed',
+            category: ErrorCategory::ServerError,
+            rawResponse: $body,
         );
     }
 
