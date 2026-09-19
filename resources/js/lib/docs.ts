@@ -19,6 +19,7 @@ const MEDIA_LIMITS_ANCHOR: Record<PlatformValue, string> = {
     [Platform.Mastodon]: 'mastodon',
     [Platform.Discord]: 'discord',
     [Platform.Telegram]: 'telegram',
+    [Platform.GoogleBusiness]: 'google-business-profile',
 };
 
 export const mediaLimitsDocsUrl = (platform: string): string => {

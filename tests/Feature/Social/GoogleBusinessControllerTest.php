@@ -167,7 +167,7 @@ test('google business callback fails when no locations are found', function () {
     expect($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->exists())->toBeFalse();
 });
 
-test('google business callback shows network_taken when the network is already connected', function () {
+test('google business callback connects a second location on the same network', function () {
     config()->set('trypost.self_hosted', false);
 
     SocialAccount::factory()->create([
@@ -198,11 +198,10 @@ test('google business callback shows network_taken when the network is already c
 
     $response->assertOk();
     $response->assertInertia(fn (AssertableInertia $page) => $page
-        ->where('success', false)
-        ->where('message', __('accounts.popup_callback.network_taken'))
+        ->where('success', true)
     );
 
-    expect($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->count())->toBe(1);
+    expect($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->count())->toBe(2);
 });
 
 test('google business callback fails with expired session', function () {

@@ -82,6 +82,7 @@ const PLAN_NETWORKS = [
     Platform.Mastodon,
     Platform.Telegram,
     Platform.Discord,
+    Platform.GoogleBusiness,
 ] as const;
 
 const SHARED_FEATURES: Omit<PlanFeature, 'label' | 'tooltip'>[] = [

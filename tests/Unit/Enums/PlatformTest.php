@@ -121,6 +121,7 @@ test('platform is enabled by default for every platform', function (Platform $pl
     Platform::Mastodon,
     Platform::Telegram,
     Platform::Discord,
+    Platform::GoogleBusiness,
 ]);
 
 test('each platform can be disabled via config', function (Platform $platform) {
@@ -142,6 +143,7 @@ test('each platform can be disabled via config', function (Platform $platform) {
     Platform::Mastodon,
     Platform::Telegram,
     Platform::Discord,
+    Platform::GoogleBusiness,
 ]);
 
 test('each platform maps to its publishing queue', function (Platform $platform, string $queue) {
@@ -161,6 +163,7 @@ test('each platform maps to its publishing queue', function (Platform $platform,
     [Platform::Mastodon, 'social-mastodon'],
     [Platform::Telegram, 'social-telegram'],
     [Platform::Discord, 'social-discord'],
+    [Platform::GoogleBusiness, 'social-google_business'],
 ]);
 
 test('allQueues lists every platform publishing queue in enum order', function () {
@@ -179,6 +182,7 @@ test('allQueues lists every platform publishing queue in enum order', function (
         'social-mastodon',
         'social-telegram',
         'social-discord',
+        'social-google_business',
     ])->and(Platform::allQueues())->toHaveCount(count(Platform::cases()));
 });
 
@@ -227,6 +231,7 @@ test('disabling a platform removes only its queue from enabledQueues', function 
     Platform::Mastodon,
     Platform::Telegram,
     Platform::Discord,
+    Platform::GoogleBusiness,
 ]);
 
 test('disabling every platform yields no enabled queues', function () {
@@ -289,6 +294,7 @@ test('isEnabled falls back to env when enabled config is missing', function (Pla
     [Platform::InstagramFacebook, 'INSTAGRAM_FACEBOOK_ENABLED'],
     [Platform::Telegram, 'TELEGRAM_ENABLED'],
     [Platform::Discord, 'DISCORD_ENABLED'],
+    [Platform::GoogleBusiness, 'GOOGLE_BUSINESS_ENABLED'],
 ]);
 
 test('linkedin pages and instagram facebook are not directly connectable', function () {

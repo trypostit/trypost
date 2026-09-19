@@ -425,6 +425,7 @@ enum Platform: string
                 self::Mastodon => 'MASTODON_ENABLED',
                 self::Telegram => 'TELEGRAM_ENABLED',
                 self::Discord => 'DISCORD_ENABLED',
+                self::GoogleBusiness => 'GOOGLE_BUSINESS_ENABLED',
             }, true),
         );
     }
