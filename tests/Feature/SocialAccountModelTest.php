@@ -214,3 +214,22 @@ test('markAsDisconnected creates notification row with i18n placeholders substit
     Event::assertDispatched(NotificationCreated::class);
     Mail::assertQueued(AccountDisconnected::class);
 });
+
+// ---- profile_url ----
+
+test('profile_url for google business points at the location dashboard', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    expect($account->profile_url)->toBe('https://business.google.com/locations/987654321');
+});
+
+test('profile_url for google business is null without a stored location', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create([
+        'workspace_id' => $this->workspace->id,
+        'meta' => ['google_user_id' => 'google-user-123'],
+    ]);
+
+    expect($account->profile_url)->toBeNull();
+});

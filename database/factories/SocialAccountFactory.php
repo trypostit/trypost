@@ -109,6 +109,20 @@ class SocialAccountFactory extends Factory
         ]);
     }
 
+    public function googleBusiness(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'platform' => Platform::GoogleBusiness,
+            'scopes' => Platform::GoogleBusiness->requiredPublishScopes(),
+            'meta' => [
+                'location_id' => 'accounts/123456789/locations/987654321',
+                'account_name' => 'accounts/123456789',
+                'location_name' => 'locations/987654321',
+                'google_user_id' => 'google-user-123',
+            ],
+        ]);
+    }
+
     public function bluesky(): static
     {
         return $this->state(fn (array $attributes) => [

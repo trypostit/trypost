@@ -23,6 +23,7 @@ enum Platform: string
     case Mastodon = 'mastodon';
     case Telegram = 'telegram';
     case Discord = 'discord';
+    case GoogleBusiness = 'google_business';
 
     public function network(): string
     {
@@ -61,6 +62,7 @@ enum Platform: string
             self::Mastodon => 'Mastodon',
             self::Telegram => 'Telegram',
             self::Discord => 'Discord',
+            self::GoogleBusiness => 'Google Business Profile',
         };
     }
 
@@ -80,6 +82,7 @@ enum Platform: string
             self::Mastodon => '#6364FF',
             self::Telegram => '#26A5E4',
             self::Discord => '#5865F2',
+            self::GoogleBusiness => '#4285F4',
         };
     }
 
@@ -98,6 +101,7 @@ enum Platform: string
             self::Mastodon => [MediaType::Image, MediaType::Video],
             self::Telegram => [MediaType::Image, MediaType::Video],
             self::Discord => [MediaType::Image, MediaType::Video],
+            self::GoogleBusiness => [MediaType::Image],
         };
     }
 
@@ -116,6 +120,7 @@ enum Platform: string
             self::Mastodon => 4,
             self::Telegram => 10,
             self::Discord => 10,
+            self::GoogleBusiness => 1,
         };
     }
 
@@ -139,7 +144,7 @@ enum Platform: string
             self::Threads => 1000,
             self::Pinterest => 500,
             self::Discord => 1024,
-            self::TikTok, self::YouTube, self::Telegram => null,
+            self::TikTok, self::YouTube, self::Telegram, self::GoogleBusiness => null,
         };
     }
 
@@ -173,6 +178,7 @@ enum Platform: string
      *  - Mastodon: 500 default; instances may be higher (we stay conservative)
      *  - Telegram: 4096 for a text message (media captions are capped at 1024,
      *    handled in the publisher by sending long text as its own message)
+     *  - Google Business Profile Local Post `summary`: 1500
      */
     public function maxContentLength(): int
     {
@@ -189,6 +195,7 @@ enum Platform: string
             self::Mastodon => 500,
             self::Telegram => 4096,
             self::Discord => 2000,
+            self::GoogleBusiness => 1500,
         };
     }
 
@@ -234,6 +241,9 @@ enum Platform: string
             self::Telegram => 400,
             // Discord — conversational community posts read best when concise
             self::Discord => 280,
+            // Google Business Profile — image does most of the work, keep the
+            // summary tight and scannable
+            self::GoogleBusiness => 300,
         };
     }
 
@@ -257,6 +267,7 @@ enum Platform: string
             self::Mastodon => ['write:statuses'],
             self::Telegram => [],
             self::Discord => [],
+            self::GoogleBusiness => ['https://www.googleapis.com/auth/business.manage'],
         };
     }
 
@@ -275,6 +286,7 @@ enum Platform: string
             self::Mastodon => true,
             self::Telegram => true,
             self::Discord => true,
+            self::GoogleBusiness => true,
         };
     }
 
@@ -316,7 +328,7 @@ enum Platform: string
         return match ($this) {
             self::LinkedIn, self::LinkedInPage, self::X, self::Bluesky,
             self::YouTube, self::TikTok, self::Pinterest,
-            self::Threads, self::Instagram => true,
+            self::Threads, self::Instagram, self::GoogleBusiness => true,
             default => false,
         };
     }
@@ -344,6 +356,7 @@ enum Platform: string
      *
      *  - X: a 2-hour access token.
      *  - Instagram / Threads: Meta's 60-day long-lived token.
+     *  - Google Business Profile: standard Google OAuth2 1-hour access token.
      *
      * Networks that always return expires_in (LinkedIn, TikTok, YouTube,
      * Pinterest), whose refresh sets a fixed lifetime directly (Bluesky), or
@@ -354,6 +367,7 @@ enum Platform: string
     {
         return match ($this) {
             self::X => 7200,
+            self::GoogleBusiness => 3600,
             self::Instagram, self::Threads => 5184000,
             default => null,
         };
@@ -411,6 +425,7 @@ enum Platform: string
                 self::Mastodon => 'MASTODON_ENABLED',
                 self::Telegram => 'TELEGRAM_ENABLED',
                 self::Discord => 'DISCORD_ENABLED',
+                self::GoogleBusiness => 'GOOGLE_BUSINESS_ENABLED',
             }, true),
         );
     }
