@@ -42,7 +42,7 @@ const postedAtLabel = computed(() =>
 const { card: linkCard, loading: linkCardLoading } = useLinkCard(
     toRef(props, 'content'),
     toRef(props, 'media'),
-    { selectUrl: facebookLinkPreviewUrl },
+    facebookLinkPreviewUrl,
 );
 
 // Content type helpers
