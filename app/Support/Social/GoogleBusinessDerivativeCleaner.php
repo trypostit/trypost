@@ -14,16 +14,12 @@ class GoogleBusinessDerivativeCleaner
 
     public static function pathFor(string $postPlatformId): string
     {
-        return self::DIRECTORY.'/'.$postPlatformId.'.jpg';
+        return self::DIRECTORY."/{$postPlatformId}.jpg";
     }
 
     public function cleanup(string $postPlatformId): void
     {
         $path = self::pathFor($postPlatformId);
-
-        if (! Storage::exists($path)) {
-            return;
-        }
 
         try {
             Storage::delete($path);
