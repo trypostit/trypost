@@ -2,13 +2,21 @@
 import { IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
+import DatePicker from '@/components/DatePicker.vue';
 import InputError from '@/components/InputError.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
-import { GOOGLE_BUSINESS_CTA_OPTIONS, GOOGLE_BUSINESS_EVENT_TOPIC_TYPES } from '@/lib/googleBusiness';
+import { GOOGLE_BUSINESS_CTA_OPTIONS, GOOGLE_BUSINESS_EVENT_TOPIC_TYPES, GOOGLE_BUSINESS_TOPIC_TYPES, googleBusinessAllowsCallToAction, googleBusinessEventDateTimeParts, googleBusinessEventDateTimeValue } from '@/lib/googleBusiness';
 
 interface SocialAccount {
     id: string;
@@ -38,56 +46,80 @@ const emit = defineEmits<{
 }>();
 
 const open = ref(false);
+const isLocked = computed(() => props.disabled || props.previewOnly);
 
-const topicTypes = [
-    { value: 'STANDARD', labelKey: 'posts.form.google_business.topic_type.standard' },
-    { value: 'EVENT', labelKey: 'posts.form.google_business.topic_type.event' },
-    { value: 'OFFER', labelKey: 'posts.form.google_business.topic_type.offer' },
-] as const;
+const updateMeta = (patch: Record<string, any>) => {
+    emit('update:meta', { ...props.meta, ...patch });
+};
+
+const updateEvent = (patch: Record<string, any>) => {
+    updateMeta({ event: { ...props.meta?.event, ...patch } });
+};
 
 const topicType = computed<string>({
     get: () => props.meta?.topic_type || 'STANDARD',
-    set: (value: string) => emit('update:meta', { ...props.meta, topic_type: value }),
+    set: (value: string) => {
+        if (value === 'STANDARD') {
+            updateMeta({ topic_type: value, event: null, offer: null });
+            return;
+        }
+
+        if (value === 'EVENT') {
+            updateMeta({ topic_type: value, offer: null });
+            return;
+        }
+
+        updateMeta({ topic_type: value, call_to_action: null });
+    },
 });
 
 const ctaActionType = computed<string>({
     get: () => props.meta?.call_to_action?.action_type || 'NONE',
-    set: (value: string) => emit('update:meta', {
-        ...props.meta,
+    set: (value: string) => updateMeta({
         call_to_action: { ...props.meta?.call_to_action, action_type: value },
     }),
 });
 
-const showCtaUrl = computed(() => ctaActionType.value !== 'NONE' && ctaActionType.value !== 'CALL');
+const showCallToAction = computed(() => googleBusinessAllowsCallToAction(topicType.value));
+
+const showCtaUrl = computed(() => showCallToAction.value && ctaActionType.value !== 'NONE' && ctaActionType.value !== 'CALL');
 
 const showEventFields = computed(() => GOOGLE_BUSINESS_EVENT_TOPIC_TYPES.includes(topicType.value));
 
 const ctaUrl = computed<string>({
     get: () => props.meta?.call_to_action?.url || '',
-    set: (value: string) => emit('update:meta', {
-        ...props.meta,
+    set: (value: string) => updateMeta({
         call_to_action: { ...props.meta?.call_to_action, url: value.trim() === '' ? null : value },
     }),
 });
 
-const eventField = (key: 'title' | 'start_date' | 'end_date' | 'start_time' | 'end_time') => computed<string>({
-    get: () => props.meta?.event?.[key] || '',
-    set: (value: string) => emit('update:meta', {
-        ...props.meta,
-        event: { ...props.meta?.event, [key]: value.trim() === '' ? null : value },
-    }),
+const eventTitle = computed<string>({
+    get: () => props.meta?.event?.title || '',
+    set: (value: string) => updateEvent({ title: value.trim() === '' ? null : value }),
 });
 
-const eventTitle = eventField('title');
-const eventStartDate = eventField('start_date');
-const eventEndDate = eventField('end_date');
-const eventStartTime = eventField('start_time');
-const eventEndTime = eventField('end_time');
+const eventDateTime = (dateKey: 'start_date' | 'end_date', timeKey: 'start_time' | 'end_time') => computed({
+    get: (): string => googleBusinessEventDateTimeValue(props.meta?.event?.[dateKey], props.meta?.event?.[timeKey]),
+    set: (value: string | null) => {
+        const parts = googleBusinessEventDateTimeParts(value);
+        updateEvent({ [dateKey]: parts.date, [timeKey]: parts.time });
+    },
+});
+
+const eventStart = eventDateTime('start_date', 'start_time');
+const eventEnd = eventDateTime('end_date', 'end_time');
+
+const eventTitleLabelKey = computed(() => topicType.value === 'OFFER'
+    ? 'posts.form.google_business.offer_title'
+    : 'posts.form.google_business.event_title');
+
+const eventTitlePlaceholderKey = computed(() => topicType.value === 'OFFER'
+    ? 'posts.form.google_business.offer_title_placeholder'
+    : 'posts.form.google_business.event_title_placeholder');
 
 const offerField = (key: 'coupon_code' | 'redeem_online_url' | 'terms_conditions') => computed<string>({
     get: () => props.meta?.offer?.[key] || '',
-    set: (value: string) => emit('update:meta', {
-        ...props.meta,
+    set: (value: string) => updateMeta({
         offer: { ...props.meta?.offer, [key]: value.trim() === '' ? null : value },
     }),
 });
@@ -106,6 +138,12 @@ const findError = (field: string) => computed<string | undefined>(
 const eventTitleError = findError('event.title');
 const eventStartDateError = findError('event.start_date');
 const eventEndDateError = findError('event.end_date');
+const eventStartTimeError = findError('event.start_time');
+const eventEndTimeError = findError('event.end_time');
+const offerCouponCodeError = findError('offer.coupon_code');
+const offerRedeemUrlError = findError('offer.redeem_online_url');
+const offerTermsError = findError('offer.terms_conditions');
+const ctaActionTypeError = findError('call_to_action.action_type');
 const ctaUrlError = findError('call_to_action.url');
 </script>
 
@@ -140,14 +178,14 @@ const ctaUrlError = findError('call_to_action.url');
                 <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.topic_type_label') }}</p>
                 <div class="flex flex-wrap gap-2">
                     <button
-                        v-for="type in topicTypes"
+                        v-for="type in GOOGLE_BUSINESS_TOPIC_TYPES"
                         :key="type.value"
                         type="button"
                         class="cursor-pointer rounded-full border-2 px-3 py-1 text-xs font-bold uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                         :class="topicType === type.value
                             ? 'border-foreground bg-violet-100 text-foreground shadow-2xs'
                             : 'border-foreground/30 text-foreground/70 hover:border-foreground hover:text-foreground'"
-                        :disabled="disabled || previewOnly"
+                        :disabled="isLocked"
                         @click="topicType = type.value"
                     >
                         {{ $t(type.labelKey) }}
@@ -157,59 +195,76 @@ const ctaUrlError = findError('call_to_action.url');
 
             <div v-if="showEventFields" class="grid grid-cols-2 gap-3">
                 <div class="col-span-2 space-y-2">
-                    <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.event_title') }}</p>
-                    <Input v-model="eventTitle" type="text" :placeholder="$t('posts.form.google_business.event_title_placeholder')" :disabled="disabled || previewOnly" :class="eventTitleError ? 'border-rose-500' : undefined" />
+                    <Label class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t(eventTitleLabelKey) }}</Label>
+                    <Input v-model="eventTitle" type="text" :placeholder="$t(eventTitlePlaceholderKey)" :disabled="isLocked" :class="eventTitleError ? 'border-rose-500' : undefined" />
                     <InputError :message="eventTitleError" />
                 </div>
                 <div class="space-y-2">
-                    <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.event_start_date') }}</p>
-                    <Input v-model="eventStartDate" type="date" :disabled="disabled || previewOnly" :class="eventStartDateError ? 'border-rose-500' : undefined" />
-                    <InputError :message="eventStartDateError" />
+                    <Label class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.event_start_date') }}</Label>
+                    <DatePicker
+                        v-model="eventStart"
+                        align="start"
+                        :show-time="true"
+                        :disabled="isLocked"
+                        :placeholder="$t('posts.form.google_business.event_start_date')"
+                        :class="eventStartDateError || eventStartTimeError ? 'border-rose-500' : undefined"
+                    />
+                    <InputError :message="eventStartDateError || eventStartTimeError" />
                 </div>
                 <div class="space-y-2">
-                    <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.event_end_date') }}</p>
-                    <Input v-model="eventEndDate" type="date" :disabled="disabled || previewOnly" :class="eventEndDateError ? 'border-rose-500' : undefined" />
-                    <InputError :message="eventEndDateError" />
-                </div>
-                <div class="space-y-2">
-                    <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.event_start_time') }}</p>
-                    <Input v-model="eventStartTime" type="time" :disabled="disabled || previewOnly" />
-                </div>
-                <div class="space-y-2">
-                    <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.event_end_time') }}</p>
-                    <Input v-model="eventEndTime" type="time" :disabled="disabled || previewOnly" />
+                    <Label class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.event_end_date') }}</Label>
+                    <DatePicker
+                        v-model="eventEnd"
+                        align="start"
+                        :show-time="true"
+                        :disabled="isLocked"
+                        :placeholder="$t('posts.form.google_business.event_end_date')"
+                        :class="eventEndDateError || eventEndTimeError ? 'border-rose-500' : undefined"
+                    />
+                    <InputError :message="eventEndDateError || eventEndTimeError" />
                 </div>
             </div>
 
             <div v-if="topicType === 'OFFER'" class="space-y-3">
                 <div class="space-y-2">
-                    <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.offer_coupon_code') }}</p>
-                    <Input v-model="offerCouponCode" type="text" :disabled="disabled || previewOnly" />
+                    <Label class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.offer_coupon_code') }}</Label>
+                    <Input v-model="offerCouponCode" type="text" :disabled="isLocked" :class="offerCouponCodeError ? 'border-rose-500' : undefined" />
+                    <InputError :message="offerCouponCodeError" />
                 </div>
                 <div class="space-y-2">
-                    <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.offer_redeem_url') }}</p>
-                    <Input v-model="offerRedeemUrl" type="text" :disabled="disabled || previewOnly" />
+                    <Label class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.offer_redeem_url') }}</Label>
+                    <Input v-model="offerRedeemUrl" type="text" :disabled="isLocked" :class="offerRedeemUrlError ? 'border-rose-500' : undefined" />
+                    <InputError :message="offerRedeemUrlError" />
                 </div>
                 <div class="space-y-2">
-                    <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.offer_terms') }}</p>
-                    <Textarea v-model="offerTerms" :disabled="disabled || previewOnly" rows="2" />
+                    <Label class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.offer_terms') }}</Label>
+                    <Input v-model="offerTerms" type="text" :disabled="isLocked" :class="offerTermsError ? 'border-rose-500' : undefined" />
+                    <InputError :message="offerTermsError" />
                 </div>
             </div>
 
-            <div class="space-y-2">
-                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.cta_label') }}</p>
-                <select
-                    v-model="ctaActionType"
-                    class="w-full rounded-lg border-2 border-foreground/30 bg-card px-3 py-2 text-sm font-medium text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                    :disabled="disabled || previewOnly"
-                >
-                    <option v-for="option in GOOGLE_BUSINESS_CTA_OPTIONS" :key="option.value" :value="option.value">{{ $t(option.labelKey) }}</option>
-                </select>
+            <div v-if="showCallToAction" class="space-y-2">
+                <Label class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.cta_label') }}</Label>
+                <Select v-model="ctaActionType" :disabled="isLocked">
+                    <SelectTrigger class="w-full" :aria-invalid="ctaActionTypeError ? true : undefined">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem
+                            v-for="option in GOOGLE_BUSINESS_CTA_OPTIONS"
+                            :key="option.value"
+                            :value="option.value"
+                        >
+                            {{ $t(option.labelKey) }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+                <InputError :message="ctaActionTypeError" />
             </div>
 
             <div v-if="showCtaUrl" class="space-y-2">
-                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.cta_url') }}</p>
-                <Input v-model="ctaUrl" type="text" :placeholder="$t('posts.form.google_business.cta_url_placeholder')" :disabled="disabled || previewOnly" :class="ctaUrlError ? 'border-rose-500' : undefined" />
+                <Label class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.cta_url') }}</Label>
+                <Input v-model="ctaUrl" type="text" :placeholder="$t('posts.form.google_business.cta_url_placeholder')" :disabled="isLocked" :class="ctaUrlError ? 'border-rose-500' : undefined" />
                 <InputError :message="ctaUrlError" />
             </div>
         </div>

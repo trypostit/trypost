@@ -60,6 +60,17 @@ test('500 status maps to the server error category', function () {
     expect($exception->category)->toBe(ErrorCategory::ServerError);
 });
 
+test('unknown errors use a generic fallback instead of the raw api body', function () {
+    $response = Http::response(['error' => ['status' => 'FAILED_PRECONDITION', 'message' => 'opaque google dump']], 409);
+    $fakeResponse = Http::fake(['*' => $response])->post('https://mybusiness.googleapis.com/test');
+
+    $exception = GoogleBusinessPublishException::fromApiResponse($fakeResponse);
+
+    expect($exception->category)->toBe(ErrorCategory::Unknown)
+        ->and($exception->userMessage)->toBe(__('posts.errors.google_business.rejected'))
+        ->and($exception->userMessage)->not->toContain('opaque google dump');
+});
+
 test('isConfirmedDeadToken is true for 401 status', function () {
     $response = Http::response([], 401);
     $fakeResponse = Http::fake(['*' => $response])->post('https://mybusinessaccountmanagement.googleapis.com/test');

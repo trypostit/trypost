@@ -4,24 +4,28 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use Illuminate\Support\Str;
+
 /**
  * Google Business Profile identifies a location by its full
- * `accounts/{account}/locations/{location}` resource name, while the Business
- * Profile dashboard links by the bare trailing location id. Both the publisher
- * (post URLs) and the social account model (profile URL) need that same link,
- * so the conversion lives here once.
+ * `accounts/{account}/locations/{location}` resource name. The Business Profile
+ * web UI takes the trailing location id as an un-obfuscated deep link (`/l/u{id}`).
+ * Both the publisher (post URL fallback) and the social account model (profile
+ * URL) need that same link, so the conversion lives here once.
+ *
+ * @see https://developers.google.com/my-business/content/locations-setup
  */
 class GoogleBusinessResourceName
 {
     /**
-     * The Business Profile dashboard URL for a location resource name, matching
-     * postiz's synthesized URL shape.
+     * The Business Profile dashboard URL for a location resource name.
+     * API location ids are un-obfuscated, so the deep link must use the `u` prefix.
      */
     public static function dashboardUrl(string $resourceName): string
     {
-        $segments = explode('/', $resourceName);
+        $locationId = Str::afterLast($resourceName, '/');
 
-        return 'https://business.google.com/locations/'.end($segments);
+        return rtrim((string) config('trypost.platforms.google_business.dashboard'), '/')."/dashboard/l/u{$locationId}";
     }
 
     /**

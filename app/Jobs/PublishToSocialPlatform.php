@@ -392,6 +392,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             PostPlatformStatus::Published,
             PostPlatformStatus::Failed,
             PostPlatformStatus::Rejected,
+            PostPlatformStatus::PendingReview,
         ], true);
     }
 

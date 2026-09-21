@@ -6,7 +6,7 @@ import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import { mediaLimitsDocsUrl } from '@/lib/docs';
-import { GOOGLE_BUSINESS_EVENT_TOPIC_TYPES } from '@/lib/googleBusiness';
+import { GOOGLE_BUSINESS_EVENT_TOPIC_TYPES, googleBusinessAllowsCallToAction, googleBusinessEventEndsBeforeStart } from '@/lib/googleBusiness';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';
@@ -86,14 +86,23 @@ const PLATFORM_META_RULES: Record<string, MetaRule> = {
     [Platform.GoogleBusiness]: (meta) => {
         const needsEvent = GOOGLE_BUSINESS_EVENT_TOPIC_TYPES.includes(meta.topic_type ?? 'STANDARD');
         const ctaActionType = meta.call_to_action?.action_type ?? 'NONE';
-        const ctaNeedsUrl = !['NONE', 'CALL'].includes(ctaActionType);
+        const ctaNeedsUrl = googleBusinessAllowsCallToAction(meta.topic_type) && !['NONE', 'CALL'].includes(ctaActionType);
         let tooltipKey: string | null = null;
         if (needsEvent && !meta.event?.title) {
-            tooltipKey = 'posts.form.google_business.event_title_required';
+            tooltipKey = meta.topic_type === 'OFFER'
+                ? 'posts.form.google_business.offer_title_required'
+                : 'posts.form.google_business.event_title_required';
         } else if (needsEvent && !meta.event?.start_date) {
             tooltipKey = 'posts.form.google_business.event_start_date_required';
         } else if (needsEvent && !meta.event?.end_date) {
             tooltipKey = 'posts.form.google_business.event_end_date_required';
+        } else if (needsEvent && googleBusinessEventEndsBeforeStart(meta.event)) {
+            const sameDayTimes = meta.event?.start_date === meta.event?.end_date
+                && meta.event?.start_time
+                && meta.event?.end_time;
+            tooltipKey = sameDayTimes
+                ? 'posts.form.google_business.event_end_time_before_start'
+                : 'posts.form.google_business.event_end_date_before_start';
         } else if (ctaNeedsUrl && !meta.call_to_action?.url) {
             tooltipKey = 'posts.form.google_business.cta_url_required';
         }

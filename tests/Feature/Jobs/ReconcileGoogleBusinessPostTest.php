@@ -99,3 +99,104 @@ test('a post that never settles is given up on once the review ceiling passes', 
         ->and($this->target->fresh()->error_message)->not->toBe('posts.errors.review_unconfirmed')
         ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
 });
+
+test('a recurring post is treated as live', function () {
+    Queue::fake([SendNotification::class]);
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
+            'state' => 'RECURRING',
+            'searchUrl' => 'https://posts.google.com/999',
+        ]),
+    ]);
+
+    (new ReconcileGoogleBusinessPost($this->target))->handle();
+
+    expect($this->target->fresh()->status)->toBe(PlatformStatus::Published)
+        ->and($this->post->fresh()->status)->toBe(PostStatus::Published);
+});
+
+test('a dead token during review is deferred until the ceiling', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'error' => ['status' => 'UNAUTHENTICATED', 'message' => 'bad token'],
+        ], 401),
+    ]);
+
+    (new ReconcileGoogleBusinessPost($this->target))->handle();
+
+    expect($this->target->fresh()->status)->toBe(PlatformStatus::PendingReview)
+        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+        ->and($this->post->fresh()->status)->toBe(PostStatus::Scheduled);
+});
+
+test('a google 5xx during review is deferred until the ceiling', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'error' => ['status' => 'INTERNAL'],
+        ], 503),
+    ]);
+
+    (new ReconcileGoogleBusinessPost($this->target))->handle();
+
+    expect($this->target->fresh()->status)->toBe(PlatformStatus::PendingReview)
+        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull();
+});
+
+test('a missing remote post during review fails immediately', function () {
+    Queue::fake([SendNotification::class]);
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'error' => ['status' => 'NOT_FOUND', 'message' => 'gone'],
+        ], 404),
+    ]);
+
+    (new ReconcileGoogleBusinessPost($this->target))->handle();
+
+    expect($this->target->fresh()->status)->toBe(PlatformStatus::Rejected)
+        ->and($this->target->fresh()->error_message)->toBe(__('posts.errors.google_business.not_found'))
+        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+        ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
+});
+
+test('permission denied during review fails immediately', function () {
+    Queue::fake([SendNotification::class]);
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'error' => ['status' => 'PERMISSION_DENIED'],
+        ], 403),
+    ]);
+
+    (new ReconcileGoogleBusinessPost($this->target))->handle();
+
+    expect($this->target->fresh()->status)->toBe(PlatformStatus::Rejected)
+        ->and($this->target->fresh()->error_message)->toBe(__('posts.errors.google_business.permission_denied'))
+        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+        ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
+});
+
+test('an exhausted reconcile job settles the review instead of leaving it pending', function () {
+    Queue::fake([SendNotification::class]);
+
+    (new ReconcileGoogleBusinessPost($this->target))->failed(new RuntimeException('worker died'));
+
+    expect($this->target->fresh()->status)->toBe(PlatformStatus::Rejected)
+        ->and($this->target->fresh()->error_message)->toBe(__('posts.errors.review_unconfirmed'))
+        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+        ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
+});
+
+test('a dead token after the review ceiling gives up', function () {
+    Queue::fake([SendNotification::class]);
+    $this->target->update(['submitted_at' => now()->subHours(ReconcileGoogleBusinessPost::REVIEW_CEILING_HOURS + 1)]);
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'error' => ['status' => 'UNAUTHENTICATED'],
+        ], 401),
+    ]);
+
+    (new ReconcileGoogleBusinessPost($this->target))->handle();
+
+    expect($this->target->fresh()->status)->toBe(PlatformStatus::Rejected)
+        ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
+});

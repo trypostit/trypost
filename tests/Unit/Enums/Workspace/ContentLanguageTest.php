@@ -84,6 +84,12 @@ test('direction is rtl only for Arabic', function () {
     }
 });
 
+test('bcp47 keeps short codes except chinese which needs a region', function () {
+    expect(ContentLanguage::English->bcp47())->toBe('en')
+        ->and(ContentLanguage::PortugueseBrazil->bcp47())->toBe('pt-BR')
+        ->and(ContentLanguage::Chinese->bcp47())->toBe('zh-CN');
+});
+
 test('fromHtmlLang resolves the two-letter primary subtag', function (string $lang, ?ContentLanguage $expected) {
     expect(ContentLanguage::fromHtmlLang($lang))->toBe($expected);
 })->with([

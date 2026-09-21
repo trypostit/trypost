@@ -976,5 +976,156 @@ test('publishing a google business offer post requires the event title', functio
             ],
         ]);
 
-    $response->assertSessionHasErrors('platforms.0.meta.event.title');
+    $response->assertSessionHasErrors([
+        'platforms.0.meta.event.title' => __('posts.form.google_business.offer_title_required'),
+    ]);
+});
+
+test('publishing a google business offer post without dates is rejected', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'platforms' => [
+                [
+                    'id' => $postPlatform->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => [
+                        'topic_type' => 'OFFER',
+                        'event' => ['title' => 'Summer Sale'],
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.event.start_date');
+});
+
+test('publishing a google business event with the end date before the start is rejected', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'platforms' => [
+                [
+                    'id' => $postPlatform->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => [
+                        'topic_type' => 'EVENT',
+                        'event' => ['title' => 'Sale', 'start_date' => '2026-09-10', 'end_date' => '2026-09-01'],
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.event.end_date');
+});
+
+test('publishing a google business event with a same-day end time before start is rejected', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'platforms' => [
+                [
+                    'id' => $postPlatform->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => [
+                        'topic_type' => 'EVENT',
+                        'event' => [
+                            'title' => 'Sale',
+                            'start_date' => '2026-09-01',
+                            'end_date' => '2026-09-01',
+                            'start_time' => '18:00',
+                            'end_time' => '09:00',
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors([
+        'platforms.0.meta.event.end_time' => __('posts.form.google_business.event_end_time_before_start'),
+    ]);
+});
+
+test('publishing a google business event persists start and end times', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'platforms' => [
+                [
+                    'id' => $postPlatform->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => [
+                        'topic_type' => 'EVENT',
+                        'event' => [
+                            'title' => 'Grand Opening',
+                            'start_date' => '2026-09-01',
+                            'end_date' => '2026-09-02',
+                            'start_time' => '09:30',
+                            'end_time' => '17:00',
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionDoesntHaveErrors();
+
+    $meta = $postPlatform->fresh()->meta;
+
+    expect(data_get($meta, 'event.start_time'))->toBe('09:30')
+        ->and(data_get($meta, 'event.end_time'))->toBe('17:00');
+});
+
+test('publishing a google business post with a url-needing cta and no url is rejected', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'platforms' => [
+                [
+                    'id' => $postPlatform->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => [
+                        'topic_type' => 'STANDARD',
+                        'call_to_action' => ['action_type' => 'BOOK'],
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.call_to_action.url');
 });

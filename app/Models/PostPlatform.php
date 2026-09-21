@@ -146,12 +146,6 @@ class PostPlatform extends Model
     }
 
     /**
-     * The provider accepted the post and then refused it in review. Unlike a
-     * failure, the remote row exists, so its id and URL are kept for support.
-     *
-     * @param  array<string, mixed>|null  $errorContext
-     */
-    /**
      * The provider accepted the post but has not finished reviewing it. It is
      * neither published nor failed until the review settles.
      */
@@ -167,6 +161,12 @@ class PostPlatform extends Model
         ]);
     }
 
+    /**
+     * The provider accepted the post and then refused it in review. Unlike a
+     * failure, the remote row exists, so its id and URL are kept for support.
+     *
+     * @param  array<string, mixed>|null  $errorContext
+     */
     public function markAsRejected(string $platformPostId, ?string $platformUrl, string $errorMessage, ?array $errorContext = null): void
     {
         $this->update([

@@ -9,6 +9,8 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\GoogleBusinessPublisher;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
@@ -56,6 +58,7 @@ test('google business callback auto-connects when exactly one location exists', 
         $mock->shouldReceive('fetchLocations')->once()->with('access-token')->andReturn([
             ['id' => 'accounts/1/locations/2', 'account_name' => 'accounts/1', 'location_name' => 'locations/2', 'title' => 'Downtown Store', 'address' => null],
         ]);
+        $mock->shouldReceive('fetchLocationPhoto')->once()->andReturn(null);
     });
 
     $response = $this->actingAs($this->user)->get(route('app.social.google-business.callback'));
@@ -110,10 +113,16 @@ test('google business callback shows the location picker when multiple locations
     expect(data_get(session('google_business_oauth'), 'locations'))->toHaveCount(2);
 });
 
-test('google business callback forwards the reconnect id into the picker session', function () {
+test('google business callback reconnects the original location when google returns several', function () {
+    $existingAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::GoogleBusiness,
+        'platform_user_id' => 'accounts/1/locations/2',
+    ]);
+
     session([
         'social_connect_workspace' => $this->workspace->id,
-        'social_reconnect_id' => 'existing-account-id',
+        'social_reconnect_id' => $existingAccount->id,
     ]);
 
     $socialiteUser = Mockery::mock(SocialiteUser::class);
@@ -131,12 +140,18 @@ test('google business callback forwards the reconnect id into the picker session
             ['id' => 'accounts/1/locations/2', 'account_name' => 'accounts/1', 'location_name' => 'locations/2', 'title' => 'Downtown Store', 'address' => null],
             ['id' => 'accounts/1/locations/3', 'account_name' => 'accounts/1', 'location_name' => 'locations/3', 'title' => 'Uptown Store', 'address' => null],
         ]);
+        $mock->shouldReceive('fetchLocationPhoto')->once()->andReturn(null);
     });
 
     $this->actingAs($this->user)->get(route('app.social.google-business.callback'))
-        ->assertRedirect(route('app.social.google-business.select-location'));
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('success', true)
+            ->where('message', __('accounts.popup_callback.reconnected'))
+        );
 
-    expect(data_get(session('google_business_oauth'), 'reconnect_id'))->toBe('existing-account-id');
+    expect($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->count())->toBe(1)
+        ->and($existingAccount->fresh()->status)->toBe(Status::Connected);
 });
 
 test('google business callback fails when no locations are found', function () {
@@ -192,6 +207,7 @@ test('google business callback connects a second location on the same network', 
         $mock->shouldReceive('fetchLocations')->once()->andReturn([
             ['id' => 'accounts/1/locations/2', 'account_name' => 'accounts/1', 'location_name' => 'locations/2', 'title' => 'Downtown Store', 'address' => null],
         ]);
+        $mock->shouldReceive('fetchLocationPhoto')->once()->andReturn(null);
     });
 
     $response = $this->actingAs($this->user)->get(route('app.social.google-business.callback'));
@@ -288,6 +304,7 @@ test('select creates the social account for the chosen location', function () {
 
     $this->mock(GoogleBusinessPublisher::class, function ($mock) {
         $mock->shouldNotReceive('fetchLocations');
+        $mock->shouldReceive('fetchLocationPhoto')->once()->andReturn(null);
     });
 
     $response = $this->actingAs($this->user)
@@ -370,6 +387,10 @@ test('select reconnects an existing account when a reconnect id is present', fun
         ],
     ]);
 
+    $this->mock(GoogleBusinessPublisher::class, function ($mock) {
+        $mock->shouldReceive('fetchLocationPhoto')->once()->andReturn(null);
+    });
+
     $response = $this->actingAs($this->user)
         ->post(route('app.social.google-business.select'), ['location_id' => 'accounts/1/locations/2']);
 
@@ -409,6 +430,10 @@ test('select refuses to repoint a reconnected account at a different location', 
         ],
     ]);
 
+    $this->mock(GoogleBusinessPublisher::class, function ($mock) {
+        $mock->shouldReceive('fetchLocationPhoto')->once()->andReturn(null);
+    });
+
     $response = $this->actingAs($this->user)
         ->post(route('app.social.google-business.select'), ['location_id' => 'accounts/1/locations/9']);
 
@@ -423,4 +448,188 @@ test('select refuses to repoint a reconnected account at a different location', 
     expect($existingAccount->platform_user_id)->toBe('accounts/1/locations/2')
         ->and($existingAccount->access_token)->toBe('the-token-that-still-works')
         ->and($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->count())->toBe(1);
+});
+
+test('google business callback stores the location profile photo as the avatar', function () {
+    Storage::fake();
+
+    session(['social_connect_workspace' => $this->workspace->id]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('gid-1');
+    $socialiteUser->token = 'access-token';
+    $socialiteUser->refreshToken = 'refresh-token';
+    $socialiteUser->expiresIn = 3600;
+
+    Socialite::shouldReceive('driver')->with('google-business')->andReturn(
+        Mockery::mock()->shouldReceive('user')->andReturn($socialiteUser)->getMock()
+    );
+
+    $this->mock(GoogleBusinessPublisher::class, function ($mock) {
+        $mock->shouldReceive('fetchLocations')->once()->with('access-token')->andReturn([
+            [
+                'id' => 'accounts/1/locations/2',
+                'account_name' => 'accounts/1',
+                'location_name' => 'locations/2',
+                'title' => 'Downtown Store',
+                'address' => null,
+            ],
+        ]);
+        $mock->shouldReceive('fetchLocationPhoto')->once()
+            ->with('access-token', 'accounts/1/locations/2')
+            ->andReturn('https://93.184.216.34/profile.jpg');
+    });
+
+    Http::fake([
+        'https://93.184.216.34/profile.jpg' => Http::response('fake-image-bytes', 200, ['Content-Type' => 'image/jpeg']),
+    ]);
+
+    $this->actingAs($this->user)->get(route('app.social.google-business.callback'))
+        ->assertOk();
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://93.184.216.34/profile.jpg');
+
+    $account = $this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->first();
+    expect($account->getRawOriginal('avatar_url'))->not->toBeNull();
+});
+
+test('google business connect remembers the reconnect account from the query string', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::GoogleBusiness,
+        'platform_user_id' => 'accounts/1/locations/2',
+    ]);
+
+    $driverMock = Mockery::mock();
+    $driverMock->shouldReceive('scopes')->andReturnSelf();
+    $driverMock->shouldReceive('with')->andReturnSelf();
+    $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
+        'getTargetUrl' => 'https://accounts.google.com/o/oauth2/auth?test=1',
+    ]));
+
+    Socialite::shouldReceive('driver')->with('google-business')->andReturn($driverMock);
+
+    $response = $this->actingAs($this->user)
+        ->withHeader('X-Inertia', 'true')
+        ->get(route('app.social.google-business.connect', ['reconnect' => $account->id]));
+
+    $response->assertStatus(409);
+
+    expect(session('social_connect_workspace'))->toBe($this->workspace->id)
+        ->and(session('social_reconnect_id'))->toBe($account->id);
+});
+
+test('google business callback reconnects a single matching location', function () {
+    $existingAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::GoogleBusiness,
+        'platform_user_id' => 'accounts/1/locations/2',
+        'status' => Status::TokenExpired,
+    ]);
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'social_reconnect_id' => $existingAccount->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('gid-1');
+    $socialiteUser->token = 'new-access-token';
+    $socialiteUser->refreshToken = 'new-refresh-token';
+    $socialiteUser->expiresIn = 3600;
+
+    Socialite::shouldReceive('driver')->with('google-business')->andReturn(
+        Mockery::mock()->shouldReceive('user')->andReturn($socialiteUser)->getMock()
+    );
+
+    $this->mock(GoogleBusinessPublisher::class, function ($mock) {
+        $mock->shouldReceive('fetchLocations')->once()->andReturn([
+            ['id' => 'accounts/1/locations/2', 'account_name' => 'accounts/1', 'location_name' => 'locations/2', 'title' => 'Downtown Store', 'address' => null],
+        ]);
+        $mock->shouldReceive('fetchLocationPhoto')->once()->andReturn(null);
+    });
+
+    $this->actingAs($this->user)->get(route('app.social.google-business.callback'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('success', true)
+            ->where('message', __('accounts.popup_callback.reconnected'))
+        );
+
+    expect($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->count())->toBe(1);
+    expect($existingAccount->fresh()->status)->toBe(Status::Connected)
+        ->and($existingAccount->fresh()->access_token)->toBe('new-access-token');
+});
+
+test('google business callback fails reconnect when the original location is missing', function () {
+    $existingAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::GoogleBusiness,
+        'platform_user_id' => 'accounts/1/locations/2',
+        'status' => Status::TokenExpired,
+    ]);
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'social_reconnect_id' => $existingAccount->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('gid-1');
+    $socialiteUser->token = 'access-token';
+    $socialiteUser->refreshToken = 'refresh-token';
+    $socialiteUser->expiresIn = 3600;
+
+    Socialite::shouldReceive('driver')->with('google-business')->andReturn(
+        Mockery::mock()->shouldReceive('user')->andReturn($socialiteUser)->getMock()
+    );
+
+    $this->mock(GoogleBusinessPublisher::class, function ($mock) {
+        $mock->shouldReceive('fetchLocations')->once()->andReturn([
+            ['id' => 'accounts/1/locations/9', 'account_name' => 'accounts/1', 'location_name' => 'locations/9', 'title' => 'Airport Kiosk', 'address' => null],
+        ]);
+    });
+
+    $this->actingAs($this->user)->get(route('app.social.google-business.callback'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('success', false)
+            ->where('message', __('accounts.popup_callback.location_not_found'))
+        );
+
+    expect($existingAccount->fresh()->status)->toBe(Status::TokenExpired)
+        ->and($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->count())->toBe(1);
+});
+
+test('google business callback stores the maps uri on the account', function () {
+    session(['social_connect_workspace' => $this->workspace->id]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('gid-1');
+    $socialiteUser->token = 'access-token';
+    $socialiteUser->refreshToken = 'refresh-token';
+    $socialiteUser->expiresIn = 3600;
+
+    Socialite::shouldReceive('driver')->with('google-business')->andReturn(
+        Mockery::mock()->shouldReceive('user')->andReturn($socialiteUser)->getMock()
+    );
+
+    $this->mock(GoogleBusinessPublisher::class, function ($mock) {
+        $mock->shouldReceive('fetchLocations')->once()->andReturn([
+            [
+                'id' => 'accounts/1/locations/2',
+                'account_name' => 'accounts/1',
+                'location_name' => 'locations/2',
+                'title' => 'Downtown Store',
+                'address' => null,
+                'maps_uri' => 'https://maps.google.com/?cid=123',
+            ],
+        ]);
+        $mock->shouldReceive('fetchLocationPhoto')->once()->andReturn(null);
+    });
+
+    $this->actingAs($this->user)->get(route('app.social.google-business.callback'))->assertOk();
+
+    $account = $this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->first();
+    expect($account->meta['maps_uri'])->toBe('https://maps.google.com/?cid=123');
 });

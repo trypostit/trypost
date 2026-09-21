@@ -77,7 +77,7 @@ class PostPlatformMetaRules
             // Google Business Profile
             'platforms.*.meta.topic_type' => ['sometimes', 'nullable', 'string', Rule::in(['STANDARD', 'EVENT', 'OFFER'])],
             'platforms.*.meta.call_to_action' => ['sometimes', 'nullable', 'array'],
-            'platforms.*.meta.call_to_action.action_type' => ['sometimes', 'nullable', 'string', Rule::in(['NONE', 'BOOK', 'ORDER', 'SHOP', 'LEARN_MORE', 'SIGN_UP', 'GET_OFFER', 'CALL'])],
+            'platforms.*.meta.call_to_action.action_type' => ['sometimes', 'nullable', 'string', Rule::in(['NONE', 'BOOK', 'ORDER', 'SHOP', 'LEARN_MORE', 'SIGN_UP', 'CALL'])],
             'platforms.*.meta.call_to_action.url' => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
             'platforms.*.meta.event' => ['sometimes', 'nullable', 'array'],
             'platforms.*.meta.event.title' => ['sometimes', 'nullable', 'string', 'max:100'],
@@ -103,6 +103,8 @@ class PostPlatformMetaRules
             'platforms.*.meta.link.url' => __('posts.form.pinterest.link_invalid'),
             'platforms.*.meta.link.max' => __('posts.form.pinterest.link_max'),
             'platforms.*.meta.title.max' => __('posts.form.pinterest.title_max'),
+            'platforms.*.meta.event.end_date.after_or_equal' => __('posts.form.google_business.event_end_date_before_start'),
+            'platforms.*.meta.event.title.max' => __('posts.form.google_business.title_max'),
         ];
     }
 
@@ -185,16 +187,74 @@ class PostPlatformMetaRules
             $platform === Platform::Pinterest && blank(data_get($meta, 'board_id')) => ['board_id', trans('posts.form.pinterest.board_required')],
             $platform === Platform::Discord && blank(data_get($meta, 'channel_id')) => ['channel_id', trans('posts.form.discord.channel_required')],
             $needsGoogleBusinessEvent
-                && blank(data_get($meta, 'event.title')) => ['event.title', trans('posts.form.google_business.event_title_required')],
+                && blank(data_get($meta, 'event.title')) => [
+                    'event.title',
+                    trans((data_get($meta, 'topic_type') ?? 'STANDARD') === 'OFFER'
+                        ? 'posts.form.google_business.offer_title_required'
+                        : 'posts.form.google_business.event_title_required'),
+                ],
             $needsGoogleBusinessEvent
                 && blank(data_get($meta, 'event.start_date')) => ['event.start_date', trans('posts.form.google_business.event_start_date_required')],
             $needsGoogleBusinessEvent
                 && blank(data_get($meta, 'event.end_date')) => ['event.end_date', trans('posts.form.google_business.event_end_date_required')],
+            $needsGoogleBusinessEvent
+                && self::googleBusinessEventEndsBeforeStart($meta) => self::googleBusinessEventRangeViolation($meta),
             $platform === Platform::GoogleBusiness
+                && (data_get($meta, 'topic_type') ?? 'STANDARD') !== 'OFFER'
+                && data_get($meta, 'call_to_action.action_type') === 'GET_OFFER' => [
+                    'call_to_action.action_type',
+                    trans('posts.form.google_business.cta_get_offer_deprecated'),
+                ],
+            $platform === Platform::GoogleBusiness
+                && (data_get($meta, 'topic_type') ?? 'STANDARD') !== 'OFFER'
                 && ! in_array(data_get($meta, 'call_to_action.action_type') ?? 'NONE', ['NONE', 'CALL'], true)
                 && blank(data_get($meta, 'call_to_action.url')) => ['call_to_action.url', trans('posts.form.google_business.cta_url_required')],
             default => null,
         };
+    }
+
+    /**
+     * Whether the Google Business event/offer schedule ends before it starts.
+     * Same-day times count: 18:00 → 09:00 is invalid even when the dates match.
+     */
+    public static function googleBusinessEventEndsBeforeStart(mixed $meta): bool
+    {
+        $startDate = data_get($meta, 'event.start_date');
+        $endDate = data_get($meta, 'event.end_date');
+
+        if (blank($startDate) || blank($endDate)) {
+            return false;
+        }
+
+        $startDate = (string) $startDate;
+        $endDate = (string) $endDate;
+
+        if ($endDate < $startDate) {
+            return true;
+        }
+
+        if ($endDate !== $startDate) {
+            return false;
+        }
+
+        $startTime = data_get($meta, 'event.start_time');
+        $endTime = data_get($meta, 'event.end_time');
+
+        return filled($startTime) && filled($endTime) && (string) $endTime < (string) $startTime;
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private static function googleBusinessEventRangeViolation(mixed $meta): array
+    {
+        $sameDay = (string) data_get($meta, 'event.end_date') === (string) data_get($meta, 'event.start_date')
+            && filled(data_get($meta, 'event.start_time'))
+            && filled(data_get($meta, 'event.end_time'));
+
+        return $sameDay
+            ? ['event.end_time', trans('posts.form.google_business.event_end_time_before_start')]
+            : ['event.end_date', trans('posts.form.google_business.event_end_date_before_start')];
     }
 
     /**

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { IconAlertCircle, IconCircleCheck, IconExternalLink } from '@tabler/icons-vue';
+import { IconAlertCircle, IconBan, IconCircleCheck, IconExternalLink, IconHourglass } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import DiscordSettings from '@/components/posts/editor/DiscordSettings.vue';
@@ -79,6 +79,12 @@ const settingsProps = (channel: Channel) => ({
                                 </span>
                                 <Badge v-if="channel.status === PostPlatformStatus.Published" variant="success" class="absolute -top-1 -right-1 h-4 w-4 p-0">
                                     <IconCircleCheck class="h-2.5 w-2.5" />
+                                </Badge>
+                                <Badge v-else-if="channel.status === PostPlatformStatus.PendingReview" variant="warning" class="absolute -top-1 -right-1 h-4 w-4 p-0">
+                                    <IconHourglass class="h-2.5 w-2.5" />
+                                </Badge>
+                                <Badge v-else-if="channel.status === PostPlatformStatus.Rejected" variant="destructive" class="absolute -top-1 -right-1 h-4 w-4 p-0">
+                                    <IconBan class="h-2.5 w-2.5" />
                                 </Badge>
                                 <Badge v-else-if="channel.status === PostPlatformStatus.Failed" variant="destructive" class="absolute -top-1 -right-1 h-4 w-4 p-0 text-[9px]">!</Badge>
                                 <Badge

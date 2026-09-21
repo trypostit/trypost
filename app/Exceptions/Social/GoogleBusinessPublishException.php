@@ -19,14 +19,14 @@ class GoogleBusinessPublishException extends SocialPublishException
 
         if (self::isConfirmedDeadToken($response)) {
             throw new TokenExpiredException(
-                message: $message !== '' ? $message : 'Google Business Profile access token has expired or been revoked',
+                message: $message !== '' ? $message : __('posts.errors.google_business.token_expired'),
                 platformErrorCode: $reason !== '' ? $reason : (string) $status,
             );
         }
 
         if ($reason === 'PERMISSION_DENIED') {
             return new static(
-                userMessage: 'Permission denied. Please reconnect and confirm access to this business location.',
+                userMessage: __('posts.errors.google_business.permission_denied'),
                 category: ErrorCategory::Permission,
                 platformErrorCode: $reason,
                 rawResponse: $rawResponse,
@@ -35,7 +35,7 @@ class GoogleBusinessPublishException extends SocialPublishException
 
         if ($reason === 'NOT_FOUND') {
             return new static(
-                userMessage: 'Business location not found. It may have been deleted — please reconnect.',
+                userMessage: __('posts.errors.google_business.not_found'),
                 category: ErrorCategory::ContentPolicy,
                 platformErrorCode: $reason,
                 rawResponse: $rawResponse,
@@ -44,7 +44,7 @@ class GoogleBusinessPublishException extends SocialPublishException
 
         if ($reason === 'INVALID_ARGUMENT') {
             return new static(
-                userMessage: $message !== '' ? $message : 'Invalid post content. Please check your post details.',
+                userMessage: $message !== '' ? $message : __('posts.errors.google_business.invalid_content'),
                 category: ErrorCategory::ContentPolicy,
                 platformErrorCode: $reason,
                 rawResponse: $rawResponse,
@@ -53,7 +53,7 @@ class GoogleBusinessPublishException extends SocialPublishException
 
         if ($reason === 'RESOURCE_EXHAUSTED' || $status === 429) {
             return new static(
-                userMessage: 'Rate limit exceeded. Please try again later.',
+                userMessage: __('posts.errors.google_business.rate_limited'),
                 category: ErrorCategory::RateLimit,
                 platformErrorCode: $reason !== '' ? $reason : (string) $status,
                 rawResponse: $rawResponse,
@@ -62,7 +62,7 @@ class GoogleBusinessPublishException extends SocialPublishException
 
         if ($status >= 500) {
             return new static(
-                userMessage: 'Google Business Profile server error. Please try again.',
+                userMessage: __('posts.errors.google_business.server_error'),
                 category: ErrorCategory::ServerError,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
@@ -70,7 +70,7 @@ class GoogleBusinessPublishException extends SocialPublishException
         }
 
         return new static(
-            userMessage: $message !== '' ? $message : $rawResponse,
+            userMessage: __('posts.errors.google_business.rejected'),
             category: ErrorCategory::Unknown,
             platformErrorCode: $reason !== '' ? $reason : (string) $status,
             rawResponse: $rawResponse,

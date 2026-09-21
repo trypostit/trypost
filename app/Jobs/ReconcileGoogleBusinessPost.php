@@ -7,6 +7,10 @@ namespace App\Jobs;
 use App\Actions\Post\FinalizePostPublication;
 use App\Enums\PostPlatform\Status;
 use App\Events\PostPlatformStatusUpdated;
+use App\Exceptions\PlatformUnavailableException;
+use App\Exceptions\Social\ErrorCategory;
+use App\Exceptions\Social\GoogleBusinessPublishException;
+use App\Exceptions\TokenExpiredException;
 use App\Models\PostPlatform;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\GoogleBusinessPublisher;
@@ -14,6 +18,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Throwable;
 
 /**
  * Settles a Google Business Profile target that the publish job had to leave
@@ -60,11 +65,31 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
 
         $account = $this->postPlatform->socialAccount;
 
-        if ($account->needsProactiveTokenRefresh()) {
-            app(ConnectionVerifier::class)->refreshToken($account);
+        try {
+            if ($account->needsProactiveTokenRefresh()) {
+                app(ConnectionVerifier::class)->refreshToken($account);
+            }
+
+            $remote = app(GoogleBusinessPublisher::class)->fetchLocalPost($account, (string) $this->postPlatform->platform_post_id);
+        } catch (TokenExpiredException|PlatformUnavailableException $e) {
+            $this->deferOrGiveUp($e->getMessage());
+
+            return;
+        } catch (GoogleBusinessPublishException $e) {
+            if (in_array($e->category, [ErrorCategory::ServerError, ErrorCategory::RateLimit], true)) {
+                $this->deferOrGiveUp($e->userMessage);
+
+                return;
+            }
+
+            $this->giveUp($e->userMessage, [
+                'category' => $e->category->value,
+                'platform_error_code' => $e->platformErrorCode,
+            ]);
+
+            return;
         }
 
-        $remote = app(GoogleBusinessPublisher::class)->fetchLocalPost($account, (string) $this->postPlatform->platform_post_id);
         $state = (string) (data_get($remote, 'state') ?: 'PROCESSING');
         $platformUrl = (string) (data_get($remote, 'searchUrl') ?: $this->postPlatform->platform_url);
 
@@ -93,6 +118,56 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        $this->postPlatform->update(['last_reconciled_at' => now()]);
+        $this->settle();
+    }
+
+    public function failed(?Throwable $exception): void
+    {
+        $this->postPlatform->refresh();
+
+        if ($this->postPlatform->status !== Status::PendingReview) {
+            return;
+        }
+
+        $this->giveUp(
+            $exception instanceof GoogleBusinessPublishException
+                ? $exception->userMessage
+                : __('posts.errors.review_unconfirmed'),
+            [
+                'category' => $exception instanceof GoogleBusinessPublishException
+                    ? $exception->category->value
+                    : 'review_unconfirmed',
+                'detail' => $exception?->getMessage(),
+            ],
+        );
+    }
+
+    private function deferOrGiveUp(string $errorMessage): void
+    {
+        if ($this->reviewExpired()) {
+            $this->giveUp(__('posts.errors.review_unconfirmed'), [
+                'category' => 'review_unconfirmed',
+                'detail' => $errorMessage,
+            ]);
+
+            return;
+        }
+
+        $this->postPlatform->update(['last_reconciled_at' => now()]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $errorContext
+     */
+    private function giveUp(string $errorMessage, array $errorContext = []): void
+    {
+        $this->postPlatform->markAsRejected(
+            (string) $this->postPlatform->platform_post_id,
+            $this->postPlatform->platform_url,
+            $errorMessage,
+            $errorContext,
+        );
         $this->postPlatform->update(['last_reconciled_at' => now()]);
         $this->settle();
     }

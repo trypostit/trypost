@@ -283,6 +283,8 @@ return [
             'performance_api' => env('GOOGLE_BUSINESS_PERFORMANCE_API', 'https://businessprofileperformance.googleapis.com/v1'),
             // OAuth token endpoint, same host Google uses for every OAuth2 client.
             'oauth_api' => env('GOOGLE_BUSINESS_OAUTH_API', 'https://oauth2.googleapis.com'),
+            // Business Profile web UI — post URL fallback and the social-account profile link.
+            'dashboard' => env('GOOGLE_BUSINESS_DASHBOARD', 'https://business.google.com'),
         ],
     ],
 

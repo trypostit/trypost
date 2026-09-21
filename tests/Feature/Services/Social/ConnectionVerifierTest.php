@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\PlatformUnavailableException;
-use App\Exceptions\Social\GoogleBusinessPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\SocialAccount;
 use App\Services\Social\ConnectionVerifier;
@@ -1219,15 +1218,27 @@ test('verify calls the business information api with the short location name', f
 
 test('verify throws an actionable exception when the google business location name is missing', function () {
     $account = SocialAccount::factory()->googleBusiness()->create([
+        'token_expires_at' => now()->addHour(),
         'meta' => ['location_id' => 'accounts/123456789/locations/987654321'],
     ]);
 
     Http::fake();
 
     expect(fn () => app(ConnectionVerifier::class)->verify($account))
-        ->toThrow(GoogleBusinessPublishException::class);
+        ->toThrow(TokenExpiredException::class);
 
     Http::assertNothingSent();
+});
+
+test('verify throws platform unavailable for a google business 5xx', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create();
+
+    Http::fake([
+        config('trypost.platforms.google_business.business_information_api').'/*' => Http::response(['error' => ['status' => 'INTERNAL']], 503),
+    ]);
+
+    expect(fn () => app(ConnectionVerifier::class)->verify($account))
+        ->toThrow(PlatformUnavailableException::class);
 });
 
 test('verify throws token expired for a dead google business token', function () {

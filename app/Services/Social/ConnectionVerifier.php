@@ -8,7 +8,6 @@ use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\BlueskyPublishException;
 use App\Exceptions\Social\DiscordPublishException;
-use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\GoogleBusinessPublishException;
 use App\Exceptions\Social\LinkedInPublishException;
 use App\Exceptions\Social\MastodonPublishException;
@@ -54,6 +53,8 @@ class ConnectionVerifier
      */
     public function verify(SocialAccount $account): bool
     {
+        $this->assertConnectionConfigured($account);
+
         // Hard-expired tokens cannot make API calls — refresh is mandatory.
         // For tokens that are still valid OR only "expiring soon", try the
         // verify endpoint FIRST with the current access_token. This avoids
@@ -152,6 +153,20 @@ class ConnectionVerifier
     {
         return Http::timeout(self::REFRESH_TIMEOUT_SECONDS)
             ->connectTimeout(self::REFRESH_CONNECT_TIMEOUT_SECONDS);
+    }
+
+    /**
+     * Connections that cannot be verified until the user reconnects — throw
+     * before the refresh ladder so a missing location is not mistaken for a
+     * dead access token.
+     *
+     * @throws TokenExpiredException
+     */
+    private function assertConnectionConfigured(SocialAccount $account): void
+    {
+        if ($account->platform === Platform::GoogleBusiness && blank(data_get($account->meta, 'location_name'))) {
+            throw new TokenExpiredException(__('posts.errors.google_business.no_location'));
+        }
     }
 
     /**
@@ -468,7 +483,7 @@ class ConnectionVerifier
     private function refreshGoogleBusinessToken(SocialAccount $account): void
     {
         if (! $account->refresh_token) {
-            throw new TokenExpiredException('No refresh token available for Google Business Profile account');
+            throw new TokenExpiredException(__('posts.errors.google_business.no_refresh_token'));
         }
 
         $response = TokenRefreshClient::for(Platform::GoogleBusiness)->send(fn () => $this->refreshHttp()->asForm()
@@ -761,10 +776,7 @@ class ConnectionVerifier
         $locationName = (string) data_get($account->meta, 'location_name');
 
         if (blank($locationName)) {
-            throw new GoogleBusinessPublishException(
-                userMessage: 'This Google Business Profile account has no location configured. Please reconnect it.',
-                category: ErrorCategory::Permission,
-            );
+            throw new TokenExpiredException(__('posts.errors.google_business.no_location'));
         }
 
         $response = Http::withToken($account->access_token)
@@ -773,7 +785,7 @@ class ConnectionVerifier
             ]);
 
         if (GoogleBusinessPublishException::isConfirmedDeadToken($response)) {
-            throw new TokenExpiredException('Google Business Profile access token is invalid or expired');
+            throw new TokenExpiredException(__('posts.errors.google_business.token_expired'));
         }
 
         if ($response->successful()) {

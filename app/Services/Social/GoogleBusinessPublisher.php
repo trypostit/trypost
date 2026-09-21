@@ -25,9 +25,11 @@ use Throwable;
 class GoogleBusinessPublisher
 {
     /** Where the Google-shaped copies of post images live on the default disk. */
-    private const DERIVATIVE_DIRECTORY = 'google-business-derivatives';
+    public const string DERIVATIVE_DIRECTORY = 'google-business-derivatives';
 
     use HasSocialHttpClient;
+
+    private ?string $derivativePath = null;
 
     private string $accountManagementUrl;
 
@@ -44,47 +46,53 @@ class GoogleBusinessPublisher
 
     public function publish(PostPlatform $postPlatform): array
     {
-        $this->validateContentLength($postPlatform);
+        $this->derivativePath = null;
 
-        $account = $postPlatform->socialAccount;
+        try {
+            $this->validateContentLength($postPlatform);
 
-        if ($account->needsProactiveTokenRefresh()) {
-            app(ConnectionVerifier::class)->refreshToken($account);
+            $account = $postPlatform->socialAccount;
+
+            if ($account->needsProactiveTokenRefresh()) {
+                app(ConnectionVerifier::class)->refreshToken($account);
+            }
+
+            $content = $postPlatform->post->content
+                ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, Platform::GoogleBusiness)
+                : '';
+
+            $locationId = (string) data_get($account->meta, 'location_id');
+
+            if (blank($locationId)) {
+                throw new GoogleBusinessPublishException(
+                    userMessage: __('posts.errors.google_business.no_location'),
+                    category: ErrorCategory::Permission,
+                );
+            }
+
+            $payload = $this->buildPayload($postPlatform, $content);
+
+            $response = $this->socialHttp()->withToken($account->access_token)
+                ->post("{$this->localPostsUrl}/{$locationId}/localPosts", $payload);
+
+            if ($response->failed()) {
+                Log::error('Google Business Profile post creation failed', [
+                    'status' => $response->status(),
+                    'body' => $this->redactResponseBody($response->body()),
+                ]);
+                $this->handleApiError($response);
+            }
+
+            $created = $response->json() ?? [];
+
+            return [
+                'id' => (string) data_get($created, 'name'),
+                'url' => (string) (data_get($created, 'searchUrl') ?: GoogleBusinessResourceName::dashboardUrl($locationId)),
+                'state' => (string) (data_get($created, 'state') ?: 'PROCESSING'),
+            ];
+        } finally {
+            $this->forgetDerivative();
         }
-
-        $content = $postPlatform->post->content
-            ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, Platform::GoogleBusiness)
-            : '';
-
-        $locationId = (string) data_get($account->meta, 'location_id');
-
-        if (blank($locationId)) {
-            throw new GoogleBusinessPublishException(
-                userMessage: 'This Google Business Profile account has no location configured. Please reconnect it.',
-                category: ErrorCategory::Permission,
-            );
-        }
-
-        $payload = $this->buildPayload($postPlatform, $content);
-
-        $response = $this->socialHttp()->withToken($account->access_token)
-            ->post("{$this->localPostsUrl}/{$locationId}/localPosts", $payload);
-
-        if ($response->failed()) {
-            Log::error('Google Business Profile post creation failed', [
-                'status' => $response->status(),
-                'body' => $this->redactResponseBody($response->body()),
-            ]);
-            $this->handleApiError($response);
-        }
-
-        $created = $response->json() ?? [];
-
-        return [
-            'id' => (string) data_get($created, 'name'),
-            'url' => (string) (data_get($created, 'searchUrl') ?: GoogleBusinessResourceName::dashboardUrl($locationId)),
-            'state' => (string) (data_get($created, 'state') ?: 'PROCESSING'),
-        ];
     }
 
     /**
@@ -92,7 +100,7 @@ class GoogleBusinessPublisher
      * needs as its parent; `location_name` is the short `locations/{id}` name the
      * v1 Business Information and Performance APIs expect.
      *
-     * @return list<array{id: string, account_name: string, location_name: string, title: string, address: ?string}>
+     * @return list<array{id: string, account_name: string, location_name: string, title: string, address: ?string, maps_uri: ?string}>
      */
     public function fetchLocations(string $accessToken): array
     {
@@ -106,22 +114,50 @@ class GoogleBusinessPublisher
     }
 
     /**
+     * Profile photos live at the fixed `/media/profile` resource — not in a
+     * full media list, which the OAuth callback must not walk per location.
+     *
+     * @see https://developers.google.com/my-business/reference/rest/v4/accounts.locations.media/get
+     */
+    public function fetchLocationPhoto(string $accessToken, string $fullLocationName): ?string
+    {
+        $response = $this->socialHttp()->withToken($accessToken)
+            ->get("{$this->localPostsUrl}/{$fullLocationName}/media/profile");
+
+        if ($response->failed()) {
+            Log::warning('Google Business Profile location profile photo fetch failed', [
+                'location' => $fullLocationName,
+                'status' => $response->status(),
+                'body' => $this->redactResponseBody($response->body()),
+            ]);
+
+            return null;
+        }
+
+        $url = data_get($response->json(), 'thumbnailUrl') ?: data_get($response->json(), 'googleUrl');
+
+        return filled($url) ? (string) $url : null;
+    }
+
+    /**
      * @return array<string, mixed> The Local Post request body.
      */
     private function buildPayload(PostPlatform $postPlatform, string $content): array
     {
-        $languageCode = $postPlatform->post->workspace->content_language ?? ContentLanguage::DEFAULT->value;
+        $language = ContentLanguage::tryFrom((string) ($postPlatform->post->workspace->content_language ?? ContentLanguage::DEFAULT->value))
+            ?? ContentLanguage::DEFAULT;
         $topicType = (string) (data_get($postPlatform->meta, 'topic_type') ?? 'STANDARD');
 
         $payload = [
-            'languageCode' => $languageCode,
+            'languageCode' => $language->bcp47(),
             'summary' => $content,
             'topicType' => $topicType,
         ];
 
         $callToActionType = data_get($postPlatform->meta, 'call_to_action.action_type');
 
-        if (filled($callToActionType) && $callToActionType !== 'NONE') {
+        // Google ignores callToAction on OFFER posts.
+        if ($topicType !== 'OFFER' && filled($callToActionType) && $callToActionType !== 'NONE') {
             $callToAction = ['actionType' => $callToActionType];
 
             if ($callToActionType !== 'CALL') {
@@ -176,10 +212,10 @@ class GoogleBusinessPublisher
             file_put_contents($input, Storage::get($media->path));
             $optimized = app(MediaOptimizer::class)->optimizeImage($input, Platform::GoogleBusiness);
 
-            $derivativePath = self::DERIVATIVE_DIRECTORY.'/'.Str::uuid()->toString().'.jpg';
-            Storage::put($derivativePath, file_get_contents($optimized));
+            $this->derivativePath = self::DERIVATIVE_DIRECTORY.'/'.Str::uuid()->toString().'.jpg';
+            Storage::put($this->derivativePath, file_get_contents($optimized));
 
-            return Storage::url($derivativePath);
+            return Storage::url($this->derivativePath);
         } catch (Throwable $e) {
             Log::warning('Google Business Profile image derivative failed; sending the original', [
                 'path' => $media->path,
@@ -203,10 +239,13 @@ class GoogleBusinessPublisher
     private function buildEvent(PostPlatform $postPlatform): array
     {
         $title = (string) data_get($postPlatform->meta, 'event.title');
+        $topicType = (string) (data_get($postPlatform->meta, 'topic_type') ?? 'STANDARD');
 
         if (blank($title)) {
             throw new GoogleBusinessPublishException(
-                userMessage: 'This Google Business Profile post needs an event title. Please add one and try again.',
+                userMessage: $topicType === 'OFFER'
+                    ? __('posts.form.google_business.offer_title_required')
+                    : __('posts.form.google_business.event_title_required'),
                 category: ErrorCategory::ContentPolicy,
             );
         }
@@ -216,7 +255,7 @@ class GoogleBusinessPublisher
 
         if (blank($startDate) || blank($endDate)) {
             throw new GoogleBusinessPublishException(
-                userMessage: 'This Google Business Profile post needs an event start and end date. Please add them and try again.',
+                userMessage: __('posts.errors.google_business.event_dates_required'),
                 category: ErrorCategory::ContentPolicy,
             );
         }
@@ -330,7 +369,7 @@ class GoogleBusinessPublisher
     }
 
     /**
-     * @return list<array{id: string, account_name: string, location_name: string, title: string, address: ?string}>
+     * @return list<array{id: string, account_name: string, location_name: string, title: string, address: ?string, maps_uri: ?string}>
      */
     private function fetchLocationsForAccount(string $accessToken, string $accountName): array
     {
@@ -372,6 +411,9 @@ class GoogleBusinessPublisher
                     'location_name' => $shortName,
                     'title' => (string) data_get($location, 'title'),
                     'address' => $this->formatAddress(data_get($location, 'storefrontAddress')),
+                    'maps_uri' => filled(data_get($location, 'metadata.mapsUri'))
+                        ? (string) data_get($location, 'metadata.mapsUri')
+                        : null,
                 ];
             }
 
@@ -397,5 +439,23 @@ class GoogleBusinessPublisher
     private function handleApiError(Response $response): never
     {
         throw GoogleBusinessPublishException::fromApiResponse($response);
+    }
+
+    private function forgetDerivative(): void
+    {
+        if ($this->derivativePath === null) {
+            return;
+        }
+
+        try {
+            Storage::delete($this->derivativePath);
+        } catch (Throwable $e) {
+            Log::warning('Failed to prune Google Business Profile image derivative', [
+                'path' => $this->derivativePath,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        $this->derivativePath = null;
     }
 }

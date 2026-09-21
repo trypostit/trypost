@@ -611,3 +611,100 @@ test('publish post rejects a Google Business event post without event fields', f
 
     $response->assertHasErrors([__('posts.form.google_business.event_title_required')]);
 });
+
+test('publish post rejects a Google Business offer post without dates', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $googleBusiness->id,
+        'enabled' => true,
+        'meta' => [
+            'topic_type' => 'OFFER',
+            'event' => ['title' => 'Summer Sale'],
+        ],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id]);
+
+    $response->assertHasErrors([__('posts.form.google_business.event_start_date_required')]);
+});
+
+test('publish post rejects a Google Business event with a same-day end time before start', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $googleBusiness->id,
+        'enabled' => true,
+        'meta' => [
+            'topic_type' => 'EVENT',
+            'event' => [
+                'title' => 'Sale',
+                'start_date' => '2026-09-01',
+                'end_date' => '2026-09-01',
+                'start_time' => '18:00',
+                'end_time' => '09:00',
+            ],
+        ],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id]);
+
+    $response->assertHasErrors([__('posts.form.google_business.event_end_time_before_start')]);
+});
+
+test('create post rejects a deprecated Google Business GET_OFFER call to action', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Sale',
+            'platforms' => [[
+                'social_account_id' => $googleBusiness->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+                'meta' => [
+                    'topic_type' => 'STANDARD',
+                    'call_to_action' => ['action_type' => 'GET_OFFER'],
+                ],
+            ]],
+        ]);
+
+    $response->assertHasErrors();
+});
+
+test('publish post rejects a Google Business post with a url-needing cta and no url', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $googleBusiness->id,
+        'enabled' => true,
+        'meta' => [
+            'topic_type' => 'STANDARD',
+            'call_to_action' => ['action_type' => 'BOOK'],
+        ],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id]);
+
+    $response->assertHasErrors([__('posts.form.google_business.cta_url_required')]);
+});

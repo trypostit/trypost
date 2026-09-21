@@ -5,12 +5,15 @@ declare(strict_types=1);
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Support\PostPlatformMetaRules;
+use Illuminate\Support\Facades\Validator;
 
 test('custom meta messages only cover pinterest title and link', function () {
     expect(PostPlatformMetaRules::messages())->toBe([
         'platforms.*.meta.link.url' => __('posts.form.pinterest.link_invalid'),
         'platforms.*.meta.link.max' => __('posts.form.pinterest.link_max'),
         'platforms.*.meta.title.max' => __('posts.form.pinterest.title_max'),
+        'platforms.*.meta.event.end_date.after_or_equal' => __('posts.form.google_business.event_end_date_before_start'),
+        'platforms.*.meta.event.title.max' => __('posts.form.google_business.title_max'),
     ]);
 });
 
@@ -64,7 +67,8 @@ test('google business event topic type with all fields present has no violation'
 test('google business offer topic type requires event title, start date, and end date to publish', function () {
     $method = new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation');
 
-    expect($method->invoke(null, Platform::GoogleBusiness, ['topic_type' => 'OFFER'])[0])->toBe('event.title');
+    expect($method->invoke(null, Platform::GoogleBusiness, ['topic_type' => 'OFFER']))
+        ->toBe(['event.title', trans('posts.form.google_business.offer_title_required')]);
 
     expect($method->invoke(null, Platform::GoogleBusiness, [
         'topic_type' => 'OFFER',
@@ -75,6 +79,16 @@ test('google business offer topic type requires event title, start date, and end
         'topic_type' => 'OFFER',
         'event' => ['title' => 'Summer Sale', 'start_date' => '2026-09-01'],
     ])[0])->toBe('event.end_date');
+});
+
+test('google business event end date before start date is a required-meta violation', function () {
+    $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
+        ->invoke(null, Platform::GoogleBusiness, [
+            'topic_type' => 'EVENT',
+            'event' => ['title' => 'Sale', 'start_date' => '2026-09-10', 'end_date' => '2026-09-01'],
+        ]);
+
+    expect($violation)->toBe(['event.end_date', trans('posts.form.google_business.event_end_date_before_start')]);
 });
 
 test('google business offer topic type with all event fields present has no violation', function () {
@@ -102,6 +116,80 @@ test('google business call_to_action.url rule is unconditional, not required_unl
     $rules = PostPlatformMetaRules::rules();
 
     expect($rules['platforms.*.meta.call_to_action.url'])->toBe(['sometimes', 'nullable', 'url:http,https', 'max:2048']);
+});
+
+test('google business leftover get offer on an offer post is ignored', function () {
+    $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
+        ->invoke(null, Platform::GoogleBusiness, [
+            'topic_type' => 'OFFER',
+            'event' => ['title' => 'Sale', 'start_date' => '2026-09-01', 'end_date' => '2026-09-30'],
+            'call_to_action' => ['action_type' => 'GET_OFFER'],
+        ]);
+
+    expect($violation)->toBeNull();
+});
+
+test('google business get offer on a non-offer post is rejected as deprecated', function () {
+    $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
+        ->invoke(null, Platform::GoogleBusiness, [
+            'topic_type' => 'STANDARD',
+            'call_to_action' => ['action_type' => 'GET_OFFER'],
+        ]);
+
+    expect($violation)->toBe(['call_to_action.action_type', trans('posts.form.google_business.cta_get_offer_deprecated')]);
+});
+
+test('google business call_to_action action types exclude the deprecated get offer', function () {
+    $validator = Validator::make(
+        ['platforms' => [['meta' => ['call_to_action' => ['action_type' => 'GET_OFFER']]]]],
+        PostPlatformMetaRules::rules(),
+    );
+
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->has('platforms.0.meta.call_to_action.action_type'))->toBeTrue();
+});
+
+test('google business same-day end time before start time is a required-meta violation', function () {
+    $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
+        ->invoke(null, Platform::GoogleBusiness, [
+            'topic_type' => 'EVENT',
+            'event' => [
+                'title' => 'Sale',
+                'start_date' => '2026-09-01',
+                'end_date' => '2026-09-01',
+                'start_time' => '18:00',
+                'end_time' => '09:00',
+            ],
+        ]);
+
+    expect($violation)->toBe(['event.end_time', trans('posts.form.google_business.event_end_time_before_start')]);
+});
+
+test('google business same-day end time after start time has no violation', function () {
+    $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
+        ->invoke(null, Platform::GoogleBusiness, [
+            'topic_type' => 'EVENT',
+            'event' => [
+                'title' => 'Sale',
+                'start_date' => '2026-09-01',
+                'end_date' => '2026-09-01',
+                'start_time' => '09:00',
+                'end_time' => '18:00',
+            ],
+        ]);
+
+    expect($violation)->toBeNull();
+});
+
+test('google business offer topic type ignores leftover call_to_action', function () {
+    $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
+        ->invoke(null, Platform::GoogleBusiness, [
+            'topic_type' => 'OFFER',
+            'event' => ['title' => 'Sale', 'start_date' => '2026-09-01', 'end_date' => '2026-09-30'],
+            'call_to_action' => ['action_type' => 'BOOK'],
+        ]);
+
+    expect($violation)->toBeNull();
 });
 
 test('google business call_to_action with a url-needing action type and no url requires a violation', function () {

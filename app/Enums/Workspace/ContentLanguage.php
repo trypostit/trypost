@@ -96,6 +96,19 @@ enum ContentLanguage: string
     }
 
     /**
+     * BCP 47 tag for outbound APIs that want a regional form. Workspace
+     * storage stays on the short codes (`en`, `zh`); only the wire format
+     * widens the ones Google treats as underspecified.
+     */
+    public function bcp47(): string
+    {
+        return match ($this) {
+            self::Chinese => 'zh-CN',
+            default => $this->value,
+        };
+    }
+
+    /**
      * Resolve a raw `<html lang>` value (e.g. "pt-PT", "zh-Hans") to a supported
      * language by matching its primary subtag, or null if none is supported.
      */

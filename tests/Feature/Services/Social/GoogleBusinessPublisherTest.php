@@ -69,6 +69,8 @@ test('publish hands Google a JPEG derivative rather than the raw upload', functi
             && str_ends_with($sourceUrl, '.jpg')
             && ! str_contains($sourceUrl, 'promo.png');
     });
+
+    expect(Storage::allFiles(GoogleBusinessPublisher::DERIVATIVE_DIRECTORY))->toBe([]);
 });
 
 test('publish reports the review state Google returned and the real post URL', function () {
@@ -96,7 +98,7 @@ test('publishes a standard post with the workspace content language', function (
     $result = $this->publisher->publish($this->postPlatform);
 
     expect($result['id'])->toBe('accounts/123456789/locations/987654321/localPosts/999');
-    expect($result['url'])->toBe('https://business.google.com/locations/987654321');
+    expect($result['url'])->toBe('https://business.google.com/dashboard/l/u987654321');
 
     Http::assertSent(function ($request) {
         return $request->url() === config('trypost.platforms.google_business.local_posts_api').'/accounts/123456789/locations/987654321/localPosts'
@@ -120,6 +122,35 @@ test('an explicitly null topic_type publishes as STANDARD', function () {
         && ! isset($request['event']));
 });
 
+test('a blank offer title throws with the offer-title message', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
+    ]);
+
+    $this->postPlatform->update([
+        'meta' => [
+            'topic_type' => 'OFFER',
+            'event' => ['title' => '', 'start_date' => '2026-09-01', 'end_date' => '2026-09-02'],
+        ],
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(GoogleBusinessPublishException::class, __('posts.form.google_business.offer_title_required'));
+
+    Http::assertNothingSent();
+});
+
+test('a chinese workspace sends a regional language code', function () {
+    $this->workspace->update(['content_language' => 'zh']);
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(fn ($request) => data_get($request->data(), 'languageCode') === 'zh-CN');
+});
+
 test('a blank event title throws instead of publishing an untitled event', function () {
     Http::fake([
         config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
@@ -133,7 +164,7 @@ test('a blank event title throws instead of publishing an untitled event', funct
     ]);
 
     expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
-        ->toThrow(GoogleBusinessPublishException::class);
+        ->toThrow(GoogleBusinessPublishException::class, __('posts.form.google_business.event_title_required'));
 
     Http::assertNothingSent();
 });
@@ -225,6 +256,34 @@ test('builds an event payload for EVENT topic type', function () {
     });
 });
 
+test('includes event start and end times when they are set', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
+    ]);
+
+    $this->postPlatform->update([
+        'meta' => [
+            'topic_type' => 'EVENT',
+            'event' => [
+                'title' => 'Grand Opening',
+                'start_date' => '2026-09-01',
+                'end_date' => '2026-09-02',
+                'start_time' => '09:30',
+                'end_time' => '17:00',
+            ],
+        ],
+    ]);
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(function ($request) {
+        $schedule = data_get($request->data(), 'event.schedule');
+
+        return $schedule['startTime'] === ['hours' => 9, 'minutes' => 30, 'seconds' => 0, 'nanos' => 0]
+            && $schedule['endTime'] === ['hours' => 17, 'minutes' => 0, 'seconds' => 0, 'nanos' => 0];
+    });
+});
+
 test('builds both an event and an offer payload for OFFER topic type', function () {
     Http::fake([
         config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
@@ -251,6 +310,52 @@ test('builds both an event and an offer payload for OFFER topic type', function 
             ]
             && data_get($request->data(), 'offer') === ['couponCode' => 'SUMMER20'];
     });
+});
+
+test('omits callToAction on OFFER posts because Google ignores it', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
+    ]);
+
+    $this->postPlatform->update([
+        'meta' => [
+            'topic_type' => 'OFFER',
+            'event' => ['title' => 'Summer Sale', 'start_date' => '2026-09-01', 'end_date' => '2026-09-30'],
+            'offer' => ['coupon_code' => 'SUMMER20'],
+            'call_to_action' => ['action_type' => 'BOOK', 'url' => 'https://example.com/book'],
+        ],
+    ]);
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(fn ($request) => data_get($request->data(), 'topicType') === 'OFFER'
+        && ! array_key_exists('callToAction', $request->data()));
+});
+
+test('includes offer redeem url and terms when they are set', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
+    ]);
+
+    $this->postPlatform->update([
+        'meta' => [
+            'topic_type' => 'OFFER',
+            'event' => ['title' => 'Summer Sale', 'start_date' => '2026-09-01', 'end_date' => '2026-09-30'],
+            'offer' => [
+                'coupon_code' => 'SUMMER20',
+                'redeem_online_url' => 'https://example.com/redeem',
+                'terms_conditions' => 'While supplies last.',
+            ],
+        ],
+    ]);
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(fn ($request) => data_get($request->data(), 'offer') === [
+        'couponCode' => 'SUMMER20',
+        'redeemOnlineUrl' => 'https://example.com/redeem',
+        'termsConditions' => 'While supplies last.',
+    ]);
 });
 
 test('rejects video media for google business posts', function () {
@@ -309,7 +414,10 @@ test('fetchLocations flattens accounts and locations across pages', function () 
         'location_name' => 'locations/222',
         'title' => 'Downtown Store',
         'address' => '123 Main St, Springfield',
+        'maps_uri' => null,
     ]);
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/media'));
 
     Http::assertSent(function ($request) {
         parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
@@ -346,4 +454,46 @@ test('fetchLocations skips a location Google says cannot take local posts', func
 
     // An absent flag stays offered — only an explicit refusal is one.
     expect($titles)->toBe(['Downtown Store', 'Airport Kiosk']);
+});
+
+test('fetchLocations stores the maps uri when Google returns one', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.account_management_api').'/accounts*' => Http::response([
+            'accounts' => [['name' => 'accounts/111']],
+        ], 200),
+        config('trypost.platforms.google_business.business_information_api').'/accounts/111/locations*' => Http::response([
+            'locations' => [
+                [
+                    'name' => 'locations/222',
+                    'title' => 'Downtown Store',
+                    'metadata' => ['mapsUri' => 'https://maps.google.com/?cid=123'],
+                ],
+            ],
+        ], 200),
+    ]);
+
+    expect($this->publisher->fetchLocations('fake-access-token')[0]['maps_uri'])
+        ->toBe('https://maps.google.com/?cid=123');
+});
+
+test('fetchLocationPhoto reads the fixed profile media resource', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/accounts/111/locations/222/media/profile' => Http::response([
+            'mediaFormat' => 'PHOTO',
+            'locationAssociation' => ['category' => 'PROFILE'],
+            'thumbnailUrl' => 'https://lh3.googleusercontent.com/profile-thumb',
+            'googleUrl' => 'https://lh3.googleusercontent.com/profile-full',
+        ], 200),
+    ]);
+
+    expect($this->publisher->fetchLocationPhoto('fake-access-token', 'accounts/111/locations/222'))
+        ->toBe('https://lh3.googleusercontent.com/profile-thumb');
+});
+
+test('fetchLocationPhoto returns null when the profile media request fails', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/accounts/111/locations/222/media/profile' => Http::response(['error' => ['message' => 'denied']], 403),
+    ]);
+
+    expect($this->publisher->fetchLocationPhoto('fake-access-token', 'accounts/111/locations/222'))->toBeNull();
 });

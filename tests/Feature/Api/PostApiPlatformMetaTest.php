@@ -651,3 +651,88 @@ it('rejects publishing a Google Business event post without event fields', funct
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['platforms.0.meta.event.title']);
 });
+
+it('rejects publishing a Google Business offer post without dates', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $platform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id, 'social_account_id' => $googleBusiness->id, 'enabled' => true, 'meta' => [],
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Publishing->value,
+            'platforms' => [[
+                'id' => $platform->id,
+                'meta' => ['topic_type' => 'OFFER', 'event' => ['title' => 'Summer Sale']],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.event.start_date']);
+});
+
+it('rejects publishing a Google Business event with a same-day end time before start', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $platform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id, 'social_account_id' => $googleBusiness->id, 'enabled' => true, 'meta' => [],
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Publishing->value,
+            'platforms' => [[
+                'id' => $platform->id,
+                'meta' => [
+                    'topic_type' => 'EVENT',
+                    'event' => [
+                        'title' => 'Sale',
+                        'start_date' => '2026-09-01',
+                        'end_date' => '2026-09-01',
+                        'start_time' => '18:00',
+                        'end_time' => '09:00',
+                    ],
+                ],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.event.end_time']);
+});
+
+it('rejects a deprecated Google Business GET_OFFER call to action', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Sale',
+            'platforms' => [[
+                'social_account_id' => $googleBusiness->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+                'meta' => [
+                    'topic_type' => 'STANDARD',
+                    'call_to_action' => ['action_type' => 'GET_OFFER'],
+                ],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.call_to_action.action_type']);
+});
+
+it('rejects publishing a Google Business post with a url-needing cta and no url', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $platform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id, 'social_account_id' => $googleBusiness->id, 'enabled' => true, 'meta' => [],
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Publishing->value,
+            'platforms' => [[
+                'id' => $platform->id,
+                'meta' => ['topic_type' => 'STANDARD', 'call_to_action' => ['action_type' => 'BOOK']],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.call_to_action.url']);
+});

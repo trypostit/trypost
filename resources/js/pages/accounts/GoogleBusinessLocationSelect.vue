@@ -2,7 +2,8 @@
 import { useForm } from '@inertiajs/vue3';
 import { IconBuildingStore } from '@tabler/icons-vue';
 
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import InputError from '@/components/InputError.vue';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import PopupLayout from '@/layouts/PopupLayout.vue';
 import { select as selectGoogleBusinessLocation } from '@/routes/app/social/google-business';
@@ -13,6 +14,7 @@ interface Location {
     location_name: string;
     title: string;
     address: string | null;
+    photo?: string | null;
 }
 
 interface Workspace {
@@ -64,6 +66,7 @@ const handleSelectLocation = (location: Location) => {
                     dusk="google-business-location"
                 >
                     <Avatar class="h-12 w-12 shrink-0 rounded-lg">
+                        <AvatarImage v-if="location.photo" :src="location.photo" class="object-cover" />
                         <AvatarFallback class="rounded-lg bg-blue-100 dark:bg-blue-900">
                             <IconBuildingStore class="h-6 w-6 text-blue-600 dark:text-blue-400" />
                         </AvatarFallback>
@@ -80,6 +83,7 @@ const handleSelectLocation = (location: Location) => {
                         </Button>
                     </div>
                 </div>
+                <InputError :message="form.errors.location_id" />
             </div>
         </div>
     </PopupLayout>
