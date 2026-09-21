@@ -12,6 +12,7 @@ use App\Mail\PostPublished;
 use App\Mail\PostPublishFailed;
 use App\Models\Post;
 use App\Models\PostPlatform;
+use Illuminate\Support\Collection;
 
 /**
  * Settles a post once every enabled target has reached a terminal state, and
@@ -20,46 +21,37 @@ use App\Models\PostPlatform;
  */
 class FinalizePostPublication
 {
-    /**
-     * Targets that are done, whichever way they went.
-     *
-     * @var array<int, PostPlatformStatus>
-     */
-    private const FAILURE_STATUSES = [
-        PostPlatformStatus::Failed,
-        PostPlatformStatus::Rejected,
-    ];
-
     public function handle(PostPlatform $postPlatform): void
     {
-        $post = $postPlatform->post->fresh();
-        $enabledPlatforms = $post->postPlatforms->where('enabled', true);
+        $post = $postPlatform->post->fresh(['workspace.owner', 'postPlatforms.socialAccount']);
+        $targets = $post->postPlatforms->where('enabled', true);
+        $published = $targets->where('status', PostPlatformStatus::Published);
+        $failed = $targets->whereIn('status', [
+            PostPlatformStatus::Failed,
+            PostPlatformStatus::Rejected,
+        ]);
 
-        $total = $enabledPlatforms->count();
-        $publishedCount = $enabledPlatforms->where('status', PostPlatformStatus::Published)->count();
-        $failedCount = $enabledPlatforms->whereIn('status', self::FAILURE_STATUSES)->count();
-
-        if ($publishedCount + $failedCount < $total) {
+        if ($published->count() + $failed->count() < $targets->count()) {
             return;
         }
 
-        if ($publishedCount === $total) {
+        $successful = $failed->isEmpty();
+
+        if ($successful) {
             $post->markAsPublished();
-            $this->notify($post, true);
-
-            return;
-        }
-
-        if ($publishedCount > 0) {
+        } elseif ($published->isNotEmpty()) {
             $post->markAsPartiallyPublished();
         } else {
             $post->markAsFailed();
         }
 
-        $this->notify($post, false);
+        $this->notify($post, $successful, $successful ? $published : $failed);
     }
 
-    private function notify(Post $post, bool $successful): void
+    /**
+     * @param  Collection<int, PostPlatform>  $platforms
+     */
+    private function notify(Post $post, bool $successful, Collection $platforms): void
     {
         $owner = $post->workspace->owner;
 
@@ -67,32 +59,18 @@ class FinalizePostPublication
             return;
         }
 
-        $platforms = $post->postPlatforms()
-            ->with('socialAccount')
-            ->enabled()
-            ->when(
-                $successful,
-                fn ($query) => $query->where('status', PostPlatformStatus::Published),
-                fn ($query) => $query->whereIn('status', self::FAILURE_STATUSES),
-            )
-            ->get()
-            ->map(fn (PostPlatform $pp): string => $pp->notificationLabel())
-            ->implode(', ');
-
+        $type = $successful ? Type::PostPublished : Type::PostFailed;
         $locale = $owner->preferredLocale();
-        $placeholders = ['platforms' => $platforms];
 
         SendNotification::dispatch(
             user: $owner,
             workspaceId: $post->workspace_id,
-            type: $successful ? Type::PostPublished : Type::PostFailed,
+            type: $type,
             channel: Channel::Both,
-            title: $successful
-                ? __('notifications.post_published.title', [], $locale)
-                : __('notifications.post_failed.title', [], $locale),
-            body: $successful
-                ? __('notifications.post_published.body', $placeholders, $locale)
-                : __('notifications.post_failed.body', $placeholders, $locale),
+            title: __("notifications.{$type->value}.title", [], $locale),
+            body: __("notifications.{$type->value}.body", [
+                'platforms' => $platforms->map->notificationLabel()->implode(', '),
+            ], $locale),
             data: ['post_id' => $post->id],
             mailable: $successful ? new PostPublished($post) : new PostPublishFailed($post),
         );

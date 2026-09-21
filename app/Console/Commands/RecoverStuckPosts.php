@@ -30,12 +30,10 @@ class RecoverStuckPosts extends Command
 
     public function handle(): void
     {
-        $count = 0;
-
         Post::query()
             ->where('status', PostStatus::Publishing)
             ->where('updated_at', '<=', now()->subHour())
-            ->each(function (Post $post) use (&$count) {
+            ->each(function (Post $post): void {
                 $stalePlatforms = $post->postPlatforms()
                     ->enabled()
                     ->whereIn('status', [PlatformStatus::Publishing, PlatformStatus::Pending, PlatformStatus::Retrying])
@@ -82,10 +80,7 @@ class RecoverStuckPosts extends Command
                 if ($settled instanceof PostPlatform) {
                     app(FinalizePostPublication::class)->handle($settled);
                 }
-
-                $count++;
             });
-
     }
 
     /**

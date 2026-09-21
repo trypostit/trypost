@@ -14,8 +14,7 @@ class GoogleBusinessAnalytics
 {
     use HasSocialHttpClient;
 
-    /** @var array<string, string> Google metric enum => translation key. */
-    /** Metrics every Business Profile reports, whatever the business does. */
+    /** Metrics every Business Profile reports. */
     private const METRICS = [
         'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH' => 'analytics.metrics.desktop_search_impressions',
         'BUSINESS_IMPRESSIONS_MOBILE_SEARCH' => 'analytics.metrics.mobile_search_impressions',
@@ -28,10 +27,8 @@ class GoogleBusinessAnalytics
     ];
 
     /**
-     * Metrics Google only ever fills for a matching business type — bookings
-     * need Reserve with Google, the food pair needs a food listing. A dentist
-     * would otherwise stare at three permanent zeros, so these are rendered
-     * only when the period actually reported something.
+     * Bookings and food metrics stay empty for most business types. Hide a
+     * zero so a dentist is not staring at three permanent empty cards.
      */
     private const CONDITIONAL_METRICS = [
         'BUSINESS_BOOKINGS' => 'analytics.metrics.bookings',
@@ -51,16 +48,15 @@ class GoogleBusinessAnalytics
         $since ??= now()->subDays(7);
         $until ??= now();
 
-        $cacheKey = "analytics:google_business:{$account->id}:{$since->format('Y-m-d')}:{$until->format('Y-m-d')}";
-        $cacheTtl = app()->isProduction() ? 3600 : 1;
-
-        return Cache::remember($cacheKey, $cacheTtl, fn () => $this->fetchMetricsFromApi($account, $since, $until));
+        return $this->remember(
+            "analytics:google_business:{$account->id}:{$since->format('Y-m-d')}:{$until->format('Y-m-d')}",
+            fn (): array => $this->fetchMetricsFromApi($account, $since, $until),
+        );
     }
 
     /**
-     * The terms people searched before landing on the profile. Google only
-     * aggregates these by month, so a day-level range is widened to the whole
-     * months it touches — the panel labels the period it actually got.
+     * Google only aggregates search keywords by month, so a day-level range
+     * is widened to the months it touches — the panel labels the period it got.
      *
      * @return list<array{keyword: string, value: int, estimated: bool}>
      */
@@ -69,13 +65,33 @@ class GoogleBusinessAnalytics
         $since ??= now()->subMonth();
         $until ??= now();
 
-        $cacheKey = "analytics:google_business:keywords:{$account->id}:{$since->format('Y-m')}:{$until->format('Y-m')}";
-
-        return Cache::remember(
-            $cacheKey,
-            app()->isProduction() ? 3600 : 1,
+        return $this->remember(
+            "analytics:google_business:keywords:{$account->id}:{$since->format('Y-m')}:{$until->format('Y-m')}",
             fn (): array => $this->fetchSearchKeywordsFromApi($account, $since, $until),
         );
+    }
+
+    /**
+     * @param  callable(): array  $callback
+     */
+    private function remember(string $key, callable $callback): array
+    {
+        return Cache::remember($key, app()->isProduction() ? 3600 : 1, $callback);
+    }
+
+    private function location(SocialAccount $account): ?string
+    {
+        $name = (string) data_get($account->meta, 'location_name');
+
+        if (blank($name)) {
+            return null;
+        }
+
+        if ($account->needsProactiveTokenRefresh()) {
+            app(ConnectionVerifier::class)->refreshToken($account);
+        }
+
+        return $name;
     }
 
     /**
@@ -83,14 +99,10 @@ class GoogleBusinessAnalytics
      */
     private function fetchSearchKeywordsFromApi(SocialAccount $account, CarbonInterface $since, CarbonInterface $until): array
     {
-        $locationName = (string) data_get($account->meta, 'location_name');
+        $locationName = $this->location($account);
 
-        if (blank($locationName)) {
+        if ($locationName === null) {
             return [];
-        }
-
-        if ($account->needsProactiveTokenRefresh()) {
-            app(ConnectionVerifier::class)->refreshToken($account);
         }
 
         $keywords = [];
@@ -115,20 +127,22 @@ class GoogleBusinessAnalytics
                 return $keywords;
             }
 
-            foreach (data_get($response->json(), 'searchKeywordsCounts', []) as $entry) {
+            $payload = $response->json();
+
+            foreach (data_get($payload, 'searchKeywordsCounts', []) as $entry) {
                 $threshold = data_get($entry, 'insightsValue.threshold');
 
                 $keywords[] = [
                     'keyword' => (string) data_get($entry, 'searchKeyword'),
                     // Google withholds the count for low-volume terms and sends
-                    // the floor it stayed under instead. Reporting that floor as
-                    // the count would state a number Google refused to give.
+                    // the floor instead. The estimated flag is what keeps that
+                    // floor from being shown as a real count.
                     'value' => (int) (data_get($entry, 'insightsValue.value') ?? $threshold ?? 0),
                     'estimated' => $threshold !== null,
                 ];
             }
 
-            $pageToken = data_get($response->json(), 'nextPageToken');
+            $pageToken = data_get($payload, 'nextPageToken');
         } while (filled($pageToken));
 
         return $keywords;
@@ -136,13 +150,9 @@ class GoogleBusinessAnalytics
 
     private function fetchMetricsFromApi(SocialAccount $account, CarbonInterface $since, CarbonInterface $until): array
     {
-        if ($account->needsProactiveTokenRefresh()) {
-            app(ConnectionVerifier::class)->refreshToken($account);
-        }
+        $locationName = $this->location($account);
 
-        $locationName = (string) data_get($account->meta, 'location_name');
-
-        if (blank($locationName)) {
+        if ($locationName === null) {
             return [];
         }
 
@@ -157,29 +167,33 @@ class GoogleBusinessAnalytics
             return [];
         }
 
-        $series = data_get($response->json(), 'multiDailyMetricTimeSeries.0.dailyMetricTimeSeries', []);
+        $labels = self::METRICS + self::CONDITIONAL_METRICS;
+        $totals = array_fill_keys(array_keys($labels), 0);
 
-        $requested = self::METRICS + self::CONDITIONAL_METRICS;
-        $totals = collect($requested)->mapWithKeys(fn ($labelKey, $metric) => [$metric => 0])->all();
-
-        foreach ($series as $entry) {
+        foreach (data_get($response->json(), 'multiDailyMetricTimeSeries.0.dailyMetricTimeSeries', []) as $entry) {
             $metric = data_get($entry, 'dailyMetric');
 
             if (! array_key_exists($metric, $totals)) {
                 continue;
             }
 
-            $values = collect(data_get($entry, 'timeSeries.datedValues', []))
+            $totals[$metric] = collect(data_get($entry, 'timeSeries.datedValues', []))
                 ->sum(fn ($value) => (int) data_get($value, 'value', 0));
-
-            $totals[$metric] = $values;
         }
 
-        return collect($requested)
-            ->reject(fn (string $labelKey, string $metric): bool => isset(self::CONDITIONAL_METRICS[$metric]) && $totals[$metric] === 0)
-            ->map(fn (string $labelKey, string $metric) => ['label' => __($labelKey), 'value' => $totals[$metric]])
-            ->values()
-            ->all();
+        $metrics = [];
+
+        foreach ($labels as $metric => $labelKey) {
+            $value = $totals[$metric];
+
+            if (isset(self::CONDITIONAL_METRICS[$metric]) && $value === 0) {
+                continue;
+            }
+
+            $metrics[] = ['label' => __($labelKey), 'value' => $value];
+        }
+
+        return $metrics;
     }
 
     /**
