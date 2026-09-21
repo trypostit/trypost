@@ -615,6 +615,34 @@ test('create post rejects a Google Business event title over the api cap', funct
     $response->assertHasErrors([__('posts.form.google_business.title_max')]);
 });
 
+test('publish post rejects a Google Business event title over the api cap', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $googleBusiness->id,
+        'enabled' => true,
+        'meta' => [
+            'topic_type' => 'EVENT',
+            'event' => [
+                'title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH + 1),
+                'start_date' => '2026-09-01',
+                'end_date' => '2026-09-02',
+            ],
+        ],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id]);
+
+    $response->assertHasErrors([__('posts.form.google_business.title_max')]);
+});
+
 test('publish post rejects a Google Business offer post without a title', function () {
     $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
 

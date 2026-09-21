@@ -55,6 +55,44 @@ test('google business standard topic type has no required meta', function () {
     expect($violation)->toBeNull();
 });
 
+test('google business event title over the api length is a required-meta violation', function () {
+    $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
+        ->invoke(null, Platform::GoogleBusiness, [
+            'topic_type' => 'EVENT',
+            'event' => [
+                'title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH + 1),
+                'start_date' => '2026-09-01',
+                'end_date' => '2026-09-02',
+            ],
+        ]);
+
+    expect($violation)->toBe(['event.title', trans('posts.form.google_business.title_max')]);
+});
+
+test('google business offer title over the api length is a required-meta violation', function () {
+    $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
+        ->invoke(null, Platform::GoogleBusiness, [
+            'topic_type' => 'OFFER',
+            'event' => [
+                'title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH + 1),
+                'start_date' => '2026-09-01',
+                'end_date' => '2026-09-30',
+            ],
+        ]);
+
+    expect($violation)->toBe(['event.title', trans('posts.form.google_business.title_max')]);
+});
+
+test('google business standard leftover long event title is not a required-meta violation', function () {
+    $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
+        ->invoke(null, Platform::GoogleBusiness, [
+            'topic_type' => 'STANDARD',
+            'event' => ['title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH + 1)],
+        ]);
+
+    expect($violation)->toBeNull();
+});
+
 test('google business event topic type with all fields present has no violation', function () {
     $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
         ->invoke(null, Platform::GoogleBusiness, [

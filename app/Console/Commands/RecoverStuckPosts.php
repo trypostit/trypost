@@ -45,6 +45,7 @@ class RecoverStuckPosts extends Command
                         $postPlatform->error_context,
                         $postPlatform->id,
                     );
+                    $this->googleBusinessDerivativeCleaner->cleanup($postPlatform->id);
 
                     $postPlatform->update([
                         'status' => PlatformStatus::Failed,

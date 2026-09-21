@@ -371,6 +371,35 @@ test('it fails a google business review that outlived the review ceiling', funct
     Queue::assertPushed(SendNotification::class);
 });
 
+test('it prunes the google business jpeg when a publish times out before review', function () {
+    Storage::fake();
+    $account = SocialAccount::factory()->googleBusiness()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Publishing,
+        'updated_at' => now()->subHours(2),
+    ]);
+    $platform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'status' => PlatformStatus::Publishing,
+        'enabled' => true,
+        'updated_at' => now()->subHours(2),
+    ]);
+    $path = GoogleBusinessDerivativeCleaner::pathFor($platform->id);
+    Storage::put($path, 'image');
+
+    $this->artisan('social:recover-stuck-posts')->assertSuccessful();
+
+    Storage::assertMissing($path);
+    expect($platform->fresh()->status)->toBe(PlatformStatus::Failed)
+        ->and($platform->fresh()->error_message)->toBe(__('posts.errors.publishing_timed_out'))
+        ->and($post->fresh()->status)->toBe(PostStatus::Failed);
+});
+
 test('it prunes the google business jpeg when a review outlives the ceiling', function () {
     Storage::fake();
     $account = SocialAccount::factory()->googleBusiness()->create([

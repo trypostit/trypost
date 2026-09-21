@@ -10,6 +10,7 @@ use App\Enums\PostPlatform\AspectRatio;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Models\Post;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
@@ -189,6 +190,11 @@ class PostPlatformMetaRules
                         : 'posts.form.google_business.event_title_required'),
                 ],
             $needsGoogleBusinessEvent
+                && self::googleBusinessEventTitleExceedsLimit($meta) => [
+                    'event.title',
+                    trans('posts.form.google_business.title_max'),
+                ],
+            $needsGoogleBusinessEvent
                 && blank(data_get($meta, 'event.start_date')) => ['event.start_date', trans('posts.form.google_business.event_start_date_required')],
             $needsGoogleBusinessEvent
                 && blank(data_get($meta, 'event.end_date')) => ['event.end_date', trans('posts.form.google_business.event_end_date_required')],
@@ -200,6 +206,17 @@ class PostPlatformMetaRules
                 && blank(data_get($meta, 'call_to_action.url')) => ['call_to_action.url', trans('posts.form.google_business.cta_url_required')],
             default => null,
         };
+    }
+
+    /**
+     * Event/offer titles over TITLE_MAX_LENGTH fail publish even when stored
+     * outside rules() — MCP PublishPostTool only runs requiredMetaViolation().
+     */
+    private static function googleBusinessEventTitleExceedsLimit(mixed $meta): bool
+    {
+        $title = data_get($meta, 'event.title');
+
+        return filled($title) && Str::length((string) $title) > TopicType::TITLE_MAX_LENGTH;
     }
 
     /**

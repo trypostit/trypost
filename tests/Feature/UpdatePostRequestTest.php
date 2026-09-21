@@ -1156,6 +1156,49 @@ test('publishing a google business event persists start and end times', function
         ->and(data_get($meta, 'event.end_time'))->toBe('17:00');
 });
 
+test('saving two google business events scopes end-before-start to the inverted one', function () {
+    $firstAccount = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $secondAccount = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $validEvent = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $firstAccount->id,
+        'meta' => [],
+    ]);
+    $invertedEvent = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $secondAccount->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'platforms' => [
+                [
+                    'id' => $validEvent->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => [
+                        'topic_type' => 'EVENT',
+                        'event' => ['title' => 'Valid', 'start_date' => '2026-09-01', 'end_date' => '2026-09-10'],
+                    ],
+                ],
+                [
+                    'id' => $invertedEvent->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => [
+                        'topic_type' => 'EVENT',
+                        'event' => ['title' => 'Inverted', 'start_date' => '2026-09-10', 'end_date' => '2026-09-01'],
+                    ],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors([
+        'platforms.1.meta.event.end_date' => __('posts.form.google_business.event_end_date_before_start'),
+    ]);
+    $response->assertSessionDoesntHaveErrors(['platforms.0.meta.event.end_date']);
+});
+
 test('publishing two google business posts scopes event errors to the missing one', function () {
     $firstAccount = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
     $secondAccount = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
