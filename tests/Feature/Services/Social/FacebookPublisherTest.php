@@ -1377,6 +1377,40 @@ test('facebook publisher does not drop the link on a permissions error without t
     Http::assertSentCount(1);
 });
 
+test('facebook publisher fails the post when the retry without the link is rejected too', function () {
+    $this->post->update(['content' => 'Read https://example.com/post']);
+
+    Log::spy();
+
+    Http::fake([
+        '*/page_123/feed' => Http::sequence()
+            ->push(['error' => ['message' => 'There was a problem scraping the URL.', 'code' => 1609005]], 400)
+            ->push(['error' => ['message' => 'Duplicate post', 'code' => 506]], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(FacebookPublishException::class, 'Duplicate post detected. Please modify content.');
+
+    Http::assertSentCount(2);
+    Log::shouldHaveReceived('warning')->once();
+    Log::shouldHaveReceived('error')->once();
+});
+
+test('facebook publisher does not retry a text post with a link when the token is dead', function () {
+    $this->post->update(['content' => 'Read https://example.com/post']);
+
+    Http::fake([
+        '*/page_123/feed' => Http::response([
+            'error' => ['message' => 'Invalid OAuth access token.', 'code' => 190],
+        ], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(TokenExpiredException::class);
+
+    Http::assertSentCount(1);
+});
+
 test('facebook publisher does not attach a link card when the post has media', function () {
     $this->post->update([
         'content' => 'Read https://example.com/post',

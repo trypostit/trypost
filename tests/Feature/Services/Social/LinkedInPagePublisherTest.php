@@ -11,6 +11,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\LinkCard\LinkCardFetcher;
+use App\Services\Social\LinkCard\LinkCardMetadata;
 use App\Services\Social\LinkedInPagePublisher;
 use Illuminate\Support\Facades\Http;
 
@@ -456,4 +457,31 @@ test('linkedin page publisher keeps links intact', function () {
 
     Http::assertSent(fn ($request) => str_contains($request->url(), '/rest/posts')
         && $request['commentary'] === 'New post: https://acme.com/blog');
+});
+
+test('linkedin page publisher sends the article card under the organization', function () {
+    $this->post->update(['content' => 'Read this https://example.com/article']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->once()
+        ->andReturn(new LinkCardMetadata(
+            uri: 'https://example.com/article',
+            title: 'The Article',
+            description: 'A great read',
+            imageUrl: null,
+        ));
+
+    Http::fake([
+        config('trypost.platforms.linkedin-page.api').'/rest/posts' => Http::response(null, 201, [
+            'x-restli-id' => 'urn:li:share:orgArticle',
+        ]),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/rest/posts')
+        && $request['author'] === 'urn:li:organization:123456'
+        && $request['content']['article']['source'] === 'https://example.com/article'
+        && $request['content']['article']['title'] === 'The Article');
 });

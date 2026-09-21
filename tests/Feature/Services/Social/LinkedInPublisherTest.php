@@ -1450,6 +1450,127 @@ test('linkedin publisher does not follow a redirect on the article thumbnail', f
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '127.0.0.1'));
 });
 
+test('linkedin publisher trims the article title and description to what the api accepts', function () {
+    $this->post->update(['content' => 'Read this https://example.com/article']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->once()
+        ->andReturn(new LinkCardMetadata(
+            uri: 'https://example.com/article',
+            title: str_repeat('t', 500),
+            description: str_repeat('d', 5000),
+            imageUrl: null,
+        ));
+
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/rest/posts' => Http::response(null, 201, [
+            'x-restli-id' => 'urn:li:share:trimmed',
+        ]),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        $article = $request['content']['article'] ?? null;
+
+        return str_contains($request->url(), '/rest/posts')
+            && mb_strlen($article['title']) === 399
+            && mb_strlen($article['description']) === 4085;
+    });
+});
+
+test('linkedin publisher skips the thumbnail when og:image does not point at an image', function () {
+    $this->post->update(['content' => 'Read this https://example.com/article']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->once()
+        ->andReturn(new LinkCardMetadata(
+            uri: 'https://example.com/article',
+            title: 'The Article',
+            description: 'A great read',
+            imageUrl: 'https://93.184.216.34/card.jpg',
+        ));
+
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), '/rest/posts')) {
+            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:html']);
+        }
+
+        return Http::response('<html><body>Not an image</body></html>', 200, ['Content-Type' => 'text/html']);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/rest/images'));
+    Http::assertSent(function ($request) {
+        $article = $request['content']['article'] ?? null;
+
+        return str_contains($request->url(), '/rest/posts')
+            && $article['title'] === 'The Article'
+            && ! isset($article['thumbnail']);
+    });
+});
+
+test('linkedin publisher refreshes the token when the thumbnail upload is rejected', function () {
+    $this->post->update(['content' => 'Read this https://example.com/article']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->twice()
+        ->andReturn(new LinkCardMetadata(
+            uri: 'https://example.com/article',
+            title: 'The Article',
+            description: 'A great read',
+            imageUrl: 'https://93.184.216.34/card.jpg',
+        ));
+
+    $this->mock(MediaOptimizer::class)
+        ->shouldReceive('optimizeImage')
+        ->twice()
+        ->andReturnUsing(fn () => tap(tempnam(sys_get_temp_dir(), 'li_thumb_'), fn ($path) => file_put_contents($path, 'thumb-bytes')));
+
+    $jpeg = linkedInJpegBytes();
+    $uploadUrl = 'https://www.linkedin.com/dms/upload/v2/pic/0/article-thumb';
+    $imageInitCalls = 0;
+
+    Http::fake(function ($request) use ($uploadUrl, $jpeg, &$imageInitCalls) {
+        $url = $request->url();
+
+        if (str_contains($url, '/rest/images')) {
+            return ++$imageInitCalls === 1
+                ? Http::response(['message' => 'Expired token'], 401)
+                : Http::response(['value' => ['uploadUrl' => $uploadUrl, 'image' => 'urn:li:image:afterRefresh']], 200);
+        }
+
+        if ($url === $uploadUrl) {
+            return Http::response(null, 201);
+        }
+
+        if (str_contains($url, '/oauth/v2/accessToken')) {
+            return Http::response(['access_token' => 'new-access-token', 'refresh_token' => 'new-refresh-token', 'expires_in' => 5184000], 200);
+        }
+
+        if (str_contains($url, '/rest/posts')) {
+            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:refreshed']);
+        }
+
+        return Http::response($jpeg, 200);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/oauth/v2/accessToken'));
+    Http::assertSent(function ($request) {
+        $article = $request['content']['article'] ?? null;
+
+        return str_contains($request->url(), '/rest/posts')
+            && $request->hasHeader('Authorization', 'Bearer new-access-token')
+            && $article['thumbnail'] === 'urn:li:image:afterRefresh';
+    });
+});
+
 function linkedInJpegBytes(): string
 {
     $image = imagecreatetruecolor(8, 8);
