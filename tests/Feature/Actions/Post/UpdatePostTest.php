@@ -45,7 +45,7 @@ test('execute prunes a google business jpeg when the target is switched off', fu
 
     expect($target->fresh()->enabled)->toBeFalse()
         ->and($target->fresh()->status)->toBe(PlatformStatus::Rejected)
-        ->and($target->fresh()->error_message)->toBe(__('posts.errors.account_inactive'))
+        ->and($target->fresh()->error_message)->toBe(__('posts.errors.target_disabled'))
         ->and($linkedin->fresh()->enabled)->toBeTrue()
         ->and($post->fresh()->status)->toBe(PostStatus::Scheduled);
     Storage::assertMissing($path);

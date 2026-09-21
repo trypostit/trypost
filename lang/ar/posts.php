@@ -630,6 +630,7 @@ return [
     'errors' => [
         'account_disconnected' => 'الحساب الاجتماعي مفصول',
         'account_inactive' => 'الحساب الاجتماعي مُعطَّل',
+        'target_disabled' => 'تم إيقاف وجهة النشر هذه',
         'account_token_expired' => 'انتهت جلسة الحساب الاجتماعي — يرجى إعادة الربط',
         'platform_unavailable' => 'المنصة غير متاحة مؤقتًا. سنعيد المحاولة قريبًا.',
         'platform_unavailable_exhausted' => 'ظلت المنصة غير متاحة بعد عدة محاولات. يرجى المحاولة لاحقًا.',

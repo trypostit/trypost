@@ -91,14 +91,14 @@ class RecoverStuckPosts extends Command
     private function pruneDisabledGoogleBusinessDerivatives(Post $post): void
     {
         $post->postPlatforms()
+            ->disabled()
             ->where('platform', Platform::GoogleBusiness)
-            ->where('enabled', false)
             ->get()
             ->each(function (PostPlatform $postPlatform): void {
                 if ($postPlatform->status === PlatformStatus::PendingReview) {
                     AbandonGoogleBusinessReview::execute(
                         $postPlatform,
-                        __('posts.errors.account_inactive'),
+                        __('posts.errors.target_disabled'),
                         ['category' => 'target_disabled'],
                     );
 

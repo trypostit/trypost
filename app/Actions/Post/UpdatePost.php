@@ -76,19 +76,19 @@ class UpdatePost
                 }
 
                 $post->postPlatforms()
+                    ->disabled()
                     ->where('platform', Platform::GoogleBusiness)
                     ->where('status', PlatformStatus::PendingReview)
-                    ->where('enabled', false)
                     ->get()
                     ->each(fn (PostPlatform $platform) => AbandonGoogleBusinessReview::execute(
                         $platform,
-                        __('posts.errors.account_inactive'),
+                        __('posts.errors.target_disabled'),
                         ['category' => 'target_disabled'],
                     ));
 
                 $disabledGoogleBusinessIds = $post->postPlatforms()
+                    ->disabled()
                     ->where('platform', Platform::GoogleBusiness)
-                    ->where('enabled', false)
                     ->pluck('id');
 
                 DB::afterCommit(function () use ($disabledGoogleBusinessIds): void {

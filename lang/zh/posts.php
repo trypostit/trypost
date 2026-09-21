@@ -630,6 +630,7 @@ return [
     'errors' => [
         'account_disconnected' => '社交账号已断开连接',
         'account_inactive' => '社交账号已停用',
+        'target_disabled' => '已关闭此发布目标',
         'account_token_expired' => '社交账号会话已过期——请重新连接',
         'platform_unavailable' => '平台暂时不可用。我们稍后会重试。',
         'platform_unavailable_exhausted' => '多次重试后平台仍不可用。请稍后再试。',

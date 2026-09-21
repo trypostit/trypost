@@ -632,6 +632,7 @@ return [
     'errors' => [
         'account_disconnected' => 'Social-Media-Konto ist getrennt',
         'account_inactive' => 'Social-Media-Konto ist deaktiviert',
+        'target_disabled' => 'Dieses Ziel wurde deaktiviert',
         'account_token_expired' => 'Sitzung des Social-Media-Kontos abgelaufen – bitte erneut verbinden',
         'platform_unavailable' => 'Die Plattform ist vorübergehend nicht verfügbar. Wir versuchen es in Kürze erneut.',
         'platform_unavailable_exhausted' => 'Die Plattform blieb nach mehreren Versuchen nicht verfügbar. Bitte später erneut versuchen.',

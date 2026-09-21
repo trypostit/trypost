@@ -2,6 +2,7 @@
 paths:
   - app/Actions/Post/FinalizePostPublication.php
   - app/Jobs/PublishPost.php
+  - app/Actions/Post/UpdatePost.php
 ---
 
 # Post
@@ -14,3 +15,6 @@ SendNotification title/body are stored already-resolved. Resolve them through la
 
 ## Finalize is idempotent once the post is settled
 handle() lockForUpdates the post and returns without notifying when status is already Published, PartiallyPublished, or Failed (Status::isSettled()). RecoverStuckPosts and ReconcileGoogleBusinessPost can both finish the last target at the 24h ceiling; the second call must not send a second email or toast. Dispatch SendNotification only after the transaction commits.
+
+## Target disabled is not account inactive
+Abandoning a GBP pending_review because the post destination was unchecked uses posts.errors.target_disabled. posts.errors.account_inactive stays for PublishToSocialPlatform when social_accounts.is_active is false. Do not reuse the account copy on a switched-off target.

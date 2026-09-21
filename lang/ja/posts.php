@@ -630,6 +630,7 @@ return [
     'errors' => [
         'account_disconnected' => 'ソーシャルアカウントの接続が解除されています',
         'account_inactive' => 'ソーシャルアカウントが無効化されています',
+        'target_disabled' => 'この投稿先はオフになりました',
         'account_token_expired' => 'ソーシャルアカウントのセッションの有効期限が切れました — 再接続してください',
         'platform_unavailable' => 'プラットフォームが一時的に利用できません。まもなく再試行します。',
         'platform_unavailable_exhausted' => '何度か再試行しましたがプラットフォームが利用できませんでした。後でもう一度お試しください。',

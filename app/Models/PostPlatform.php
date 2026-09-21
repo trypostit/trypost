@@ -77,6 +77,11 @@ class PostPlatform extends Model
         return $query->where('post_platforms.enabled', true);
     }
 
+    public function scopeDisabled(Builder $query): Builder
+    {
+        return $query->where('post_platforms.enabled', false);
+    }
+
     /**
      * Get display name, falling back to snapshot if account was deleted.
      */

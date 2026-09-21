@@ -427,7 +427,7 @@ test('it rejects a disabled google business review and fails the parent', functi
     Storage::assertMissing($path);
     expect($platform->fresh()->status)->toBe(PlatformStatus::Rejected)
         ->and($platform->fresh()->enabled)->toBeFalse()
-        ->and($platform->fresh()->error_message)->toBe(__('posts.errors.account_inactive'))
+        ->and($platform->fresh()->error_message)->toBe(__('posts.errors.target_disabled'))
         ->and($post->fresh()->status)->toBe(PostStatus::Failed);
     Queue::assertPushed(SendNotification::class);
 });

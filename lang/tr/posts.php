@@ -632,6 +632,7 @@ return [
     'errors' => [
         'account_disconnected' => 'Sosyal hesabın bağlantısı kesildi',
         'account_inactive' => 'Sosyal hesap devre dışı bırakıldı',
+        'target_disabled' => 'Bu hedef kapatıldı',
         'account_token_expired' => 'Sosyal hesap oturumunun süresi doldu — lütfen yeniden bağlanın',
         'platform_unavailable' => 'Platform geçici olarak kullanılamıyor. Kısa süre içinde yeniden deneyeceğiz.',
         'platform_unavailable_exhausted' => 'Platform birkaç denemeden sonra kullanılamaz kaldı. Lütfen daha sonra tekrar deneyin.',
