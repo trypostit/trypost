@@ -1361,6 +1361,44 @@ test('linkedin publisher still publishes the article when the thumbnail cannot b
     });
 });
 
+test('linkedin publisher stops downloading an oversized article thumbnail', function () {
+    config()->set('trypost.media.max_size_mb.image', 1);
+
+    $this->post->update(['content' => 'Read this https://example.com/article']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->once()
+        ->andReturn(new LinkCardMetadata(
+            uri: 'https://example.com/article',
+            title: 'The Article',
+            description: 'A great read',
+            imageUrl: 'https://93.184.216.34/oversized.jpg',
+        ));
+
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), '/rest/posts')) {
+            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:oversized']);
+        }
+
+        return Http::response(str_repeat('x', (1024 * 1024) + 1), 200, [
+            'Content-Type' => 'image/jpeg',
+            'Content-Length' => (string) ((1024 * 1024) + 1),
+        ]);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/rest/images'));
+    Http::assertSent(function ($request) {
+        $article = $request['content']['article'] ?? null;
+
+        return str_contains($request->url(), '/rest/posts')
+            && $article['title'] === 'The Article'
+            && ! isset($article['thumbnail']);
+    });
+});
+
 test('linkedin publisher publishes the text when the link preview lookup fails', function () {
     $this->post->update(['content' => 'Read this https://example.com/article']);
 

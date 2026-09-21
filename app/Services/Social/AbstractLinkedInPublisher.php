@@ -229,10 +229,19 @@ abstract class AbstractLinkedInPublisher
      */
     private function downloadArticleThumbnail(string $url, string $tempFile): void
     {
+        $maxBytes = MediaType::Image->maxSizeInBytes();
+
         $response = app(SafeHttpFetcher::class)
             ->guardedRequest($url, followRedirects: false)
             ->timeout(self::ARTICLE_THUMB_TIMEOUT_SECONDS)
-            ->withOptions(['sink' => $tempFile])
+            ->sink($tempFile)
+            ->withOptions([
+                'progress' => static function ($total, $downloaded) use ($maxBytes): void {
+                    if ($total > $maxBytes || $downloaded > $maxBytes) {
+                        throw new RuntimeException('og:image exceeds the maximum image size');
+                    }
+                },
+            ])
             ->get($url);
 
         if (! $response->successful()) {
@@ -243,6 +252,10 @@ abstract class AbstractLinkedInPublisher
 
         if ($size === false || $size === 0) {
             throw new RuntimeException('og:image is empty');
+        }
+
+        if ($size > $maxBytes) {
+            throw new RuntimeException('og:image exceeds the maximum image size');
         }
 
         if (MediaType::classify(File::mimeType($tempFile) ?: '') !== MediaType::Image) {

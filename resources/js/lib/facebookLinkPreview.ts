@@ -14,15 +14,15 @@ const trimTrailingPunctuation = (url: string): string => {
 };
 
 const isFacebookOwnedUrl = (url: string): boolean => {
-    if (!URL.canParse(url)) {
+    try {
+        const host = new URL(url).hostname.toLowerCase();
+
+        return FACEBOOK_HOSTS.some(
+            (domain) => host === domain || host.endsWith(`.${domain}`),
+        );
+    } catch {
         return false;
     }
-
-    const host = new URL(url).hostname.toLowerCase();
-
-    return FACEBOOK_HOSTS.some(
-        (domain) => host === domain || host.endsWith(`.${domain}`),
-    );
 };
 
 export const facebookLinkPreviewUrl = (text: string): string | null =>
