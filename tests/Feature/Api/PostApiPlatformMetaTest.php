@@ -637,6 +637,84 @@ it('persists Google Business offer redeem url and terms meta on store', function
         ->and(data_get($meta, 'offer.terms_conditions'))->toBe('Some terms');
 });
 
+it('rejects a Google Business event title over the api cap on update', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $platform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id, 'social_account_id' => $googleBusiness->id, 'enabled' => true, 'meta' => [],
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Draft->value,
+            'platforms' => [[
+                'id' => $platform->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+                'meta' => [
+                    'topic_type' => 'EVENT',
+                    'event' => [
+                        'title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH + 1),
+                        'start_date' => '2026-09-01',
+                        'end_date' => '2026-09-02',
+                    ],
+                ],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'platforms.0.meta.event.title' => __('posts.form.google_business.title_max'),
+        ]);
+});
+
+it('rejects a Google Business event whose end date is before the start on update', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $platform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id, 'social_account_id' => $googleBusiness->id, 'enabled' => true, 'meta' => [],
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Draft->value,
+            'platforms' => [[
+                'id' => $platform->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+                'meta' => [
+                    'topic_type' => 'EVENT',
+                    'event' => ['title' => 'Sale', 'start_date' => '2026-09-10', 'end_date' => '2026-09-01'],
+                ],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'platforms.0.meta.event.end_date' => __('posts.form.google_business.event_end_date_before_start'),
+        ]);
+});
+
+it('rejects publishing a Google Business post with a GIF', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'media' => [[
+            'id' => 'gif-1', 'path' => 'medias/loop.gif', 'url' => 'https://example.com/loop.gif',
+            'type' => 'image', 'mime_type' => 'image/gif', 'original_filename' => 'loop.gif',
+        ]],
+    ]);
+    $platform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id, 'social_account_id' => $googleBusiness->id, 'enabled' => true,
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Publishing->value,
+            'platforms' => [['id' => $platform->id, 'content_type' => ContentType::GoogleBusinessPost->value]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.content_type'])
+        ->assertJsonFragment(['This platform does not accept GIF. Remove the GIF or choose a different network.']);
+});
+
 it('rejects a Google Business event title over the api cap on store', function () {
     $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
 

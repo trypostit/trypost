@@ -100,7 +100,7 @@ const PLATFORM_META_RULES: Record<string, MetaRule> = {
             && ctaActionType !== GoogleBusinessCtaAction.None
             && ctaActionType !== GoogleBusinessCtaAction.Call;
         let tooltipKey: string | null = null;
-        if (needsEvent && !meta.event?.title) {
+        if (needsEvent && !meta.event?.title?.trim()) {
             tooltipKey = topicType === GoogleBusinessTopicType.Offer
                 ? 'posts.form.google_business.offer_title_required'
                 : 'posts.form.google_business.event_title_required';

@@ -90,6 +90,7 @@ test('google business callback auto-connects when exactly one location exists', 
 
     $account = $this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->first();
     expect($account->meta['location_id'])->toBe('accounts/1/locations/2')
+        ->and($account->meta['location_name'])->toBe('locations/2')
         ->and($account->meta['account_name'])->toBe('accounts/1')
         ->and($account->meta['google_user_id'])->toBe('gid-1')
         ->and(session('google_business_oauth'))->toBeNull();
@@ -345,6 +346,7 @@ test('select creates the social account for the chosen location', function () {
     $account = $this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->first();
     expect($account)->not->toBeNull()
         ->and($account->meta['location_id'])->toBe('accounts/1/locations/2')
+        ->and($account->meta['location_name'])->toBe('locations/2')
         ->and($account->status)->toBe(Status::Connected)
         ->and(session('google_business_oauth'))->toBeNull();
 });

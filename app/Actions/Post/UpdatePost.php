@@ -6,10 +6,12 @@ namespace App\Actions\Post;
 
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\SocialAccount\Platform;
 use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\Workspace;
 use App\Support\PostStatusRules;
+use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -69,6 +71,12 @@ class UpdatePost
                         ->where('id', data_get($platformData, 'id'))
                         ->update($updateData);
                 }
+
+                $post->postPlatforms()
+                    ->where('platform', Platform::GoogleBusiness)
+                    ->where('enabled', false)
+                    ->pluck('id')
+                    ->each(fn (string $id) => app(GoogleBusinessDerivativeCleaner::class)->cleanup($id));
             }
 
             if ($status === PostStatus::Publishing->value) {

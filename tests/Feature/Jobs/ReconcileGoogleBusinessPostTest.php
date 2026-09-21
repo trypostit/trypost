@@ -66,6 +66,25 @@ test('settling a live review prunes the JPEG derivative', function () {
     Storage::assertMissing($path);
 });
 
+test('a live review on a publishing parent settles the post as published', function () {
+    Queue::fake([SendNotification::class]);
+    $this->post->update(['status' => PostStatus::Publishing]);
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
+            'state' => 'LIVE',
+            'searchUrl' => 'https://posts.google.com/999',
+        ]),
+    ]);
+
+    (new ReconcileGoogleBusinessPost($this->target))->handle();
+
+    expect($this->target->fresh()->status)->toBe(PlatformStatus::Published)
+        ->and($this->target->fresh()->platform_url)->toBe('https://posts.google.com/999')
+        ->and($this->post->fresh()->status)->toBe(PostStatus::Published);
+    Queue::assertPushed(SendNotification::class, 1);
+});
+
 test('a post that went live is published with the search URL Google returned', function () {
     Queue::fake([SendNotification::class]);
     Http::fake([
@@ -96,7 +115,7 @@ test('a post Google refused in review is rejected and fails the post', function 
     (new ReconcileGoogleBusinessPost($this->target))->handle();
 
     expect($this->target->fresh()->status)->toBe(PlatformStatus::Rejected)
-        ->and($this->target->fresh()->error_message)->not->toBe('posts.errors.rejected_in_review')
+        ->and($this->target->fresh()->error_message)->toBe(__('posts.errors.rejected_in_review'))
         ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
 });
 
@@ -158,7 +177,7 @@ test('a post that never settles is given up on once the review ceiling passes', 
     (new ReconcileGoogleBusinessPost($this->target))->handle();
 
     expect($this->target->fresh()->status)->toBe(PlatformStatus::Rejected)
-        ->and($this->target->fresh()->error_message)->not->toBe('posts.errors.review_unconfirmed')
+        ->and($this->target->fresh()->error_message)->toBe(__('posts.errors.review_unconfirmed'))
         ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
 });
 

@@ -615,6 +615,70 @@ test('create post rejects a Google Business event title over the api cap', funct
     $response->assertHasErrors([__('posts.form.google_business.title_max')]);
 });
 
+test('update post rejects a Google Business event title over the api cap', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    $platform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $googleBusiness->id,
+        'enabled' => true,
+        'meta' => [],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'platforms' => [[
+                'id' => $platform->id,
+                'meta' => [
+                    'topic_type' => 'EVENT',
+                    'event' => [
+                        'title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH + 1),
+                        'start_date' => '2026-09-01',
+                        'end_date' => '2026-09-02',
+                    ],
+                ],
+            ]],
+        ]);
+
+    $response->assertHasErrors([__('posts.form.google_business.title_max')]);
+});
+
+test('update post rejects a Google Business event whose end date is before the start', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    $platform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $googleBusiness->id,
+        'enabled' => true,
+        'meta' => [],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'platforms' => [[
+                'id' => $platform->id,
+                'meta' => [
+                    'topic_type' => 'EVENT',
+                    'event' => ['title' => 'Sale', 'start_date' => '2026-09-10', 'end_date' => '2026-09-01'],
+                ],
+            ]],
+        ]);
+
+    $response->assertHasErrors([__('posts.form.google_business.event_end_date_before_start')]);
+});
+
 test('publish post rejects a Google Business event title over the api cap', function () {
     $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
 

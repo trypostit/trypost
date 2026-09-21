@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Actions\Post\FinalizePostPublication;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\Status as PlatformStatus;
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Jobs\ReconcileGoogleBusinessPost;
 use App\Models\Post;
@@ -58,6 +59,7 @@ class RecoverStuckPosts extends Command
                     ]);
                 });
 
+                $this->pruneDisabledGoogleBusinessDerivatives($post);
                 $this->failExpiredReviews($post);
 
                 // Delayed platform-unavailable retries keep the platform Retrying with a
@@ -78,6 +80,20 @@ class RecoverStuckPosts extends Command
 
                 app(FinalizePostPublication::class)->handle($post);
             });
+    }
+
+    /**
+     * A switched-off GBP target is skipped by reconcile and the 24h ceiling.
+     * Prune its JPEG here so a disable during pending_review does not leak
+     * google-business-derivatives/{id}.jpg until delete or workspace wipe.
+     */
+    private function pruneDisabledGoogleBusinessDerivatives(Post $post): void
+    {
+        $post->postPlatforms()
+            ->where('platform', Platform::GoogleBusiness)
+            ->where('enabled', false)
+            ->pluck('id')
+            ->each(fn (string $id) => $this->googleBusinessDerivativeCleaner->cleanup($id));
     }
 
     /**
