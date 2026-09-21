@@ -6,7 +6,6 @@ namespace App\Jobs;
 
 use App\Actions\Post\FinalizePostPublication;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -36,12 +35,6 @@ class PublishPost implements ShouldQueue
             'error' => $exception?->getMessage(),
         ]);
 
-        $this->post->refresh();
-
-        $settled = $this->post->postPlatforms()->enabled()->first();
-
-        if ($settled instanceof PostPlatform) {
-            app(FinalizePostPublication::class)->handle($settled);
-        }
+        app(FinalizePostPublication::class)->handle($this->post);
     }
 }

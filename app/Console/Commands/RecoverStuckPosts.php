@@ -75,11 +75,7 @@ class RecoverStuckPosts extends Command
                     return;
                 }
 
-                $settled = $post->postPlatforms()->enabled()->first();
-
-                if ($settled instanceof PostPlatform) {
-                    app(FinalizePostPublication::class)->handle($settled);
-                }
+                app(FinalizePostPublication::class)->handle($post);
             });
     }
 

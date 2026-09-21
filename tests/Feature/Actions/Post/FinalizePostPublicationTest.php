@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Post\FinalizePostPublication;
 use App\Enums\Notification\Type;
+use App\Enums\Post\Status as PostStatus;
 use App\Enums\User\Locale;
 use App\Jobs\SendNotification;
 use App\Models\Post;
@@ -36,7 +37,7 @@ test('published notification uses the owner locale', function () {
         'enabled' => true,
     ]);
 
-    app(FinalizePostPublication::class)->handle($postPlatform);
+    app(FinalizePostPublication::class)->handle($post);
 
     Queue::assertPushed(SendNotification::class, function (SendNotification $job) use ($owner, $post) {
         $locale = $owner->preferredLocale();
@@ -67,7 +68,7 @@ test('failed notification uses the owner locale', function () {
         'enabled' => true,
     ]);
 
-    app(FinalizePostPublication::class)->handle($postPlatform);
+    app(FinalizePostPublication::class)->handle($post);
 
     Queue::assertPushed(SendNotification::class, function (SendNotification $job) use ($owner, $post) {
         $locale = $owner->preferredLocale();
@@ -78,4 +79,25 @@ test('failed notification uses the owner locale', function () {
             && $job->body === __('notifications.post_failed.body', ['platforms' => $platforms], $locale)
             && data_get($job->data, 'post_id') === $post->id;
     });
+});
+
+test('a post with no enabled targets is left alone', function () {
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $owner->id,
+        'status' => PostStatus::Publishing,
+    ]);
+    PostPlatform::factory()->facebook()->disabled()->create([
+        'post_id' => $post->id,
+        'social_account_id' => SocialAccount::factory()->facebook()->create([
+            'workspace_id' => $workspace->id,
+        ])->id,
+    ]);
+
+    app(FinalizePostPublication::class)->handle($post);
+
+    expect($post->fresh()->status)->toBe(PostStatus::Publishing);
+    Queue::assertNotPushed(SendNotification::class);
 });

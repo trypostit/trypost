@@ -178,7 +178,7 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
     private function settle(): void
     {
         app(GoogleBusinessDerivativeCleaner::class)->cleanup($this->postPlatform->id);
-        app(FinalizePostPublication::class)->handle($this->postPlatform);
+        app(FinalizePostPublication::class)->handle($this->postPlatform->post);
         PostPlatformStatusUpdated::dispatch($this->postPlatform->fresh());
     }
 }

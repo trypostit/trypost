@@ -438,7 +438,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
     private function updatePostStatus(): void
     {
-        app(FinalizePostPublication::class)->handle($this->postPlatform);
+        app(FinalizePostPublication::class)->handle($this->postPlatform->post);
     }
 
     public function failed(?Throwable $exception): void

@@ -21,10 +21,20 @@ use Illuminate\Support\Collection;
  */
 class FinalizePostPublication
 {
-    public function handle(PostPlatform $postPlatform): void
+    public function handle(Post $post): void
     {
-        $post = $postPlatform->post->fresh(['workspace.owner', 'postPlatforms.socialAccount']);
+        $post = $post->fresh(['workspace.owner', 'postPlatforms.socialAccount']);
+
+        if (! $post instanceof Post) {
+            return;
+        }
+
         $targets = $post->postPlatforms->where('enabled', true);
+
+        if ($targets->isEmpty()) {
+            return;
+        }
+
         $finished = $targets->filter(fn (PostPlatform $target): bool => $target->status->isFinished());
         $published = $finished->where('status', PostPlatformStatus::Published);
         $failed = $finished->reject(fn (PostPlatform $target): bool => $target->status === PostPlatformStatus::Published);
