@@ -36,16 +36,17 @@ export const useLinkCard = (
 
     const loadCard = async (target: string): Promise<void> => {
         loading.value = true;
+        http.url = target;
 
-        try {
-            http.url = target;
-            const data = await http.post(linkPreview.url());
-            card.value = data?.uri ? data : null;
-        } catch {
-            card.value = null;
-        } finally {
-            loading.value = false;
+        const data = await http.post(linkPreview.url()).catch(() => null);
+
+        // A slow response must not revive a removed link or overwrite a newer one.
+        if (url.value !== target) {
+            return;
         }
+
+        card.value = data?.uri ? data : null;
+        loading.value = false;
     };
 
     watch(url, (next) => {

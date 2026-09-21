@@ -29,11 +29,9 @@ final class FacebookLinkPreview
 
     public static function url(string $text): ?string
     {
-        $url = Str::matchAll(UrlDetector::URL_PATTERN, $text)
+        return Str::matchAll(UrlDetector::URL_PATTERN, $text)
             ->map(fn (string $raw): string => UrlDetector::trimTrailingPunctuation($raw))
             ->first(fn (string $candidate): bool => ! self::isOwnedHost($candidate));
-
-        return is_string($url) ? $url : null;
     }
 
     private static function isOwnedHost(string $url): bool
