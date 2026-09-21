@@ -11,6 +11,9 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Media\MediaOptimizer;
+use App\Services\Social\LinkCard\LinkCardFetcher;
+use App\Services\Social\LinkCard\LinkCardMetadata;
 use App\Services\Social\LinkedInPublisher;
 use Illuminate\Support\Facades\Http;
 
@@ -59,7 +62,8 @@ test('linkedin publisher can publish text-only post', function () {
         return str_contains($request->url(), '/rest/posts')
             && $request['author'] === 'urn:li:person:abc123xyz'
             && $request['commentary'] === 'Hello from LinkedIn!'
-            && $request['visibility'] === 'PUBLIC';
+            && $request['visibility'] === 'PUBLIC'
+            && ! isset($request['content']);
     });
 });
 
@@ -1151,6 +1155,8 @@ test('linkedin publisher keeps links intact', function () {
 
     $this->post->update(['content' => 'New post: https://trypost.it/blog']);
 
+    $this->mock(LinkCardFetcher::class)->shouldReceive('fetch')->once()->andReturn(null);
+
     Http::fake([
         config('trypost.platforms.linkedin.api').'/rest/posts' => Http::response(null, 201, [
             'x-restli-id' => 'urn:li:share:1234567890',
@@ -1160,5 +1166,208 @@ test('linkedin publisher keeps links intact', function () {
     $this->publisher->publish($this->postPlatform);
 
     Http::assertSent(fn ($request) => str_contains($request->url(), '/rest/posts')
-        && $request['commentary'] === 'New post: https://trypost.it/blog');
+        && $request['commentary'] === 'New post: https://trypost.it/blog'
+        && ! isset($request['content']));
 });
+
+test('linkedin publisher sends an article card for a text post that contains a link', function () {
+    $this->post->update(['content' => 'Read this https://example.com/article today.']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->once()
+        ->andReturn(new LinkCardMetadata(
+            uri: 'https://example.com/article',
+            title: 'The Article',
+            description: 'A great read',
+            imageUrl: null,
+        ));
+
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/rest/posts' => Http::response(null, 201, [
+            'x-restli-id' => 'urn:li:share:article1',
+        ]),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        $article = $request['content']['article'] ?? null;
+
+        return str_contains($request->url(), '/rest/posts')
+            && $request['commentary'] === 'Read this https://example.com/article today.'
+            && $article['source'] === 'https://example.com/article'
+            && $article['title'] === 'The Article'
+            && $article['description'] === 'A great read'
+            && ! isset($article['thumbnail']);
+    });
+});
+
+test('linkedin publisher skips the article card when the page has no title', function () {
+    $this->post->update(['content' => 'Read this https://example.com/article']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->once()
+        ->andReturn(new LinkCardMetadata(
+            uri: 'https://example.com/article',
+            title: '   ',
+            description: 'Only a description',
+            imageUrl: null,
+        ));
+
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/rest/posts' => Http::response(null, 201, [
+            'x-restli-id' => 'urn:li:share:notitle',
+        ]),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/rest/posts')
+        && ! isset($request['content']));
+});
+
+test('linkedin publisher prefers attached media over a link card', function () {
+    $this->post->update([
+        'content' => 'see https://example.com/article',
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+
+    $this->mock(LinkCardFetcher::class)->shouldNotReceive('fetch');
+
+    $uploadUrl = 'https://www.linkedin.com/dms/upload/v2/pic/0/C5622AQFake';
+
+    Http::fake(function ($request) use ($uploadUrl) {
+        $url = $request->url();
+
+        if (str_contains($url, '/rest/images')) {
+            return Http::response([
+                'value' => [
+                    'uploadUrl' => $uploadUrl,
+                    'image' => 'urn:li:image:C5622AQFakeImageUrn',
+                ],
+            ], 200);
+        }
+
+        if ($url === $uploadUrl) {
+            return Http::response(null, 201);
+        }
+
+        if (str_contains($url, '/rest/posts')) {
+            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:mediawins']);
+        }
+
+        return Http::response('fake-image-content', 200);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/rest/posts')
+        && isset($request['content']['media']['id'])
+        && ! isset($request['content']['article']));
+});
+
+test('linkedin publisher uploads the article thumbnail', function () {
+    $this->post->update(['content' => 'Read this https://example.com/article']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->once()
+        ->andReturn(new LinkCardMetadata(
+            uri: 'https://example.com/article',
+            title: 'The Article',
+            description: 'A great read',
+            imageUrl: 'https://93.184.216.34/card.jpg',
+        ));
+
+    $this->mock(MediaOptimizer::class)
+        ->shouldReceive('optimizeImage')
+        ->once()
+        ->andReturnUsing(fn () => tap(tempnam(sys_get_temp_dir(), 'li_thumb_'), fn ($path) => file_put_contents($path, 'thumb-bytes')));
+
+    $jpeg = linkedInJpegBytes();
+    $uploadUrl = 'https://www.linkedin.com/dms/upload/v2/pic/0/article-thumb';
+
+    Http::fake(function ($request) use ($uploadUrl, $jpeg) {
+        $url = $request->url();
+
+        if (str_contains($url, '/rest/images')) {
+            return Http::response([
+                'value' => [
+                    'uploadUrl' => $uploadUrl,
+                    'image' => 'urn:li:image:articleThumb',
+                ],
+            ], 200);
+        }
+
+        if ($url === $uploadUrl) {
+            return Http::response(null, 201);
+        }
+
+        if (str_contains($url, '/rest/posts')) {
+            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:withthumb']);
+        }
+
+        return Http::response($jpeg, 200);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        $article = $request['content']['article'] ?? null;
+
+        return str_contains($request->url(), '/rest/posts')
+            && $article['thumbnail'] === 'urn:li:image:articleThumb'
+            && $article['source'] === 'https://example.com/article';
+    });
+});
+
+test('linkedin publisher still publishes the article when the thumbnail cannot be fetched', function () {
+    $this->post->update(['content' => 'Read this https://example.com/article']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->once()
+        ->andReturn(new LinkCardMetadata(
+            uri: 'https://example.com/article',
+            title: 'The Article',
+            description: 'A great read',
+            imageUrl: 'https://93.184.216.34/missing.jpg',
+        ));
+
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), '/rest/posts')) {
+            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:nothumb']);
+        }
+
+        return Http::response('', 404);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        $article = $request['content']['article'] ?? null;
+
+        return str_contains($request->url(), '/rest/posts')
+            && $article['title'] === 'The Article'
+            && ! isset($article['thumbnail']);
+    });
+});
+
+function linkedInJpegBytes(): string
+{
+    $image = imagecreatetruecolor(8, 8);
+    ob_start();
+    imagejpeg($image);
+    $bytes = ob_get_clean();
+    imagedestroy($image);
+
+    return $bytes === false ? '' : $bytes;
+}

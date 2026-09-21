@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, toRef } from 'vue';
 
+import LinkCard from "@/components/posts/previews/LinkCard.vue";
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
 import { getInitials } from '@/composables/useInitials';
+import { useLinkCard } from '@/composables/useLinkCard';
 import { isVideoMedia } from '@/composables/useMedia';
 import date from '@/date';
 import type { MediaItem } from '@/types/media';
@@ -26,6 +28,11 @@ interface Props {
 const props = defineProps<Props>();
 
 const postedAtLabel = computed(() => date.formatMastodonPreview(props.postedAt));
+
+const { card: linkCard, loading: linkCardLoading } = useLinkCard(
+    toRef(props, 'content'),
+    toRef(props, 'media'),
+);
 </script>
 
 <template>
@@ -57,6 +64,12 @@ const postedAtLabel = computed(() => date.formatMastodonPreview(props.postedAt))
                 <div v-if="content" class="text-[16px] whitespace-pre-wrap leading-[22px] mb-3">
                     {{ content }}
                 </div>
+
+                <div
+                    v-if="media.length === 0 && linkCardLoading"
+                    class="mb-3 h-24 animate-pulse rounded-xl border border-[#c9d4de] bg-neutral-100 dark:border-[#313543] dark:bg-[#313543]"
+                ></div>
+                <LinkCard v-else-if="media.length === 0 && linkCard" :card="linkCard" />
 
                 <!-- Media -->
                 <div v-if="media.length > 0" class="mb-3">

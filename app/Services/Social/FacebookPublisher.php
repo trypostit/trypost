@@ -15,6 +15,7 @@ use App\Models\PostPlatform;
 use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Meta\GraphError;
+use App\Support\UrlDetector;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
@@ -101,12 +102,38 @@ class FacebookPublisher
             );
         }
 
-        $response = $this->postToGraph("{$pageId}/feed", [
-            'message' => $content,
-            'access_token' => $accessToken,
-        ], 'text post');
+        $link = UrlDetector::firstUrl($content);
+
+        try {
+            $response = $this->postTextToFeed($pageId, $accessToken, $content, $link);
+        } catch (FacebookPublishException $exception) {
+            // Graph error 1609005: Facebook could not scrape the URL. The post
+            // would have published as plain text before `link` was sent, so drop
+            // the card and try once more instead of failing the whole post.
+            if ($link === null || $exception->platformErrorCode !== '1609005') {
+                throw $exception;
+            }
+
+            Log::warning('Facebook could not scrape the link preview; publishing the text without it');
+
+            $response = $this->postTextToFeed($pageId, $accessToken, $content, null);
+        }
 
         return $this->feedPostResult(data_get($response->json(), 'id'));
+    }
+
+    /**
+     * A text post carries `link` when the caption contains a URL. Facebook does
+     * not unfurl a URL left only in `message`; the Page Feed `link` field is
+     * what makes it scrape Open Graph and render the preview.
+     */
+    private function postTextToFeed(string $pageId, string $accessToken, string $content, ?string $link): Response
+    {
+        return $this->postToGraph("{$pageId}/feed", [
+            'message' => $content,
+            'access_token' => $accessToken,
+            ...$this->optionalField('link', $link),
+        ], 'text post');
     }
 
     /**

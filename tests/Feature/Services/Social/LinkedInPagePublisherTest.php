@@ -10,6 +10,7 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Social\LinkCard\LinkCardFetcher;
 use App\Services\Social\LinkedInPagePublisher;
 use Illuminate\Support\Facades\Http;
 
@@ -442,6 +443,8 @@ test('linkedin page publisher keeps links intact', function () {
     config()->set('trypost.platforms.x.defuse_links', true);
 
     $this->post->update(['content' => 'New post: https://acme.com/blog']);
+
+    $this->mock(LinkCardFetcher::class)->shouldReceive('fetch')->once()->andReturn(null);
 
     Http::fake([
         config('trypost.platforms.linkedin-page.api').'/rest/posts' => Http::response(null, 201, [

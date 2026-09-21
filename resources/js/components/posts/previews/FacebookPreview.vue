@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { IconDots, IconPhoto } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed } from 'vue';
+import { computed, toRef } from 'vue';
 
+import LinkCard from '@/components/posts/previews/LinkCard.vue';
 import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
 import { getInitials } from '@/composables/useInitials';
+import { useLinkCard } from '@/composables/useLinkCard';
 import date from '@/date';
 import type { MediaItem } from '@/types/media';
 
@@ -34,6 +36,11 @@ const props = defineProps<Props>();
 
 const postedAtLabel = computed(() =>
     date.formatFacebookPreview(props.postedAt, trans('common.just_now')),
+);
+
+const { card: linkCard, loading: linkCardLoading } = useLinkCard(
+    toRef(props, 'content'),
+    toRef(props, 'media'),
 );
 
 // Content type helpers
@@ -146,19 +153,29 @@ const truncatedContent = computed(() => {
                         </p>
                     </div>
 
-                    <!-- Post Media - Aspect ratio matches user's chosen crop -->
+                    <!-- Link preview replaces the empty media well on a text post -->
                     <div
-                        v-if="feedAspectPadding !== null"
-                        class="relative w-full shrink-0 bg-black"
-                        :style="{ paddingBottom: `${feedAspectPadding}%` }"
-                    >
-                        <div class="absolute inset-0">
+                        v-if="media.length === 0 && linkCardLoading"
+                        class="mx-3 mb-2 h-24 shrink-0 animate-pulse rounded-lg bg-[#f0f2f5] dark:bg-[#3a3b3c]"
+                    ></div>
+                    <div v-else-if="media.length === 0 && linkCard" class="px-3">
+                        <LinkCard :card="linkCard" />
+                    </div>
+                    <template v-else>
+                        <!-- Post Media - Aspect ratio matches user's chosen crop -->
+                        <div
+                            v-if="feedAspectPadding !== null"
+                            class="relative w-full shrink-0 bg-black"
+                            :style="{ paddingBottom: `${feedAspectPadding}%` }"
+                        >
+                            <div class="absolute inset-0">
+                                <PostMediaPreview :media="media" v-bind="feedMediaProps" />
+                            </div>
+                        </div>
+                        <div v-else class="flex-1 relative bg-black min-h-0">
                             <PostMediaPreview :media="media" v-bind="feedMediaProps" />
                         </div>
-                    </div>
-                    <div v-else class="flex-1 relative bg-black min-h-0">
-                        <PostMediaPreview :media="media" v-bind="feedMediaProps" />
-                    </div>
+                    </template>
 
                     <!-- Reactions Bar -->
                     <div
