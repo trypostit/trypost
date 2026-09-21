@@ -26,26 +26,20 @@ use Throwable;
 
 /**
  * Shared LinkedIn publishing pipeline. The publish format follows the attached
- * media — a PDF becomes a document post, 2+ images a multi-image post, a bare
- * link with no media becomes an article post (the Posts API does not scrape
- * URLs), and anything else is a regular post. Subclasses
- * provide the author identity (member vs. company page) and its public URL.
+ * media: a PDF becomes a document post, two or more images a multi-image post,
+ * and a single image or video a media post. A text post with a link becomes an
+ * article, because the Posts API does not scrape URLs. Subclasses provide the
+ * author identity (member or company page) and its public URL.
  */
 abstract class AbstractLinkedInPublisher
 {
     use HasSocialHttpClient;
 
-    /**
-     * ArticleContent limits are exclusive: title under 400 characters,
-     * description under 4,086.
-     *
-     * @see https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api
-     */
+    /** Article title must be under 400 characters, description under 4,086. */
     private const int ARTICLE_TITLE_MAX = 399;
 
     private const int ARTICLE_DESCRIPTION_MAX = 4085;
 
-    /** og:image downloads are small and attacker-influenced; don't wait on a hung host. */
     private const int ARTICLE_THUMB_TIMEOUT_SECONDS = 10;
 
     private string $apiVersion = '202601';
@@ -164,10 +158,9 @@ abstract class AbstractLinkedInPublisher
     }
 
     /**
-     * Article payload for the first link in a text-only post, or null when there
-     * is no link, the page has no title, or the scrape fails. LinkedIn will not
-     * unfurl a URL left in `commentary`, so the card has to be sent explicitly.
-     * A thumbnail failure still publishes the article — the image is optional.
+     * Article payload for the first link in a text-only post. Null when there is
+     * no link, the page has no title, or the scrape fails — the post still goes
+     * out as text. The thumbnail is optional.
      *
      * @return array{source: string, title: string, description?: string, thumbnail?: string}|null
      */
@@ -177,8 +170,29 @@ abstract class AbstractLinkedInPublisher
             return null;
         }
 
+        $card = $this->articleCard($content);
+        $title = $card !== null && filled($card->title)
+            ? Str::limit($card->title, self::ARTICLE_TITLE_MAX, '')
+            : null;
+
+        if ($card === null || blank($title)) {
+            return null;
+        }
+
+        return array_filter([
+            'source' => $card->uri,
+            'title' => $title,
+            'description' => filled($card->description)
+                ? Str::limit($card->description, self::ARTICLE_DESCRIPTION_MAX, '')
+                : null,
+            'thumbnail' => $this->uploadArticleThumbnail($card),
+        ], filled(...));
+    }
+
+    private function articleCard(string $content): ?LinkCardMetadata
+    {
         try {
-            $card = app(LinkCardFetcher::class)->fetch($content);
+            return app(LinkCardFetcher::class)->fetch($content);
         } catch (Throwable $e) {
             Log::warning("{$this->label()} link preview lookup failed", [
                 'error' => $e->getMessage(),
@@ -186,77 +200,26 @@ abstract class AbstractLinkedInPublisher
 
             return null;
         }
-
-        $title = $card !== null && filled($card->title)
-            ? Str::limit($card->title, self::ARTICLE_TITLE_MAX, '')
-            : null;
-
-        if ($card === null || $title === null || $title === '') {
-            return null;
-        }
-
-        $article = [
-            'source' => $card->uri,
-            'title' => $title,
-        ];
-
-        if (filled($card->description)) {
-            $article['description'] = Str::limit($card->description, self::ARTICLE_DESCRIPTION_MAX, '');
-        }
-
-        $thumbnail = $this->uploadArticleThumbnail($card);
-
-        if ($thumbnail !== null) {
-            $article['thumbnail'] = $thumbnail;
-        }
-
-        return $article;
     }
 
     /**
-     * Upload the card's og:image and return its Image URN. Returns null (the
-     * article renders without a thumbnail) when there is no image, the host is
-     * not a public URL, or the upload fails. A dead token still propagates so
-     * the publish retry can refresh it.
+     * Image URN for the card's og:image, or null when there is no usable image.
+     * A dead token still propagates so the publish retry can refresh it.
      */
     private function uploadArticleThumbnail(LinkCardMetadata $card): ?string
     {
-        if ($card->imageUrl === null || $card->imageUrl === '') {
+        if (blank($card->imageUrl)) {
             return null;
         }
 
-        $tempFile = tempnam(sys_get_temp_dir(), 'li_article_');
+        $path = $this->downloadArticleThumbnail($card->imageUrl);
 
-        if ($tempFile === false) {
+        if ($path === null) {
             return null;
         }
 
         try {
-            $response = app(SafeHttpFetcher::class)
-                ->guardedRequest($card->imageUrl, followRedirects: false)
-                ->timeout(self::ARTICLE_THUMB_TIMEOUT_SECONDS)
-                ->withOptions(['sink' => $tempFile])
-                ->get($card->imageUrl);
-
-            $size = filesize($tempFile);
-
-            if (! $response->successful() || $size === false || $size === 0) {
-                return null;
-            }
-
-            $detectedMime = File::mimeType($tempFile) ?: '';
-
-            if (MediaType::classify($detectedMime) !== MediaType::Image) {
-                return null;
-            }
-
-            if (! MediaType::isGif($detectedMime)) {
-                $optimizedPath = app(MediaOptimizer::class)->optimizeImage($tempFile, $this->platform());
-                @unlink($tempFile);
-                $tempFile = $optimizedPath;
-            }
-
-            return $this->uploadImageFile($tempFile);
+            return $this->uploadImageFile($path);
         } catch (TokenExpiredException $e) {
             throw $e;
         } catch (Throwable $e) {
@@ -266,9 +229,74 @@ abstract class AbstractLinkedInPublisher
 
             return null;
         } finally {
-            if (is_file($tempFile)) {
-                @unlink($tempFile);
+            $this->deleteTempFile($path);
+        }
+    }
+
+    /**
+     * A public og:image saved locally and ready to upload, or null. Redirects
+     * are not followed: the URL is attacker-influenced and was guarded once.
+     */
+    private function downloadArticleThumbnail(string $url): ?string
+    {
+        $tempFile = tempnam(sys_get_temp_dir(), 'li_article_');
+
+        if ($tempFile === false) {
+            return null;
+        }
+
+        try {
+            $response = app(SafeHttpFetcher::class)
+                ->guardedRequest($url, followRedirects: false)
+                ->timeout(self::ARTICLE_THUMB_TIMEOUT_SECONDS)
+                ->withOptions(['sink' => $tempFile])
+                ->get($url);
+
+            if (! $response->successful() || ! $this->isArticleImage($tempFile)) {
+                $this->deleteTempFile($tempFile);
+
+                return null;
             }
+
+            return $this->optimizeUnlessGif($tempFile);
+        } catch (Throwable $e) {
+            $this->deleteTempFile($tempFile);
+
+            Log::warning("{$this->label()} article thumbnail skipped", [
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    private function isArticleImage(string $path): bool
+    {
+        $size = filesize($path);
+
+        if ($size === false || $size === 0) {
+            return false;
+        }
+
+        return MediaType::classify(File::mimeType($path) ?: '') === MediaType::Image;
+    }
+
+    private function optimizeUnlessGif(string $path): string
+    {
+        if (MediaType::isGif(File::mimeType($path) ?: '')) {
+            return $path;
+        }
+
+        $optimized = app(MediaOptimizer::class)->optimizeImage($path, $this->platform());
+        $this->deleteTempFile($path);
+
+        return $optimized;
+    }
+
+    private function deleteTempFile(string $path): void
+    {
+        if (is_file($path)) {
+            @unlink($path);
         }
     }
 
