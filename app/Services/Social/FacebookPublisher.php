@@ -104,22 +104,31 @@ class FacebookPublisher
 
         $link = FacebookLinkPreview::url($content);
 
+        $response = $link === null
+            ? $this->postTextToFeed($pageId, $accessToken, $content, null)
+            : $this->postTextWithLink($pageId, $accessToken, $content, $link);
+
+        return $this->feedPostResult(data_get($response->json(), 'id'));
+    }
+
+    /**
+     * Facebook can reject the link and not the post: 1609005 (scrape failed),
+     * 1500 (invalid URL) or 200/1609008 (facebook.com URL). The caption
+     * published as plain text before `link` existed, so on those codes the
+     * card is dropped and the text is posted once more. Any other error fails
+     * the post. The first attempt stays quiet in the log because only the
+     * outcome of the retry says whether the publish failed.
+     */
+    private function postTextWithLink(string $pageId, string $accessToken, string $content, string $link): Response
+    {
         try {
-            // A link we might drop must not be logged as a failed publish. The
-            // retry below is the real attempt, and that one still reports.
-            $response = $this->postTextToFeed($pageId, $accessToken, $content, $link, reportFailure: $link === null);
+            return $this->postTextToFeed($pageId, $accessToken, $content, $link, reportFailure: false);
         } catch (FacebookPublishException $exception) {
-            // These codes mean the `link` itself was rejected (scrape failed,
-            // invalid URL, or a facebook.com URL). The caption would have
-            // published as plain text before `link` was sent, so drop the card
-            // and try once. Any other error still fails the post.
-            if ($link === null || ! $this->isLinkRejection($exception)) {
-                if ($link !== null) {
-                    Log::error('Facebook text post failed', [
-                        'platform_error_code' => $exception->platformErrorCode,
-                        'body' => $this->redactResponseBody($exception->rawResponse ?? ''),
-                    ]);
-                }
+            if (! $this->isLinkRejection($exception)) {
+                Log::error('Facebook text post failed', [
+                    'platform_error_code' => $exception->platformErrorCode,
+                    'body' => $this->redactResponseBody($exception->rawResponse ?? ''),
+                ]);
 
                 throw $exception;
             }
@@ -128,26 +137,15 @@ class FacebookPublisher
                 'platform_error_code' => $exception->platformErrorCode,
                 'platform_error_subcode' => $exception->platformErrorSubcode,
             ]);
-
-            $response = $this->postTextToFeed($pageId, $accessToken, $content, null);
         }
 
-        return $this->feedPostResult(data_get($response->json(), 'id'));
+        return $this->postTextToFeed($pageId, $accessToken, $content, null);
     }
 
-    /**
-     * Graph rejects the link, not the post: 1609005 (scrape failed), 1500
-     * (invalid URL), and 200/1609008 (facebook.com links).
-     */
     private function isLinkRejection(FacebookPublishException $exception): bool
     {
-        $code = $exception->platformErrorCode;
-
-        if ($code === '1609005' || $code === '1500') {
-            return true;
-        }
-
-        return $code === '200' && $exception->platformErrorSubcode === '1609008';
+        return in_array($exception->platformErrorCode, ['1609005', '1500'], true)
+            || ($exception->platformErrorCode === '200' && $exception->platformErrorSubcode === '1609008');
     }
 
     /**

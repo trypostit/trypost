@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -159,32 +160,23 @@ abstract class AbstractLinkedInPublisher
 
     /**
      * Article payload for the first link in a text-only post. Null when there is
-     * no link, the page has no title, or the scrape fails — the post still goes
+     * no link, the page has no title, or the scrape fails: the post still goes
      * out as text. The thumbnail is optional.
      *
      * @return array{source: string, title: string, description?: string, thumbnail?: string}|null
      */
     private function articleContent(?string $content): ?array
     {
-        if (! filled($content)) {
-            return null;
-        }
+        $card = filled($content) ? $this->articleCard($content) : null;
 
-        $card = $this->articleCard($content);
-        $title = $card !== null && filled($card->title)
-            ? Str::limit($card->title, self::ARTICLE_TITLE_MAX, '')
-            : null;
-
-        if ($card === null || blank($title)) {
+        if ($card === null || blank($card->title)) {
             return null;
         }
 
         return array_filter([
             'source' => $card->uri,
-            'title' => $title,
-            'description' => filled($card->description)
-                ? Str::limit($card->description, self::ARTICLE_DESCRIPTION_MAX, '')
-                : null,
+            'title' => Str::limit($card->title, self::ARTICLE_TITLE_MAX, ''),
+            'description' => Str::limit($card->description, self::ARTICLE_DESCRIPTION_MAX, ''),
             'thumbnail' => $this->uploadArticleThumbnail($card),
         ], filled(...));
     }
@@ -194,9 +186,7 @@ abstract class AbstractLinkedInPublisher
         try {
             return app(LinkCardFetcher::class)->fetch($content);
         } catch (Throwable $e) {
-            Log::warning("{$this->label()} link preview lookup failed", [
-                'error' => $e->getMessage(),
-            ]);
+            Log::warning("{$this->label()} link preview lookup failed", ['error' => $e->getMessage()]);
 
             return null;
         }
@@ -212,91 +202,41 @@ abstract class AbstractLinkedInPublisher
             return null;
         }
 
-        $path = $this->downloadArticleThumbnail($card->imageUrl);
-
-        if ($path === null) {
-            return null;
-        }
+        $tempFile = tempnam(sys_get_temp_dir(), 'li_article_');
 
         try {
-            return $this->uploadImageFile($path);
+            $this->downloadArticleThumbnail($card->imageUrl, $tempFile);
+
+            return $this->uploadLocalImage($tempFile);
         } catch (TokenExpiredException $e) {
             throw $e;
         } catch (Throwable $e) {
-            Log::warning("{$this->label()} article thumbnail skipped", [
-                'error' => $e->getMessage(),
-            ]);
+            Log::warning("{$this->label()} article thumbnail skipped", ['error' => $e->getMessage()]);
 
             return null;
         } finally {
-            $this->deleteTempFile($path);
+            @unlink($tempFile);
         }
     }
 
     /**
-     * A public og:image saved locally and ready to upload, or null. Redirects
-     * are not followed: the URL is attacker-influenced and was guarded once.
+     * Redirects are not followed: the og:image URL is attacker-influenced and
+     * was only guarded against SSRF once.
      */
-    private function downloadArticleThumbnail(string $url): ?string
+    private function downloadArticleThumbnail(string $url, string $tempFile): void
     {
-        $tempFile = tempnam(sys_get_temp_dir(), 'li_article_');
+        $response = app(SafeHttpFetcher::class)
+            ->guardedRequest($url, followRedirects: false)
+            ->timeout(self::ARTICLE_THUMB_TIMEOUT_SECONDS)
+            ->withOptions(['sink' => $tempFile])
+            ->get($url);
 
-        if ($tempFile === false) {
-            return null;
+        if (! $response->successful()) {
+            throw new RuntimeException("og:image responded with HTTP {$response->status()}");
         }
 
-        try {
-            $response = app(SafeHttpFetcher::class)
-                ->guardedRequest($url, followRedirects: false)
-                ->timeout(self::ARTICLE_THUMB_TIMEOUT_SECONDS)
-                ->withOptions(['sink' => $tempFile])
-                ->get($url);
-
-            if (! $response->successful() || ! $this->isArticleImage($tempFile)) {
-                $this->deleteTempFile($tempFile);
-
-                return null;
-            }
-
-            return $this->optimizeUnlessGif($tempFile);
-        } catch (Throwable $e) {
-            $this->deleteTempFile($tempFile);
-
-            Log::warning("{$this->label()} article thumbnail skipped", [
-                'error' => $e->getMessage(),
-            ]);
-
-            return null;
-        }
-    }
-
-    private function isArticleImage(string $path): bool
-    {
-        $size = filesize($path);
-
-        if ($size === false || $size === 0) {
-            return false;
-        }
-
-        return MediaType::classify(File::mimeType($path) ?: '') === MediaType::Image;
-    }
-
-    private function optimizeUnlessGif(string $path): string
-    {
-        if (MediaType::isGif(File::mimeType($path) ?: '')) {
-            return $path;
-        }
-
-        $optimized = app(MediaOptimizer::class)->optimizeImage($path, $this->platform());
-        $this->deleteTempFile($path);
-
-        return $optimized;
-    }
-
-    private function deleteTempFile(string $path): void
-    {
-        if (is_file($path)) {
-            @unlink($path);
+        if (MediaType::classify(File::mimeType($tempFile) ?: '') !== MediaType::Image) {
+            throw new RuntimeException('og:image is not an image');
         }
     }
 
@@ -428,16 +368,31 @@ abstract class AbstractLinkedInPublisher
         try {
             $this->downloadToTempFile($mediaItem->url, $tempFile);
 
-            $detectedMime = File::mimeType($tempFile) ?: '';
-            if (MediaType::classify($detectedMime) === MediaType::Image && ! MediaType::isGif($detectedMime)) {
-                $optimizedPath = app(MediaOptimizer::class)->optimizeImage($tempFile, $this->platform());
-                @unlink($tempFile);
-                $tempFile = $optimizedPath;
-            }
-
-            return $this->uploadImageFile($tempFile);
+            return $this->uploadLocalImage($tempFile);
         } finally {
             @unlink($tempFile);
+        }
+    }
+
+    /**
+     * Upload an image already on disk, re-encoded for LinkedIn first. GIFs are
+     * sent as they are so the animation survives. The caller owns the given
+     * file; the optimized copy is removed here.
+     */
+    private function uploadLocalImage(string $path): string
+    {
+        $mime = File::mimeType($path) ?: '';
+
+        if (MediaType::classify($mime) !== MediaType::Image || MediaType::isGif($mime)) {
+            return $this->uploadImageFile($path);
+        }
+
+        $optimized = app(MediaOptimizer::class)->optimizeImage($path, $this->platform());
+
+        try {
+            return $this->uploadImageFile($optimized);
+        } finally {
+            @unlink($optimized);
         }
     }
 
