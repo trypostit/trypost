@@ -388,6 +388,23 @@ test('permission denied during review fails immediately', function () {
         ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
 });
 
+test('a disconnected account during review is given up on immediately', function () {
+    Queue::fake([SendNotification::class]);
+    Storage::fake();
+    $path = GoogleBusinessDerivativeCleaner::pathFor($this->target->id);
+    Storage::put($path, 'image');
+
+    $this->account->delete();
+
+    (new ReconcileGoogleBusinessPost($this->target->fresh()))->handle();
+
+    expect($this->target->fresh()->status)->toBe(PlatformStatus::Rejected)
+        ->and($this->target->fresh()->error_message)->toBe(__('posts.errors.account_disconnected'))
+        ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
+    Storage::assertMissing($path);
+    Queue::assertPushed(SendNotification::class, 1);
+});
+
 test('an exhausted reconcile job defers until the review ceiling', function () {
     (new ReconcileGoogleBusinessPost($this->target))->failed(new RuntimeException('worker died'));
 

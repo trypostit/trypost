@@ -3,13 +3,18 @@
 declare(strict_types=1);
 
 use App\Enums\Post\Status;
+use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
+use App\Jobs\SendNotification;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\Social\GoogleBusinessDerivativeCleaner;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->user = User::factory()->create([]);
@@ -267,12 +272,12 @@ test('disconnect deletes pending platform rows from drafts and keeps published h
     $pendingPlatform = PostPlatform::factory()->create([
         'post_id' => $draftPost->id,
         'social_account_id' => $account->id,
-        'status' => App\Enums\PostPlatform\Status::Pending,
+        'status' => PlatformStatus::Pending,
     ]);
     $publishedPlatform = PostPlatform::factory()->create([
         'post_id' => $publishedPost->id,
         'social_account_id' => $account->id,
-        'status' => App\Enums\PostPlatform\Status::Published,
+        'status' => PlatformStatus::Published,
         'platform_name' => 'Snapshot Name',
         'platform_avatar' => 'avatars/snapshot.jpg',
     ]);
@@ -285,6 +290,33 @@ test('disconnect deletes pending platform rows from drafts and keeps published h
     expect($publishedPlatform->social_account_id)->toBeNull();
     expect($publishedPlatform->platform_name)->toBe('Snapshot Name');
     expect($publishedPlatform->display_avatar)->toContain('avatars/snapshot.jpg');
+});
+
+test('disconnect settles a google business review still waiting on the account', function () {
+    Queue::fake([SendNotification::class]);
+    Storage::fake();
+
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => Status::Publishing,
+    ]);
+    $target = PostPlatform::factory()->googleBusiness()->pendingReview()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
+    ]);
+    $path = GoogleBusinessDerivativeCleaner::pathFor($target->id);
+    Storage::put($path, 'image');
+
+    $this->actingAs($this->user)->delete(route('app.accounts.disconnect', $account));
+
+    expect(SocialAccount::find($account->id))->toBeNull()
+        ->and($target->fresh()->status)->toBe(PlatformStatus::Rejected)
+        ->and($target->fresh()->error_message)->toBe(__('posts.errors.account_disconnected'))
+        ->and($post->fresh()->status)->toBe(Status::Failed);
+    Storage::assertMissing($path);
 });
 
 test('disconnect returns 403 for other workspace account', function () {

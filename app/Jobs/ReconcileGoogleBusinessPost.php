@@ -67,6 +67,14 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
 
         $account = $this->postPlatform->socialAccount;
 
+        if (! $account instanceof SocialAccount) {
+            $this->giveUp(__('posts.errors.account_disconnected'), [
+                'category' => 'account_disconnected',
+            ]);
+
+            return;
+        }
+
         try {
             $remote = $this->fetchRemote($account);
         } catch (TokenExpiredException) {
@@ -238,7 +246,7 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
         $submittedAt = $this->postPlatform->submitted_at;
 
         return $submittedAt instanceof CarbonInterface
-            && $submittedAt->addHours(self::REVIEW_CEILING_HOURS)->isPast();
+            && $submittedAt->copy()->addHours(self::REVIEW_CEILING_HOURS)->isPast();
     }
 
     private function settle(): void

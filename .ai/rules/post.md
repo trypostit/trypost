@@ -7,7 +7,7 @@ paths:
 # Post
 
 ## FinalizePostPublication is the only post settler
-handle() takes the Post, not a dummy PostPlatform. Every path that can finish the last enabled target must call it: PublishToSocialPlatform, ReconcileGoogleBusinessPost, RecoverStuckPosts, and PublishPost::failed. No enabled targets is a no-op — do not mark the post published. Do not mark the post Published / PartiallyPublished / Failed by hand — RecoverStuckPosts only sweeps Publishing posts, so a handmade Failed leaves pending targets stuck forever and skips the owner notice.
+handle() takes the Post, not a dummy PostPlatform. Every path that can finish the last enabled target must call it: PublishToSocialPlatform, ReconcileGoogleBusinessPost, RecoverStuckPosts, PublishPost::failed, and AbandonGoogleBusinessReview (disconnect / disable during pending_review). No enabled targets on a draft or scheduled post is a no-op — do not mark the post published. A Publishing post with no enabled targets is abandoned in-flight: mark it Failed so it does not sit non-editable forever. Do not mark the post Published / PartiallyPublished / Failed by hand outside Finalize.
 
 ## In-app publish notice uses owner locale
 SendNotification title/body are stored already-resolved. Resolve them through lang/*/notifications.php (post_published / post_failed) with $owner->preferredLocale() — the worker locale is English. Mailables stay untranslated at dispatch; Mail::to($owner) applies HasLocalePreference. Do not hardcode English title/body here.

@@ -8,10 +8,12 @@ use App\Actions\Post\FinalizePostPublication;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Platform;
+use App\Events\PostPlatformStatusUpdated;
 use App\Exceptions\Social\ErrorCategory;
 use App\Jobs\ReconcileGoogleBusinessPost;
 use App\Models\Post;
 use App\Models\PostPlatform;
+use App\Support\Social\AbandonGoogleBusinessReview;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Console\Command;
@@ -84,16 +86,27 @@ class RecoverStuckPosts extends Command
 
     /**
      * A switched-off GBP target is skipped by reconcile and the 24h ceiling.
-     * Prune its JPEG here so a disable during pending_review does not leak
-     * google-business-derivatives/{id}.jpg until delete or workspace wipe.
+     * Abandon the review so the parent can settle, and prune the JPEG.
      */
     private function pruneDisabledGoogleBusinessDerivatives(Post $post): void
     {
         $post->postPlatforms()
             ->where('platform', Platform::GoogleBusiness)
             ->where('enabled', false)
-            ->pluck('id')
-            ->each(fn (string $id) => $this->googleBusinessDerivativeCleaner->cleanup($id));
+            ->get()
+            ->each(function (PostPlatform $postPlatform): void {
+                if ($postPlatform->status === PlatformStatus::PendingReview) {
+                    AbandonGoogleBusinessReview::execute(
+                        $postPlatform,
+                        __('posts.errors.account_inactive'),
+                        ['category' => 'target_disabled'],
+                    );
+
+                    return;
+                }
+
+                $this->googleBusinessDerivativeCleaner->cleanup($postPlatform->id);
+            });
     }
 
     /**
@@ -124,6 +137,7 @@ class RecoverStuckPosts extends Command
                     ],
                 );
                 $this->googleBusinessDerivativeCleaner->cleanup($postPlatform->id);
+                PostPlatformStatusUpdated::dispatch($postPlatform->fresh());
             });
     }
 }

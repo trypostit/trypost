@@ -401,7 +401,7 @@ test('it prunes the google business jpeg when a publish times out before review'
         ->and($post->fresh()->status)->toBe(PostStatus::Failed);
 });
 
-test('it prunes the google business jpeg on a disabled target without failing review', function () {
+test('it rejects a disabled google business review and fails the parent', function () {
     Storage::fake();
     $account = SocialAccount::factory()->googleBusiness()->create([
         'workspace_id' => $this->workspace->id,
@@ -425,9 +425,11 @@ test('it prunes the google business jpeg on a disabled target without failing re
     $this->artisan('social:recover-stuck-posts')->assertSuccessful();
 
     Storage::assertMissing($path);
-    expect($platform->fresh()->status)->toBe(PlatformStatus::PendingReview)
+    expect($platform->fresh()->status)->toBe(PlatformStatus::Rejected)
         ->and($platform->fresh()->enabled)->toBeFalse()
-        ->and($post->fresh()->status)->toBe(PostStatus::Publishing);
+        ->and($platform->fresh()->error_message)->toBe(__('posts.errors.account_inactive'))
+        ->and($post->fresh()->status)->toBe(PostStatus::Failed);
+    Queue::assertPushed(SendNotification::class);
 });
 
 test('recover then reconcile on an expired review notifies once and prunes the jpeg', function () {

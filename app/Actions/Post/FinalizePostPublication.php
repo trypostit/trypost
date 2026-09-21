@@ -6,6 +6,7 @@ namespace App\Actions\Post;
 
 use App\Enums\Notification\Channel;
 use App\Enums\Notification\Type;
+use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Jobs\SendNotification;
 use App\Mail\PostPublished;
@@ -39,7 +40,19 @@ class FinalizePostPublication
             $targets = $post->postPlatforms->where('enabled', true);
 
             if ($targets->isEmpty()) {
-                return null;
+                if ($post->status !== PostStatus::Publishing) {
+                    return null;
+                }
+
+                $post->markAsFailed();
+
+                return [
+                    'post' => $post,
+                    'successful' => false,
+                    'platforms' => $post->postPlatforms->filter(
+                        fn (PostPlatform $target): bool => $target->status->isFinished(),
+                    ),
+                ];
             }
 
             $finished = $targets->filter(fn (PostPlatform $target): bool => $target->status->isFinished());

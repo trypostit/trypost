@@ -82,7 +82,7 @@ test('failed notification uses the owner locale', function () {
     });
 });
 
-test('a post with no enabled targets is left alone', function () {
+test('a publishing post with no enabled targets is failed', function () {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
     $post = Post::factory()->create([
@@ -99,7 +99,28 @@ test('a post with no enabled targets is left alone', function () {
 
     app(FinalizePostPublication::class)->handle($post);
 
-    expect($post->fresh()->status)->toBe(PostStatus::Publishing);
+    expect($post->fresh()->status)->toBe(PostStatus::Failed);
+    Queue::assertPushed(SendNotification::class, fn (SendNotification $job) => $job->type === Type::PostFailed);
+});
+
+test('a draft with no enabled targets is left alone', function () {
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $owner->id,
+        'status' => PostStatus::Draft,
+    ]);
+    PostPlatform::factory()->facebook()->disabled()->create([
+        'post_id' => $post->id,
+        'social_account_id' => SocialAccount::factory()->facebook()->create([
+            'workspace_id' => $workspace->id,
+        ])->id,
+    ]);
+
+    app(FinalizePostPublication::class)->handle($post);
+
+    expect($post->fresh()->status)->toBe(PostStatus::Draft);
     Queue::assertNotPushed(SendNotification::class);
 });
 

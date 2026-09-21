@@ -13,9 +13,11 @@ use App\Exceptions\SocialAccount\ConnectPopupException;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\App\SocialAccountResource;
+use App\Models\PostPlatform;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\Support\Social\AbandonGoogleBusinessReview;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -66,6 +68,16 @@ class SocialController extends Controller
         if ($account->workspace_id !== $workspace->id) {
             abort(403);
         }
+
+        $account->postPlatforms()
+            ->where('platform', SocialPlatform::GoogleBusiness)
+            ->where('status', PostPlatformStatus::PendingReview)
+            ->get()
+            ->each(fn (PostPlatform $platform) => AbandonGoogleBusinessReview::execute(
+                $platform,
+                __('posts.errors.account_disconnected'),
+                ['category' => 'account_disconnected'],
+            ));
 
         // Drop pending platform rows from drafts/scheduled posts so the account
         // disappears cleanly from their UI. Published/failed rows survive via the
