@@ -15,7 +15,7 @@ use App\Models\PostPlatform;
 use App\Services\Social\Concerns\CropsImageForAspectRatio;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Meta\GraphError;
-use App\Support\UrlDetector;
+use App\Support\FacebookLinkPreview;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
@@ -102,16 +102,25 @@ class FacebookPublisher
             );
         }
 
-        $link = $this->linkPreviewUrl($content);
+        $link = FacebookLinkPreview::url($content);
 
         try {
-            $response = $this->postTextToFeed($pageId, $accessToken, $content, $link);
+            // A link we might drop must not be logged as a failed publish. The
+            // retry below is the real attempt, and that one still reports.
+            $response = $this->postTextToFeed($pageId, $accessToken, $content, $link, reportFailure: $link === null);
         } catch (FacebookPublishException $exception) {
             // These codes mean the `link` itself was rejected (scrape failed,
             // invalid URL, or a facebook.com URL). The caption would have
             // published as plain text before `link` was sent, so drop the card
             // and try once. Any other error still fails the post.
             if ($link === null || ! $this->isLinkRejection($exception)) {
+                if ($link !== null) {
+                    Log::error('Facebook text post failed', [
+                        'platform_error_code' => $exception->platformErrorCode,
+                        'body' => $this->redactResponseBody($exception->rawResponse ?? ''),
+                    ]);
+                }
+
                 throw $exception;
             }
 
@@ -124,49 +133,6 @@ class FacebookPublisher
         }
 
         return $this->feedPostResult(data_get($response->json(), 'id'));
-    }
-
-    /**
-     * First http(s) URL in the caption that Facebook will accept as a `link`.
-     * facebook.com, fb.com and fb.me (and their subdomains) are skipped: the
-     * Page Feed API rejects many of them and fails the whole post.
-     */
-    private function linkPreviewUrl(string $content): ?string
-    {
-        $offset = 0;
-        $length = strlen($content);
-
-        while ($offset < $length && preg_match(UrlDetector::URL_PATTERN, $content, $matches, PREG_OFFSET_CAPTURE, $offset) === 1) {
-            $raw = $matches[0][0];
-            $url = UrlDetector::trimTrailingPunctuation($raw);
-
-            if (! $this->isFacebookOwnedUrl($url)) {
-                return $url;
-            }
-
-            $offset = $matches[0][1] + strlen($raw);
-        }
-
-        return null;
-    }
-
-    private function isFacebookOwnedUrl(string $url): bool
-    {
-        $host = parse_url($url, PHP_URL_HOST);
-
-        if (! is_string($host) || $host === '') {
-            return false;
-        }
-
-        $host = strtolower($host);
-
-        foreach (['facebook.com', 'fb.com', 'fb.me'] as $domain) {
-            if ($host === $domain || str_ends_with($host, ".{$domain}")) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**
@@ -189,13 +155,13 @@ class FacebookPublisher
      * not unfurl a URL left only in `message`; the Page Feed `link` field is
      * what makes it scrape Open Graph and render the preview.
      */
-    private function postTextToFeed(string $pageId, string $accessToken, string $content, ?string $link): Response
+    private function postTextToFeed(string $pageId, string $accessToken, string $content, ?string $link, bool $reportFailure = true): Response
     {
         return $this->postToGraph("{$pageId}/feed", [
             'message' => $content,
             'access_token' => $accessToken,
             ...$this->optionalField('link', $link),
-        ], 'text post');
+        ], 'text post', $reportFailure);
     }
 
     /**
@@ -553,7 +519,7 @@ class FacebookPublisher
      *
      * @param  array<string, string>  $payload
      */
-    private function postToGraph(string $path, array $payload, string $label): Response
+    private function postToGraph(string $path, array $payload, string $label, bool $reportFailure = true): Response
     {
         $response = $this->reachOrRetry(
             fn (): Response => $this->facebookHttp()->post("{$this->baseUrl}/{$path}", $payload),
@@ -561,10 +527,13 @@ class FacebookPublisher
         );
 
         if ($response->failed()) {
-            Log::error("Facebook {$label} failed", [
-                'status' => $response->status(),
-                'body' => $this->redactResponseBody($response->body()),
-            ]);
+            if ($reportFailure) {
+                Log::error("Facebook {$label} failed", [
+                    'status' => $response->status(),
+                    'body' => $this->redactResponseBody($response->body()),
+                ]);
+            }
+
             $this->handleApiError($response);
         }
 

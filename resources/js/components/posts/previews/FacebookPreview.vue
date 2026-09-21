@@ -8,6 +8,7 @@ import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
 import { getInitials } from '@/composables/useInitials';
 import { useLinkCard } from '@/composables/useLinkCard';
 import date from '@/date';
+import { facebookLinkPreviewUrl } from '@/lib/facebookLinkPreview';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -41,6 +42,7 @@ const postedAtLabel = computed(() =>
 const { card: linkCard, loading: linkCardLoading } = useLinkCard(
     toRef(props, 'content'),
     toRef(props, 'media'),
+    { selectUrl: facebookLinkPreviewUrl },
 );
 
 // Content type helpers

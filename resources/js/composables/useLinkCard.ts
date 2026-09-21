@@ -18,15 +18,31 @@ export interface LinkCard {
  * — a rough match is enough, because the backend re-detects it and returns the
  * exact, trimmed URL as `card.uri` — and resolves its OpenGraph card, but only
  * when no media is attached (media suppresses the link card on every platform).
+ *
+ * `selectUrl` replaces that first-match when a platform publishes a different
+ * URL than the first one in the caption. Facebook does: it skips facebook.com,
+ * fb.com and fb.me.
  */
-export const useLinkCard = (content: Ref<string>, media: Ref<MediaItem[]>) => {
+export const useLinkCard = (
+    content: Ref<string>,
+    media: Ref<MediaItem[]>,
+    options: { selectUrl?: (content: string) => string | null } = {},
+) => {
     const card = ref<LinkCard | null>(null);
     const loading = ref(false);
     const http = useHttp<{ url: string }, LinkCard | null>({ url: '' });
 
-    const url = computed(() =>
-        media.value.length > 0 ? null : (content.value.match(/https?:\/\/\S+/)?.[0] ?? null),
-    );
+    const url = computed(() => {
+        if (media.value.length > 0) {
+            return null;
+        }
+
+        if (options.selectUrl) {
+            return options.selectUrl(content.value);
+        }
+
+        return content.value.match(/https?:\/\/\S+/)?.[0] ?? null;
+    });
 
     const fetchCard = async (target: string): Promise<void> => {
         loading.value = true;

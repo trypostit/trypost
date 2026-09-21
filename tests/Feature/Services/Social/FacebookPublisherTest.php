@@ -15,6 +15,7 @@ use App\Models\Workspace;
 use App\Services\Social\FacebookPublisher;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
 use Intervention\Image\Drivers\Gd\Driver;
@@ -1237,6 +1238,41 @@ test('facebook publisher retries a text post without the link when the scrape fa
         ->and($feed[0]['link'])->toBe('https://example.com/post')
         ->and($feed[1]->data())->not->toHaveKey('link')
         ->and($feed[1]['message'])->toBe('Read https://example.com/post today');
+});
+
+test('facebook publisher does not log an error when the rejected link is published without it', function () {
+    $this->post->update(['content' => 'Read https://example.com/post today']);
+
+    Log::spy();
+
+    Http::fake([
+        '*/page_123/feed' => Http::sequence()
+            ->push(['error' => ['message' => 'There was a problem scraping the URL.', 'code' => 1609005]], 400)
+            ->push(['id' => 'page_123_post_456'], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Log::shouldHaveReceived('warning')->once();
+    Log::shouldNotHaveReceived('error');
+});
+
+test('facebook publisher logs an error when a text post fails for a reason other than the link', function () {
+    $this->post->update(['content' => 'Read https://example.com/post']);
+
+    Log::spy();
+
+    Http::fake([
+        '*/page_123/feed' => Http::response([
+            'error' => ['message' => 'Duplicate post', 'code' => 506],
+        ], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(FacebookPublishException::class);
+
+    Log::shouldHaveReceived('error')->once();
+    Log::shouldNotHaveReceived('warning');
 });
 
 test('facebook publisher does not drop the link on an unrelated feed error', function () {
