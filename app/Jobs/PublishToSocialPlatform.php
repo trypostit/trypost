@@ -86,7 +86,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     {
         $this->postPlatform->refresh();
 
-        if ($this->isTerminal()) {
+        if ($this->postPlatform->status->isClosed()) {
             return;
         }
 
@@ -153,31 +153,22 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 break;
             } catch (SocialPublishException $e) {
                 $this->reportCaughtPublishFailure($e);
-                $this->markPlatformAsFailed($e->userMessage, [
+                $this->markPlatformAsFailed($e->userMessage, $this->failureContext([
                     'category' => $e->category->value,
                     'platform_error_code' => $e->platformErrorCode,
-                    'failed_at' => now()->toIso8601String(),
-                    'content_length' => mb_strlen($this->postPlatform->post->content ?? ''),
-                    'media_count' => count($this->postPlatform->post->media ?? []),
                     'raw_response' => $e->context()['raw_response'],
-                ]);
+                ]));
                 break;
             } catch (Throwable $e) {
                 $this->reportCaughtPublishFailure($e);
-                $this->markPlatformAsFailed($this->safeFailureMessage($e), [
+                $this->markPlatformAsFailed($this->safeFailureMessage($e), $this->failureContext([
                     'category' => ErrorCategory::Unknown->value,
-                    'failed_at' => now()->toIso8601String(),
-                    'content_length' => mb_strlen($this->postPlatform->post->content ?? ''),
-                    'media_count' => count($this->postPlatform->post->media ?? []),
-                ]);
+                ]));
                 break;
             }
         }
 
-        // Always check and update post status after each platform finishes
         $this->updatePostStatus();
-
-        // Broadcast final status
         $this->broadcastStatus();
     }
 
@@ -190,31 +181,36 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
      */
     private function recordPublishResult(array $result): void
     {
-        $platformPostId = (string) data_get($result, 'id');
-        $platformUrl = data_get($result, 'url');
+        $id = (string) data_get($result, 'id');
+        $url = data_get($result, 'url');
 
         // tryFrom, not fromApi: every other publisher omits `state`. fromApi(null)
         // is Processing, which would hold LinkedIn/X/… in pending review forever.
         $state = LocalPostState::tryFrom((string) data_get($result, 'state'));
 
-        match (true) {
-            $state?->isRejected() => $this->postPlatform->markAsRejected(
-                $platformPostId,
-                $platformUrl,
+        if ($state?->isRejected()) {
+            $this->postPlatform->markAsRejected(
+                $id,
+                $url,
                 __('posts.errors.rejected_in_review'),
                 ['provider_state' => $state->value],
-            ),
-            $state?->isPendingReview() => $this->postPlatform->markAsPendingReview($platformPostId, $platformUrl),
-            default => $this->postPlatform->markAsPublished($platformPostId, $platformUrl),
-        };
+            );
+
+            return;
+        }
+
+        if ($state?->isPendingReview()) {
+            $this->postPlatform->markAsPendingReview($id, $url);
+
+            return;
+        }
+
+        $this->postPlatform->markAsPublished($id, $url);
     }
 
     private function refreshAccountToken(): void
     {
-        $account = $this->postPlatform->socialAccount;
-
-        // Delegate to ConnectionVerifier which already has per-platform refresh logic
-        app(ConnectionVerifier::class)->verify($account);
+        app(ConnectionVerifier::class)->verify($this->postPlatform->socialAccount);
     }
 
     private function failForMissingScopes(): bool
@@ -370,20 +366,32 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     {
         $previousContext = $this->postPlatform->error_context ?? [];
 
-        if ($this->postPlatform->platform === SocialPlatform::TikTok) {
-            app(TikTokPhotoDerivativeCleaner::class)->cleanupUnlessPublishInFlight(
+        match ($this->postPlatform->platform) {
+            SocialPlatform::TikTok => app(TikTokPhotoDerivativeCleaner::class)->cleanupUnlessPublishInFlight(
                 $previousContext,
                 $this->postPlatform->id,
-            );
-        }
-
-        if ($this->postPlatform->platform === SocialPlatform::GoogleBusiness) {
-            app(GoogleBusinessDerivativeCleaner::class)->cleanup($this->postPlatform->id);
-        }
+            ),
+            SocialPlatform::GoogleBusiness => app(GoogleBusinessDerivativeCleaner::class)->cleanup($this->postPlatform->id),
+            default => null,
+        };
 
         $failureContext = [...$previousContext, ...($context ?? [])];
 
         $this->postPlatform->markAsFailed($message, $failureContext === [] ? null : $failureContext);
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
+     */
+    private function failureContext(array $extra = []): array
+    {
+        return [
+            ...$extra,
+            'failed_at' => now()->toIso8601String(),
+            'content_length' => mb_strlen($this->postPlatform->post->content ?? ''),
+            'media_count' => count($this->postPlatform->post->media ?? []),
+        ];
     }
 
     /**
@@ -394,16 +402,6 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         $this->markPlatformAsFailed($message, $context);
         $this->updatePostStatus();
         $this->broadcastStatus();
-    }
-
-    private function isTerminal(): bool
-    {
-        return in_array($this->postPlatform->status, [
-            PostPlatformStatus::Published,
-            PostPlatformStatus::Failed,
-            PostPlatformStatus::Rejected,
-            PostPlatformStatus::PendingReview,
-        ], true);
     }
 
     private function broadcastStatus(): void
@@ -457,18 +455,16 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
         $this->postPlatform->refresh();
 
-        if ($this->isTerminal()) {
+        if ($this->postPlatform->status->isClosed()) {
             return;
         }
 
-        $this->markPlatformAsFailed(
+        $this->failAndFinalize(
             $exception ? $this->safeFailureMessage($exception) : 'Unknown error',
             [
                 'category' => ErrorCategory::JobFailed->value,
                 'failed_at' => now()->toIso8601String(),
-            ]
+            ],
         );
-        $this->updatePostStatus();
-        $this->broadcastStatus();
     }
 }

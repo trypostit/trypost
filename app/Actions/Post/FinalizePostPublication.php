@@ -25,13 +25,11 @@ class FinalizePostPublication
     {
         $post = $postPlatform->post->fresh(['workspace.owner', 'postPlatforms.socialAccount']);
         $targets = $post->postPlatforms->where('enabled', true);
-        $published = $targets->where('status', PostPlatformStatus::Published);
-        $failed = $targets->whereIn('status', [
-            PostPlatformStatus::Failed,
-            PostPlatformStatus::Rejected,
-        ]);
+        $finished = $targets->filter(fn (PostPlatform $target): bool => $target->status->isFinished());
+        $published = $finished->where('status', PostPlatformStatus::Published);
+        $failed = $finished->reject(fn (PostPlatform $target): bool => $target->status === PostPlatformStatus::Published);
 
-        if ($published->count() + $failed->count() < $targets->count()) {
+        if ($finished->count() < $targets->count()) {
             return;
         }
 
