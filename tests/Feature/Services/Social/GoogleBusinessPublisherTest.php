@@ -46,23 +46,8 @@ beforeEach(function () {
 });
 
 test('publish hands Google a JPEG derivative rather than the raw upload', function () {
-    Storage::fake();
-    Storage::put('uploads/promo.png', base64_decode(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
-    ));
-    $this->post->update(['media' => [[
-        'path' => 'uploads/promo.png',
-        'url' => Storage::url('uploads/promo.png'),
-        'mime_type' => 'image/png',
-        'type' => 'image',
-    ]]]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
-            'state' => 'LIVE',
-        ], 200),
-    ]);
+    attachPromoPng($this->post);
+    fakeLocalPostCreate(['state' => LocalPostState::Live->value]);
 
     $this->publisher->publish($this->postPlatform->fresh());
 
@@ -74,128 +59,65 @@ test('publish hands Google a JPEG derivative rather than the raw upload', functi
             && ! str_contains($sourceUrl, 'promo.png');
     });
 
-    expect(Storage::allFiles(GoogleBusinessPublisher::DERIVATIVE_DIRECTORY))->toBe([]);
+    expect(Storage::allFiles(GoogleBusinessDerivativeCleaner::DIRECTORY))->toBe([]);
 });
 
-test('publish keeps the JPEG while Google is still processing the post', function () {
-    Storage::fake();
-    Storage::put('uploads/promo.png', base64_decode(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
-    ));
-    $this->post->update(['media' => [[
-        'path' => 'uploads/promo.png',
-        'url' => Storage::url('uploads/promo.png'),
-        'mime_type' => 'image/png',
-        'type' => 'image',
-    ]]]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
-            'state' => LocalPostState::Processing->value,
-        ], 200),
-    ]);
-
-    $this->publisher->publish($this->postPlatform->fresh());
-
-    Storage::assertExists(GoogleBusinessDerivativeCleaner::pathFor($this->postPlatform->id));
-});
-
-test('publish keeps the JPEG while Google has scheduled the post', function () {
-    Storage::fake();
-    Storage::put('uploads/promo.png', base64_decode(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
-    ));
-    $this->post->update(['media' => [[
-        'path' => 'uploads/promo.png',
-        'url' => Storage::url('uploads/promo.png'),
-        'mime_type' => 'image/png',
-        'type' => 'image',
-    ]]]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
-            'state' => LocalPostState::Scheduled->value,
-        ], 200),
-    ]);
-
-    $this->publisher->publish($this->postPlatform->fresh());
-
-    Storage::assertExists(GoogleBusinessDerivativeCleaner::pathFor($this->postPlatform->id));
-});
-
-test('publish treats an unspecified Google state as pending review and keeps the jpeg', function () {
-    Storage::fake();
-    Storage::put('uploads/promo.png', base64_decode(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
-    ));
-    $this->post->update(['media' => [[
-        'path' => 'uploads/promo.png',
-        'url' => Storage::url('uploads/promo.png'),
-        'mime_type' => 'image/png',
-        'type' => 'image',
-    ]]]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
-            'state' => LocalPostState::Unspecified->value,
-        ], 200),
-    ]);
+test('publish keeps the jpeg while Google is still reviewing', function (string $googleState, string $recorded) {
+    attachPromoPng($this->post);
+    fakeLocalPostCreate(['state' => $googleState]);
 
     $result = $this->publisher->publish($this->postPlatform->fresh());
 
-    expect($result['state'])->toBe(LocalPostState::Unspecified->value);
+    expect($result['state'])->toBe($recorded);
     Storage::assertExists(GoogleBusinessDerivativeCleaner::pathFor($this->postPlatform->id));
-});
+})->with([
+    [LocalPostState::Processing->value, LocalPostState::Processing->value],
+    [LocalPostState::Scheduled->value, LocalPostState::Scheduled->value],
+    [LocalPostState::Unspecified->value, LocalPostState::Unspecified->value],
+    ['NOT_A_REAL_STATE', LocalPostState::Processing->value],
+]);
 
-test('publish remaps an unknown Google state to processing and keeps the jpeg', function () {
-    Storage::fake();
-    Storage::put('uploads/promo.png', base64_decode(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
-    ));
-    $this->post->update(['media' => [[
-        'path' => 'uploads/promo.png',
-        'url' => Storage::url('uploads/promo.png'),
-        'mime_type' => 'image/png',
-        'type' => 'image',
-    ]]]);
+test('publish deletes the jpeg once Google is no longer reviewing', function (string $state) {
+    attachPromoPng($this->post);
+    fakeLocalPostCreate(['state' => $state]);
 
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    expect(Storage::allFiles(GoogleBusinessDerivativeCleaner::DIRECTORY))->toBe([]);
+})->with([
+    LocalPostState::Live->value,
+    LocalPostState::Rejected->value,
+    LocalPostState::Recurring->value,
+]);
+
+test('publish deletes the jpeg when create fails after the derivative is written', function () {
+    attachPromoPng($this->post);
     Http::fake([
         config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
-            'state' => 'NOT_A_REAL_STATE',
-        ], 200),
+            'error' => ['status' => 'INVALID_ARGUMENT', 'message' => 'bad'],
+        ], 400),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform->fresh());
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(GoogleBusinessPublishException::class);
 
-    expect($result['state'])->toBe(LocalPostState::Processing->value);
-    Storage::assertExists(GoogleBusinessDerivativeCleaner::pathFor($this->postPlatform->id));
+    expect(Storage::allFiles(GoogleBusinessDerivativeCleaner::DIRECTORY))->toBe([]);
 });
 
 test('publish reports the review state Google returned and the real post URL', function () {
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
-            'state' => 'LIVE',
-            'searchUrl' => 'https://posts.google.com/999',
-        ], 200),
+    fakeLocalPostCreate([
+        'state' => LocalPostState::Live->value,
+        'searchUrl' => 'https://posts.google.com/999',
     ]);
 
     $result = $this->publisher->publish($this->postPlatform);
 
-    expect($result['state'])->toBe('LIVE')
+    expect($result['state'])->toBe(LocalPostState::Live->value)
         ->and($result['url'])->toBe('https://posts.google.com/999');
 });
 
 test('publishes a standard post with the workspace content language', function () {
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
-        ], 200),
-    ]);
+    fakeLocalPostCreate();
 
     $result = $this->publisher->publish($this->postPlatform);
 
@@ -212,10 +134,7 @@ test('publishes a standard post with the workspace content language', function (
 });
 
 test('an explicitly null topic_type publishes as STANDARD', function () {
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
-    ]);
-
+    fakeLocalPostCreate();
     $this->postPlatform->update(['meta' => ['topic_type' => null]]);
 
     $this->publisher->publish($this->postPlatform->fresh());
@@ -224,11 +143,18 @@ test('an explicitly null topic_type publishes as STANDARD', function () {
         && ! isset($request['event']));
 });
 
-test('a blank offer title throws with the offer-title message', function () {
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
-    ]);
+test('publish throws when the account has no location', function () {
+    Http::fake();
+    $this->socialAccount->update(['meta' => []]);
 
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(GoogleBusinessPublishException::class, __('posts.errors.google_business.no_location'));
+
+    Http::assertNothingSent();
+});
+
+test('a blank offer title throws with the offer-title message', function () {
+    fakeLocalPostCreate();
     $this->postPlatform->update([
         'meta' => [
             'topic_type' => 'OFFER',
@@ -244,9 +170,7 @@ test('a blank offer title throws with the offer-title message', function () {
 
 test('a chinese workspace sends a regional language code', function () {
     $this->workspace->update(['content_language' => 'zh']);
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
-    ]);
+    fakeLocalPostCreate();
 
     $this->publisher->publish($this->postPlatform->fresh());
 
@@ -254,10 +178,7 @@ test('a chinese workspace sends a regional language code', function () {
 });
 
 test('a blank event title throws instead of publishing an untitled event', function () {
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
-    ]);
-
+    fakeLocalPostCreate();
     $this->postPlatform->update([
         'meta' => [
             'topic_type' => 'EVENT',
@@ -272,10 +193,7 @@ test('a blank event title throws instead of publishing an untitled event', funct
 });
 
 test('a blank event start date throws instead of silently publishing today', function () {
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
-    ]);
-
+    fakeLocalPostCreate();
     $this->postPlatform->update([
         'meta' => [
             'topic_type' => 'EVENT',
@@ -290,10 +208,7 @@ test('a blank event start date throws instead of silently publishing today', fun
 });
 
 test('a missing event end date throws instead of silently publishing today', function () {
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
-    ]);
-
+    fakeLocalPostCreate();
     $this->postPlatform->update([
         'meta' => [
             'topic_type' => 'OFFER',
@@ -308,10 +223,7 @@ test('a missing event end date throws instead of silently publishing today', fun
 });
 
 test('includes a call to action when configured', function () {
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
-    ]);
-
+    fakeLocalPostCreate();
     $this->postPlatform->update([
         'meta' => ['topic_type' => 'STANDARD', 'call_to_action' => ['action_type' => 'BOOK', 'url' => 'https://example.com/book']],
     ]);
@@ -322,12 +234,9 @@ test('includes a call to action when configured', function () {
 });
 
 test('call omits the url even when one is stored', function () {
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
-    ]);
-
+    fakeLocalPostCreate();
     $this->postPlatform->update([
-        'meta' => ['topic_type' => 'STANDARD', 'call_to_action' => ['action_type' => 'CALL', 'url' => null]],
+        'meta' => ['topic_type' => 'STANDARD', 'call_to_action' => ['action_type' => 'CALL', 'url' => 'https://example.com/should-not-go']],
     ]);
 
     $this->publisher->publish($this->postPlatform->fresh());
@@ -335,11 +244,19 @@ test('call omits the url even when one is stored', function () {
     Http::assertSent(fn ($request) => data_get($request->data(), 'callToAction') === ['actionType' => 'CALL']);
 });
 
-test('builds an event payload for EVENT topic type', function () {
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
+test('none and deprecated get-offer call to actions are omitted', function (string $action) {
+    fakeLocalPostCreate();
+    $this->postPlatform->update([
+        'meta' => ['topic_type' => 'STANDARD', 'call_to_action' => ['action_type' => $action, 'url' => 'https://example.com']],
     ]);
 
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(fn ($request) => ! array_key_exists('callToAction', $request->data()));
+})->with(['NONE', 'GET_OFFER']);
+
+test('builds an event payload for EVENT topic type', function () {
+    fakeLocalPostCreate();
     $this->postPlatform->update([
         'meta' => [
             'topic_type' => 'EVENT',
@@ -359,10 +276,7 @@ test('builds an event payload for EVENT topic type', function () {
 });
 
 test('includes event start and end times when they are set', function () {
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
-    ]);
-
+    fakeLocalPostCreate();
     $this->postPlatform->update([
         'meta' => [
             'topic_type' => 'EVENT',
@@ -387,10 +301,7 @@ test('includes event start and end times when they are set', function () {
 });
 
 test('builds both an event and an offer payload for OFFER topic type', function () {
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
-    ]);
-
+    fakeLocalPostCreate();
     $this->postPlatform->update([
         'meta' => [
             'topic_type' => 'OFFER',
@@ -415,10 +326,7 @@ test('builds both an event and an offer payload for OFFER topic type', function 
 });
 
 test('omits callToAction on OFFER posts because Google ignores it', function () {
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
-    ]);
-
+    fakeLocalPostCreate();
     $this->postPlatform->update([
         'meta' => [
             'topic_type' => 'OFFER',
@@ -435,10 +343,7 @@ test('omits callToAction on OFFER posts because Google ignores it', function () 
 });
 
 test('includes offer redeem url and terms when they are set', function () {
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
-    ]);
-
+    fakeLocalPostCreate();
     $this->postPlatform->update([
         'meta' => [
             'topic_type' => 'OFFER',
@@ -469,13 +374,7 @@ test('publish skips a gif and does not send it as a photo', function () {
         'mime_type' => 'image/gif',
         'type' => 'image',
     ]]]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
-            'state' => LocalPostState::Live->value,
-        ], 200),
-    ]);
+    fakeLocalPostCreate(['state' => LocalPostState::Live->value]);
 
     $this->publisher->publish($this->postPlatform->fresh());
 
@@ -483,33 +382,34 @@ test('publish skips a gif and does not send it as a photo', function () {
 });
 
 test('publish sends the original image url when the jpeg optimizer fails', function () {
-    Storage::fake();
-    Storage::put('uploads/promo.png', base64_decode(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
-    ));
-    $this->post->update(['media' => [[
-        'path' => 'uploads/promo.png',
-        'url' => Storage::url('uploads/promo.png'),
-        'mime_type' => 'image/png',
-        'type' => 'image',
-    ]]]);
+    attachPromoPng($this->post);
 
     $this->mock(MediaOptimizer::class)
         ->shouldReceive('optimizeImage')
         ->once()
         ->andThrow(new RuntimeException('gd failed'));
 
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
-            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
-            'state' => LocalPostState::Live->value,
-        ], 200),
-    ]);
+    fakeLocalPostCreate(['state' => LocalPostState::Live->value]);
 
     $this->publisher->publish($this->postPlatform->fresh());
 
     Http::assertSent(fn ($request) => data_get($request->data(), 'media.0.sourceUrl') === Storage::url('uploads/promo.png'));
-    expect(Storage::allFiles(GoogleBusinessPublisher::DERIVATIVE_DIRECTORY))->toBe([]);
+    expect(Storage::allFiles(GoogleBusinessDerivativeCleaner::DIRECTORY))->toBe([]);
+});
+
+test('publish sends the original url when the upload is not on disk', function () {
+    Storage::fake();
+    $this->post->update(['media' => [[
+        'path' => '',
+        'url' => 'https://cdn.example.com/photo.png',
+        'mime_type' => 'image/png',
+        'type' => 'image',
+    ]]]);
+    fakeLocalPostCreate(['state' => LocalPostState::Live->value]);
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(fn ($request) => data_get($request->data(), 'media.0.sourceUrl') === 'https://cdn.example.com/photo.png');
 });
 
 test('rejects video media for google business posts', function () {
@@ -522,17 +422,10 @@ test('rejects video media for google business posts', function () {
             'original_filename' => 'video.mp4',
         ]],
     ]);
-
-    Http::fake([
-        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response(['name' => 'x'], 200),
-    ]);
+    fakeLocalPostCreate();
 
     $this->publisher->publish($this->postPlatform->fresh());
 
-    // Only a PHOTO mediaFormat is ever sent — video attachments are silently
-    // excluded here because ContentType::GoogleBusinessPost::supportsVideo()
-    // is false, so the editor's own validation already blocks scheduling one;
-    // this assertion is the backend's defense-in-depth for that same rule.
     Http::assertSent(fn ($request) => ! isset($request['media']) || data_get($request->data(), 'media.0.mediaFormat') !== 'VIDEO');
 });
 
@@ -549,19 +442,36 @@ test('throws a structured exception on API failure', function () {
 
 test('fetchLocations flattens accounts and locations across pages', function () {
     Http::fake([
-        config('trypost.platforms.google_business.account_management_api').'/accounts*' => Http::response([
-            'accounts' => [['name' => 'accounts/111']],
-        ], 200),
-        config('trypost.platforms.google_business.business_information_api').'/accounts/111/locations*' => Http::response([
+        config('trypost.platforms.google_business.account_management_api').'/accounts*' => Http::sequence()
+            ->push([
+                'accounts' => [['name' => 'accounts/111']],
+                'nextPageToken' => 'acct-2',
+            ])
+            ->push([
+                'accounts' => [['name' => 'accounts/222']],
+            ]),
+        config('trypost.platforms.google_business.business_information_api').'/accounts/111/locations*' => Http::sequence()
+            ->push([
+                'locations' => [
+                    ['name' => 'locations/222', 'title' => 'Downtown Store', 'storefrontAddress' => ['addressLines' => ['123 Main St'], 'locality' => 'Springfield']],
+                ],
+                'nextPageToken' => 'loc-2',
+            ])
+            ->push([
+                'locations' => [
+                    ['name' => 'locations/333', 'title' => 'Uptown Store'],
+                ],
+            ]),
+        config('trypost.platforms.google_business.business_information_api').'/accounts/222/locations*' => Http::response([
             'locations' => [
-                ['name' => 'locations/222', 'title' => 'Downtown Store', 'storefrontAddress' => ['addressLines' => ['123 Main St'], 'locality' => 'Springfield']],
+                ['name' => 'locations/444', 'title' => 'Airport Kiosk'],
             ],
         ], 200),
     ]);
 
     $locations = $this->publisher->fetchLocations('fake-access-token');
 
-    expect($locations)->toHaveCount(1);
+    expect($locations)->toHaveCount(3);
     expect($locations[0])->toMatchArray([
         'id' => 'accounts/111/locations/222',
         'account_name' => 'accounts/111',
@@ -570,6 +480,7 @@ test('fetchLocations flattens accounts and locations across pages', function () 
         'address' => '123 Main St, Springfield',
         'maps_uri' => null,
     ]);
+    expect(array_column($locations, 'title'))->toBe(['Downtown Store', 'Uptown Store', 'Airport Kiosk']);
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/media'));
 
@@ -578,7 +489,16 @@ test('fetchLocations flattens accounts and locations across pages', function () 
 
         return $request->method() === 'GET'
             && str_starts_with($request->url(), config('trypost.platforms.google_business.account_management_api').'/accounts')
-            && data_get($query, 'pageSize') === '20';
+            && data_get($query, 'pageSize') === '20'
+            && ! array_key_exists('pageToken', $query);
+    });
+
+    Http::assertSent(function ($request) {
+        parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+        return $request->method() === 'GET'
+            && str_starts_with($request->url(), config('trypost.platforms.google_business.account_management_api').'/accounts')
+            && data_get($query, 'pageToken') === 'acct-2';
     });
 
     Http::assertSent(function ($request) {
@@ -586,7 +506,8 @@ test('fetchLocations flattens accounts and locations across pages', function () 
 
         return $request->method() === 'GET'
             && str_starts_with($request->url(), config('trypost.platforms.google_business.business_information_api').'/accounts/111/locations')
-            && data_get($query, 'readMask') === 'name,title,storefrontAddress,metadata';
+            && data_get($query, 'readMask') === 'name,title,storefrontAddress,metadata'
+            && data_get($query, 'pageToken') === 'loc-2';
     });
 });
 
@@ -606,7 +527,6 @@ test('fetchLocations skips a location Google says cannot take local posts', func
 
     $titles = array_column($this->publisher->fetchLocations('fake-access-token'), 'title');
 
-    // An absent flag stays offered — only an explicit refusal is one.
     expect($titles)->toBe(['Downtown Store', 'Airport Kiosk']);
 });
 
@@ -644,6 +564,27 @@ test('fetchLocationPhoto reads the fixed profile media resource', function () {
         ->toBe('https://lh3.googleusercontent.com/profile-thumb');
 });
 
+test('fetchLocationPhoto falls back to the full google url', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/accounts/111/locations/222/media/profile' => Http::response([
+            'googleUrl' => 'https://lh3.googleusercontent.com/profile-full',
+        ], 200),
+    ]);
+
+    expect($this->publisher->fetchLocationPhoto('fake-access-token', 'accounts/111/locations/222'))
+        ->toBe('https://lh3.googleusercontent.com/profile-full');
+});
+
+test('fetchLocationPhoto returns null when the profile has no url', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/accounts/111/locations/222/media/profile' => Http::response([
+            'mediaFormat' => 'PHOTO',
+        ], 200),
+    ]);
+
+    expect($this->publisher->fetchLocationPhoto('fake-access-token', 'accounts/111/locations/222'))->toBeNull();
+});
+
 test('fetchLocationPhoto returns null when the profile media request fails', function () {
     Http::fake([
         config('trypost.platforms.google_business.local_posts_api').'/accounts/111/locations/222/media/profile' => Http::response(['error' => ['message' => 'denied']], 403),
@@ -651,3 +592,59 @@ test('fetchLocationPhoto returns null when the profile media request fails', fun
 
     expect($this->publisher->fetchLocationPhoto('fake-access-token', 'accounts/111/locations/222'))->toBeNull();
 });
+
+test('fetchLocalPost reads the local post resource', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/accounts/1/locations/2/localPosts/3' => Http::response([
+            'name' => 'accounts/1/locations/2/localPosts/3',
+            'state' => LocalPostState::Live->value,
+        ], 200),
+    ]);
+
+    expect($this->publisher->fetchLocalPost($this->socialAccount, 'accounts/1/locations/2/localPosts/3'))
+        ->toMatchArray([
+            'name' => 'accounts/1/locations/2/localPosts/3',
+            'state' => LocalPostState::Live->value,
+        ]);
+});
+
+test('fetchLocalPost throws a structured exception on API failure', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'error' => ['status' => 'NOT_FOUND', 'message' => 'gone'],
+        ], 404),
+    ]);
+
+    expect(fn () => $this->publisher->fetchLocalPost($this->socialAccount, 'accounts/1/locations/2/localPosts/missing'))
+        ->toThrow(GoogleBusinessPublishException::class, __('posts.errors.google_business.not_found'));
+});
+
+function attachPromoPng(Post $post): void
+{
+    Storage::fake();
+    Storage::put('uploads/promo.png', base64_decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+    ));
+
+    $post->update([
+        'media' => [[
+            'path' => 'uploads/promo.png',
+            'url' => Storage::url('uploads/promo.png'),
+            'mime_type' => 'image/png',
+            'type' => 'image',
+        ]],
+    ]);
+}
+
+/**
+ * @param  array<string, mixed>  $overrides
+ */
+function fakeLocalPostCreate(array $overrides = []): void
+{
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
+            ...$overrides,
+        ], 200),
+    ]);
+}
