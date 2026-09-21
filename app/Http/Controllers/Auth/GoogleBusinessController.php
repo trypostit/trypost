@@ -33,6 +33,8 @@ class GoogleBusinessController extends SocialController
         'https://www.googleapis.com/auth/business.manage',
     ];
 
+    private const string OAUTH_SESSION = 'google_business_oauth';
+
     public function __construct(private readonly GoogleBusinessPublisher $publisher) {}
 
     public function connect(Request $request): Response
@@ -43,19 +45,27 @@ class GoogleBusinessController extends SocialController
 
         $this->authorize('manageAccounts', $workspace);
 
-        $this->rememberConnectSession($request, $workspace);
-
-        return $this->redirectToGoogle();
+        return $this->redirectToProvider($request, $this->driver, $this->scopes, [
+            'access_type' => 'offline',
+            'prompt' => 'consent',
+            'include_granted_scopes' => 'true',
+        ]);
     }
 
     public function callback(Request $request): InertiaResponse|RedirectResponse
     {
         $workspace = $this->connectWorkspace($request);
-
         $reconnect = $this->reconnectAccount($workspace);
 
         try {
             $socialUser = Socialite::driver($this->driver)->user();
+            $oauth = [
+                'access_token' => $socialUser->token,
+                'refresh_token' => $socialUser->refreshToken,
+                'expires_in' => $socialUser->expiresIn,
+                'user_id' => $socialUser->getId(),
+                'reconnect_id' => $reconnect?->id,
+            ];
 
             $locations = $this->publisher->fetchLocations($socialUser->token);
 
@@ -70,29 +80,12 @@ class GoogleBusinessController extends SocialController
             }
 
             if (count($locations) === 1) {
-                $this->connectLocation(
-                    $workspace,
-                    $locations[0],
-                    $socialUser->token,
-                    $socialUser->refreshToken,
-                    $socialUser->expiresIn,
-                    $socialUser->getId(),
-                    $reconnect,
-                );
+                $this->connectLocation($workspace, $locations[0], $oauth, $reconnect);
 
                 return $this->connectedCallback($reconnect);
             }
 
-            session([
-                'google_business_oauth' => [
-                    'access_token' => $socialUser->token,
-                    'refresh_token' => $socialUser->refreshToken,
-                    'expires_in' => $socialUser->expiresIn,
-                    'user_id' => $socialUser->getId(),
-                    'reconnect_id' => $reconnect?->id,
-                    'locations' => $locations,
-                ],
-            ]);
+            session([self::OAUTH_SESSION => [...$oauth, 'locations' => $locations]]);
 
             return redirect()->route('app.social.google-business.select-location');
         } catch (NetworkAlreadyConnectedException $e) {
@@ -109,18 +102,12 @@ class GoogleBusinessController extends SocialController
 
     public function selectLocation(Request $request): InertiaResponse
     {
-        $oauthData = session('google_business_oauth');
-
-        if (! $oauthData) {
-            throw new ConnectPopupException('session_expired', $this->platform);
-        }
-
+        $oauth = $this->requireOauthSession();
         $workspace = $this->connectWorkspace($request);
-
-        $locations = data_get($oauthData, 'locations', []);
+        $locations = data_get($oauth, 'locations', []);
 
         if (empty($locations)) {
-            session()->forget('google_business_oauth');
+            $this->forgetOauthSession();
 
             return $this->popupCallback(false, __('accounts.popup_callback.no_google_business_locations'), $this->platform->value);
         }
@@ -133,61 +120,49 @@ class GoogleBusinessController extends SocialController
 
     public function select(SelectGoogleBusinessLocationRequest $request): InertiaResponse
     {
-        $oauthData = session('google_business_oauth');
-
-        if (! $oauthData) {
-            throw new ConnectPopupException('session_expired', $this->platform);
-        }
-
+        $oauth = $this->requireOauthSession();
         $workspace = $this->connectWorkspace($request);
 
         try {
-            $selectedLocation = collect(data_get($oauthData, 'locations'))
+            $location = collect(data_get($oauth, 'locations'))
                 ->firstWhere('id', $request->validated('location_id'));
 
-            if (! $selectedLocation) {
-                session()->forget('google_business_oauth');
-
+            if (! $location) {
                 return $this->popupCallback(false, __('accounts.popup_callback.location_not_found'), $this->platform->value);
             }
 
-            $reconnect = $this->reconnectAccount($workspace, data_get($oauthData, 'reconnect_id'));
+            $reconnect = $this->reconnectAccount($workspace, data_get($oauth, 'reconnect_id'));
 
-            $this->connectLocation(
-                $workspace,
-                $selectedLocation,
-                data_get($oauthData, 'access_token'),
-                data_get($oauthData, 'refresh_token'),
-                data_get($oauthData, 'expires_in'),
-                data_get($oauthData, 'user_id'),
-                $reconnect,
-            );
-
-            session()->forget('google_business_oauth');
+            $this->connectLocation($workspace, $location, $oauth, $reconnect);
 
             return $this->connectedCallback($reconnect);
         } catch (NetworkAlreadyConnectedException $e) {
-            session()->forget('google_business_oauth');
-
             return $this->popupCallback(false, __("accounts.popup_callback.{$e->messageKey}"), $this->platform->value);
         } catch (Exception $e) {
-            session()->forget('google_business_oauth');
-
             Log::error('Google Business Profile location selection error', [
                 'error' => $e->getMessage(),
             ]);
 
             return $this->popupCallback(false, __('accounts.popup_callback.error_connecting_location'), $this->platform->value);
+        } finally {
+            $this->forgetOauthSession();
         }
     }
 
-    private function connectLocation(Workspace $workspace, array $location, string $accessToken, ?string $refreshToken, ?int $expiresIn, ?string $googleUserId, ?SocialAccount $reconnect = null): void
+    /**
+     * @param  array<string, mixed>  $location
+     * @param  array<string, mixed>  $oauth
+     */
+    private function connectLocation(Workspace $workspace, array $location, array $oauth, ?SocialAccount $reconnect = null): void
     {
-        $location['photo'] = $this->publisher->fetchLocationPhoto($accessToken, (string) data_get($location, 'id'));
+        $location['photo'] = $this->publisher->fetchLocationPhoto(
+            (string) data_get($oauth, 'access_token'),
+            (string) data_get($location, 'id'),
+        );
 
-        $attributes = $this->locationAttributes($location, $accessToken, $refreshToken, $expiresIn, $googleUserId);
+        $attributes = $this->locationAttributes($location, $oauth);
 
-        if ($reconnect !== null && blank($attributes['refresh_token'])) {
+        if ($reconnect !== null && blank(data_get($attributes, 'refresh_token'))) {
             $attributes['refresh_token'] = $reconnect->refresh_token;
         }
 
@@ -206,44 +181,50 @@ class GoogleBusinessController extends SocialController
     }
 
     /**
-     * The social account attributes derived from a picked location and its OAuth
-     * tokens. Shared by the fresh-connect and reconnect paths so both store the
-     * same shape.
-     *
+     * @param  array<string, mixed>  $location
+     * @param  array<string, mixed>  $oauth
      * @return array<string, mixed>
      */
-    private function locationAttributes(array $location, string $accessToken, ?string $refreshToken, ?int $expiresIn, ?string $googleUserId): array
+    private function locationAttributes(array $location, array $oauth): array
     {
+        $title = data_get($location, 'title');
+
         return [
-            'username' => data_get($location, 'title'),
-            'display_name' => data_get($location, 'title'),
+            'username' => $title,
+            'display_name' => $title,
             'avatar_url' => uploadFromUrl(data_get($location, 'photo')),
-            'access_token' => $accessToken,
-            'refresh_token' => $refreshToken,
-            'token_expires_at' => $expiresIn ? now()->addSeconds($expiresIn) : null,
+            'access_token' => data_get($oauth, 'access_token'),
+            'refresh_token' => data_get($oauth, 'refresh_token'),
+            'token_expires_at' => data_get($oauth, 'expires_in')
+                ? now()->addSeconds((int) data_get($oauth, 'expires_in'))
+                : null,
             'scopes' => $this->scopes,
             'meta' => [
                 'location_id' => data_get($location, 'id'),
                 'account_name' => data_get($location, 'account_name'),
                 'location_name' => data_get($location, 'location_name'),
                 'maps_uri' => data_get($location, 'maps_uri'),
-                'google_user_id' => $googleUserId,
+                'google_user_id' => data_get($oauth, 'user_id'),
             ],
         ];
     }
 
-    private function redirectToGoogle(): Response
+    /**
+     * @return array<string, mixed>
+     */
+    private function requireOauthSession(): array
     {
-        return Inertia::location(
-            Socialite::driver($this->driver)
-                ->scopes($this->scopes)
-                ->with([
-                    'access_type' => 'offline',
-                    'prompt' => 'consent',
-                    'include_granted_scopes' => 'true',
-                ])
-                ->redirect()
-                ->getTargetUrl()
-        );
+        $oauth = session(self::OAUTH_SESSION);
+
+        if (! is_array($oauth)) {
+            throw new ConnectPopupException('session_expired', $this->platform);
+        }
+
+        return $oauth;
+    }
+
+    private function forgetOauthSession(): void
+    {
+        session()->forget(self::OAUTH_SESSION);
     }
 }
