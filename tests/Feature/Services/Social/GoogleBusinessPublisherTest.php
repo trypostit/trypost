@@ -12,6 +12,7 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Media\MediaOptimizer;
 use App\Services\Social\GoogleBusinessPublisher;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Illuminate\Support\Facades\Http;
@@ -121,6 +122,31 @@ test('publish keeps the JPEG while Google has scheduled the post', function () {
 
     $this->publisher->publish($this->postPlatform->fresh());
 
+    Storage::assertExists(GoogleBusinessDerivativeCleaner::pathFor($this->postPlatform->id));
+});
+
+test('publish treats an unspecified Google state as pending review and keeps the jpeg', function () {
+    Storage::fake();
+    Storage::put('uploads/promo.png', base64_decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+    ));
+    $this->post->update(['media' => [[
+        'path' => 'uploads/promo.png',
+        'url' => Storage::url('uploads/promo.png'),
+        'mime_type' => 'image/png',
+        'type' => 'image',
+    ]]]);
+
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
+            'state' => LocalPostState::Unspecified->value,
+        ], 200),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform->fresh());
+
+    expect($result['state'])->toBe(LocalPostState::Unspecified->value);
     Storage::assertExists(GoogleBusinessDerivativeCleaner::pathFor($this->postPlatform->id));
 });
 
@@ -432,6 +458,58 @@ test('includes offer redeem url and terms when they are set', function () {
         'redeemOnlineUrl' => 'https://example.com/redeem',
         'termsConditions' => 'While supplies last.',
     ]);
+});
+
+test('publish skips a gif and does not send it as a photo', function () {
+    Storage::fake();
+    Storage::put('uploads/loop.gif', 'not-a-real-gif');
+    $this->post->update(['media' => [[
+        'path' => 'uploads/loop.gif',
+        'url' => Storage::url('uploads/loop.gif'),
+        'mime_type' => 'image/gif',
+        'type' => 'image',
+    ]]]);
+
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
+            'state' => LocalPostState::Live->value,
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(fn ($request) => ! isset($request->data()['media']));
+});
+
+test('publish sends the original image url when the jpeg optimizer fails', function () {
+    Storage::fake();
+    Storage::put('uploads/promo.png', base64_decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+    ));
+    $this->post->update(['media' => [[
+        'path' => 'uploads/promo.png',
+        'url' => Storage::url('uploads/promo.png'),
+        'mime_type' => 'image/png',
+        'type' => 'image',
+    ]]]);
+
+    $this->mock(MediaOptimizer::class)
+        ->shouldReceive('optimizeImage')
+        ->once()
+        ->andThrow(new RuntimeException('gd failed'));
+
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
+            'state' => LocalPostState::Live->value,
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(fn ($request) => data_get($request->data(), 'media.0.sourceUrl') === Storage::url('uploads/promo.png'));
+    expect(Storage::allFiles(GoogleBusinessPublisher::DERIVATIVE_DIRECTORY))->toBe([]);
 });
 
 test('rejects video media for google business posts', function () {

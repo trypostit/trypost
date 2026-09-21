@@ -9,7 +9,6 @@ import { mediaLimitsDocsUrl } from '@/lib/docs';
 import {
     GOOGLE_BUSINESS_EVENT_TOPIC_TYPES,
     GoogleBusinessCtaAction,
-    GoogleBusinessDeprecatedCtaAction,
     GoogleBusinessTopicType,
     googleBusinessAllowsCallToAction,
     googleBusinessEventEndsBeforeStart,
@@ -96,8 +95,6 @@ const PLATFORM_META_RULES: Record<string, MetaRule> = {
         const topicType = resolveGoogleBusinessTopicType(meta.topic_type);
         const needsEvent = GOOGLE_BUSINESS_EVENT_TOPIC_TYPES.includes(topicType);
         const ctaActionType = resolveGoogleBusinessCtaAction(meta.call_to_action?.action_type);
-        const leftoverGetOffer = meta.call_to_action?.action_type === GoogleBusinessDeprecatedCtaAction.GetOffer
-            && topicType !== GoogleBusinessTopicType.Offer;
         const ctaNeedsUrl = googleBusinessAllowsCallToAction(topicType)
             && ctaActionType !== GoogleBusinessCtaAction.None
             && ctaActionType !== GoogleBusinessCtaAction.Call;
@@ -117,8 +114,6 @@ const PLATFORM_META_RULES: Record<string, MetaRule> = {
             tooltipKey = sameDayTimes
                 ? 'posts.form.google_business.event_end_time_before_start'
                 : 'posts.form.google_business.event_end_date_before_start';
-        } else if (leftoverGetOffer) {
-            tooltipKey = 'posts.form.google_business.cta_get_offer_deprecated';
         } else if (ctaNeedsUrl && !meta.call_to_action?.url) {
             tooltipKey = 'posts.form.google_business.cta_url_required';
         }

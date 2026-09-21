@@ -1876,6 +1876,76 @@ test('a google business post that Google reports as recurring is published', fun
     expect($postPlatform->fresh()->status)->toBe(PlatformStatus::Published);
 });
 
+test('an unspecified google business create state is held in review and keeps the jpeg', function () {
+    Storage::fake();
+    Storage::put('uploads/promo.png', base64_decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+    ));
+    $this->post->update(['media' => [[
+        'path' => 'uploads/promo.png',
+        'url' => Storage::url('uploads/promo.png'),
+        'mime_type' => 'image/png',
+        'type' => 'image',
+    ]]]);
+
+    $account = SocialAccount::factory()->googleBusiness()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addHour(),
+    ]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => ['topic_type' => TopicType::Standard->value],
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/1/locations/2/localPosts/3',
+            'state' => LocalPostState::Unspecified->value,
+        ], 200),
+    ]);
+
+    (new PublishToSocialPlatform($postPlatform))->handle();
+
+    expect($postPlatform->fresh()->status)->toBe(PlatformStatus::PendingReview)
+        ->and($postPlatform->fresh()->published_at)->toBeNull();
+    Storage::assertExists(GoogleBusinessDerivativeCleaner::pathFor($postPlatform->id));
+});
+
+test('a failed google business publish prunes the jpeg derivative', function () {
+    Storage::fake();
+    Storage::put('uploads/promo.png', base64_decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+    ));
+    $this->post->update(['media' => [[
+        'path' => 'uploads/promo.png',
+        'url' => Storage::url('uploads/promo.png'),
+        'mime_type' => 'image/png',
+        'type' => 'image',
+    ]]]);
+
+    $account = SocialAccount::factory()->googleBusiness()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addHour(),
+    ]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => ['topic_type' => TopicType::Standard->value],
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'error' => ['status' => 'INVALID_ARGUMENT', 'message' => 'summary too long'],
+        ], 400),
+    ]);
+
+    (new PublishToSocialPlatform($postPlatform))->handle();
+
+    expect($postPlatform->fresh()->status)->toBe(PlatformStatus::Failed);
+    Storage::assertMissing(GoogleBusinessDerivativeCleaner::pathFor($postPlatform->id));
+});
+
 test('an unknown google business create state is held in review and keeps the jpeg', function () {
     Storage::fake();
     Storage::put('uploads/promo.png', base64_decode(

@@ -1104,6 +1104,41 @@ test('publishing a google business event persists start and end times', function
         ->and(data_get($meta, 'event.end_time'))->toBe('17:00');
 });
 
+test('publishing two google business posts scopes event errors to the missing one', function () {
+    $firstAccount = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $secondAccount = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $missingEvent = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $firstAccount->id,
+        'meta' => [],
+    ]);
+    $completeStandard = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $secondAccount->id,
+        'meta' => [],
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Publishing->value,
+            'platforms' => [
+                [
+                    'id' => $missingEvent->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => ['topic_type' => 'EVENT'],
+                ],
+                [
+                    'id' => $completeStandard->id,
+                    'content_type' => ContentType::GoogleBusinessPost->value,
+                    'meta' => ['topic_type' => 'STANDARD'],
+                ],
+            ],
+        ]);
+
+    $response->assertSessionHasErrors('platforms.0.meta.event.title');
+    $response->assertSessionDoesntHaveErrors(['platforms.1.meta.event.title']);
+});
+
 test('publishing a google business post with a url-needing cta and no url is rejected', function () {
     $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
     $postPlatform = PostPlatform::factory()->googleBusiness()->create([

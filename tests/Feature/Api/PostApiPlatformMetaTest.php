@@ -699,7 +699,7 @@ it('rejects publishing a Google Business event with a same-day end time before s
         ->assertJsonValidationErrors(['platforms.0.meta.event.end_time']);
 });
 
-it('rejects a deprecated Google Business GET_OFFER call to action', function () {
+it('rejects a Google Business GET_OFFER call to action', function () {
     $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
 
     $this->withHeaders($this->headers)

@@ -19,6 +19,7 @@ import {
     getMediaIncompatibilityReason,
     usePostCompliance,
 } from '@/composables/usePostCompliance';
+import { isActivelyPublishing } from '@/composables/usePostStatus';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import date from '@/date';
 import debounce from '@/debounce';
@@ -105,7 +106,7 @@ const READONLY_STATUSES: readonly string[] = [
     PostStatus.Failed,
 ];
 const isReadOnly = computed(() => READONLY_STATUSES.includes(post.value.status));
-const isPublishing = computed(() => post.value.status === PostStatus.Publishing);
+const isPublishing = computed(() => isActivelyPublishing(post.value.status, post.value.post_platforms));
 const isScheduled = computed(() => post.value.status === PostStatus.Scheduled);
 const isLocked = computed(() => isReadOnly.value || isScheduled.value || !canCreatePost.value);
 

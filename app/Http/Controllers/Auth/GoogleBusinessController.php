@@ -171,6 +171,8 @@ class GoogleBusinessController extends SocialController
 
             return $this->popupCallback(false, __("accounts.popup_callback.{$e->messageKey}"), $this->platform->value);
         } catch (Exception $e) {
+            session()->forget('google_business_oauth');
+
             Log::error('Google Business Profile location selection error', [
                 'error' => $e->getMessage(),
             ]);
@@ -183,12 +185,18 @@ class GoogleBusinessController extends SocialController
     {
         $location['photo'] = $this->publisher->fetchLocationPhoto($accessToken, (string) data_get($location, 'id'));
 
+        $attributes = $this->locationAttributes($location, $accessToken, $refreshToken, $expiresIn, $googleUserId);
+
+        if ($reconnect !== null && blank($attributes['refresh_token'])) {
+            $attributes['refresh_token'] = $reconnect->refresh_token;
+        }
+
         SocialAccount::connectIdentity(
             $workspace,
             $this->platform,
             (string) data_get($location, 'id'),
             [
-                ...$this->locationAttributes($location, $accessToken, $refreshToken, $expiresIn, $googleUserId),
+                ...$attributes,
                 'status' => Status::Connected,
                 'error_message' => null,
                 'disconnected_at' => null,

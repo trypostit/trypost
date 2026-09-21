@@ -203,7 +203,6 @@ return [
                 'shop' => '购买',
                 'learn_more' => '了解详情',
                 'sign_up' => '注册',
-                'get_offer' => '获取优惠',
                 'call' => '立即致电',
             ],
             'cta_url' => '按钮链接',
@@ -219,7 +218,6 @@ return [
             'event_end_date_before_start' => '结束日期必须等于或晚于开始日期。',
             'event_end_time_before_start' => '结束时间必须晚于开始时间。',
             'title_max' => '标题不能超过 100 个字符。',
-            'cta_get_offer_deprecated' => '“兑换优惠”不再是按钮。请改用“优惠”帖子类型。',
             'event_start_time' => '开始时间',
             'event_end_time' => '结束时间',
             'offer_title' => '优惠标题',
@@ -228,6 +226,7 @@ return [
             'offer_coupon_code' => '优惠券代码',
             'offer_redeem_url' => '优惠链接',
             'offer_terms' => '条款和条件',
+            'event_times_use_location' => '时间以门店当地时间为准，而不是浏览器时区。',
         ],
         'warnings' => [
             'no_variant' => '请选择一个帖子类型以继续。',
@@ -353,6 +352,7 @@ return [
         'metrics_loading' => '正在加载指标…',
         'metrics_unavailable' => '此平台暂无可用指标。',
         'metrics_empty' => '未返回任何指标。',
+        'pending_review' => 'Google 正在审核这篇帖子。审核结束后我们会更新状态。',
     ],
 
     'edit' => [

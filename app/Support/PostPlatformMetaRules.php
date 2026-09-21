@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Enums\GoogleBusiness\CtaAction;
-use App\Enums\GoogleBusiness\DeprecatedCtaAction;
 use App\Enums\GoogleBusiness\TopicType;
 use App\Enums\PostPlatform\AspectRatio;
 use App\Enums\SocialAccount\Platform;
@@ -195,12 +194,6 @@ class PostPlatformMetaRules
                 && blank(data_get($meta, 'event.end_date')) => ['event.end_date', trans('posts.form.google_business.event_end_date_required')],
             $needsGoogleBusinessEvent
                 && self::googleBusinessEventEndsBeforeStart($meta) => self::googleBusinessEventRangeViolation($meta),
-            $platform === Platform::GoogleBusiness
-                && $topicType->allowsCallToAction()
-                && data_get($meta, 'call_to_action.action_type') === DeprecatedCtaAction::GetOffer->value => [
-                    'call_to_action.action_type',
-                    trans('posts.form.google_business.cta_get_offer_deprecated'),
-                ],
             $platform === Platform::GoogleBusiness
                 && $topicType->allowsCallToAction()
                 && $ctaAction->requiresUrl()

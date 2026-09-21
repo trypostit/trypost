@@ -31,7 +31,7 @@ class ConnectPopupException extends RuntimeException implements ShouldntReport
 
     public function render(Request $request): Response
     {
-        session()->forget(['social_connect_workspace', 'social_reconnect_id']);
+        session()->forget(['social_connect_workspace', 'social_reconnect_id', 'google_business_oauth']);
 
         return Inertia::render('accounts/PopupCallback', [
             'success' => false,

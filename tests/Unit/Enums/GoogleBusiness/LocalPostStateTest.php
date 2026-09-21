@@ -36,7 +36,7 @@ test('pending review states keep the jpeg until google finishes fetching', funct
     [LocalPostState::Live, false],
     [LocalPostState::Recurring, false],
     [LocalPostState::Rejected, false],
-    [LocalPostState::Unspecified, false],
+    [LocalPostState::Unspecified, true],
 ]);
 
 test('live states are visible in search', function (LocalPostState $state, bool $live) {

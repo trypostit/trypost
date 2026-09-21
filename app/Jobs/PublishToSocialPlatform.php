@@ -31,6 +31,7 @@ use App\Services\Social\ThreadsPublisher;
 use App\Services\Social\TikTokPublisher;
 use App\Services\Social\XPublisher;
 use App\Services\Social\YouTubePublisher;
+use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -374,6 +375,10 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 $previousContext,
                 $this->postPlatform->id,
             );
+        }
+
+        if ($this->postPlatform->platform === SocialPlatform::GoogleBusiness) {
+            app(GoogleBusinessDerivativeCleaner::class)->cleanup($this->postPlatform->id);
         }
 
         $failureContext = [...$previousContext, ...($context ?? [])];

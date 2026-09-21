@@ -203,7 +203,6 @@ return [
                 'shop' => 'اشتر',
                 'learn_more' => 'تعرف على المزيد',
                 'sign_up' => 'اشترك',
-                'get_offer' => 'احصل على العرض',
                 'call' => 'اتصل الآن',
             ],
             'cta_url' => 'رابط الزر',
@@ -219,7 +218,6 @@ return [
             'event_end_date_before_start' => 'يجب أن يكون تاريخ الانتهاء في يوم تاريخ البدء أو بعده.',
             'event_end_time_before_start' => 'يجب أن يكون وقت الانتهاء بعد وقت البدء.',
             'title_max' => 'يجب ألا يتجاوز العنوان 100 حرف.',
-            'cta_get_offer_deprecated' => 'لم يعد «استرداد العرض» زرًا. استخدم نوع المنشور عرض.',
             'event_start_time' => 'وقت البدء',
             'event_end_time' => 'وقت الانتهاء',
             'offer_title' => 'عنوان العرض',
@@ -228,6 +226,7 @@ return [
             'offer_coupon_code' => 'رمز القسيمة',
             'offer_redeem_url' => 'رابط العرض',
             'offer_terms' => 'الشروط والأحكام',
+            'event_times_use_location' => 'الأوقات تتبع التوقيت المحلي للموقع، وليس متصفحك.',
         ],
         'warnings' => [
             'no_variant' => 'اختر نوع منشور للمتابعة.',
@@ -353,6 +352,7 @@ return [
         'metrics_loading' => 'جارٍ تحميل المقاييس…',
         'metrics_unavailable' => 'المقاييس غير متاحة لهذه المنصة بعد.',
         'metrics_empty' => 'لم تُرجَع أي مقاييس.',
+        'pending_review' => 'يجري Google مراجعة هذا المنشور. سنحدّثه عند انتهاء المراجعة.',
     ],
 
     'edit' => [

@@ -6,8 +6,7 @@ namespace App\Enums\GoogleBusiness;
 
 /**
  * Call-to-action buttons we persist on a Local Post. `NONE` is our sentinel
- * (no button); the rest are official ActionType values. GET_OFFER is
- * deprecated and lives on DeprecatedCtaAction so Rule::enum rejects it.
+ * (no button); the rest are official ActionType values we still author.
  *
  * @see https://developers.google.com/my-business/reference/rest/v4/accounts.locations.localPosts#ActionType
  */

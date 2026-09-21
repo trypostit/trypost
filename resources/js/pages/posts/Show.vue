@@ -14,7 +14,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePostEcho } from '@/composables/echo/usePostEcho';
 import { getContentTypeBadgeKey, getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
-import { getPlatformStatusConfig, getPostStatusConfig } from '@/composables/usePostStatus';
+import { getPlatformStatusConfig, getPostStatusConfig, isActivelyPublishing } from '@/composables/usePostStatus';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { classify, isDocument as isDocumentItem, isVideo as isVideoItem, MediaType } from '@/lib/mediaType';
@@ -72,7 +72,7 @@ const enabledPlatforms = computed(() =>
         .map((pp) => ({ ...pp, contentTypeBadgeKey: getContentTypeBadgeKey(pp.platform, pp.content_type) })),
 );
 
-const isPublishing = computed(() => props.post.status === PostStatus.Publishing);
+const isPublishing = computed(() => isActivelyPublishing(props.post.status, props.post.platforms));
 
 const postStatus = computed(() => getPostStatusConfig(props.post.status));
 
@@ -286,7 +286,14 @@ usePostEcho(props.post.id, '.post.platform.status.updated', () => {
                                     </div>
                                 </div>
 
-                                <!-- Failed: error message -->
+                                <div
+                                    v-if="pp.status === PostPlatformStatus.PendingReview"
+                                    class="border-t-2 border-foreground/10 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800"
+                                    data-testid="google-business-pending-review"
+                                >
+                                    {{ $t('posts.show.pending_review') }}
+                                </div>
+
                                 <div
                                     v-if="(pp.status === PostPlatformStatus.Failed || pp.status === PostPlatformStatus.Rejected) && pp.error_message"
                                     class="border-t-2 border-foreground/10 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700"

@@ -203,7 +203,6 @@ return [
                 'shop' => 'Comprar',
                 'learn_more' => 'Más información',
                 'sign_up' => 'Registrarse',
-                'get_offer' => 'Canjear oferta',
                 'call' => 'Llamar ahora',
             ],
             'cta_url' => 'Enlace del botón',
@@ -219,7 +218,6 @@ return [
             'event_end_date_before_start' => 'La fecha de fin debe ser igual o posterior a la fecha de inicio.',
             'event_end_time_before_start' => 'La hora de fin debe ser posterior a la hora de inicio.',
             'title_max' => 'El título no puede superar los 100 caracteres.',
-            'cta_get_offer_deprecated' => 'Canjear oferta ya no es un botón. Usa el tipo de publicación Oferta.',
             'event_start_time' => 'Hora de inicio',
             'event_end_time' => 'Hora de finalización',
             'offer_title' => 'Título de la oferta',
@@ -228,6 +226,7 @@ return [
             'offer_coupon_code' => 'Código de cupón',
             'offer_redeem_url' => 'Enlace de la oferta',
             'offer_terms' => 'Términos y condiciones',
+            'event_times_use_location' => 'Los horarios siguen la hora local de la ubicación, no la del navegador.',
         ],
         'warnings' => [
             'no_variant' => 'Elige un tipo de publicación para continuar.',
@@ -353,6 +352,7 @@ return [
         'metrics_loading' => 'Cargando métricas…',
         'metrics_unavailable' => 'Métricas aún no disponibles para esta plataforma.',
         'metrics_empty' => 'No se devolvieron métricas.',
+        'pending_review' => 'Google está revisando esta publicación. La actualizaremos cuando termine la revisión.',
     ],
 
     'edit' => [

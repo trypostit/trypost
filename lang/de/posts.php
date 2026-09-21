@@ -205,7 +205,6 @@ return [
                 'shop' => 'Kaufen',
                 'learn_more' => 'Mehr erfahren',
                 'sign_up' => 'Anmelden',
-                'get_offer' => 'Angebot nutzen',
                 'call' => 'Jetzt anrufen',
             ],
             'cta_url' => 'Schaltflächenlink',
@@ -221,7 +220,6 @@ return [
             'event_end_date_before_start' => 'Das Enddatum muss am oder nach dem Startdatum liegen.',
             'event_end_time_before_start' => 'Die Endzeit muss nach der Startzeit liegen.',
             'title_max' => 'Der Titel darf höchstens 100 Zeichen lang sein.',
-            'cta_get_offer_deprecated' => 'Angebot einlösen ist keine Schaltfläche mehr. Nutze den Beitragstyp Angebot.',
             'event_start_time' => 'Startzeit',
             'event_end_time' => 'Endzeit',
             'offer_title' => 'Angebotstitel',
@@ -230,6 +228,7 @@ return [
             'offer_coupon_code' => 'Gutscheincode',
             'offer_redeem_url' => 'Angebotslink',
             'offer_terms' => 'Geschäftsbedingungen',
+            'event_times_use_location' => 'Die Zeiten gelten in der Ortszeit des Standorts, nicht in der Browserzeit.',
         ],
         'warnings' => [
             'no_variant' => 'Wähle einen Beitragstyp, um fortzufahren.',
@@ -355,6 +354,7 @@ return [
         'metrics_loading' => 'Kennzahlen werden geladen…',
         'metrics_unavailable' => 'Kennzahlen für diese Plattform sind noch nicht verfügbar.',
         'metrics_empty' => 'Keine Kennzahlen zurückgegeben.',
+        'pending_review' => 'Google prüft diesen Beitrag. Wir aktualisieren ihn, sobald die Prüfung fertig ist.',
     ],
 
     'edit' => [

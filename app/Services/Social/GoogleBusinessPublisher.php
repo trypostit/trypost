@@ -8,6 +8,7 @@ use App\Dto\MediaItem;
 use App\Enums\GoogleBusiness\CtaAction;
 use App\Enums\GoogleBusiness\LocalPostState;
 use App\Enums\GoogleBusiness\TopicType;
+use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\Workspace\ContentLanguage;
 use App\Exceptions\Social\ErrorCategory;
@@ -175,7 +176,9 @@ class GoogleBusinessPublisher
             ];
         }
 
-        $media = $postPlatform->post->mediaItems->first(fn ($item) => $item->isImage());
+        $media = $postPlatform->post->mediaItems->first(
+            fn (MediaItem $item): bool => $item->isImage() && ! MediaType::isGif($item->mime_type),
+        );
 
         if ($media) {
             $payload['media'] = [[

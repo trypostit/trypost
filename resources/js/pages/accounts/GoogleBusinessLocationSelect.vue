@@ -41,7 +41,7 @@ const handleSelectLocation = (location: Location) => {
     <PopupLayout :title="$t('accounts.google_business.title')">
         <div class="flex flex-col gap-6">
             <div class="flex items-center gap-3">
-                <img src="/images/accounts/google_business.png" alt="Google Business Profile" class="h-10 w-10" />
+                <img src="/images/accounts/google_business.png" :alt="$t('accounts.google_business.title')" class="h-10 w-10" />
                 <div>
                     <h1 class="text-xl font-bold tracking-tight">{{ $t('accounts.google_business.title') }}</h1>
                     <p class="text-sm text-muted-foreground">{{ $t('accounts.google_business.description') }}</p>
@@ -63,7 +63,7 @@ const handleSelectLocation = (location: Location) => {
                     v-for="location in locations"
                     :key="location.id"
                     class="flex items-center gap-4 rounded-lg border bg-card p-4"
-                    dusk="google-business-location"
+                    data-testid="google-business-location"
                 >
                     <Avatar class="h-12 w-12 shrink-0 rounded-lg">
                         <AvatarImage v-if="location.photo" :src="location.photo" class="object-cover" />
@@ -78,7 +78,7 @@ const handleSelectLocation = (location: Location) => {
                         </p>
                     </div>
                     <div class="flex shrink-0 items-center gap-2">
-                        <Button size="sm" dusk="choose-google-business-location" :disabled="form.processing" @click="handleSelectLocation(location)">
+                        <Button size="sm" data-testid="choose-google-business-location" :disabled="form.processing" @click="handleSelectLocation(location)">
                             {{ $t('accounts.google_business.choose') }}
                         </Button>
                     </div>

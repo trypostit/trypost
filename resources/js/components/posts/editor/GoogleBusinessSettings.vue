@@ -167,11 +167,12 @@ const ctaUrlError = findError('call_to_action.url');
         <button
             type="button"
             class="flex w-full cursor-pointer items-center justify-between gap-3 p-4 text-sm"
+            data-testid="google-business-settings-toggle"
             @click="open = !open"
         >
             <span class="flex min-w-0 items-center gap-2">
                 <span class="inline-flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs">
-                    <img :src="getPlatformLogo('google_business')" alt="Google Business Profile" class="size-full object-cover" />
+                    <img :src="getPlatformLogo('google_business')" :alt="$t('accounts.google_business.title')" class="size-full object-cover" />
                 </span>
                 <span class="truncate font-bold text-foreground">{{ $t('posts.form.google_business.settings') }}</span>
                 <span v-if="socialAccount?.display_label" class="truncate font-medium text-foreground/60">·&nbsp;{{ socialAccount.display_label }}</span>
@@ -201,6 +202,7 @@ const ctaUrlError = findError('call_to_action.url');
                             ? 'border-foreground bg-violet-100 text-foreground shadow-2xs'
                             : 'border-foreground/30 text-foreground/70 hover:border-foreground hover:text-foreground'"
                         :disabled="isLocked"
+                        :data-testid="`google-business-topic-${type.value}`"
                         @click="topicType = type.value"
                     >
                         {{ $t(type.labelKey) }}
@@ -238,6 +240,7 @@ const ctaUrlError = findError('call_to_action.url');
                     />
                     <InputError :message="eventEndDateError || eventEndTimeError" />
                 </div>
+                <p class="col-span-2 text-xs font-medium text-foreground/60" data-testid="google-business-event-timezone-hint">{{ $t('posts.form.google_business.event_times_use_location') }}</p>
             </div>
 
             <div v-if="topicType === GoogleBusinessTopicType.Offer" class="space-y-3">

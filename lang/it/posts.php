@@ -203,7 +203,6 @@ return [
                 'shop' => 'Acquista',
                 'learn_more' => 'Scopri di più',
                 'sign_up' => 'Iscriviti',
-                'get_offer' => 'Riscatta offerta',
                 'call' => 'Chiama ora',
             ],
             'cta_url' => 'Link del pulsante',
@@ -219,7 +218,6 @@ return [
             'event_end_date_before_start' => 'La data di fine deve essere uguale o successiva alla data di inizio.',
             'event_end_time_before_start' => 'L\'ora di fine deve essere successiva all\'ora di inizio.',
             'title_max' => 'Il titolo deve avere al massimo 100 caratteri.',
-            'cta_get_offer_deprecated' => 'Riscatta offerta non è più un pulsante. Usa il tipo di post Offerta.',
             'event_start_time' => 'Ora inizio',
             'event_end_time' => 'Ora fine',
             'offer_title' => 'Titolo offerta',
@@ -228,6 +226,7 @@ return [
             'offer_coupon_code' => 'Codice coupon',
             'offer_redeem_url' => 'Link dell\'offerta',
             'offer_terms' => 'Termini e condizioni',
+            'event_times_use_location' => "Gli orari seguono l'ora locale della sede, non quella del browser.",
         ],
         'warnings' => [
             'no_variant' => 'Scegli un tipo di post per continuare.',
@@ -353,6 +352,7 @@ return [
         'metrics_loading' => 'Caricamento metriche…',
         'metrics_unavailable' => 'Metriche non ancora disponibili per questa piattaforma.',
         'metrics_empty' => 'Nessuna metrica restituita.',
+        'pending_review' => 'Google sta esaminando questo post. Lo aggiorneremo a revisione conclusa.',
     ],
 
     'edit' => [

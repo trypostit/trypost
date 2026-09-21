@@ -7,7 +7,6 @@ import {
     GOOGLE_BUSINESS_CTA_ACTION_VALUES,
     GOOGLE_BUSINESS_EVENT_TOPIC_TYPES,
     GoogleBusinessCtaAction,
-    GoogleBusinessDeprecatedCtaAction,
     GoogleBusinessTopicType,
     googleBusinessCtaActionLabelKey,
     googleBusinessTopicTypeLabelKey,
@@ -21,7 +20,6 @@ export {
     GOOGLE_BUSINESS_CTA_ACTION_VALUES,
     GOOGLE_BUSINESS_EVENT_TOPIC_TYPES,
     GoogleBusinessCtaAction,
-    GoogleBusinessDeprecatedCtaAction,
     GoogleBusinessTopicType,
     googleBusinessCtaActionLabelKey,
     googleBusinessTopicTypeLabelKey,
@@ -30,7 +28,6 @@ export {
     resolveGoogleBusinessCtaAction,
     resolveGoogleBusinessTopicType,
     type GoogleBusinessCtaActionValue,
-    type GoogleBusinessDeprecatedCtaActionValue,
     type GoogleBusinessTopicTypeValue,
 } from '@/types/google-business';
 
@@ -60,8 +57,7 @@ export interface GoogleBusinessCtaOption {
 
 /**
  * Call-to-action button types, in the order the editor lists them. `NONE` is the
- * "None" choice and has no preview label. `GET_OFFER` is omitted: Google
- * deprecated it and ignores `callToAction` entirely on OFFER posts.
+ * "None" choice and has no preview label.
  */
 export const GOOGLE_BUSINESS_CTA_OPTIONS: readonly GoogleBusinessCtaOption[] =
     GOOGLE_BUSINESS_CTA_ACTION_VALUES.map((value) => ({
@@ -137,10 +133,6 @@ export const googleBusinessEventEndsBeforeStart = (event?: GoogleBusinessEventSc
 export const googleBusinessCtaLabelKey = (actionType?: string | null): string | null => {
     if (!actionType || actionType === GoogleBusinessCtaAction.None) {
         return null;
-    }
-
-    if (actionType === GoogleBusinessDeprecatedCtaAction.GetOffer) {
-        return 'posts.form.google_business.cta.get_offer';
     }
 
     const resolved = resolveGoogleBusinessCtaAction(actionType);

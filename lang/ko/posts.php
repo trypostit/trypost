@@ -203,7 +203,6 @@ return [
                 'shop' => '구매',
                 'learn_more' => '자세히 알아보기',
                 'sign_up' => '가입',
-                'get_offer' => '오퍼 받기',
                 'call' => '지금 전화',
             ],
             'cta_url' => '버튼 링크',
@@ -219,7 +218,6 @@ return [
             'event_end_date_before_start' => '종료일은 시작일 이후여야 합니다.',
             'event_end_time_before_start' => '종료 시간은 시작 시간 이후여야 합니다.',
             'title_max' => '제목은 100자 이하여야 합니다.',
-            'cta_get_offer_deprecated' => '혜택 받기는 더 이상 버튼이 아닙니다. 오퍼 게시물 유형을 사용하세요.',
             'event_start_time' => '시작 시간',
             'event_end_time' => '종료 시간',
             'offer_title' => '오퍼 제목',
@@ -228,6 +226,7 @@ return [
             'offer_coupon_code' => '쿠폰 코드',
             'offer_redeem_url' => '오퍼 링크',
             'offer_terms' => '약관',
+            'event_times_use_location' => '시간은 브라우저가 아니라 해당 위치의 현지 시간을 따릅니다.',
         ],
         'warnings' => [
             'no_variant' => '계속하려면 게시물 유형을 선택하세요.',
@@ -353,6 +352,7 @@ return [
         'metrics_loading' => '지표를 불러오는 중…',
         'metrics_unavailable' => '아직 이 플랫폼의 지표를 사용할 수 없습니다.',
         'metrics_empty' => '반환된 지표가 없습니다.',
+        'pending_review' => 'Google이 이 게시물을 검토 중입니다. 검토가 끝나면 업데이트합니다.',
     ],
 
     'edit' => [

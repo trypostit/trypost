@@ -99,6 +99,36 @@ test('a post Google refused in review is rejected and fails the post', function 
         ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
 });
 
+test('a scheduled post is left in review and marked as checked', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
+            'state' => 'SCHEDULED',
+        ]),
+    ]);
+
+    (new ReconcileGoogleBusinessPost($this->target))->handle();
+
+    expect($this->target->fresh()->status)->toBe(PlatformStatus::PendingReview)
+        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+        ->and($this->post->fresh()->status)->toBe(PostStatus::Scheduled);
+});
+
+test('an unspecified post is left in review and marked as checked', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
+            'state' => 'LOCAL_POST_STATE_UNSPECIFIED',
+        ]),
+    ]);
+
+    (new ReconcileGoogleBusinessPost($this->target))->handle();
+
+    expect($this->target->fresh()->status)->toBe(PlatformStatus::PendingReview)
+        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+        ->and($this->post->fresh()->status)->toBe(PostStatus::Scheduled);
+});
+
 test('a post still processing is left in review and marked as checked', function () {
     Http::fake([
         config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
@@ -186,6 +216,22 @@ test('a missing remote post during review fails immediately', function () {
 
     expect($this->target->fresh()->status)->toBe(PlatformStatus::Rejected)
         ->and($this->target->fresh()->error_message)->toBe(__('posts.errors.google_business.not_found'))
+        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+        ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
+});
+
+test('an invalid argument during review fails immediately', function () {
+    Queue::fake([SendNotification::class]);
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'error' => ['status' => 'INVALID_ARGUMENT', 'message' => 'summary too long'],
+        ], 400),
+    ]);
+
+    (new ReconcileGoogleBusinessPost($this->target))->handle();
+
+    expect($this->target->fresh()->status)->toBe(PlatformStatus::Rejected)
+        ->and($this->target->fresh()->error_message)->toBe('summary too long')
         ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
         ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
 });

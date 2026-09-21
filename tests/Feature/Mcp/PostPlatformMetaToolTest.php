@@ -666,7 +666,7 @@ test('publish post rejects a Google Business event with a same-day end time befo
     $response->assertHasErrors([__('posts.form.google_business.event_end_time_before_start')]);
 });
 
-test('create post rejects a deprecated Google Business GET_OFFER call to action', function () {
+test('create post rejects a Google Business GET_OFFER call to action', function () {
     $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
 
     $response = TryPostServer::actingAs($this->user)

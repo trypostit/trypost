@@ -6,6 +6,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\PublishToSocialPlatform;
+use App\Jobs\SendNotification;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -15,9 +16,11 @@ use App\Services\Social\LinkedInPublisher;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
+    Queue::fake([SendNotification::class]);
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
     $this->socialAccount = SocialAccount::factory()->create([
@@ -364,6 +367,8 @@ test('it fails a google business review that outlived the review ceiling', funct
     expect($platform->fresh()->status)->toBe(PlatformStatus::Rejected)
         ->and($platform->fresh()->error_message)->toBe(__('posts.errors.review_unconfirmed'))
         ->and($post->fresh()->status)->toBe(PostStatus::Failed);
+
+    Queue::assertPushed(SendNotification::class);
 });
 
 test('it prunes the google business jpeg when a review outlives the ceiling', function () {

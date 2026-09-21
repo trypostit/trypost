@@ -203,7 +203,6 @@ return [
                 'shop' => '購入',
                 'learn_more' => 'もっと詳しく',
                 'sign_up' => '登録',
-                'get_offer' => 'オファーを利用',
                 'call' => '今すぐ電話',
             ],
             'cta_url' => 'ボタンリンク',
@@ -219,7 +218,6 @@ return [
             'event_end_date_before_start' => '終了日は開始日以降にしてください。',
             'event_end_time_before_start' => '終了時刻は開始時刻より後にしてください。',
             'title_max' => 'タイトルは100文字以内にしてください。',
-            'cta_get_offer_deprecated' => '「特典を利用」はボタンではなくなりました。投稿タイプ「オファー」を使ってください。',
             'event_start_time' => '開始時刻',
             'event_end_time' => '終了時刻',
             'offer_title' => 'オファータイトル',
@@ -228,6 +226,7 @@ return [
             'offer_coupon_code' => 'クーポンコード',
             'offer_redeem_url' => 'オファーリンク',
             'offer_terms' => '利用規約',
+            'event_times_use_location' => '時刻はブラウザではなく、ビジネス所在地の現地時間です。',
         ],
         'warnings' => [
             'no_variant' => '続けるには投稿タイプを選択してください。',
@@ -353,6 +352,7 @@ return [
         'metrics_loading' => 'メトリクスを読み込み中…',
         'metrics_unavailable' => 'このプラットフォームのメトリクスはまだ利用できません。',
         'metrics_empty' => 'メトリクスが返されませんでした。',
+        'pending_review' => 'Googleがこの投稿を審査しています。審査が終わると更新します。',
     ],
 
     'edit' => [

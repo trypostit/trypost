@@ -56,17 +56,6 @@ export const isGoogleBusinessCtaAction = (value: unknown): value is GoogleBusine
 export const resolveGoogleBusinessCtaAction = (value: unknown): GoogleBusinessCtaActionValue =>
     isGoogleBusinessCtaAction(value) ? value : GoogleBusinessCtaAction.None;
 
-/**
- * Deprecated leftover. Google ignores `callToAction` on OFFER and replaced
- * GET_OFFER with the OFFER topic type. Not in the editor picker.
- */
-export const GoogleBusinessDeprecatedCtaAction = {
-    GetOffer: 'GET_OFFER',
-} as const;
-
-export type GoogleBusinessDeprecatedCtaActionValue =
-    (typeof GoogleBusinessDeprecatedCtaAction)[keyof typeof GoogleBusinessDeprecatedCtaAction];
-
 export const googleBusinessCtaActionLabelKey: Record<GoogleBusinessCtaActionValue, string> = {
     [GoogleBusinessCtaAction.None]: 'posts.form.google_business.cta_none',
     [GoogleBusinessCtaAction.Book]: 'posts.form.google_business.cta.book',

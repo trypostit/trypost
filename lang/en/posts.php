@@ -203,7 +203,6 @@ return [
                 'shop' => 'Buy',
                 'learn_more' => 'Learn more',
                 'sign_up' => 'Sign up',
-                'get_offer' => 'Redeem offer',
                 'call' => 'Call now',
             ],
             'cta_url' => 'Button link',
@@ -219,7 +218,6 @@ return [
             'event_end_date_before_start' => 'The end date must be on or after the start date.',
             'event_end_time_before_start' => 'The end time must be after the start time.',
             'title_max' => 'Title must be 100 characters or fewer.',
-            'cta_get_offer_deprecated' => 'Redeem offer is no longer a button. Use the Offer post type instead.',
             'event_start_time' => 'Start time',
             'event_end_time' => 'End time',
             'offer_title' => 'Offer title',
@@ -228,6 +226,7 @@ return [
             'offer_coupon_code' => 'Coupon code',
             'offer_redeem_url' => 'Offer link',
             'offer_terms' => 'Terms & conditions',
+            'event_times_use_location' => "Times follow the location's local time, not your browser.",
         ],
         'warnings' => [
             'no_variant' => 'Pick a post type to continue.',
@@ -353,6 +352,7 @@ return [
         'metrics_loading' => 'Loading metrics…',
         'metrics_unavailable' => 'Metrics unavailable for this platform yet.',
         'metrics_empty' => 'No metrics returned.',
+        'pending_review' => 'Google is reviewing this post. We will update it when the review finishes.',
     ],
 
     'edit' => [

@@ -203,7 +203,6 @@ return [
                 'shop' => 'Acheter',
                 'learn_more' => 'En savoir plus',
                 'sign_up' => 'S\'inscrire',
-                'get_offer' => 'Utiliser l\'offre',
                 'call' => 'Appelez maintenant',
             ],
             'cta_url' => 'Lien du bouton',
@@ -219,7 +218,6 @@ return [
             'event_end_date_before_start' => 'La date de fin doit être égale ou postérieure à la date de début.',
             'event_end_time_before_start' => 'L\'heure de fin doit être postérieure à l\'heure de début.',
             'title_max' => 'Le titre ne doit pas dépasser 100 caractères.',
-            'cta_get_offer_deprecated' => 'Utiliser l\'offre n\'est plus un bouton. Utilise le type de publication Offre.',
             'event_start_time' => 'Heure de début',
             'event_end_time' => 'Heure de fin',
             'offer_title' => 'Titre de l\'offre',
@@ -228,6 +226,7 @@ return [
             'offer_coupon_code' => 'Code de coupon',
             'offer_redeem_url' => 'Lien de l\'offre',
             'offer_terms' => 'Conditions et termes',
+            'event_times_use_location' => "Les horaires suivent l'heure locale de l'établissement, pas celle du navigateur.",
         ],
         'warnings' => [
             'no_variant' => 'Choisissez un type de publication pour continuer.',
@@ -353,6 +352,7 @@ return [
         'metrics_loading' => 'Chargement des métriques…',
         'metrics_unavailable' => 'Métriques pas encore disponibles pour cette plateforme.',
         'metrics_empty' => 'Aucune métrique renvoyée.',
+        'pending_review' => 'Google examine cette publication. Nous la mettrons à jour à la fin de la révision.',
     ],
 
     'edit' => [

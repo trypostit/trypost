@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Actions\Post\FinalizePostPublication;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Exceptions\Social\ErrorCategory;
@@ -76,16 +77,10 @@ class RecoverStuckPosts extends Command
                     return;
                 }
 
-                $enabledPlatforms = $post->postPlatforms()->enabled()->get();
-                $total = $enabledPlatforms->count();
-                $publishedCount = $enabledPlatforms->where('status', PlatformStatus::Published)->count();
+                $settled = $post->postPlatforms()->enabled()->first();
 
-                if ($publishedCount === $total) {
-                    $post->markAsPublished();
-                } elseif ($publishedCount > 0) {
-                    $post->markAsPartiallyPublished();
-                } else {
-                    $post->markAsFailed();
+                if ($settled instanceof PostPlatform) {
+                    app(FinalizePostPublication::class)->handle($settled);
                 }
 
                 $count++;

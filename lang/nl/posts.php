@@ -203,7 +203,6 @@ return [
                 'shop' => 'Kopen',
                 'learn_more' => 'Meer informatie',
                 'sign_up' => 'Aanmelden',
-                'get_offer' => 'Aanbod gebruiken',
                 'call' => 'Nu bellen',
             ],
             'cta_url' => 'Koppelinformatie voor knop',
@@ -219,7 +218,6 @@ return [
             'event_end_date_before_start' => 'De einddatum moet op of na de startdatum liggen.',
             'event_end_time_before_start' => 'De eindtijd moet na de starttijd liggen.',
             'title_max' => 'De titel mag maximaal 100 tekens zijn.',
-            'cta_get_offer_deprecated' => 'Aanbieding verzilveren is geen knop meer. Gebruik het berichttype Aanbieding.',
             'event_start_time' => 'Starttijd',
             'event_end_time' => 'Eindtijd',
             'offer_title' => 'Aanbodtitel',
@@ -228,6 +226,7 @@ return [
             'offer_coupon_code' => 'Couponcode',
             'offer_redeem_url' => 'Aanbodlink',
             'offer_terms' => 'Voorwaarden',
+            'event_times_use_location' => 'Tijden volgen de lokale tijd van de locatie, niet die van de browser.',
         ],
         'warnings' => [
             'no_variant' => 'Kies een posttype om door te gaan.',
@@ -353,6 +352,7 @@ return [
         'metrics_loading' => 'Statistieken laden…',
         'metrics_unavailable' => 'Statistieken zijn voor dit platform nog niet beschikbaar.',
         'metrics_empty' => 'Geen statistieken teruggegeven.',
+        'pending_review' => 'Google beoordeelt dit bericht. We werken het bij wanneer de review klaar is.',
     ],
 
     'edit' => [

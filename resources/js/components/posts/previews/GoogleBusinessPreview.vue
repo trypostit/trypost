@@ -93,7 +93,7 @@ const offerCoupon = computed(() => props.meta?.offer?.coupon_code || '');
             </div>
 
             <div class="space-y-3 px-4 py-3">
-                <div v-if="showEvent && (eventTitle || eventRange)" class="space-y-0.5">
+                <div v-if="showEvent && (eventTitle || eventRange || offerCoupon)" class="space-y-0.5">
                     <p v-if="eventTitle" class="text-sm font-semibold text-[#202124] dark:text-white">{{ eventTitle }}</p>
                     <p v-if="eventRange" class="text-xs text-[#5f6368] dark:text-[#9aa0a6]">{{ eventRange }}</p>
                     <p v-if="offerCoupon" class="text-xs font-medium text-[#5f6368] dark:text-[#9aa0a6]">{{ offerCoupon }}</p>

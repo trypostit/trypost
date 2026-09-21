@@ -285,6 +285,8 @@ test('select location fails for a user who cannot manage the workspace accounts'
         ->where('success', false)
         ->where('message', __('accounts.popup_callback.workspace_not_found'))
     );
+
+    expect(session('google_business_oauth'))->toBeNull();
 });
 
 test('select creates the social account for the chosen location', function () {
@@ -447,7 +449,8 @@ test('select refuses to repoint a reconnected account at a different location', 
     $existingAccount->refresh();
     expect($existingAccount->platform_user_id)->toBe('accounts/1/locations/2')
         ->and($existingAccount->access_token)->toBe('the-token-that-still-works')
-        ->and($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->count())->toBe(1);
+        ->and($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->count())->toBe(1)
+        ->and(session('google_business_oauth'))->toBeNull();
 });
 
 test('google business callback stores the location profile photo as the avatar', function () {
@@ -632,4 +635,78 @@ test('google business callback stores the maps uri on the account', function () 
 
     $account = $this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->first();
     expect($account->meta['maps_uri'])->toBe('https://maps.google.com/?cid=123');
+});
+
+test('select forgets oauth tokens when connecting the location throws', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'google_business_oauth' => [
+            'access_token' => 'access-token',
+            'refresh_token' => 'refresh-token',
+            'expires_in' => 3600,
+            'user_id' => 'gid-1',
+            'locations' => [
+                ['id' => 'accounts/1/locations/2', 'account_name' => 'accounts/1', 'location_name' => 'locations/2', 'title' => 'Downtown Store', 'address' => null],
+            ],
+        ],
+    ]);
+
+    $this->mock(GoogleBusinessPublisher::class, function ($mock) {
+        $mock->shouldReceive('fetchLocationPhoto')->once()->andThrow(new RuntimeException('photo failed'));
+    });
+
+    $response = $this->actingAs($this->user)
+        ->post(route('app.social.google-business.select'), ['location_id' => 'accounts/1/locations/2']);
+
+    $response->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('success', false)
+        ->where('message', __('accounts.popup_callback.error_connecting_location'))
+    );
+
+    expect(session('google_business_oauth'))->toBeNull()
+        ->and($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->exists())->toBeFalse();
+});
+
+test('select keeps the existing refresh token when google omits a new one', function () {
+    $existingAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::GoogleBusiness,
+        'platform_user_id' => 'accounts/1/locations/2',
+        'refresh_token' => 'the-refresh-token-that-still-works',
+        'status' => Status::TokenExpired,
+    ]);
+
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'google_business_oauth' => [
+            'access_token' => 'new-access-token',
+            'refresh_token' => null,
+            'expires_in' => 3600,
+            'user_id' => 'gid-1',
+            'reconnect_id' => $existingAccount->id,
+            'locations' => [
+                ['id' => 'accounts/1/locations/2', 'account_name' => 'accounts/1', 'location_name' => 'locations/2', 'title' => 'Downtown Store', 'address' => null],
+            ],
+        ],
+    ]);
+
+    $this->mock(GoogleBusinessPublisher::class, function ($mock) {
+        $mock->shouldReceive('fetchLocationPhoto')->once()->andReturn(null);
+    });
+
+    $response = $this->actingAs($this->user)
+        ->post(route('app.social.google-business.select'), ['location_id' => 'accounts/1/locations/2']);
+
+    $response->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('success', true)
+        ->where('message', __('accounts.popup_callback.reconnected'))
+    );
+
+    $existingAccount->refresh();
+    expect($existingAccount->status)->toBe(Status::Connected)
+        ->and($existingAccount->access_token)->toBe('new-access-token')
+        ->and($existingAccount->refresh_token)->toBe('the-refresh-token-that-still-works')
+        ->and(session('google_business_oauth'))->toBeNull();
 });

@@ -118,28 +118,7 @@ test('google business call_to_action.url rule is unconditional, not required_unl
     expect($rules['platforms.*.meta.call_to_action.url'])->toBe(['sometimes', 'nullable', 'url:http,https', 'max:2048']);
 });
 
-test('google business leftover get offer on an offer post is ignored', function () {
-    $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
-        ->invoke(null, Platform::GoogleBusiness, [
-            'topic_type' => 'OFFER',
-            'event' => ['title' => 'Sale', 'start_date' => '2026-09-01', 'end_date' => '2026-09-30'],
-            'call_to_action' => ['action_type' => 'GET_OFFER'],
-        ]);
-
-    expect($violation)->toBeNull();
-});
-
-test('google business get offer on a non-offer post is rejected as deprecated', function () {
-    $violation = (new ReflectionMethod(PostPlatformMetaRules::class, 'requiredMetaViolation'))
-        ->invoke(null, Platform::GoogleBusiness, [
-            'topic_type' => 'STANDARD',
-            'call_to_action' => ['action_type' => 'GET_OFFER'],
-        ]);
-
-    expect($violation)->toBe(['call_to_action.action_type', trans('posts.form.google_business.cta_get_offer_deprecated')]);
-});
-
-test('google business call_to_action action types exclude the deprecated get offer', function () {
+test('google business call_to_action action types reject get offer', function () {
     $validator = Validator::make(
         ['platforms' => [['meta' => ['call_to_action' => ['action_type' => 'GET_OFFER']]]]],
         PostPlatformMetaRules::rules(),

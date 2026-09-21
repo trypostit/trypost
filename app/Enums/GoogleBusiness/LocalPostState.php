@@ -20,7 +20,8 @@ enum LocalPostState: string
 
     /**
      * Missing or unknown Google state is still in review — fail closed so we
-     * keep the JPEG and do not mark the target published.
+     * keep the JPEG and do not mark the target published. Unspecified is the
+     * official "state not specified" value and is pending review too.
      */
     public static function fromApi(mixed $value): self
     {
@@ -30,7 +31,7 @@ enum LocalPostState: string
     public function isPendingReview(): bool
     {
         return match ($this) {
-            self::Processing, self::Scheduled => true,
+            self::Processing, self::Scheduled, self::Unspecified => true,
             default => false,
         };
     }

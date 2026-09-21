@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Enums\GoogleBusiness\CtaAction;
-use App\Enums\GoogleBusiness\DeprecatedCtaAction;
 use App\Enums\GoogleBusiness\TopicType;
 
 /**
@@ -25,7 +24,6 @@ test('typescript google business topic and cta values match the php enums', func
 
     expect($quotedValues('GoogleBusinessTopicType'))->toEqualCanonicalizing(TopicType::values())
         ->and($quotedValues('GoogleBusinessCtaAction'))->toEqualCanonicalizing(CtaAction::values())
-        ->and($quotedValues('GoogleBusinessDeprecatedCtaAction'))->toEqualCanonicalizing([
-            DeprecatedCtaAction::GetOffer->value,
-        ]);
+        ->and($source)->not->toContain('GET_OFFER')
+        ->and($source)->not->toContain('DeprecatedCta');
 });

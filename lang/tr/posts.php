@@ -205,7 +205,6 @@ return [
                 'shop' => 'Satın al',
                 'learn_more' => 'Daha fazla bilgi',
                 'sign_up' => 'Kaydol',
-                'get_offer' => 'Teklifi al',
                 'call' => 'Hemen ara',
             ],
             'cta_url' => 'Düğme bağlantısı',
@@ -221,7 +220,6 @@ return [
             'event_end_date_before_start' => 'Bitiş tarihi, başlangıç tarihiyle aynı veya daha sonra olmalıdır.',
             'event_end_time_before_start' => 'Bitiş saati, başlangıç saatinden sonra olmalıdır.',
             'title_max' => 'Başlık en fazla 100 karakter olabilir.',
-            'cta_get_offer_deprecated' => 'Teklifi kullan artık bir düğme değil. Teklif gönderi türünü kullanın.',
             'event_start_time' => 'Başlangıç saati',
             'event_end_time' => 'Bitiş saati',
             'offer_title' => 'Teklif başlığı',
@@ -230,6 +228,7 @@ return [
             'offer_coupon_code' => 'Kupon kodu',
             'offer_redeem_url' => 'Teklif bağlantısı',
             'offer_terms' => 'Şartlar ve koşullar',
+            'event_times_use_location' => 'Saatler tarayıcınızın değil, konumun yerel saatine göredir.',
         ],
         'warnings' => [
             'no_variant' => 'Devam etmek için bir gönderi türü seçin.',
@@ -355,6 +354,7 @@ return [
         'metrics_loading' => 'Metrikler yükleniyor…',
         'metrics_unavailable' => 'Bu platform için metrikler henüz kullanılamıyor.',
         'metrics_empty' => 'Metrik döndürülmedi.',
+        'pending_review' => 'Google bu gönderiyi inceliyor. İnceleme bitince güncelleyeceğiz.',
     ],
 
     'edit' => [

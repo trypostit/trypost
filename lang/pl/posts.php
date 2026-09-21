@@ -203,7 +203,6 @@ return [
                 'shop' => 'Kup',
                 'learn_more' => 'Dowiedz się więcej',
                 'sign_up' => 'Zarejestruj się',
-                'get_offer' => 'Uzyskaj ofertę',
                 'call' => 'Zadzwoń teraz',
             ],
             'cta_url' => 'Link przycisku',
@@ -219,7 +218,6 @@ return [
             'event_end_date_before_start' => 'Data zakończenia musi być równa lub późniejsza niż data rozpoczęcia.',
             'event_end_time_before_start' => 'Godzina zakończenia musi być późniejsza niż godzina rozpoczęcia.',
             'title_max' => 'Tytuł może mieć maksymalnie 100 znaków.',
-            'cta_get_offer_deprecated' => 'Zrealizuj ofertę nie jest już przyciskiem. Użyj typu wpisu Oferta.',
             'event_start_time' => 'Czas rozpoczęcia',
             'event_end_time' => 'Czas zakończenia',
             'offer_title' => 'Tytuł oferty',
@@ -228,6 +226,7 @@ return [
             'offer_coupon_code' => 'Kod kuponu',
             'offer_redeem_url' => 'Link oferty',
             'offer_terms' => 'Warunki i postanowienia',
+            'event_times_use_location' => 'Godziny są w czasie lokalnym lokalizacji, nie przeglądarki.',
         ],
         'warnings' => [
             'no_variant' => 'Wybierz typ posta, aby kontynuować.',
@@ -353,6 +352,7 @@ return [
         'metrics_loading' => 'Wczytywanie metryk…',
         'metrics_unavailable' => 'Metryki dla tej platformy nie są jeszcze dostępne.',
         'metrics_empty' => 'Nie zwrócono żadnych metryk.',
+        'pending_review' => 'Google recenzuje ten wpis. Zaktualizujemy go po zakończeniu recenzji.',
     ],
 
     'edit' => [
