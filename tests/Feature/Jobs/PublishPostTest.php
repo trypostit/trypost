@@ -12,7 +12,6 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
-use RuntimeException;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
