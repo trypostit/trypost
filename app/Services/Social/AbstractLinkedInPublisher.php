@@ -204,6 +204,10 @@ abstract class AbstractLinkedInPublisher
 
         $tempFile = tempnam(sys_get_temp_dir(), 'li_article_');
 
+        if ($tempFile === false) {
+            return null;
+        }
+
         try {
             $this->downloadArticleThumbnail($card->imageUrl, $tempFile);
 
@@ -233,6 +237,12 @@ abstract class AbstractLinkedInPublisher
 
         if (! $response->successful()) {
             throw new RuntimeException("og:image responded with HTTP {$response->status()}");
+        }
+
+        $size = filesize($tempFile);
+
+        if ($size === false || $size === 0) {
+            throw new RuntimeException('og:image is empty');
         }
 
         if (MediaType::classify(File::mimeType($tempFile) ?: '') !== MediaType::Image) {
@@ -365,6 +375,13 @@ abstract class AbstractLinkedInPublisher
     {
         $tempFile = tempnam(sys_get_temp_dir(), 'li_image_');
 
+        if ($tempFile === false) {
+            throw new LinkedInPublishException(
+                userMessage: "Could not prepare the image for {$this->label()}. Please try again.",
+                category: ErrorCategory::ServerError,
+            );
+        }
+
         try {
             $this->downloadToTempFile($mediaItem->url, $tempFile);
 
@@ -423,6 +440,13 @@ abstract class AbstractLinkedInPublisher
         }
 
         $stream = fopen($path, 'r');
+
+        if ($stream === false) {
+            throw new LinkedInPublishException(
+                userMessage: "Could not read the image for {$this->label()}. Please try again.",
+                category: ErrorCategory::ServerError,
+            );
+        }
 
         $uploadResponse = Http::withToken($this->accessToken)
             ->withHeaders(['Content-Type' => 'application/octet-stream'])

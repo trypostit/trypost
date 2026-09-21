@@ -29,19 +29,20 @@ export const useLinkCard = (
     const card = ref<LinkCard | null>(null);
     const loading = ref(false);
     const http = useHttp<{ url: string }, LinkCard | null>({ url: '' });
+    let requestId = 0;
 
     const url = computed(() =>
         media.value.length === 0 ? selectUrl(content.value) : null,
     );
 
     const loadCard = async (target: string): Promise<void> => {
-        loading.value = true;
+        const id = requestId;
         http.url = target;
 
         const data = await http.post(linkPreview.url()).catch(() => null);
 
         // A slow response must not revive a removed link or overwrite a newer one.
-        if (url.value !== target) {
+        if (id !== requestId) {
             return;
         }
 
@@ -49,13 +50,12 @@ export const useLinkCard = (
         loading.value = false;
     };
 
+    // Drop the card the moment the URL changes so we never show A while B loads,
+    // and bump requestId so any in-flight response for the previous URL is ignored.
     watch(url, (next) => {
-        if (next) {
-            return;
-        }
-
+        requestId++;
         card.value = null;
-        loading.value = false;
+        loading.value = next !== null;
     });
 
     watchDebounced(
