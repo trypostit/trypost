@@ -7,38 +7,28 @@ namespace App\Support;
 use Illuminate\Support\Str;
 
 /**
- * Google Business Profile identifies a location by its full
- * `accounts/{account}/locations/{location}` resource name. The Business Profile
- * web UI takes the trailing location id as an un-obfuscated deep link (`/l/u{id}`).
- * Both the publisher (post URL fallback) and the social account model (profile
- * URL) need that same link, so the conversion lives here once.
+ * Google Business Profile location resource names.
+ *
+ * v1 Business Information returns `locations/{id}`. v4 Local Posts wants
+ * `accounts/{account}/locations/{id}`. The dashboard deep-link uses the
+ * trailing id with an un-obfuscated `u` prefix.
  *
  * @see https://developers.google.com/my-business/content/locations-setup
  */
 class GoogleBusinessResourceName
 {
-    /**
-     * The Business Profile dashboard URL for a location resource name.
-     * API location ids are un-obfuscated, so the deep link must use the `u` prefix.
-     */
     public static function dashboardUrl(string $resourceName): string
     {
-        $locationId = Str::afterLast($resourceName, '/');
-
-        return rtrim((string) config('trypost.platforms.google_business.dashboard'), '/')."/dashboard/l/u{$locationId}";
+        return (string) config('trypost.platforms.google_business.dashboard').'/dashboard/l/u'.self::locationId($resourceName);
     }
 
-    /**
-     * The full `accounts/{account}/locations/{location}` name the v4 Local Posts
-     * API needs, built from an account name and the short `locations/{location}`
-     * name the v1 Business Information API returns.
-     */
     public static function toFullLocationName(string $accountName, string $shortLocationName): string
     {
-        $locationId = str_starts_with($shortLocationName, 'locations/')
-            ? substr($shortLocationName, strlen('locations/'))
-            : $shortLocationName;
+        return "{$accountName}/locations/".self::locationId($shortLocationName);
+    }
 
-        return "{$accountName}/locations/{$locationId}";
+    private static function locationId(string $resourceName): string
+    {
+        return Str::afterLast($resourceName, '/');
     }
 }
