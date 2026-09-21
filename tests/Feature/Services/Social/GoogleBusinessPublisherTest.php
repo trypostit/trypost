@@ -11,6 +11,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\GoogleBusinessPublisher;
+use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
@@ -71,6 +72,30 @@ test('publish hands Google a JPEG derivative rather than the raw upload', functi
     });
 
     expect(Storage::allFiles(GoogleBusinessPublisher::DERIVATIVE_DIRECTORY))->toBe([]);
+});
+
+test('publish keeps the JPEG while Google is still processing the post', function () {
+    Storage::fake();
+    Storage::put('uploads/promo.png', base64_decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+    ));
+    $this->post->update(['media' => [[
+        'path' => 'uploads/promo.png',
+        'url' => Storage::url('uploads/promo.png'),
+        'mime_type' => 'image/png',
+        'type' => 'image',
+    ]]]);
+
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
+            'state' => 'PROCESSING',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Storage::assertExists(GoogleBusinessDerivativeCleaner::pathFor($this->postPlatform->id));
 });
 
 test('publish reports the review state Google returned and the real post URL', function () {

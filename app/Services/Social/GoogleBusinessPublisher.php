@@ -15,17 +15,17 @@ use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\GoogleBusinessResourceName;
 use App\Support\PostPlatformMetaRules;
+use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Throwable;
 
 class GoogleBusinessPublisher
 {
     /** Where the Google-shaped copies of post images live on the default disk. */
-    public const string DERIVATIVE_DIRECTORY = 'google-business-derivatives';
+    public const string DERIVATIVE_DIRECTORY = GoogleBusinessDerivativeCleaner::DIRECTORY;
 
     use HasSocialHttpClient;
 
@@ -47,6 +47,7 @@ class GoogleBusinessPublisher
     public function publish(PostPlatform $postPlatform): array
     {
         $this->derivativePath = null;
+        $keepDerivative = false;
 
         try {
             $this->validateContentLength($postPlatform);
@@ -84,14 +85,20 @@ class GoogleBusinessPublisher
             }
 
             $created = $response->json() ?? [];
+            $state = (string) (data_get($created, 'state') ?: 'PROCESSING');
+            // Google fetches sourceUrl after create while the post is still
+            // PROCESSING / SCHEDULED. Deleting here races PHOTO_FETCH_FAILED.
+            $keepDerivative = in_array($state, ['PROCESSING', 'SCHEDULED'], true);
 
             return [
                 'id' => (string) data_get($created, 'name'),
                 'url' => (string) (data_get($created, 'searchUrl') ?: GoogleBusinessResourceName::dashboardUrl($locationId)),
-                'state' => (string) (data_get($created, 'state') ?: 'PROCESSING'),
+                'state' => $state,
             ];
         } finally {
-            $this->forgetDerivative();
+            if (! $keepDerivative) {
+                $this->forgetDerivative();
+            }
         }
     }
 
@@ -172,7 +179,7 @@ class GoogleBusinessPublisher
         if ($media) {
             $payload['media'] = [[
                 'mediaFormat' => 'PHOTO',
-                'sourceUrl' => $this->imageSourceUrl($media),
+                'sourceUrl' => $this->imageSourceUrl($media, $postPlatform->id),
             ]];
         }
 
@@ -198,7 +205,7 @@ class GoogleBusinessPublisher
      * uploaded. The derivative lives beside the original on the default disk;
      * a retry rebuilds it rather than depending on one surviving.
      */
-    private function imageSourceUrl(MediaItem $media): string
+    private function imageSourceUrl(MediaItem $media, string $postPlatformId): string
     {
         $input = tempnam(sys_get_temp_dir(), 'gbp_');
 
@@ -212,7 +219,7 @@ class GoogleBusinessPublisher
             file_put_contents($input, Storage::get($media->path));
             $optimized = app(MediaOptimizer::class)->optimizeImage($input, Platform::GoogleBusiness);
 
-            $this->derivativePath = self::DERIVATIVE_DIRECTORY.'/'.Str::uuid()->toString().'.jpg';
+            $this->derivativePath = GoogleBusinessDerivativeCleaner::pathFor($postPlatformId);
             Storage::put($this->derivativePath, file_get_contents($optimized));
 
             return Storage::url($this->derivativePath);

@@ -16,7 +16,20 @@ import {
 } from '@/components/ui/select';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
-import { GOOGLE_BUSINESS_CTA_OPTIONS, GOOGLE_BUSINESS_EVENT_TOPIC_TYPES, GOOGLE_BUSINESS_TOPIC_TYPES, googleBusinessAllowsCallToAction, googleBusinessEventDateTimeParts, googleBusinessEventDateTimeValue } from '@/lib/googleBusiness';
+import {
+    GOOGLE_BUSINESS_CTA_OPTIONS,
+    GOOGLE_BUSINESS_EVENT_TOPIC_TYPES,
+    GOOGLE_BUSINESS_TOPIC_TYPES,
+    GoogleBusinessCtaAction,
+    GoogleBusinessTopicType,
+    googleBusinessAllowsCallToAction,
+    googleBusinessEventDateTimeParts,
+    googleBusinessEventDateTimeValue,
+    resolveGoogleBusinessCtaAction,
+    resolveGoogleBusinessTopicType,
+    type GoogleBusinessCtaActionValue,
+    type GoogleBusinessTopicTypeValue,
+} from '@/lib/googleBusiness';
 
 interface SocialAccount {
     id: string;
@@ -56,15 +69,15 @@ const updateEvent = (patch: Record<string, any>) => {
     updateMeta({ event: { ...props.meta?.event, ...patch } });
 };
 
-const topicType = computed<string>({
-    get: () => props.meta?.topic_type || 'STANDARD',
-    set: (value: string) => {
-        if (value === 'STANDARD') {
+const topicType = computed<GoogleBusinessTopicTypeValue>({
+    get: () => resolveGoogleBusinessTopicType(props.meta?.topic_type),
+    set: (value: GoogleBusinessTopicTypeValue) => {
+        if (value === GoogleBusinessTopicType.Standard) {
             updateMeta({ topic_type: value, event: null, offer: null });
             return;
         }
 
-        if (value === 'EVENT') {
+        if (value === GoogleBusinessTopicType.Event) {
             updateMeta({ topic_type: value, offer: null });
             return;
         }
@@ -73,16 +86,18 @@ const topicType = computed<string>({
     },
 });
 
-const ctaActionType = computed<string>({
-    get: () => props.meta?.call_to_action?.action_type || 'NONE',
-    set: (value: string) => updateMeta({
+const ctaActionType = computed<GoogleBusinessCtaActionValue>({
+    get: () => resolveGoogleBusinessCtaAction(props.meta?.call_to_action?.action_type),
+    set: (value: GoogleBusinessCtaActionValue) => updateMeta({
         call_to_action: { ...props.meta?.call_to_action, action_type: value },
     }),
 });
 
 const showCallToAction = computed(() => googleBusinessAllowsCallToAction(topicType.value));
 
-const showCtaUrl = computed(() => showCallToAction.value && ctaActionType.value !== 'NONE' && ctaActionType.value !== 'CALL');
+const showCtaUrl = computed(() => showCallToAction.value
+    && ctaActionType.value !== GoogleBusinessCtaAction.None
+    && ctaActionType.value !== GoogleBusinessCtaAction.Call);
 
 const showEventFields = computed(() => GOOGLE_BUSINESS_EVENT_TOPIC_TYPES.includes(topicType.value));
 
@@ -109,11 +124,11 @@ const eventDateTime = (dateKey: 'start_date' | 'end_date', timeKey: 'start_time'
 const eventStart = eventDateTime('start_date', 'start_time');
 const eventEnd = eventDateTime('end_date', 'end_time');
 
-const eventTitleLabelKey = computed(() => topicType.value === 'OFFER'
+const eventTitleLabelKey = computed(() => topicType.value === GoogleBusinessTopicType.Offer
     ? 'posts.form.google_business.offer_title'
     : 'posts.form.google_business.event_title');
 
-const eventTitlePlaceholderKey = computed(() => topicType.value === 'OFFER'
+const eventTitlePlaceholderKey = computed(() => topicType.value === GoogleBusinessTopicType.Offer
     ? 'posts.form.google_business.offer_title_placeholder'
     : 'posts.form.google_business.event_title_placeholder');
 
@@ -225,7 +240,7 @@ const ctaUrlError = findError('call_to_action.url');
                 </div>
             </div>
 
-            <div v-if="topicType === 'OFFER'" class="space-y-3">
+            <div v-if="topicType === GoogleBusinessTopicType.Offer" class="space-y-3">
                 <div class="space-y-2">
                     <Label class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.offer_coupon_code') }}</Label>
                     <Input v-model="offerCouponCode" type="text" :disabled="isLocked" :class="offerCouponCodeError ? 'border-rose-500' : undefined" />

@@ -10,6 +10,7 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Jobs\ReconcileGoogleBusinessPost;
 use App\Models\Post;
 use App\Models\PostPlatform;
+use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Console\Command;
 
@@ -21,6 +22,7 @@ class RecoverStuckPosts extends Command
 
     public function __construct(
         private readonly TikTokPhotoDerivativeCleaner $tiktokPhotoDerivativeCleaner,
+        private readonly GoogleBusinessDerivativeCleaner $googleBusinessDerivativeCleaner,
     ) {
         parent::__construct();
     }
@@ -123,6 +125,7 @@ class RecoverStuckPosts extends Command
                         'failed_at' => now()->toIso8601String(),
                     ],
                 );
+                $this->googleBusinessDerivativeCleaner->cleanup($postPlatform->id);
             });
     }
 }

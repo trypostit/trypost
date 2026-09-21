@@ -14,10 +14,12 @@ use App\Exceptions\TokenExpiredException;
 use App\Models\PostPlatform;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\GoogleBusinessPublisher;
+use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Http\Client\ConnectionException;
 use Throwable;
 
 /**
@@ -31,7 +33,8 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 3;
 
-    public int $timeout = 60;
+    /** Must exceed HasSocialHttpClient's 120s HTTP timeout so a slow GET cannot kill the worker. */
+    public int $timeout = 180;
 
     public int $uniqueFor = 600;
 
@@ -71,7 +74,7 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
             }
 
             $remote = app(GoogleBusinessPublisher::class)->fetchLocalPost($account, (string) $this->postPlatform->platform_post_id);
-        } catch (TokenExpiredException|PlatformUnavailableException $e) {
+        } catch (TokenExpiredException|PlatformUnavailableException|ConnectionException $e) {
             $this->deferOrGiveUp($e->getMessage());
 
             return;
@@ -130,16 +133,10 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $this->giveUp(
+        $this->deferOrGiveUp(
             $exception instanceof GoogleBusinessPublishException
                 ? $exception->userMessage
-                : __('posts.errors.review_unconfirmed'),
-            [
-                'category' => $exception instanceof GoogleBusinessPublishException
-                    ? $exception->category->value
-                    : 'review_unconfirmed',
-                'detail' => $exception?->getMessage(),
-            ],
+                : ($exception?->getMessage() ?: __('posts.errors.review_unconfirmed')),
         );
     }
 
@@ -182,6 +179,7 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
 
     private function settle(): void
     {
+        app(GoogleBusinessDerivativeCleaner::class)->cleanup($this->postPlatform->id);
         app(FinalizePostPublication::class)->handle($this->postPlatform);
         PostPlatformStatusUpdated::dispatch($this->postPlatform->fresh());
     }

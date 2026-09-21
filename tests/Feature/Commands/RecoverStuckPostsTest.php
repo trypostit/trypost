@@ -12,6 +12,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\LinkedInPublisher;
+use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -363,6 +364,35 @@ test('it fails a google business review that outlived the review ceiling', funct
     expect($platform->fresh()->status)->toBe(PlatformStatus::Rejected)
         ->and($platform->fresh()->error_message)->toBe(__('posts.errors.review_unconfirmed'))
         ->and($post->fresh()->status)->toBe(PostStatus::Failed);
+});
+
+test('it prunes the google business jpeg when a review outlives the ceiling', function () {
+    Storage::fake();
+    $account = SocialAccount::factory()->googleBusiness()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Publishing,
+        'updated_at' => now()->subHours(25),
+    ]);
+    $platform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'status' => PlatformStatus::PendingReview,
+        'enabled' => true,
+        'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
+        'submitted_at' => now()->subHours(25),
+        'updated_at' => now()->subHours(25),
+    ]);
+    $path = GoogleBusinessDerivativeCleaner::pathFor($platform->id);
+    Storage::put($path, 'image');
+
+    $this->artisan('social:recover-stuck-posts')->assertSuccessful();
+
+    Storage::assertMissing($path);
+    expect($platform->fresh()->status)->toBe(PlatformStatus::Rejected);
 });
 
 test('it does not fail a google business post still sitting in review', function () {

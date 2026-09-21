@@ -5,7 +5,12 @@ import { computed } from 'vue';
 import { getInitials } from '@/composables/useInitials';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
-import { GOOGLE_BUSINESS_EVENT_TOPIC_TYPES, googleBusinessAllowsCallToAction, googleBusinessCtaLabelKey } from '@/lib/googleBusiness';
+import {
+    GOOGLE_BUSINESS_EVENT_TOPIC_TYPES,
+    googleBusinessAllowsCallToAction,
+    googleBusinessCtaLabelKey,
+    resolveGoogleBusinessTopicType,
+} from '@/lib/googleBusiness';
 import { isImage } from '@/lib/mediaType';
 import type { MediaItem } from '@/types/media';
 
@@ -30,7 +35,7 @@ const props = defineProps<Props>();
 const image = computed(() => props.media.find((item) => isImage(item)) ?? null);
 
 const ctaLabel = computed(() => {
-    if (!googleBusinessAllowsCallToAction(props.meta?.topic_type)) {
+    if (!googleBusinessAllowsCallToAction(resolveGoogleBusinessTopicType(props.meta?.topic_type))) {
         return null;
     }
 
@@ -39,7 +44,7 @@ const ctaLabel = computed(() => {
     return labelKey ? trans(labelKey) : null;
 });
 
-const showEvent = computed(() => GOOGLE_BUSINESS_EVENT_TOPIC_TYPES.includes(props.meta?.topic_type ?? 'STANDARD'));
+const showEvent = computed(() => GOOGLE_BUSINESS_EVENT_TOPIC_TYPES.includes(resolveGoogleBusinessTopicType(props.meta?.topic_type)));
 
 const eventTitle = computed(() => props.meta?.event?.title || '');
 

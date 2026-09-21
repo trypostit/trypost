@@ -11,8 +11,11 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\Social\GoogleBusinessDerivativeCleaner;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -32,6 +35,34 @@ beforeEach(function () {
         'platform_post_id' => 'accounts/123456789/locations/987654321/localPosts/999',
         'submitted_at' => now()->subMinutes(10),
     ]);
+});
+
+test('a connection failure during review is deferred until the ceiling', function () {
+    Http::fake(fn () => throw new ConnectionException('timed out'));
+
+    (new ReconcileGoogleBusinessPost($this->target))->handle();
+
+    expect($this->target->fresh()->status)->toBe(PlatformStatus::PendingReview)
+        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+        ->and($this->post->fresh()->status)->toBe(PostStatus::Scheduled);
+});
+
+test('settling a live review prunes the JPEG derivative', function () {
+    Queue::fake([SendNotification::class]);
+    Storage::fake();
+    $path = GoogleBusinessDerivativeCleaner::pathFor($this->target->id);
+    Storage::put($path, 'image');
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
+            'state' => 'LIVE',
+            'searchUrl' => 'https://posts.google.com/999',
+        ]),
+    ]);
+
+    (new ReconcileGoogleBusinessPost($this->target))->handle();
+
+    Storage::assertMissing($path);
 });
 
 test('a post that went live is published with the search URL Google returned', function () {
@@ -175,8 +206,17 @@ test('permission denied during review fails immediately', function () {
         ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
 });
 
-test('an exhausted reconcile job settles the review instead of leaving it pending', function () {
+test('an exhausted reconcile job defers until the review ceiling', function () {
+    (new ReconcileGoogleBusinessPost($this->target))->failed(new RuntimeException('worker died'));
+
+    expect($this->target->fresh()->status)->toBe(PlatformStatus::PendingReview)
+        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+        ->and($this->post->fresh()->status)->toBe(PostStatus::Scheduled);
+});
+
+test('an exhausted reconcile job gives up once the review ceiling passes', function () {
     Queue::fake([SendNotification::class]);
+    $this->target->update(['submitted_at' => now()->subHours(ReconcileGoogleBusinessPost::REVIEW_CEILING_HOURS + 1)]);
 
     (new ReconcileGoogleBusinessPost($this->target))->failed(new RuntimeException('worker died'));
 

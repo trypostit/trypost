@@ -6,7 +6,16 @@ import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import { mediaLimitsDocsUrl } from '@/lib/docs';
-import { GOOGLE_BUSINESS_EVENT_TOPIC_TYPES, googleBusinessAllowsCallToAction, googleBusinessEventEndsBeforeStart } from '@/lib/googleBusiness';
+import {
+    GOOGLE_BUSINESS_EVENT_TOPIC_TYPES,
+    GoogleBusinessCtaAction,
+    GoogleBusinessDeprecatedCtaAction,
+    GoogleBusinessTopicType,
+    googleBusinessAllowsCallToAction,
+    googleBusinessEventEndsBeforeStart,
+    resolveGoogleBusinessCtaAction,
+    resolveGoogleBusinessTopicType,
+} from '@/lib/googleBusiness';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';
@@ -84,12 +93,17 @@ const PLATFORM_META_RULES: Record<string, MetaRule> = {
     // Mirrors PostPlatformMetaRules::requiredMetaViolation()'s Google Business
     // arms, including their check order.
     [Platform.GoogleBusiness]: (meta) => {
-        const needsEvent = GOOGLE_BUSINESS_EVENT_TOPIC_TYPES.includes(meta.topic_type ?? 'STANDARD');
-        const ctaActionType = meta.call_to_action?.action_type ?? 'NONE';
-        const ctaNeedsUrl = googleBusinessAllowsCallToAction(meta.topic_type) && !['NONE', 'CALL'].includes(ctaActionType);
+        const topicType = resolveGoogleBusinessTopicType(meta.topic_type);
+        const needsEvent = GOOGLE_BUSINESS_EVENT_TOPIC_TYPES.includes(topicType);
+        const ctaActionType = resolveGoogleBusinessCtaAction(meta.call_to_action?.action_type);
+        const leftoverGetOffer = meta.call_to_action?.action_type === GoogleBusinessDeprecatedCtaAction.GetOffer
+            && topicType !== GoogleBusinessTopicType.Offer;
+        const ctaNeedsUrl = googleBusinessAllowsCallToAction(topicType)
+            && ctaActionType !== GoogleBusinessCtaAction.None
+            && ctaActionType !== GoogleBusinessCtaAction.Call;
         let tooltipKey: string | null = null;
         if (needsEvent && !meta.event?.title) {
-            tooltipKey = meta.topic_type === 'OFFER'
+            tooltipKey = topicType === GoogleBusinessTopicType.Offer
                 ? 'posts.form.google_business.offer_title_required'
                 : 'posts.form.google_business.event_title_required';
         } else if (needsEvent && !meta.event?.start_date) {
@@ -103,6 +117,8 @@ const PLATFORM_META_RULES: Record<string, MetaRule> = {
             tooltipKey = sameDayTimes
                 ? 'posts.form.google_business.event_end_time_before_start'
                 : 'posts.form.google_business.event_end_date_before_start';
+        } else if (leftoverGetOffer) {
+            tooltipKey = 'posts.form.google_business.cta_get_offer_deprecated';
         } else if (ctaNeedsUrl && !meta.call_to_action?.url) {
             tooltipKey = 'posts.form.google_business.cta_url_required';
         }

@@ -1,16 +1,41 @@
 /**
- * Google Business Profile Local Post constants shared by the editor settings
+ * Google Business Profile Local Post helpers shared by the editor settings
  * panel, the preview, and the publish compliance gate.
  */
 
-/**
- * Topic types whose Local Post requires an `event` object (title + date range).
- * Mirrors PostPlatformMetaRules::GOOGLE_BUSINESS_EVENT_TOPIC_TYPES.
- */
-export const GOOGLE_BUSINESS_EVENT_TOPIC_TYPES: string[] = ['EVENT', 'OFFER'];
+import {
+    GOOGLE_BUSINESS_CTA_ACTION_VALUES,
+    GOOGLE_BUSINESS_EVENT_TOPIC_TYPES,
+    GoogleBusinessCtaAction,
+    GoogleBusinessDeprecatedCtaAction,
+    GoogleBusinessTopicType,
+    googleBusinessCtaActionLabelKey,
+    googleBusinessTopicTypeLabelKey,
+    resolveGoogleBusinessCtaAction,
+    resolveGoogleBusinessTopicType,
+    type GoogleBusinessCtaActionValue,
+    type GoogleBusinessTopicTypeValue,
+} from '@/types/google-business';
+
+export {
+    GOOGLE_BUSINESS_CTA_ACTION_VALUES,
+    GOOGLE_BUSINESS_EVENT_TOPIC_TYPES,
+    GoogleBusinessCtaAction,
+    GoogleBusinessDeprecatedCtaAction,
+    GoogleBusinessTopicType,
+    googleBusinessCtaActionLabelKey,
+    googleBusinessTopicTypeLabelKey,
+    isGoogleBusinessCtaAction,
+    isGoogleBusinessTopicType,
+    resolveGoogleBusinessCtaAction,
+    resolveGoogleBusinessTopicType,
+    type GoogleBusinessCtaActionValue,
+    type GoogleBusinessDeprecatedCtaActionValue,
+    type GoogleBusinessTopicTypeValue,
+} from '@/types/google-business';
 
 export interface GoogleBusinessTopicTypeOption {
-    value: string;
+    value: GoogleBusinessTopicTypeValue;
     labelKey: string;
 }
 
@@ -19,17 +44,17 @@ export interface GoogleBusinessTopicTypeOption {
  * Offer, Event. STANDARD is Google's API name for What's New.
  */
 export const GOOGLE_BUSINESS_TOPIC_TYPES: readonly GoogleBusinessTopicTypeOption[] = [
-    { value: 'STANDARD', labelKey: 'posts.form.google_business.topic_type.standard' },
-    { value: 'OFFER', labelKey: 'posts.form.google_business.topic_type.offer' },
-    { value: 'EVENT', labelKey: 'posts.form.google_business.topic_type.event' },
+    { value: GoogleBusinessTopicType.Standard, labelKey: googleBusinessTopicTypeLabelKey[GoogleBusinessTopicType.Standard] },
+    { value: GoogleBusinessTopicType.Offer, labelKey: googleBusinessTopicTypeLabelKey[GoogleBusinessTopicType.Offer] },
+    { value: GoogleBusinessTopicType.Event, labelKey: googleBusinessTopicTypeLabelKey[GoogleBusinessTopicType.Event] },
 ];
 
 /** Google ignores `callToAction` on OFFER posts. */
 export const googleBusinessAllowsCallToAction = (topicType?: string | null): boolean =>
-    (topicType ?? 'STANDARD') !== 'OFFER';
+    resolveGoogleBusinessTopicType(topicType) !== GoogleBusinessTopicType.Offer;
 
 export interface GoogleBusinessCtaOption {
-    value: string;
+    value: GoogleBusinessCtaActionValue;
     labelKey: string;
 }
 
@@ -38,20 +63,17 @@ export interface GoogleBusinessCtaOption {
  * "None" choice and has no preview label. `GET_OFFER` is omitted: Google
  * deprecated it and ignores `callToAction` entirely on OFFER posts.
  */
-export const GOOGLE_BUSINESS_CTA_OPTIONS: readonly GoogleBusinessCtaOption[] = [
-    { value: 'NONE', labelKey: 'posts.form.google_business.cta_none' },
-    { value: 'BOOK', labelKey: 'posts.form.google_business.cta.book' },
-    { value: 'ORDER', labelKey: 'posts.form.google_business.cta.order' },
-    { value: 'SHOP', labelKey: 'posts.form.google_business.cta.shop' },
-    { value: 'LEARN_MORE', labelKey: 'posts.form.google_business.cta.learn_more' },
-    { value: 'SIGN_UP', labelKey: 'posts.form.google_business.cta.sign_up' },
-    { value: 'CALL', labelKey: 'posts.form.google_business.cta.call' },
-];
+export const GOOGLE_BUSINESS_CTA_OPTIONS: readonly GoogleBusinessCtaOption[] =
+    GOOGLE_BUSINESS_CTA_ACTION_VALUES.map((value) => ({
+        value,
+        labelKey: googleBusinessCtaActionLabelKey[value],
+    }));
 
 /**
  * Combine stored event date + time for the DatePicker (`YYYY-MM-DD` or
- * `YYYY-MM-DDTHH:mm:00`). Times are optional: Google treats a date-only
- * schedule as the full day.
+ * `YYYY-MM-DDTHH:mm:00`). The editor DatePicker always writes a time (default
+ * 09:00). API/MCP may omit it — Google then treats the schedule as the start
+ * of the day at the location.
  */
 export const googleBusinessEventDateTimeValue = (date?: string | null, time?: string | null): string => {
     if (!date) {
@@ -78,16 +100,18 @@ export const googleBusinessEventDateTimeParts = (value: string | null): { date: 
     };
 };
 
-/**
- * Whether the event/offer schedule ends before it starts. Same-day times
- * count — mirrors PostPlatformMetaRules::googleBusinessEventEndsBeforeStart().
- */
-export const googleBusinessEventEndsBeforeStart = (event?: {
+export interface GoogleBusinessEventSchedule {
     start_date?: string | null;
     end_date?: string | null;
     start_time?: string | null;
     end_time?: string | null;
-} | null): boolean => {
+}
+
+/**
+ * Whether the event/offer schedule ends before it starts. Same-day times
+ * count — mirrors PostPlatformMetaRules::googleBusinessEventEndsBeforeStart().
+ */
+export const googleBusinessEventEndsBeforeStart = (event?: GoogleBusinessEventSchedule | null): boolean => {
     const startDate = event?.start_date;
     const endDate = event?.end_date;
 
@@ -111,11 +135,19 @@ export const googleBusinessEventEndsBeforeStart = (event?: {
 
 /** The i18n key for a CTA action type's button label, or null when it has none. */
 export const googleBusinessCtaLabelKey = (actionType?: string | null): string | null => {
-    if (!actionType || actionType === 'NONE') return null;
+    if (!actionType || actionType === GoogleBusinessCtaAction.None) {
+        return null;
+    }
 
-    if (actionType === 'GET_OFFER') {
+    if (actionType === GoogleBusinessDeprecatedCtaAction.GetOffer) {
         return 'posts.form.google_business.cta.get_offer';
     }
 
-    return GOOGLE_BUSINESS_CTA_OPTIONS.find((option) => option.value === actionType)?.labelKey ?? null;
+    const resolved = resolveGoogleBusinessCtaAction(actionType);
+
+    if (resolved === GoogleBusinessCtaAction.None) {
+        return null;
+    }
+
+    return googleBusinessCtaActionLabelKey[resolved];
 };
