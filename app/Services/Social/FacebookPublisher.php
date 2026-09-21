@@ -102,24 +102,86 @@ class FacebookPublisher
             );
         }
 
-        $link = UrlDetector::firstUrl($content);
+        $link = $this->linkPreviewUrl($content);
 
         try {
             $response = $this->postTextToFeed($pageId, $accessToken, $content, $link);
         } catch (FacebookPublishException $exception) {
-            // Graph error 1609005: Facebook could not scrape the URL. The post
-            // would have published as plain text before `link` was sent, so drop
-            // the card and try once more instead of failing the whole post.
-            if ($link === null || $exception->platformErrorCode !== '1609005') {
+            // These codes mean the `link` itself was rejected (scrape failed,
+            // invalid URL, or a facebook.com URL). The caption would have
+            // published as plain text before `link` was sent, so drop the card
+            // and try once. Any other error still fails the post.
+            if ($link === null || ! $this->isLinkRejection($exception)) {
                 throw $exception;
             }
 
-            Log::warning('Facebook could not scrape the link preview; publishing the text without it');
+            Log::warning('Facebook rejected the link preview; publishing the text without it', [
+                'platform_error_code' => $exception->platformErrorCode,
+                'platform_error_subcode' => $exception->platformErrorSubcode,
+            ]);
 
             $response = $this->postTextToFeed($pageId, $accessToken, $content, null);
         }
 
         return $this->feedPostResult(data_get($response->json(), 'id'));
+    }
+
+    /**
+     * First http(s) URL in the caption that Facebook will accept as a `link`.
+     * facebook.com, fb.com and fb.me (and their subdomains) are skipped: the
+     * Page Feed API rejects many of them and fails the whole post.
+     */
+    private function linkPreviewUrl(string $content): ?string
+    {
+        $offset = 0;
+        $length = strlen($content);
+
+        while ($offset < $length && preg_match(UrlDetector::URL_PATTERN, $content, $matches, PREG_OFFSET_CAPTURE, $offset) === 1) {
+            $raw = $matches[0][0];
+            $url = UrlDetector::trimTrailingPunctuation($raw);
+
+            if (! $this->isFacebookOwnedUrl($url)) {
+                return $url;
+            }
+
+            $offset = $matches[0][1] + strlen($raw);
+        }
+
+        return null;
+    }
+
+    private function isFacebookOwnedUrl(string $url): bool
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+
+        if (! is_string($host) || $host === '') {
+            return false;
+        }
+
+        $host = strtolower($host);
+
+        foreach (['facebook.com', 'fb.com', 'fb.me'] as $domain) {
+            if ($host === $domain || str_ends_with($host, ".{$domain}")) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Graph rejects the link, not the post: 1609005 (scrape failed), 1500
+     * (invalid URL), and 200/1609008 (facebook.com links).
+     */
+    private function isLinkRejection(FacebookPublishException $exception): bool
+    {
+        $code = $exception->platformErrorCode;
+
+        if ($code === '1609005' || $code === '1500') {
+            return true;
+        }
+
+        return $code === '200' && $exception->platformErrorSubcode === '1609008';
     }
 
     /**

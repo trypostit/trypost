@@ -16,6 +16,7 @@ use App\Services\Social\LinkCard\LinkCardFetcher;
 use App\Services\Social\LinkCard\LinkCardMetadata;
 use App\Services\Social\LinkedInPublisher;
 use Illuminate\Support\Facades\Http;
+use RuntimeException;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -1359,6 +1360,94 @@ test('linkedin publisher still publishes the article when the thumbnail cannot b
             && $article['title'] === 'The Article'
             && ! isset($article['thumbnail']);
     });
+});
+
+test('linkedin publisher publishes the text when the link preview lookup fails', function () {
+    $this->post->update(['content' => 'Read this https://example.com/article']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->once()
+        ->andThrow(new RuntimeException('scrape failed'));
+
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/rest/posts' => Http::response(null, 201, [
+            'x-restli-id' => 'urn:li:share:lookupfailed',
+        ]),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('urn:li:share:lookupfailed');
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/rest/posts')
+        && $request['commentary'] === 'Read this https://example.com/article'
+        && ! isset($request['content']));
+});
+
+test('linkedin publisher blocks the article thumbnail when the image points at a private address', function () {
+    $this->post->update(['content' => 'Read this https://example.com/article']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->once()
+        ->andReturn(new LinkCardMetadata(
+            uri: 'https://example.com/article',
+            title: 'The Article',
+            description: 'A great read',
+            imageUrl: 'http://127.0.0.1/evil.jpg',
+        ));
+
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/rest/posts' => Http::response(null, 201, [
+            'x-restli-id' => 'urn:li:share:private',
+        ]),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        $article = $request['content']['article'] ?? null;
+
+        return str_contains($request->url(), '/rest/posts')
+            && $article['title'] === 'The Article'
+            && ! isset($article['thumbnail']);
+    });
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '127.0.0.1'));
+});
+
+test('linkedin publisher does not follow a redirect on the article thumbnail', function () {
+    $this->post->update(['content' => 'Read this https://example.com/article']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->once()
+        ->andReturn(new LinkCardMetadata(
+            uri: 'https://example.com/article',
+            title: 'The Article',
+            description: 'A great read',
+            imageUrl: 'https://93.184.216.34/card.jpg',
+        ));
+
+    Http::fake([
+        'https://93.184.216.34/card.jpg' => Http::response('', 302, ['Location' => 'http://127.0.0.1/internal.jpg']),
+        config('trypost.platforms.linkedin.api').'/rest/posts' => Http::response(null, 201, [
+            'x-restli-id' => 'urn:li:share:noredirect',
+        ]),
+    ]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(function ($request) {
+        $article = $request['content']['article'] ?? null;
+
+        return str_contains($request->url(), '/rest/posts')
+            && $article['title'] === 'The Article'
+            && ! isset($article['thumbnail']);
+    });
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '127.0.0.1'));
 });
 
 function linkedInJpegBytes(): string

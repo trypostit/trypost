@@ -125,6 +125,25 @@ test('unknown code maps to Unknown category with error message', function () {
         ->and($exception->userMessage)->toBe('An unexpected error occurred.');
 });
 
+test('code 200 keeps the facebook-url subcode', function () {
+    $response = Http::response([
+        'error' => [
+            'message' => 'Permissions error',
+            'type' => 'OAuthException',
+            'code' => 200,
+            'error_subcode' => 1609008,
+        ],
+    ], 400);
+
+    $fakeResponse = Http::fake(['*' => $response])->post('https://graph.facebook.com/test');
+
+    $exception = FacebookPublishException::fromApiResponse($fakeResponse);
+
+    expect($exception->platformErrorCode)->toBe('200')
+        ->and($exception->platformErrorSubcode)->toBe('1609008')
+        ->and($exception->userMessage)->toBe('Permissions error');
+});
+
 test('subcode 463 throws TokenExpiredException', function () {
     $response = Http::response([
         'error' => [

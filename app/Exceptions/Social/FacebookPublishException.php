@@ -9,6 +9,16 @@ use Illuminate\Http\Client\Response;
 
 class FacebookPublishException extends SocialPublishException
 {
+    public function __construct(
+        string $userMessage,
+        ErrorCategory $category,
+        ?string $platformErrorCode = null,
+        ?string $rawResponse = null,
+        public readonly ?string $platformErrorSubcode = null,
+    ) {
+        parent::__construct($userMessage, $category, $platformErrorCode, $rawResponse);
+    }
+
     public static function fromApiResponse(mixed $response): static
     {
         /** @var Response $response */
@@ -66,6 +76,7 @@ class FacebookPublishException extends SocialPublishException
             category: $category,
             platformErrorCode: $errorCode !== null ? (string) $errorCode : null,
             rawResponse: $rawResponse,
+            platformErrorSubcode: $errorSubcode !== null ? (string) $errorSubcode : null,
         );
     }
 
