@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Enums\GoogleBusiness\CtaAction;
+use App\Enums\GoogleBusiness\DeprecatedCtaAction;
+use App\Enums\GoogleBusiness\TopicType;
 use App\Enums\PostPlatform\AspectRatio;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
@@ -20,14 +23,6 @@ use Illuminate\Validation\Validator;
  */
 class PostPlatformMetaRules
 {
-    /**
-     * Google Business Profile topic types whose Local Post requires an `event`
-     * object — Google mandates it for OFFER just as much as for EVENT.
-     *
-     * @var array<int, string>
-     */
-    public const GOOGLE_BUSINESS_EVENT_TOPIC_TYPES = ['EVENT', 'OFFER'];
-
     /**
      * Validation rules for `platforms.*.meta` and all its per-platform sub-keys.
      * Spread into a FormRequest/MCP tool rule set as the complete meta contract.
@@ -75,9 +70,9 @@ class PostPlatformMetaRules
             'platforms.*.meta.embeds.*.color' => ['sometimes', 'nullable', 'string', 'regex:/^#?[0-9A-Fa-f]{6}$/'],
 
             // Google Business Profile
-            'platforms.*.meta.topic_type' => ['sometimes', 'nullable', 'string', Rule::in(['STANDARD', 'EVENT', 'OFFER'])],
+            'platforms.*.meta.topic_type' => ['sometimes', 'nullable', 'string', Rule::enum(TopicType::class)],
             'platforms.*.meta.call_to_action' => ['sometimes', 'nullable', 'array'],
-            'platforms.*.meta.call_to_action.action_type' => ['sometimes', 'nullable', 'string', Rule::in(['NONE', 'BOOK', 'ORDER', 'SHOP', 'LEARN_MORE', 'SIGN_UP', 'CALL'])],
+            'platforms.*.meta.call_to_action.action_type' => ['sometimes', 'nullable', 'string', Rule::enum(CtaAction::class)],
             'platforms.*.meta.call_to_action.url' => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
             'platforms.*.meta.event' => ['sometimes', 'nullable', 'array'],
             'platforms.*.meta.event.title' => ['sometimes', 'nullable', 'string', 'max:100'],
@@ -179,8 +174,9 @@ class PostPlatformMetaRules
      */
     public static function requiredMetaViolation(?Platform $platform, mixed $meta): ?array
     {
-        $needsGoogleBusinessEvent = $platform === Platform::GoogleBusiness
-            && in_array(data_get($meta, 'topic_type') ?? 'STANDARD', self::GOOGLE_BUSINESS_EVENT_TOPIC_TYPES, true);
+        $topicType = TopicType::fromMeta(data_get($meta, 'topic_type'));
+        $ctaAction = CtaAction::fromMeta(data_get($meta, 'call_to_action.action_type'));
+        $needsGoogleBusinessEvent = $platform === Platform::GoogleBusiness && $topicType->requiresEvent();
 
         return match (true) {
             $platform === Platform::TikTok => self::tiktokPrivacyViolation($meta),
@@ -189,7 +185,7 @@ class PostPlatformMetaRules
             $needsGoogleBusinessEvent
                 && blank(data_get($meta, 'event.title')) => [
                     'event.title',
-                    trans((data_get($meta, 'topic_type') ?? 'STANDARD') === 'OFFER'
+                    trans($topicType === TopicType::Offer
                         ? 'posts.form.google_business.offer_title_required'
                         : 'posts.form.google_business.event_title_required'),
                 ],
@@ -200,14 +196,14 @@ class PostPlatformMetaRules
             $needsGoogleBusinessEvent
                 && self::googleBusinessEventEndsBeforeStart($meta) => self::googleBusinessEventRangeViolation($meta),
             $platform === Platform::GoogleBusiness
-                && (data_get($meta, 'topic_type') ?? 'STANDARD') !== 'OFFER'
-                && data_get($meta, 'call_to_action.action_type') === 'GET_OFFER' => [
+                && $topicType->allowsCallToAction()
+                && data_get($meta, 'call_to_action.action_type') === DeprecatedCtaAction::GetOffer->value => [
                     'call_to_action.action_type',
                     trans('posts.form.google_business.cta_get_offer_deprecated'),
                 ],
             $platform === Platform::GoogleBusiness
-                && (data_get($meta, 'topic_type') ?? 'STANDARD') !== 'OFFER'
-                && ! in_array(data_get($meta, 'call_to_action.action_type') ?? 'NONE', ['NONE', 'CALL'], true)
+                && $topicType->allowsCallToAction()
+                && $ctaAction->requiresUrl()
                 && blank(data_get($meta, 'call_to_action.url')) => ['call_to_action.url', trans('posts.form.google_business.cta_url_required')],
             default => null,
         };

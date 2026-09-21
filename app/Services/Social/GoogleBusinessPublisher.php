@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Social;
 
 use App\Dto\MediaItem;
+use App\Enums\GoogleBusiness\CtaAction;
+use App\Enums\GoogleBusiness\LocalPostState;
+use App\Enums\GoogleBusiness\TopicType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\Workspace\ContentLanguage;
 use App\Exceptions\Social\ErrorCategory;
@@ -14,7 +17,6 @@ use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\GoogleBusinessResourceName;
-use App\Support\PostPlatformMetaRules;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
@@ -85,15 +87,15 @@ class GoogleBusinessPublisher
             }
 
             $created = $response->json() ?? [];
-            $state = (string) (data_get($created, 'state') ?: 'PROCESSING');
+            $state = LocalPostState::fromApi(data_get($created, 'state'));
             // Google fetches sourceUrl after create while the post is still
             // PROCESSING / SCHEDULED. Deleting here races PHOTO_FETCH_FAILED.
-            $keepDerivative = in_array($state, ['PROCESSING', 'SCHEDULED'], true);
+            $keepDerivative = $state->isPendingReview();
 
             return [
                 'id' => (string) data_get($created, 'name'),
                 'url' => (string) (data_get($created, 'searchUrl') ?: GoogleBusinessResourceName::dashboardUrl($locationId)),
-                'state' => $state,
+                'state' => $state->value,
             ];
         } finally {
             if (! $keepDerivative) {
@@ -153,25 +155,24 @@ class GoogleBusinessPublisher
     {
         $language = ContentLanguage::tryFrom((string) ($postPlatform->post->workspace->content_language ?? ContentLanguage::DEFAULT->value))
             ?? ContentLanguage::DEFAULT;
-        $topicType = (string) (data_get($postPlatform->meta, 'topic_type') ?? 'STANDARD');
+        $topicType = TopicType::fromMeta(data_get($postPlatform->meta, 'topic_type'));
 
         $payload = [
             'languageCode' => $language->bcp47(),
             'summary' => $content,
-            'topicType' => $topicType,
+            'topicType' => $topicType->value,
         ];
 
-        $callToActionType = data_get($postPlatform->meta, 'call_to_action.action_type');
+        $callToAction = CtaAction::fromMeta(data_get($postPlatform->meta, 'call_to_action.action_type'));
 
         // Google ignores callToAction on OFFER posts.
-        if ($topicType !== 'OFFER' && filled($callToActionType) && $callToActionType !== 'NONE') {
-            $callToAction = ['actionType' => $callToActionType];
-
-            if ($callToActionType !== 'CALL') {
-                $callToAction['url'] = data_get($postPlatform->meta, 'call_to_action.url');
-            }
-
-            $payload['callToAction'] = $callToAction;
+        if ($topicType->allowsCallToAction() && $callToAction !== CtaAction::None) {
+            $payload['callToAction'] = [
+                'actionType' => $callToAction->value,
+                ...($callToAction->requiresUrl() ? [
+                    'url' => data_get($postPlatform->meta, 'call_to_action.url'),
+                ] : []),
+            ];
         }
 
         $media = $postPlatform->post->mediaItems->first(fn ($item) => $item->isImage());
@@ -183,11 +184,11 @@ class GoogleBusinessPublisher
             ]];
         }
 
-        if (in_array($topicType, PostPlatformMetaRules::GOOGLE_BUSINESS_EVENT_TOPIC_TYPES, true)) {
+        if ($topicType->requiresEvent()) {
             $payload['event'] = $this->buildEvent($postPlatform);
         }
 
-        if ($topicType === 'OFFER') {
+        if ($topicType === TopicType::Offer) {
             $offer = $this->buildOffer($postPlatform);
 
             if ($offer !== []) {
@@ -246,11 +247,11 @@ class GoogleBusinessPublisher
     private function buildEvent(PostPlatform $postPlatform): array
     {
         $title = (string) data_get($postPlatform->meta, 'event.title');
-        $topicType = (string) (data_get($postPlatform->meta, 'topic_type') ?? 'STANDARD');
+        $topicType = TopicType::fromMeta(data_get($postPlatform->meta, 'topic_type'));
 
         if (blank($title)) {
             throw new GoogleBusinessPublishException(
-                userMessage: $topicType === 'OFFER'
+                userMessage: $topicType === TopicType::Offer
                     ? __('posts.form.google_business.offer_title_required')
                     : __('posts.form.google_business.event_title_required'),
                 category: ErrorCategory::ContentPolicy,

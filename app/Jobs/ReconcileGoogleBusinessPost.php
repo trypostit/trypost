@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Actions\Post\FinalizePostPublication;
+use App\Enums\GoogleBusiness\LocalPostState;
 use App\Enums\PostPlatform\Status;
 use App\Events\PostPlatformStatusUpdated;
 use App\Exceptions\PlatformUnavailableException;
@@ -44,9 +45,6 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
      * slow, and Google normally clears review in minutes.
      */
     public const REVIEW_CEILING_HOURS = 24;
-
-    /** States that mean the post is live and visible. */
-    private const LIVE_STATES = ['LIVE', 'RECURRING'];
 
     public function __construct(public PostPlatform $postPlatform)
     {
@@ -93,24 +91,24 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $state = (string) (data_get($remote, 'state') ?: 'PROCESSING');
+        $state = LocalPostState::fromApi(data_get($remote, 'state'));
         $platformUrl = (string) (data_get($remote, 'searchUrl') ?: $this->postPlatform->platform_url);
 
-        if (in_array($state, self::LIVE_STATES, true)) {
+        if ($state->isLive()) {
             $this->postPlatform->markAsPublished((string) $this->postPlatform->platform_post_id, $platformUrl);
-        } elseif ($state === 'REJECTED') {
+        } elseif ($state->isRejected()) {
             $this->postPlatform->markAsRejected(
                 (string) $this->postPlatform->platform_post_id,
                 $platformUrl,
                 __('posts.errors.rejected_in_review'),
-                ['provider_state' => $state],
+                ['provider_state' => $state->value],
             );
         } elseif ($this->reviewExpired()) {
             $this->postPlatform->markAsRejected(
                 (string) $this->postPlatform->platform_post_id,
                 $platformUrl,
                 __('posts.errors.review_unconfirmed'),
-                ['category' => 'review_unconfirmed', 'provider_state' => $state],
+                ['category' => 'review_unconfirmed', 'provider_state' => $state->value],
             );
         } else {
             $this->postPlatform->update([

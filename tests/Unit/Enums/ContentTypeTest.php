@@ -412,6 +412,8 @@ test('google business post media rules allow at most one image, no video', funct
     expect(ContentType::GoogleBusinessPost->maxMediaCount())->toBe(1);
     expect(ContentType::GoogleBusinessPost->supportsVideo())->toBeFalse();
     expect(ContentType::GoogleBusinessPost->supportsImage())->toBeTrue();
+    expect(ContentType::GoogleBusinessPost->supportsDocument())->toBeFalse();
+    expect(ContentType::GoogleBusinessPost->acceptsGif())->toBeFalse();
     expect(ContentType::GoogleBusinessPost->requiresMedia())->toBeFalse();
 });
 

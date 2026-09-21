@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Actions\Post\FinalizePostPublication;
+use App\Enums\GoogleBusiness\LocalPostState;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
@@ -191,14 +192,18 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         $platformPostId = (string) data_get($result, 'id');
         $platformUrl = data_get($result, 'url');
 
-        match (data_get($result, 'state')) {
-            'REJECTED' => $this->postPlatform->markAsRejected(
+        // tryFrom, not fromApi: every other publisher omits `state`. fromApi(null)
+        // is Processing, which would hold LinkedIn/X/… in pending review forever.
+        $state = LocalPostState::tryFrom((string) data_get($result, 'state'));
+
+        match (true) {
+            $state?->isRejected() => $this->postPlatform->markAsRejected(
                 $platformPostId,
                 $platformUrl,
                 __('posts.errors.rejected_in_review'),
-                ['provider_state' => 'REJECTED'],
+                ['provider_state' => $state->value],
             ),
-            'PROCESSING', 'SCHEDULED' => $this->postPlatform->markAsPendingReview($platformPostId, $platformUrl),
+            $state?->isPendingReview() => $this->postPlatform->markAsPendingReview($platformPostId, $platformUrl),
             default => $this->postPlatform->markAsPublished($platformPostId, $platformUrl),
         };
     }

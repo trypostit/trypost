@@ -4,6 +4,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 
 | Applies to | Rule file |
 | --- | --- |
+| app/Enums/GoogleBusiness/**, app/Jobs/PublishToSocialPlatform.php, app/Jobs/ReconcileGoogleBusinessPost.php, app/Services/Social/GoogleBusinessPublisher.php, app/Support/PostPlatformMetaRules.php | .ai/rules/google-business.md |
 | app/Jobs/ReconcileGoogleBusinessPost.php, app/Console/Commands/RecoverStuckPosts.php | .ai/rules/jobs.md |
 | app/Enums/SocialAccount/Platform.php | .ai/rules/social-account.md |
 | app/Services/Social/GoogleBusinessPublisher.php, app/Support/Social/GoogleBusinessDerivativeCleaner.php | .ai/rules/social.md |

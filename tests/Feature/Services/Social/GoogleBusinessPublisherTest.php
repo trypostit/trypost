@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\GoogleBusiness\LocalPostState;
+use App\Enums\GoogleBusiness\TopicType;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\GoogleBusinessPublishException;
@@ -36,7 +38,7 @@ beforeEach(function () {
         'social_account_id' => $this->socialAccount->id,
         'platform' => Platform::GoogleBusiness,
         'content_type' => ContentType::GoogleBusinessPost,
-        'meta' => ['topic_type' => 'STANDARD'],
+        'meta' => ['topic_type' => TopicType::Standard->value],
     ]);
 
     $this->publisher = new GoogleBusinessPublisher;
@@ -89,12 +91,61 @@ test('publish keeps the JPEG while Google is still processing the post', functio
     Http::fake([
         config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
             'name' => 'accounts/123456789/locations/987654321/localPosts/999',
-            'state' => 'PROCESSING',
+            'state' => LocalPostState::Processing->value,
         ], 200),
     ]);
 
     $this->publisher->publish($this->postPlatform->fresh());
 
+    Storage::assertExists(GoogleBusinessDerivativeCleaner::pathFor($this->postPlatform->id));
+});
+
+test('publish keeps the JPEG while Google has scheduled the post', function () {
+    Storage::fake();
+    Storage::put('uploads/promo.png', base64_decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+    ));
+    $this->post->update(['media' => [[
+        'path' => 'uploads/promo.png',
+        'url' => Storage::url('uploads/promo.png'),
+        'mime_type' => 'image/png',
+        'type' => 'image',
+    ]]]);
+
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
+            'state' => LocalPostState::Scheduled->value,
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Storage::assertExists(GoogleBusinessDerivativeCleaner::pathFor($this->postPlatform->id));
+});
+
+test('publish remaps an unknown Google state to processing and keeps the jpeg', function () {
+    Storage::fake();
+    Storage::put('uploads/promo.png', base64_decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+    ));
+    $this->post->update(['media' => [[
+        'path' => 'uploads/promo.png',
+        'url' => Storage::url('uploads/promo.png'),
+        'mime_type' => 'image/png',
+        'type' => 'image',
+    ]]]);
+
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/123456789/locations/987654321/localPosts/999',
+            'state' => 'NOT_A_REAL_STATE',
+        ], 200),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform->fresh());
+
+    expect($result['state'])->toBe(LocalPostState::Processing->value);
     Storage::assertExists(GoogleBusinessDerivativeCleaner::pathFor($this->postPlatform->id));
 });
 
