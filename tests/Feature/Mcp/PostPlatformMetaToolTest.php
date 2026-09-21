@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\GoogleBusiness\TopicType;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
@@ -589,6 +590,53 @@ test('create post persists Google Business offer redeem url and terms meta', fun
     expect(data_get($meta, 'offer.coupon_code'))->toBe('SAVE10')
         ->and(data_get($meta, 'offer.redeem_online_url'))->toBe('https://example.com/redeem')
         ->and(data_get($meta, 'offer.terms_conditions'))->toBe('Some terms');
+});
+
+test('create post rejects a Google Business event title over the api cap', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Grand opening',
+            'platforms' => [[
+                'social_account_id' => $googleBusiness->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+                'meta' => [
+                    'topic_type' => 'EVENT',
+                    'event' => [
+                        'title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH + 1),
+                        'start_date' => '2026-09-01',
+                        'end_date' => '2026-09-02',
+                    ],
+                ],
+            ]],
+        ]);
+
+    $response->assertHasErrors([__('posts.form.google_business.title_max')]);
+});
+
+test('publish post rejects a Google Business offer post without a title', function () {
+    $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $googleBusiness->id,
+        'enabled' => true,
+        'meta' => [
+            'topic_type' => 'OFFER',
+            'event' => ['start_date' => '2026-09-01', 'end_date' => '2026-09-02'],
+        ],
+    ]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id]);
+
+    $response->assertHasErrors([__('posts.form.google_business.offer_title_required')]);
 });
 
 test('publish post rejects a Google Business event post without event fields', function () {

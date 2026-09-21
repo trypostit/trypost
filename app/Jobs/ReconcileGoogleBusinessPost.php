@@ -158,10 +158,24 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
         try {
             app(ConnectionVerifier::class)->verify($account);
             $account->refresh();
-
-            return $this->fetchRemote($account);
         } catch (TokenExpiredException $e) {
             $account->markAsTokenExpired($e->getMessage());
+            $this->deferOrGiveUp($e->getMessage());
+
+            return null;
+        } catch (PlatformUnavailableException|ConnectionException $e) {
+            $this->deferOrGiveUp($e->getMessage());
+
+            return null;
+        } catch (GoogleBusinessPublishException $e) {
+            $this->handlePublishException($e);
+
+            return null;
+        }
+
+        try {
+            return $this->fetchRemote($account);
+        } catch (TokenExpiredException $e) {
             $this->deferOrGiveUp($e->getMessage());
 
             return null;

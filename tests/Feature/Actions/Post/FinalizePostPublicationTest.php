@@ -182,3 +182,54 @@ test('a rejected google business target next to a published sibling is partial',
     expect($post->fresh()->status)->toBe(PostStatus::PartiallyPublished);
     Queue::assertPushed(SendNotification::class, fn (SendNotification $job) => $job->type === Type::PostFailed);
 });
+
+test('a second settle does not notify again', function () {
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $owner->id,
+        'status' => PostStatus::Publishing,
+    ]);
+    PostPlatform::factory()->facebook()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => SocialAccount::factory()->facebook()->create([
+            'workspace_id' => $workspace->id,
+        ])->id,
+        'enabled' => true,
+    ]);
+
+    $finalize = app(FinalizePostPublication::class);
+    $finalize->handle($post);
+    $finalize->handle($post->fresh());
+
+    expect($post->fresh()->status)->toBe(PostStatus::Published);
+    Queue::assertPushedTimes(SendNotification::class, 1);
+});
+
+test('an already settled post is left alone', function (PostStatus $status) {
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $owner->id,
+        'status' => $status,
+        'published_at' => $status === PostStatus::Failed ? null : now(),
+    ]);
+    PostPlatform::factory()->facebook()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => SocialAccount::factory()->facebook()->create([
+            'workspace_id' => $workspace->id,
+        ])->id,
+        'enabled' => true,
+    ]);
+
+    app(FinalizePostPublication::class)->handle($post);
+
+    expect($post->fresh()->status)->toBe($status);
+    Queue::assertNotPushed(SendNotification::class);
+})->with([
+    PostStatus::Published,
+    PostStatus::PartiallyPublished,
+    PostStatus::Failed,
+]);

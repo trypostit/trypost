@@ -11,7 +11,7 @@ import {
     googleBusinessCtaLabelKey,
     resolveGoogleBusinessTopicType,
 } from '@/lib/googleBusiness';
-import { isImage } from '@/lib/mediaType';
+import { isGif, isImage } from '@/lib/mediaType';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -34,7 +34,9 @@ const topicType = computed(() =>
     resolveGoogleBusinessTopicType(props.meta?.topic_type),
 );
 
-const image = computed(() => props.media.find((item) => isImage(item)) ?? null);
+const image = computed(
+    () => props.media.find((item) => isImage(item) && !isGif(item)) ?? null,
+);
 
 const ctaLabel = computed(() => {
     if (!googleBusinessAllowsCallToAction(topicType.value)) {
@@ -74,12 +76,14 @@ const event = computed(() => {
     );
     const range = start && end && end !== start ? `${start} – ${end}` : start;
     const coupon = props.meta?.offer?.coupon_code || '';
+    const redeem = props.meta?.offer?.redeem_online_url || '';
+    const terms = props.meta?.offer?.terms_conditions || '';
 
-    if (!title && !range && !coupon) {
+    if (!title && !range && !coupon && !redeem && !terms) {
         return null;
     }
 
-    return { title, range, coupon };
+    return { title, range, coupon, redeem, terms };
 });
 </script>
 
@@ -145,6 +149,18 @@ const event = computed(() => {
                         class="text-xs font-medium text-[#5f6368] dark:text-[#9aa0a6]"
                     >
                         {{ event.coupon }}
+                    </p>
+                    <p
+                        v-if="event.redeem"
+                        class="text-xs text-[#5f6368] dark:text-[#9aa0a6]"
+                    >
+                        {{ event.redeem }}
+                    </p>
+                    <p
+                        v-if="event.terms"
+                        class="text-xs text-[#5f6368] dark:text-[#9aa0a6]"
+                    >
+                        {{ event.terms }}
                     </p>
                 </div>
 

@@ -22,6 +22,15 @@ test('post status has labels', function () {
     expect(Status::Failed->label())->toBe('Failed');
 });
 
+test('settled statuses are the ones finalize must not rewrite', function () {
+    expect(Status::Draft->isSettled())->toBeFalse();
+    expect(Status::Scheduled->isSettled())->toBeFalse();
+    expect(Status::Publishing->isSettled())->toBeFalse();
+    expect(Status::Published->isSettled())->toBeTrue();
+    expect(Status::PartiallyPublished->isSettled())->toBeTrue();
+    expect(Status::Failed->isSettled())->toBeTrue();
+});
+
 test('post status has colors', function () {
     expect(Status::Draft->color())->toBe('gray');
     expect(Status::Scheduled->color())->toBe('blue');

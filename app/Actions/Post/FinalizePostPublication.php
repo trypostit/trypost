@@ -13,6 +13,7 @@ use App\Mail\PostPublishFailed;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Settles a post once every enabled target has reached a terminal state, and
@@ -23,37 +24,54 @@ class FinalizePostPublication
 {
     public function handle(Post $post): void
     {
-        $post = $post->fresh(['workspace.owner', 'postPlatforms.socialAccount']);
+        /** @var array{post: Post, successful: bool, platforms: Collection<int, PostPlatform>}|null $outcome */
+        $outcome = DB::transaction(function () use ($post): ?array {
+            $post = Post::query()
+                ->with(['workspace.owner', 'postPlatforms.socialAccount'])
+                ->whereKey($post->id)
+                ->lockForUpdate()
+                ->first();
 
-        if (! $post instanceof Post) {
+            if (! $post instanceof Post || $post->status->isSettled()) {
+                return null;
+            }
+
+            $targets = $post->postPlatforms->where('enabled', true);
+
+            if ($targets->isEmpty()) {
+                return null;
+            }
+
+            $finished = $targets->filter(fn (PostPlatform $target): bool => $target->status->isFinished());
+            $published = $finished->where('status', PostPlatformStatus::Published);
+            $failed = $finished->reject(fn (PostPlatform $target): bool => $target->status === PostPlatformStatus::Published);
+
+            if ($finished->count() < $targets->count()) {
+                return null;
+            }
+
+            $successful = $failed->isEmpty();
+
+            if ($successful) {
+                $post->markAsPublished();
+            } elseif ($published->isNotEmpty()) {
+                $post->markAsPartiallyPublished();
+            } else {
+                $post->markAsFailed();
+            }
+
+            return [
+                'post' => $post,
+                'successful' => $successful,
+                'platforms' => $successful ? $published : $failed,
+            ];
+        });
+
+        if ($outcome === null) {
             return;
         }
 
-        $targets = $post->postPlatforms->where('enabled', true);
-
-        if ($targets->isEmpty()) {
-            return;
-        }
-
-        $finished = $targets->filter(fn (PostPlatform $target): bool => $target->status->isFinished());
-        $published = $finished->where('status', PostPlatformStatus::Published);
-        $failed = $finished->reject(fn (PostPlatform $target): bool => $target->status === PostPlatformStatus::Published);
-
-        if ($finished->count() < $targets->count()) {
-            return;
-        }
-
-        $successful = $failed->isEmpty();
-
-        if ($successful) {
-            $post->markAsPublished();
-        } elseif ($published->isNotEmpty()) {
-            $post->markAsPartiallyPublished();
-        } else {
-            $post->markAsFailed();
-        }
-
-        $this->notify($post, $successful, $successful ? $published : $failed);
+        $this->notify($outcome['post'], $outcome['successful'], $outcome['platforms']);
     }
 
     /**

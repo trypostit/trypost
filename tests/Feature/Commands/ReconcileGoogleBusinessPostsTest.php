@@ -69,6 +69,14 @@ test('it dispatches again once the reconciliation interval has passed', function
     );
 });
 
+test('it skips a disabled target still awaiting review', function () use ($target) {
+    $target(['enabled' => false]);
+
+    $this->artisan('social:reconcile-google-business-posts')->assertSuccessful();
+
+    Queue::assertNotPushed(ReconcileGoogleBusinessPost::class);
+});
+
 test('it skips a target that has no remote post id', function () use ($target) {
     $target(['platform_post_id' => null]);
 

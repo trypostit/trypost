@@ -42,7 +42,18 @@ test('connect redirects to the google-business oauth driver', function () {
 });
 
 test('google business callback auto-connects when exactly one location exists', function () {
-    session(['social_connect_workspace' => $this->workspace->id]);
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'google_business_oauth' => [
+            'access_token' => 'stale-token',
+            'refresh_token' => 'stale-refresh',
+            'expires_in' => 3600,
+            'user_id' => 'old-gid',
+            'locations' => [
+                ['id' => 'accounts/1/locations/99', 'title' => 'Abandoned picker'],
+            ],
+        ],
+    ]);
 
     $socialiteUser = Mockery::mock(SocialiteUser::class);
     $socialiteUser->shouldReceive('getId')->andReturn('gid-1');
@@ -80,7 +91,8 @@ test('google business callback auto-connects when exactly one location exists', 
     $account = $this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->first();
     expect($account->meta['location_id'])->toBe('accounts/1/locations/2')
         ->and($account->meta['account_name'])->toBe('accounts/1')
-        ->and($account->meta['google_user_id'])->toBe('gid-1');
+        ->and($account->meta['google_user_id'])->toBe('gid-1')
+        ->and(session('google_business_oauth'))->toBeNull();
 });
 
 test('google business callback shows the location picker when multiple locations exist', function () {
@@ -155,7 +167,18 @@ test('google business callback reconnects the original location when google retu
 });
 
 test('google business callback fails when no locations are found', function () {
-    session(['social_connect_workspace' => $this->workspace->id]);
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+        'google_business_oauth' => [
+            'access_token' => 'stale-token',
+            'refresh_token' => 'stale-refresh',
+            'expires_in' => 3600,
+            'user_id' => 'old-gid',
+            'locations' => [
+                ['id' => 'accounts/1/locations/99', 'title' => 'Abandoned picker'],
+            ],
+        ],
+    ]);
 
     $socialiteUser = Mockery::mock(SocialiteUser::class);
     $socialiteUser->shouldReceive('getId')->andReturn('gid-1');
@@ -179,7 +202,8 @@ test('google business callback fails when no locations are found', function () {
         ->where('message', __('accounts.popup_callback.no_google_business_locations'))
     );
 
-    expect($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->exists())->toBeFalse();
+    expect($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->exists())->toBeFalse()
+        ->and(session('google_business_oauth'))->toBeNull();
 });
 
 test('google business callback connects a second location on the same network', function () {

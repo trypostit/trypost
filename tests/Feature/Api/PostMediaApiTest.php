@@ -200,6 +200,29 @@ it('returns metrics shape including unsupported reason for unpublished platforms
         ->assertJsonPath('platforms.0.metrics.reason', 'not_published');
 });
 
+it('returns platform_not_supported for a published google business target', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+    $post = Post::factory()->published()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    PostPlatform::factory()->googleBusiness()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'enabled' => true,
+        'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->getJson(route('api.posts.metrics', $post))
+        ->assertOk()
+        ->assertJsonPath('platforms.0.platform', Platform::GoogleBusiness->value)
+        ->assertJsonPath('platforms.0.metrics.unsupported', true)
+        ->assertJsonPath('platforms.0.metrics.reason', 'platform_not_supported');
+});
+
 it('cannot get metrics from another workspace post', function () {
     $other = Workspace::factory()->create();
     $post = Post::factory()->create(['workspace_id' => $other->id, 'user_id' => $this->user->id]);

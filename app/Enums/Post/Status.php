@@ -36,4 +36,13 @@ enum Status: string
             self::Failed => 'red',
         };
     }
+
+    /** Published, partially published, or failed — Finalize must not notify again. */
+    public function isSettled(): bool
+    {
+        return match ($this) {
+            self::Published, self::PartiallyPublished, self::Failed => true,
+            default => false,
+        };
+    }
 }

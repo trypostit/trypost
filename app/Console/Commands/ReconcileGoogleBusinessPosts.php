@@ -26,6 +26,7 @@ class ReconcileGoogleBusinessPosts extends Command
     public function handle(): int
     {
         PostPlatform::query()
+            ->enabled()
             ->where('platform', Platform::GoogleBusiness)
             ->where('status', Status::PendingReview)
             ->whereNotNull('platform_post_id')

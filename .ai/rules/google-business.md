@@ -3,6 +3,7 @@ paths:
   - 'app/Enums/GoogleBusiness/**'
   - app/Jobs/PublishToSocialPlatform.php
   - app/Jobs/ReconcileGoogleBusinessPost.php
+  - app/Console/Commands/ReconcileGoogleBusinessPosts.php
   - app/Services/Social/GoogleBusinessPublisher.php
   - app/Support/PostPlatformMetaRules.php
   - app/Services/Social/GoogleBusinessAnalytics.php
@@ -24,3 +25,6 @@ ReconcileGoogleBusinessPost must call ConnectionVerifier::verify() after a Token
 
 ## GBP analytics must not cache a failed fetch
 GoogleBusinessAnalytics caches only a successful array. An HTTP failure or a missing location returns false and is not written to cache — a 500 must not blank the dashboard for an hour. Publish/verify/analytics require both location_id (v4) and location_name (v1) via GoogleBusinessResourceName::connectedLocation().
+
+## Local Posts 401 after a live BI verify does not expire the account
+retryAfterExpiredToken calls ConnectionVerifier::verify() then retries fetchRemote. markAsTokenExpired only when verify() itself throws TokenExpiredException. If BI verify succeeds and Local Posts still 401s, deferOrGiveUp without disconnecting — the token still works for the house verify. ReconcileGoogleBusinessPosts only dispatches enabled() pending_review rows.

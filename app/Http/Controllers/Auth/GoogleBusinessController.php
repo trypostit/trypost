@@ -118,6 +118,13 @@ class GoogleBusinessController extends SocialController
         ]);
     }
 
+    protected function popupCallback(bool $success, string $message, ?string $platform = null): InertiaResponse
+    {
+        $this->forgetOauthSession();
+
+        return parent::popupCallback($success, $message, $platform);
+    }
+
     public function select(SelectGoogleBusinessLocationRequest $request): InertiaResponse
     {
         $oauth = $this->requireOauthSession();

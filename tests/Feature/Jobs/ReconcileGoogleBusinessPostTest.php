@@ -220,6 +220,24 @@ test('a dead token during review is refreshed before the target is deferred', fu
         ->and($this->post->fresh()->status)->toBe(PostStatus::Published);
 });
 
+test('a local posts 401 after a successful verify defers without expiring the account', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'error' => ['status' => 'UNAUTHENTICATED', 'message' => 'local posts only'],
+        ], 401),
+        config('trypost.platforms.google_business.business_information_api').'/*' => Http::response([
+            'name' => 'locations/987654321',
+        ]),
+    ]);
+
+    (new ReconcileGoogleBusinessPost($this->target))->handle();
+
+    expect($this->target->fresh()->status)->toBe(PlatformStatus::PendingReview)
+        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+        ->and($this->account->fresh()->status)->toBe(AccountStatus::Connected)
+        ->and($this->post->fresh()->status)->toBe(PostStatus::Scheduled);
+});
+
 test('a dead token during review is deferred and expires the account when refresh also fails', function () {
     Http::fake([
         config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
