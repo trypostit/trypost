@@ -1,44 +1,27 @@
 /**
- * Mirrors `App\Support\FacebookLinkPreview`. The composer has to pick the same
- * URL the publisher will send as `link`, or the preview card is a different
- * page than the one Facebook receives. One trailing punctuation mark and an
- * unmatched closing parenthesis are trimmed, matching
- * `UrlDetector::trimTrailingPunctuation`.
+ * Mirror of `App\Support\FacebookLinkPreview`. Facebook rejects many
+ * facebook.com, fb.com and fb.me links, so the preview skips the same hosts
+ * the publisher does.
  */
-const FACEBOOK_HOSTS = ['facebook.com', 'fb.com', 'fb.me'];
+const FACEBOOK_HOSTS = ['facebook.com', 'fb.com', 'fb.me'] as const;
 
 const trimTrailingPunctuation = (url: string): string => {
-    if (/[.,;:!?]$/.test(url)) {
-        url = url.slice(0, -1);
-    }
+    const trimmed = url.replace(/[.,;:!?]$/, '');
 
-    if (url.endsWith(')') && !url.includes('(')) {
-        url = url.slice(0, -1);
-    }
-
-    return url;
+    return trimmed.endsWith(')') && !trimmed.includes('(') ? trimmed.slice(0, -1) : trimmed;
 };
 
 const isFacebookOwnedUrl = (url: string): boolean => {
-    let host: string;
-
-    try {
-        host = new URL(url).hostname.toLowerCase();
-    } catch {
+    if (!URL.canParse(url)) {
         return false;
     }
+
+    const host = new URL(url).hostname.toLowerCase();
 
     return FACEBOOK_HOSTS.some((domain) => host === domain || host.endsWith(`.${domain}`));
 };
 
-export const facebookLinkPreviewUrl = (text: string): string | null => {
-    for (const match of text.matchAll(/https?:\/\/\S+/gu)) {
-        const url = trimTrailingPunctuation(match[0]);
-
-        if (!isFacebookOwnedUrl(url)) {
-            return url;
-        }
-    }
-
-    return null;
-};
+export const facebookLinkPreviewUrl = (text: string): string | null =>
+    [...text.matchAll(/https?:\/\/\S+/gu)]
+        .map(([raw]) => trimTrailingPunctuation(raw))
+        .find((url) => !isFacebookOwnedUrl(url)) ?? null;
