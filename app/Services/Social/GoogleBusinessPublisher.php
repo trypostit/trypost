@@ -27,25 +27,11 @@ use Throwable;
 
 class GoogleBusinessPublisher
 {
-    /** Where the Google-shaped copies of post images live on the default disk. */
-    public const string DERIVATIVE_DIRECTORY = GoogleBusinessDerivativeCleaner::DIRECTORY;
-
     use HasSocialHttpClient;
 
+    public const string DERIVATIVE_DIRECTORY = GoogleBusinessDerivativeCleaner::DIRECTORY;
+
     private ?string $derivativePath = null;
-
-    private string $accountManagementUrl;
-
-    private string $businessInformationUrl;
-
-    private string $localPostsUrl;
-
-    public function __construct()
-    {
-        $this->accountManagementUrl = config('trypost.platforms.google_business.account_management_api');
-        $this->businessInformationUrl = config('trypost.platforms.google_business.business_information_api');
-        $this->localPostsUrl = config('trypost.platforms.google_business.local_posts_api');
-    }
 
     public function publish(PostPlatform $postPlatform): array
     {
@@ -61,33 +47,14 @@ class GoogleBusinessPublisher
                 app(ConnectionVerifier::class)->refreshToken($account);
             }
 
-            $content = $postPlatform->post->content
-                ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, Platform::GoogleBusiness)
-                : '';
-
-            $locationId = (string) data_get($account->meta, 'location_id');
-
-            if (blank($locationId)) {
-                throw new GoogleBusinessPublishException(
-                    userMessage: __('posts.errors.google_business.no_location'),
-                    category: ErrorCategory::Permission,
-                );
-            }
-
-            $payload = $this->buildPayload($postPlatform, $content);
-
-            $response = $this->socialHttp()->withToken($account->access_token)
-                ->post("{$this->localPostsUrl}/{$locationId}/localPosts", $payload);
-
-            if ($response->failed()) {
-                Log::error('Google Business Profile post creation failed', [
-                    'status' => $response->status(),
-                    'body' => $this->redactResponseBody($response->body()),
-                ]);
-                $this->handleApiError($response);
-            }
-
-            $created = $response->json() ?? [];
+            $locationId = $this->locationId($account);
+            $created = $this->request(
+                $account->access_token,
+                'post',
+                "{$this->url('local_posts_api')}/{$locationId}/localPosts",
+                $this->buildPayload($postPlatform),
+                'Google Business Profile post creation failed',
+            );
             $state = LocalPostState::fromApi(data_get($created, 'state'));
             // Google fetches sourceUrl after create while the post is still
             // PROCESSING / SCHEDULED. Deleting here races PHOTO_FETCH_FAILED.
@@ -114,25 +81,21 @@ class GoogleBusinessPublisher
      */
     public function fetchLocations(string $accessToken): array
     {
-        $locations = [];
-
-        foreach ($this->fetchAccounts($accessToken) as $accountName) {
-            array_push($locations, ...$this->fetchLocationsForAccount($accessToken, $accountName));
-        }
-
-        return $locations;
+        return collect($this->fetchAccounts($accessToken))
+            ->flatMap(fn (string $accountName) => $this->fetchLocationsForAccount($accessToken, $accountName))
+            ->values()
+            ->all();
     }
 
     /**
-     * Profile photos live at the fixed `/media/profile` resource — not in a
-     * full media list, which the OAuth callback must not walk per location.
+     * Profile photos live at `/media/profile` — do not walk the full media list.
      *
      * @see https://developers.google.com/my-business/reference/rest/v4/accounts.locations.media/get
      */
     public function fetchLocationPhoto(string $accessToken, string $fullLocationName): ?string
     {
         $response = $this->socialHttp()->withToken($accessToken)
-            ->get("{$this->localPostsUrl}/{$fullLocationName}/media/profile");
+            ->get("{$this->url('local_posts_api')}/{$fullLocationName}/media/profile");
 
         if ($response->failed()) {
             Log::warning('Google Business Profile location profile photo fetch failed', [
@@ -144,19 +107,52 @@ class GoogleBusinessPublisher
             return null;
         }
 
-        $url = data_get($response->json(), 'thumbnailUrl') ?: data_get($response->json(), 'googleUrl');
+        $payload = $response->json();
+        $url = data_get($payload, 'thumbnailUrl') ?: data_get($payload, 'googleUrl');
 
         return filled($url) ? (string) $url : null;
     }
 
     /**
-     * @return array<string, mixed> The Local Post request body.
+     * @return array<string, mixed>
      */
-    private function buildPayload(PostPlatform $postPlatform, string $content): array
+    public function fetchLocalPost(SocialAccount $account, string $localPostName): array
+    {
+        return $this->request(
+            $account->access_token,
+            'get',
+            "{$this->url('local_posts_api')}/{$localPostName}",
+            [],
+            'Google Business Profile post lookup failed',
+            level: 'warning',
+        );
+    }
+
+    private function locationId(SocialAccount $account): string
+    {
+        $locationId = (string) data_get($account->meta, 'location_id');
+
+        if (blank($locationId)) {
+            throw new GoogleBusinessPublishException(
+                userMessage: __('posts.errors.google_business.no_location'),
+                category: ErrorCategory::Permission,
+            );
+        }
+
+        return $locationId;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildPayload(PostPlatform $postPlatform): array
     {
         $language = ContentLanguage::tryFrom((string) ($postPlatform->post->workspace->content_language ?? ContentLanguage::DEFAULT->value))
             ?? ContentLanguage::DEFAULT;
         $topicType = TopicType::fromMeta(data_get($postPlatform->meta, 'topic_type'));
+        $content = $postPlatform->post->content
+            ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, Platform::GoogleBusiness)
+            : '';
 
         $payload = [
             'languageCode' => $language->bcp47(),
@@ -166,7 +162,6 @@ class GoogleBusinessPublisher
 
         $callToAction = CtaAction::fromMeta(data_get($postPlatform->meta, 'call_to_action.action_type'));
 
-        // Google ignores callToAction on OFFER posts.
         if ($topicType->allowsCallToAction() && $callToAction !== CtaAction::None) {
             $payload['callToAction'] = [
                 'actionType' => $callToAction->value,
@@ -188,27 +183,18 @@ class GoogleBusinessPublisher
         }
 
         if ($topicType->requiresEvent()) {
-            $payload['event'] = $this->buildEvent($postPlatform);
+            $payload['event'] = $this->buildEvent($postPlatform, $topicType);
         }
 
-        if ($topicType === TopicType::Offer) {
-            $offer = $this->buildOffer($postPlatform);
+        $offer = $topicType === TopicType::Offer ? $this->buildOffer($postPlatform) : [];
 
-            if ($offer !== []) {
-                $payload['offer'] = $offer;
-            }
+        if ($offer !== []) {
+            $payload['offer'] = $offer;
         }
 
         return $payload;
     }
 
-    /**
-     * Google fetches the image from the URL we hand it and rejects anything
-     * outside its size and format rules, so it gets a JPEG derivative built to
-     * the platform's MediaOptimizer profile rather than whatever the user
-     * uploaded. The derivative lives beside the original on the default disk;
-     * a retry rebuilds it rather than depending on one surviving.
-     */
     private function imageSourceUrl(MediaItem $media, string $postPlatformId): string
     {
         $input = tempnam(sys_get_temp_dir(), 'gbp_');
@@ -244,44 +230,31 @@ class GoogleBusinessPublisher
     }
 
     /**
-     * The v4 Local Posts API requires `event` for both the EVENT and OFFER topic
-     * types, so both read the same `meta.event.*` fields.
+     * @return array<string, mixed>
      */
-    private function buildEvent(PostPlatform $postPlatform): array
+    private function buildEvent(PostPlatform $postPlatform, TopicType $topicType): array
     {
-        $title = (string) data_get($postPlatform->meta, 'event.title');
-        $topicType = TopicType::fromMeta(data_get($postPlatform->meta, 'topic_type'));
-
-        if (blank($title)) {
-            throw new GoogleBusinessPublishException(
-                userMessage: $topicType === TopicType::Offer
-                    ? __('posts.form.google_business.offer_title_required')
-                    : __('posts.form.google_business.event_title_required'),
-                category: ErrorCategory::ContentPolicy,
-            );
-        }
-
-        $startDate = (string) data_get($postPlatform->meta, 'event.start_date');
-        $endDate = (string) data_get($postPlatform->meta, 'event.end_date');
-
-        if (blank($startDate) || blank($endDate)) {
-            throw new GoogleBusinessPublishException(
-                userMessage: __('posts.errors.google_business.event_dates_required'),
-                category: ErrorCategory::ContentPolicy,
-            );
-        }
+        $title = $this->requiredMeta(
+            $postPlatform,
+            'event.title',
+            $topicType === TopicType::Offer
+                ? __('posts.form.google_business.offer_title_required')
+                : __('posts.form.google_business.event_title_required'),
+        );
+        $startDate = $this->requiredMeta($postPlatform, 'event.start_date', __('posts.errors.google_business.event_dates_required'));
+        $endDate = $this->requiredMeta($postPlatform, 'event.end_date', __('posts.errors.google_business.event_dates_required'));
 
         $schedule = [
-            'startDate' => $this->formatDate($startDate),
-            'endDate' => $this->formatDate($endDate),
+            'startDate' => $this->dateParts($startDate),
+            'endDate' => $this->dateParts($endDate),
         ];
 
-        if (filled(data_get($postPlatform->meta, 'event.start_time'))) {
-            $schedule['startTime'] = $this->formatTime((string) data_get($postPlatform->meta, 'event.start_time'));
-        }
+        foreach (['start' => 'startTime', 'end' => 'endTime'] as $meta => $field) {
+            $time = data_get($postPlatform->meta, "event.{$meta}_time");
 
-        if (filled(data_get($postPlatform->meta, 'event.end_time'))) {
-            $schedule['endTime'] = $this->formatTime((string) data_get($postPlatform->meta, 'event.end_time'));
+            if (filled($time)) {
+                $schedule[$field] = $this->timeParts((string) $time);
+            }
         }
 
         return [
@@ -290,93 +263,68 @@ class GoogleBusinessPublisher
         ];
     }
 
+    private function requiredMeta(PostPlatform $postPlatform, string $key, string $message): string
+    {
+        $value = (string) data_get($postPlatform->meta, $key);
+
+        if (blank($value)) {
+            throw new GoogleBusinessPublishException(
+                userMessage: $message,
+                category: ErrorCategory::ContentPolicy,
+            );
+        }
+
+        return $value;
+    }
+
+    /**
+     * @return array<string, string>
+     */
     private function buildOffer(PostPlatform $postPlatform): array
     {
         return array_filter([
             'couponCode' => data_get($postPlatform->meta, 'offer.coupon_code'),
             'redeemOnlineUrl' => data_get($postPlatform->meta, 'offer.redeem_online_url'),
             'termsConditions' => data_get($postPlatform->meta, 'offer.terms_conditions'),
-        ], fn ($value) => filled($value));
+        ], filled(...));
     }
 
     /**
      * @return array{year: int, month: int, day: int}
      */
-    private function formatDate(string $date): array
+    private function dateParts(string $date): array
     {
         $carbon = CarbonImmutable::parse($date);
 
-        return ['year' => (int) $carbon->format('Y'), 'month' => (int) $carbon->format('n'), 'day' => (int) $carbon->format('j')];
+        return ['year' => $carbon->year, 'month' => $carbon->month, 'day' => $carbon->day];
     }
 
     /**
      * @return array{hours: int, minutes: int, seconds: int, nanos: int}
      */
-    private function formatTime(string $time): array
+    private function timeParts(string $time): array
     {
         $carbon = CarbonImmutable::parse($time);
 
-        return ['hours' => (int) $carbon->format('G'), 'minutes' => (int) $carbon->format('i'), 'seconds' => 0, 'nanos' => 0];
+        return ['hours' => $carbon->hour, 'minutes' => $carbon->minute, 'seconds' => 0, 'nanos' => 0];
     }
 
     /**
-     * Re-read a Local Post so its review state can be settled. Google answers a
-     * create long before the post clears moderation, so `state` is the only
-     * place that says whether it went live or was refused.
-     *
-     * @return array<string, mixed>
-     */
-    public function fetchLocalPost(SocialAccount $account, string $localPostName): array
-    {
-        $response = $this->socialHttp()->withToken($account->access_token)
-            ->get("{$this->localPostsUrl}/{$localPostName}");
-
-        if ($response->failed()) {
-            Log::warning('Google Business Profile post lookup failed', [
-                'status' => $response->status(),
-                'body' => $this->redactResponseBody($response->body()),
-            ]);
-            $this->handleApiError($response);
-        }
-
-        return $response->json() ?? [];
-    }
-
-    /**
-     * @return list<string> Full "accounts/{id}" resource names.
+     * @return list<string>
      */
     private function fetchAccounts(string $accessToken): array
     {
-        $accounts = [];
-        $pageToken = null;
-
-        do {
-            $response = $this->socialHttp()->withToken($accessToken)
-                ->get("{$this->accountManagementUrl}/accounts", array_filter([
-                    // The Account Management API caps this at 20; asking for
-                    // more is silently clamped and hides the real page size.
-                    'pageSize' => 20,
-                    'pageToken' => $pageToken,
-                ]));
-
-            if ($response->failed()) {
-                Log::error('Google Business Profile accounts fetch failed', [
-                    'status' => $response->status(),
-                    'body' => $this->redactResponseBody($response->body()),
-                ]);
-                $this->handleApiError($response);
-            }
-
-            $data = $response->json() ?? [];
-
-            foreach (data_get($data, 'accounts', []) as $account) {
-                $accounts[] = (string) data_get($account, 'name');
-            }
-
-            $pageToken = data_get($data, 'nextPageToken');
-        } while (filled($pageToken));
-
-        return $accounts;
+        return $this->pages(
+            $accessToken,
+            "{$this->url('account_management_api')}/accounts",
+            // The Account Management API caps this at 20; asking for more is
+            // silently clamped and hides the real page size.
+            ['pageSize' => 20],
+            'Google Business Profile accounts fetch failed',
+            fn (array $data): array => collect(data_get($data, 'accounts', []))
+                ->map(fn (array $account): string => (string) data_get($account, 'name'))
+                ->all(),
+        );
     }
 
     /**
@@ -384,54 +332,41 @@ class GoogleBusinessPublisher
      */
     private function fetchLocationsForAccount(string $accessToken, string $accountName): array
     {
-        $locations = [];
-        $pageToken = null;
+        return $this->pages(
+            $accessToken,
+            "{$this->url('business_information_api')}/{$accountName}/locations",
+            [
+                'readMask' => 'name,title,storefrontAddress,metadata',
+                'pageSize' => 100,
+            ],
+            'Google Business Profile locations fetch failed',
+            fn (array $data): array => collect(data_get($data, 'locations', []))
+                ->reject(fn (array $location): bool => data_get($location, 'metadata.canOperateLocalPost') === false)
+                ->map(fn (array $location): array => $this->mapLocation($accountName, $location))
+                ->values()
+                ->all(),
+            ['account' => $accountName],
+        );
+    }
 
-        do {
-            $response = $this->socialHttp()->withToken($accessToken)
-                ->get("{$this->businessInformationUrl}/{$accountName}/locations", array_filter([
-                    'readMask' => 'name,title,storefrontAddress,metadata',
-                    'pageSize' => 100,
-                    'pageToken' => $pageToken,
-                ]));
+    /**
+     * @param  array<string, mixed>  $location
+     * @return array{id: string, account_name: string, location_name: string, title: string, address: ?string, maps_uri: ?string}
+     */
+    private function mapLocation(string $accountName, array $location): array
+    {
+        $shortName = (string) data_get($location, 'name');
 
-            if ($response->failed()) {
-                Log::error('Google Business Profile locations fetch failed', [
-                    'account' => $accountName,
-                    'status' => $response->status(),
-                    'body' => $this->redactResponseBody($response->body()),
-                ]);
-                $this->handleApiError($response);
-            }
-
-            $data = $response->json() ?? [];
-
-            foreach (data_get($data, 'locations', []) as $location) {
-                // Google tells us which listings can carry a Local Post at all.
-                // Only an explicit refusal disqualifies one — an absent flag is
-                // not a no, and dropping those would hide working locations.
-                if (data_get($location, 'metadata.canOperateLocalPost') === false) {
-                    continue;
-                }
-
-                $shortName = (string) data_get($location, 'name');
-
-                $locations[] = [
-                    'id' => GoogleBusinessResourceName::toFullLocationName($accountName, $shortName),
-                    'account_name' => $accountName,
-                    'location_name' => $shortName,
-                    'title' => (string) data_get($location, 'title'),
-                    'address' => $this->formatAddress(data_get($location, 'storefrontAddress')),
-                    'maps_uri' => filled(data_get($location, 'metadata.mapsUri'))
-                        ? (string) data_get($location, 'metadata.mapsUri')
-                        : null,
-                ];
-            }
-
-            $pageToken = data_get($data, 'nextPageToken');
-        } while (filled($pageToken));
-
-        return $locations;
+        return [
+            'id' => GoogleBusinessResourceName::toFullLocationName($accountName, $shortName),
+            'account_name' => $accountName,
+            'location_name' => $shortName,
+            'title' => (string) data_get($location, 'title'),
+            'address' => $this->formatAddress(data_get($location, 'storefrontAddress')),
+            'maps_uri' => filled(data_get($location, 'metadata.mapsUri'))
+                ? (string) data_get($location, 'metadata.mapsUri')
+                : null,
+        ];
     }
 
     private function formatAddress(?array $storefrontAddress): ?string
@@ -440,16 +375,75 @@ class GoogleBusinessPublisher
             return null;
         }
 
-        $lines = (array) data_get($storefrontAddress, 'addressLines', []);
-        $locality = data_get($storefrontAddress, 'locality');
-        $parts = array_filter([implode(' ', $lines), $locality]);
+        $parts = array_filter([
+            implode(' ', (array) data_get($storefrontAddress, 'addressLines', [])),
+            data_get($storefrontAddress, 'locality'),
+        ]);
 
         return $parts === [] ? null : implode(', ', $parts);
     }
 
-    private function handleApiError(Response $response): never
+    /**
+     * @template T
+     *
+     * @param  array<string, mixed>  $query
+     * @param  callable(array<string, mixed>): list<T>  $map
+     * @param  array<string, mixed>  $context
+     * @return list<T>
+     */
+    private function pages(string $token, string $url, array $query, string $message, callable $map, array $context = []): array
+    {
+        $items = [];
+        $pageToken = null;
+
+        do {
+            $data = $this->request($token, 'get', $url, [...$query, 'pageToken' => $pageToken], $message, $context);
+            array_push($items, ...$map($data));
+            $pageToken = data_get($data, 'nextPageToken');
+        } while (filled($pageToken));
+
+        return $items;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>
+     */
+    private function request(
+        string $token,
+        string $method,
+        string $url,
+        array $data,
+        string $message,
+        array $context = [],
+        string $level = 'error',
+    ): array {
+        $pending = $this->socialHttp()->withToken($token);
+        $response = $method === 'post'
+            ? $pending->post($url, $data)
+            : $pending->get($url, array_filter($data));
+
+        if ($response->failed()) {
+            Log::log($level, $message, [
+                ...$context,
+                'status' => $response->status(),
+                'body' => $this->redactResponseBody($response->body()),
+            ]);
+            $this->throwFrom($response);
+        }
+
+        return $response->json() ?? [];
+    }
+
+    private function throwFrom(Response $response): never
     {
         throw GoogleBusinessPublishException::fromApiResponse($response);
+    }
+
+    private function url(string $key): string
+    {
+        return (string) config("trypost.platforms.google_business.{$key}");
     }
 
     private function forgetDerivative(): void
