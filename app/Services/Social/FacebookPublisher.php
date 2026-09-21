@@ -124,7 +124,7 @@ class FacebookPublisher
         try {
             return $this->postTextToFeed($pageId, $accessToken, $content, $link, reportFailure: false);
         } catch (FacebookPublishException $exception) {
-            if (! $this->isLinkRejection($exception)) {
+            if (! $exception->rejectsLink()) {
                 Log::error('Facebook text post failed', [
                     'platform_error_code' => $exception->platformErrorCode,
                     'body' => $this->redactResponseBody($exception->rawResponse ?? ''),
@@ -140,12 +140,6 @@ class FacebookPublisher
         }
 
         return $this->postTextToFeed($pageId, $accessToken, $content, null);
-    }
-
-    private function isLinkRejection(FacebookPublishException $exception): bool
-    {
-        return in_array($exception->platformErrorCode, ['1609005', '1500'], true)
-            || ($exception->platformErrorCode === '200' && $exception->platformErrorSubcode === '1609008');
     }
 
     /**
