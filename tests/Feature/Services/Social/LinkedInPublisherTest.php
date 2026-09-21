@@ -16,7 +16,6 @@ use App\Services\Social\LinkCard\LinkCardFetcher;
 use App\Services\Social\LinkCard\LinkCardMetadata;
 use App\Services\Social\LinkedInPublisher;
 use Illuminate\Support\Facades\Http;
-use RuntimeException;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
