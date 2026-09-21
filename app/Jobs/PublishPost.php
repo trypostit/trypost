@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Actions\Post\FinalizePostPublication;
 use App\Models\Post;
+use App\Models\PostPlatform;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class PublishPost implements ShouldQueue
 {
@@ -26,13 +29,19 @@ class PublishPost implements ShouldQueue
         }
     }
 
-    public function failed(?\Throwable $exception): void
+    public function failed(?Throwable $exception): void
     {
         Log::error('PublishPost job failed', [
             'post_id' => $this->post->id,
             'error' => $exception?->getMessage(),
         ]);
 
-        $this->post->markAsFailed();
+        $this->post->refresh();
+
+        $settled = $this->post->postPlatforms()->enabled()->first();
+
+        if ($settled instanceof PostPlatform) {
+            app(FinalizePostPublication::class)->handle($settled);
+        }
     }
 }

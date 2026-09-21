@@ -181,31 +181,27 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
      */
     private function recordPublishResult(array $result): void
     {
-        $id = (string) data_get($result, 'id');
-        $url = data_get($result, 'url');
+        $platformPostId = (string) data_get($result, 'id');
+        $platformUrl = data_get($result, 'url');
 
         // tryFrom, not fromApi: every other publisher omits `state`. fromApi(null)
         // is Processing, which would hold LinkedIn/X/… in pending review forever.
         $state = LocalPostState::tryFrom((string) data_get($result, 'state'));
 
-        if ($state?->isRejected()) {
-            $this->postPlatform->markAsRejected(
-                $id,
-                $url,
+        match ($state) {
+            LocalPostState::Rejected => $this->postPlatform->markAsRejected(
+                $platformPostId,
+                $platformUrl,
                 __('posts.errors.rejected_in_review'),
                 ['provider_state' => $state->value],
-            );
-
-            return;
-        }
-
-        if ($state?->isPendingReview()) {
-            $this->postPlatform->markAsPendingReview($id, $url);
-
-            return;
-        }
-
-        $this->postPlatform->markAsPublished($id, $url);
+            ),
+            LocalPostState::Processing,
+            LocalPostState::Scheduled,
+            LocalPostState::Unspecified => $this->postPlatform->markAsPendingReview($platformPostId, $platformUrl),
+            LocalPostState::Live,
+            LocalPostState::Recurring,
+            null => $this->postPlatform->markAsPublished($platformPostId, $platformUrl),
+        };
     }
 
     private function refreshAccountToken(): void

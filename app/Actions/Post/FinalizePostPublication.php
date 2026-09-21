@@ -16,8 +16,8 @@ use Illuminate\Support\Collection;
 
 /**
  * Settles a post once every enabled target has reached a terminal state, and
- * notifies the owner once. Shared by the publish job and by the Google Business
- * reconciliation job, which finishes targets the publish job had to leave open.
+ * notifies the owner once. Shared by PublishToSocialPlatform, PublishPost::failed,
+ * RecoverStuckPosts, and ReconcileGoogleBusinessPost.
  */
 class FinalizePostPublication
 {
