@@ -219,7 +219,7 @@ return [
             'event_end_date_required' => 'Bitiş tarihini girin.',
             'event_end_date_before_start' => 'Bitiş tarihi, başlangıç tarihiyle aynı veya daha sonra olmalıdır.',
             'event_end_time_before_start' => 'Bitiş saati, başlangıç saatinden sonra olmalıdır.',
-            'title_max' => 'Başlık en fazla 100 karakter olabilir.',
+            'title_max' => 'Başlık en fazla 58 karakter olabilir.',
             'event_start_time' => 'Başlangıç saati',
             'event_end_time' => 'Bitiş saati',
             'offer_title' => 'Teklif başlığı',

@@ -217,7 +217,7 @@ return [
             'event_end_date_required' => '请输入结束日期。',
             'event_end_date_before_start' => '结束日期必须等于或晚于开始日期。',
             'event_end_time_before_start' => '结束时间必须晚于开始时间。',
-            'title_max' => '标题不能超过 100 个字符。',
+            'title_max' => '标题不能超过 58 个字符。',
             'event_start_time' => '开始时间',
             'event_end_time' => '结束时间',
             'offer_title' => '优惠标题',

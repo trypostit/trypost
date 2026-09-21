@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\GoogleBusiness\TopicType;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
@@ -895,6 +896,57 @@ test('pinterest meta title and link validation bounds are enforced', function ()
             'platforms.0.meta.title' => __('posts.form.pinterest.title_max'),
             'platforms.0.meta.link' => __('posts.form.pinterest.link_invalid'),
         ]);
+});
+
+test('saving a google business event title over the api length is rejected', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'platforms' => [[
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+                'meta' => [
+                    'topic_type' => 'EVENT',
+                    'event' => ['title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH + 1)],
+                ],
+            ]],
+        ])
+        ->assertSessionHasErrors([
+            'platforms.0.meta.event.title' => __('posts.form.google_business.title_max'),
+        ]);
+});
+
+test('saving a google business coupon longer than the event title cap is accepted', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => [],
+    ]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Draft->value,
+            'platforms' => [[
+                'id' => $postPlatform->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+                'meta' => [
+                    'topic_type' => 'OFFER',
+                    'offer' => ['coupon_code' => str_repeat('C', TopicType::TITLE_MAX_LENGTH + 20)],
+                ],
+            ]],
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    expect(data_get($postPlatform->fresh()->meta, 'offer.coupon_code'))
+        ->toBe(str_repeat('C', TopicType::TITLE_MAX_LENGTH + 20));
 });
 
 test('publishing a google business event post without event fields is rejected', function () {

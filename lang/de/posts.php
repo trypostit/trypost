@@ -219,7 +219,7 @@ return [
             'event_end_date_required' => 'Gib ein Enddatum ein.',
             'event_end_date_before_start' => 'Das Enddatum muss am oder nach dem Startdatum liegen.',
             'event_end_time_before_start' => 'Die Endzeit muss nach der Startzeit liegen.',
-            'title_max' => 'Der Titel darf höchstens 100 Zeichen lang sein.',
+            'title_max' => 'Der Titel darf höchstens 58 Zeichen lang sein.',
             'event_start_time' => 'Startzeit',
             'event_end_time' => 'Endzeit',
             'offer_title' => 'Angebotstitel',

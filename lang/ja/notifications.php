@@ -18,4 +18,12 @@ return [
     'post_at_risk' => [
         'title' => '{1} :count 件の予定投稿にリスクがあります|[2,*] :count 件の予定投稿にリスクがあります',
     ],
+    'post_published' => [
+        'title' => '投稿を公開しました',
+        'body' => ':platforms',
+    ],
+    'post_failed' => [
+        'title' => '投稿の公開に失敗しました',
+        'body' => '失敗: :platforms',
+    ],
 ];

@@ -18,4 +18,12 @@ return [
     'post_at_risk' => [
         'title' => '{1} :count aankomende post loopt risico|[2,*] :count aankomende posts lopen risico',
     ],
+    'post_published' => [
+        'title' => 'Post succesvol gepubliceerd',
+        'body' => ':platforms',
+    ],
+    'post_failed' => [
+        'title' => 'Publiceren van post mislukt',
+        'body' => 'Mislukt op: :platforms',
+    ],
 ];

@@ -18,4 +18,12 @@ return [
     'post_at_risk' => [
         'title' => '{1} 예정된 게시물 :count건이 위험합니다|[2,*] 예정된 게시물 :count건이 위험합니다',
     ],
+    'post_published' => [
+        'title' => '게시물이 게시되었습니다',
+        'body' => ':platforms',
+    ],
+    'post_failed' => [
+        'title' => '게시물 게시에 실패했습니다',
+        'body' => '실패: :platforms',
+    ],
 ];

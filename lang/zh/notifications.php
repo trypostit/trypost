@@ -18,4 +18,12 @@ return [
     'post_at_risk' => [
         'title' => '{1} 有 :count 篇待发布的帖子存在风险|[2,*] 有 :count 篇待发布的帖子存在风险',
     ],
+    'post_published' => [
+        'title' => '帖子已成功发布',
+        'body' => ':platforms',
+    ],
+    'post_failed' => [
+        'title' => '帖子发布失败',
+        'body' => '失败平台：:platforms',
+    ],
 ];

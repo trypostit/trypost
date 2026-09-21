@@ -16,6 +16,13 @@ enum TopicType: string
     case Event = 'EVENT';
     case Offer = 'OFFER';
 
+    /**
+     * Google rejects `event.title` longer than this (`Must be at most 58
+     * characters`). Not published on the v4 schema page — it is the API's
+     * own field-level cap. Coupon / terms have no documented length.
+     */
+    public const TITLE_MAX_LENGTH = 58;
+
     public static function fromMeta(mixed $value): self
     {
         return self::tryFrom((string) $value) ?? self::Standard;

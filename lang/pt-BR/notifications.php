@@ -18,4 +18,12 @@ return [
     'post_at_risk' => [
         'title' => '{1} :count post agendado está em risco|[2,*] :count posts agendados estão em risco',
     ],
+    'post_published' => [
+        'title' => 'Post publicado com sucesso',
+        'body' => ':platforms',
+    ],
+    'post_failed' => [
+        'title' => 'Falha ao publicar o post',
+        'body' => 'Falhou em: :platforms',
+    ],
 ];

@@ -18,4 +18,12 @@ return [
     'post_at_risk' => [
         'title' => '{1} :count planlanan gönderi risk altında|[2,*] :count planlanan gönderi risk altında',
     ],
+    'post_published' => [
+        'title' => 'Gönderi başarıyla yayınlandı',
+        'body' => ':platforms',
+    ],
+    'post_failed' => [
+        'title' => 'Gönderi yayınlanamadı',
+        'body' => 'Başarısız: :platforms',
+    ],
 ];

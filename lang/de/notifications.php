@@ -18,4 +18,12 @@ return [
     'post_at_risk' => [
         'title' => '{1} :count bevorstehender Beitrag ist gefährdet|[2,*] :count bevorstehende Beiträge sind gefährdet',
     ],
+    'post_published' => [
+        'title' => 'Beitrag erfolgreich veröffentlicht',
+        'body' => ':platforms',
+    ],
+    'post_failed' => [
+        'title' => 'Veröffentlichung fehlgeschlagen',
+        'body' => 'Fehlgeschlagen bei: :platforms',
+    ],
 ];

@@ -7,6 +7,7 @@ import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import { mediaLimitsDocsUrl } from '@/lib/docs';
 import {
+    GOOGLE_BUSINESS_EVENT_TITLE_MAX,
     GOOGLE_BUSINESS_EVENT_TOPIC_TYPES,
     GoogleBusinessCtaAction,
     GoogleBusinessTopicType,
@@ -103,6 +104,8 @@ const PLATFORM_META_RULES: Record<string, MetaRule> = {
             tooltipKey = topicType === GoogleBusinessTopicType.Offer
                 ? 'posts.form.google_business.offer_title_required'
                 : 'posts.form.google_business.event_title_required';
+        } else if (needsEvent && (meta.event?.title?.length ?? 0) > GOOGLE_BUSINESS_EVENT_TITLE_MAX) {
+            tooltipKey = 'posts.form.google_business.title_max';
         } else if (needsEvent && !meta.event?.start_date) {
             tooltipKey = 'posts.form.google_business.event_start_date_required';
         } else if (needsEvent && !meta.event?.end_date) {

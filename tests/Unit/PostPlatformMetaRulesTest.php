@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\GoogleBusiness\TopicType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Support\PostPlatformMetaRules;
@@ -110,6 +111,39 @@ test('google business meta rules validate topic_type and call_to_action shape', 
     expect($rules)->toHaveKey('platforms.*.meta.call_to_action.url');
     expect($rules)->toHaveKey('platforms.*.meta.event.title');
     expect($rules)->toHaveKey('platforms.*.meta.offer.coupon_code');
+});
+
+test('google business event title is capped at the api length and coupon is not', function () {
+    $rules = PostPlatformMetaRules::rules();
+
+    expect($rules['platforms.*.meta.event.title'])->toBe([
+        'sometimes',
+        'nullable',
+        'string',
+        'max:'.TopicType::TITLE_MAX_LENGTH,
+    ])
+        ->and($rules['platforms.*.meta.offer.coupon_code'])->toBe(['sometimes', 'nullable', 'string']);
+
+    $tooLong = Validator::make(
+        ['platforms' => [['meta' => ['event' => ['title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH + 1)]]]]],
+        PostPlatformMetaRules::rules(),
+        PostPlatformMetaRules::messages(),
+    );
+    $atLimit = Validator::make(
+        ['platforms' => [['meta' => ['event' => ['title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH)]]]]],
+        PostPlatformMetaRules::rules(),
+        PostPlatformMetaRules::messages(),
+    );
+    $longCoupon = Validator::make(
+        ['platforms' => [['meta' => ['offer' => ['coupon_code' => str_repeat('C', TopicType::TITLE_MAX_LENGTH + 20)]]]]],
+        PostPlatformMetaRules::rules(),
+        PostPlatformMetaRules::messages(),
+    );
+
+    expect($tooLong->fails())->toBeTrue()
+        ->and($tooLong->errors()->first('platforms.0.meta.event.title'))->toBe(__('posts.form.google_business.title_max'))
+        ->and($atLimit->fails())->toBeFalse()
+        ->and($longCoupon->fails())->toBeFalse();
 });
 
 test('google business call_to_action.url rule is unconditional, not required_unless', function () {

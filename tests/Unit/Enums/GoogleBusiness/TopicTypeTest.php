@@ -5,7 +5,8 @@ declare(strict_types=1);
 use App\Enums\GoogleBusiness\TopicType;
 
 test('topic type matches the authorable local post values', function () {
-    expect(TopicType::values())->toBe(['STANDARD', 'EVENT', 'OFFER']);
+    expect(TopicType::values())->toBe(['STANDARD', 'EVENT', 'OFFER'])
+        ->and(TopicType::TITLE_MAX_LENGTH)->toBe(58);
 });
 
 test('fromMeta defaults a missing or unknown topic to standard', function (mixed $value, TopicType $expected) {

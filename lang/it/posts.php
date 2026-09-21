@@ -217,7 +217,7 @@ return [
             'event_end_date_required' => 'Inserisci una data fine.',
             'event_end_date_before_start' => 'La data di fine deve essere uguale o successiva alla data di inizio.',
             'event_end_time_before_start' => 'L\'ora di fine deve essere successiva all\'ora di inizio.',
-            'title_max' => 'Il titolo deve avere al massimo 100 caratteri.',
+            'title_max' => 'Il titolo deve avere al massimo 58 caratteri.',
             'event_start_time' => 'Ora inizio',
             'event_end_time' => 'Ora fine',
             'offer_title' => 'Titolo offerta',

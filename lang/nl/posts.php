@@ -217,7 +217,7 @@ return [
             'event_end_date_required' => 'Voer een einddatum in.',
             'event_end_date_before_start' => 'De einddatum moet op of na de startdatum liggen.',
             'event_end_time_before_start' => 'De eindtijd moet na de starttijd liggen.',
-            'title_max' => 'De titel mag maximaal 100 tekens zijn.',
+            'title_max' => 'De titel mag maximaal 58 tekens zijn.',
             'event_start_time' => 'Starttijd',
             'event_end_time' => 'Eindtijd',
             'offer_title' => 'Aanbodtitel',

@@ -217,7 +217,7 @@ return [
             'event_end_date_required' => 'أدخل تاريخ الانتهاء.',
             'event_end_date_before_start' => 'يجب أن يكون تاريخ الانتهاء في يوم تاريخ البدء أو بعده.',
             'event_end_time_before_start' => 'يجب أن يكون وقت الانتهاء بعد وقت البدء.',
-            'title_max' => 'يجب ألا يتجاوز العنوان 100 حرف.',
+            'title_max' => 'يجب ألا يتجاوز العنوان 58 حرفًا.',
             'event_start_time' => 'وقت البدء',
             'event_end_time' => 'وقت الانتهاء',
             'offer_title' => 'عنوان العرض',

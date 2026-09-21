@@ -217,7 +217,7 @@ return [
             'event_end_date_required' => 'Insira uma data de término.',
             'event_end_date_before_start' => 'A data de término deve ser igual ou posterior à data de início.',
             'event_end_time_before_start' => 'A hora de término deve ser posterior à hora de início.',
-            'title_max' => 'O título deve ter no máximo 100 caracteres.',
+            'title_max' => 'O título deve ter no máximo 58 caracteres.',
             'event_start_time' => 'Hora de início',
             'event_end_time' => 'Hora de término',
             'offer_title' => 'Título da oferta',

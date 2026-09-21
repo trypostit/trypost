@@ -217,7 +217,7 @@ return [
             'event_end_date_required' => 'Wpisz datę zakończenia.',
             'event_end_date_before_start' => 'Data zakończenia musi być równa lub późniejsza niż data rozpoczęcia.',
             'event_end_time_before_start' => 'Godzina zakończenia musi być późniejsza niż godzina rozpoczęcia.',
-            'title_max' => 'Tytuł może mieć maksymalnie 100 znaków.',
+            'title_max' => 'Tytuł może mieć maksymalnie 58 znaków.',
             'event_start_time' => 'Czas rozpoczęcia',
             'event_end_time' => 'Czas zakończenia',
             'offer_title' => 'Tytuł oferty',

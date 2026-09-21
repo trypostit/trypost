@@ -14,3 +14,6 @@ LocalPost.state, topicType, and callToAction.actionType live on App\Enums\Google
 
 ## GBP publish result uses tryFrom not fromApi
 PublishToSocialPlatform::recordPublishResult must use LocalPostState::tryFrom, never fromApi. Other publishers omit `state`; fromApi(null) is Processing and would park LinkedIn/X/… in pending review. The GBP publisher always returns `$state->value` after fromApi, so the job only sees a known case.
+
+## GBP event title is 58 characters, coupon is not
+LocalPost event.title is capped at TopicType::TITLE_MAX_LENGTH (58) — Google returns Must be at most 58 characters even though the v4 schema page omits the limit. Do not reuse 58 on offer.coupon_code / terms; those have no published cap. Mirror the title cap in resources/js/types/google-business.ts as GOOGLE_BUSINESS_EVENT_TITLE_MAX.

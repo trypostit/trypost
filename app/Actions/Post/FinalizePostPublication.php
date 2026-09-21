@@ -79,13 +79,20 @@ class FinalizePostPublication
             ->map(fn (PostPlatform $pp): string => $pp->notificationLabel())
             ->implode(', ');
 
+        $locale = $owner->preferredLocale();
+        $placeholders = ['platforms' => $platforms];
+
         SendNotification::dispatch(
             user: $owner,
             workspaceId: $post->workspace_id,
             type: $successful ? Type::PostPublished : Type::PostFailed,
             channel: Channel::Both,
-            title: $successful ? 'Post published successfully' : 'Post failed to publish',
-            body: $successful ? $platforms : "Failed on: {$platforms}",
+            title: $successful
+                ? __('notifications.post_published.title', [], $locale)
+                : __('notifications.post_failed.title', [], $locale),
+            body: $successful
+                ? __('notifications.post_published.body', $placeholders, $locale)
+                : __('notifications.post_failed.body', $placeholders, $locale),
             data: ['post_id' => $post->id],
             mailable: $successful ? new PostPublished($post) : new PostPublishFailed($post),
         );

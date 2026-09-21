@@ -18,4 +18,12 @@ return [
     'post_at_risk' => [
         'title' => '{1} :count próxima publicación está en riesgo|[2,*] :count próximas publicaciones están en riesgo',
     ],
+    'post_published' => [
+        'title' => 'Post publicado correctamente',
+        'body' => ':platforms',
+    ],
+    'post_failed' => [
+        'title' => 'El post no se pudo publicar',
+        'body' => 'Falló en: :platforms',
+    ],
 ];

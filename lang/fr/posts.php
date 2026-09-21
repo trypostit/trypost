@@ -217,7 +217,7 @@ return [
             'event_end_date_required' => 'Entrez une date de fin.',
             'event_end_date_before_start' => 'La date de fin doit être égale ou postérieure à la date de début.',
             'event_end_time_before_start' => 'L\'heure de fin doit être postérieure à l\'heure de début.',
-            'title_max' => 'Le titre ne doit pas dépasser 100 caractères.',
+            'title_max' => 'Le titre ne doit pas dépasser 58 caractères.',
             'event_start_time' => 'Heure de début',
             'event_end_time' => 'Heure de fin',
             'offer_title' => 'Titre de l\'offre',

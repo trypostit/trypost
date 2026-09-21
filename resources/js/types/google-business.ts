@@ -22,6 +22,9 @@ export const isGoogleBusinessTopicType = (value: unknown): value is GoogleBusine
 export const resolveGoogleBusinessTopicType = (value: unknown): GoogleBusinessTopicTypeValue =>
     isGoogleBusinessTopicType(value) ? value : GoogleBusinessTopicType.Standard;
 
+/** Google rejects `event.title` longer than this. Mirrors TopicType::TITLE_MAX_LENGTH. */
+export const GOOGLE_BUSINESS_EVENT_TITLE_MAX = 58;
+
 /** Topic types whose Local Post requires an `event` object (title + date range). */
 export const GOOGLE_BUSINESS_EVENT_TOPIC_TYPES: GoogleBusinessTopicTypeValue[] = [
     GoogleBusinessTopicType.Event,

@@ -217,7 +217,7 @@ return [
             'event_end_date_required' => '終了日を入力してください。',
             'event_end_date_before_start' => '終了日は開始日以降にしてください。',
             'event_end_time_before_start' => '終了時刻は開始時刻より後にしてください。',
-            'title_max' => 'タイトルは100文字以内にしてください。',
+            'title_max' => 'タイトルは58文字以内にしてください。',
             'event_start_time' => '開始時刻',
             'event_end_time' => '終了時刻',
             'offer_title' => 'オファータイトル',

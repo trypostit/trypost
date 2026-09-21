@@ -18,4 +18,12 @@ return [
     'post_at_risk' => [
         'title' => ':count nadchodzący post jest zagrożony|:count nadchodzące posty są zagrożone|:count nadchodzących postów jest zagrożonych',
     ],
+    'post_published' => [
+        'title' => 'Post opublikowany pomyślnie',
+        'body' => ':platforms',
+    ],
+    'post_failed' => [
+        'title' => 'Nie udało się opublikować posta',
+        'body' => 'Niepowodzenie na: :platforms',
+    ],
 ];

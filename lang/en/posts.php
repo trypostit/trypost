@@ -217,7 +217,7 @@ return [
             'event_end_date_required' => 'Enter an event end date.',
             'event_end_date_before_start' => 'The end date must be on or after the start date.',
             'event_end_time_before_start' => 'The end time must be after the start time.',
-            'title_max' => 'Title must be 100 characters or fewer.',
+            'title_max' => 'Title must be 58 characters or fewer.',
             'event_start_time' => 'Start time',
             'event_end_time' => 'End time',
             'offer_title' => 'Offer title',

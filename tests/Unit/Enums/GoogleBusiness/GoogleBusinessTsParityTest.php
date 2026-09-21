@@ -24,6 +24,7 @@ test('typescript google business topic and cta values match the php enums', func
 
     expect($quotedValues('GoogleBusinessTopicType'))->toEqualCanonicalizing(TopicType::values())
         ->and($quotedValues('GoogleBusinessCtaAction'))->toEqualCanonicalizing(CtaAction::values())
+        ->and($source)->toContain('GOOGLE_BUSINESS_EVENT_TITLE_MAX = '.TopicType::TITLE_MAX_LENGTH)
         ->and($source)->not->toContain('GET_OFFER')
         ->and($source)->not->toContain('DeprecatedCta');
 });

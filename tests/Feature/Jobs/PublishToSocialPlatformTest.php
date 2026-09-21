@@ -1482,9 +1482,11 @@ test('in-app published notification falls back to the facebook page display name
     (new PublishToSocialPlatform($postPlatform))->handle();
 
     Queue::assertPushed(SendNotification::class, function (SendNotification $job) use ($post) {
+        $platforms = 'Facebook Page (@InboxPlacement.io)';
+
         return $job->type === Type::PostPublished
-            && $job->title === 'Post published successfully'
-            && $job->body === 'Facebook Page (@InboxPlacement.io)'
+            && $job->title === __('notifications.post_published.title')
+            && $job->body === __('notifications.post_published.body', ['platforms' => $platforms])
             && data_get($job->data, 'post_id') === $post->id;
     });
 });
@@ -1516,9 +1518,11 @@ test('in-app failed notification falls back to the facebook page display name', 
     (new PublishToSocialPlatform($postPlatform))->handle();
 
     Queue::assertPushed(SendNotification::class, function (SendNotification $job) use ($post) {
+        $platforms = 'Facebook Page (@InboxPlacement.io)';
+
         return $job->type === Type::PostFailed
-            && $job->title === 'Post failed to publish'
-            && $job->body === 'Failed on: Facebook Page (@InboxPlacement.io)'
+            && $job->title === __('notifications.post_failed.title')
+            && $job->body === __('notifications.post_failed.body', ['platforms' => $platforms])
             && data_get($job->data, 'post_id') === $post->id;
     });
 });

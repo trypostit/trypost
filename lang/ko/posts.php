@@ -217,7 +217,7 @@ return [
             'event_end_date_required' => '종료 날짜를 입력하세요.',
             'event_end_date_before_start' => '종료일은 시작일 이후여야 합니다.',
             'event_end_time_before_start' => '종료 시간은 시작 시간 이후여야 합니다.',
-            'title_max' => '제목은 100자 이하여야 합니다.',
+            'title_max' => '제목은 58자 이하여야 합니다.',
             'event_start_time' => '시작 시간',
             'event_end_time' => '종료 시간',
             'offer_title' => '오퍼 제목',
