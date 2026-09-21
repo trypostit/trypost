@@ -153,6 +153,19 @@ test('publish throws when the account has no location', function () {
     Http::assertNothingSent();
 });
 
+test('publish throws when only one of the location resource names is stored', function (array $meta) {
+    Http::fake();
+    $this->socialAccount->update(['meta' => $meta]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(GoogleBusinessPublishException::class, __('posts.errors.google_business.no_location'));
+
+    Http::assertNothingSent();
+})->with([
+    'id only' => [['location_id' => 'accounts/1/locations/2']],
+    'name only' => [['location_name' => 'locations/2']],
+]);
+
 test('a blank offer title throws with the offer-title message', function () {
     fakeLocalPostCreate();
     $this->postPlatform->update([

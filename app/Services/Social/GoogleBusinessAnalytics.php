@@ -6,6 +6,7 @@ namespace App\Services\Social;
 
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Support\GoogleBusinessResourceName;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -48,9 +49,9 @@ class GoogleBusinessAnalytics
         $since ??= now()->subDays(7);
         $until ??= now();
 
-        return $this->remember(
+        return $this->rememberSuccessful(
             "analytics:google_business:{$account->id}:{$since->format('Y-m-d')}:{$until->format('Y-m-d')}",
-            fn (): array => $this->fetchMetricsFromApi($account, $since, $until),
+            fn (): array|false => $this->fetchMetricsFromApi($account, $since, $until),
         );
     }
 
@@ -65,25 +66,39 @@ class GoogleBusinessAnalytics
         $since ??= now()->subMonth();
         $until ??= now();
 
-        return $this->remember(
+        return $this->rememberSuccessful(
             "analytics:google_business:keywords:{$account->id}:{$since->format('Y-m')}:{$until->format('Y-m')}",
-            fn (): array => $this->fetchSearchKeywordsFromApi($account, $since, $until),
+            fn (): array|false => $this->fetchSearchKeywordsFromApi($account, $since, $until),
         );
     }
 
     /**
-     * @param  callable(): array  $callback
+     * @param  callable(): array|false  $callback
      */
-    private function remember(string $key, callable $callback): array
+    private function rememberSuccessful(string $key, callable $callback): array
     {
-        return Cache::remember($key, app()->isProduction() ? 3600 : 1, $callback);
+        $cached = Cache::get($key);
+
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $value = $callback();
+
+        if ($value === false) {
+            return [];
+        }
+
+        Cache::put($key, $value, app()->isProduction() ? 3600 : 1);
+
+        return $value;
     }
 
     private function location(SocialAccount $account): ?string
     {
-        $name = (string) data_get($account->meta, 'location_name');
+        $location = GoogleBusinessResourceName::connectedLocation($account->meta);
 
-        if (blank($name)) {
+        if ($location === null) {
             return null;
         }
 
@@ -91,18 +106,18 @@ class GoogleBusinessAnalytics
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
-        return $name;
+        return $location['name'];
     }
 
     /**
-     * @return list<array{keyword: string, value: int, estimated: bool}>
+     * @return list<array{keyword: string, value: int, estimated: bool}>|false
      */
-    private function fetchSearchKeywordsFromApi(SocialAccount $account, CarbonInterface $since, CarbonInterface $until): array
+    private function fetchSearchKeywordsFromApi(SocialAccount $account, CarbonInterface $since, CarbonInterface $until): array|false
     {
         $locationName = $this->location($account);
 
         if ($locationName === null) {
-            return [];
+            return false;
         }
 
         $keywords = [];
@@ -124,7 +139,7 @@ class GoogleBusinessAnalytics
                     'body' => $this->redactResponseBody($response->body()),
                 ]);
 
-                return $keywords;
+                return false;
             }
 
             $payload = $response->json();
@@ -148,12 +163,15 @@ class GoogleBusinessAnalytics
         return $keywords;
     }
 
-    private function fetchMetricsFromApi(SocialAccount $account, CarbonInterface $since, CarbonInterface $until): array
+    /**
+     * @return list<array{label: string, value: int}>|false
+     */
+    private function fetchMetricsFromApi(SocialAccount $account, CarbonInterface $since, CarbonInterface $until): array|false
     {
         $locationName = $this->location($account);
 
         if ($locationName === null) {
-            return [];
+            return false;
         }
 
         $response = $this->socialHttp()->withToken($account->access_token)
@@ -164,7 +182,7 @@ class GoogleBusinessAnalytics
                 'body' => $this->redactResponseBody($response->body()),
             ]);
 
-            return [];
+            return false;
         }
 
         $labels = self::METRICS + self::CONDITIONAL_METRICS;

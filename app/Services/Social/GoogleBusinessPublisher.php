@@ -42,8 +42,9 @@ class GoogleBusinessPublisher
                 app(ConnectionVerifier::class)->refreshToken($account);
             }
 
+            $location = GoogleBusinessResourceName::connectedLocation($account->meta);
             $locationId = $this->required(
-                data_get($account->meta, 'location_id'),
+                $location['id'] ?? null,
                 __('posts.errors.google_business.no_location'),
                 ErrorCategory::Permission,
             );

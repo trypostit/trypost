@@ -57,3 +57,22 @@ test('it leaves a target alone until the reconciliation interval has passed', fu
 
     Queue::assertNotPushed(ReconcileGoogleBusinessPost::class);
 });
+
+test('it dispatches again once the reconciliation interval has passed', function () use ($target) {
+    $awaiting = $target(['last_reconciled_at' => now()->subMinutes(6)]);
+
+    $this->artisan('social:reconcile-google-business-posts')->assertSuccessful();
+
+    Queue::assertPushed(
+        ReconcileGoogleBusinessPost::class,
+        fn (ReconcileGoogleBusinessPost $job): bool => $job->postPlatform->id === $awaiting->id,
+    );
+});
+
+test('it skips a target that has no remote post id', function () use ($target) {
+    $target(['platform_post_id' => null]);
+
+    $this->artisan('social:reconcile-google-business-posts')->assertSuccessful();
+
+    Queue::assertNotPushed(ReconcileGoogleBusinessPost::class);
+});

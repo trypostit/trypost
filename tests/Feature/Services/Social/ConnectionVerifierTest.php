@@ -1266,5 +1266,43 @@ test('refreshToken exchanges the refresh token for a new access token', function
 
     app(ConnectionVerifier::class)->refreshToken($account);
 
-    expect($account->fresh()->access_token)->toBe('new-access-token');
+    expect($account->fresh()->access_token)->toBe('new-access-token')
+        ->and($account->fresh()->refresh_token)->toBe('refresh-abc');
+});
+
+test('refreshToken keeps a usable expiry when google omits expires_in', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create([
+        'refresh_token' => 'refresh-abc',
+        'token_expires_at' => now()->subMinute(),
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.google_business.oauth_api').'/token' => Http::response([
+            'access_token' => 'new-access-token',
+        ], 200),
+    ]);
+
+    app(ConnectionVerifier::class)->refreshToken($account);
+
+    expect($account->fresh()->access_token)->toBe('new-access-token')
+        ->and($account->fresh()->token_expires_at)->not->toBeNull()
+        ->and($account->fresh()->token_expires_at->greaterThan(now()->addMinutes(30)))->toBeTrue();
+});
+
+test('refreshToken persists a rotated google business refresh token', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create([
+        'refresh_token' => 'refresh-abc',
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.google_business.oauth_api').'/token' => Http::response([
+            'access_token' => 'new-access-token',
+            'refresh_token' => 'refresh-rotated',
+            'expires_in' => 3600,
+        ], 200),
+    ]);
+
+    app(ConnectionVerifier::class)->refreshToken($account);
+
+    expect($account->fresh()->refresh_token)->toBe('refresh-rotated');
 });

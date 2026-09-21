@@ -156,7 +156,7 @@ test('x still accepts a mov video', function () {
 test('a gif is rejected on content types that do not accept gifs', function () {
     $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/gif']];
 
-    foreach ([ContentType::InstagramFeed, ContentType::LinkedInPost, ContentType::PinterestPin, ContentType::FacebookPost] as $type) {
+    foreach ([ContentType::InstagramFeed, ContentType::LinkedInPost, ContentType::PinterestPin, ContentType::FacebookPost, ContentType::GoogleBusinessPost] as $type) {
         $errors = runMediaRule($type->value, $media);
 
         expect($errors)->toHaveCount(1, $type->value);

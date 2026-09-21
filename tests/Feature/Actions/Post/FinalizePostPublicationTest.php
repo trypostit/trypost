@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Post\FinalizePostPublication;
 use App\Enums\Notification\Type;
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\User\Locale;
 use App\Jobs\SendNotification;
 use App\Models\Post;
@@ -100,4 +101,84 @@ test('a post with no enabled targets is left alone', function () {
 
     expect($post->fresh()->status)->toBe(PostStatus::Publishing);
     Queue::assertNotPushed(SendNotification::class);
+});
+
+test('a google business target still in review does not settle the post', function () {
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $owner->id,
+        'status' => PostStatus::Publishing,
+    ]);
+    PostPlatform::factory()->googleBusiness()->pendingReview()->create([
+        'post_id' => $post->id,
+        'social_account_id' => SocialAccount::factory()->googleBusiness()->create([
+            'workspace_id' => $workspace->id,
+        ])->id,
+        'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
+    ]);
+
+    app(FinalizePostPublication::class)->handle($post);
+
+    expect($post->fresh()->status)->toBe(PostStatus::Publishing);
+    Queue::assertNotPushed(SendNotification::class);
+});
+
+test('a published sibling does not settle the post while google business is in review', function () {
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $owner->id,
+        'status' => PostStatus::Publishing,
+    ]);
+    PostPlatform::factory()->facebook()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => SocialAccount::factory()->facebook()->create([
+            'workspace_id' => $workspace->id,
+        ])->id,
+    ]);
+    PostPlatform::factory()->googleBusiness()->pendingReview()->create([
+        'post_id' => $post->id,
+        'social_account_id' => SocialAccount::factory()->googleBusiness()->create([
+            'workspace_id' => $workspace->id,
+        ])->id,
+        'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
+    ]);
+
+    app(FinalizePostPublication::class)->handle($post);
+
+    expect($post->fresh()->status)->toBe(PostStatus::Publishing);
+    Queue::assertNotPushed(SendNotification::class);
+});
+
+test('a rejected google business target next to a published sibling is partial', function () {
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $owner->id,
+        'status' => PostStatus::Publishing,
+    ]);
+    PostPlatform::factory()->facebook()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => SocialAccount::factory()->facebook()->create([
+            'workspace_id' => $workspace->id,
+        ])->id,
+    ]);
+    PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id,
+        'social_account_id' => SocialAccount::factory()->googleBusiness()->create([
+            'workspace_id' => $workspace->id,
+        ])->id,
+        'status' => PostPlatformStatus::Rejected,
+        'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
+        'error_message' => __('posts.errors.rejected_in_review'),
+    ]);
+
+    app(FinalizePostPublication::class)->handle($post);
+
+    expect($post->fresh()->status)->toBe(PostStatus::PartiallyPublished);
+    Queue::assertPushed(SendNotification::class, fn (SendNotification $job) => $job->type === Type::PostFailed);
 });

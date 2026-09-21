@@ -424,6 +424,33 @@ test('it does not fail a google business post still sitting in review', function
         ->and($post->fresh()->status)->toBe(PostStatus::Publishing);
 });
 
+test('it does not fail a google business review whose submitted_at is still missing', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Publishing,
+        'updated_at' => now()->subHours(25),
+    ]);
+    $platform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'status' => PlatformStatus::PendingReview,
+        'enabled' => true,
+        'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
+        'submitted_at' => null,
+        'created_at' => now()->subDays(3),
+        'updated_at' => now()->subHours(25),
+    ]);
+
+    $this->artisan('social:recover-stuck-posts')->assertSuccessful();
+
+    expect($platform->fresh()->status)->toBe(PlatformStatus::PendingReview)
+        ->and($post->fresh()->status)->toBe(PostStatus::Publishing);
+});
+
 test('delayed publish job no-ops after recover fails a stuck retrying platform', function () {
     Event::fake();
     Mail::fake();

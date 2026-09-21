@@ -61,6 +61,14 @@ class PostPlatformFactory extends Factory
         ]);
     }
 
+    public function pendingReview(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => Status::PendingReview,
+            'submitted_at' => now(),
+        ]);
+    }
+
     public function linkedin(): static
     {
         return $this->state(fn (array $attributes) => [

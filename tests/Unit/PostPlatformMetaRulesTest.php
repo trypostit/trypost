@@ -297,3 +297,16 @@ test('tiktok required meta rejects self only branded content', function () {
         'brand_content_toggle' => true,
     ]))->toBe(['privacy_level', trans('posts.form.tiktok.privacy.private_disabled_branded')]);
 });
+
+test('google business event range matches the editor helper', function (array $event, bool $endsBefore) {
+    expect(PostPlatformMetaRules::googleBusinessEventEndsBeforeStart(['event' => $event]))->toBe($endsBefore);
+})->with([
+    'missing start' => [['end_date' => '2026-09-02'], false],
+    'missing end' => [['start_date' => '2026-09-01'], false],
+    'end before start date' => [['start_date' => '2026-09-02', 'end_date' => '2026-09-01'], true],
+    'same day no times' => [['start_date' => '2026-09-01', 'end_date' => '2026-09-01'], false],
+    'same day end before start time' => [['start_date' => '2026-09-01', 'end_date' => '2026-09-01', 'start_time' => '18:00', 'end_time' => '09:00'], true],
+    'same day equal times' => [['start_date' => '2026-09-01', 'end_date' => '2026-09-01', 'start_time' => '09:00', 'end_time' => '09:00'], false],
+    'same day end after start time' => [['start_date' => '2026-09-01', 'end_date' => '2026-09-01', 'start_time' => '09:00', 'end_time' => '18:00'], false],
+    'later date with inverted times' => [['start_date' => '2026-09-01', 'end_date' => '2026-09-02', 'start_time' => '18:00', 'end_time' => '09:00'], false],
+]);

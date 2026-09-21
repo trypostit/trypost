@@ -28,3 +28,19 @@ test('typescript google business topic and cta values match the php enums', func
         ->and($source)->not->toContain('GET_OFFER')
         ->and($source)->not->toContain('DeprecatedCta');
 });
+
+test('typescript event range helper keeps the same-day time comparison the php rule uses', function () {
+    $source = file_get_contents(resource_path('js/lib/googleBusiness.ts'));
+
+    expect($source)->toBeString()
+        ->and($source)->toContain('endDate < startDate')
+        ->and($source)->toContain('endTime < startTime');
+});
+
+test('the publishing overlay treats pending_review as settled enough to hide the spinner', function () {
+    $source = file_get_contents(resource_path('js/composables/usePostStatus.ts'));
+
+    expect($source)->toBeString();
+    expect($source)->toMatch('/const IN_FLIGHT_PLATFORM_STATUSES[\s\S]*PostPlatformStatus\.Retrying,/');
+    expect($source)->not->toMatch('/IN_FLIGHT_PLATFORM_STATUSES[\s\S]*PendingReview/');
+});

@@ -13,6 +13,7 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\GoogleBusinessPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\PostPlatform;
+use App\Models\SocialAccount;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\GoogleBusinessPublisher;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
@@ -67,26 +68,19 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
         $account = $this->postPlatform->socialAccount;
 
         try {
-            if ($account->needsProactiveTokenRefresh()) {
-                app(ConnectionVerifier::class)->refreshToken($account);
-            }
+            $remote = $this->fetchRemote($account);
+        } catch (TokenExpiredException) {
+            $remote = $this->retryAfterExpiredToken($account);
 
-            $remote = app(GoogleBusinessPublisher::class)->fetchLocalPost($account, (string) $this->postPlatform->platform_post_id);
-        } catch (TokenExpiredException|PlatformUnavailableException|ConnectionException $e) {
+            if ($remote === null) {
+                return;
+            }
+        } catch (PlatformUnavailableException|ConnectionException $e) {
             $this->deferOrGiveUp($e->getMessage());
 
             return;
         } catch (GoogleBusinessPublishException $e) {
-            if (in_array($e->category, [ErrorCategory::ServerError, ErrorCategory::RateLimit], true)) {
-                $this->deferOrGiveUp($e->userMessage);
-
-                return;
-            }
-
-            $this->giveUp($e->userMessage, [
-                'category' => $e->category->value,
-                'platform_error_code' => $e->platformErrorCode,
-            ]);
+            $this->handlePublishException($e);
 
             return;
         }
@@ -136,6 +130,64 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
                 ? $exception->userMessage
                 : ($exception?->getMessage() ?: __('posts.errors.review_unconfirmed')),
         );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function fetchRemote(SocialAccount $account): array
+    {
+        if ($account->needsProactiveTokenRefresh()) {
+            app(ConnectionVerifier::class)->refreshToken($account);
+        }
+
+        return app(GoogleBusinessPublisher::class)->fetchLocalPost(
+            $account,
+            (string) $this->postPlatform->platform_post_id,
+        );
+    }
+
+    /**
+     * Publish retries a 401 through verify(); reconcile used to park the
+     * target for 24h even when a refresh would have unstuck it.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function retryAfterExpiredToken(SocialAccount $account): ?array
+    {
+        try {
+            app(ConnectionVerifier::class)->verify($account);
+            $account->refresh();
+
+            return $this->fetchRemote($account);
+        } catch (TokenExpiredException $e) {
+            $account->markAsTokenExpired($e->getMessage());
+            $this->deferOrGiveUp($e->getMessage());
+
+            return null;
+        } catch (PlatformUnavailableException|ConnectionException $e) {
+            $this->deferOrGiveUp($e->getMessage());
+
+            return null;
+        } catch (GoogleBusinessPublishException $e) {
+            $this->handlePublishException($e);
+
+            return null;
+        }
+    }
+
+    private function handlePublishException(GoogleBusinessPublishException $e): void
+    {
+        if (in_array($e->category, [ErrorCategory::ServerError, ErrorCategory::RateLimit], true)) {
+            $this->deferOrGiveUp($e->userMessage);
+
+            return;
+        }
+
+        $this->giveUp($e->userMessage, [
+            'category' => $e->category->value,
+            'platform_error_code' => $e->platformErrorCode,
+        ]);
     }
 
     private function deferOrGiveUp(string $errorMessage): void

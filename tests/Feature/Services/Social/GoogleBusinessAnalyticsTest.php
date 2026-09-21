@@ -164,6 +164,49 @@ test('returns empty array on api failure', function () {
     expect($this->analytics->getMetrics($this->socialAccount))->toBe([]);
 });
 
+test('does not cache an api failure so the next call hits google again', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.performance_api').'/*' => Http::sequence()
+            ->push([], 500)
+            ->push([
+                'multiDailyMetricTimeSeries' => [
+                    [
+                        'dailyMetricTimeSeries' => [
+                            [
+                                'dailyMetric' => 'WEBSITE_CLICKS',
+                                'timeSeries' => ['datedValues' => [['value' => '4']]],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+    ]);
+
+    expect($this->analytics->getMetrics($this->socialAccount))->toBe([]);
+
+    $metrics = $this->analytics->getMetrics($this->socialAccount);
+
+    expect(collect($metrics)->firstWhere('label', __('analytics.metrics.website_clicks'))['value'])->toBe(4);
+    Http::assertSentCount(2);
+});
+
+test('returns empty keywords on api failure without caching the miss', function () {
+    Http::fake([
+        config('trypost.platforms.google_business.performance_api').'/*/searchkeywords/*' => Http::sequence()
+            ->push([], 500)
+            ->push([
+                'searchKeywordsCounts' => [
+                    ['searchKeyword' => 'coffee', 'insightsValue' => ['value' => '10']],
+                ],
+            ]),
+    ]);
+
+    expect($this->analytics->getSearchKeywords($this->socialAccount))->toBe([]);
+    expect($this->analytics->getSearchKeywords($this->socialAccount))->toBe([
+        ['keyword' => 'coffee', 'value' => 10, 'estimated' => false],
+    ]);
+});
+
 test('it reports search impressions, not just maps impressions', function () {
     Http::fake([
         config('trypost.platforms.google_business.performance_api').'/*' => Http::response([

@@ -1986,6 +1986,101 @@ test('an unknown google business create state is held in review and keeps the jp
     Storage::assertExists(GoogleBusinessDerivativeCleaner::pathFor($postPlatform->id));
 });
 
+test('a google business target in review on its own post does not settle or notify', function () {
+    Queue::fake([SendNotification::class]);
+    $account = SocialAccount::factory()->googleBusiness()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addHour(),
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'meta' => ['topic_type' => TopicType::Standard->value],
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/1/locations/2/localPosts/3',
+            'state' => LocalPostState::Processing->value,
+        ], 200),
+    ]);
+
+    (new PublishToSocialPlatform($postPlatform))->handle();
+
+    expect($postPlatform->fresh()->status)->toBe(PlatformStatus::PendingReview)
+        ->and($post->fresh()->status)->toBe(PostStatus::Scheduled);
+    Queue::assertNotPushed(SendNotification::class);
+});
+
+test('a published sibling stays unpublished at the post while google business is in review', function () {
+    Queue::fake([SendNotification::class]);
+    $linkedin = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addHour(),
+    ]);
+    $gbp = SocialAccount::factory()->googleBusiness()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addHour(),
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    PostPlatform::factory()->linkedin()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $linkedin->id,
+    ]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $gbp->id,
+        'meta' => ['topic_type' => TopicType::Standard->value],
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'name' => 'accounts/1/locations/2/localPosts/3',
+            'state' => LocalPostState::Processing->value,
+        ], 200),
+    ]);
+
+    (new PublishToSocialPlatform($postPlatform))->handle();
+
+    expect($post->fresh()->status)->toBe(PostStatus::Scheduled)
+        ->and($postPlatform->fresh()->status)->toBe(PlatformStatus::PendingReview);
+    Queue::assertNotPushed(SendNotification::class);
+});
+
+test('a google business create that is rate limited fails the target', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addHour(),
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    $postPlatform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'meta' => ['topic_type' => TopicType::Standard->value],
+    ]);
+
+    Http::fake([
+        config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
+            'error' => ['status' => 'RESOURCE_EXHAUSTED'],
+        ], 429),
+    ]);
+
+    (new PublishToSocialPlatform($postPlatform))->handle();
+
+    expect($postPlatform->fresh()->status)->toBe(PlatformStatus::Failed)
+        ->and($post->fresh()->status)->toBe(PostStatus::Failed);
+});
+
 test('a google business target already in review is not published a second time', function () {
     $account = SocialAccount::factory()->googleBusiness()->create([
         'workspace_id' => $this->workspace->id,

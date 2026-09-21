@@ -1,10 +1,11 @@
 ---
 paths:
-  - app/Enums/GoogleBusiness/**
+  - 'app/Enums/GoogleBusiness/**'
   - app/Jobs/PublishToSocialPlatform.php
   - app/Jobs/ReconcileGoogleBusinessPost.php
   - app/Services/Social/GoogleBusinessPublisher.php
   - app/Support/PostPlatformMetaRules.php
+  - app/Services/Social/GoogleBusinessAnalytics.php
 ---
 
 # Google Business
@@ -17,3 +18,9 @@ PublishToSocialPlatform::recordPublishResult must use LocalPostState::tryFrom, n
 
 ## GBP event title is 58 characters, coupon is not
 LocalPost event.title is capped at TopicType::TITLE_MAX_LENGTH (58) — Google returns Must be at most 58 characters even though the v4 schema page omits the limit. Do not reuse 58 on offer.coupon_code / terms; those have no published cap. Mirror the title cap in resources/js/types/google-business.ts as GOOGLE_BUSINESS_EVENT_TITLE_MAX.
+
+## GBP reconcile refreshes on 401
+ReconcileGoogleBusinessPost must call ConnectionVerifier::verify() after a TokenExpiredException from fetchLocalPost and retry the GET once. If refresh also fails, mark the SocialAccount token-expired, then deferOrGiveUp. Do not park a 401 in pending_review for 24h while a refresh would settle it. RecoverStuckPosts times the 24h ceiling from submitted_at only — never created_at.
+
+## GBP analytics must not cache a failed fetch
+GoogleBusinessAnalytics caches only a successful array. An HTTP failure or a missing location returns false and is not written to cache — a 500 must not blank the dashboard for an hour. Publish/verify/analytics require both location_id (v4) and location_name (v1) via GoogleBusinessResourceName::connectedLocation().

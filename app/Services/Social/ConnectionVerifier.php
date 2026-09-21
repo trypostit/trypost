@@ -21,6 +21,7 @@ use App\Models\SocialAccount;
 use App\Services\Social\Discord\DiscordClient;
 use App\Services\Social\Meta\GraphError;
 use App\Services\Social\Telegram\TelegramApi;
+use App\Support\GoogleBusinessResourceName;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -164,7 +165,7 @@ class ConnectionVerifier
      */
     private function assertConnectionConfigured(SocialAccount $account): void
     {
-        if ($account->platform === Platform::GoogleBusiness && blank(data_get($account->meta, 'location_name'))) {
+        if ($account->platform === Platform::GoogleBusiness && GoogleBusinessResourceName::connectedLocation($account->meta) === null) {
             throw new TokenExpiredException(__('posts.errors.google_business.no_location'));
         }
     }
@@ -498,7 +499,8 @@ class ConnectionVerifier
 
         $account->update([
             'access_token' => $this->tokenFrom($data, $account->platform),
-            'token_expires_at' => data_get($data, 'expires_in') ? now()->addSeconds(data_get($data, 'expires_in')) : null,
+            'refresh_token' => $this->rotatedTokenFrom($data, 'refresh_token', (string) $account->refresh_token),
+            'token_expires_at' => now()->addSeconds((int) (data_get($data, 'expires_in') ?: $account->platform->defaultTokenTtlSeconds())),
         ]);
 
         $account->refresh();
@@ -773,11 +775,13 @@ class ConnectionVerifier
 
     private function verifyGoogleBusiness(SocialAccount $account): bool
     {
-        $locationName = (string) data_get($account->meta, 'location_name');
+        $location = GoogleBusinessResourceName::connectedLocation($account->meta);
 
-        if (blank($locationName)) {
+        if ($location === null) {
             throw new TokenExpiredException(__('posts.errors.google_business.no_location'));
         }
+
+        $locationName = $location['name'];
 
         $response = Http::withToken($account->access_token)
             ->get(config('trypost.platforms.google_business.business_information_api')."/{$locationName}", [

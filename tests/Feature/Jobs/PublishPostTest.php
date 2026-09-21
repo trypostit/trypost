@@ -64,6 +64,31 @@ test('publish post dispatches publish to social platform for each enabled platfo
     Queue::assertPushed(PublishToSocialPlatform::class, 2);
 });
 
+test('publish post dispatches google business targets onto the social publish job', function () {
+    Queue::fake();
+
+    $account = SocialAccount::factory()->googleBusiness()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    $platform = PostPlatform::factory()->googleBusiness()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'enabled' => true,
+    ]);
+
+    (new PublishPost($post))->handle();
+
+    Queue::assertPushed(
+        PublishToSocialPlatform::class,
+        fn (PublishToSocialPlatform $job): bool => $job->postPlatform->is($platform),
+    );
+    expect($post->fresh()->status)->toBe(PostStatus::Publishing);
+});
+
 test('publish post does not dispatch for disabled platforms', function () {
     Queue::fake();
 

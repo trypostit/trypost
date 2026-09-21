@@ -80,10 +80,11 @@ class RecoverStuckPosts extends Command
     }
 
     /**
-     * PendingReview is supposed to last up to Google's review ceiling. After
-     * that, RecoverStuckPosts is the safety net if reconcile died without
-     * settling the target (a throw used to leave last_reconciled_at stale
-     * and the sweep would just re-dispatch forever).
+     * PendingReview is supposed to last up to Google's review ceiling, timed
+     * from submitted_at only. A scheduled draft can be days old before it
+     * enters review — created_at must not trip the ceiling. Rows without
+     * submitted_at stay in review until reconcile or a later recover after
+     * markAsPendingReview writes the clock.
      */
     private function failExpiredReviews(Post $post): void
     {
@@ -92,13 +93,7 @@ class RecoverStuckPosts extends Command
         $post->postPlatforms()
             ->enabled()
             ->where('status', PlatformStatus::PendingReview)
-            ->where(function ($query) use ($cutoff): void {
-                $query->where('submitted_at', '<=', $cutoff)
-                    ->orWhere(function ($query) use ($cutoff): void {
-                        $query->whereNull('submitted_at')
-                            ->where('created_at', '<=', $cutoff);
-                    });
-            })
+            ->where('submitted_at', '<=', $cutoff)
             ->get()
             ->each(function (PostPlatform $postPlatform): void {
                 $postPlatform->markAsRejected(
