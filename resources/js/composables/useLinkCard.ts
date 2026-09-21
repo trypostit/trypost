@@ -13,7 +13,8 @@ export interface LinkCard {
     image: string | null;
 }
 
-const firstHttpUrl = (text: string): string | null => text.match(/https?:\/\/\S+/)?.[0] ?? null;
+const firstHttpUrl = (text: string): string | null =>
+    text.match(/https?:\/\/\S+/)?.[0] ?? null;
 
 /**
  * OpenGraph card for the link a platform will publish. Attached media hides it.
@@ -29,7 +30,9 @@ export const useLinkCard = (
     const loading = ref(false);
     const http = useHttp<{ url: string }, LinkCard | null>({ url: '' });
 
-    const url = computed(() => (media.value.length === 0 ? selectUrl(content.value) : null));
+    const url = computed(() =>
+        media.value.length === 0 ? selectUrl(content.value) : null,
+    );
 
     const loadCard = async (target: string): Promise<void> => {
         loading.value = true;

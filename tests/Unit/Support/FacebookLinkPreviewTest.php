@@ -38,7 +38,7 @@ test('facebook link preview picks the url the page feed will accept', function (
 
 test('the editor picks the same facebook link as the publisher', function () {
     $corpus = array_keys(facebookLinkPreviewCorpus());
-    $corpusPath = tempnam(sys_get_temp_dir(), 'fb_links').'.json';
+    $corpusPath = tempnam(sys_get_temp_dir(), 'fb_links');
     file_put_contents($corpusPath, json_encode($corpus, JSON_THROW_ON_ERROR));
 
     $process = new Process([
