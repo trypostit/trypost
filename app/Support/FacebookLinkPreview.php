@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use Illuminate\Support\Str;
+
 /**
  * First http(s) URL Facebook will accept as a Page feed `link`. facebook.com,
  * fb.com and fb.me (and their subdomains) are skipped: the API rejects many of
@@ -13,23 +15,25 @@ namespace App\Support;
  */
 final class FacebookLinkPreview
 {
+    /**
+     * @var list<string>
+     */
+    private const array OWNED_HOSTS = [
+        'facebook.com',
+        '*.facebook.com',
+        'fb.com',
+        '*.fb.com',
+        'fb.me',
+        '*.fb.me',
+    ];
+
     public static function url(string $text): ?string
     {
-        $offset = 0;
-        $length = strlen($text);
+        $url = Str::matchAll(UrlDetector::URL_PATTERN, $text)
+            ->map(fn (string $raw): string => UrlDetector::trimTrailingPunctuation($raw))
+            ->first(fn (string $candidate): bool => ! self::isOwnedHost($candidate));
 
-        while ($offset < $length && preg_match(UrlDetector::URL_PATTERN, $text, $matches, PREG_OFFSET_CAPTURE, $offset) === 1) {
-            $raw = $matches[0][0];
-            $url = UrlDetector::trimTrailingPunctuation($raw);
-
-            if (! self::isOwnedHost($url)) {
-                return $url;
-            }
-
-            $offset = $matches[0][1] + strlen($raw);
-        }
-
-        return null;
+        return is_string($url) ? $url : null;
     }
 
     private static function isOwnedHost(string $url): bool
@@ -40,14 +44,6 @@ final class FacebookLinkPreview
             return false;
         }
 
-        $host = strtolower($host);
-
-        foreach (['facebook.com', 'fb.com', 'fb.me'] as $domain) {
-            if ($host === $domain || str_ends_with($host, ".{$domain}")) {
-                return true;
-            }
-        }
-
-        return false;
+        return Str::is(self::OWNED_HOSTS, $host, ignoreCase: true);
     }
 }
