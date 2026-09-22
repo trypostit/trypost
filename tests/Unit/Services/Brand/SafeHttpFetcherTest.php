@@ -90,3 +90,21 @@ test('guardedRequest returns a PendingRequest for a public url', function () {
     expect(app(SafeHttpFetcher::class)->guardedRequest('https://93.184.216.34/x'))
         ->toBeInstanceOf(PendingRequest::class);
 });
+
+test('tryGetBody returns a body within the requested byte limit', function () {
+    Http::fake([
+        'https://93.184.216.34/page' => Http::response('1234', 200),
+    ]);
+
+    expect(app(SafeHttpFetcher::class)->tryGetBody('https://93.184.216.34/page', 4))
+        ->toBe('1234');
+});
+
+test('tryGetBody rejects a body larger than the requested byte limit', function () {
+    Http::fake([
+        'https://93.184.216.34/page' => Http::response('12345', 200),
+    ]);
+
+    expect(app(SafeHttpFetcher::class)->tryGetBody('https://93.184.216.34/page', 4))
+        ->toBeNull();
+});

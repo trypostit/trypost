@@ -93,6 +93,55 @@ final class SafeHttpFetcher
     }
 
     /**
+     * Fetch a user-supplied URL without buffering more than the permitted body.
+     * Returns null for transport, HTTP, SSRF, redirect, or size failures.
+     */
+    public function tryGetBody(string $url, int $maxBytes): ?string
+    {
+        if ($maxBytes < 1) {
+            return null;
+        }
+
+        $stream = tmpfile();
+
+        if ($stream === false) {
+            return null;
+        }
+
+        try {
+            $response = $this->guardedRequest($url)
+                ->connectTimeout(3)
+                ->timeout(self::TIMEOUT_SECONDS)
+                ->sink($stream)
+                ->withOptions([
+                    'progress' => static function ($total, $downloaded) use ($maxBytes): void {
+                        if ($total > $maxBytes || $downloaded > $maxBytes) {
+                            throw new RuntimeException('Response body exceeded the maximum permitted size.');
+                        }
+                    },
+                ])
+                ->get($url);
+
+            if ($response->failed()) {
+                return null;
+            }
+
+            rewind($stream);
+            $body = stream_get_contents($stream, $maxBytes + 1);
+
+            if ($body === false || strlen($body) > $maxBytes) {
+                return null;
+            }
+
+            return $body;
+        } catch (ConnectionException|RuntimeException) {
+            return null;
+        } finally {
+            fclose($stream);
+        }
+    }
+
+    /**
      * Guzzle allow_redirects options that re-run the SSRF guard on every hop.
      * For callers that follow redirects on user-supplied URLs with methods/bodies
      * that SafeHttpFetcher::get() cannot express.

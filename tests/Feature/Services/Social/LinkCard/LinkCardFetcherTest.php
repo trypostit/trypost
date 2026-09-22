@@ -43,6 +43,14 @@ test('returns null when the page has no title or description', function () {
     expect(app(LinkCardFetcher::class)->fetch('see https://example.com'))->toBeNull();
 });
 
+test('returns null when the page exceeds the html download limit', function () {
+    Http::fake([
+        'https://example.com' => Http::response(str_repeat('x', (2 * 1024 * 1024) + 1), 200),
+    ]);
+
+    expect(app(LinkCardFetcher::class)->fetch('see https://example.com'))->toBeNull();
+});
+
 test('caches the result so a repeated url is fetched once', function () {
     Http::fake([
         'https://example.com' => Http::response(
