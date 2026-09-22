@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Jobs\PostHog;
 
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Models\Account;
 use App\Models\PostPlatform;
 use App\Models\Workspace;
@@ -46,7 +45,7 @@ class SyncAccountUsage implements ShouldQueue
 
         $usage = $account->usage();
         $latestPublication = PostPlatform::query()
-            ->where('status', PostPlatformStatus::Published)
+            ->published()
             ->whereNotNull('published_at')
             ->whereHas(
                 'post.workspace',

@@ -85,6 +85,11 @@ class PostPlatform extends Model
         return $query->where('post_platforms.enabled', false);
     }
 
+    public function scopePublished(Builder $query): Builder
+    {
+        return $query->where('post_platforms.status', Status::Published);
+    }
+
     /**
      * Get display name, falling back to snapshot if account was deleted.
      */

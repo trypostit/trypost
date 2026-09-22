@@ -45,6 +45,23 @@ test('markAsPublished clears stale error_message and error_context', function ()
         ->and($this->postPlatform->error_context)->toBeNull();
 });
 
+test('published scope only includes published platforms', function () {
+    $publishedPostPlatform = PostPlatform::factory()->published()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+    PostPlatform::factory()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $this->socialAccount->id,
+        'status' => Status::Failed,
+    ]);
+
+    $publishedPlatforms = PostPlatform::query()->published()->get();
+
+    expect($publishedPlatforms)->toHaveCount(1)
+        ->and($publishedPlatforms->first()->is($publishedPostPlatform))->toBeTrue();
+});
+
 test('display_name falls back to the account username when display_name is not set', function () {
     $this->socialAccount->update(['display_name' => null, 'username' => 'acme_handle']);
 
