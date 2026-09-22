@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Jobs\PostHog;
 
 use App\Models\Account;
+use App\Models\Post;
 use App\Models\PostPlatform;
+use App\Models\Workspace;
 use App\Services\PostHogService;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 
@@ -47,6 +48,14 @@ class SyncAccountPublishingActivity implements ShouldBeUniqueUntilProcessing, Sh
         return $this->accountId;
     }
 
+    /**
+     * @return list<int>
+     */
+    public function backoff(): array
+    {
+        return [60, 300, 900, 1800, 3600];
+    }
+
     public function handle(PostHogService $postHog): void
     {
         if (! PostHogService::isEnabled()) {
@@ -59,13 +68,17 @@ class SyncAccountPublishingActivity implements ShouldBeUniqueUntilProcessing, Sh
             return;
         }
 
+        $workspaceIds = Workspace::query()
+            ->select('id')
+            ->whereBelongsTo($account);
+        $postIds = Post::query()
+            ->select('id')
+            ->whereIn('workspace_id', $workspaceIds);
+
         $latestPublication = PostPlatform::query()
             ->published()
             ->whereNotNull('published_at')
-            ->whereHas(
-                'post.workspace',
-                fn (Builder $query): Builder => $query->whereBelongsTo($account),
-            )
+            ->whereIn('post_id', $postIds)
             ->latest('published_at')
             ->latest('updated_at')
             ->latest('id')

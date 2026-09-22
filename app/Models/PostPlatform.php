@@ -9,8 +9,10 @@ use App\Enums\PostPlatform\Status;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Observers\PostPlatformObserver;
 use Database\Factories\PostPlatformFactory;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -51,13 +53,22 @@ class PostPlatform extends Model
             'platform' => SocialPlatform::class,
             'content_type' => ContentType::class,
             'status' => Status::class,
-            'published_at' => 'datetime',
             'submitted_at' => 'datetime',
             'last_reconciled_at' => 'datetime',
             'meta' => 'array',
             'error_context' => 'array',
             'connection_warning_sent_at' => 'datetime',
         ];
+    }
+
+    protected function publishedAt(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => $value ? $this->asDateTime($value) : null,
+            set: fn (DateTimeInterface|string|null $value) => $value instanceof DateTimeInterface
+                ? $value->format('Y-m-d H:i:s.u')
+                : $value,
+        );
     }
 
     public function post(): BelongsTo
