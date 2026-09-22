@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Services\Brand\SafeHttpFetcher;
+use GuzzleHttp\Psr7\Utils;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 
@@ -100,6 +101,20 @@ test('tryGetBody returns a body within the requested byte limit', function () {
         ->toBe('1234');
 });
 
+test('tryGetBody cleans up when the transport closes its sink before failing', function () {
+    Http::fake(function ($request, array $options) {
+        $sink = $options['sink'];
+        $body = Utils::streamFor(
+            is_string($sink) ? Utils::tryFopen($sink, 'w+') : $sink,
+        );
+        $body->close();
+
+        throw new RuntimeException('Transport failed after closing the response body.');
+    });
+
+    expect(app(SafeHttpFetcher::class)->tryGetBody('https://93.184.216.34/page', 4))->toBeNull();
+});
+
 test('tryGetBody rejects a body larger than the requested byte limit', function () {
     Http::fake([
         'https://93.184.216.34/page' => Http::response('12345', 200),
@@ -115,7 +130,7 @@ test('tryGetBody aborts an oversized transfer and closes its temporary stream', 
 
     Http::fake(function ($request, array $options) use ($total, $downloaded, &$stream, &$completed) {
         $stream = $options['sink'];
-        expect(is_resource($stream))->toBeTrue();
+        expect(is_file($stream))->toBeTrue();
 
         $options['progress']($total, $downloaded);
         $completed = true;
@@ -125,7 +140,7 @@ test('tryGetBody aborts an oversized transfer and closes its temporary stream', 
 
     expect(app(SafeHttpFetcher::class)->tryGetBody('https://93.184.216.34/page', 4))->toBeNull()
         ->and($completed)->toBeFalse()
-        ->and(is_resource($stream))->toBeFalse();
+        ->and(file_exists($stream))->toBeFalse();
 })->with([
     'declared length' => [5, 0],
     'unknown length' => [0, 5],

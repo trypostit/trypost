@@ -112,7 +112,8 @@ final class SafeHttpFetcher
             $response = $this->guardedRequest($url)
                 ->connectTimeout(3)
                 ->timeout(self::TIMEOUT_SECONDS)
-                ->sink($stream)
+                // Guzzle owns and closes its sink; keep our temporary-file handle independent.
+                ->sink(stream_get_meta_data($stream)['uri'])
                 ->withOptions([
                     'progress' => static function ($total, $downloaded) use ($maxBytes): void {
                         if ($total > $maxBytes || $downloaded > $maxBytes) {
