@@ -239,7 +239,7 @@ test('redirect skips the first-month coupon on a yearly price', function () {
     $account->refresh();
 
     $builder = Mockery::mock(SubscriptionBuilder::class);
-    $builder->shouldReceive('withMetadata')->once()->andReturnSelf();
+    $builder->shouldReceive('withMetadata')->once()->with([])->andReturnSelf();
     $builder->shouldReceive('withCoupon')->never();
     $builder->shouldReceive('trialDays')->once()->with(8)->andReturnSelf();
     $builder->shouldReceive('checkout')
