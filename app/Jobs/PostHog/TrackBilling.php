@@ -7,6 +7,7 @@ namespace App\Jobs\PostHog;
 use App\Enums\PostHog\BillingEvent;
 use App\Models\Account;
 use App\Services\PostHogService;
+use App\Support\StripeSubscriptionConversion;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -56,6 +57,26 @@ class TrackBilling implements ShouldQueue
             $account,
         );
 
+        $postHog->groupIdentify('account', (string) $account->id, [
+            'subscription_status' => $account->subscriptionStatus(),
+            'has_active_subscription' => $account->hasActiveSubscription(),
+            ...$this->firstMonthOfferProperties(),
+        ]);
+
         SyncUser::dispatch((string) $account->owner_id);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function firstMonthOfferProperties(): array
+    {
+        if ($this->event !== BillingEvent::Created) {
+            return [];
+        }
+
+        return [
+            'first_month_offer_ends_at' => StripeSubscriptionConversion::firstMonthOfferEndsAt($this->payload),
+        ];
     }
 }

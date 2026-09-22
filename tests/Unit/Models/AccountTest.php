@@ -22,6 +22,50 @@ test('isPastDue returns false without a subscription', function () {
     expect($account->isPastDue())->toBeFalse();
 });
 
+test('subscriptionStatus returns none without a subscription', function () {
+    $account = Account::factory()->create(['trial_ends_at' => null]);
+
+    expect($account->subscriptionStatus())->toBe('none');
+});
+
+test('subscriptionStatus returns the current Stripe status', function () {
+    $account = Account::factory()->create(['trial_ends_at' => null]);
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test_'.fake()->uuid(),
+        'stripe_status' => 'past_due',
+        'stripe_price' => 'price_123',
+    ]);
+
+    expect($account->subscriptionStatus())->toBe('past_due');
+});
+
+test('subscriptionStatus returns canceled during the grace period', function () {
+    $account = Account::factory()->create(['trial_ends_at' => null]);
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test_'.fake()->uuid(),
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_123',
+        'ends_at' => now()->addDay(),
+    ]);
+
+    expect($account->subscriptionStatus())->toBe('canceled');
+});
+
+test('subscriptionStatus returns canceled after the subscription has ended', function () {
+    $account = Account::factory()->create(['trial_ends_at' => null]);
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test_'.fake()->uuid(),
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_123',
+        'ends_at' => now(),
+    ]);
+
+    expect($account->subscriptionStatus())->toBe('canceled');
+});
+
 test('isPastDue returns true for a past_due subscription', function () {
     config(['trypost.self_hosted' => false]);
 

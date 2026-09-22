@@ -13,7 +13,7 @@ use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Support\Facades\Bus;
-use Laravel\Cashier\Events\WebhookReceived;
+use Laravel\Cashier\Events\WebhookHandled;
 
 beforeEach(function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
@@ -52,7 +52,7 @@ beforeEach(function () {
 // ========================================
 
 test('subscription created handles event without error', function () {
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_123']],
     ]));
@@ -63,7 +63,7 @@ test('subscription created handles event without error', function () {
 test('subscription created clears the generic trial_ends_at on the account', function () {
     $this->account->update(['trial_ends_at' => now()->addDays(3)]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -81,7 +81,7 @@ test('subscription created clears the generic trial_ends_at on the account', fun
 // ========================================
 
 test('subscription updated handles event without error', function () {
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_123']],
     ]));
@@ -94,7 +94,7 @@ test('subscription updated handles event without error', function () {
 // ========================================
 
 test('subscription deleted handles event without error', function () {
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.deleted',
         'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_123']],
     ]));
@@ -109,7 +109,7 @@ test('subscription deleted handles event without error', function () {
 test('ignores event without customer id', function () {
     Bus::fake([TrackBilling::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => []],
     ]));
@@ -120,7 +120,7 @@ test('ignores event without customer id', function () {
 test('ignores event for unknown customer', function () {
     Bus::fake([TrackBilling::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => ['customer' => 'cus_nonexistent']],
     ]));
@@ -131,7 +131,7 @@ test('ignores event for unknown customer', function () {
 test('ignores event with empty payload', function () {
     Bus::fake([TrackBilling::class]);
 
-    $this->listener->handle(new WebhookReceived([]));
+    $this->listener->handle(new WebhookHandled([]));
 
     Bus::assertNotDispatched(TrackBilling::class);
 });
@@ -139,7 +139,7 @@ test('ignores event with empty payload', function () {
 test('ignores event with null type', function () {
     Bus::fake([TrackBilling::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => null,
         'data' => ['object' => ['customer' => 'cus_test123']],
     ]));
@@ -152,7 +152,7 @@ test('ignores event with null type', function () {
 // ========================================
 
 test('handles malformed payload gracefully', function () {
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'data' => 'not_an_array',
     ]));
 
@@ -166,7 +166,7 @@ test('handles malformed payload gracefully', function () {
 test('subscription created dispatches TrackBilling with subscription.created event', function () {
     Bus::fake([TrackBilling::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'trialing']],
     ]));
@@ -181,7 +181,7 @@ test('subscription created dispatches TrackBilling with subscription.created eve
 test('subscription updated dispatches TrackBilling with subscription.updated event', function () {
     Bus::fake([TrackBilling::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => ['object' => ['customer' => 'cus_test123', 'status' => 'active']],
     ]));
@@ -197,7 +197,7 @@ test('subscription deleted dispatches TrackBilling with subscription.cancelled e
 
     Bus::fake([TrackBilling::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.deleted',
         'data' => ['object' => ['customer' => 'cus_test123', 'status' => 'canceled']],
     ]));
@@ -211,7 +211,7 @@ test('subscription deleted dispatches TrackBilling with subscription.cancelled e
 test('unknown event types do not dispatch TrackBilling', function () {
     Bus::fake([TrackBilling::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'invoice.payment_succeeded',
         'data' => ['object' => ['customer' => 'cus_test123']],
     ]));
@@ -223,7 +223,7 @@ test('TrackBilling is not dispatched when PostHog is disabled', function () {
     config(['services.posthog.enabled' => false]);
     Bus::fake([TrackBilling::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_123']],
     ]));
@@ -236,7 +236,7 @@ test('TrackBilling is not dispatched when PostHog is disabled in production', fu
     config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
     Bus::fake([TrackBilling::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_123']],
     ]));
@@ -249,7 +249,7 @@ test('TrackBilling is dispatched in the local environment even when PostHog is d
     config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
     Bus::fake([TrackBilling::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_123']],
     ]));
@@ -261,7 +261,7 @@ test('TrackBilling is not dispatched when api key is missing', function () {
     config(['services.posthog.api_key' => null]);
     Bus::fake([TrackBilling::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_123']],
     ]));
@@ -276,7 +276,7 @@ test('TrackBilling is not dispatched when api key is missing', function () {
 test('subscription created syncs the plan from the price id on first activation', function () {
     $this->account->update(['plan_id' => null]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -291,7 +291,7 @@ test('subscription created syncs the plan from the price id on first activation'
 test('subscription created does not sync a plan while payment is incomplete', function () {
     $this->account->update(['plan_id' => null]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -306,7 +306,7 @@ test('subscription created does not sync a plan while payment is incomplete', fu
 test('subscription created syncs the workspaces plan while trialing', function () {
     $this->account->update(['plan_id' => null]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -321,7 +321,7 @@ test('subscription created syncs the workspaces plan while trialing', function (
 test('subscription updated maps the plan by its monthly price id', function () {
     $this->account->update(['plan_id' => null]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -336,7 +336,7 @@ test('subscription updated maps the plan by its monthly price id', function () {
 test('subscription updated maps the plan by its yearly price id too', function () {
     $this->account->update(['plan_id' => null]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -351,7 +351,7 @@ test('subscription updated maps the plan by its yearly price id too', function (
 test('subscription updated does not sync a richer plan while past due', function () {
     $this->account->update(['plan_id' => $this->socials->id]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -366,7 +366,7 @@ test('subscription updated does not sync a richer plan while past due', function
 test('subscription updated does not clear workspaces while past due', function () {
     $this->account->update(['plan_id' => $this->workspaces->id]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -381,7 +381,7 @@ test('subscription updated does not clear workspaces while past due', function (
 test('subscription updated overwrites socials with workspaces when active', function () {
     $this->account->update(['plan_id' => $this->socials->id]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -396,7 +396,7 @@ test('subscription updated overwrites socials with workspaces when active', func
 test('subscription updated overwrites workspaces with socials when active', function () {
     $this->account->update(['plan_id' => $this->workspaces->id]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -411,7 +411,7 @@ test('subscription updated overwrites workspaces with socials when active', func
 test('subscription updated clears the plan when payment is unpaid canceled or expired', function (string $status) {
     $this->account->update(['plan_id' => $this->workspaces->id]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -430,7 +430,7 @@ test('subscription updated clears the plan when payment is unpaid canceled or ex
 test('subscription updated leaves plan_id alone when the price already matches', function () {
     $this->account->update(['plan_id' => $this->plan->id]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -445,7 +445,7 @@ test('subscription updated leaves plan_id alone when the price already matches',
 test('subscription updated ignores unknown price ids without erroring', function () {
     $this->account->update(['plan_id' => $this->plan->id]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -459,7 +459,7 @@ test('subscription updated ignores unknown price ids without erroring', function
 test('subscription deleted clears the account plan_id', function () {
     $this->account->update(['plan_id' => $this->plan->id]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.deleted',
         'data' => ['object' => ['customer' => 'cus_test123', 'status' => 'canceled']],
     ]));
@@ -472,7 +472,7 @@ test('subscription deleted is idempotent when plan_id is already null', function
 
     Bus::fake([TrackBilling::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.deleted',
         'data' => ['object' => ['customer' => 'cus_test123']],
     ]));
@@ -493,7 +493,7 @@ test('subscription updated forwards the previous plan name to TrackBilling', fun
 
     Bus::fake([TrackBilling::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -512,7 +512,7 @@ test('subscription deleted forwards the previous plan name to TrackBilling', fun
 
     Bus::fake([TrackBilling::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.deleted',
         'data' => ['object' => ['customer' => 'cus_test123']],
     ]));
@@ -528,7 +528,7 @@ test('subscription created forwards a null previous plan when account had none',
 
     Bus::fake([TrackBilling::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -549,7 +549,7 @@ test('subscription created forwards a null previous plan when account had none',
 test('subscription created dispatches TrackCheckoutCompleted when status is active', function () {
     Bus::fake([TrackCheckoutCompleted::class, TrackTrialStarted::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -571,7 +571,7 @@ test('subscription created dispatches TrackCheckoutCompleted when status is acti
 test('subscription created dispatches TrackTrialStarted when status is trialing', function () {
     Bus::fake([TrackCheckoutCompleted::class, TrackTrialStarted::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -592,7 +592,7 @@ test('subscription created dispatches TrackTrialStarted when status is trialing'
 test('subscription created dispatches neither job for a status we do not track', function () {
     Bus::fake([TrackCheckoutCompleted::class, TrackTrialStarted::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -609,7 +609,7 @@ test('subscription created dispatches neither job for a status we do not track',
 test('subscription updated and deleted do not dispatch TrackCheckoutCompleted or TrackTrialStarted', function (string $type) {
     Bus::fake([TrackCheckoutCompleted::class, TrackTrialStarted::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => $type,
         'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active']],
     ]));
@@ -625,7 +625,7 @@ test('TrackCheckoutCompleted is not dispatched when PostHog is disabled', functi
     config(['services.posthog.enabled' => false]);
     Bus::fake([TrackCheckoutCompleted::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -643,7 +643,7 @@ test('TrackCheckoutCompleted and TrackTrialStarted are not dispatched when PostH
     config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
     Bus::fake([TrackCheckoutCompleted::class, TrackTrialStarted::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -662,7 +662,7 @@ test('TrackCheckoutCompleted is dispatched in the local environment even when Po
     config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
     Bus::fake([TrackCheckoutCompleted::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.created',
         'data' => ['object' => [
             'customer' => 'cus_test123',
@@ -682,7 +682,7 @@ test('TrackCheckoutCompleted is dispatched in the local environment even when Po
 test('subscription updated dispatches TrackTrialConverted when trialing transitions to active', function () {
     Bus::fake([TrackTrialConverted::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => [
             'object' => [
@@ -705,7 +705,7 @@ test('subscription updated dispatches TrackTrialConverted when a trial recovers 
     Bus::fake([TrackTrialConverted::class]);
     $trialEnd = now()->subDay()->timestamp;
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => [
             'object' => [
@@ -731,7 +731,7 @@ test('subscription updated dispatches TrackTrialConverted when a trial recovers 
 test('subscription updated does not dispatch TrackTrialConverted for a past_due recovery on a subscription that never had a trial', function () {
     Bus::fake([TrackTrialConverted::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => [
             'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
@@ -751,7 +751,7 @@ test('subscription updated does not dispatch TrackTrialConverted for a later, un
     $trialEnd = now()->subMonths(6)->timestamp;
     $currentPeriodStart = now()->subDays(3)->timestamp;
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => [
             'object' => [
@@ -774,7 +774,7 @@ test('subscription updated does not dispatch TrackTrialConverted for a later, un
 test('subscription updated does not dispatch TrackTrialConverted when the new status is not active', function () {
     Bus::fake([TrackTrialConverted::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => [
             'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'past_due'],
@@ -789,7 +789,7 @@ test('TrackTrialConverted is not dispatched when PostHog is disabled', function 
     config(['services.posthog.enabled' => false]);
     Bus::fake([TrackTrialConverted::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => [
             'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
@@ -805,7 +805,7 @@ test('TrackTrialConverted is not dispatched when PostHog is disabled in producti
     config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
     Bus::fake([TrackTrialConverted::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => [
             'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
@@ -821,7 +821,7 @@ test('TrackTrialConverted is dispatched in the local environment even when PostH
     config(['services.posthog.enabled' => false, 'services.posthog.api_key' => null]);
     Bus::fake([TrackTrialConverted::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => [
             'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],
@@ -848,8 +848,8 @@ test('redelivering the same stripe event id only processes it once', function ()
         ],
     ];
 
-    $this->listener->handle(new WebhookReceived($payload));
-    $this->listener->handle(new WebhookReceived($payload));
+    $this->listener->handle(new WebhookHandled($payload));
+    $this->listener->handle(new WebhookHandled($payload));
 
     Bus::assertDispatchedTimes(TrackTrialConverted::class, 1);
 });
@@ -857,7 +857,7 @@ test('redelivering the same stripe event id only processes it once', function ()
 test('two different stripe event ids are both processed', function () {
     Bus::fake([TrackTrialConverted::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'id' => 'evt_test_first',
         'type' => 'customer.subscription.updated',
         'data' => [
@@ -865,7 +865,7 @@ test('two different stripe event ids are both processed', function () {
             'previous_attributes' => ['status' => 'trialing'],
         ],
     ]));
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'id' => 'evt_test_second',
         'type' => 'customer.subscription.updated',
         'data' => [
@@ -880,7 +880,7 @@ test('two different stripe event ids are both processed', function () {
 test('an event without an id is still processed (no idempotency key available)', function () {
     Bus::fake([TrackTrialConverted::class]);
 
-    $this->listener->handle(new WebhookReceived([
+    $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
         'data' => [
             'object' => ['customer' => 'cus_test123', 'id' => 'sub_123', 'status' => 'active'],

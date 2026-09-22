@@ -48,7 +48,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Cashier\Cashier;
-use Laravel\Cashier\Events\WebhookReceived;
+use Laravel\Cashier\Events\WebhookHandled;
 use Laravel\Nightwatch\Facades\Nightwatch;
 use Laravel\Nightwatch\Records\CacheEvent;
 use Laravel\Socialite\Facades\Socialite;
@@ -171,7 +171,7 @@ class AppServiceProvider extends ServiceProvider
 
     protected function configureStripeWebhooks(): void
     {
-        Event::listen(WebhookReceived::class, StripeEventListener::class);
+        Event::listen(WebhookHandled::class, StripeEventListener::class);
     }
 
     protected function configureSocialite(): void

@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
 
 beforeEach(function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    config(['trypost.self_hosted' => false]);
 
     $this->account = Account::factory()->create([
         'plan_id' => Plan::query()->where('slug', 'workspace')->first()?->id,
@@ -65,9 +66,30 @@ test('handle group-identifies the account with usage metrics', function () {
         $props = $job->payload['properties'];
 
         return $job->payload['groupKey'] === (string) $this->account->id
+            && $props['subscription_status'] === 'none'
+            && $props['has_active_subscription'] === false
             && $props['workspaces_count'] === 1
             && $props['social_accounts_count'] === 2
             && $props['posts_count'] === 3;
+    });
+});
+
+test('handle sends the active subscription state from the account', function () {
+    $this->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_test',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_test',
+    ]);
+    Queue::fake();
+
+    (new SyncAccountUsage((string) $this->account->id))->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, function (SendEvent $job): bool {
+        return $job->method === 'groupIdentify'
+            && $job->payload['groupType'] === 'account'
+            && $job->payload['properties']['subscription_status'] === 'active'
+            && $job->payload['properties']['has_active_subscription'] === true;
     });
 });
 

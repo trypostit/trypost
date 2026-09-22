@@ -71,14 +71,29 @@ final class StripeSubscriptionConversion
         }
 
         $properties['first_month_coupon_id'] = $firstMonthCouponId;
-        $currentPeriodEnd = data_get($payload, 'data.object.items.data.0.current_period_end');
+        $firstMonthOfferEndsAt = self::firstMonthOfferEndsAt($payload);
 
-        if (is_int($currentPeriodEnd)) {
-            $properties['first_month_offer_ends_at'] = Carbon::createFromTimestamp($currentPeriodEnd)
-                ->toIso8601String();
+        if ($firstMonthOfferEndsAt !== null) {
+            $properties['first_month_offer_ends_at'] = $firstMonthOfferEndsAt;
         }
 
         return $properties;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public static function firstMonthOfferEndsAt(array $payload): ?string
+    {
+        if (self::firstMonthCouponId($payload) === null) {
+            return null;
+        }
+
+        $currentPeriodEnd = data_get($payload, 'data.object.items.data.0.current_period_end');
+
+        return is_int($currentPeriodEnd)
+            ? Carbon::createFromTimestamp($currentPeriodEnd)->toIso8601String()
+            : null;
     }
 
     /**

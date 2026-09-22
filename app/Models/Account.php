@@ -75,6 +75,17 @@ class Account extends Model
         return $this->subscribed(self::SUBSCRIPTION_NAME);
     }
 
+    public function subscriptionStatus(): string
+    {
+        $subscription = $this->subscription(self::SUBSCRIPTION_NAME);
+
+        if (! $subscription) {
+            return 'none';
+        }
+
+        return $subscription->canceled() ? 'canceled' : $subscription->stripe_status;
+    }
+
     public function hasAppAccess(): bool
     {
         if (config('trypost.self_hosted')) {

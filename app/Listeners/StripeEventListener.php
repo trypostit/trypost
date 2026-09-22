@@ -15,11 +15,11 @@ use App\Services\PostHogService;
 use App\Support\Billing\SubscriptionPlanSync;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Laravel\Cashier\Events\WebhookReceived;
+use Laravel\Cashier\Events\WebhookHandled;
 
 class StripeEventListener
 {
-    public function handle(WebhookReceived $event): void
+    public function handle(WebhookHandled $event): void
     {
         try {
             if ($this->alreadyProcessed(data_get($event->payload, 'id'))) {
@@ -207,10 +207,9 @@ class StripeEventListener
 
     /**
      * Fires on the trial's first successful charge, using Stripe's own
-     * `previous_attributes` rather than trusting local DB state — Cashier's
-     * WebhookController dispatches WebhookReceived before it updates the
-     * local subscription row, so relying on our own `stripe_status` here
-     * would be fragile if that internal ordering ever changes.
+     * `previous_attributes` rather than trusting local DB state. This also
+     * covers a `past_due` recovery without mistaking a later billing-cycle
+     * recovery for the trial conversion.
      *
      * @param  array<string, mixed>  $payload
      */

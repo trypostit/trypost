@@ -47,6 +47,7 @@ class SyncAccountUsage implements ShouldQueue
             'name' => $account->name,
             'plan' => $account->plan?->name,
             'plan_slug' => $account->plan?->slug->value,
+            'subscription_status' => $account->subscriptionStatus(),
             'has_active_subscription' => $account->hasActiveSubscription(),
             'is_on_trial' => $account->isOnTrial(),
             'workspaces_count' => $usage['workspaceCount'],
