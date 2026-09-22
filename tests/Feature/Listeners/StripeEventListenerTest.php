@@ -555,13 +555,15 @@ test('subscription created dispatches TrackCheckoutCompleted when status is acti
             'customer' => 'cus_test123',
             'id' => 'sub_123',
             'status' => 'active',
-            'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+            'metadata' => ['trypost_first_month_coupon_id' => 'WORKSPACES_88USD'],
+            'items' => ['data' => [['price' => ['id' => 'price_workspaces_monthly']]]],
         ]],
     ]));
 
     Bus::assertDispatched(
         TrackCheckoutCompleted::class,
-        fn ($job) => $job->accountId === (string) $this->account->id,
+        fn ($job) => $job->accountId === (string) $this->account->id
+            && data_get($job->payload, 'data.object.metadata.trypost_first_month_coupon_id') === 'WORKSPACES_88USD',
     );
     Bus::assertNotDispatched(TrackTrialStarted::class);
 });

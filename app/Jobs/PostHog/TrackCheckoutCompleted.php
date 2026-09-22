@@ -20,6 +20,6 @@ class TrackCheckoutCompleted extends AbstractTrackStripeSubscriptionEvent
      */
     protected function properties(Account $account): array
     {
-        return StripeSubscriptionConversion::propertiesFor($account, $this->payload);
+        return StripeSubscriptionConversion::checkoutPropertiesFor($account, $this->payload);
     }
 }

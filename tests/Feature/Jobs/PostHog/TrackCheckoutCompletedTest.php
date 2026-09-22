@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Plan\Slug;
 use App\Enums\PostHog\CheckoutEvent;
 use App\Enums\User\Persona;
 use App\Jobs\PostHog\SendEvent;
@@ -16,10 +17,10 @@ beforeEach(function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
     config(['cashier.first_month_coupon_ids.workspaces' => 'WORKSPACES_88USD']);
 
-    $this->plan = Plan::where('slug', 'workspace')->firstOrFail();
+    $this->plan = Plan::where('slug', Slug::Workspaces)->firstOrFail();
     $this->plan->update([
-        'stripe_monthly_price_id' => 'price_workspace_monthly',
-        'stripe_yearly_price_id' => 'price_workspace_yearly',
+        'stripe_monthly_price_id' => 'price_workspaces_monthly',
+        'stripe_yearly_price_id' => 'price_workspaces_yearly',
     ]);
 
     $this->account = Account::factory()->create(['plan_id' => $this->plan->id]);
@@ -33,8 +34,8 @@ beforeEach(function () {
             'customer' => 'cus_test123',
             'items' => ['data' => [[
                 'price' => [
-                    'id' => 'price_workspace_monthly',
-                    'unit_amount' => 2900,
+                    'id' => 'price_workspaces_monthly',
+                    'unit_amount' => 9900,
                     'currency' => 'usd',
                 ],
             ]]],
@@ -61,7 +62,7 @@ test('handle captures checkout.completed with plan, interval and conversion data
             && $job->payload['properties']['$groups']['account'] === (string) $this->account->id
             && $job->payload['properties']['plan_name'] === $this->plan->name
             && $job->payload['properties']['interval'] === 'monthly'
-            && $job->payload['properties']['conversion_value'] === 29.0
+            && $job->payload['properties']['conversion_value'] === 99.0
             && $job->payload['properties']['conversion_currency'] === 'USD'
             && $job->payload['properties']['conversion_transaction_id'] === 'sub_test123'
             && $job->payload['properties']['is_first_month_offer'] === false;
@@ -88,9 +89,10 @@ test('handle marks checkout.completed when the subscription uses the configured 
     });
 });
 
-test('handle ignores a first month coupon marker that is not configured', function () {
+test('handle ignores a first month coupon configured for another plan', function () {
+    config(['cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD']);
     $this->payload['data']['object']['metadata'] = [
-        'trypost_first_month_coupon_id' => 'UNRELATED_COUPON',
+        'trypost_first_month_coupon_id' => 'SOCIALS_18USD',
     ];
     Queue::fake();
 
@@ -107,7 +109,7 @@ test('handle ignores a first month coupon marker that is not configured', functi
 });
 
 test('handle resolves the yearly interval from the price id', function () {
-    $this->payload['data']['object']['items']['data'][0]['price']['id'] = 'price_workspace_yearly';
+    $this->payload['data']['object']['items']['data'][0]['price']['id'] = 'price_workspaces_yearly';
     Queue::fake();
 
     (new TrackCheckoutCompleted((string) $this->account->id, $this->payload))
