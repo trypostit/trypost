@@ -108,3 +108,25 @@ test('tryGetBody rejects a body larger than the requested byte limit', function 
     expect(app(SafeHttpFetcher::class)->tryGetBody('https://93.184.216.34/page', 4))
         ->toBeNull();
 });
+
+test('tryGetBody aborts an oversized transfer and closes its temporary stream', function (int $total, int $downloaded) {
+    $stream = null;
+    $completed = false;
+
+    Http::fake(function ($request, array $options) use ($total, $downloaded, &$stream, &$completed) {
+        $stream = $options['sink'];
+        expect(is_resource($stream))->toBeTrue();
+
+        $options['progress']($total, $downloaded);
+        $completed = true;
+
+        return Http::response('should never finish');
+    });
+
+    expect(app(SafeHttpFetcher::class)->tryGetBody('https://93.184.216.34/page', 4))->toBeNull()
+        ->and($completed)->toBeFalse()
+        ->and(is_resource($stream))->toBeFalse();
+})->with([
+    'declared length' => [5, 0],
+    'unknown length' => [0, 5],
+]);
