@@ -216,9 +216,9 @@ test('does not throw when coupon and promo are both set but a prior canceled sub
         ->and(trialExpiresAt($subscription))->toBeNull();
 });
 
-test('empty coupon with card required does not throw and still applies trial', function () {
+test('missing coupon with card required does not throw and still applies trial', function (?string $couponId) {
     config([
-        'cashier.first_month_coupon_ids.socials' => '',
+        'cashier.first_month_coupon_ids.socials' => $couponId,
         'cashier.allow_promotion_codes' => false,
     ]);
     Workspace::factory()->create(['account_id' => $this->account->id]);
@@ -231,7 +231,10 @@ test('empty coupon with card required does not throw and still applies trial', f
 
     expect($subscription->couponId)->toBeNull()
         ->and(trialExpiresAt($subscription)?->toDateTimeString())->toBe('2026-08-15 12:00:00');
-});
+})->with([
+    'environment variable is unset' => null,
+    'environment variable is empty' => '',
+]);
 
 test('skips the coupon and allows promotion codes when a card is not required', function () {
     config([
