@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace App\Jobs\PostHog;
 
 use App\Models\Account;
-use App\Models\PostPlatform;
 use App\Models\Workspace;
 use App\Services\PostHogService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -44,17 +42,6 @@ class SyncAccountUsage implements ShouldQueue
         }
 
         $usage = $account->usage();
-        $latestPublication = PostPlatform::query()
-            ->published()
-            ->whereNotNull('published_at')
-            ->whereHas(
-                'post.workspace',
-                fn (Builder $query): Builder => $query->whereBelongsTo($account),
-            )
-            ->latest('published_at')
-            ->latest('updated_at')
-            ->latest('id')
-            ->first();
 
         $postHog->groupIdentify('account', (string) $account->id, [
             'name' => $account->name,
@@ -68,9 +55,6 @@ class SyncAccountUsage implements ShouldQueue
             'posts_count' => $usage['postCount'],
             'pending_invites_count' => $usage['pendingInviteCount'],
             'credits_used' => $usage['creditsUsed'],
-            'last_post_published_at' => $latestPublication?->published_at?->toIso8601String(),
-            'last_post_published_network' => $latestPublication?->platform->network(),
-            'last_published_post_id' => $latestPublication?->post_id,
             'created_at' => $account->created_at?->toIso8601String(),
         ]);
 

@@ -9,6 +9,8 @@ use App\Services\PostHogService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
+use PostHog\Client;
+use PostHog\PostHog;
 
 uses(RefreshDatabase::class);
 
@@ -81,6 +83,37 @@ test('group identify does not dispatch job when api key is missing', function ()
     $service->groupIdentify('workspace', 'ws-123', ['name' => 'Test']);
 
     Queue::assertNothingPushed();
+});
+
+test('group identify now sends without dispatching a second job', function () {
+    Queue::fake();
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    $client = Mockery::mock(Client::class);
+    $client->shouldReceive('capture')
+        ->once()
+        ->withArgs(fn (array $payload): bool => $payload['event'] === '$groupidentify'
+            && $payload['properties']['$group_type'] === 'account'
+            && $payload['properties']['$group_key'] === 'account-123')
+        ->andReturnTrue();
+    $client->shouldReceive('flush')->once()->andReturnTrue();
+    PostHog::init(client: $client);
+
+    (new PostHogService)->groupIdentifyNow('account', 'account-123', [
+        'last_post_published_at' => now()->toIso8601String(),
+    ]);
+
+    Queue::assertNothingPushed();
+});
+
+test('group identify now throws when PostHog rejects the payload', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    $client = Mockery::mock(Client::class);
+    $client->shouldReceive('capture')->once()->andReturnFalse();
+    $client->shouldNotReceive('flush');
+    PostHog::init(client: $client);
+
+    expect(fn () => (new PostHogService)->groupIdentifyNow('account', 'account-123'))
+        ->toThrow(RuntimeException::class, 'PostHog group identify failed.');
 });
 
 test('capture auto-attaches account groups when account is supplied', function () {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Status as AccountStatus;
+use App\Jobs\PostHog\SyncAccountPublishingActivity;
 use App\Jobs\ReconcileGoogleBusinessPost;
 use App\Jobs\SendNotification;
 use App\Models\Post;
@@ -67,7 +68,8 @@ test('settling a live review prunes the JPEG derivative', function () {
 });
 
 test('a live review on a publishing parent settles the post as published', function () {
-    Queue::fake([SendNotification::class]);
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Queue::fake([SendNotification::class, SyncAccountPublishingActivity::class]);
     $this->post->update(['status' => PostStatus::Publishing]);
     Http::fake([
         config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
@@ -83,6 +85,10 @@ test('a live review on a publishing parent settles the post as published', funct
         ->and($this->target->fresh()->platform_url)->toBe('https://posts.google.com/999')
         ->and($this->post->fresh()->status)->toBe(PostStatus::Published);
     Queue::assertPushed(SendNotification::class, 1);
+    Queue::assertPushed(
+        SyncAccountPublishingActivity::class,
+        fn (SyncAccountPublishingActivity $job): bool => $job->accountId === (string) $this->workspace->account_id,
+    );
 });
 
 test('a post that went live is published with the search URL Google returned', function () {

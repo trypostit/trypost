@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\Status;
-use App\Jobs\PostHog\SyncAccountUsage;
+use App\Jobs\PostHog\SyncAccountPublishingActivity;
 use App\Models\Account;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -28,6 +28,7 @@ beforeEach(function () {
 });
 
 test('confirmed publication queues an account activity sync', function () {
+    $this->freezeTime();
     $postPlatform = PostPlatform::factory()->recycle($this->post)->create();
 
     Queue::fake();
@@ -35,9 +36,10 @@ test('confirmed publication queues an account activity sync', function () {
     $postPlatform->markAsPublished('remote-post-id');
 
     Queue::assertPushed(
-        SyncAccountUsage::class,
-        fn (SyncAccountUsage $job): bool => $job->accountId === (string) $this->account->id
-            && $job->workspaceId === null,
+        SyncAccountPublishingActivity::class,
+        fn (SyncAccountPublishingActivity $job): bool => $job->accountId === (string) $this->account->id
+            && $job->delay?->equalTo(now()->addSeconds(SyncAccountPublishingActivity::DEBOUNCE_SECONDS))
+            && $job->afterCommit === true,
     );
 });
 
@@ -48,7 +50,7 @@ test('non-published status changes do not queue an account activity sync', funct
 
     $postPlatform->update(['status' => Status::Publishing]);
 
-    Queue::assertNotPushed(SyncAccountUsage::class);
+    Queue::assertNotPushed(SyncAccountPublishingActivity::class);
 });
 
 test('account activity sync is not queued when PostHog is disabled', function () {
@@ -59,5 +61,14 @@ test('account activity sync is not queued when PostHog is disabled', function ()
 
     $postPlatform->markAsPublished('remote-post-id');
 
-    Queue::assertNotPushed(SyncAccountUsage::class);
+    Queue::assertNotPushed(SyncAccountPublishingActivity::class);
+});
+
+test('updating an already published platform does not queue another sync', function () {
+    $postPlatform = PostPlatform::factory()->published()->recycle($this->post)->create();
+    Queue::fake();
+
+    $postPlatform->update(['platform_url' => 'https://example.com/published-post']);
+
+    Queue::assertNotPushed(SyncAccountPublishingActivity::class);
 });

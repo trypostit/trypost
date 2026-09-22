@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Enums\PostPlatform\Status;
-use App\Jobs\PostHog\SyncAccountUsage;
+use App\Jobs\PostHog\SyncAccountPublishingActivity;
 use App\Models\PostPlatform;
 use App\Services\PostHogService;
 
@@ -27,6 +27,8 @@ class PostPlatformObserver
             return;
         }
 
-        SyncAccountUsage::dispatch((string) $accountId)->afterCommit();
+        SyncAccountPublishingActivity::dispatch((string) $accountId)
+            ->delay(now()->addSeconds(SyncAccountPublishingActivity::DEBOUNCE_SECONDS))
+            ->afterCommit();
     }
 }

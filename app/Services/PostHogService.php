@@ -7,6 +7,8 @@ namespace App\Services;
 use App\Jobs\PostHog\SendEvent;
 use App\Models\Account;
 use Illuminate\Support\Facades\Log;
+use PostHog\PostHog;
+use RuntimeException;
 use Throwable;
 
 class PostHogService
@@ -103,6 +105,31 @@ class PostHogService
             Log::warning('PostHogService: failed to group identify', [
                 'error' => $e->getMessage(),
             ]);
+        }
+    }
+
+    /**
+     * Send a group update in the current job so its uniqueness and overlap
+     * locks remain held until PostHog has accepted the latest snapshot.
+     *
+     * @param  array<string, mixed>  $properties
+     */
+    public function groupIdentifyNow(string $groupType, string $groupKey, array $properties = []): void
+    {
+        $payload = [
+            'groupType' => $groupType,
+            'groupKey' => $groupKey,
+            'properties' => $properties,
+        ];
+
+        $this->logLocally('groupIdentify', $payload);
+
+        if (! self::isEnabled()) {
+            return;
+        }
+
+        if (! PostHog::groupIdentify($payload) || ! PostHog::flush()) {
+            throw new RuntimeException('PostHog group identify failed.');
         }
     }
 
