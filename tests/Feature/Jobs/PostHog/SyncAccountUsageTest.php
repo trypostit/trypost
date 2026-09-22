@@ -2,11 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Enums\PostPlatform\Status as PostPlatformStatus;
+use App\Enums\SocialAccount\Platform;
 use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Models\Post;
+use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -68,6 +71,82 @@ test('handle group-identifies the account with usage metrics', function () {
             && $props['workspaces_count'] === 1
             && $props['social_accounts_count'] === 2
             && $props['posts_count'] === 3;
+    });
+});
+
+test('handle identifies the account with its latest confirmed publishing activity', function () {
+    $olderWorkspace = Workspace::factory()->create([
+        'account_id' => $this->account->id,
+        'user_id' => $this->user->id,
+    ]);
+    $latestWorkspace = Workspace::factory()->create([
+        'account_id' => $this->account->id,
+        'user_id' => $this->user->id,
+    ]);
+    $olderPost = Post::factory()->create([
+        'workspace_id' => $olderWorkspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    $latestPost = Post::factory()->create([
+        'workspace_id' => $latestWorkspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    PostPlatform::factory()->published()->recycle($olderPost)->create([
+        'platform' => Platform::X,
+        'published_at' => now()->subDay(),
+    ]);
+    $latestPublication = PostPlatform::factory()->published()->recycle($latestPost)->create([
+        'platform' => Platform::LinkedInPage,
+        'published_at' => now()->subHour(),
+    ]);
+    PostPlatform::factory()->published()->create([
+        'published_at' => now(),
+    ]);
+
+    Queue::fake();
+
+    (new SyncAccountUsage((string) $this->account->id))->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, function ($job) use ($latestPublication) {
+        if ($job->method !== 'groupIdentify' || $job->payload['groupType'] !== 'account') {
+            return false;
+        }
+
+        $properties = $job->payload['properties'];
+
+        return $properties['last_post_published_at'] === $latestPublication->published_at->toIso8601String()
+            && $properties['last_post_published_network'] === 'linkedin'
+            && $properties['last_published_post_id'] === $latestPublication->post_id;
+    });
+});
+
+test('handle ignores posts that were not confirmed as published', function () {
+    $workspace = Workspace::factory()->create([
+        'account_id' => $this->account->id,
+        'user_id' => $this->user->id,
+    ]);
+    $post = Post::factory()->scheduled()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    PostPlatform::factory()->recycle($post)->create([
+        'status' => PostPlatformStatus::PendingReview,
+    ]);
+
+    Queue::fake();
+
+    (new SyncAccountUsage((string) $this->account->id))->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, function ($job) {
+        if ($job->method !== 'groupIdentify' || $job->payload['groupType'] !== 'account') {
+            return false;
+        }
+
+        $properties = $job->payload['properties'];
+
+        return $properties['last_post_published_at'] === null
+            && $properties['last_post_published_network'] === null
+            && $properties['last_published_post_id'] === null;
     });
 });
 
