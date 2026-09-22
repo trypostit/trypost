@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    config(['cashier.first_month_coupon_ids.workspaces' => 'WORKSPACES_88USD']);
 
     $this->plan = Plan::where('slug', 'workspace')->firstOrFail();
     $this->plan->update([
@@ -62,7 +63,46 @@ test('handle captures checkout.completed with plan, interval and conversion data
             && $job->payload['properties']['interval'] === 'monthly'
             && $job->payload['properties']['conversion_value'] === 29.0
             && $job->payload['properties']['conversion_currency'] === 'USD'
-            && $job->payload['properties']['conversion_transaction_id'] === 'sub_test123';
+            && $job->payload['properties']['conversion_transaction_id'] === 'sub_test123'
+            && $job->payload['properties']['is_first_month_offer'] === false;
+    });
+});
+
+test('handle marks checkout.completed when the subscription uses the configured first month coupon', function () {
+    $periodEndsAt = now()->addMonth()->startOfSecond();
+    $this->payload['data']['object']['metadata'] = [
+        'trypost_first_month_coupon_id' => 'WORKSPACES_88USD',
+    ];
+    $this->payload['data']['object']['items']['data'][0]['current_period_end'] = $periodEndsAt->timestamp;
+    Queue::fake();
+
+    (new TrackCheckoutCompleted((string) $this->account->id, $this->payload))
+        ->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, function (SendEvent $job) use ($periodEndsAt): bool {
+        $properties = $job->payload['properties'];
+
+        return $properties['is_first_month_offer'] === true
+            && $properties['first_month_coupon_id'] === 'WORKSPACES_88USD'
+            && $properties['first_month_offer_ends_at'] === $periodEndsAt->toIso8601String();
+    });
+});
+
+test('handle ignores a first month coupon marker that is not configured', function () {
+    $this->payload['data']['object']['metadata'] = [
+        'trypost_first_month_coupon_id' => 'UNRELATED_COUPON',
+    ];
+    Queue::fake();
+
+    (new TrackCheckoutCompleted((string) $this->account->id, $this->payload))
+        ->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, function (SendEvent $job): bool {
+        $properties = $job->payload['properties'];
+
+        return $properties['is_first_month_offer'] === false
+            && ! array_key_exists('first_month_coupon_id', $properties)
+            && ! array_key_exists('first_month_offer_ends_at', $properties);
     });
 });
 
