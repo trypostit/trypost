@@ -8,7 +8,6 @@ use App\Enums\PostPlatform\Status;
 use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\PostPlatform;
 use App\Services\PostHogService;
-use Illuminate\Support\Facades\DB;
 
 class PostPlatformObserver
 {
@@ -20,14 +19,14 @@ class PostPlatformObserver
             return;
         }
 
-        $postPlatform->loadMissing('post.workspace');
+        $accountId = $postPlatform
+            ->loadMissing('post.workspace')
+            ->post?->workspace?->account_id;
 
-        $workspace = $postPlatform->post?->workspace;
-
-        if (! $workspace) {
+        if (! $accountId) {
             return;
         }
 
-        DB::afterCommit(fn () => SyncAccountUsage::dispatch((string) $workspace->account_id));
+        SyncAccountUsage::dispatch((string) $accountId)->afterCommit();
     }
 }
