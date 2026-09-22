@@ -602,6 +602,10 @@ return [
             'label' => '投稿',
             'description' => 'ビジネス プロフィールに検索とマップで表示されます',
         ],
+        'vk_post' => [
+            'label' => '投稿',
+            'description' => 'メディア添付可能なテキスト投稿',
+        ],
     ],
 
     'platforms' => [
@@ -727,6 +731,7 @@ return [
                 'mastodon_post' => 'Mastodon 投稿',
                 'telegram_post' => 'Telegram 投稿',
                 'discord_message' => 'Discord メッセージ',
+                'vk_post' => 'VK投稿',
                 'facebook_post' => 'Facebook 投稿',
                 'pinterest_pin' => 'Pinterest ピン',
                 'instagram_story' => 'Instagram ストーリー',

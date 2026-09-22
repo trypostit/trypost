@@ -24,6 +24,7 @@ enum Platform: string
     case Telegram = 'telegram';
     case Discord = 'discord';
     case GoogleBusiness = 'google_business';
+    case Vk = 'vk';
 
     public function network(): string
     {
@@ -63,6 +64,7 @@ enum Platform: string
             self::Telegram => 'Telegram',
             self::Discord => 'Discord',
             self::GoogleBusiness => 'Google Business Profile',
+            self::Vk => 'VK',
         };
     }
 
@@ -83,6 +85,7 @@ enum Platform: string
             self::Telegram => '#26A5E4',
             self::Discord => '#5865F2',
             self::GoogleBusiness => '#4285F4',
+            self::Vk => '#0077FF',
         };
     }
 
@@ -102,6 +105,7 @@ enum Platform: string
             self::Telegram => [MediaType::Image, MediaType::Video],
             self::Discord => [MediaType::Image, MediaType::Video],
             self::GoogleBusiness => [MediaType::Image],
+            self::Vk => [MediaType::Image, MediaType::Video],
         };
     }
 
@@ -121,6 +125,7 @@ enum Platform: string
             self::Telegram => 10,
             self::Discord => 10,
             self::GoogleBusiness => 1,
+            self::Vk => 10,
         };
     }
 
@@ -145,6 +150,7 @@ enum Platform: string
             self::Pinterest => 500,
             self::Discord => 1024,
             self::TikTok, self::YouTube, self::Telegram, self::GoogleBusiness => null,
+            self::TikTok, self::YouTube, self::Telegram, self::Vk => null,
         };
     }
 
@@ -179,6 +185,7 @@ enum Platform: string
      *  - Telegram: 4096 for a text message (media captions are capped at 1024,
      *    handled in the publisher by sending long text as its own message)
      *  - Google Business Profile Local Post `summary`: 1500
+     *  - VK: 15895 characters for a wall post
      */
     public function maxContentLength(): int
     {
@@ -196,6 +203,7 @@ enum Platform: string
             self::Telegram => 4096,
             self::Discord => 2000,
             self::GoogleBusiness => 1500,
+            self::Vk => 15895,
         };
     }
 
@@ -244,6 +252,8 @@ enum Platform: string
             // Google Business Profile — image does most of the work, keep the
             // summary tight and scannable
             self::GoogleBusiness => 300,
+            // VK — feed favors short posts; long reads live in Articles
+            self::Vk => 400,
         };
     }
 
@@ -268,6 +278,7 @@ enum Platform: string
             self::Telegram => [],
             self::Discord => [],
             self::GoogleBusiness => ['https://www.googleapis.com/auth/business.manage'],
+            self::Vk => [],
         };
     }
 
@@ -287,6 +298,7 @@ enum Platform: string
             self::Telegram => true,
             self::Discord => true,
             self::GoogleBusiness => true,
+            self::Vk => true,
         };
     }
 
@@ -426,6 +438,7 @@ enum Platform: string
                 self::Telegram => 'TELEGRAM_ENABLED',
                 self::Discord => 'DISCORD_ENABLED',
                 self::GoogleBusiness => 'GOOGLE_BUSINESS_ENABLED',
+                self::Vk => 'VK_ENABLED',
             }, true),
         );
     }

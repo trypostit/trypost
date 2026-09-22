@@ -602,6 +602,10 @@ return [
             'label' => 'Публікація',
             'description' => 'Відображається у вашому Профілі компанії в Пошуку та Картах',
         ],
+        'vk_post' => [
+            'label' => 'Пост',
+            'description' => 'Текстовий пост із необов\'язковими медіа',
+        ],
     ],
 
     'platforms' => [
@@ -727,6 +731,7 @@ return [
                 'mastodon_post' => 'Пост Mastodon',
                 'telegram_post' => 'Пост Telegram',
                 'discord_message' => 'Повідомлення Discord',
+                'vk_post' => 'Пост VK',
                 'facebook_post' => 'Пост Facebook',
                 'pinterest_pin' => 'Pin Pinterest',
                 'instagram_story' => 'Stories Instagram',

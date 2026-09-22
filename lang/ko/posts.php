@@ -602,6 +602,10 @@ return [
             'label' => '게시물',
             'description' => '비즈니스 프로필에 검색 및 지도에 표시됩니다',
         ],
+        'vk_post' => [
+            'label' => '게시물',
+            'description' => '미디어를 선택적으로 첨부할 수 있는 텍스트 게시물',
+        ],
     ],
 
     'platforms' => [
@@ -727,6 +731,7 @@ return [
                 'mastodon_post' => 'Mastodon 게시물',
                 'telegram_post' => 'Telegram 게시물',
                 'discord_message' => 'Discord 메시지',
+                'vk_post' => 'VK 게시물',
                 'facebook_post' => 'Facebook 게시물',
                 'pinterest_pin' => 'Pinterest 핀',
                 'instagram_story' => 'Instagram 스토리',

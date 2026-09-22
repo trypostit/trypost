@@ -280,6 +280,9 @@ class SocialAccount extends Model
                         : (filled(data_get($this->meta, 'location_id'))
                             ? GoogleBusinessResourceName::dashboardUrl((string) data_get($this->meta, 'location_id'))
                             : null),
+                    SocialPlatform::Vk => $username
+                        ? "https://vk.com/{$username}"
+                        : ($platformUserId ? 'https://vk.com/'.(str_starts_with($platformUserId, '-') ? 'club'.ltrim($platformUserId, '-') : "id{$platformUserId}") : null),
                     default => null,
                 };
             },

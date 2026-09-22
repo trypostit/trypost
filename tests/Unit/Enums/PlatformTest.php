@@ -19,6 +19,7 @@ test('platform has correct labels', function () {
     expect(Platform::Pinterest->label())->toBe('Pinterest');
     expect(Platform::Bluesky->label())->toBe('Bluesky');
     expect(Platform::Mastodon->label())->toBe('Mastodon');
+    expect(Platform::Vk->label())->toBe('VK');
 });
 
 test('platform has correct colors', function () {
@@ -33,6 +34,7 @@ test('platform has correct colors', function () {
     expect(Platform::Pinterest->color())->toBe('#E60023');
     expect(Platform::Bluesky->color())->toBe('#0085FF');
     expect(Platform::Mastodon->color())->toBe('#6364FF');
+    expect(Platform::Vk->color())->toBe('#0077FF');
 });
 
 test('platform has correct allowed media types', function () {
@@ -122,6 +124,7 @@ test('platform is enabled by default for every platform', function (Platform $pl
     Platform::Telegram,
     Platform::Discord,
     Platform::GoogleBusiness,
+    Platform::Vk,
 ]);
 
 test('each platform can be disabled via config', function (Platform $platform) {
@@ -144,6 +147,7 @@ test('each platform can be disabled via config', function (Platform $platform) {
     Platform::Telegram,
     Platform::Discord,
     Platform::GoogleBusiness,
+    Platform::Vk,
 ]);
 
 test('each platform maps to its publishing queue', function (Platform $platform, string $queue) {
@@ -164,6 +168,7 @@ test('each platform maps to its publishing queue', function (Platform $platform,
     [Platform::Telegram, 'social-telegram'],
     [Platform::Discord, 'social-discord'],
     [Platform::GoogleBusiness, 'social-google_business'],
+    [Platform::Vk, 'social-vk'],
 ]);
 
 test('allQueues lists every platform publishing queue in enum order', function () {
@@ -183,6 +188,7 @@ test('allQueues lists every platform publishing queue in enum order', function (
         'social-telegram',
         'social-discord',
         'social-google_business',
+        'social-vk',
     ])->and(Platform::allQueues())->toHaveCount(count(Platform::cases()));
 });
 
@@ -232,6 +238,7 @@ test('disabling a platform removes only its queue from enabledQueues', function 
     Platform::Telegram,
     Platform::Discord,
     Platform::GoogleBusiness,
+    Platform::Vk,
 ]);
 
 test('disabling every platform yields no enabled queues', function () {

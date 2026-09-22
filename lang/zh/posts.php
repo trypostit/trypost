@@ -602,6 +602,10 @@ return [
             'label' => '帖子',
             'description' => '在搜索和地图中显示在您的商业资料中',
         ],
+        'vk_post' => [
+            'label' => '帖子',
+            'description' => '可附带媒体的文字帖子',
+        ],
     ],
 
     'platforms' => [
@@ -727,6 +731,7 @@ return [
                 'mastodon_post' => 'Mastodon 帖子',
                 'telegram_post' => 'Telegram 帖子',
                 'discord_message' => 'Discord 消息',
+                'vk_post' => 'VK 帖子',
                 'facebook_post' => 'Facebook 帖子',
                 'pinterest_pin' => 'Pinterest Pin',
                 'instagram_story' => 'Instagram 快拍',

@@ -602,6 +602,10 @@ return [
             'label' => 'منشور',
             'description' => 'يظهر على ملفك التجاري في البحث والخرائط',
         ],
+        'vk_post' => [
+            'label' => 'منشور',
+            'description' => 'منشور نصي مع وسائط اختيارية',
+        ],
     ],
 
     'platforms' => [
@@ -727,6 +731,7 @@ return [
                 'mastodon_post' => 'منشور Mastodon',
                 'telegram_post' => 'منشور Telegram',
                 'discord_message' => 'رسالة Discord',
+                'vk_post' => 'منشور VK',
                 'facebook_post' => 'منشور Facebook',
                 'pinterest_pin' => 'دبوس Pinterest',
                 'instagram_story' => 'قصة Instagram',
