@@ -7,7 +7,6 @@ namespace App\Jobs\PostHog;
 use App\Models\Account;
 use App\Models\Post;
 use App\Models\PostPlatform;
-use App\Models\Workspace;
 use App\Services\PostHogService;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -68,12 +67,9 @@ class SyncAccountPublishingActivity implements ShouldBeUniqueUntilProcessing, Sh
             return;
         }
 
-        $workspaceIds = Workspace::query()
-            ->select('id')
-            ->whereBelongsTo($account);
         $postIds = Post::query()
-            ->select('id')
-            ->whereIn('workspace_id', $workspaceIds);
+            ->select('posts.id')
+            ->whereRelation('workspace', 'account_id', $account->id);
 
         $latestPublication = PostPlatform::query()
             ->published()
