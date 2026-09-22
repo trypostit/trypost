@@ -11,6 +11,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\PostHogService;
+use App\Support\Billing\SubscriptionAnalytics;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
@@ -29,7 +30,10 @@ test('handle is a no-op when api key is unset', function () {
     config(['services.posthog.api_key' => null]);
     Queue::fake();
 
-    (new SyncAccountUsage((string) $this->account->id))->handle(app(PostHogService::class));
+    (new SyncAccountUsage((string) $this->account->id))->handle(
+        app(PostHogService::class),
+        app(SubscriptionAnalytics::class),
+    );
 
     Queue::assertNothingPushed();
 });
@@ -37,7 +41,10 @@ test('handle is a no-op when api key is unset', function () {
 test('handle returns silently when account does not exist', function () {
     Queue::fake();
 
-    (new SyncAccountUsage((string) Str::uuid()))->handle(app(PostHogService::class));
+    (new SyncAccountUsage((string) Str::uuid()))->handle(
+        app(PostHogService::class),
+        app(SubscriptionAnalytics::class),
+    );
 
     Queue::assertNothingPushed();
 });
@@ -55,7 +62,10 @@ test('handle group-identifies the account with usage metrics', function () {
 
     Queue::fake();
 
-    (new SyncAccountUsage((string) $this->account->id))->handle(app(PostHogService::class));
+    (new SyncAccountUsage((string) $this->account->id))->handle(
+        app(PostHogService::class),
+        app(SubscriptionAnalytics::class),
+    );
 
     Queue::assertPushed(SendEvent::class, function ($job) {
         if ($job->method !== 'groupIdentify' || $job->payload['groupType'] !== 'account') {
@@ -80,7 +90,10 @@ test('handle group-identifies the workspace when workspaceId is provided', funct
 
     Queue::fake();
 
-    (new SyncAccountUsage((string) $this->account->id, (string) $workspace->id))->handle(app(PostHogService::class));
+    (new SyncAccountUsage((string) $this->account->id, (string) $workspace->id))->handle(
+        app(PostHogService::class),
+        app(SubscriptionAnalytics::class),
+    );
 
     Queue::assertPushed(SendEvent::class, function ($job) use ($workspace) {
         return $job->method === 'groupIdentify'
@@ -94,7 +107,10 @@ test('handle group-identifies the workspace when workspaceId is provided', funct
 test('handle skips workspace group identify when workspaceId is null', function () {
     Queue::fake();
 
-    (new SyncAccountUsage((string) $this->account->id))->handle(app(PostHogService::class));
+    (new SyncAccountUsage((string) $this->account->id))->handle(
+        app(PostHogService::class),
+        app(SubscriptionAnalytics::class),
+    );
 
     Queue::assertNotPushed(SendEvent::class, function ($job) {
         return $job->method === 'groupIdentify' && $job->payload['groupType'] === 'workspace';
@@ -116,7 +132,10 @@ test('handle invalidates the posts_count cache before reading usage', function (
 
     Queue::fake();
 
-    (new SyncAccountUsage((string) $this->account->id))->handle(app(PostHogService::class));
+    (new SyncAccountUsage((string) $this->account->id))->handle(
+        app(PostHogService::class),
+        app(SubscriptionAnalytics::class),
+    );
 
     Queue::assertPushed(SendEvent::class, function ($job) {
         return $job->method === 'groupIdentify'
@@ -129,4 +148,36 @@ test('job is queued on the posthog connection queue', function () {
     $job = new SyncAccountUsage((string) $this->account->id);
 
     expect($job->queue)->toBe('posthog');
+});
+
+test('handle sends the current subscription and first month offer state on the account group', function () {
+    $startedAt = now()->subWeek()->startOfSecond();
+    $endsAt = now()->addWeeks(3)->startOfSecond();
+    $this->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_first_month_offer',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_socials_monthly',
+        'stripe_started_at' => $startedAt,
+        'first_month_coupon_id' => 'SOCIALS_18USD',
+        'first_month_offer_ends_at' => $endsAt,
+    ]);
+    Queue::fake();
+
+    (new SyncAccountUsage((string) $this->account->id))->handle(
+        app(PostHogService::class),
+        app(SubscriptionAnalytics::class),
+    );
+
+    Queue::assertPushed(SendEvent::class, function (SendEvent $job) use ($startedAt, $endsAt): bool {
+        $properties = $job->payload['properties'];
+
+        return $job->method === 'groupIdentify'
+            && $job->payload['groupType'] === 'account'
+            && $properties['subscription_status'] === 'active'
+            && $properties['subscription_started_at'] === $startedAt->toIso8601String()
+            && $properties['subscription_coupon_id'] === 'SOCIALS_18USD'
+            && $properties['is_in_first_month_offer'] === true
+            && $properties['first_month_offer_ends_at'] === $endsAt->toIso8601String();
+    });
 });

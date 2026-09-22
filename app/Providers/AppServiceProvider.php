@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Listeners\StripeEventListener;
+use App\Listeners\SyncSubscriptionAnalytics;
 use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\AiUsageLog;
@@ -48,6 +49,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Cashier\Cashier;
+use Laravel\Cashier\Events\WebhookHandled;
 use Laravel\Cashier\Events\WebhookReceived;
 use Laravel\Nightwatch\Facades\Nightwatch;
 use Laravel\Nightwatch\Records\CacheEvent;
@@ -172,6 +174,7 @@ class AppServiceProvider extends ServiceProvider
     protected function configureStripeWebhooks(): void
     {
         Event::listen(WebhookReceived::class, StripeEventListener::class);
+        Event::listen(WebhookHandled::class, SyncSubscriptionAnalytics::class);
     }
 
     protected function configureSocialite(): void

@@ -32,10 +32,11 @@ class StartSubscriptionCheckout
             'name' => $account->stripeName(),
         ]);
 
-        $subscription = $account->newSubscription(Account::SUBSCRIPTION_NAME, $priceId)
-            ->withMetadata($this->subscriptionMetadata($account));
+        $monthlyPlan = $this->monthlyPlan($plan, $priceId);
+        $subscription = $account->newSubscription(Account::SUBSCRIPTION_NAME, $priceId);
 
-        ConfigureSubscriptionCheckout::apply($subscription, $account, $this->monthlyPlan($plan, $priceId));
+        ConfigureSubscriptionCheckout::apply($subscription, $account, $monthlyPlan);
+        $subscription->withMetadata($this->subscriptionMetadata($account, $subscription->couponId));
 
         $session = $subscription->checkout([
             'success_url' => route('app.billing.processing').'?session_id={CHECKOUT_SESSION_ID}',
@@ -48,7 +49,7 @@ class StartSubscriptionCheckout
     /**
      * @return array<string, string>
      */
-    private function subscriptionMetadata(Account $account): array
+    private function subscriptionMetadata(Account $account, ?string $firstMonthCouponId): array
     {
         $owner = $account->owner;
 
@@ -67,6 +68,7 @@ class StartSubscriptionCheckout
             'persona' => $owner?->persona?->value,
             'goals' => implode(',', $owner?->goals ?? []),
             'referral_source' => $owner?->referral_source?->value,
+            ConfigureSubscriptionCheckout::FIRST_MONTH_COUPON_METADATA_KEY => $firstMonthCouponId,
         ], filled(...));
 
         return array_map(

@@ -12,6 +12,8 @@ use Stripe\Subscription as StripeSubscription;
 
 final class ConfigureSubscriptionCheckout
 {
+    public const FIRST_MONTH_COUPON_METADATA_KEY = 'trypost_first_month_coupon_id';
+
     /**
      * Stripe Checkout rejects subscription trials shorter than 48 hours.
      */

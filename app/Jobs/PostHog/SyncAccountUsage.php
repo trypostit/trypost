@@ -7,6 +7,7 @@ namespace App\Jobs\PostHog;
 use App\Models\Account;
 use App\Models\Workspace;
 use App\Services\PostHogService;
+use App\Support\Billing\SubscriptionAnalytics;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -27,7 +28,7 @@ class SyncAccountUsage implements ShouldQueue
         $this->onQueue('posthog');
     }
 
-    public function handle(PostHogService $postHog): void
+    public function handle(PostHogService $postHog, SubscriptionAnalytics $subscriptionAnalytics): void
     {
         if (! PostHogService::isEnabled()) {
             return;
@@ -42,6 +43,7 @@ class SyncAccountUsage implements ShouldQueue
         }
 
         $usage = $account->usage();
+        $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
 
         $postHog->groupIdentify('account', (string) $account->id, [
             'name' => $account->name,
@@ -49,6 +51,7 @@ class SyncAccountUsage implements ShouldQueue
             'plan_slug' => $account->plan?->slug->value,
             'has_active_subscription' => $account->hasActiveSubscription(),
             'is_on_trial' => $account->isOnTrial(),
+            ...$subscriptionAnalytics->properties($subscription),
             'workspaces_count' => $usage['workspaceCount'],
             'members_count' => $usage['memberCount'],
             'social_accounts_count' => $usage['socialAccountCount'],
