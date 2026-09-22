@@ -62,7 +62,7 @@ final class StripeSubscriptionConversion
     public static function checkoutPropertiesFor(Account $account, array $payload): array
     {
         $properties = self::propertiesFor($account, $payload);
-        $firstMonthCouponId = self::firstMonthCouponId($account, $payload);
+        $firstMonthCouponId = self::firstMonthCouponId($payload);
 
         $properties['is_first_month_offer'] = $firstMonthCouponId !== null;
 
@@ -84,19 +84,13 @@ final class StripeSubscriptionConversion
     /**
      * @param  array<string, mixed>  $payload
      */
-    private static function firstMonthCouponId(Account $account, array $payload): ?string
+    private static function firstMonthCouponId(array $payload): ?string
     {
         $couponId = data_get(
             $payload,
             'data.object.metadata.'.ConfigureSubscriptionCheckout::FIRST_MONTH_COUPON_METADATA_KEY,
         );
 
-        if (! is_string($couponId) || $couponId === '') {
-            return null;
-        }
-
-        $configuredCouponId = config("cashier.first_month_coupon_ids.{$account->plan->slug->value}");
-
-        return $couponId === $configuredCouponId ? $couponId : null;
+        return is_string($couponId) && $couponId !== '' ? $couponId : null;
     }
 }

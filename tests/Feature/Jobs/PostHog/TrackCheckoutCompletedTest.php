@@ -89,11 +89,11 @@ test('handle marks checkout.completed when the subscription uses the configured 
     });
 });
 
-test('handle ignores a first month coupon configured for another plan', function () {
-    config(['cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD']);
+test('handle uses the checkout marker even when the coupon configuration changes before the job runs', function () {
     $this->payload['data']['object']['metadata'] = [
-        'trypost_first_month_coupon_id' => 'SOCIALS_18USD',
+        'trypost_first_month_coupon_id' => 'WORKSPACES_88USD',
     ];
+    config(['cashier.first_month_coupon_ids.workspaces' => null]);
     Queue::fake();
 
     (new TrackCheckoutCompleted((string) $this->account->id, $this->payload))
@@ -102,9 +102,8 @@ test('handle ignores a first month coupon configured for another plan', function
     Queue::assertPushed(SendEvent::class, function (SendEvent $job): bool {
         $properties = $job->payload['properties'];
 
-        return $properties['is_first_month_offer'] === false
-            && ! array_key_exists('first_month_coupon_id', $properties)
-            && ! array_key_exists('first_month_offer_ends_at', $properties);
+        return $properties['is_first_month_offer'] === true
+            && $properties['first_month_coupon_id'] === 'WORKSPACES_88USD';
     });
 });
 
