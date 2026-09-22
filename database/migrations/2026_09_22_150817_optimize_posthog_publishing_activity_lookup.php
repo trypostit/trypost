@@ -14,18 +14,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('workspaces', function (Blueprint $table) {
-            $table->index(
-                ['account_id', 'id'],
-                'workspaces_account_publishing_index',
-            );
+            $table->index(['account_id', 'id']);
         });
 
         Schema::table('post_platforms', function (Blueprint $table) {
-            $table->timestamp('published_at', precision: 6)->nullable()->change();
-            $table->index(
-                ['post_id', 'status', 'published_at'],
-                'post_platforms_publishing_lookup_index',
-            );
+            $table->index(['post_id', 'status', 'published_at']);
         });
     }
 
@@ -35,8 +28,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('post_platforms', function (Blueprint $table) {
-            $table->dropIndex('post_platforms_publishing_lookup_index');
-            $table->timestamp('published_at')->nullable()->change();
+            $table->dropIndex(['post_id', 'status', 'published_at']);
         });
 
         Schema::table('workspaces', function (Blueprint $table) {
@@ -44,7 +36,7 @@ return new class extends Migration
         });
 
         Schema::table('workspaces', function (Blueprint $table) {
-            $table->dropIndex('workspaces_account_publishing_index');
+            $table->dropIndex(['account_id', 'id']);
         });
 
         Schema::table('workspaces', function (Blueprint $table) {

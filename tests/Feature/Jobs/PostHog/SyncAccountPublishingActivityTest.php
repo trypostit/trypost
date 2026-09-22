@@ -98,44 +98,6 @@ test('handle clears publishing activity when the account has no confirmed public
     (new SyncAccountPublishingActivity((string) $this->account->id))->handle($postHog);
 });
 
-test('handle uses microsecond precision to select the last published network', function () {
-    $workspace = Workspace::factory()->create([
-        'account_id' => $this->account->id,
-        'user_id' => $this->user->id,
-    ]);
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    $second = now()->startOfSecond();
-
-    PostPlatform::factory()->published()->recycle($post)->create([
-        'id' => 'ffffffff-ffff-4fff-afff-ffffffffffff',
-        'platform' => Platform::X,
-        'published_at' => $second->copy()->addMicroseconds(100),
-        'created_at' => $second,
-        'updated_at' => $second,
-    ]);
-    $latestPublication = PostPlatform::factory()->published()->recycle($post)->create([
-        'id' => '00000000-0000-4000-a000-000000000000',
-        'platform' => Platform::LinkedInPage,
-        'published_at' => $second->copy()->addMicroseconds(900),
-        'created_at' => $second,
-        'updated_at' => $second,
-    ]);
-
-    $postHog = Mockery::mock(PostHogService::class);
-    $postHog->shouldReceive('groupIdentifyNow')
-        ->once()
-        ->with('account', (string) $this->account->id, [
-            'last_post_published_at' => $latestPublication->published_at->toIso8601String(),
-            'last_post_published_network' => 'linkedin',
-            'last_published_post_id' => $post->id,
-        ]);
-
-    (new SyncAccountPublishingActivity((string) $this->account->id))->handle($postHog);
-});
-
 test('handle is a no-op when PostHog is disabled', function () {
     config(['services.posthog.enabled' => false]);
 
