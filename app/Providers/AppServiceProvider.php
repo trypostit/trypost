@@ -146,6 +146,11 @@ class AppServiceProvider extends ServiceProvider
             fn (Request $request): Limit => Limit::perMinute(30)->by($request->ip()),
         );
 
+        RateLimiter::for(
+            'analytics-publications',
+            fn (object $job): Limit => Limit::perMinute(30)->by($job->providerRateLimitKey()),
+        );
+
         // Signed media uploads (api.uploads.store). MCP hosts share egress IPs
         // across tenants — key by workspace_id from the signed URL, with a high
         // IP backstop so one client cannot flood every workspace.

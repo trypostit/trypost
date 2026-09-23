@@ -215,6 +215,11 @@ class SocialAccount extends Model
         return $this->hasMany(PostPlatform::class);
     }
 
+    public function analyticsSyncStates(): HasMany
+    {
+        return $this->hasMany(AnalyticsSyncState::class);
+    }
+
     protected function isTokenExpired(): Attribute
     {
         return Attribute::make(
@@ -430,5 +435,10 @@ class SocialAccount extends Model
     public function scopeConnected(Builder $query): Builder
     {
         return $query->where('status', Status::Connected);
+    }
+
+    public function scopeIncludedInAnalytics(Builder $query): Builder
+    {
+        return $query->whereIn('platform', SocialPlatform::analyticsValues());
     }
 }

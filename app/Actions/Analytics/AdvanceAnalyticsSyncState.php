@@ -1,0 +1,201 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Actions\Analytics;
+
+use App\Dto\Analytics\PublicationPage;
+use App\Enums\Analytics\SyncCollector;
+use App\Enums\Analytics\SyncStatus;
+use App\Models\AnalyticsPublication;
+use App\Models\AnalyticsSyncState;
+use App\Models\SocialAccount;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
+
+class AdvanceAnalyticsSyncState
+{
+    public function __construct(private readonly UpsertAnalyticsPublication $publications) {}
+
+    /**
+     * @return array{cursor: ?string, revision: int, cutoff: CarbonImmutable}|null
+     */
+    public function begin(string $stateId, bool $restartTerminal = false): ?array
+    {
+        return DB::transaction(function () use ($restartTerminal, $stateId): ?array {
+            $state = AnalyticsSyncState::query()->lockForUpdate()->find($stateId);
+
+            if (! $state || ($state->isTerminal() && ! $restartTerminal)) {
+                return null;
+            }
+
+            $checkpoint = $state->checkpoint ?? [];
+            $revision = ((int) ($checkpoint['revision'] ?? 0)) + 1;
+            $cursor = $restartTerminal && $state->isTerminal()
+                ? null
+                : ($checkpoint['cursor'] ?? null);
+
+            $state->update([
+                'status' => SyncStatus::Running,
+                'checkpoint' => ['cursor' => $cursor, 'revision' => $revision],
+                'last_error_category' => null,
+            ]);
+
+            $cutoff = $state->collector === SyncCollector::PublicationBackfill
+                ? ($state->target_since ?? CarbonImmutable::now('UTC')->subDays(365))
+                : ($state->high_watermark_at ?? CarbonImmutable::now('UTC'))->subDays(3);
+
+            return [
+                'cursor' => is_string($cursor) && $cursor !== '' ? $cursor : null,
+                'revision' => $revision,
+                'cutoff' => $cutoff->toImmutable(),
+            ];
+        });
+    }
+
+    /**
+     * Persist page facts even for a stale worker, but only let the worker that
+     * owns the current revision advance the provider cursor.
+     *
+     * @return array{advanced: bool, terminal: bool}
+     */
+    public function handle(
+        string $stateId,
+        int $capturedRevision,
+        SocialAccount $account,
+        PublicationPage $page,
+    ): array {
+        return DB::transaction(function () use ($account, $capturedRevision, $page, $stateId): array {
+            $state = AnalyticsSyncState::query()->lockForUpdate()->find($stateId);
+
+            if (! $state) {
+                return ['advanced' => false, 'terminal' => true];
+            }
+
+            foreach ($page->publications as $publication) {
+                $this->publications->external($account, $publication);
+            }
+
+            $checkpoint = $state->checkpoint ?? [];
+
+            if ((int) ($checkpoint['revision'] ?? 0) !== $capturedRevision) {
+                return ['advanced' => false, 'terminal' => $state->isTerminal()];
+            }
+
+            $publishedAt = collect($page->publications)->pluck('publishedAt');
+            $pageOldest = $publishedAt->min();
+            $pageNewest = $publishedAt->max();
+            $oldest = $this->earlier($state->oldest_reached_at, $pageOldest);
+            $highWatermark = $this->later($state->high_watermark_at, $pageNewest);
+            $reachedTarget = $state->collector === SyncCollector::PublicationBackfill
+                && $oldest
+                && $state->target_since
+                && $oldest->lessThanOrEqualTo($state->target_since);
+
+            $status = match (true) {
+                $page->providerLimited => SyncStatus::ProviderLimited,
+                filled($page->partialReason) && ($page->providerExhausted || $reachedTarget) => SyncStatus::Partial,
+                $page->providerExhausted || $reachedTarget => SyncStatus::Complete,
+                default => SyncStatus::Running,
+            };
+
+            $state->update([
+                'status' => $status,
+                'checkpoint' => [
+                    'cursor' => $status === SyncStatus::Running ? $page->nextCursor : null,
+                    'revision' => $capturedRevision,
+                ],
+                'oldest_reached_at' => $oldest,
+                'high_watermark_at' => $highWatermark,
+                'last_success_at' => CarbonImmutable::now('UTC'),
+                'last_error_category' => $page->providerLimited
+                    ? 'provider_limited'
+                    : $page->partialReason,
+            ]);
+
+            if ($state->collector === SyncCollector::PublicationBackfill && $status !== SyncStatus::Running) {
+                $this->initializeDiscovery($account, $highWatermark);
+            }
+
+            return ['advanced' => true, 'terminal' => $status !== SyncStatus::Running];
+        });
+    }
+
+    public function recordFailure(string $stateId, int $capturedRevision, string $category, bool $terminal): void
+    {
+        DB::transaction(function () use ($capturedRevision, $category, $stateId, $terminal): void {
+            $state = AnalyticsSyncState::query()->lockForUpdate()->find($stateId);
+
+            if (! $state || (int) data_get($state->checkpoint, 'revision', 0) !== $capturedRevision) {
+                return;
+            }
+
+            $state->update([
+                'status' => $terminal ? SyncStatus::Failed : SyncStatus::Running,
+                'last_error_category' => mb_substr($category, 0, 64),
+            ]);
+        });
+    }
+
+    public function resetInvalidCursor(string $stateId, int $capturedRevision): bool
+    {
+        return DB::transaction(function () use ($capturedRevision, $stateId): bool {
+            $state = AnalyticsSyncState::query()->lockForUpdate()->find($stateId);
+
+            if (! $state || (int) data_get($state->checkpoint, 'revision', 0) !== $capturedRevision) {
+                return false;
+            }
+
+            $state->update([
+                'status' => SyncStatus::Pending,
+                'checkpoint' => ['cursor' => null, 'revision' => $capturedRevision],
+                'last_error_category' => 'invalid_cursor',
+            ]);
+
+            return true;
+        });
+    }
+
+    private function initializeDiscovery(SocialAccount $account, ?CarbonImmutable $highWatermark): void
+    {
+        $latest = AnalyticsPublication::query()
+            ->where('social_account_id', $account->id)
+            ->max('provider_published_at');
+        $initialHighWatermark = $highWatermark
+            ?? ($latest ? CarbonImmutable::parse($latest, 'UTC') : CarbonImmutable::now('UTC'));
+
+        $state = AnalyticsSyncState::query()->firstOrCreate([
+            'social_account_id' => $account->id,
+            'collector' => SyncCollector::PublicationDiscovery,
+        ], [
+            'status' => SyncStatus::Pending,
+            'checkpoint' => ['cursor' => null, 'revision' => 0],
+        ]);
+
+        if (! $state->high_watermark_at || $initialHighWatermark->greaterThan($state->high_watermark_at)) {
+            $state->update(['high_watermark_at' => $initialHighWatermark]);
+        }
+    }
+
+    private function earlier(?CarbonImmutable $current, mixed $candidate): ?CarbonImmutable
+    {
+        if (! $candidate) {
+            return $current;
+        }
+
+        $candidate = CarbonImmutable::parse($candidate, 'UTC');
+
+        return ! $current || $candidate->lessThan($current) ? $candidate : $current;
+    }
+
+    private function later(?CarbonImmutable $current, mixed $candidate): ?CarbonImmutable
+    {
+        if (! $candidate) {
+            return $current;
+        }
+
+        $candidate = CarbonImmutable::parse($candidate, 'UTC');
+
+        return ! $current || $candidate->greaterThan($current) ? $candidate : $current;
+    }
+}

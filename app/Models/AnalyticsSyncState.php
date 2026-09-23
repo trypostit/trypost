@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\Analytics\SyncCollector;
 use App\Enums\Analytics\SyncStatus;
 use Database\Factories\AnalyticsSyncStateFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -39,5 +40,30 @@ class AnalyticsSyncState extends Model
     public function socialAccount(): BelongsTo
     {
         return $this->belongsTo(SocialAccount::class);
+    }
+
+    public function scopeForCollector(Builder $query, SyncCollector $collector): Builder
+    {
+        return $query->where('collector', $collector);
+    }
+
+    public function scopeTerminal(Builder $query): Builder
+    {
+        return $query->whereIn('status', [
+            SyncStatus::Complete,
+            SyncStatus::Partial,
+            SyncStatus::ProviderLimited,
+            SyncStatus::Failed,
+        ]);
+    }
+
+    public function isTerminal(): bool
+    {
+        return in_array($this->status, [
+            SyncStatus::Complete,
+            SyncStatus::Partial,
+            SyncStatus::ProviderLimited,
+            SyncStatus::Failed,
+        ], true);
     }
 }

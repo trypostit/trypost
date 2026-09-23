@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Enums\SocialAccount\Status;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\PostHog\IdentifyConnectedPlatforms;
 use App\Jobs\PostHog\SyncAccountUsage;
@@ -84,17 +85,21 @@ class SocialAccountObserver
             $currentAccount = SocialAccount::query()
                 ->connected()
                 ->active()
+                ->includedInAnalytics()
                 ->find($socialAccount->id);
 
-            if (! $currentAccount
-                || ! app(FollowerCollectorFactory::class)->supports($currentAccount->platform)) {
+            if (! $currentAccount) {
                 return;
             }
 
-            CollectAccountDailySnapshot::dispatch(
-                $currentAccount->id,
-                CarbonImmutable::now('UTC')->toDateString(),
-            )->afterCommit();
+            if (app(FollowerCollectorFactory::class)->supports($currentAccount->platform)) {
+                CollectAccountDailySnapshot::dispatch(
+                    $currentAccount->id,
+                    CarbonImmutable::now('UTC')->toDateString(),
+                )->afterCommit();
+            }
+
+            BootstrapAccountAnalytics::dispatch($currentAccount->id)->afterCommit();
         } catch (Throwable $exception) {
             report($exception);
         }

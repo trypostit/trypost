@@ -90,6 +90,11 @@ class PostPlatform extends Model
         return $query->where('post_platforms.status', Status::Published);
     }
 
+    public function scopeIncludedInAnalytics(Builder $query): Builder
+    {
+        return $query->whereIn('post_platforms.platform', SocialPlatform::analyticsValues());
+    }
+
     /**
      * Get display name, falling back to snapshot if account was deleted.
      */

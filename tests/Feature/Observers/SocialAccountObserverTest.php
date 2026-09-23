@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\SocialAccount\Status;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\PostHog\IdentifyConnectedPlatforms;
 use App\Jobs\PostHog\SendEvent;
@@ -151,6 +152,8 @@ test('connecting an included account dispatches its initial follower collection'
 
     Bus::assertDispatched(CollectAccountDailySnapshot::class, fn ($job): bool => $job->socialAccountId === $socialAccount->id
         && $job->queue === 'analytics');
+    Bus::assertDispatched(BootstrapAccountAnalytics::class, fn ($job): bool => $job->socialAccountId === $socialAccount->id
+        && $job->queue === 'analytics');
 });
 
 test('connecting an excluded account does not dispatch follower collection', function () {
@@ -161,4 +164,5 @@ test('connecting an excluded account does not dispatch follower collection', fun
     ]);
 
     Bus::assertNotDispatched(CollectAccountDailySnapshot::class);
+    Bus::assertNotDispatched(BootstrapAccountAnalytics::class);
 });

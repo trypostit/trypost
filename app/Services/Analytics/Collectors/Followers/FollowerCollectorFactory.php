@@ -12,18 +12,7 @@ class FollowerCollectorFactory
 {
     public function supports(Platform $platform): bool
     {
-        return in_array($platform, [
-            Platform::Instagram,
-            Platform::InstagramFacebook,
-            Platform::Facebook,
-            Platform::Threads,
-            Platform::X,
-            Platform::Pinterest,
-            Platform::YouTube,
-            Platform::TikTok,
-            Platform::Bluesky,
-            Platform::Mastodon,
-        ], true);
+        return $platform->isIncludedInAnalytics();
     }
 
     public function for(Platform $platform): FollowerCollector

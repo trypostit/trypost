@@ -11,6 +11,11 @@ use App\Models\SocialAccount;
 
 class PublicationHistoryCollectorFactory
 {
+    public function supports(Platform $platform): bool
+    {
+        return $platform->isIncludedInAnalytics();
+    }
+
     public function for(SocialAccount $account): PublicationHistoryCollector
     {
         return match ($account->platform) {

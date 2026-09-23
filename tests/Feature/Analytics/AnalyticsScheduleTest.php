@@ -12,6 +12,10 @@ test('follower collection and fallback are scheduled at the expected UTC times',
         'analytics:dispatch-account-daily',
     ));
     $finalizer = $events->first(fn ($event): bool => $event->description === FinalizeAccountDailySnapshots::class);
+    $discovery = $events->first(fn ($event): bool => str_contains(
+        (string) $event->command,
+        'analytics:dispatch-publication-discovery',
+    ));
 
     expect($collection)->not->toBeNull()
         ->and($collection->expression)->toBe('0 2 * * *')
@@ -22,5 +26,10 @@ test('follower collection and fallback are scheduled at the expected UTC times',
         ->and($finalizer->expression)->toBe('30 23 * * *')
         ->and($finalizer->timezone)->toBe('UTC')
         ->and($finalizer->withoutOverlapping)->toBeTrue()
-        ->and($finalizer->onOneServer)->toBeTrue();
+        ->and($finalizer->onOneServer)->toBeTrue()
+        ->and($discovery)->not->toBeNull()
+        ->and($discovery->expression)->toBe('0 3 * * *')
+        ->and($discovery->timezone)->toBe('UTC')
+        ->and($discovery->withoutOverlapping)->toBeTrue()
+        ->and($discovery->onOneServer)->toBeTrue();
 });
