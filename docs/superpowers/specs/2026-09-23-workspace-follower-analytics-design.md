@@ -21,6 +21,8 @@ must answer six questions without querying social APIs at request time:
 5. How did publication volume, reactions, comments, and engagement compare
    with the immediately preceding equivalent period?
 6. Which destination publications and social accounts performed best?
+7. Which detailed metrics, including video-retention metrics where available,
+   explain the performance of an individual published destination?
 
 Success means `/analytics` renders without making social API calls, daily
 follower collection is resilient to transient failures and rate limits, one
@@ -72,10 +74,12 @@ Both LinkedIn identity types are excluded from follower analytics v1:
 - LinkedIn Page
 
 Neither receives follower collection jobs, appears in the follower charts, nor
-contributes to the workspace total. Existing LinkedIn publishing and existing
-post analytics remain untouched. Successfully published LinkedIn destinations
-do appear in the Posts widget because that metric comes from TryPost's local
-publication records and requires no LinkedIn analytics permission.
+contributes to the workspace total. LinkedIn publishing remains untouched, but
+supported LinkedIn post analytics participate in the same database-backed post
+metrics migration as the other networks. Successfully published LinkedIn
+destinations also appear in the Posts widget because that metric comes from
+TryPost's local publication records and requires no LinkedIn follower-analytics
+permission.
 
 LinkedIn personal follower analytics requires `r_member_profileAnalytics`,
 which is provisioned through the vetted Community Management API product. That
@@ -281,6 +285,90 @@ These are exactly the three additional reporting blocks in v1: Summary, Top 5
 Posts, and Performance. More cards, ranking modes, or configurable Performance
 columns require a later product decision.
 
+### Individual post analytics
+
+The existing analytics area inside each published post is part of this same
+delivery. It must stop fetching provider metrics during the page request and
+must stop treating the five-minute Redis entry as the metric source.
+
+The post-performance pipeline collects through queued jobs and persists through
+one observation writer. The individual post page, REST API, MCP, Summary, Top 5
+Posts, and Performance all read the same latest persisted observation for each
+destination. Redis is not a source of truth for post analytics; a
+database-query cache may be added later only if profiling proves it useful.
+
+The individual post page is richer than the cross-network reporting blocks. It
+shows every persisted metric supported by that platform and content type,
+grouped into common engagement, exposure, and video-retention sections. It also
+shows when the metrics were last collected and whether the value is actual,
+estimated, stale after a failed refresh, experimental, or unsupported.
+
+The response contract uses stable metric keys and explicit units. Translated
+labels are presentation only and are never stored as metric identity. An
+unsupported metric is omitted or marked unavailable; an API error must not
+replace the most recent successful value with zero.
+
+### Video metric catalog
+
+The initial content-type analysis establishes the following catalog. It is the
+minimum that the platform collectors should request and persist when supported
+by the connected account, login type, API version, and media type.
+
+| Content type | Metrics for the individual post page | Current TryPost gap |
+| --- | --- | --- |
+| Instagram feed | Views, reach, likes/reactions, comments, shares, saves, reposts, total interactions, follows, profile visits, and profile activity | The current collector omits views, reposts, follows, profile visits, and profile activity |
+| Instagram Reel | Views, reach, likes/reactions, comments, shares, saves, reposts, total interactions, total watch time, average watch time, and skip rate when returned | The current collector already has views/reach/basic engagement but omits interactions, reposts, watch-time metrics, and skip rate |
+| Instagram Story | Views, reach, replies, shares, reposts, follows, profile visits/activity, link clicks, and navigation breakdown | The current collector only requests views, reach, and replies |
+| YouTube Short | Views, engaged views, watch time, average view duration, average percentage viewed, likes, comments, shares, subscribers gained, and subscribers lost | The current collector already has views, watch time, average duration, likes, comments, and shares, but omits engaged views, average percentage viewed, and subscriber change |
+| TikTok video | Views, likes, comments, and shares | The current Display API collector already exposes the complete performance set available to this integration; video duration is metadata, not watch time |
+
+Instagram Reel total watch time is displayed in minutes and average watch time
+in seconds, matching the reference UI, while persistence retains the canonical
+unit needed to avoid rounding loss. Metrics that Meta marks estimated or in
+development, currently including Reel reach, watch time, views, total
+interactions, and skip rate as applicable, preserve that precision/stability
+metadata for tooltips.
+
+Meta documents that Instagram insight values can lag by up to 48 hours. A
+successful response with an absent or not-yet-populated metric is therefore not
+converted to measured zero. The read model keeps the last successful value and
+exposes its collection time so the UI can distinguish fresh, delayed, and stale
+data. Provider retention does not control TryPost retention: once collected,
+the observation remains stored under TryPost's permanent-history policy.
+
+Instagram Reel engagement rate uses the normalized interactions divided by
+reach when both are available. This matches the reference behavior and avoids
+using repeated views as though they were unique people.
+
+The Meta collector must parse both `values[].value` and `total_value.value`, and
+must preserve requested breakdowns such as Story navigation actions. It splits
+incompatible or experimental metric families into separate provider requests:
+one rejected metric must not blank every otherwise supported metric for the
+post.
+
+Instagram cross-posted and Facebook-only view metrics are conditional: they are
+stored and displayed only when the Reel was actually shared or recommended to
+Facebook and the API returns them. They do not replace Instagram views.
+
+The approved TikTok Display API does not expose total watch time, average watch
+time, completion rate, or retention. Those values must remain unavailable
+rather than being inferred from view count and video duration.
+
+YouTube's per-video report already supports the retention metrics needed for
+Shorts. The collector expands its current query rather than introducing a
+second Shorts-specific API path.
+
+Instagram Stories require an exception to the normal 30-day refresh window:
+their media insights are generally available for only 24 hours. A queued
+collection is scheduled during the Story lifetime, the `story_insights` webhook
+is enabled when the integration supports it, and a final collection runs
+shortly before expiry. Webhook deliveries and scheduled jobs persist through the
+same idempotent observation writer. The normal once-daily sweep alone is
+insufficient because it can miss the availability window. Stored Story metrics
+remain available after the provider stops serving them. Privacy-threshold or
+"not enough viewers" responses mean unavailable, not measured zero and not a
+reason to erase a previous observation.
+
 ### Date range
 
 The existing analytics range date picker remains the shared page filter for the
@@ -318,6 +406,9 @@ Laravel scheduler (daily, UTC)
             -> platform post-metrics collector or trusted local metric source
                 -> normalized post-performance observation
                     -> persistence boundary
+
+    -> Instagram Story lifecycle jobs and `story_insights` webhook
+        -> same idempotent post-performance observation writer
 
 End-of-day finalizer
     -> identifies eligible accounts without a successful observation
@@ -408,10 +499,11 @@ without misclassifying a repeated value as a successful API fetch.
 
 ## Post-performance collection
 
-Reactions, comments, engagement inputs, and Top 5 rankings must not trigger
-social API calls while `/analytics` is rendering. They are refreshed in daily
-queued jobs and stored behind the same persistence decision gate as follower
-observations.
+The complete supported post metric catalog, including reactions, comments,
+exposure, engagement inputs, and video retention, must not trigger social API
+calls while `/analytics` or an individual post is rendering. Metrics are
+refreshed in queued jobs and stored behind the same persistence decision gate as
+follower observations.
 
 The daily dispatcher selects successful destination publications that have a
 platform post id, a connected account with the required access, and remain
@@ -419,6 +511,9 @@ inside their refresh window:
 
 - X destinations: through 20 days after publication;
 - every other supported destination: through 30 days after publication.
+
+Instagram Stories use their separately documented within-24-hours schedule
+instead of the 30-day sweep.
 
 There is no free-versus-paid retention rule in TryPost. All workspaces use the
 same collection windows. The windows limit external API work only; all values
@@ -468,11 +563,15 @@ must inventory each planned metric with:
 - exact, approximate, or estimated provenance;
 - availability and historical limits per platform.
 
-The newly approved post-performance catalog for this design consists of
-normalized reactions, normalized comments, normalized engagement numerator,
-exposure denominator and kind, provider collection timestamp, and availability
-status per destination. It does not remove the gate: the user may supply more
-metrics before the physical schema is selected.
+The currently specified post-performance catalog includes both cross-network
+fields and content-specific detail. Cross-network fields are normalized
+reactions, normalized comments, normalized engagement numerator, exposure
+denominator and kind, provider collection timestamp, and availability status
+per destination.
+The full observation additionally retains stable metric key, numeric value,
+unit, content type, precision/stability flags, and provider metric identity for
+every supported native metric described by the catalog. It does not remove the
+gate: the user may supply more metrics before the physical schema is selected.
 
 That follow-up design selects the physical schema and proves it on both
 PostgreSQL and MySQL. The implementation plan for this feature must not include
@@ -492,6 +591,8 @@ Regardless of the final schema, persistence must support:
 - latest supported post-performance values per destination;
 - permanent retention after a destination leaves its refresh window;
 - unsupported versus measured-zero post metrics;
+- stable metric keys and units independent of the active UI locale;
+- content-type-specific metrics without sparse schema assumptions;
 - provider and collection timestamps needed to disclose freshness;
 - efficient workspace, publication-range, account, and ranking aggregations.
 
@@ -525,6 +626,8 @@ The server response supplies:
 - current and previous-period Summary values;
 - the two deterministic Top 5 rankings;
 - Performance rows and comparisons per social account;
+- the complete latest metric set for each destination on the individual post
+  page, REST API, and MCP;
 - freshness and availability metadata needed for tooltips and unavailable
   states.
 
@@ -613,6 +716,10 @@ Post-performance collector tests additionally cover:
 - cumulative metrics stored as one observation rather than summed across days;
 - engagement numerator and exposure denominator mapping;
 - content-type-specific metric availability;
+- Instagram Reel watch-time units and experimental/estimated flags;
+- YouTube Short watch time, average duration, average percentage viewed, and
+  subscriber-change mapping;
+- TikTok never fabricating unsupported retention metrics;
 - unsupported, missing, malformed, and measured-zero distinctions.
 
 ### Queue and scheduling tests
@@ -633,6 +740,8 @@ Post-performance collector tests additionally cover:
   longer create provider jobs.
 - Collection-window expiry never deletes an already stored value.
 - Unsupported metrics remain distinct from measured zero.
+- Instagram Story jobs collect while insights are available and perform a
+  final pre-expiry collection even when the normal daily sweep would miss it.
 
 ### Fallback tests
 
@@ -682,6 +791,11 @@ Post-performance collector tests additionally cover:
 - Performance returns one row per social account, keeps duplicate-network
   accounts separate, supports sorting, and uses the same aggregation rules as
   Summary.
+- The individual post page, REST API, and MCP return the same persisted latest
+  observation and make no provider request during reads.
+- The individual post page shows the content-type-specific catalog, canonical
+  units, freshness, and metric stability/provenance.
+- Expired Redis entries cannot remove or change persisted post analytics.
 
 Database-dependent tests run on PostgreSQL and MySQL after the persistence
 design is approved and implemented.
@@ -731,6 +845,30 @@ design is approved and implemented.
 - **Treating unsupported metrics as zero.** Zero means the provider measured no
   activity; unsupported means no measurement was available and must remain
   visibly different.
+- **Keeping the individual post page on request-time API calls and Redis.** It
+  would give the post page a different source and freshness model from Summary,
+  Top 5 Posts, Performance, REST, and MCP. All consumers must converge on the
+  persisted observation.
+- **Reducing post persistence to the five cross-network fields.** That would
+  discard high-value, content-specific metrics such as Reel/Short watch time
+  and make the individual post page less useful than the provider data already
+  available to TryPost.
+- **Inferring TikTok retention from duration and views.** Video length describes
+  the asset, not how long viewers watched it; the approved integration exposes
+  no retention metric.
+
+## External references checked
+
+- Meta Instagram Media Insights, updated September 11, 2026:
+  <https://developers.facebook.com/documentation/instagram-platform/reference/instagram-media/insights>
+- YouTube Analytics metrics and channel report combinations:
+  <https://developers.google.com/youtube/analytics/metrics> and
+  <https://developers.google.com/youtube/analytics/channel_reports>
+- TikTok Display API video query and Video Object fields:
+  <https://developers.tiktok.com/docs/en/tiktok-api-v2-video-query> and
+  <https://developers.tiktok.com/docs/en/tiktok-api-v2-video-object>
+- Buffer Insights metric presentation and per-post behavior:
+  <https://support.buffer.com/en-us/articles/using-insights-in-buffer-x4gLauQU5a>
 
 ## Delivery gates
 
