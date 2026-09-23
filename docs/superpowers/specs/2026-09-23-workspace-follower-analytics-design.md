@@ -5,19 +5,21 @@
 ## Objective
 
 Replace the request-time, per-social-account analytics experience with an
-initial workspace-level analytics view covering follower history and posts
-successfully published through TryPost.
+initial workspace-level analytics view covering follower history, posts
+successfully published through TryPost, and native posts imported from connected
+social accounts.
 
 After the daily collection pipeline begins producing local snapshots, the page
-must answer six questions without querying social APIs at request time:
+must answer seven questions without querying social APIs at request time:
 
 1. How many followers did this workspace have at the end of the selected
    period?
 2. How did each connected social account's follower count change over that
    period?
 3. Which accounts gained or lost followers?
-4. How many posts did each social account successfully publish during the
-   selected period, and how was that volume distributed over time?
+4. How many posts did each social account publish during the selected period,
+   whether through TryPost or natively, and how was that volume distributed over
+   time?
 5. How did publication volume, reactions, comments, and engagement compare
    with the immediately preceding equivalent period?
 6. Which destination publications and social accounts performed best?
@@ -27,8 +29,8 @@ must answer six questions without querying social APIs at request time:
 Success means `/analytics` renders without making social API calls, daily
 follower collection is resilient to transient failures and rate limits, one
 broken platform cannot block another account's data, and post volume is derived
-from the local publication history. Post-performance metrics are also collected
-ahead of page requests and retained locally.
+from a local unified publication catalog. Post history and performance metrics
+are imported or collected ahead of page requests and retained locally.
 
 ## Scope boundary
 
@@ -154,10 +156,82 @@ network.
 The initial display mode is Line. Changing modes is client-side because all
 three views derive from the same response dataset.
 
+### Native post history import
+
+Connecting an account on a platform included in analytics v1 dispatches a
+non-blocking native-history backfill. The product target is every owned post
+published during the preceding 365 days. The importer paginates until it reaches
+that cutoff, exhausts the provider feed, or encounters a documented provider
+limit. It never claims a complete year when the API returned less.
+
+The account connection succeeds before the backfill finishes. Analytics shows
+an import-progress state with the oldest covered publication date, latest
+successful sync time, and whether coverage is complete, provider-limited,
+partially failed, or still running. Imported results become visible
+incrementally; one slow account cannot delay another.
+
+After the initial backfill, a daily queued discovery job imports newly published
+native posts. This is separate from the follower and metric collectors. It uses
+a per-account high-water mark plus provider cursor checkpoints, overlaps the
+last completed window to tolerate late provider results, and relies on an
+idempotent key of workspace + social account + platform + native post id.
+Reconnects of the same platform identity resume the catalog rather than creating
+a second history.
+
+Feature rollout also dispatches the same resumable backfill for every already
+connected, active account on an included v1 platform. Rollout work is chunked
+and rate limited; it does not require users to disconnect and reconnect to seed
+their analytics.
+
+Each imported publication retains, when available:
+
+- workspace and social-account ownership;
+- native post id and platform;
+- provider publication timestamp;
+- content type;
+- permalink;
+- caption or textual excerpt;
+- preview/thumbnail reference and enough immutable presentation metadata to
+  render a historical card;
+- discovery and last-sync timestamps;
+- origin (`trypost` or `native_import`);
+- provider coverage and availability state.
+
+An imported post is an analytics record, not a draft or published `Post` owned
+by the TryPost publishing workflow. Importing it must not enable editing,
+deletion, retry, repurpose processing, or publishing lifecycle actions. The
+physical persistence design may share a catalog with TryPost destinations, but
+it must not manufacture `posts` or `post_platforms` rows whose states imply that
+TryPost published the content.
+
+When discovery returns a native id already present on a TryPost destination,
+the records reconcile into one analytics publication and `trypost` origin wins.
+This prevents one post from being counted twice. The same reconciliation runs
+when a delayed publish result gains its provider id after native discovery.
+
+The current Repurpose source fetchers prove that Instagram and Facebook media
+can already be discovered with the connected account. The analytics importer
+may extract and share their low-level provider clients and response parsers, but
+it does not reuse `PollRepurposeSource`, `RepurposeItem`, media-download rules,
+or activation watermarks. Those components fetch only selected video formats,
+currently request one page of 25 items, and have different lifecycle semantics.
+
+For a newly imported publication inside the normal post-metric refresh window,
+the importer dispatches the ordinary post-performance job. For an older post in
+the 365-day backfill, it dispatches one rate-limited baseline metric collection
+and then retains the result without enrolling the post in perpetual daily
+refresh. A provider that no longer exposes metrics leaves the post visible with
+an explicit unavailable state.
+
+Post-history backfill does not fabricate follower history. Follower charts begin
+at the first real follower observation unless the provider has a separately
+documented historical follower endpoint.
+
 ### Posts chart
 
-A second widget shows the number of destinations successfully published through
-TryPost during the selected range. It uses two modes:
+A second widget shows the number of analytics publications in the selected
+range, combining successful TryPost destinations with imported native posts. It
+uses two modes:
 
 - **Bar:** horizontal total per social account across the entire selected
   range.
@@ -175,20 +249,20 @@ The first and last weekly or monthly buckets may be partial when the selected
 range begins or ends inside that period. Empty buckets are returned with zero
 values so the time axis remains continuous.
 
-One successful destination counts as one post for that social account. For
+One analytics publication counts as one post for its social account. For
 example, one TryPost post successfully delivered to Instagram and X contributes
-one count to each account. The metric is based on the destination publication
-record, not the parent post, so a partially successful multi-network post counts
-only its successful destinations.
+one count to each account, while one natively published Instagram post adds one
+Instagram count. The metric is based on the reconciled destination/native
+publication, not the parent TryPost post, so a partially successful
+multi-network post counts only its successful destinations.
 
 The Posts widget includes only the platforms included in analytics v1. It
 excludes LinkedIn personal profiles, LinkedIn Pages, Telegram, Discord, and
 Google Business Profile even when their TryPost destination publication
 succeeded. For included platforms, it counts posts published from any TryPost
-entry point, such as the app, API, MCP, or repurpose flows, when they share the
-normal publication records. It excludes drafts, scheduled posts that have not
-yet published, failed or rejected destinations, and posts created directly on
-a social network outside TryPost.
+entry point, such as the app, API, MCP, or repurpose flows, plus native posts
+discovered through the connected account. It excludes drafts, scheduled posts
+that have not yet published, and failed or rejected destinations.
 
 A retry that eventually succeeds counts once because the destination record is
 counted once. Historical publications remain facts even if an account is later
@@ -200,16 +274,16 @@ row is no longer available.
 
 The page includes one workspace-level Summary block with exactly five cards:
 
-- **Posts:** successful destination publications whose `published_at` falls
-  inside the selected range.
+- **Posts:** reconciled TryPost and imported native analytics publications whose
+  provider publication timestamp falls inside the selected range.
 - **Total Followers:** the follower total at the selected range's end date,
   using the same eligibility rules as the follower widget.
-- **Reactions:** the sum of the latest stored reactions for successful
-  destination publications inside the selected range.
-- **Comments:** the sum of the latest stored comments for successful
-  destination publications inside the selected range.
+- **Reactions:** the sum of the latest stored reactions for eligible analytics
+  publications inside the selected range.
+- **Comments:** the sum of the latest stored comments for eligible analytics
+  publications inside the selected range.
 - **Engagement Rate:** pooled engagement divided by pooled exposure for the
-  eligible destination publications inside the selected range.
+  eligible analytics publications inside the selected range.
 
 Cross-network labels are normalized for comparison. Reactions include native
 likes, favorites, and reactions. Comments include native comments and replies
@@ -253,16 +327,17 @@ The page includes one Top 5 Posts block with a two-option toggle:
 - **Reactions** is the initial ranking;
 - **Comments** ranks the same eligible dataset by normalized comments.
 
-The ranking unit is the successful destination publication, not the parent
-post. A parent sent to multiple social accounts may therefore appear more than
-once when more than one destination qualifies. Only destinations published
-inside the selected range participate.
+The ranking unit is the reconciled analytics publication, not the parent post.
+A parent sent to multiple social accounts may therefore appear more than once
+when more than one destination qualifies. Imported native posts participate as
+their own publication. Only publications inside the selected range participate.
 
 Each card shows rank, normalized metric value, platform/account identity,
-publication date, content type, excerpt, thumbnail when available, and actions
-to open the TryPost post or its public social URL when supported. Ties are
-resolved by newest `published_at` and then by stable destination id so the order
-does not jump between requests.
+publication date, content type, excerpt, thumbnail when available, publication
+origin, and actions to open the TryPost post or its public social URL when
+supported. An imported native post has no edit action or fake TryPost post link.
+Ties are resolved by newest provider publication timestamp and then by stable
+analytics-publication id so the order does not jump between requests.
 
 A destination whose selected ranking metric is unsupported is excluded from
 that ranking. Fewer than five cards are shown when fewer than five eligible
@@ -270,9 +345,9 @@ destinations have a real value. An empty state replaces the list when none do.
 
 ### Performance
 
-The page includes one Performance table with one row per social account that
-has a successful destination publication in the selected range. Multiple
-accounts on the same network remain separate rows.
+The page includes one Performance table with one row per social account that has
+an eligible TryPost or imported native publication in the selected range.
+Multiple accounts on the same network remain separate rows.
 
 The fixed first-version columns are:
 
@@ -282,11 +357,11 @@ The fixed first-version columns are:
 - Comments;
 - Engagement Rate.
 
-Posts use the local successful-destination count. The other columns aggregate
-the latest stored post-performance observations using the same normalization
-and pooled-rate rules as Summary. Each supported numeric column can be sorted,
-and its current value includes the equivalent-period comparison when a valid
-comparison exists.
+Posts use the local reconciled analytics-publication count. The other columns
+aggregate the latest stored post-performance observations using the same
+normalization and pooled-rate rules as Summary. Each supported numeric column
+can be sorted, and its current value includes the equivalent-period comparison
+when a valid comparison exists.
 
 When a network or content type does not expose a metric, the cell shows an
 unavailable marker rather than zero. Historical account snapshot metadata keeps
@@ -304,10 +379,17 @@ metrics during the page request and must stop treating the five-minute Redis
 entry as the metric source. Destinations on excluded platforms show no analytics
 block.
 
+Imported native posts open a read-only analytics detail using the same metric
+components and observation contract. Every detail view displays an origin label:
+`Published via TryPost` for a matched TryPost destination, or `Published on
+<Platform>` for an imported native publication. Origin is stored data, not
+inferred from the presence of a local caption or URL.
+
 The post-performance pipeline collects through queued jobs and persists through
 one observation writer. The individual post page, REST API, MCP, Summary, Top 5
 Posts, and Performance all read the same latest persisted observation for each
-destination. Redis is not a source of truth for post analytics; a
+reconciled analytics publication. Redis is not a source of truth for post
+analytics; a
 database-query cache may be added later only if profiling proves it useful.
 
 The individual post page is richer than the cross-network reporting blocks. It
@@ -482,18 +564,18 @@ reason to erase a previous observation.
 The existing analytics range date picker remains the shared page filter for the
 Summary, follower chart, Posts widget, Top 5 Posts, and Performance.
 
-- `minDate` is the earliest follower snapshot or successful TryPost publication
-  on an included v1 platform available in the workspace.
-- `maxDate` is the latest follower snapshot or successful TryPost publication
-  on an included v1 platform available in the workspace.
+- `minDate` is the earliest follower snapshot or reconciled TryPost/native
+  analytics publication on an included v1 platform available in the workspace.
+- `maxDate` is the latest follower snapshot or reconciled TryPost/native
+  analytics publication on an included v1 platform available in the workspace.
 - The picker cannot select a range wholly outside those bounds.
 - All chart modes and the total use the same selected range.
 - A social account connected after the selected start date begins when its own
   data begins; no pre-connection values are invented.
 - A widget shows its own empty state when the selected range contains no data
   for that metric.
-- With neither follower snapshots nor successful publications, the picker is
-  disabled and the page shows an analytics-empty state.
+- With neither follower snapshots nor analytics publications, the picker is
+  disabled and the page shows an analytics-empty/import-pending state.
 
 Historical data for a disconnected or deactivated account is retained. Its
 line ends on the last day for which it was eligible; it remains visible when
@@ -503,6 +585,12 @@ the selected range overlaps that history.
 
 ```text
 Laravel scheduler (daily, UTC)
+    -> native-post discovery dispatch-only command
+        -> one queued incremental discovery job per eligible social account
+            -> platform-owned-post paginator
+                -> reconciled analytics publication catalog
+                    -> post-performance jobs for new publications
+
     -> follower dispatch-only command
         -> one queued job per eligible social account
             -> platform follower collector
@@ -510,7 +598,7 @@ Laravel scheduler (daily, UTC)
                     -> persistence boundary
 
     -> post-performance dispatch-only command
-        -> one queued job per eligible destination publication
+        -> one queued job per eligible reconciled analytics publication
             -> platform post-metrics collector or trusted local metric source
                 -> normalized post-performance observation
                     -> persistence boundary
@@ -521,6 +609,10 @@ Laravel scheduler (daily, UTC)
 End-of-day finalizer
     -> identifies eligible accounts without a successful observation
         -> carries forward the most recent known value when one exists
+
+Account connection
+    -> immediate follower collection
+    -> resumable native-post backfill through the preceding 365 days
 ```
 
 ### Scheduler and dispatcher
@@ -541,9 +633,12 @@ logical uniqueness key is follower metric + social account + UTC observation
 date. Re-dispatching the same logical job is safe and cannot create a second
 daily value.
 
-Connecting a supported account dispatches an immediate first collection so the
-workspace does not wait for the next daily sweep. This initial job follows the
-same idempotency and retry policy as the scheduled job.
+Connecting a supported account dispatches an immediate first follower
+collection and the resumable native-history backfill so the workspace does not
+wait for the next daily sweep. These jobs follow the same isolation,
+idempotency, and widely spaced retry principles as their scheduled counterparts.
+Backfill jobs run in bounded pages and re-dispatch the next page rather than
+holding one worker for the entire year.
 
 ### Collector contract
 
@@ -613,11 +708,11 @@ calls while `/analytics` or an individual post is rendering. Metrics are
 refreshed in queued jobs and stored behind the same persistence decision gate as
 follower observations.
 
-The daily dispatcher selects successful destination publications that have a
-platform post id, use a platform included in analytics v1, have a connected
-account with the required access, and remain inside their refresh window.
-LinkedIn personal profiles, LinkedIn Pages, Telegram, Discord, and Google
-Business Profile are never selected:
+The daily dispatcher selects reconciled TryPost/native analytics publications
+that have a native post id, use a platform included in analytics v1, have a
+connected account with the required access, and remain inside their refresh
+window. LinkedIn personal profiles, LinkedIn Pages, Telegram, Discord, and
+Google Business Profile are never selected:
 
 - X destinations: through 20 days after publication;
 - every other supported destination: through 30 days after publication.
@@ -629,16 +724,16 @@ There is no free-versus-paid retention rule in TryPost. All workspaces use the
 same collection windows. The windows limit external API work only; all values
 already collected are retained permanently.
 
-Each eligible destination gets an independent queued job so one failing API or
-post cannot block another. The logical uniqueness key is post-performance +
-destination + UTC collection date. The job normalizes only metrics genuinely
-returned for that network and content type, preserving unsupported separately
-from a measured zero.
+Each eligible analytics publication gets an independent queued job so one
+failing API or post cannot block another. The logical uniqueness key is
+post-performance + analytics publication + UTC collection date. The job
+normalizes only metrics genuinely returned for that network and content type,
+preserving unsupported separately from a measured zero.
 
-Post-performance values are cumulative totals for that destination as of the
-collection timestamp. Summary, Top 5 Posts, and Performance use the latest
-stored observation for each destination selected by its publication date; they
-do not add daily snapshots together.
+Post-performance values are cumulative totals for that analytics publication as
+of the collection timestamp. Summary, Top 5 Posts, and Performance use the
+latest stored observation for each publication selected by its provider
+publication date; they do not add daily snapshots together.
 
 The normal daily run collects once per UTC day. The final eligible day performs
 one final collection before the destination becomes inactive for scheduled
@@ -705,17 +800,23 @@ Regardless of the final schema, persistence must support:
 - stable metric keys and units independent of the active UI locale;
 - content-type-specific metrics without sparse schema assumptions;
 - provider and collection timestamps needed to disclose freshness;
+- a reconciled analytics-publication identity spanning TryPost destinations and
+  imported native posts without duplicating a native post id;
+- publication origin, provider publication time, content excerpt, permalink,
+  content type, presentation metadata, and import coverage state;
+- resumable per-account provider cursor/high-water checkpoints;
 - efficient workspace, publication-range, account, and ranking aggregations.
 
 Workspace totals are derived from account observations and are not stored as a
 second source of truth.
 
-The Posts widget does not require a new analytics snapshot or collection table.
-Its source of truth is the existing destination publication history. A counted
-row must belong to a post in the current workspace, have the published status,
-use a platform included in analytics v1, and have a `published_at` timestamp
-inside the selected range. The concrete query must use the existing enum/status
-conventions and work on PostgreSQL and MySQL.
+The Posts widget does not require daily count snapshots. Its source of truth is
+the reconciled analytics-publication catalog: existing successful TryPost
+destinations plus imported native posts. A counted record must belong to the
+current workspace, use a platform included in analytics v1, have a provider
+publication timestamp inside the selected range, and represent one unique
+social-account/native-id pair. The concrete persistence and reconciliation
+queries must work on PostgreSQL and MySQL.
 
 ## Read path
 
@@ -731,14 +832,19 @@ The server response supplies:
 - account identity and platform presentation metadata;
 - actual/carried-forward and exact/approximate provenance required for
   truthful tooltips;
-- successful publication totals per social account;
+- reconciled TryPost/native publication totals per social account;
 - zero-filled publication buckets and per-account values for the automatically
   selected daily, weekly, or monthly resolution;
 - current and previous-period Summary values;
 - the two deterministic Top 5 rankings;
 - Performance rows and comparisons per social account;
-- the complete latest metric set for each destination on the individual post
-  page, REST API, and MCP;
+- the complete latest metric set for each analytics publication on the
+  individual post page, REST API, and MCP;
+- publication origin, provider publication time, permalink, content type, and
+  presentation metadata required by native-import detail cards;
+- native-history coverage per social account, including progress, oldest
+  covered publication date, last successful sync, and complete,
+  provider-limited, partial-failure, or running state;
 - freshness and availability metadata needed for tooltips and unavailable
   states.
 
@@ -748,9 +854,10 @@ daily resolution is the source resolution and is sufficient for this first
 version.
 
 The server aggregates the Posts dataset at the chosen bucket resolution and
-returns both bucketed and range-total values. Publication rows are always
-filtered through their parent post's `workspace_id`; a social-account id from
-the request is never trusted as the tenancy boundary.
+returns both bucketed and range-total values. Every analytics-publication row
+has its own immutable workspace ownership, including imported native posts
+that have no parent TryPost post. A social-account id from the request is never
+trusted as the tenancy boundary.
 
 ## Failure handling and observability
 
@@ -769,8 +876,14 @@ Operational visibility must distinguish:
 - post-performance collection success;
 - post-performance metric unsupported;
 - post-performance retry or permanent collection failure;
-- post-performance destination leaving its refresh window with a final stored
+- post-performance publication leaving its refresh window with a final stored
   value.
+- native-history backfill start, page progress, completion, and oldest covered
+  publication date;
+- native-history backfill or incremental-discovery retry and permanent
+  failure;
+- provider-limited history distinguished from a complete 365-day import;
+- native publication reconciliation and duplicate suppression.
 
 Logs include workspace, social account, platform, observation date, attempt,
 and error category, but never access tokens or raw sensitive responses.
@@ -782,14 +895,20 @@ this first delivery.
 ## Account lifecycle
 
 - **Connected:** dispatch an immediate first collection.
-- **Active and connected:** participate in the daily sweep.
+- **Connected on an included v1 platform:** also dispatch the resumable native
+  post-history backfill without delaying the connection response.
+- **Active and connected:** participate in the daily follower,
+  post-performance, and native-post discovery sweeps.
 - **Deactivated:** stop new collection and fallback; preserve history; exclude
-  from totals after its last eligible date.
+  from follower totals after its last eligible date; preserve imported and
+  TryPost publication history for ranges in which it exists.
 - **Disconnected/deleted:** stop collection and fallback; preserve historical
-  observations even if the account row is later removed. The physical schema
-  design must decide how to retain enough immutable identity for this.
+  observations and imported publications even if the account row is later
+  removed. The physical schema design must decide how to retain enough
+  immutable identity for this.
 - **Reconnected as the same persisted identity:** resume collection without
-  rewriting earlier observations.
+  rewriting earlier observations and resume native discovery from its
+  checkpoint with an overlap window.
 - **New identity:** begins a new series even when its username matches an older
   disconnected account.
 
@@ -850,9 +969,26 @@ Post-performance collector tests additionally cover:
 - Platform-provided retry timing is respected.
 - A permanent authentication failure does not follow the transient retry loop.
 - Immediate collection is dispatched after a supported account is connected.
+- Connecting an included v1 account dispatches a native-history backfill and
+  returns without waiting for that backfill to finish.
+- Rollout dispatches bounded backfills for existing eligible accounts without
+  requiring reconnection and without placing every workspace in one job.
+- No native-history backfill or incremental-discovery job is dispatched for
+  LinkedIn personal profiles, LinkedIn Pages, Telegram, Discord, or Google
+  Business Profile.
+- Native-history pagination stops at the 365-day cutoff, provider exhaustion,
+  or a documented provider limit and records which condition ended the import.
+- A bounded page can re-dispatch continuation work without holding one worker
+  for the entire backfill.
+- Cursor and high-water checkpoints resume safely after transient failure and
+  after reconnecting the same platform identity.
+- Daily native discovery overlaps the last completed window and remains
+  idempotent when a provider returns the same page or a late post twice.
+- Backfill and discovery failures for one social account do not block any other
+  account.
 - `withoutOverlapping()` and `onOneServer()` remain present on the schedule.
-- Post-performance jobs are dispatched only for successful destinations with a
-  usable platform id and access on an included v1 platform.
+- Post-performance jobs are dispatched only for reconciled analytics
+  publications with a usable native id and access on an included v1 platform.
 - No post-performance job is dispatched for LinkedIn personal profiles,
   LinkedIn Pages, Telegram, Discord, or Google Business Profile.
 - X destinations remain eligible through day 20; other supported destinations
@@ -860,6 +996,10 @@ Post-performance collector tests additionally cover:
 - The final eligible day receives a final collection and older destinations no
   longer create provider jobs.
 - Collection-window expiry never deletes an already stored value.
+- A newly imported publication still inside the refresh window joins the
+  normal daily metric collection.
+- An older backfilled publication receives at most the planned baseline metric
+  collection and is not enrolled in perpetual refresh.
 - Unsupported metrics remain distinct from measured zero.
 - Instagram Story jobs collect while insights are available and perform a
   final pre-expiry collection even when the normal daily sweep would miss it.
@@ -872,6 +1012,25 @@ Post-performance collector tests additionally cover:
 - No historical value means no fabricated snapshot.
 - Deactivated and disconnected accounts are not carried forward.
 - A successful observation is never overwritten by the finalizer.
+- Importing historical posts never creates historical follower observations or
+  follower carry-forward values before the first real collection.
+
+### Native publication reconciliation tests
+
+- Repeated provider pages create one analytics publication for each unique
+  workspace, social account, platform, and native post id.
+- A native id matching an existing successful TryPost destination reconciles
+  to one analytics publication and retains `trypost` as its origin.
+- A TryPost destination that receives its native id after discovery reconciles
+  with the imported publication rather than creating a duplicate.
+- Reconnecting the same identity resumes the existing catalog; a genuinely new
+  platform identity starts a separate catalog even when the username matches.
+- Imported publications never create fake `Post` or `PostPlatform` lifecycle
+  records and cannot be edited, deleted, retried, or published from TryPost.
+- The provider publication timestamp, rather than discovery time, controls
+  range inclusion and aggregation.
+- Expired or unavailable preview media falls back to a stable placeholder
+  without removing the imported publication or its metrics.
 
 ### Read and UI tests
 
@@ -886,19 +1045,24 @@ Post-performance collector tests additionally cover:
 - No-data workspaces receive the collection-pending state.
 - LinkedIn personal profiles, LinkedIn Pages, Telegram, Discord, and Google
   Business Profile never appear or contribute anywhere in analytics v1.
-- The Posts Bar mode counts one successful destination per social account in
-  the selected range.
+- The Posts Bar mode counts one reconciled TryPost/native analytics publication
+  per social account in the selected range.
 - The Posts Stacked Bar mode selects daily, weekly, and monthly buckets at the
   documented range thresholds and zero-fills missing buckets.
 - A multi-network post contributes once to every successful destination on an
   included v1 platform and nothing to excluded, failed, rejected, pending, or
   future-scheduled destinations.
 - A destination that succeeds after retries counts only once.
-- Direct/native social-network posts are absent because no TryPost publication
-  record exists for them.
+- Direct/native social-network posts are included after discovery even though
+  no TryPost publication record exists for them.
+- Native imports appear incrementally while backfill is running, and the UI
+  exposes oldest-covered date, last sync, and complete, provider-limited,
+  partial-failure, or running coverage state without promising unavailable
+  history.
 - Publications for every excluded v1 platform are absent from both Posts widget
   modes, Summary, Top 5, and Performance.
-- Post aggregation is workspace-scoped through the parent post.
+- Post aggregation is workspace-scoped through immutable analytics-publication
+  ownership for both TryPost and native imports.
 - Historical publications retain presentable account information after the
   social account is disconnected or deleted.
 - Summary contains exactly Posts, Total Followers, Reactions, Comments, and
@@ -908,17 +1072,25 @@ Post-performance collector tests additionally cover:
 - Engagement Rate pools normalized engagement and exposure rather than
   averaging per-post percentages.
 - Posts without a valid exposure denominator are excluded only from the rate.
-- Top 5 ranks destination publications deterministically by Reactions or
-  Comments and excludes unsupported values.
+- Top 5 ranks reconciled analytics publications deterministically by Reactions
+  or Comments, includes eligible native imports, and excludes unsupported
+  values.
+- Imported Top 5 and detail cards show `Published on <Platform>`, while
+  reconciled TryPost publications show `Published via TryPost`; origin is read
+  from persisted provenance rather than inferred from missing relations.
+- Imported publication cards expose no fake TryPost edit, retry, or publishing
+  action.
 - Performance returns one row per social account, keeps duplicate-network
-  accounts separate, supports sorting, and uses the same aggregation rules as
-  Summary.
+  accounts separate, includes reconciled native publications, supports sorting,
+  and uses the same aggregation rules as Summary.
 - The individual post page, REST API, and MCP return the same persisted latest
   observation and make no provider request during reads.
 - The individual post page exposes no analytics block for a destination on an
   excluded v1 platform.
 - The individual post page shows the content-type-specific catalog, canonical
   units, freshness, and metric stability/provenance.
+- Date-picker bounds expand to the earliest eligible imported provider
+  publication date as backfill progresses.
 - Expired Redis entries cannot remove or change persisted post analytics.
 
 Database-dependent tests run on PostgreSQL and MySQL after the persistence
@@ -945,21 +1117,35 @@ design is approved and implemented.
   the other three are outside the chosen product scope and lack a Buffer
   per-post analytics reference. LinkedIn is deferred as a whole to v2; the
   others require a new future product decision.
-- **Fetching post counts from social APIs.** The v1 metric represents successful
-  TryPost deliveries, which already have a reliable local destination record;
-  provider analytics would add permissions, rate limits, inconsistent history,
-  and native posts outside the agreed definition.
+- **Keeping Posts limited to TryPost deliveries.** It would make a newly
+  connected workspace look empty and omit the user's best historical content.
+  A native-history importer gives Summary, Top 5, Performance, and individual
+  post analytics useful data immediately while preserving publication origin.
 - **Counting parent posts.** One parent can target several accounts and can
   partially fail, so the successful destination is the only accurate unit.
 - **Persisting daily post-count snapshots.** Publication rows are immutable
-  facts that can be aggregated for the selected range without introducing a
-  second source of truth.
+  facts in the reconciled catalog and can be aggregated for the selected range
+  without introducing a second source of truth.
+- **Reusing `PollRepurposeSource` and `RepurposeItem` for analytics.** Repurpose
+  imports selected media for a publishing workflow, currently reads one page
+  of 25, and has activation-watermark and media-download semantics that do not
+  represent a complete, read-only analytics catalog. Only suitable low-level
+  provider clients and parsers may be extracted and shared.
+- **Creating fake `Post` or `PostPlatform` rows for native content.** Those
+  records imply TryPost publishing ownership and would expose invalid edit,
+  retry, delete, and repurpose actions. Native content remains an analytics
+  publication with explicit origin.
+- **Claiming one year of coverage unconditionally.** Providers can impose
+  shallower history, pagination, permission, or metric-retention limits. The
+  importer targets 365 days but reports the actual oldest covered date and a
+  provider-limited or partial state when needed.
 - **Using one fixed Posts bucket size.** A fixed daily view becomes noisy over
   long ranges, while a fixed weekly or monthly view hides useful short-range
   detail.
-- **Refreshing every historical post forever.** Engagement changes slow after
-  publication, while an unbounded daily job set would continually increase API
-  cost and rate-limit pressure. The last stored result remains available after
+- **Refreshing every imported historical post forever.** Engagement changes
+  slow after publication, while an unbounded daily job set would continually
+  increase API cost and rate-limit pressure. Older backfilled posts receive a
+  bounded baseline collection; the last stored result remains available after
   the 20/30-day refresh window closes.
 - **Applying plan-based analytics retention.** TryPost has no free analytics
   tier in this design; collection and permanent local retention are consistent
@@ -1009,11 +1195,17 @@ design is approved and implemented.
 ## Delivery gates
 
 1. This written design must be reviewed and approved.
-2. The broader metric catalog must be supplied and its persistence design
-   approved.
-3. Only then can the Superpowers implementation-plan stage define migrations,
+2. Before promising native-history import for a v1 platform, verify in that
+   platform's current official documentation the owned-post enumeration
+   endpoint, pagination, scopes, accessible content types, history depth,
+   metric-retention limits, and preview-media expiry. Record any shallower
+   provider limit in the coverage contract instead of weakening it silently.
+3. The broader metric catalog must be supplied and its persistence design
+   approved, including the reconciled TryPost/native publication identity and
+   resumable import checkpoints.
+4. Only then can the Superpowers implementation-plan stage define migrations,
    concrete classes, and ordered implementation tasks.
-4. Implementation begins only after that written plan is reviewed and its
+5. Implementation begins only after that written plan is reviewed and its
    execution method is selected.
-5. LinkedIn follower and post analytics receive a separate v2 implementation
+6. LinkedIn follower and post analytics receive a separate v2 implementation
    plan after the external Community Management API dependency is resolved.
