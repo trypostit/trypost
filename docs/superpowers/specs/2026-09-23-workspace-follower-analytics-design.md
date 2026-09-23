@@ -1,6 +1,6 @@
 # Workspace follower and post analytics — design
 
-**Status:** written design awaiting approval. Nothing implemented.
+**Status:** requirements and persistence design consolidated for implementation planning. Nothing implemented.
 
 ## Objective
 
@@ -194,7 +194,7 @@ Each imported publication retains, when available:
 - preview/thumbnail reference and enough immutable presentation metadata to
   render a historical card;
 - discovery and last-sync timestamps;
-- origin (`trypost` or `native_import`);
+- origin (`trypost` or `external`);
 - provider coverage and availability state.
 
 An imported post is an analytics record, not a draft or published `Post` owned
@@ -705,8 +705,8 @@ without misclassifying a repeated value as a successful API fetch.
 The complete supported post metric catalog, including reactions, comments,
 exposure, engagement inputs, and video retention, must not trigger social API
 calls while `/analytics` or an individual post is rendering. Metrics are
-refreshed in queued jobs and stored behind the same persistence decision gate as
-follower observations.
+refreshed in queued jobs and stored through the same idempotent persistence
+boundary as follower observations.
 
 The daily dispatcher selects reconciled TryPost/native analytics publications
 that have a native post id, use a platform included in analytics v1, have a
@@ -748,40 +748,116 @@ redundant provider request. An included v1 platform without a supported post
 metric may still contribute its locally known Posts count and show the metric as
 unavailable. An excluded v1 platform contributes neither posts nor metrics.
 
-## Persistence decision gate
+## Persistence design
 
-This specification deliberately defines the **logical data requirements** but
-does not choose a physical table design.
+The physical design uses four tables: three analytics fact/catalog tables and
+one operational synchronization table. This is the minimum that keeps account
+snapshots, publication identity, cumulative publication metrics, and resumable
+job state independent. Combining those lifecycles would either lose history,
+reintroduce Redis as durable state, or produce a sparse table that cannot be
+aggregated portably on both PostgreSQL and MySQL.
 
-The user intends to add many account-, post-, and workspace-level analytics
-metrics. Choosing a generic metrics table, metric-specific tables, JSON
-snapshots, or a hybrid before that catalog exists would prematurely constrain
-dimensions, indexes, retention, and aggregation.
+Database enum types are not used. Enum-backed values are stored in string
+columns and cast through PHP enums so new providers and metrics do not require
+engine-specific enum migrations.
 
-Before any analytics migration or model is implemented, a follow-up design
-must inventory each planned metric with:
+### Daily account snapshots
 
-- entity level: workspace, social account, or post;
-- value type and unit;
-- snapshot, interval, delta, or lifetime semantics;
-- supported dimensions;
-- collection frequency and retention;
-- exact, approximate, or estimated provenance;
-- availability and historical limits per platform.
+`analytics_account_daily_snapshots` stores one effective observation per
+workspace, immutable social-account key, and UTC date. It contains:
 
-The currently specified post-performance catalog includes both cross-network
-fields and content-specific detail. Cross-network fields are normalized
-reactions, normalized comments, normalized engagement numerator, exposure
-denominator and kind, provider collection timestamp, and availability status
-per destination.
-The full observation additionally retains stable metric key, numeric value,
-unit, content type, precision/stability flags, and provider metric identity for
-every supported native metric described by the catalog. It does not remove the
-gate: the user may supply more metrics before the physical schema is selected.
+- UUID primary key;
+- immutable `workspace_id` ownership;
+- nullable `social_account_id` foreign key for the currently connected row;
+- non-null `social_account_key`, initially copied from the originating
+  social-account UUID and retained after that row is deleted;
+- provider identity snapshot (`network` plus `platform_user_id`) used to resolve
+  and reuse the historical key when the same provider identity reconnects;
+- platform string cast to the existing `SocialAccount\\Platform` enum;
+- immutable account presentation snapshots;
+- `snapshot_date`;
+- nullable `followers_count` bigint;
+- nullable JSON `metrics` for future account-level metrics that are not yet
+  promoted to first-class aggregate columns;
+- actual or carried-forward provenance;
+- exact or approximate precision;
+- provider observation time and collection time.
 
-That follow-up design selects the physical schema and proves it on both
-PostgreSQL and MySQL. The implementation plan for this feature must not include
-a persistence migration until that decision is approved.
+The unique key is workspace + social-account key + snapshot date. Platform is a
+dimension, not account identity: two Instagram accounts in one workspace remain
+two independent series. Cross-network totals sum the latest eligible row for
+each social-account key. `social_account_id` is used while the connection
+exists; `social_account_key` and the presentation snapshots preserve truthful
+historical series after deletion. A connection/reconnection resolver first
+looks for an existing key with the same workspace + network + platform user id;
+only a genuinely new identity starts with the current social-account UUID.
+
+### Reconciled publication catalog
+
+`analytics_publications` stores one publication per workspace, immutable
+social-account key, platform, and provider post id. It contains:
+
+- UUID primary key and immutable `workspace_id` ownership;
+- nullable live `social_account_id` plus non-null historical
+  `social_account_key`;
+- nullable unique `post_platform_id` for a TryPost-owned destination;
+- platform, normalized network, provider account id, provider post id, provider
+  publication time, normalized content type, and provider content type;
+- origin `trypost` or `external`;
+- permalink, excerpt, preview metadata, and immutable account presentation
+  snapshots;
+- available, deleted, or unavailable state;
+- first-seen, last-seen, and provider-sync timestamps;
+- JSON provider metadata that is not used for cross-network aggregation.
+
+`external` means only that TryPost did not publish the record. Provider APIs do
+not reliably distinguish a manual native-app post from a post created by
+Buffer or another client, so the UI says `Published on <Platform>` rather than
+claiming it was posted manually. A matching `post_platform_id` proves TryPost
+origin and produces `Published via TryPost`.
+
+The unique provider identity is workspace + social-account key + network +
+provider post id. Network, rather than login variant, prevents the same
+Instagram media from duplicating when an identity reconnects through direct
+Instagram instead of Facebook login. A TryPost destination and external
+discovery reconcile onto that identity; `trypost` origin wins and the
+publication is counted once.
+
+### Daily publication snapshots
+
+`analytics_publication_daily_snapshots` stores at most one cumulative
+observation per analytics publication and UTC date. Repeated successful
+collections on the same date update that row instead of creating additional
+facts. It contains nullable first-class aggregate columns for reactions,
+comments, shares, saves, views, impressions, reach, total watch time, and
+average watch time, plus normalized engagement numerator, exposure denominator,
+and exposure kind.
+
+The same row has a JSON metric catalog for provider/content-specific values.
+Each JSON entry uses a stable enum-backed metric key and retains numeric value,
+unit, provider metric identity, lifetime/range/rolling time basis,
+exact/estimated/experimental precision, and availability. Cross-network queries
+use the first-class columns; the JSON catalog powers the richer individual-post
+detail. This hybrid avoids both engine-specific JSON aggregation and an EAV row
+explosion.
+
+Imported historical publications receive a real baseline observation collected
+at import time. The system does not fabricate daily metric history between the
+publication date and that baseline.
+
+### Synchronization state
+
+`analytics_sync_states` stores durable operational state per workspace,
+immutable social-account key, and collector. Collector values initially cover
+daily account snapshots, owned-publication history/discovery, and publication
+metrics. The row retains status, cursor, target cutoff, high-water mark, oldest
+and latest provider dates reached, last successful synchronization, next retry,
+attempt count, and a sanitized last-error category/message.
+
+This state does not live in `social_accounts.meta`: collectors advance
+independently, need row-level concurrency control, and must survive deletion or
+reconnection of the live account row. The unique key is workspace +
+social-account key + collector.
 
 Regardless of the final schema, persistence must support:
 
@@ -904,8 +980,8 @@ this first delivery.
   TryPost publication history for ranges in which it exists.
 - **Disconnected/deleted:** stop collection and fallback; preserve historical
   observations and imported publications even if the account row is later
-  removed. The physical schema design must decide how to retain enough
-  immutable identity for this.
+  removed. Nullable live foreign keys plus immutable `social_account_key` and
+  presentation snapshots retain that identity.
 - **Reconnected as the same persisted identity:** resume collection without
   rewriting earlier observations and resume native discovery from its
   checkpoint with an overlap window.
@@ -921,8 +997,8 @@ this first delivery.
 - API tokens remain on `social_accounts` and are never copied into analytics
   storage or job logs.
 - Platform data-retention terms must be checked as each collector is
-  implemented; the physical schema review must record any network-specific
-  retention constraint.
+  implemented; every network-specific constraint is recorded in its collector
+  tests and coverage status.
 
 ## Testing strategy
 
@@ -1110,8 +1186,15 @@ design is approved and implemented.
 - **Deleting history when an account disconnects.** Removes valid workspace
   history and breaks historical comparisons.
 - **Persisting workspace totals.** Duplicates account facts and risks drift.
-- **Choosing the final table structure now.** The wider metric catalog is not
-  yet known, so the choice would be speculative.
+- **One generic analytics table.** Account snapshots, publication identity,
+  cumulative publication metrics, and resumable cursors have different
+  cardinality and lifecycle. Combining them creates sparse rows and weak
+  constraints. The four-table hybrid is the minimum safe design.
+- **JSON-only post metrics.** Cross-network ranking and aggregation would depend
+  on engine-specific JSON queries. Common aggregate fields are first-class
+  nullable columns; provider/content-specific metrics remain structured JSON.
+- **An EAV row for every metric.** It would multiply row volume and joins for
+  every post card. One daily publication snapshot keeps the metric set atomic.
 - **Including LinkedIn, Telegram, Discord, or Google Business Profile in v1.**
   LinkedIn requires the separately vetted product for a coherent implementation;
   the other three are outside the chosen product scope and lack a Buffer
@@ -1200,12 +1283,10 @@ design is approved and implemented.
    endpoint, pagination, scopes, accessible content types, history depth,
    metric-retention limits, and preview-media expiry. Record any shallower
    provider limit in the coverage contract instead of weakening it silently.
-3. The broader metric catalog must be supplied and its persistence design
-   approved, including the reconciled TryPost/native publication identity and
-   resumable import checkpoints.
-4. Only then can the Superpowers implementation-plan stage define migrations,
-   concrete classes, and ordered implementation tasks.
-5. Implementation begins only after that written plan is reviewed and its
+3. The implementation plan must preserve the approved four-table hybrid,
+   reconciled TryPost/external publication identity, and resumable import
+   checkpoints.
+4. Implementation begins only after that written plan is reviewed and its
    execution method is selected.
-6. LinkedIn follower and post analytics receive a separate v2 implementation
+5. LinkedIn follower and post analytics receive a separate v2 implementation
    plan after the external Community Management API dependency is resolved.
