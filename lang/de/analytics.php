@@ -3,6 +3,35 @@
 declare(strict_types=1);
 
 return [
+    'detail' => [
+        'labels' => [
+            'watch_time_milliseconds' => 'Watch time',
+            'average_watch_time_milliseconds' => 'Avg. watch time',
+            'total_play_time_milliseconds' => 'Total play time',
+            'average_video_play_time_milliseconds' => 'Avg. video play time',
+            'average_percentage_viewed' => 'Avg. viewed',
+            'video_views_10_seconds' => '10-second views',
+            'video_views_95_percent' => '95% views',
+            'video_quartile_25' => '25% watched',
+            'video_quartile_50' => '50% watched',
+            'video_quartile_75' => '75% watched',
+            'video_quartile_100' => '100% watched',
+            'story_taps_forward' => 'Taps forward',
+            'story_taps_back' => 'Taps back',
+            'story_swipes_forward' => 'Swipes forward',
+        ],
+        'engagement' => 'Engagement',
+        'exposure' => 'Exposure',
+        'video' => 'Video and retention',
+        'last_collected' => 'Last collected',
+        'stale' => 'May be out of date',
+        'awaiting_metrics' => 'Metrics have not been collected yet.',
+        'estimated' => 'Estimated',
+        'back_to_analytics' => 'Back to analytics',
+        'details' => 'Details',
+        'published_via_trypost' => 'Published via TryPost',
+        'published_on' => 'Published on :platform',
+    ],
     'dashboard' => [
         'summary' => 'Summary',
         'posts' => 'Posts',

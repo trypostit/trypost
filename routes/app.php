@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\App\AnalyticsController;
+use App\Http\Controllers\App\AnalyticsPublicationController;
 use App\Http\Controllers\App\ApiKeyController;
 use App\Http\Controllers\App\AssetController;
 use App\Http\Controllers\App\BillingController;
@@ -189,6 +190,7 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
 
     // Analytics
     Route::get('analytics', [AnalyticsController::class, 'index'])->name('app.analytics');
+    Route::get('analytics/publications/{publication}', [AnalyticsPublicationController::class, 'show'])->name('app.analytics.publications.show');
 
     // Calendar
     Route::get('calendar', [PostController::class, 'calendar'])->name('app.calendar');

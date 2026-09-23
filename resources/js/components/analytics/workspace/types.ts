@@ -41,6 +41,7 @@ export interface TopPost {
     username: string | null;
     origin: string;
     content_type: string;
+    availability: string;
     published_at: string;
     permalink: string | null;
     excerpt: string | null;
@@ -91,6 +92,47 @@ export interface WorkspaceAnalyticsReport {
     top_posts: { reactions: TopPost[]; comments: TopPost[] };
     performance: PerformanceRow[];
     coverage: CoverageRow[];
+}
+
+export interface PublicationMetricFact {
+    value: number | null;
+    unit: string;
+    time_basis?: string;
+    precision?: string;
+    availability: string;
+    provider_metric?: string | null;
+}
+
+export interface PublicationAnalyticsDetail {
+    available: true;
+    reason: null;
+    publication: {
+        id: string;
+        post_platform_id: string | null;
+        social_account_key: string;
+        platform: string;
+        origin: string;
+        content_type: string;
+        availability: string;
+        provider_published_at: string | null;
+        permalink: string | null;
+        excerpt: string | null;
+        preview_metadata: Record<string, unknown> | null;
+        account_display_name: string | null;
+        account_username: string | null;
+        account_avatar_url: string | null;
+    };
+    snapshot: {
+        date: string;
+        collected_at: string | null;
+        provider_observed_at: string | null;
+    } | null;
+    metrics: Record<string, PublicationMetricFact>;
+}
+
+export interface UnsupportedPublicationAnalytics {
+    unsupported: true;
+    reason: string;
 }
 
 export const accountColors = [

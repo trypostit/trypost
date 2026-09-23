@@ -227,6 +227,9 @@ class PostController extends Controller
         return Inertia::render('posts/Show', [
             'workspace' => $workspace,
             'post' => (new PostResource($post))->resolve(),
+            'postMetrics' => app(PostMetricsFetcher::class)->forPost($post)
+                ->mapWithKeys(fn (array $row): array => [$row['post_platform_id'] => $row['metrics']])
+                ->all(),
         ]);
     }
 

@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 import { formatNumberCompact } from '@/lib/utils';
+import { show as publicationShow } from '@/routes/app/analytics/publications';
 
 import AccountIdentity from './AccountIdentity.vue';
 import AnalyticsSection from './AnalyticsSection.vue';
@@ -103,13 +105,11 @@ const posts = computed<TopPost[]>(() => props.topPosts[metric.value]);
                                   )
                                 : $t('analytics.dashboard.published_on_network')
                         }}</span>
-                        <a
-                            v-if="post.permalink"
-                            :href="post.permalink"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="shrink-0 font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                            >{{ $t('analytics.dashboard.view_post') }}</a
+                        <Link
+                            v-if="post.availability === 'available'"
+                            :href="publicationShow.url(post.id)"
+                            class="shrink-0 font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                            >{{ $t('analytics.detail.details') }}</Link
                         >
                     </div>
                 </div>

@@ -1,6 +1,35 @@
 <?php
 
 return [
+    'detail' => [
+        'labels' => [
+            'watch_time_milliseconds' => 'Tempo de exibição',
+            'average_watch_time_milliseconds' => 'Tempo médio de exibição',
+            'total_play_time_milliseconds' => 'Tempo total de reprodução',
+            'average_video_play_time_milliseconds' => 'Tempo médio de reprodução',
+            'average_percentage_viewed' => 'Percentual médio assistido',
+            'video_views_10_seconds' => 'Visualizações de 10 segundos',
+            'video_views_95_percent' => 'Visualizações de 95%',
+            'video_quartile_25' => '25% assistido',
+            'video_quartile_50' => '50% assistido',
+            'video_quartile_75' => '75% assistido',
+            'video_quartile_100' => '100% assistido',
+            'story_taps_forward' => 'Toques para avançar',
+            'story_taps_back' => 'Toques para voltar',
+            'story_swipes_forward' => 'Deslizes para avançar',
+        ],
+        'engagement' => 'Engajamento',
+        'exposure' => 'Exposição',
+        'video' => 'Vídeo e retenção',
+        'last_collected' => 'Última coleta',
+        'stale' => 'Pode estar desatualizado',
+        'awaiting_metrics' => 'As métricas ainda não foram coletadas.',
+        'estimated' => 'Estimado',
+        'back_to_analytics' => 'Voltar para analytics',
+        'details' => 'Detalhes',
+        'published_via_trypost' => 'Publicado pelo TryPost',
+        'published_on' => 'Publicado no :platform',
+    ],
     'dashboard' => [
         'summary' => 'Resumo',
         'posts' => 'Posts',

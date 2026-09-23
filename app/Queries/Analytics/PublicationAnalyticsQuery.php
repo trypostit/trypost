@@ -24,6 +24,7 @@ class PublicationAnalyticsQuery
         }
 
         $publication = AnalyticsPublication::query()
+            ->available()
             ->where('workspace_id', $postPlatform->post->workspace_id)
             ->where('post_platform_id', $postPlatform->id)
             ->whereIn('platform', Platform::analyticsValues())
