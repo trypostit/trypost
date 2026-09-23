@@ -1278,6 +1278,12 @@ Run the full database-dependent analytics suite on both supported engines. Confi
 
 Local verification: PostgreSQL Feature 3,853 passed (14,726 assertions; 1 skipped), Unit 1,335 passed (3,618 assertions), and browser 74 passed (301 assertions). On an isolated temporary MySQL database, the analytics and post-consumer suite passed 225 tests (939 assertions); the four analytics migrations rolled back and reapplied successfully. A later focused MySQL run for the authorization/fixture safety fix passed 34 tests (148 assertions), then its temporary database was removed. Frontend lint, typecheck, and build passed. These checks do not validate production API permissions or quota.
 
+After the X timeline-cap and account-reactivation fixes, the complete default
+PostgreSQL test command (`php artisan test --compact`) was rerun on 2026-09-23:
+5,196 passed, 1 skipped, 18,389 assertions. This is fresh regression evidence
+for the committed branch; it is not a new MySQL, browser, provider-permission,
+or production-canary result.
+
 - [ ] **Step 6: Perform controlled capability and rollout checks**
 
 Local canary evidence (2026-09-23): the workspace from the reported
