@@ -3,7 +3,7 @@ import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import dayjs from '@/dayjs';
-import { formatNumberCompact } from '@/lib/utils';
+import { formatNumberCompact, formatPercent } from '@/lib/utils';
 
 import AnalyticsSection from './AnalyticsSection.vue';
 import type {
@@ -100,16 +100,12 @@ const label = (key: string): string => {
 
     const specialized = `analytics.detail.labels.${key}`;
     const specializedLabel = trans(specialized);
-    return specializedLabel !== specialized
-        ? specializedLabel
-        : key
-              .replaceAll('_', ' ')
-              .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    return specializedLabel;
 };
 
 const display = (key: string, fact: PublicationMetricFact): string => {
     if (fact.value === null) return '—';
-    if (fact.unit === 'percent') return `${fact.value}%`;
+    if (fact.unit === 'percent') return formatPercent(fact.value);
     if (fact.unit === 'milliseconds') {
         const average = key.includes('average');
         return `${formatNumberCompact(fact.value / (average ? 1000 : 60000))} ${average ? 's' : 'min'}`;
@@ -168,7 +164,13 @@ const stale = computed(() =>
                     v-for="metric in group.metrics"
                     :key="metric.key"
                     class="flex min-h-28 min-w-0 flex-col justify-between rounded-xl border-2 border-foreground bg-background px-4 py-4 shadow-xs"
-                    :title="metric.fact.time_basis || ''"
+                    :title="
+                        metric.fact.time_basis
+                            ? $t(
+                                  `analytics.detail.time_basis.${metric.fact.time_basis}`,
+                              )
+                            : undefined
+                    "
                 >
                     <p class="text-sm font-medium text-foreground/70">
                         {{ label(metric.key) }}

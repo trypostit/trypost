@@ -2,7 +2,11 @@
 import { IconArrowDown, IconArrowsSort } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
-import { formatNumberCompact, formatPercentChange } from '@/lib/utils';
+import {
+    formatNumberCompact,
+    formatPercent,
+    formatPercentChange,
+} from '@/lib/utils';
 
 import AccountIdentity from './AccountIdentity.vue';
 import AnalyticsSection from './AnalyticsSection.vue';
@@ -31,7 +35,7 @@ const display = (
     return value === null
         ? '—'
         : key === 'engagement_rate'
-          ? `${value}%`
+          ? formatPercent(value)
           : formatNumberCompact(value);
 };
 const change = (row: PerformanceRow, key: (typeof columns)[number]): string => {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\User\Locale;
 use App\Enums\UserWorkspace\Role;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
@@ -53,6 +54,54 @@ test('imported Reel detail shows origin and watch time without publishing action
         ->assertSee('67.4K min')
         ->assertDontSee('67368.4 min')
         ->assertMissing('@edit-publication')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+});
+
+test('publication detail translates metric labels, time basis, content type and numbers', function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+    $user = User::factory()->create(['locale' => Locale::PortugueseBrazil]);
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Instagram]);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $workspace->id,
+        'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'platform' => Platform::Instagram,
+        'origin' => PublicationOrigin::External,
+        'content_type' => PublicationContentType::Reel,
+    ]);
+    AnalyticsPublicationDailySnapshot::factory()->create([
+        'analytics_publication_id' => $publication->id,
+        'metrics' => [
+            'watch_time_milliseconds' => [
+                'value' => 4042104000,
+                'unit' => 'milliseconds',
+                'availability' => 'available',
+                'time_basis' => 'lifetime',
+            ],
+            'engagement_rate' => [
+                'value' => 12.5,
+                'unit' => 'percent',
+                'availability' => 'available',
+                'time_basis' => 'lifetime',
+            ],
+        ],
+    ]);
+    Vite::useHotFile(storage_path('framework/testing/publication-analytics-no-hot'));
+    $this->actingAs($user);
+
+    $page = visit(route('app.analytics.publications.show', $publication));
+
+    $page->assertSee('Reels')
+        ->assertSee('Taxa de engajamento')
+        ->assertSee('12,5%')
+        ->assertPresent('[title="Desde a publicação"]')
+        ->assertScript('document.title.includes("Analytics do Instagram")', true)
+        ->assertScript('document.body.innerText.includes("67,4\\u00a0mil min")', true)
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });

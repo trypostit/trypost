@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import { formatNumberCompact, formatPercentChange } from '@/lib/utils';
+import {
+    formatNumberCompact,
+    formatPercent,
+    formatPercentChange,
+} from '@/lib/utils';
 
 import AnalyticsSection from './AnalyticsSection.vue';
 import type { WorkspaceAnalyticsReport } from './types';
@@ -42,7 +46,11 @@ const cards = computed(() => [
 ]);
 
 const display = (value: number | null, percent: boolean): string =>
-    value === null ? '—' : percent ? `${value}%` : formatNumberCompact(value);
+    value === null
+        ? '—'
+        : percent
+          ? formatPercent(value)
+          : formatNumberCompact(value);
 
 const changeLabel = (key: string, change: number | null): string | null => {
     if (change === null) return null;

@@ -4,6 +4,8 @@ import { trans } from 'laravel-vue-i18n';
 import { twMerge } from 'tailwind-merge';
 import { toast } from 'vue-sonner';
 
+import { activeLocale } from '@/language';
+
 export const cn = (...inputs: ClassValue[]) => {
     return twMerge(clsx(inputs));
 };
@@ -17,22 +19,29 @@ export const formatNumber = (value: number): string => {
 };
 
 export const formatNumberCompact = (value: number): string => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(activeLocale.value, {
         notation: 'compact',
         compactDisplay: 'short',
         maximumFractionDigits: 1,
     }).format(value);
 };
 
-export const formatPercentChange = (value: number): string => {
-    const formatted =
-        Math.abs(value) >= 1000
-            ? formatNumberCompact(value)
-            : new Intl.NumberFormat('en-US', {
-                  maximumFractionDigits: 2,
-              }).format(value);
+export const formatPercent = (value: number): string => {
+    return new Intl.NumberFormat(activeLocale.value, {
+        style: 'percent',
+        maximumFractionDigits: 2,
+    }).format(value / 100);
+};
 
-    return `${value > 0 ? '+' : ''}${formatted}%`;
+export const formatPercentChange = (value: number): string => {
+    const compact = Math.abs(value) >= 1000;
+
+    return new Intl.NumberFormat(activeLocale.value, {
+        style: 'percent',
+        signDisplay: 'exceptZero',
+        notation: compact ? 'compact' : 'standard',
+        maximumFractionDigits: compact ? 1 : 2,
+    }).format(value / 100);
 };
 
 export const formatMoney = (cents: number): string => {

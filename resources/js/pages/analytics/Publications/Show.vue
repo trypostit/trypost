@@ -43,7 +43,11 @@ const providerUrl = computed(() =>
 
 <template>
     <AppLayout>
-        <Head :title="`${platformName} analytics`" />
+        <Head
+            :title="
+                $t('analytics.detail.page_title', { platform: platformName })
+            "
+        />
         <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
             <Link
                 :href="analyticsRoute.url()"
@@ -72,8 +76,12 @@ const providerUrl = computed(() =>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <span
-                        class="rounded-full border-2 border-foreground bg-violet-100 px-3 py-1 text-xs font-semibold text-foreground capitalize"
-                        >{{ publication.content_type }}</span
+                        class="rounded-full border-2 border-foreground bg-violet-100 px-3 py-1 text-xs font-semibold text-foreground"
+                        >{{
+                            $t(
+                                `analytics.detail.content_types.${publication.content_type}`,
+                            )
+                        }}</span
                     >
                     <a
                         v-if="providerUrl"

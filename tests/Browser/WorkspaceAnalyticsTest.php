@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
+use App\Enums\User\Locale;
 use App\Enums\UserWorkspace\Role;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
@@ -109,9 +110,9 @@ test('workspace dashboard explains the empty state without inventing follower to
         ->assertNoConsoleLogs();
 });
 
-test('workspace dashboard abbreviates large percentage changes', function () {
+test('workspace dashboard abbreviates large percentage changes in the user locale', function (Locale $locale, string $expectedChange) {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
-    $user = User::factory()->create();
+    $user = User::factory()->create(['locale' => $locale]);
     $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
     $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
     $user->update(['current_workspace_id' => $workspace->id]);
@@ -140,8 +141,11 @@ test('workspace dashboard abbreviates large percentage changes', function () {
     Vite::useHotFile(storage_path('framework/testing/workspace-analytics-no-hot'));
     $page = visit(route('app.analytics', ['start' => '2026-09-12', 'end' => '2026-09-23']));
 
-    $page->assertSee('+186.5K%')
+    $page->assertScript('document.body.innerText.includes('.json_encode($expectedChange).')', true)
         ->assertDontSee('+186500%')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
-});
+})->with([
+    'English' => [Locale::English, '+186.5K%'],
+    'Portuguese' => [Locale::PortugueseBrazil, "+186,5\u{00A0}mil%"],
+]);
