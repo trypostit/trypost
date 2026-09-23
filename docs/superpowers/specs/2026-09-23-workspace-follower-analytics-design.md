@@ -58,40 +58,42 @@ accounts of the same network.
 | YouTube | Channel subscribers | YouTube may round the public subscriber count for larger channels |
 | Bluesky | Profile followers | Profile `followersCount` |
 | Mastodon | Account followers | Account `followers_count` from the connected instance |
-| Telegram | Chat/channel members | Member count, treated as the Telegram follower equivalent |
-| Discord | Server members | Approximate member count, treated as the Discord follower equivalent |
-| Google Business Profile | Location followers | Total follower count for the connected location |
 
 The value is labelled using the platform's native meaning where needed in
 tooltips, but all values participate in the workspace's top-level follower
 total.
 
-### Explicit follower exclusions
+### Explicit v1 platform exclusions
 
-Both LinkedIn identity types are excluded from follower analytics v1:
+The following platforms are excluded from every analytics surface in v1:
 
 - LinkedIn personal profile
 - LinkedIn Page
+- Telegram
+- Discord
+- Google Business Profile
 
-Neither receives follower collection jobs, appears in the follower charts, nor
-contributes to the workspace total. LinkedIn publishing remains untouched, but
-supported LinkedIn post analytics participate in the same database-backed post
-metrics migration as the other networks. Successfully published LinkedIn
-destinations also appear in the Posts widget because that metric comes from
-TryPost's local publication records and requires no LinkedIn follower-analytics
-permission.
+They receive no follower or post-performance collection jobs, appear in no
+follower or Posts chart, contribute to no Summary, Top 5, or Performance value,
+and expose no individual-post analytics block in this delivery. Their successful
+publication records remain intact but are filtered out of `/analytics`.
+Publishing, comments/community features, and account connection behavior remain
+unchanged.
 
 LinkedIn personal follower analytics requires `r_member_profileAnalytics`,
 which is provisioned through the vetted Community Management API product. That
 product must initially be the only product on a separate LinkedIn developer
-application. It is not part of this delivery.
+application. LinkedIn post metrics are also deferred so the network enters the
+new analytics architecture as one coherent v2 rather than partially in v1.
 
 ### Planned v2: LinkedIn
 
-Follower analytics for both LinkedIn identity types are planned for v2:
+Analytics for both LinkedIn identity types are planned for v2:
 
 - LinkedIn personal profile follower count;
-- LinkedIn Page follower count.
+- LinkedIn Page follower count;
+- database-backed post metrics for personal profiles and Pages;
+- inclusion in Posts, Summary, Top 5, Performance, and individual-post detail.
 
 The v2 keeps the network consistent by introducing both identity types
 together. LinkedIn Page data is already technically accessible through the
@@ -107,11 +109,18 @@ Before v2 implementation, TryPost must:
 4. add the newly provisioned analytics scope to the appropriate OAuth flow;
 5. require affected LinkedIn accounts to reconnect so their tokens contain the
    approved scope;
-6. verify the current LinkedIn API version and data-retention requirements.
+6. verify the current LinkedIn follower, post, video, and engagement metric
+   endpoints, API version, scopes, and data-retention requirements;
+7. create a separate v2 implementation plan for collection, persistence, and
+   read-path inclusion.
 
-If Community Management API access is not approved, LinkedIn personal cannot
-enter v2. Shipping LinkedIn Page alone would then require a new explicit
-product decision rather than happening implicitly.
+If Community Management API access is not approved, LinkedIn cannot enter v2.
+Shipping LinkedIn Page alone would then require a new explicit product decision
+rather than happening implicitly.
+
+Telegram, Discord, and Google Business Profile have no planned analytics v2 in
+this design. Adding any of them later requires a new product decision and
+official API capability review.
 
 ## User experience
 
@@ -172,12 +181,14 @@ one count to each account. The metric is based on the destination publication
 record, not the parent post, so a partially successful multi-network post counts
 only its successful destinations.
 
-The Posts widget includes every supported publishing platform, including both
-LinkedIn identity types. It includes posts published from any TryPost entry
-point, such as the app, API, MCP, or repurpose flows, when they share the normal
-publication records. It excludes drafts, scheduled posts that have not yet
-published, failed or rejected destinations, and posts created directly on a
-social network outside TryPost.
+The Posts widget includes only the platforms included in analytics v1. It
+excludes LinkedIn personal profiles, LinkedIn Pages, Telegram, Discord, and
+Google Business Profile even when their TryPost destination publication
+succeeded. For included platforms, it counts posts published from any TryPost
+entry point, such as the app, API, MCP, or repurpose flows, when they share the
+normal publication records. It excludes drafts, scheduled posts that have not
+yet published, failed or rejected destinations, and posts created directly on
+a social network outside TryPost.
 
 A retry that eventually succeeds counts once because the destination record is
 counted once. Historical publications remain facts even if an account is later
@@ -287,9 +298,11 @@ columns require a later product decision.
 
 ### Individual post analytics
 
-The existing analytics area inside each published post is part of this same
-delivery. It must stop fetching provider metrics during the page request and
-must stop treating the five-minute Redis entry as the metric source.
+For platforms included in analytics v1, the existing analytics area inside each
+published post is part of this same delivery. It must stop fetching provider
+metrics during the page request and must stop treating the five-minute Redis
+entry as the metric source. Destinations on excluded platforms show no analytics
+block.
 
 The post-performance pipeline collects through queued jobs and persists through
 one observation writer. The individual post page, REST API, MCP, Summary, Top 5
@@ -332,10 +345,10 @@ the network's official API documentation before implementation.
 
 Buffer does not provide this per-post reference for Telegram, Discord, or
 Google Business Profile, and it does not expose post analytics for Instagram
-Personal accounts or Facebook Groups. Those absences do not remove TryPost
-capabilities: Telegram webhook reactions, Discord reactions/thread replies, and
-any official Google Business post data are evaluated from their own official
-APIs and existing local event sources.
+Personal accounts or Facebook Groups. Together with the product decision for
+this release, that absence keeps Telegram, Discord, and Google Business Profile
+outside analytics v1. Existing locally available reactions, replies, or account
+counts for those networks are not promoted into the new analytics surfaces.
 
 The Buffer product surfaces are not internally identical. Sent posts, the new
 Insights product, and the retiring Analyze product can expose different metrics
@@ -364,17 +377,19 @@ verify, not permission to invent or request an undocumented field.
 | Facebook | Feed: impressions, reach, likes, clicks; Story: impressions, reach, interactions, reactions, replies, shares; Reel/video: plays, reactions, interactions | Feed comments/shares and richer Reel actions exposed by current Meta APIs |
 | Instagram | Reach, views, likes, comments, shares, saves, replies, or total interactions depending on content type | The expanded Feed/Reel/Story catalog below |
 | X/Twitter | Impressions, likes, retweets, replies, quotes, and bookmarks | Click metrics and their access level |
-| LinkedIn Page | Impressions, clicks, likes, comments, and shares | Provider engagement rate plus video views, watch time, and unique viewers |
-| LinkedIn personal profile | Likes and comments | Impressions, reach, reliable video views, and derived engagement inputs under the app's approved scopes |
+| LinkedIn Page | Impressions, clicks, likes, comments, and shares | Deferred to v2: provider engagement rate plus video views, watch time, and unique viewers |
+| LinkedIn personal profile | Likes and comments | Deferred to v2: impressions, reach, reliable video views, and derived engagement inputs under newly approved scopes |
 | Pinterest | Impressions, saves, Pin clicks, outbound clicks, and video views | Lifetime reactions/comments, rates, audience values, and video-retention metrics described below |
 | Mastodon | Favorites, replies, and reblogs | No Buffer-identified basic metric gap |
 | TikTok | Views, likes, comments, and shares | Reach is a Buffer candidate but is unavailable in TryPost's currently approved Display API fields |
 | YouTube | Views, total watch time, average view duration, likes, comments, and shares | Engaged views, average percentage viewed, and subscriber change described below |
 | Threads | Views, likes, replies, reposts, and quotes | No Buffer-identified basic metric gap |
 | Bluesky | Likes, replies, reposts, and quotes | No Buffer-identified basic metric gap |
-| Telegram | Locally persisted webhook reactions, plus chat/channel member count shown alongside the post today | Buffer has no comparison; keep account members separate from post performance |
-| Discord | Message reactions and thread replies, plus server member count shown alongside the post today | Buffer has no comparison; keep account members separate from post performance |
-| Google Business Profile | No individual-post collector | Buffer has no post-analytics reference; remain unsupported until official APIs prove a post-level metric |
+
+LinkedIn rows above are v2 research only. They are not part of the v1 collector
+or persistence scope. Telegram, Discord, and Google Business Profile are omitted
+from the implementation inventory because they are excluded from analytics v1
+and have no planned analytics v2 in this design.
 
 ### Content-specific metric catalog
 
@@ -468,9 +483,9 @@ The existing analytics range date picker remains the shared page filter for the
 Summary, follower chart, Posts widget, Top 5 Posts, and Performance.
 
 - `minDate` is the earliest follower snapshot or successful TryPost publication
-  available in the workspace.
+  on an included v1 platform available in the workspace.
 - `maxDate` is the latest follower snapshot or successful TryPost publication
-  available in the workspace.
+  on an included v1 platform available in the workspace.
 - The picker cannot select a range wholly outside those bounds.
 - All chart modes and the total use the same selected range.
 - A social account connected after the selected start date begins when its own
@@ -599,8 +614,10 @@ refreshed in queued jobs and stored behind the same persistence decision gate as
 follower observations.
 
 The daily dispatcher selects successful destination publications that have a
-platform post id, a connected account with the required access, and remain
-inside their refresh window:
+platform post id, use a platform included in analytics v1, have a connected
+account with the required access, and remain inside their refresh window.
+LinkedIn personal profiles, LinkedIn Pages, Telegram, Discord, and Google
+Business Profile are never selected:
 
 - X destinations: through 20 days after publication;
 - every other supported destination: through 30 days after publication.
@@ -632,8 +649,9 @@ the system does not replace it with zero.
 
 Metrics already maintained from trusted local events, such as webhook-backed
 reaction metadata, may be normalized from that local source without making a
-redundant provider request. Networks without post analytics still contribute
-their locally known Posts count but show other values as unavailable.
+redundant provider request. An included v1 platform without a supported post
+metric may still contribute its locally known Posts count and show the metric as
+unavailable. An excluded v1 platform contributes neither posts nor metrics.
 
 ## Persistence decision gate
 
@@ -695,9 +713,9 @@ second source of truth.
 The Posts widget does not require a new analytics snapshot or collection table.
 Its source of truth is the existing destination publication history. A counted
 row must belong to a post in the current workspace, have the published status,
-and have a `published_at` timestamp inside the selected range. The concrete
-query must use the existing enum/status conventions and work on PostgreSQL and
-MySQL.
+use a platform included in analytics v1, and have a `published_at` timestamp
+inside the selected range. The concrete query must use the existing enum/status
+conventions and work on PostgreSQL and MySQL.
 
 ## Read path
 
@@ -825,7 +843,8 @@ Post-performance collector tests additionally cover:
 ### Queue and scheduling tests
 
 - The daily command dispatches one job per eligible account and none for
-  LinkedIn, inactive, disconnected, or unsupported accounts.
+  LinkedIn, Telegram, Discord, Google Business Profile, inactive, disconnected,
+  or unsupported accounts.
 - Jobs are isolated and idempotent by account, metric, and date.
 - Retry delays cover the same UTC day and stop after a successful observation.
 - Platform-provided retry timing is respected.
@@ -833,7 +852,9 @@ Post-performance collector tests additionally cover:
 - Immediate collection is dispatched after a supported account is connected.
 - `withoutOverlapping()` and `onOneServer()` remain present on the schedule.
 - Post-performance jobs are dispatched only for successful destinations with a
-  usable platform id and access.
+  usable platform id and access on an included v1 platform.
+- No post-performance job is dispatched for LinkedIn personal profiles,
+  LinkedIn Pages, Telegram, Discord, or Google Business Profile.
 - X destinations remain eligible through day 20; other supported destinations
   remain eligible through day 30.
 - The final eligible day receives a final collection and older destinations no
@@ -863,19 +884,20 @@ Post-performance collector tests additionally cover:
 - A later-connected account does not receive invented earlier points.
 - Historical series remain available after disconnect/deactivation.
 - No-data workspaces receive the collection-pending state.
-- LinkedIn personal and LinkedIn Page never appear or contribute to follower
-  analytics v1.
+- LinkedIn personal profiles, LinkedIn Pages, Telegram, Discord, and Google
+  Business Profile never appear or contribute anywhere in analytics v1.
 - The Posts Bar mode counts one successful destination per social account in
   the selected range.
 - The Posts Stacked Bar mode selects daily, weekly, and monthly buckets at the
   documented range thresholds and zero-fills missing buckets.
-- A multi-network post contributes once to every successful destination and
-  nothing to failed, rejected, pending, or future-scheduled destinations.
+- A multi-network post contributes once to every successful destination on an
+  included v1 platform and nothing to excluded, failed, rejected, pending, or
+  future-scheduled destinations.
 - A destination that succeeds after retries counts only once.
 - Direct/native social-network posts are absent because no TryPost publication
   record exists for them.
-- LinkedIn personal and LinkedIn Page publications appear in the Posts widget
-  even though both remain excluded from follower analytics v1.
+- Publications for every excluded v1 platform are absent from both Posts widget
+  modes, Summary, Top 5, and Performance.
 - Post aggregation is workspace-scoped through the parent post.
 - Historical publications retain presentable account information after the
   social account is disconnected or deleted.
@@ -893,6 +915,8 @@ Post-performance collector tests additionally cover:
   Summary.
 - The individual post page, REST API, and MCP return the same persisted latest
   observation and make no provider request during reads.
+- The individual post page exposes no analytics block for a destination on an
+  excluded v1 platform.
 - The individual post page shows the content-type-specific catalog, canonical
   units, freshness, and metric stability/provenance.
 - Expired Redis entries cannot remove or change persisted post analytics.
@@ -916,10 +940,11 @@ design is approved and implemented.
 - **Persisting workspace totals.** Duplicates account facts and risks drift.
 - **Choosing the final table structure now.** The wider metric catalog is not
   yet known, so the choice would be speculative.
-- **Including either LinkedIn identity in v1.** Personal analytics require a
-  separately vetted product, and the product decision for this release is to
-  defer the whole network to the planned v2 rather than ship partial LinkedIn
-  support.
+- **Including LinkedIn, Telegram, Discord, or Google Business Profile in v1.**
+  LinkedIn requires the separately vetted product for a coherent implementation;
+  the other three are outside the chosen product scope and lack a Buffer
+  per-post analytics reference. LinkedIn is deferred as a whole to v2; the
+  others require a new future product decision.
 - **Fetching post counts from social APIs.** The v1 metric represents successful
   TryPost deliveries, which already have a reliable local destination record;
   provider analytics would add permissions, rate limits, inconsistent history,
@@ -990,5 +1015,5 @@ design is approved and implemented.
    concrete classes, and ordered implementation tasks.
 4. Implementation begins only after that written plan is reviewed and its
    execution method is selected.
-5. LinkedIn follower analytics receives a separate v2 implementation plan
-   after the external Community Management API dependency is resolved.
+5. LinkedIn follower and post analytics receive a separate v2 implementation
+   plan after the external Community Management API dependency is resolved.
