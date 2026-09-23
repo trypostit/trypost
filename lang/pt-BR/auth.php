@@ -55,11 +55,18 @@ return [
     'google_signup' => 'Cadastrar com Google',
     'github_login' => 'Entrar com GitHub',
     'github_signup' => 'Cadastrar com GitHub',
+    'oidc_login' => 'Entrar com :provider',
+    'oidc_signup' => 'Cadastrar com :provider',
+    'oidc_group_denied' => 'Sua conta não está em um grupo autorizado a usar este aplicativo.',
+    'oidc_email_missing' => 'Seu provedor de identidade não retornou um endereço de email.',
+    'oidc_email_unverified' => 'Seu endereço de email não está verificado no seu provedor de identidade.',
+    'oidc_failed' => 'Falha no login único. Tente novamente.',
     'github_email_unavailable' => 'Não foi possível obter seu e-mail do GitHub. Torne seu e-mail público ou conceda a permissão de e-mail e tente novamente.',
 
     'login' => [
         'title' => 'Entrar na sua conta',
         'description' => 'Digite seu email e senha abaixo para entrar',
+        'description_without_password' => 'Entre com a conta da sua organização para continuar',
         'page_title' => 'Entrar',
         'email' => 'Endereço de email',
         'password' => 'Senha',

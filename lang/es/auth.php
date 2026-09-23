@@ -43,11 +43,18 @@ return [
     'google_signup' => 'Registrarse con Google',
     'github_login' => 'Iniciar sesión con GitHub',
     'github_signup' => 'Registrarse con GitHub',
+    'oidc_login' => 'Iniciar sesión con :provider',
+    'oidc_signup' => 'Registrarse con :provider',
+    'oidc_group_denied' => 'Tu cuenta no pertenece a ningún grupo autorizado a usar esta aplicación.',
+    'oidc_email_missing' => 'Tu proveedor de identidad no ha devuelto ninguna dirección de correo.',
+    'oidc_email_unverified' => 'Tu dirección de correo no está verificada en tu proveedor de identidad.',
+    'oidc_failed' => 'El inicio de sesión ha fallado. Inténtalo de nuevo.',
     'github_email_unavailable' => 'No fue posible obtener tu correo de GitHub. Haz tu correo público en GitHub o concede el permiso de correo y vuelve a intentar.',
 
     'login' => [
         'title' => 'Inicia sesión en tu cuenta',
         'description' => 'Introduce tu correo y contraseña para iniciar sesión',
+        'description_without_password' => 'Inicia sesión con la cuenta de tu organización para continuar',
         'page_title' => 'Iniciar sesión',
         'email' => 'Correo electrónico',
         'password' => 'Contraseña',
