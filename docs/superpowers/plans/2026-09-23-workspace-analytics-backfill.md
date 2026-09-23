@@ -1270,6 +1270,19 @@ Local verification: PostgreSQL Feature 3,850 passed (14,708 assertions), Unit 1,
 
 - [ ] **Step 6: Perform controlled capability and rollout checks**
 
+Local canary evidence (2026-09-23): the workspace from the reported
+`/analytics` request (`01a0caa6-1121-732e-9197-4ab7bbc8b5d9`) has one
+eligible Threads account. Its queued history backfill is `complete`, reached
+the 365-day target (oldest publication 2025-09-23), and stored 50 external
+publications with 50 measured metric snapshots plus one actual follower
+snapshot. Running `analytics:backfill-existing --workspace=<that UUID>`
+reported `historical_identity_unrecoverable=0`; afterward the analytics queue
+was empty and the publication count was unchanged, confirming this local
+rerun did not duplicate the catalog. A failed-page bootstrap now preserves the
+last committed cursor, verified by 13 backfill tests on both PostgreSQL and
+MySQL. This local canary does not prove production application permissions,
+quotas, other platform adapters, or a safe global rollout.
+
 Before dispatching the production rollout:
 
 1. confirm the production TikTok app has `video.list` and `user.info.stats`;

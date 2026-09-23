@@ -62,6 +62,26 @@ test('bootstrap creates separate backfill and discovery states and dispatches th
     Bus::assertDispatched(BackfillAccountPublications::class, fn ($job): bool => $job->socialAccountId === $account->id && $job->syncStateId === $backfill->id);
 });
 
+test('bootstrap resumes a failed backfill from its last committed cursor', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->instagram()->create(['is_active' => true]);
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationBackfill,
+        'status' => SyncStatus::Failed,
+        'checkpoint' => ['cursor' => 'last-committed-page', 'revision' => 3],
+    ]);
+
+    (new BootstrapAccountAnalytics($account->id))->handleFor($account->id);
+
+    expect($state->fresh()->status)->toBe(SyncStatus::Pending)
+        ->and($state->fresh()->checkpoint)->toMatchArray([
+            'cursor' => 'last-committed-page',
+            'revision' => 3,
+        ]);
+    Bus::assertDispatched(BackfillAccountPublications::class, fn ($job): bool => $job->syncStateId === $state->id);
+});
+
 test('a backfill job persists one page then advances its cursor and dispatches continuation', function () {
     Bus::fake();
     $account = SocialAccount::factory()->instagram()->create(['is_active' => true]);

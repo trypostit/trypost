@@ -14,6 +14,14 @@ The local PostgreSQL Feature suite passed 3,850 tests, Unit passed 1,335, and
 the full browser suite passed 74 after isolating asynchronous analytics jobs in
 unrelated synchronous-queue test fixtures.
 
+A local Threads workspace canary subsequently completed the 365-day publication
+backfill with 50 external publications, 50 measured metric snapshots, and an
+actual follower snapshot. The workspace-filtered rollout command reported no
+unrecoverable orphan identities and did not duplicate records on rerun. This
+is local evidence only; production scopes, quotas, other networks, and global
+rollout remain unverified. A failed paginated backfill now resumes from its
+last committed cursor, with focused PostgreSQL and MySQL tests.
+
 ## Objective
 
 Replace the request-time, per-social-account analytics experience with an

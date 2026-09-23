@@ -60,7 +60,9 @@ class BootstrapAccountAnalytics implements ShouldQueue
             $backfill->update([
                 'status' => SyncStatus::Pending,
                 'checkpoint' => [
-                    'cursor' => null,
+                    'cursor' => $backfill->status === SyncStatus::Failed
+                        ? data_get($backfill->checkpoint, 'cursor')
+                        : null,
                     'revision' => (int) data_get($backfill->checkpoint, 'revision', 0),
                 ],
             ]);
