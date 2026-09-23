@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
@@ -95,41 +94,25 @@ test('returns empty array when the account has no location', function () {
     Http::assertNothingSent();
 });
 
-test('google business is listed on the analytics page', function () {
+test('google business is excluded from workspace analytics', function () {
     $response = $this->actingAs($this->user)->get(route('app.analytics'));
 
     $response->assertOk();
 
-    $accounts = $response->original->getData()['page']['props']['accounts'];
+    $report = $response->original->getData()['page']['props']['report'];
 
-    expect(collect($accounts)->firstWhere('platform', Platform::GoogleBusiness->value))->not->toBeNull();
+    expect($report['bounds']['min'])->toBeNull()
+        ->and($report['followers']['accounts'])->toBe([]);
 });
 
-test('the analytics show endpoint returns google business metrics', function () {
-    Http::fake([
-        config('trypost.platforms.google_business.performance_api').'/*' => Http::response([
-            'multiDailyMetricTimeSeries' => [
-                [
-                    'dailyMetricTimeSeries' => [
-                        [
-                            'dailyMetric' => 'WEBSITE_CLICKS',
-                            'timeSeries' => ['datedValues' => [['value' => '7']]],
-                        ],
-                    ],
-                ],
-            ],
-        ], 200),
-    ]);
+test('workspace analytics does not request google business reporting', function () {
+    Http::fake();
 
     $response = $this->actingAs($this->user)
-        ->getJson(route('app.analytics.show', $this->socialAccount));
+        ->get(route('app.analytics'));
 
-    $response->assertOk()->assertJsonCount(8, 'metrics');
-
-    $metrics = $response->json('metrics');
-
-    expect(collect($metrics)->pluck('label')->filter())->toHaveCount(8)
-        ->and(collect($metrics)->firstWhere('label', __('analytics.metrics.website_clicks'))['value'])->toBe(7);
+    $response->assertOk();
+    Http::assertNothingSent();
 });
 
 test('caches the metrics so a repeated call within the window does not hit the api again', function () {
@@ -291,7 +274,7 @@ test('it follows the keyword pages and asks for whole months', function () {
     });
 });
 
-test('the analytics endpoint returns the search keywords alongside the metrics', function () {
+test('the low-level google business service retains search keyword support outside V1 analytics', function () {
     Http::fake([
         config('trypost.platforms.google_business.performance_api').'/*/searchkeywords/*' => Http::response([
             'searchKeywordsCounts' => [['searchKeyword' => 'coffee near me', 'insightsValue' => ['value' => '320']]],
@@ -299,8 +282,7 @@ test('the analytics endpoint returns the search keywords alongside the metrics',
         config('trypost.platforms.google_business.performance_api').'/*' => Http::response(['multiDailyMetricTimeSeries' => []]),
     ]);
 
-    $response = $this->actingAs($this->user)
-        ->getJson(route('app.analytics.show', $this->socialAccount));
+    $keywords = $this->analytics->getSearchKeywords($this->socialAccount);
 
-    $response->assertOk()->assertJsonPath('keywords.0.keyword', 'coffee near me');
+    expect($keywords[0]['keyword'])->toBe('coffee near me');
 });

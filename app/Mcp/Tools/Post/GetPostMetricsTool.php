@@ -15,7 +15,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('Fetch engagement metrics (likes, comments, shares, etc.) for a published post across all platforms it was posted to. Returns "unsupported" entries for platforms that do not expose post-level metrics or for unpublished platforms.')]
+#[Description('Read the latest saved engagement metrics for a post across its published platforms. Values may lag the provider until the next analytics job. Returns "unsupported" for excluded or unpublished platforms.')]
 class GetPostMetricsTool extends Tool
 {
     public function handle(Request $request): Response|ResponseFactory

@@ -9,8 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Wraps a Post with its per-platform engagement metrics. The actual fetching
- * (with cache + per-platform dispatch) is delegated to PostMetricsFetcher.
+ * Wraps a Post with its persisted per-platform engagement metrics.
  */
 class PostMetricsResource extends JsonResource
 {

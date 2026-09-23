@@ -4,133 +4,52 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
-use App\Enums\SocialAccount\Platform;
-use App\Exceptions\PlatformUnavailableException;
+use App\Dto\Analytics\DateRange;
 use App\Http\Controllers\Controller;
-use App\Models\SocialAccount;
-use App\Services\Social\FacebookAnalytics;
-use App\Services\Social\GoogleBusinessAnalytics;
-use App\Services\Social\InstagramAnalytics;
-use App\Services\Social\LinkedInPageAnalytics;
-use App\Services\Social\PinterestAnalytics;
-use App\Services\Social\Telegram\TelegramAnalytics;
-use App\Services\Social\ThreadsAnalytics;
-use App\Services\Social\TikTokAnalytics;
-use App\Services\Social\XAnalytics;
-use App\Services\Social\YouTubeAnalytics;
-use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\JsonResponse;
+use App\Queries\Analytics\WorkspaceAnalyticsQuery;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class AnalyticsController extends Controller
 {
-    private const SUPPORTED_PLATFORMS = [
-        Platform::TikTok,
-        Platform::Instagram,
-        Platform::InstagramFacebook,
-        Platform::Threads,
-        Platform::Facebook,
-        Platform::X,
-        Platform::LinkedInPage,
-        Platform::Pinterest,
-        Platform::YouTube,
-        Platform::Telegram,
-        Platform::GoogleBusiness,
-    ];
-
-    public function index(Request $request): Response
+    public function index(Request $request, WorkspaceAnalyticsQuery $analytics): Response
     {
         $workspace = $request->user()->currentWorkspace;
 
         $this->authorize('view', $workspace);
 
-        $accounts = $workspace->socialAccounts()
-            ->active()
-            ->whereIn('platform', self::SUPPORTED_PLATFORMS)
-            ->get()
-            ->map(fn (SocialAccount $account) => [
-                'id' => $account->id,
-                'platform' => $account->platform->value,
-                'username' => $account->username,
-                'display_label' => $account->display_label,
-                'avatar_url' => $account->avatar_url,
-            ]);
+        $validated = $request->validate([
+            'start' => ['sometimes', 'required', 'date_format:Y-m-d'],
+            'end' => ['sometimes', 'required', 'date_format:Y-m-d', 'after_or_equal:start'],
+        ]);
+        $bounds = $analytics->boundsFor($workspace);
+        $today = CarbonImmutable::today('UTC');
+        $end = $bounds['max'] ? CarbonImmutable::parse($bounds['max'], 'UTC') : $today;
+        $start = $end->subDays(29);
+
+        if (isset($validated['start'])) {
+            $start = CarbonImmutable::parse($validated['start'], 'UTC');
+        }
+
+        if (isset($validated['end'])) {
+            $end = CarbonImmutable::parse($validated['end'], 'UTC');
+        }
+
+        if ($bounds['min'] !== null && $bounds['max'] !== null) {
+            $minimum = CarbonImmutable::parse($bounds['min'], 'UTC');
+            $maximum = CarbonImmutable::parse($bounds['max'], 'UTC');
+            $start = $start->lessThan($minimum) ? $minimum : ($start->greaterThan($maximum) ? $maximum : $start);
+            $end = $end->lessThan($minimum) ? $minimum : ($end->greaterThan($maximum) ? $maximum : $end);
+        }
+
+        if ($start->greaterThan($end)) {
+            $start = $end;
+        }
 
         return Inertia::render('analytics/Index', [
-            'accounts' => $accounts,
+            'report' => $analytics->for($workspace, new DateRange($start, $end)),
         ]);
-    }
-
-    public function show(Request $request, SocialAccount $account): JsonResponse
-    {
-        $workspace = $request->user()->currentWorkspace;
-
-        if ($account->workspace_id !== $workspace->id) {
-            abort(HttpResponse::HTTP_FORBIDDEN);
-        }
-
-        $since = $request->has('since') ? Carbon::parse($request->input('since')) : null;
-        $until = $request->has('until') ? Carbon::parse($request->input('until')) : null;
-
-        $metrics = $this->metricsFor($account, $since, $until);
-
-        // Google aggregates search keywords by month, so they cannot be folded
-        // into the daily metric cards and travel as their own list.
-        if ($account->platform === Platform::GoogleBusiness) {
-            return response()->json([
-                'metrics' => $metrics,
-                'keywords' => $this->searchKeywordsFor($account, $since, $until),
-            ]);
-        }
-
-        return response()->json(['metrics' => $metrics]);
-    }
-
-    /**
-     * @return array<int, array{keyword: string, value: int, estimated: bool}>
-     */
-    private function searchKeywordsFor(SocialAccount $account, ?Carbon $since, ?Carbon $until): array
-    {
-        try {
-            return app(GoogleBusinessAnalytics::class)->getSearchKeywords($account, $since, $until);
-        } catch (PlatformUnavailableException|ConnectionException $e) {
-            report($e);
-
-            return [];
-        }
-    }
-
-    /**
-     * An unreachable platform is not a server error — empty numbers beat a 500
-     * on a page the user just opened. Narrow on purpose: catching Throwable
-     * would render a defect as "this account has no activity".
-     *
-     * @return array<int, array{label: string, value: int|string}>
-     */
-    private function metricsFor(SocialAccount $account, ?Carbon $since, ?Carbon $until): array
-    {
-        try {
-            return match ($account->platform) {
-                Platform::TikTok => app(TikTokAnalytics::class)->getMetrics($account),
-                Platform::Instagram, Platform::InstagramFacebook => app(InstagramAnalytics::class)->getMetrics($account, $since, $until),
-                Platform::Threads => app(ThreadsAnalytics::class)->getMetrics($account, $since, $until),
-                Platform::Facebook => app(FacebookAnalytics::class)->getMetrics($account, $since, $until),
-                Platform::X => app(XAnalytics::class)->getMetrics($account, $since, $until),
-                Platform::LinkedInPage => app(LinkedInPageAnalytics::class)->getMetrics($account, $since, $until),
-                Platform::Pinterest => app(PinterestAnalytics::class)->getMetrics($account, $since, $until),
-                Platform::YouTube => app(YouTubeAnalytics::class)->getMetrics($account, $since, $until),
-                Platform::Telegram => app(TelegramAnalytics::class)->getMetrics($account),
-                Platform::GoogleBusiness => app(GoogleBusinessAnalytics::class)->getMetrics($account, $since, $until),
-                default => [],
-            };
-        } catch (PlatformUnavailableException|ConnectionException $e) {
-            report($e);
-
-            return [];
-        }
     }
 }

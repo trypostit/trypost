@@ -30,7 +30,7 @@ class WorkspaceAnalyticsQuery
         $prior = $this->totals($previousPublications);
 
         return [
-            'bounds' => $this->bounds($workspace),
+            'bounds' => $this->boundsFor($workspace),
             'range' => $range->toArray(),
             'previous_range' => $previous->toArray(),
             'summary' => [
@@ -108,7 +108,7 @@ class WorkspaceAnalyticsQuery
     }
 
     /** @return array{min: ?string, max: ?string} */
-    private function bounds(Workspace $workspace): array
+    public function boundsFor(Workspace $workspace): array
     {
         $accounts = DB::table('analytics_account_daily_snapshots')
             ->where('workspace_id', $workspace->id)

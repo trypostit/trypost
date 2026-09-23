@@ -15,12 +15,12 @@ class PublicationAnalyticsQuery
     /** @return array<string, mixed> */
     public function latestForPostPlatform(PostPlatform $postPlatform): array
     {
-        if (! in_array($postPlatform->platform->value, Platform::analyticsValues(), true)) {
-            return $this->unavailable('platform_not_supported');
-        }
-
         if ($postPlatform->status !== Status::Published || ! $postPlatform->platform_post_id) {
             return $this->unavailable('not_published');
+        }
+
+        if (! in_array($postPlatform->platform->value, Platform::analyticsValues(), true)) {
+            return $this->unavailable('platform_not_supported');
         }
 
         $publication = AnalyticsPublication::query()
