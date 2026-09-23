@@ -52,4 +52,14 @@ return [
         'no_results_description' => 'Probeer een andere zoekterm.',
         'powered_by' => 'Mogelijk gemaakt door GIPHY',
     ],
+
+    'webdav' => [
+        'up' => 'Map omhoog',
+        'import' => ':count geselecteerde importeren',
+        'loading' => 'Map wordt geladen...',
+        'empty' => 'Deze map is leeg.',
+        'unreachable' => 'De share is niet bereikbaar.',
+        'import_failed' => 'Deze bestanden konden niet worden geïmporteerd.',
+        'import_partial' => '{1} :names kon niet worden geïmporteerd.|[2,*] :count bestanden konden niet worden geïmporteerd: :names',
+    ],
 ];

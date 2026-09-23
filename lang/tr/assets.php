@@ -54,4 +54,14 @@ return [
         'no_results_description' => 'Farklı bir arama terimi deneyin.',
         'powered_by' => 'GIPHY tarafından desteklenmektedir',
     ],
+
+    'webdav' => [
+        'up' => 'Bir üst klasör',
+        'import' => 'Seçilen :count öğeyi içe aktar',
+        'loading' => 'Klasör yükleniyor...',
+        'empty' => 'Bu klasör boş.',
+        'unreachable' => 'Paylaşıma ulaşılamadı.',
+        'import_failed' => 'Bu dosyalar içe aktarılamadı.',
+        'import_partial' => '{1} :names içe aktarılamadı.|[2,*] :count dosya içe aktarılamadı: :names',
+    ],
 ];

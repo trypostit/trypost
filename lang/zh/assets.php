@@ -52,4 +52,14 @@ return [
         'no_results_description' => '换一个搜索词试试。',
         'powered_by' => '由 GIPHY 提供支持',
     ],
+
+    'webdav' => [
+        'up' => '上一级文件夹',
+        'import' => '导入所选 :count 项',
+        'loading' => '正在加载文件夹…',
+        'empty' => '此文件夹为空。',
+        'unreachable' => '无法访问该共享。',
+        'import_failed' => '这些文件无法导入。',
+        'import_partial' => '{1} :names 无法导入。|[2,*] :count 个文件无法导入：:names',
+    ],
 ];

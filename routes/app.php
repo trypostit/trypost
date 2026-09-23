@@ -25,6 +25,7 @@ use App\Http\Controllers\App\Settings\NotificationPreferenceController;
 use App\Http\Controllers\App\Settings\ProfileController;
 use App\Http\Controllers\App\Settings\SettingsController;
 use App\Http\Controllers\App\UnsplashController;
+use App\Http\Controllers\App\WebdavController;
 use App\Http\Controllers\App\WebhookController;
 use App\Http\Controllers\App\WelcomeController;
 use App\Http\Controllers\App\WorkspaceController;
@@ -245,6 +246,8 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::delete('assets/{media}', [AssetController::class, 'destroy'])->name('app.assets.destroy');
     Route::get('assets/unsplash/search', [UnsplashController::class, 'search'])->name('app.assets.unsplash.search');
     Route::get('assets/unsplash/trending', [UnsplashController::class, 'trending'])->name('app.assets.unsplash.trending');
+    Route::get('assets/webdav/browse', [WebdavController::class, 'browse'])->name('app.assets.webdav.browse');
+    Route::post('assets/webdav/import', [WebdavController::class, 'store'])->name('app.assets.webdav.store');
     Route::get('assets/giphy/search', [GiphyController::class, 'search'])->name('app.assets.giphy.search');
     Route::get('assets/giphy/trending', [GiphyController::class, 'trending'])->name('app.assets.giphy.trending');
 
