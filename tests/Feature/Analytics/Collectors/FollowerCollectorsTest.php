@@ -9,7 +9,12 @@ use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Followers\FollowerCollectorFactory;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
+
+beforeEach(function () {
+    Bus::fake();
+});
 
 test('included platforms collect follower totals from their canonical read paths', function () {
     Http::fake(function (Request $request) {

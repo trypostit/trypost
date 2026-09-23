@@ -10,6 +10,22 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 
 class FollowerCollectorFactory
 {
+    public function supports(Platform $platform): bool
+    {
+        return in_array($platform, [
+            Platform::Instagram,
+            Platform::InstagramFacebook,
+            Platform::Facebook,
+            Platform::Threads,
+            Platform::X,
+            Platform::Pinterest,
+            Platform::YouTube,
+            Platform::TikTok,
+            Platform::Bluesky,
+            Platform::Mastodon,
+        ], true);
+    }
+
     public function for(Platform $platform): FollowerCollector
     {
         return match ($platform) {

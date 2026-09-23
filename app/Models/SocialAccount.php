@@ -426,4 +426,9 @@ class SocialAccount extends Model
     {
         return $query->where('is_active', true)->orderBy('platform');
     }
+
+    public function scopeConnected(Builder $query): Builder
+    {
+        return $query->where('status', Status::Connected);
+    }
 }
