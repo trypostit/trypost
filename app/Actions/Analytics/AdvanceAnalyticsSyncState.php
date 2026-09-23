@@ -88,6 +88,7 @@ class AdvanceAnalyticsSyncState
             $oldest = $this->earlier($state->oldest_reached_at, $pageOldest);
             $highWatermark = $this->later($state->high_watermark_at, $pageNewest);
             $reachedTarget = $state->collector === SyncCollector::PublicationBackfill
+                && $page->canStopAtTarget
                 && $oldest
                 && $state->target_since
                 && $oldest->lessThanOrEqualTo($state->target_since);

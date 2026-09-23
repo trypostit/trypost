@@ -1299,6 +1299,16 @@ scheduled connection verifier owns publishing-health transitions. The focused
 tests cover both rejection categories and isolate account-created jobs in
 schema/backfill fixtures; the full PostgreSQL Feature and browser suites pass.
 
+Pinterest pagination audit: the official [Pins API contract](https://github.com/pinterest/pinterest-python-generated-api-client/blob/main/docs/PinsApi.md)
+documents bookmark pagination but does not guarantee chronological ordering;
+the [pagination reference](https://developers.pinterest.com/docs/reference/pagination/)
+allows 250 items per page. The collector now skips out-of-range Pins while
+following every bookmark at that page size, and its
+sync page explicitly disables date-boundary early completion. Regression tests
+cover an old Pin before a newer Pin and a Pin exactly on the cutoff with a
+remaining bookmark. The 137-test PostgreSQL analytics suite passes; live
+Pinterest permissions, volume, and bookmark behavior remain rollout checks.
+
 Before dispatching the production rollout:
 
 1. confirm the production TikTok app has `video.list` and `user.info.stats`;

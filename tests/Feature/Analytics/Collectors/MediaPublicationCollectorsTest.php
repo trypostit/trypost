@@ -86,7 +86,30 @@ test('pinterest reads one pin page and records lifetime metric semantics', funct
         ])
         ->and($page->nextCursor)->toBe('pin-next');
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/v5/pins')
-        && $request['bookmark'] === 'pin-cursor');
+        && $request['bookmark'] === 'pin-cursor'
+        && $request['page_size'] === 250);
+});
+
+test('pinterest keeps paging when an older pin precedes an eligible pin', function () {
+    Http::fake(['*' => Http::response([
+        'items' => [
+            ['id' => 'old-pin', 'created_at' => '2025-01-01T12:00:00Z'],
+            ['id' => 'recent-pin', 'created_at' => '2026-09-20T12:00:00Z'],
+        ],
+        'bookmark' => 'pin-next',
+    ])]);
+    $account = SocialAccount::factory()->create(['platform' => Platform::Pinterest]);
+
+    $page = app(PinterestPublicationCollector::class)->page(
+        $account,
+        null,
+        CarbonImmutable::parse('2025-09-23', 'UTC'),
+    );
+
+    expect(array_column($page->publications, 'providerPostId'))->toBe(['recent-pin'])
+        ->and($page->nextCursor)->toBe('pin-next')
+        ->and($page->providerExhausted)->toBeFalse()
+        ->and($page->canStopAtTarget)->toBeFalse();
 });
 
 test('youtube pages the uploads playlist and hydrates videos in one batch without inferring shorts', function () {

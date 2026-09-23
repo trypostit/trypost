@@ -14,7 +14,7 @@ use Carbon\CarbonImmutable;
 
 class PinterestPublicationCollector extends AbstractApiPublicationCollector implements PublicationHistoryCollector
 {
-    private const PAGE_SIZE = 100;
+    private const PAGE_SIZE = 250;
 
     public function page(SocialAccount $account, ?string $cursor, CarbonImmutable $cutoff): PublicationPage
     {
@@ -23,7 +23,6 @@ class PinterestPublicationCollector extends AbstractApiPublicationCollector impl
             'bookmark' => $cursor,
         ]);
         $publications = [];
-        $crossedCutoff = false;
         $providerLimited = false;
 
         foreach ((array) $response->json('items', []) as $row) {
@@ -36,9 +35,7 @@ class PinterestPublicationCollector extends AbstractApiPublicationCollector impl
             }
 
             if ($publishedAt->lessThan($cutoff)) {
-                $crossedCutoff = true;
-
-                break;
+                continue;
             }
 
             $postId = (string) data_get($row, 'id');
@@ -59,9 +56,15 @@ class PinterestPublicationCollector extends AbstractApiPublicationCollector impl
         }
 
         $nextCursor = data_get($response->json(), 'bookmark');
-        $hasNext = is_string($nextCursor) && $nextCursor !== '' && ! $crossedCutoff;
+        $hasNext = is_string($nextCursor) && $nextCursor !== '';
 
-        return new PublicationPage($publications, $hasNext ? $nextCursor : null, ! $hasNext, $providerLimited);
+        return new PublicationPage(
+            $publications,
+            $hasNext ? $nextCursor : null,
+            ! $hasNext,
+            $providerLimited,
+            canStopAtTarget: false,
+        );
     }
 
     private function contentType(string $providerType): PublicationContentType

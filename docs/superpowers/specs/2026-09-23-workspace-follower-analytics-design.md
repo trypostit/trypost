@@ -184,6 +184,13 @@ published during the preceding 365 days. The importer paginates until it reaches
 that cutoff, exhausts the provider feed, or encounters a documented provider
 limit. It never claims a complete year when the API returned less.
 
+For Pinterest, `GET /pins` documents bookmark pagination but not chronological
+ordering. Its importer uses the documented 250-item page size, filters out
+older Pins, and follows bookmarks until the
+provider exhausts them; an old Pin cannot prove that later pages lack eligible
+Pins. The sync state may stop at the date boundary only when its collector
+explicitly guarantees that ordering.
+
 The account connection succeeds before the backfill finishes. Analytics shows
 an import-progress state with the oldest covered publication date, latest
 successful sync time, and whether coverage is complete, provider-limited,
@@ -1153,8 +1160,9 @@ Post-performance collector tests additionally cover:
 - No native-history backfill or incremental-discovery job is dispatched for
   LinkedIn personal profiles, LinkedIn Pages, Telegram, Discord, or Google
   Business Profile.
-- Native-history pagination stops at the 365-day cutoff, provider exhaustion,
-  or a documented provider limit and records which condition ended the import.
+- Native-history pagination stops at the 365-day cutoff only for an ordered
+  provider feed; otherwise it follows cursors to provider exhaustion or a
+  documented provider limit and records which condition ended the import.
 - A bounded page can re-dispatch continuation work without holding one worker
   for the entire backfill.
 - Cursor and high-water checkpoints resume safely after transient failure.

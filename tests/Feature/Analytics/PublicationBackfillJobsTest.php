@@ -9,6 +9,7 @@ use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\SyncCollector;
 use App\Enums\Analytics\SyncStatus;
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Jobs\Analytics\BackfillAccountPublications;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
@@ -152,6 +153,29 @@ test('reaching the 365 day target stops pagination even when the provider has an
     expect($state->fresh()->status)->toBe(SyncStatus::Complete)
         ->and(data_get($state->fresh()->checkpoint, 'cursor'))->toBeNull();
     Bus::assertNotDispatched(BackfillAccountPublications::class);
+});
+
+test('an unordered provider keeps paging even when a publication lands on the cutoff', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->create(['platform' => Platform::Pinterest, 'is_active' => true]);
+    $target = CarbonImmutable::parse('2025-09-23', 'UTC');
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'checkpoint' => ['cursor' => null, 'revision' => 0],
+        'target_since' => $target,
+    ]);
+    bindPublicationPage(new PublicationPage(
+        [new DiscoveredPublication('boundary-pin', $target, PublicationContentType::Image)],
+        'pin-next',
+        false,
+        canStopAtTarget: false,
+    ));
+
+    app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
+
+    expect($state->fresh()->status)->toBe(SyncStatus::Running)
+        ->and(data_get($state->fresh()->checkpoint, 'cursor'))->toBe('pin-next');
+    Bus::assertDispatched(BackfillAccountPublications::class);
 });
 
 test('a stale page can reconcile facts but cannot move the current cursor backwards', function () {
