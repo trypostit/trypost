@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Head, router, usePoll } from '@inertiajs/vue3';
 import { IconChartBar } from '@tabler/icons-vue';
-import { trans } from 'laravel-vue-i18n';
 import { computed, onMounted, ref, watch } from 'vue';
 
 import FollowersChart from '@/components/analytics/workspace/FollowersChart.vue';
@@ -99,11 +98,11 @@ const changeRange = (range: { start: Date; end: Date }): void => {
 
 <template>
     <AppLayout full-width>
-        <Head :title="trans('sidebar.analytics')" />
+        <Head :title="$t('analytics.title')" />
         <div class="flex min-h-full shrink-0 flex-col gap-8 px-6 py-8">
             <header class="flex flex-wrap items-end justify-between gap-4">
                 <PageHeader
-                    :title="$t('sidebar.analytics')"
+                    :title="$t('analytics.title')"
                     :description="
                         $t('analytics.dashboard.workspace_description')
                     "

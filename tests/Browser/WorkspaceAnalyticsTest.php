@@ -121,6 +121,23 @@ test('workspace dashboard explains the empty state without inventing follower to
         ->assertNoConsoleLogs();
 });
 
+test('workspace dashboard uses its own localized page title instead of the sidebar label', function () {
+    $user = User::factory()->create(['locale' => Locale::German]);
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+
+    $this->actingAs($user);
+    Vite::useHotFile(storage_path('framework/testing/workspace-analytics-no-hot'));
+
+    visit(route('app.analytics'))
+        ->assertScript('document.querySelector("h1")?.textContent.trim()', 'Analysen')
+        ->assertScript('document.title.includes("Analysen")', true)
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+});
+
 test('dashboard refreshes when the first analytics snapshot arrives after opening the page', function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     $user = User::factory()->create();

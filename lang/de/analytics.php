@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'title' => 'Analysen',
     'detail' => [
         'page_title' => ':platform-Analysen',
         'content_types' => [

@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'title' => 'アナリティクス',
     'detail' => [
         'page_title' => ':platform の分析',
         'content_types' => [

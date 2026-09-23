@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'title' => 'Analityka',
     'detail' => [
         'page_title' => 'Analityka :platform',
         'content_types' => [

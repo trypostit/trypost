@@ -67,6 +67,7 @@ test('every analytics enum value has a display translation', function (string $l
             ->toBeTrue("{$locale} is missing a label for content type {$contentType->value}");
     }
 
+    expect(Arr::get($analytics, 'title'))->toBeString()->not->toBeEmpty();
     expect(Arr::has($analytics, 'detail.page_title'))->toBeTrue("{$locale} is missing the publication page title");
 })->with(Locale::values());
 

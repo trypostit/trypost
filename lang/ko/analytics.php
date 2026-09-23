@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'title' => '분석',
     'detail' => [
         'page_title' => ':platform 분석',
         'content_types' => [
