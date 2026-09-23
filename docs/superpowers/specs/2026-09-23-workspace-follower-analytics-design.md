@@ -197,6 +197,12 @@ Each imported publication retains, when available:
 - origin (`trypost` or `external`);
 - provider coverage and availability state.
 
+The publishing enum labels the integration `YouTube Shorts`, but the owned
+uploads API returns every channel upload and does not authoritatively classify
+all of them as Shorts. Analytics labels imported unknown uploads as `YouTube`
+and content type `Video`; only a TryPost destination or provider field that
+proves a Short may render `Short`.
+
 An imported post is an analytics record, not a draft or published `Post` owned
 by the TryPost publishing workflow. Importing it must not enable editing,
 deletion, retry, repurpose processing, or publishing lifecycle actions. The
@@ -302,6 +308,12 @@ A destination without a supported or valid exposure denominator is excluded
 from Engagement Rate only. Its supported reactions and comments still
 contribute to those cards. Unsupported metrics render as unavailable and are
 never converted to zero.
+
+Provider post metrics are cumulative. Historical range reports therefore
+answer “how have posts published in this period performed as of their latest
+collection,” not “how many reactions happened during this period.” Summary,
+Top 5, Performance, and comparison tooltips state this explicitly; TryPost does
+not infer a daily reaction timeline that providers did not return.
 
 ### Period comparison
 
@@ -490,8 +502,9 @@ by the connected account, login type, API version, and media type.
 | Pinterest video Pin | Every applicable image-Pin metric plus video views, average video play time, 10-second plays, plays to 95%, and total play time | The current collector only adds basic video views and omits the richer video-retention metrics |
 
 Instagram Reel total watch time is displayed in minutes and average watch time
-in seconds, matching the reference UI, while persistence retains the canonical
-unit needed to avoid rounding loss. Metrics that Meta marks estimated or in
+in seconds, matching the reference UI, while persistence stores both as integer
+milliseconds to avoid rounding drift between providers and displays. Metrics
+that Meta marks estimated or in
 development, currently including Reel reach, watch time, views, total
 interactions, and skip rate as applicable, preserve that precision/stability
 metadata for tooltips.
@@ -761,6 +774,20 @@ Database enum types are not used. Enum-backed values are stored in string
 columns and cast through PHP enums so new providers and metrics do not require
 engine-specific enum migrations.
 
+The reviewed four-table split is:
+
+| Table | Cardinality and responsibility | Why it is separate |
+| --- | --- | --- |
+| `analytics_account_daily_snapshots` | One account/day follower fact | Time-series values and carry-forward provenance |
+| `analytics_publications` | One account/provider-post identity | Reconciles TryPost and externally discovered posts once |
+| `analytics_publication_daily_snapshots` | One publication/day cumulative metric set | Atomic metric history and portable ranking projections |
+| `analytics_sync_states` | One live account/import collector checkpoint | Cursor/high-water coordination only; deleted with the account |
+
+This is the smallest design that preserves strict keys for each different
+cardinality. It intentionally does not introduce a fifth shadow-account table,
+does not store workspace totals, and does not mix operational cursors into fact
+rows.
+
 ### Daily account snapshots
 
 `analytics_account_daily_snapshots` stores one effective observation per
@@ -827,19 +854,27 @@ publication is counted once.
 
 `analytics_publication_daily_snapshots` stores at most one cumulative
 observation per analytics publication and UTC date. Repeated successful
-collections on the same date update that row instead of creating additional
-facts. It contains nullable first-class aggregate columns for reactions,
-comments, shares, saves, views, impressions, reach, total watch time, and
-average watch time, plus normalized engagement numerator, exposure denominator,
-and exposure kind.
+collections on the same date merge into that row under a database row lock
+instead of creating additional facts or blanking a metric family collected by
+another provider request. It does not duplicate `workspace_id`; workspace
+ownership is obtained through the parent analytics publication, preventing an
+inconsistent child/parent tenant pair.
+
+Its portable aggregate projections are nullable big integers for
+`reactions_count`, `comments_count`, `shares_count`, `saves_count`,
+`views_count`, `impressions_count`, `reach_count`, `engagement_count`,
+`exposure_count`, `watch_time_milliseconds`, and
+`average_watch_time_milliseconds`, plus nullable `exposure_kind`. A null means
+unavailable; a numeric zero means measured zero. Milliseconds are the canonical
+duration unit and the UI converts them to minutes or seconds.
 
 The same row has a JSON metric catalog for provider/content-specific values.
 Each JSON entry uses a stable enum-backed metric key and retains numeric value,
 unit, provider metric identity, lifetime/range/rolling time basis,
-exact/estimated/experimental precision, and availability. Cross-network queries
-use the first-class columns; the JSON catalog powers the richer individual-post
-detail. This hybrid avoids both engine-specific JSON aggregation and an EAV row
-explosion.
+nullable period start/end for range metrics, exact/estimated/experimental
+precision, and availability. Cross-network queries use the first-class columns;
+the JSON catalog powers the richer individual-post detail. This hybrid avoids
+both engine-specific JSON aggregation and an EAV row explosion.
 
 Imported historical publications receive a real baseline observation collected
 at import time. The system does not fabricate daily metric history between the
@@ -847,19 +882,61 @@ publication date and that baseline.
 
 ### Synchronization state
 
-`analytics_sync_states` stores durable operational state per workspace,
-immutable social-account key, and collector. Collector values initially cover
-daily account snapshots, owned-publication history/discovery, and publication
-metrics. The row retains status, cursor, target cutoff, high-water mark, oldest
-and latest provider dates reached, last successful synchronization, next retry,
-attempt count, and a sanitized last-error category/message.
+`analytics_sync_states` is deliberately a small operational checkpoint table,
+not a general log of every analytics job. It exists only for workflows whose
+progress cannot be inferred from fact rows: the finite 365-day publication
+backfill and continuing publication discovery. Daily follower success is
+represented by an account snapshot, publication-metric success by a publication
+snapshot, and attempts/retries by the queue and Horizon; duplicating those in a
+sync-state row would create competing sources of truth.
 
-This state does not live in `social_accounts.meta`: collectors advance
-independently, need row-level concurrency control, and must survive deletion or
-reconnection of the live account row. The unique key is workspace +
-social-account key + collector.
+Each row belongs to one live `social_account_id` with `cascadeOnDelete()` and
+one collector (`publication_backfill` or `publication_discovery`). Its columns
+are: UUID primary key, non-null social-account foreign key, collector, status,
+nullable JSON `checkpoint`, `target_since`, `oldest_reached_at`,
+`high_watermark_at`, `last_success_at`, sanitized `last_error_category`, and
+timestamps. The unique key is social account + collector. Workspace, platform,
+historical account key, next retry, attempt count, and raw error message are not
+duplicated here.
 
-Regardless of the final schema, persistence must support:
+The checkpoint is the one safe JSON boundary for sync control: provider cursor
+shapes vary, it is never filtered or aggregated by SQL, and exactly one
+collector owns each row. The job locks that row before reading or advancing the
+checkpoint. Keeping these rows separate from `social_accounts.meta` prevents
+unrelated collectors from overwriting one shared JSON object or locking the
+entire account row.
+
+Operational state does not need to survive deletion. Historical facts remain
+in the three analytics tables; deleting the live account removes its obsolete
+checkpoint. Reconnecting the same provider identity receives fresh operational
+state, while the identity resolver reuses the prior `social_account_key` found
+in account snapshots or publications and provider-id uniqueness makes the
+restarted import idempotent.
+
+Backfill and discovery use separate rows and lifecycles. Discovery does not run
+while backfill is pending or running. Once backfill reaches a terminal state
+(`complete`, `provider_limited`, `partial`, or `failed`), discovery may keep new
+content current while a partial backfill is retried independently.
+
+For every page, a job captures the locked checkpoint and row version, releases
+the transaction before the provider request, then locks the row again. It may
+upsert publications idempotently, but advances the checkpoint only when the
+captured version still matches; a stale duplicate can never move the cursor
+backward.
+
+### Historical identity limitation at rollout
+
+Existing `post_platforms` rows null `social_account_id` when an account is
+deleted and retain only presentation fields, not the provider account id or the
+original social-account UUID. Therefore pre-rollout orphan destinations cannot
+be assigned to a historical account without guessing from a mutable username.
+The local catalog backfill imports only destinations that still have a live
+social account and records the omitted-orphan count in rollout logs. It must not
+invent an account key or merge rows by username. After rollout, every analytics
+publication is written while the account identity is available and remains
+historically addressable after later deletion.
+
+This approved schema must support:
 
 - workspace-scoped queries;
 - social-account breakdown;
@@ -982,9 +1059,10 @@ this first delivery.
   observations and imported publications even if the account row is later
   removed. Nullable live foreign keys plus immutable `social_account_key` and
   presentation snapshots retain that identity.
-- **Reconnected as the same persisted identity:** resume collection without
-  rewriting earlier observations and resume native discovery from its
-  checkpoint with an overlap window.
+- **Reconnected as the same provider identity:** reuse the historical
+  `social_account_key` without rewriting earlier observations, create fresh
+  operational checkpoints, and restart the idempotent native import. Existing
+  publications deduplicate by historical account key + provider post id.
 - **New identity:** begins a new series even when its username matches an older
   disconnected account.
 
@@ -1056,8 +1134,12 @@ Post-performance collector tests additionally cover:
   or a documented provider limit and records which condition ended the import.
 - A bounded page can re-dispatch continuation work without holding one worker
   for the entire backfill.
-- Cursor and high-water checkpoints resume safely after transient failure and
-  after reconnecting the same platform identity.
+- Cursor and high-water checkpoints resume safely after transient failure.
+- Deleting an account cascades only its operational checkpoints; reconnecting
+  the same provider identity creates fresh checkpoints while deduplicating
+  already imported facts against the reused historical account key.
+- Concurrent page jobs compare the captured checkpoint version and cannot move
+  a cursor backward.
 - Daily native discovery overlaps the last completed window and remains
   idempotent when a provider returns the same page or a late post twice.
 - Backfill and discovery failures for one social account do not block any other
@@ -1101,6 +1183,8 @@ Post-performance collector tests additionally cover:
   with the imported publication rather than creating a duplicate.
 - Reconnecting the same identity resumes the existing catalog; a genuinely new
   platform identity starts a separate catalog even when the username matches.
+- Pre-rollout TryPost destinations already orphaned from their social account
+  are reported and skipped instead of being guessed or grouped by username.
 - Imported publications never create fake `Post` or `PostPlatform` lifecycle
   records and cannot be edited, deleted, retried, or published from TryPost.
 - The provider publication timestamp, rather than discovery time, controls
@@ -1190,6 +1274,25 @@ design is approved and implemented.
   cumulative publication metrics, and resumable cursors have different
   cardinality and lifecycle. Combining them creates sparse rows and weak
   constraints. The four-table hybrid is the minimum safe design.
+- **A fifth `analytics_accounts` dimension table.** It would normalize repeated
+  identity/presentation columns and is defensible at warehouse scale, but every
+  fact would then need another join and the application would maintain a shadow
+  account lifecycle solely for analytics. The current four-table design keeps
+  the minimum table count while repeating only small immutable snapshots.
+- **Putting collector cursors in `social_accounts.meta`.** Multiple collectors
+  would contend on one account row and could overwrite independent JSON
+  branches. One checkpoint row per collector gives a narrow lock and a unique
+  owner without turning sync state into a general job log.
+- **Persisting sync state for follower and publication-metric jobs.** Their fact
+  snapshots already prove successful work, while queue/Horizon records attempts
+  and failures. Duplicating that status would create drift and extra writes.
+- **Preserving sync-state rows after account deletion.** Checkpoints are
+  operational, not historical facts. Cascading them prevents dead work from
+  appearing resumable; a reconnect safely restarts against idempotent facts.
+- **Guessing pre-rollout orphan identity from username.** Usernames can change
+  or be reused, and existing orphaned `post_platforms` lack the provider account
+  id. Skipping and reporting those rows is more truthful than merging unrelated
+  accounts.
 - **JSON-only post metrics.** Cross-network ranking and aggregation would depend
   on engine-specific JSON queries. Common aggregate fields are first-class
   nullable columns; provider/content-specific metrics remain structured JSON.
@@ -1258,8 +1361,9 @@ design is approved and implemented.
 - YouTube Analytics metrics and channel report combinations:
   <https://developers.google.com/youtube/analytics/metrics> and
   <https://developers.google.com/youtube/analytics/channel_reports>
-- TikTok Display API video query and Video Object fields:
-  <https://developers.tiktok.com/docs/en/tiktok-api-v2-video-query> and
+- TikTok Display API video list/query and Video Object fields:
+  <https://developers.tiktok.com/docs/en/tiktok-api-v2-video-list>,
+  <https://developers.tiktok.com/docs/en/tiktok-api-v2-video-query>, and
   <https://developers.tiktok.com/docs/en/tiktok-api-v2-video-object>
 - Pinterest organic reporting and metric definitions:
   <https://developers.pinterest.com/docs/analytics-and-reports/organic-reporting/>
