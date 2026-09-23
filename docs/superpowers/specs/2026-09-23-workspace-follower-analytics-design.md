@@ -1,13 +1,18 @@
 # Workspace follower and post analytics — design
 
-**Status:** V1 implemented on `feat/workspace-analytics-backfill`; local rollout and cross-engine/provider validation remain separate release gates.
+**Status:** V1 implemented on `feat/workspace-analytics-backfill`; production provider validation and a controlled canary backfill remain release gates.
 
 The four analytics migrations have been applied to the local PostgreSQL app
 database. The workspace dashboard, queued daily collection and native-history
 import, persisted post metrics, and individual-publication detail are in the
-branch. This is not evidence that production app permissions, provider quotas,
-or MySQL behavior have been verified: run the controlled capability checks and
+branch. On a separate temporary MySQL database, 225 analytics/post-consumer
+tests passed (939 assertions), and all four migrations passed rollback and
+reapplication; that temporary database was removed. Production app permissions
+and provider quotas remain unverified: run the controlled capability checks and
 canary rollout below before dispatching a global backfill. LinkedIn remains V2.
+The local PostgreSQL Feature suite passed 3,850 tests, Unit passed 1,335, and
+the full browser suite passed 74 after isolating asynchronous analytics jobs in
+unrelated synchronous-queue test fixtures.
 
 ## Objective
 

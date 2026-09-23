@@ -1235,21 +1235,21 @@ git commit -m "feat: persist individual publication analytics"
 - Consumes: the completed feature.
 - Produces: deployable queue configuration, truthful operational logs, clean code, and verified cross-engine behavior.
 
-- [ ] **Step 1: Write failing observability and queue configuration tests**
+- [x] **Step 1: Write failing observability and queue configuration tests**
 
 Assert every log context contains workspace id, social-account key, platform, collector, date/cursor, attempt, and sanitized category but excludes access/refresh tokens and raw sensitive responses. Assert analytics jobs use the `analytics` queue and Horizon supervises it.
 
-- [ ] **Step 2: Run observability tests and verify they fail**
+- [x] **Step 2: Run observability tests and verify they fail**
 
 Run: `php artisan test --compact tests/Feature/Analytics/AnalyticsObservabilityTest.php`
 
 Expected: FAIL until queue/log configuration is complete.
 
-- [ ] **Step 3: Configure the queue and clean obsolete read paths**
+- [x] **Step 3: Configure the queue and clean obsolete read paths**
 
 Add the analytics queue to existing Horizon supervisors without changing unrelated queue balancing. Remove old account selector/per-network dashboard components only after `rg` proves no imports. Keep low-level social analytics calls that normalized collectors share; remove translated request-time wrappers only when no publisher, test, API, or MCP path references them.
 
-- [ ] **Step 4: Run targeted and full verification**
+- [x] **Step 4: Run targeted and full verification**
 
 ```bash
 vendor/bin/pint --dirty --format agent
@@ -1262,9 +1262,11 @@ php artisan test --compact
 
 Expected: all pass.
 
-- [ ] **Step 5: Verify PostgreSQL and MySQL**
+- [x] **Step 5: Verify PostgreSQL and MySQL**
 
 Run the full database-dependent analytics suite on both supported engines. Confirm migrations roll up/down, all four unique keys enforce the same identities, nullable booleans/JSON are asserted portably, and aggregate ordering is deterministic.
+
+Local verification: PostgreSQL Feature 3,850 passed (14,708 assertions), Unit 1,335 passed (3,618 assertions), and browser 74 passed (301 assertions). On an isolated temporary MySQL database, the analytics and post-consumer suite passed 225 tests (939 assertions); the four analytics migrations rolled back and reapplied successfully. The temporary database was removed. Frontend lint, typecheck, and build passed. These checks do not validate production API permissions or quota.
 
 - [ ] **Step 6: Perform controlled capability and rollout checks**
 
