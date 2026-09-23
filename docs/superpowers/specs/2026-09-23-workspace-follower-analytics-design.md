@@ -1,24 +1,28 @@
-# Workspace follower analytics — design
+# Workspace follower and post analytics — design
 
 **Status:** written design awaiting approval. Nothing implemented.
 
 ## Objective
 
-Replace the request-time, per-social-account analytics experience with the
-first workspace-level historical metric: follower count.
+Replace the request-time, per-social-account analytics experience with an
+initial workspace-level analytics view covering follower history and posts
+successfully published through TryPost.
 
 After the daily collection pipeline begins producing local snapshots, the page
-must answer three questions without querying social APIs at request time:
+must answer four questions without querying social APIs at request time:
 
 1. How many followers did this workspace have at the end of the selected
    period?
 2. How did each connected social account's follower count change over that
    period?
 3. Which accounts gained or lost followers?
+4. How many posts did each social account successfully publish during the
+   selected period, and how was that volume distributed over time?
 
-Success means `/analytics` renders without making social API calls, daily data
-collection is resilient to transient failures and rate limits, and one broken
-platform cannot block another account's data.
+Success means `/analytics` renders without making social API calls, daily
+follower collection is resilient to transient failures and rate limits, one
+broken platform cannot block another account's data, and post volume is derived
+from the local publication history.
 
 ## Scope boundary
 
@@ -56,7 +60,7 @@ The value is labelled using the platform's native meaning where needed in
 tooltips, but all values participate in the workspace's top-level follower
 total.
 
-### Explicit exclusions
+### Explicit follower exclusions
 
 Both LinkedIn identity types are excluded from follower analytics v1:
 
@@ -65,7 +69,9 @@ Both LinkedIn identity types are excluded from follower analytics v1:
 
 Neither receives follower collection jobs, appears in the follower charts, nor
 contributes to the workspace total. Existing LinkedIn publishing and existing
-post analytics remain untouched.
+post analytics remain untouched. Successfully published LinkedIn destinations
+do appear in the Posts widget because that metric comes from TryPost's local
+publication records and requires no LinkedIn analytics permission.
 
 LinkedIn personal follower analytics requires `r_member_profileAnalytics`,
 which is provisioned through the vetted Community Management API product. That
@@ -131,18 +137,63 @@ network.
 The initial display mode is Line. Changing modes is client-side because all
 three views derive from the same response dataset.
 
+### Posts chart
+
+A second widget shows the number of destinations successfully published through
+TryPost during the selected range. It uses two modes:
+
+- **Bar:** horizontal total per social account across the entire selected
+  range.
+- **Stacked Bar:** publication count over time, with one colored segment per
+  social account in each time bucket.
+
+The initial display mode is Stacked Bar. The time bucket is selected
+automatically from the inclusive range length:
+
+- up to 14 days: one bucket per day;
+- 15 through 90 days: one bucket per week;
+- more than 90 days: one bucket per calendar month.
+
+The first and last weekly or monthly buckets may be partial when the selected
+range begins or ends inside that period. Empty buckets are returned with zero
+values so the time axis remains continuous.
+
+One successful destination counts as one post for that social account. For
+example, one TryPost post successfully delivered to Instagram and X contributes
+one count to each account. The metric is based on the destination publication
+record, not the parent post, so a partially successful multi-network post counts
+only its successful destinations.
+
+The Posts widget includes every supported publishing platform, including both
+LinkedIn identity types. It includes posts published from any TryPost entry
+point, such as the app, API, MCP, or repurpose flows, when they share the normal
+publication records. It excludes drafts, scheduled posts that have not yet
+published, failed or rejected destinations, and posts created directly on a
+social network outside TryPost.
+
+A retry that eventually succeeds counts once because the destination record is
+counted once. Historical publications remain facts even if an account is later
+deactivated or disconnected. Account snapshot metadata stored with the
+destination is used for historical presentation when the live social-account
+row is no longer available.
+
 ### Date range
 
-The existing analytics range date picker remains the page filter.
+The existing analytics range date picker remains the shared page filter for the
+follower total, follower chart, and Posts widget.
 
-- `minDate` is the earliest follower snapshot available in the workspace.
-- `maxDate` is the latest follower snapshot available in the workspace.
+- `minDate` is the earliest follower snapshot or successful TryPost publication
+  available in the workspace.
+- `maxDate` is the latest follower snapshot or successful TryPost publication
+  available in the workspace.
 - The picker cannot select a range wholly outside those bounds.
 - All chart modes and the total use the same selected range.
 - A social account connected after the selected start date begins when its own
   data begins; no pre-connection values are invented.
-- With no follower snapshots, the picker is disabled and the page shows a
-  collection-pending empty state.
+- A widget shows its own empty state when the selected range contains no data
+  for that metric.
+- With neither follower snapshots nor successful publications, the picker is
+  disabled and the page shows an analytics-empty state.
 
 Historical data for a disconnected or deactivated account is retained. Its
 line ends on the last day for which it was eligible; it remains visible when
@@ -285,10 +336,17 @@ Regardless of the final schema, persistence must support:
 Workspace totals are derived from account observations and are not stored as a
 second source of truth.
 
+The Posts widget does not require a new analytics snapshot or collection table.
+Its source of truth is the existing destination publication history. A counted
+row must belong to a post in the current workspace, have the published status,
+and have a `published_at` timestamp inside the selected range. The concrete
+query must use the existing enum/status conventions and work on PostgreSQL and
+MySQL.
+
 ## Read path
 
 `/analytics` reads only local persisted data. It performs no request-time
-social API calls for the follower widget.
+social API calls for either widget.
 
 The server response supplies:
 
@@ -298,12 +356,20 @@ The server response supplies:
 - one daily series per social account;
 - account identity and platform presentation metadata;
 - actual/carried-forward and exact/approximate provenance required for
-  truthful tooltips.
+  truthful tooltips;
+- successful publication totals per social account;
+- zero-filled publication buckets and per-account values for the automatically
+  selected daily, weekly, or monthly resolution.
 
 The frontend derives Bar and Growth from this normalized response instead of
 requesting separate endpoints. Large date ranges may later be downsampled, but
 daily resolution is the source resolution and is sufficient for this first
 version.
+
+The server aggregates the Posts dataset at the chosen bucket resolution and
+returns both bucketed and range-total values. Publication rows are always
+filtered through their parent post's `workspace_id`; a social-account id from
+the request is never trusted as the tenancy boundary.
 
 ## Failure handling and observability
 
@@ -400,7 +466,22 @@ HTTP calls are faked. Tests must not call live social APIs.
 - A later-connected account does not receive invented earlier points.
 - Historical series remain available after disconnect/deactivation.
 - No-data workspaces receive the collection-pending state.
-- LinkedIn personal and LinkedIn Page never appear or contribute.
+- LinkedIn personal and LinkedIn Page never appear or contribute to follower
+  analytics v1.
+- The Posts Bar mode counts one successful destination per social account in
+  the selected range.
+- The Posts Stacked Bar mode selects daily, weekly, and monthly buckets at the
+  documented range thresholds and zero-fills missing buckets.
+- A multi-network post contributes once to every successful destination and
+  nothing to failed, rejected, pending, or future-scheduled destinations.
+- A destination that succeeds after retries counts only once.
+- Direct/native social-network posts are absent because no TryPost publication
+  record exists for them.
+- LinkedIn personal and LinkedIn Page publications appear in the Posts widget
+  even though both remain excluded from follower analytics v1.
+- Post aggregation is workspace-scoped through the parent post.
+- Historical publications retain presentable account information after the
+  social account is disconnected or deleted.
 
 Database-dependent tests run on PostgreSQL and MySQL after the persistence
 design is approved and implemented.
@@ -425,6 +506,18 @@ design is approved and implemented.
   separately vetted product, and the product decision for this release is to
   defer the whole network to the planned v2 rather than ship partial LinkedIn
   support.
+- **Fetching post counts from social APIs.** The v1 metric represents successful
+  TryPost deliveries, which already have a reliable local destination record;
+  provider analytics would add permissions, rate limits, inconsistent history,
+  and native posts outside the agreed definition.
+- **Counting parent posts.** One parent can target several accounts and can
+  partially fail, so the successful destination is the only accurate unit.
+- **Persisting daily post-count snapshots.** Publication rows are immutable
+  facts that can be aggregated for the selected range without introducing a
+  second source of truth.
+- **Using one fixed Posts bucket size.** A fixed daily view becomes noisy over
+  long ranges, while a fixed weekly or monthly view hides useful short-range
+  detail.
 
 ## Delivery gates
 
