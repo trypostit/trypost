@@ -15,7 +15,7 @@ defineProps<{
     range: WorkspaceAnalyticsReport['range'];
     colors: Record<string, string>;
 }>();
-const mode = ref<'bar' | 'stacked'>('stacked');
+const mode = ref<'bar' | 'stacked'>('bar');
 const buttons = [
     { mode: 'bar', label: 'analytics.dashboard.chart_bar', test: 'posts-bar' },
     {
