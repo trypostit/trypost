@@ -23,7 +23,9 @@ abstract class AbstractPublicationSync implements ShouldQueue
 {
     use Queueable;
 
-    public int $tries = 6;
+    public int $tries = 0;
+
+    public int $maxExceptions = 6;
 
     public int $timeout = 180;
 

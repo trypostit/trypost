@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePoll } from '@inertiajs/vue3';
 import {
     IconArrowLeft,
     IconCalendar,
@@ -8,7 +8,7 @@ import {
     IconLoader2,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import type {
     PublicationAnalyticsDetail,
@@ -105,6 +105,28 @@ const props = defineProps<{
     >;
 }>();
 
+const awaitingMetrics = computed(() =>
+    Object.values(props.postMetrics).some(
+        (result) =>
+            ('available' in result && result.snapshot === null) ||
+            ('unsupported' in result && result.reason === 'not_collected'),
+    ),
+);
+const { start: startMetricsPolling, stop: stopMetricsPolling } = usePoll(
+    10000,
+    { only: ['postMetrics'] },
+    { autoStart: false },
+);
+
+onMounted(() => {
+    if (awaitingMetrics.value) startMetricsPolling();
+});
+
+watch(awaitingMetrics, (waiting) => {
+    if (waiting) startMetricsPolling();
+    else stopMetricsPolling();
+});
+
 const enabledPlatforms = computed(() =>
     props.post.platforms
         .filter((pp) => pp.enabled)
@@ -153,7 +175,7 @@ const openLightbox = (i: number) => {
 };
 
 usePostEcho(props.post.id, '.post.platform.status.updated', () => {
-    router.reload({ only: ['post'] });
+    router.reload({ only: ['post', 'postMetrics'] });
 });
 </script>
 

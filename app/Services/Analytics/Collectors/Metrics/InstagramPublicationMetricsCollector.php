@@ -74,7 +74,11 @@ class InstagramPublicationMetricsCollector extends AbstractMetaPublicationMetric
                 'metric' => implode(',', $fields),
                 'access_token' => $account->access_token,
             ]);
-        } catch (AnalyticsCollectionException) {
+        } catch (AnalyticsCollectionException $exception) {
+            if (! in_array($exception->category, ['permission', 'malformed'], true)) {
+                throw $exception;
+            }
+
             return [];
         }
 

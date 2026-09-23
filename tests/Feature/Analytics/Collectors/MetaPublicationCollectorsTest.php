@@ -131,6 +131,7 @@ test('facebook reads page-owned published posts and keeps a video when preview h
     expect($page->publications)->toHaveCount(2)
         ->and($page->publications[0]->providerPostId)->toBe('page_video')
         ->and($page->publications[0]->contentType)->toBe(PublicationContentType::Video)
+        ->and($page->publications[0]->providerMetadata)->toBe(['video_id' => 'video-123'])
         ->and($page->publications[0]->previewMetadata)->toBeNull()
         ->and($page->publications[1]->contentType)->toBe(PublicationContentType::Image)
         ->and($page->providerExhausted)->toBeTrue();

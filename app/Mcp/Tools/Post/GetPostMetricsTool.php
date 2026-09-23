@@ -34,7 +34,7 @@ class GetPostMetricsTool extends Tool
 
         return Response::structured([
             'post_id' => $post->id,
-            'platforms' => app(PostMetricsFetcher::class)->forPost($post)->all(),
+            'platforms' => app(PostMetricsFetcher::class)->forPostLegacy($post)->all(),
         ]);
     }
 

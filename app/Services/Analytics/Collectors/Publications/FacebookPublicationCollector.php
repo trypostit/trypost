@@ -50,8 +50,10 @@ class FacebookPublicationCollector extends AbstractMetaPublicationCollector impl
             $previewUrl = data_get($attachment, 'media.image.src');
             $permalink = data_get($row, 'permalink_url');
 
-            if ($this->isVideo($attachment) && filled(data_get($attachment, 'target.id'))) {
-                $hydrated = $this->hydratePreview($account, (string) data_get($attachment, 'target.id'));
+            $videoId = $this->isVideo($attachment) ? data_get($attachment, 'target.id') : null;
+
+            if (filled($videoId)) {
+                $hydrated = $this->hydratePreview($account, (string) $videoId);
                 $previewUrl = data_get($hydrated, 'picture') ?: $previewUrl;
                 $permalink = $permalink ?: data_get($hydrated, 'permalink_url');
             }
@@ -64,7 +66,7 @@ class FacebookPublicationCollector extends AbstractMetaPublicationCollector impl
                 permalink: $permalink,
                 excerpt: data_get($row, 'message'),
                 previewMetadata: $this->preview($previewUrl),
-                providerMetadata: null,
+                providerMetadata: filled($videoId) ? ['video_id' => (string) $videoId] : null,
             );
         }
 

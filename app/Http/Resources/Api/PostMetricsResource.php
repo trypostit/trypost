@@ -20,7 +20,7 @@ class PostMetricsResource extends JsonResource
     {
         return [
             'post_id' => $this->id,
-            'platforms' => app(PostMetricsFetcher::class)->forPost($this->resource)->all(),
+            'platforms' => app(PostMetricsFetcher::class)->forPostLegacy($this->resource)->all(),
         ];
     }
 }

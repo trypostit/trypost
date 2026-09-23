@@ -52,16 +52,21 @@ test('web and REST post metrics read the same persisted observation without a pr
     $this->actingAs($user)
         ->getJson(route('app.posts.platforms.metrics', [$post, $destination]))
         ->assertOk()
-        ->assertJsonPath('publication.content_type', 'reel')
-        ->assertJsonPath('snapshot.reactions_count', 7)
-        ->assertJsonPath('metrics.watch_time_milliseconds.value', 180000);
+        ->assertJsonPath('0.label', __('analytics.metrics.likes'))
+        ->assertJsonPath('0.value', 7)
+        ->assertJsonCount(1);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$access['plain_token']])
         ->getJson(route('api.posts.metrics', $post))
         ->assertOk()
-        ->assertJsonPath('platforms.0.metrics.metrics.reactions.value', 7);
+        ->assertJsonPath('platforms.0.metrics.0.label', __('analytics.metrics.likes'))
+        ->assertJsonPath('platforms.0.metrics.0.value', 7)
+        ->assertJsonPath('platforms.0.analytics.metrics.watch_time_milliseconds.value', 180000);
 
-    expect(app(PostMetricsFetcher::class)->forPlatform($destination)['snapshot']['reactions_count'])->toBe(7);
+    expect(app(PostMetricsFetcher::class)->forPlatform($destination)['snapshot']['reactions_count'])->toBe(7)
+        ->and(app(PostMetricsFetcher::class)->forPlatformLegacy($destination))->toBe([
+            ['label' => __('analytics.metrics.likes'), 'value' => 7],
+        ]);
     Http::assertNothingSent();
 });
 
@@ -85,6 +90,32 @@ test('excluded destinations expose no analytics and a foreign post cannot be rea
     $this->actingAs($access['user'])
         ->getJson(route('app.posts.platforms.metrics', [$foreignPost, $destination]))
         ->assertNotFound();
+});
+
+test('legacy post metrics keep network-specific reaction labels', function () {
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->published()->create(['workspace_id' => $workspace->id]);
+    $destination = PostPlatform::factory()->threads()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+    ]);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $workspace->id,
+        'social_account_id' => $account->id,
+        'post_platform_id' => $destination->id,
+        'platform' => Platform::Threads,
+    ]);
+    AnalyticsPublicationDailySnapshot::factory()->create([
+        'analytics_publication_id' => $publication->id,
+        'metrics' => [
+            'reactions' => ['value' => 9, 'unit' => 'count', 'availability' => 'available'],
+        ],
+    ]);
+
+    expect(app(PostMetricsFetcher::class)->forPlatformLegacy($destination))->toBe([
+        ['label' => __('analytics.metrics.likes'), 'value' => 9],
+    ]);
 });
 
 test('post detail loads all destination observations in bounded queries', function () {

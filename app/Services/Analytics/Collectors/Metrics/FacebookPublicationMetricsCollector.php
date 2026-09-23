@@ -18,7 +18,9 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
     {
         $account = $this->account($publication);
         $isStory = $publication->content_type === PublicationContentType::Story;
-        $isVideo = ! $isStory && ! str_contains($publication->provider_post_id, '_');
+        $videoId = data_get($publication->provider_metadata, 'video_id');
+        $isVideo = ! $isStory && (filled($videoId) || ! str_contains($publication->provider_post_id, '_'));
+        $insightsId = $isVideo && filled($videoId) ? $videoId : $publication->provider_post_id;
         $edge = $isVideo ? 'video_insights' : 'insights';
         $fields = match (true) {
             $isStory => ['page_story_impressions_by_story_id', 'page_story_impressions_by_story_id_unique', 'story_interaction', 'pages_fb_story_thread_lightweight_reactions', 'pages_fb_story_replies', 'pages_fb_story_shares'],
@@ -26,7 +28,7 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
             default => ['post_media_view', 'post_total_media_view_unique', 'post_reactions_like_total', 'post_clicks'],
         };
         $response = $this->get($account,
-            rtrim((string) config('trypost.platforms.facebook.graph_api'), '/')."/{$publication->provider_post_id}/{$edge}",
+            rtrim((string) config('trypost.platforms.facebook.graph_api'), '/')."/{$insightsId}/{$edge}",
             ['metric' => implode(',', $fields), 'period' => 'lifetime', 'access_token' => $account->access_token],
         );
         $items = $response->json('data');

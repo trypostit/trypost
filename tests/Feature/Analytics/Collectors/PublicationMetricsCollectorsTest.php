@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Analytics\UpsertAnalyticsPublication;
 use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\MetricTimeBasis;
 use App\Enums\Analytics\PublicationContentType;
@@ -23,6 +24,7 @@ use App\Services\Analytics\Collectors\Metrics\ThreadsPublicationMetricsCollector
 use App\Services\Analytics\Collectors\Metrics\TikTokPublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Metrics\XPublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Metrics\YouTubePublicationMetricsCollector;
+use App\Services\Analytics\Collectors\Publications\FacebookPublicationCollector;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -235,6 +237,84 @@ test('instagram reels collect watch duration in milliseconds without losing enga
         'engagements' => 5,
     ]);
     Http::assertSentCount(3);
+});
+
+test('an optional Instagram Reel insight rate limit stays retryable', function () {
+    $account = SocialAccount::factory()->instagram()->create();
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::Instagram,
+        'platform_user_id' => $account->platform_user_id,
+        'content_type' => PublicationContentType::Reel,
+    ]);
+    Http::fake(['*' => Http::sequence()
+        ->push(['data' => [['name' => 'reach', 'values' => [['value' => 80]]]]])
+        ->push(['data' => []])
+        ->push(['error' => ['code' => 4]], 429)]);
+
+    expect(fn () => app(InstagramPublicationMetricsCollector::class)
+        ->collect($publication, CarbonImmutable::today('UTC')))
+        ->toThrow(fn (AnalyticsCollectionException $exception): bool => $exception->category === 'rate_limited');
+
+    Http::assertSentCount(3);
+});
+
+test('an unsupported optional Instagram insight does not discard base metrics', function () {
+    $account = SocialAccount::factory()->instagram()->create();
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::Instagram,
+        'platform_user_id' => $account->platform_user_id,
+        'content_type' => PublicationContentType::Reel,
+    ]);
+    Http::fake(['*' => Http::sequence()
+        ->push(['data' => [['name' => 'reach', 'values' => [['value' => 80]]]]])
+        ->push(['data' => []])
+        ->push(['error' => ['code' => 200]], 400)]);
+
+    $metrics = collect(app(InstagramPublicationMetricsCollector::class)
+        ->collect($publication, CarbonImmutable::today('UTC'))->metrics);
+
+    expect($metrics->firstWhere('key', MetricKey::Reach)?->value)->toBe(80);
+});
+
+test('an imported Facebook video fetches video insights through its attachment target', function () {
+    $graph = rtrim((string) config('trypost.platforms.facebook.graph_api'), '/');
+    $account = SocialAccount::factory()->facebook()->create();
+    Http::fake([
+        "{$graph}/{$account->platform_user_id}/published_posts*" => Http::response(['data' => [[
+            'id' => 'page_video',
+            'created_time' => '2026-09-20T12:00:00+0000',
+            'attachments' => ['data' => [[
+                'media_type' => 'video',
+                'target' => ['id' => 'video-123'],
+            ]]],
+        ]]]),
+        "{$graph}/video-123/video_insights*" => Http::response(['data' => [[
+            'name' => 'fb_reels_total_plays',
+            'values' => [['value' => 42]],
+        ]]]),
+        "{$graph}/video-123*" => Http::response(['picture' => 'https://example.com/video.jpg']),
+        "{$graph}/page_video*" => Http::response(['reactions' => ['summary' => ['total_count' => 3]]]),
+    ]);
+
+    $page = app(FacebookPublicationCollector::class)->page(
+        $account,
+        null,
+        CarbonImmutable::parse('2026-01-01', 'UTC'),
+    );
+    $publication = app(UpsertAnalyticsPublication::class)->external($account, $page->publications[0]);
+    $metrics = collect(app(FacebookPublicationMetricsCollector::class)
+        ->collect($publication, CarbonImmutable::parse('2026-09-23', 'UTC'))->metrics)
+        ->keyBy(fn ($metric) => $metric->key->value);
+
+    expect($publication->provider_post_id)->toBe('page_video')
+        ->and($publication->provider_metadata)->toBe(['video_id' => 'video-123'])
+        ->and($metrics[MetricKey::Views->value]->value)->toBe(42)
+        ->and($metrics[MetricKey::Reactions->value]->value)->toBe(3);
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/video-123/video_insights'));
 });
 
 test('X requests only public fields outside the private-metric window', function () {
