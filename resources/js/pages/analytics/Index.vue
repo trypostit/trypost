@@ -96,7 +96,7 @@ const changeRange = (range: { start: Date; end: Date }): void => {
 <template>
     <AppLayout full-width>
         <Head :title="trans('sidebar.analytics')" />
-        <div class="flex h-full flex-1 flex-col gap-8 px-6 py-8">
+        <div class="flex min-h-full shrink-0 flex-col gap-8 px-6 py-8">
             <header class="flex flex-wrap items-end justify-between gap-4">
                 <PageHeader
                     :title="$t('sidebar.analytics')"

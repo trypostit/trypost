@@ -95,6 +95,7 @@ test('workspace dashboard separates accounts and switches chart and top-post mod
         ->assertPresent('[data-testid="analytics-chart-tooltip"] img[src*="/images/accounts/"]')
         ->click('@top-comments')
         ->assertScript('Array.from(document.querySelectorAll("[data-slot=sidebar-inset], [data-slot=sidebar-inset] > div")).filter((element) => ["auto", "scroll"].includes(getComputedStyle(element).overflowY) && element.scrollHeight > element.clientHeight).length', 1)
+        ->assertScript('(() => { const scroller = document.querySelector("[data-slot=sidebar-inset] > div"); const lastSection = Array.from(document.querySelectorAll("[data-testid=analytics-section]")).at(-1); return scroller.scrollHeight - (lastSection.getBoundingClientRect().bottom - scroller.getBoundingClientRect().top + scroller.scrollTop) >= 24; })()', true)
         ->resize(375, 812)
         ->assertScript('document.querySelector("h1")?.getBoundingClientRect().top > document.querySelector("[data-slot=sidebar-trigger]")?.getBoundingClientRect().bottom', true)
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth + 2', true)
