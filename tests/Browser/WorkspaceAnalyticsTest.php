@@ -108,6 +108,7 @@ test('workspace dashboard explains the empty state without inventing follower to
     $page = visit(route('app.analytics'));
 
     $page->assertSee('Your analytics history is being prepared')
+        ->assertScript('document.querySelector(".overflow-y-auto > .flex.min-h-0.flex-1.flex-col") !== null', true)
         ->assertMissing('@analytics-summary')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
