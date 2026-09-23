@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Models\Traits\HasUsage;
 use Carbon\CarbonInterface;
 use Database\Factories\AccountFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -64,6 +65,16 @@ class Account extends Model
     public function invites(): HasMany
     {
         return $this->hasMany(Invite::class);
+    }
+
+    public function scopeWithActivePaidSubscription(Builder $query): Builder
+    {
+        return $query->whereHas('subscriptions', fn (Builder $subscriptions): Builder => $subscriptions
+            ->where('type', self::SUBSCRIPTION_NAME)
+            ->where('stripe_status', 'active')
+            ->where(fn (Builder $subscription): Builder => $subscription
+                ->whereNull('ends_at')
+                ->orWhere('ends_at', '>', now())));
     }
 
     public function hasActiveSubscription(): bool

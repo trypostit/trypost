@@ -20,6 +20,10 @@ test('follower collection and fallback are scheduled at the expected UTC times',
         (string) $event->command,
         'analytics:dispatch-publication-metrics',
     ));
+    $rollout = $events->first(fn ($event): bool => str_contains(
+        (string) $event->command,
+        'analytics:backfill-existing',
+    ));
 
     expect($collection)->not->toBeNull()
         ->and($collection->expression)->toBe('0 2 * * *')
@@ -41,4 +45,8 @@ test('follower collection and fallback are scheduled at the expected UTC times',
         ->and($metrics->timezone)->toBe('UTC')
         ->and($metrics->withoutOverlapping)->toBeTrue()
         ->and($metrics->onOneServer)->toBeTrue();
+    expect($rollout)->not->toBeNull()
+        ->and($rollout->expression)->toBe('0 * * * *')
+        ->and($rollout->withoutOverlapping)->toBeTrue()
+        ->and($rollout->onOneServer)->toBeTrue();
 });

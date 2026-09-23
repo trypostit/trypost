@@ -15,10 +15,20 @@ use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFa
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class BootstrapAccountAnalytics implements ShouldQueue
 {
     use Queueable;
+
+    public int $tries = 3;
+
+    /** @return list<int> */
+    public function backoff(): array
+    {
+        return [60, 300];
+    }
 
     public function __construct(public string $socialAccountId, public bool $refreshOnTerminal = false)
     {
@@ -28,6 +38,14 @@ class BootstrapAccountAnalytics implements ShouldQueue
     public function handle(): void
     {
         $this->handleFor($this->socialAccountId);
+    }
+
+    public function failed(?Throwable $exception): void
+    {
+        Log::error('Analytics account bootstrap failed', [
+            'social_account_id' => $this->socialAccountId,
+            'exception' => $exception,
+        ]);
     }
 
     public function handleFor(string $socialAccountId): void
