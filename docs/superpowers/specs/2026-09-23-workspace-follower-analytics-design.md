@@ -954,6 +954,8 @@ while backfill is pending or running. Once backfill reaches a terminal state
 (`complete`, `provider_limited`, `partial`, or `failed`), discovery may keep new
 content current while a partial backfill is retried independently.
 
+The X user-post timeline is [limited to 3,200 recent posts](https://docs.x.com/x-api/posts/timelines/introduction). The backfill checkpoint tracks the committed X page count. If the timeline ends at that cap before reaching the 365-day cutoff, coverage is `provider_limited` (`x_timeline_3200`), not complete. Cursor retries preserve the count; a restart from page one resets it. This does not require another table or X API request.
+
 For every page, a job captures the locked checkpoint and row version, releases
 the transaction before the provider request, then locks the row again. It may
 upsert publications idempotently, but advances the checkpoint only when the

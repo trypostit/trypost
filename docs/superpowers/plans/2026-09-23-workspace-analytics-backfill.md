@@ -656,6 +656,7 @@ Expected: FAIL because collectors are absent.
 - [ ] **Step 3: Implement bounded provider pages and ephemeral preview handling**
 
 Never persist TikTok cover URLs as durable truth: store them as provider preview metadata with `expires_at`, and let UI fallback when expired. Pinterest records provider metric time-basis metadata. X requests only fields required by the catalog to control read cost.
+X's official user-post timeline exposes at most the [3,200 most recent posts](https://docs.x.com/x-api/posts/timelines/introduction). The backfill checkpoint counts committed X publications across pages; if it exhausts at that cap before the 365-day target, mark coverage `provider_limited` with `x_timeline_3200`, not `complete`. Resume a failed cursor without resetting the count, but reset it when restarting from the first page. This adds no table and requires no extra paid read.
 
 - [ ] **Step 4: Run collector tests**
 
@@ -1323,6 +1324,11 @@ queue emptied. Re-running `analytics:backfill-existing` only for this workspace
 reported `historical_identity_unrecoverable=0` and left publication/snapshot
 counts unchanged. These are local app credentials and do not prove other
 platforms or production quotas.
+
+X timeline-cap safeguard (2026-09-23): regression tests now cover the
+3,200-post cap, true exhaustion below that cap, failed-cursor resume,
+stale-worker fencing, and count reset on invalid cursor or terminal restart.
+No live X request was made; billed-read cost remains a release gate.
 
 Before dispatching the production rollout:
 

@@ -69,12 +69,12 @@ test('bootstrap creates separate backfill and discovery states and dispatches th
 
 test('bootstrap resumes a failed backfill from its last committed cursor', function () {
     Bus::fake();
-    $account = SocialAccount::factory()->instagram()->create(['is_active' => true]);
+    $account = SocialAccount::factory()->create(['platform' => Platform::X, 'is_active' => true]);
     $state = AnalyticsSyncState::factory()->create([
         'social_account_id' => $account->id,
         'collector' => SyncCollector::PublicationBackfill,
         'status' => SyncStatus::Failed,
-        'checkpoint' => ['cursor' => 'last-committed-page', 'revision' => 3],
+        'checkpoint' => ['cursor' => 'last-committed-page', 'revision' => 3, 'seen_count' => 3100],
     ]);
 
     (new BootstrapAccountAnalytics($account->id))->handleFor($account->id);
@@ -83,8 +83,63 @@ test('bootstrap resumes a failed backfill from its last committed cursor', funct
         ->and($state->fresh()->checkpoint)->toMatchArray([
             'cursor' => 'last-committed-page',
             'revision' => 3,
+            'seen_count' => 3100,
         ]);
     Bus::assertDispatched(BackfillAccountPublications::class, fn ($job): bool => $job->syncStateId === $state->id);
+});
+
+test('x backfill reports provider limited when the 3200 post timeline ends before the target', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->create(['platform' => Platform::X, 'is_active' => true]);
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'checkpoint' => ['cursor' => 'last-page', 'revision' => 4, 'seen_count' => 3199],
+        'target_since' => CarbonImmutable::parse('2025-09-23', 'UTC'),
+    ]);
+    bindPublicationPage(new PublicationPage([
+        new DiscoveredPublication('x-3200', CarbonImmutable::parse('2026-01-01', 'UTC'), PublicationContentType::Text),
+    ], null, true));
+
+    app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
+
+    expect($state->fresh()->status)->toBe(SyncStatus::ProviderLimited)
+        ->and($state->fresh()->last_error_category)->toBe('x_timeline_3200')
+        ->and($state->fresh()->checkpoint)->toMatchArray(['cursor' => null, 'seen_count' => 3200]);
+    Bus::assertNotDispatched(BackfillAccountPublications::class);
+});
+
+test('x backfill below the timeline cap completes when the provider exhausts its history', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->create(['platform' => Platform::X, 'is_active' => true]);
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'checkpoint' => ['cursor' => 'last-page', 'revision' => 4, 'seen_count' => 25],
+        'target_since' => CarbonImmutable::parse('2025-09-23', 'UTC'),
+    ]);
+    bindPublicationPage(new PublicationPage([
+        new DiscoveredPublication('x-26', CarbonImmutable::parse('2026-01-01', 'UTC'), PublicationContentType::Text),
+    ], null, true));
+
+    app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
+
+    expect($state->fresh()->status)->toBe(SyncStatus::Complete)
+        ->and($state->fresh()->last_error_category)->toBeNull()
+        ->and(data_get($state->fresh()->checkpoint, 'seen_count'))->toBe(26);
+});
+
+test('restarting a terminal x backfill resets its timeline count', function () {
+    $account = SocialAccount::factory()->create(['platform' => Platform::X, 'is_active' => true]);
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'status' => SyncStatus::ProviderLimited,
+        'checkpoint' => ['cursor' => null, 'revision' => 4, 'seen_count' => 3200],
+    ]);
+
+    $started = app(AdvanceAnalyticsSyncState::class)->begin($state->id, restartTerminal: true);
+
+    expect($started['cursor'])->toBeNull()
+        ->and($state->fresh()->status)->toBe(SyncStatus::Running)
+        ->and($state->fresh()->checkpoint)->toMatchArray(['cursor' => null, 'revision' => 5, 'seen_count' => 0]);
 });
 
 test('a backfill job persists one page then advances its cursor and dispatches continuation', function () {
@@ -179,10 +234,10 @@ test('an unordered provider keeps paging even when a publication lands on the cu
 });
 
 test('a stale page can reconcile facts but cannot move the current cursor backwards', function () {
-    $account = SocialAccount::factory()->instagram()->create(['is_active' => true]);
+    $account = SocialAccount::factory()->create(['platform' => Platform::X, 'is_active' => true]);
     $state = AnalyticsSyncState::factory()->create([
         'social_account_id' => $account->id,
-        'checkpoint' => ['cursor' => 'page-a', 'revision' => 0],
+        'checkpoint' => ['cursor' => 'page-a', 'revision' => 0, 'seen_count' => 100],
     ]);
     $sync = app(AdvanceAnalyticsSyncState::class);
     $first = $sync->begin($state->id);
@@ -200,6 +255,7 @@ test('a stale page can reconcile facts but cannot move the current cursor backwa
         ->and($state->fresh()->checkpoint)->toMatchArray([
             'cursor' => 'page-a',
             'revision' => $second['revision'],
+            'seen_count' => 100,
         ])
         ->and(AnalyticsPublication::query()->where('provider_post_id', 'stale-fact')->exists())->toBeTrue();
 });
@@ -233,12 +289,12 @@ test('a transient failure preserves the cursor for a later queue attempt', funct
 
 test('an invalid provider cursor clears only the cursor and restarts the bounded backfill', function () {
     Bus::fake();
-    $account = SocialAccount::factory()->instagram()->create(['is_active' => true]);
+    $account = SocialAccount::factory()->create(['platform' => Platform::X, 'is_active' => true]);
     $target = CarbonImmutable::parse('2025-09-23', 'UTC');
     $oldest = CarbonImmutable::parse('2026-01-10', 'UTC');
     $state = AnalyticsSyncState::factory()->create([
         'social_account_id' => $account->id,
-        'checkpoint' => ['cursor' => 'expired-cursor', 'revision' => 4],
+        'checkpoint' => ['cursor' => 'expired-cursor', 'revision' => 4, 'seen_count' => 100],
         'target_since' => $target,
         'oldest_reached_at' => $oldest,
     ]);
@@ -254,7 +310,8 @@ test('an invalid provider cursor clears only the cursor and restarts the bounded
     expect($state->fresh()->status)->toBe(SyncStatus::Pending)
         ->and($state->fresh()->target_since?->equalTo($target))->toBeTrue()
         ->and($state->fresh()->oldest_reached_at?->equalTo($oldest))->toBeTrue()
-        ->and(data_get($state->fresh()->checkpoint, 'cursor'))->toBeNull();
+        ->and(data_get($state->fresh()->checkpoint, 'cursor'))->toBeNull()
+        ->and(data_get($state->fresh()->checkpoint, 'seen_count'))->toBe(0);
     Bus::assertDispatched(BackfillAccountPublications::class);
 });
 

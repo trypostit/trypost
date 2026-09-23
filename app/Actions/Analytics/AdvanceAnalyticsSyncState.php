@@ -7,6 +7,7 @@ namespace App\Actions\Analytics;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\SyncCollector;
 use App\Enums\Analytics\SyncStatus;
+use App\Enums\SocialAccount\Platform;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsSyncState;
 use App\Models\SocialAccount;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\DB;
 
 class AdvanceAnalyticsSyncState
 {
+    private const X_TIMELINE_LIMIT = 3200;
+
     public function __construct(private readonly UpsertAnalyticsPublication $publications) {}
 
     /**
@@ -34,10 +37,19 @@ class AdvanceAnalyticsSyncState
             $cursor = $restartTerminal && $state->isTerminal()
                 ? null
                 : ($checkpoint['cursor'] ?? null);
+            $seenCount = $restartTerminal && $state->isTerminal()
+                ? 0
+                : (int) ($checkpoint['seen_count'] ?? 0);
 
             $state->update([
                 'status' => SyncStatus::Running,
-                'checkpoint' => ['cursor' => $cursor, 'revision' => $revision],
+                'checkpoint' => [
+                    'cursor' => $cursor,
+                    'revision' => $revision,
+                    ...($state->collector === SyncCollector::PublicationBackfill && $state->socialAccount?->platform === Platform::X
+                        ? ['seen_count' => $seenCount]
+                        : []),
+                ],
                 'last_error_category' => null,
             ]);
 
@@ -92,9 +104,19 @@ class AdvanceAnalyticsSyncState
                 && $oldest
                 && $state->target_since
                 && $oldest->lessThanOrEqualTo($state->target_since);
+            $isXBackfill = $state->collector === SyncCollector::PublicationBackfill
+                && $account->platform === Platform::X;
+            $seenCount = (int) ($checkpoint['seen_count'] ?? 0) + count($page->publications);
+            $xTimelineLimited = $isXBackfill
+                && $page->providerExhausted
+                && ! $reachedTarget
+                && $state->target_since
+                && $oldest
+                && $oldest->greaterThan($state->target_since)
+                && $seenCount >= self::X_TIMELINE_LIMIT;
 
             $status = match (true) {
-                $page->providerLimited => SyncStatus::ProviderLimited,
+                $page->providerLimited || $xTimelineLimited => SyncStatus::ProviderLimited,
                 filled($page->partialReason) && ($page->providerExhausted || $reachedTarget) => SyncStatus::Partial,
                 $page->providerExhausted || $reachedTarget => SyncStatus::Complete,
                 default => SyncStatus::Running,
@@ -105,13 +127,16 @@ class AdvanceAnalyticsSyncState
                 'checkpoint' => [
                     'cursor' => $status === SyncStatus::Running ? $page->nextCursor : null,
                     'revision' => $capturedRevision,
+                    ...($isXBackfill ? ['seen_count' => $seenCount] : []),
                 ],
                 'oldest_reached_at' => $oldest,
                 'high_watermark_at' => $highWatermark,
                 'last_success_at' => CarbonImmutable::now('UTC'),
-                'last_error_category' => $page->providerLimited
-                    ? 'provider_limited'
-                    : $page->partialReason,
+                'last_error_category' => match (true) {
+                    $page->providerLimited => 'provider_limited',
+                    $xTimelineLimited => 'x_timeline_3200',
+                    default => $page->partialReason,
+                },
             ]);
 
             if ($state->collector === SyncCollector::PublicationBackfill && $status !== SyncStatus::Running) {
@@ -149,7 +174,11 @@ class AdvanceAnalyticsSyncState
 
             $state->update([
                 'status' => SyncStatus::Pending,
-                'checkpoint' => ['cursor' => null, 'revision' => $capturedRevision],
+                'checkpoint' => [
+                    'cursor' => null,
+                    'revision' => $capturedRevision,
+                    ...(array_key_exists('seen_count', $state->checkpoint ?? []) ? ['seen_count' => 0] : []),
+                ],
                 'last_error_category' => 'invalid_cursor',
             ]);
 

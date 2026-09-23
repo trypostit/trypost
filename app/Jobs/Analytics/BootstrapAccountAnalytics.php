@@ -6,6 +6,7 @@ namespace App\Jobs\Analytics;
 
 use App\Enums\Analytics\SyncCollector;
 use App\Enums\Analytics\SyncStatus;
+use App\Enums\SocialAccount\Platform;
 use App\Models\AnalyticsSyncState;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFactory;
@@ -64,6 +65,11 @@ class BootstrapAccountAnalytics implements ShouldQueue
                         ? data_get($backfill->checkpoint, 'cursor')
                         : null,
                     'revision' => (int) data_get($backfill->checkpoint, 'revision', 0),
+                    ...($account->platform === Platform::X
+                        ? ['seen_count' => $backfill->status === SyncStatus::Failed
+                            ? (int) data_get($backfill->checkpoint, 'seen_count', 0)
+                            : 0]
+                        : []),
                 ],
             ]);
         }
