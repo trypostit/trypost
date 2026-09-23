@@ -30,6 +30,7 @@ that their code has not been written.
 - Target 365 days of owned-publication history, but persist and expose actual coverage when a provider is shallower, partial, or permission-limited.
 - Never fabricate follower history, historical post-metric snapshots, unsupported metrics, zero values after provider failure, or a native/manual origin the provider cannot prove.
 - Followers retry at widely spaced same-day windows and carry the last value forward only after the day is exhausted; provider `Retry-After` wins when valid.
+- An analytics-endpoint authentication or permission rejection is not proof that a connected account cannot publish; record the analytics failure without changing the account's global status. The independent connection verifier owns that health decision.
 - `/analytics`, post detail, REST, and MCP make no social-provider calls and never use Redis as the analytics source of truth.
 - Common aggregate metrics are nullable scalar columns; content-specific metrics use stable enum-backed JSON keys with value, unit, time basis, precision, availability, and provider identity.
 - `analytics_sync_states` is not a job ledger: only publication backfill/discovery use it. Queue/Horizon owns attempts and delays; follower and publication snapshots prove successful collection.
@@ -453,7 +454,7 @@ Expected: FAIL because jobs and schedules are absent.
 
 The command uses `lazyById(200)` and dispatches IDs only. The job re-queries the social account, revalidates active/connected/included status, uses `WithoutOverlapping` keyed by account/date, and exits if an actual row already exists.
 
-On a transient/rate-limit exception, release near the next `06:00`, `10:00`, `14:00`, `18:00`, or `22:00` UTC window, honoring a later provider time inside the same UTC day. Authentication/permission errors use existing account-health handling and do not write a value. Set job `retryUntil()` to the end of its observation day.
+On a transient/rate-limit exception, release near the next `06:00`, `10:00`, `14:00`, `18:00`, or `22:00` UTC window, honoring a later provider time inside the same UTC day. Authentication/permission errors stop the analytics retry without writing a value or mutating the account's publishing status. Existing connection verification owns token-health transitions. Set job `retryUntil()` to the end of its observation day.
 
 Set `tries = 6` for the initial `02:00` attempt plus the five delayed windows.
 Because `release()` consumes an attempt, calculate the next window from the
@@ -1274,7 +1275,7 @@ Expected: all pass.
 
 Run the full database-dependent analytics suite on both supported engines. Confirm migrations roll up/down, all four unique keys enforce the same identities, nullable booleans/JSON are asserted portably, and aggregate ordering is deterministic.
 
-Local verification: PostgreSQL Feature 3,850 passed (14,708 assertions), Unit 1,335 passed (3,618 assertions), and browser 74 passed (301 assertions). On an isolated temporary MySQL database, the analytics and post-consumer suite passed 225 tests (939 assertions); the four analytics migrations rolled back and reapplied successfully. The temporary database was removed. Frontend lint, typecheck, and build passed. These checks do not validate production API permissions or quota.
+Local verification: PostgreSQL Feature 3,853 passed (14,726 assertions; 1 skipped), Unit 1,335 passed (3,618 assertions), and browser 74 passed (301 assertions). On an isolated temporary MySQL database, the analytics and post-consumer suite passed 225 tests (939 assertions); the four analytics migrations rolled back and reapplied successfully. A later focused MySQL run for the authorization/fixture safety fix passed 34 tests (148 assertions), then its temporary database was removed. Frontend lint, typecheck, and build passed. These checks do not validate production API permissions or quota.
 
 - [ ] **Step 6: Perform controlled capability and rollout checks**
 
@@ -1290,6 +1291,13 @@ rerun did not duplicate the catalog. A failed-page bootstrap now preserves the
 last committed cursor, verified by 13 backfill tests on both PostgreSQL and
 MySQL. This local canary does not prove production application permissions,
 quotas, other platform adapters, or a safe global rollout.
+
+Post-canary safety audit: an analytics-only `401`/`403` no longer calls
+`markAsTokenExpired()` on an otherwise connected account. It records the
+analytics failure without a false follower value, while the separately
+scheduled connection verifier owns publishing-health transitions. The focused
+tests cover both rejection categories and isolate account-created jobs in
+schema/backfill fixtures; the full PostgreSQL Feature and browser suites pass.
 
 Before dispatching the production rollout:
 

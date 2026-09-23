@@ -9,6 +9,7 @@ use App\Dto\Analytics\AccountDailyObservation;
 use App\Enums\Analytics\MetricPrecision;
 use App\Enums\Analytics\ObservationProvenance;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\SocialAccount\Status;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\Analytics\FinalizeAccountDailySnapshots;
@@ -111,6 +112,26 @@ test('collection job stops when provider retry time falls outside the observatio
 
     $job->assertNotReleased();
 });
+
+test('analytics authorization failures do not disconnect an otherwise connected account', function (string $category) {
+    $account = SocialAccount::factory()->instagram()->create();
+    $collector = Mockery::mock(FollowerCollector::class);
+    $collector->shouldReceive('collect')->once()->andThrow(new AnalyticsCollectionException(
+        $category,
+        'analytics endpoint rejected this request',
+    ));
+    $factory = Mockery::mock(FollowerCollectorFactory::class);
+    $factory->shouldReceive('supports')->once()->with(Platform::Instagram)->andReturnTrue();
+    $factory->shouldReceive('for')->once()->with(Platform::Instagram)->andReturn($collector);
+    $job = (new CollectAccountDailySnapshot($account->id, '2026-09-23'))
+        ->withFakeQueueInteractions();
+
+    $job->handle($factory, app(ResolveAnalyticsAccountKey::class), app(WriteAccountDailySnapshot::class));
+
+    expect($account->fresh()->status)->toBe(Status::Connected)
+        ->and(AnalyticsAccountDailySnapshot::query()->where('social_account_id', $account->id)->exists())->toBeFalse();
+    $job->assertNotReleased();
+})->with(['authentication', 'permission']);
 
 test('finalizer carries the latest measured total and does not invent missing history', function () {
     $workspace = Workspace::factory()->create();

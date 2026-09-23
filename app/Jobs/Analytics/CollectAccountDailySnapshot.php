@@ -83,7 +83,6 @@ class CollectAccountDailySnapshot implements ShouldQueue
         } catch (AnalyticsCollectionException $exception) {
             if (in_array($exception->category, ['authentication', 'permission'], true)) {
                 app(AnalyticsJobLog::class)->record($account, 'followers', $this->observationDate, $this->attempts(), $exception->category);
-                $account->markAsTokenExpired('Analytics permission or authentication failed.', notify: false);
 
                 return;
             }

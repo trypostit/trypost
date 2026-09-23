@@ -10,7 +10,7 @@ tests passed (939 assertions), and all four migrations passed rollback and
 reapplication; that temporary database was removed. Production app permissions
 and provider quotas remain unverified: run the controlled capability checks and
 canary rollout below before dispatching a global backfill. LinkedIn remains V2.
-The local PostgreSQL Feature suite passed 3,850 tests, Unit passed 1,335, and
+The local PostgreSQL Feature suite passed 3,853 tests, Unit passed 1,335, and
 the full browser suite passed 74 after isolating asynchronous analytics jobs in
 unrelated synchronous-queue test fixtures.
 
@@ -709,9 +709,11 @@ The actual delayed execution may occur later under queue load. When a platform
 returns a longer valid retry time, the job respects that time instead of the
 four-hour default, provided the attempt still belongs to the observation day.
 
-Permanent authentication or permission rejection is not retried six times as
-a transient error. It goes through the existing account-health handling and
-does not write zero as a follower value.
+Permanent authentication or permission rejection from an analytics endpoint is
+not retried six times as a transient error and does not write zero as a
+follower value. It also does not by itself mark the entire social account
+token-expired: an analytics scope can be missing while publishing still works.
+The independent daily connection verifier owns global account-health changes.
 
 An attempt exits without writing when another attempt has already persisted an
 actual observation for the account and date.
@@ -1141,7 +1143,8 @@ Post-performance collector tests additionally cover:
 - Jobs are isolated and idempotent by account, metric, and date.
 - Retry delays cover the same UTC day and stop after a successful observation.
 - Platform-provided retry timing is respected.
-- A permanent authentication failure does not follow the transient retry loop.
+- A permanent analytics authentication or permission failure does not follow
+  the transient retry loop or invalidate an otherwise publishable account.
 - Immediate collection is dispatched after a supported account is connected.
 - Connecting an included v1 account dispatches a native-history backfill and
   returns without waiting for that backfill to finish.

@@ -12,6 +12,7 @@ use App\Enums\Analytics\SyncStatus;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Jobs\Analytics\BackfillAccountPublications;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\Analytics\DiscoverAccountPublications;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsSyncState;
@@ -21,6 +22,9 @@ use Carbon\CarbonImmutable;
 use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Queue;
+
+beforeEach(fn () => Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]));
 
 function bindPublicationPage(PublicationPage $page): void
 {
