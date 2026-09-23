@@ -9,6 +9,7 @@ import InstagramSettings from '@/components/posts/editor/InstagramSettings.vue';
 import LinkedInSettings from '@/components/posts/editor/LinkedInSettings.vue';
 import PinterestSettings from '@/components/posts/editor/PinterestSettings.vue';
 import TikTokSettings from '@/components/posts/editor/TikTokSettings.vue';
+import YouTubeSettings from '@/components/posts/editor/YouTubeSettings.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -182,6 +183,15 @@ const settingsProps = (channel: Channel) => ({
                 @update:meta="emit('update:meta', channel.id, $event)"
             />
             <DiscordSettings v-else-if="channel.platform === Platform.Discord" v-bind="settingsProps(channel)" />
+            <YouTubeSettings
+                v-else-if="channel.platform === Platform.YouTube"
+                :social-account="channel.socialAccount"
+                :platform="channel.platform"
+                :meta="channel.meta"
+                :disabled="disabled"
+                :preview-only="previewOnly"
+                @update:meta="emit('update:meta', channel.id, $event)"
+            />
         </template>
     </div>
 </template>

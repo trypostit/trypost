@@ -56,7 +56,7 @@ test('ai shortens the caption and the workspace is billed for it', function () {
 
 test('a shortened caption that still overflows falls back to truncation', function () {
     config()->set('trypost.self_hosted', true);
-    PostContentShortener::fake([str_repeat('ainda enorme ', 200)]);
+    PostContentShortener::fake([str_repeat('ainda enorme ', 400)]);
 
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
@@ -149,12 +149,12 @@ test('a self-hosted install with no ai configured still gets a caption that fits
 
 test('a single word longer than the limit is cut mid-word rather than emptied', function () {
     $workspace = Workspace::factory()->create();
-    $caption = str_repeat('a', 300);
+    $caption = str_repeat('a', 6000);
 
     $adapted = app(CaptionAdapter::class)->adapt($workspace, null, $caption, Platform::YouTube);
 
     expect($adapted)->not->toBe('')
-        ->and(mb_strlen($adapted))->toBeLessThan(300)
+        ->and(mb_strlen($adapted))->toBeLessThan(6000)
         ->and(Platform::YouTube->contentOverflow($adapted))->toBe(0);
 });
 

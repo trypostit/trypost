@@ -51,6 +51,16 @@ class PostPlatformMetaRules
             'platforms.*.meta.brand_content_toggle' => ['sometimes', 'boolean'],
             'platforms.*.meta.brand_organic_toggle' => ['sometimes', 'boolean'],
 
+            // YouTube — full video description (YouTube allows 5000 chars with
+            // clickable links; without it the publisher falls back to the post
+            // content, which is capped at the 100-char Shorts title).
+            'platforms.*.meta.description' => ['sometimes', 'nullable', 'string', 'max:5000'],
+
+            // First comment posted right after a successful publish (YouTube and
+            // Instagram). Capped at Instagram's comment limit, the stricter of
+            // the two.
+            'platforms.*.meta.first_comment' => ['sometimes', 'nullable', 'string', 'max:2200'],
+
             // Pinterest
             'platforms.*.meta.board_id' => ['sometimes', 'nullable', 'string'],
             'platforms.*.meta.title' => ['sometimes', 'nullable', 'string', 'max:100'],
@@ -100,6 +110,8 @@ class PostPlatformMetaRules
             'platforms.*.meta.title.max' => __('posts.form.pinterest.title_max'),
             'platforms.*.meta.event.end_date.after_or_equal' => __('posts.form.google_business.event_end_date_before_start'),
             'platforms.*.meta.event.title.max' => __('posts.form.google_business.title_max'),
+            'platforms.*.meta.description.max' => __('posts.form.youtube.description_max'),
+            'platforms.*.meta.first_comment.max' => __('posts.form.first_comment.max'),
         ];
     }
 
@@ -115,6 +127,8 @@ class PostPlatformMetaRules
             'platforms.*.meta.link' => __('posts.form.pinterest.link'),
             'platforms.*.meta.event.title' => __('posts.form.google_business.event_title'),
             'platforms.*.meta.call_to_action.url' => __('posts.form.google_business.cta_url'),
+            'platforms.*.meta.description' => __('posts.form.youtube.description'),
+            'platforms.*.meta.first_comment' => __('posts.form.first_comment.label'),
         ];
     }
 
