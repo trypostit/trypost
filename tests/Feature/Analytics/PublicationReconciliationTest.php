@@ -102,7 +102,7 @@ test('queued TryPost sync survives social account deletion after dispatch', func
     });
 
     $account->delete();
-    $queuedJob->handle(app(SyncTryPostPublication::class));
+    app()->call([$queuedJob, 'handle']);
 
     $publication = AnalyticsPublication::sole();
     expect($publication->social_account_id)->toBeNull()

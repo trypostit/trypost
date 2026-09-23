@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs\Analytics;
 
 use App\Actions\Analytics\AdvanceAnalyticsSyncState;
+use App\Actions\Analytics\QueuePublicationMetricsForPage;
 use App\Enums\Analytics\SyncStatus;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsSyncState;
@@ -57,6 +58,7 @@ class BackfillAccountPublications implements ShouldQueue
     public function handle(
         AdvanceAnalyticsSyncState $sync,
         PublicationHistoryCollectorFactory $collectors,
+        QueuePublicationMetricsForPage $metrics,
     ): void {
         $account = SocialAccount::query()
             ->connected()
@@ -90,6 +92,8 @@ class BackfillAccountPublications implements ShouldQueue
 
             return;
         }
+
+        $metrics->handle($account, $page);
 
         if ($result['advanced'] && ! $result['terminal']) {
             self::dispatch($account->id, $this->syncStateId)->afterCommit();

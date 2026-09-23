@@ -16,6 +16,10 @@ test('follower collection and fallback are scheduled at the expected UTC times',
         (string) $event->command,
         'analytics:dispatch-publication-discovery',
     ));
+    $metrics = $events->first(fn ($event): bool => str_contains(
+        (string) $event->command,
+        'analytics:dispatch-publication-metrics',
+    ));
 
     expect($collection)->not->toBeNull()
         ->and($collection->expression)->toBe('0 2 * * *')
@@ -32,4 +36,9 @@ test('follower collection and fallback are scheduled at the expected UTC times',
         ->and($discovery->timezone)->toBe('UTC')
         ->and($discovery->withoutOverlapping)->toBeTrue()
         ->and($discovery->onOneServer)->toBeTrue();
+    expect($metrics)->not->toBeNull()
+        ->and($metrics->expression)->toBe('0 4 * * *')
+        ->and($metrics->timezone)->toBe('UTC')
+        ->and($metrics->withoutOverlapping)->toBeTrue()
+        ->and($metrics->onOneServer)->toBeTrue();
 });

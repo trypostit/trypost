@@ -9,6 +9,7 @@ use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Enums\SocialAccount\Platform;
 use Database\Factories\AnalyticsPublicationFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -63,5 +64,10 @@ class AnalyticsPublication extends Model
     public function dailySnapshots(): HasMany
     {
         return $this->hasMany(AnalyticsPublicationDailySnapshot::class);
+    }
+
+    public function scopeAvailable(Builder $query): Builder
+    {
+        return $query->where('availability', PublicationAvailability::Available);
     }
 }

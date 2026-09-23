@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Console\Commands\Analytics\DispatchAccountDailyAnalytics;
 use App\Console\Commands\Analytics\DispatchPublicationDiscovery;
+use App\Console\Commands\Analytics\DispatchPublicationMetrics;
 use App\Console\Commands\CheckSocialConnections;
 use App\Console\Commands\CheckUpcomingPostConnections;
 use App\Console\Commands\ProcessScheduledPosts;
@@ -30,6 +31,11 @@ Schedule::command(DispatchAccountDailyAnalytics::class)
     ->onOneServer();
 Schedule::command(DispatchPublicationDiscovery::class)
     ->dailyAt('03:00')
+    ->timezone('UTC')
+    ->withoutOverlapping()
+    ->onOneServer();
+Schedule::command(DispatchPublicationMetrics::class)
+    ->dailyAt('04:00')
     ->timezone('UTC')
     ->withoutOverlapping()
     ->onOneServer();
