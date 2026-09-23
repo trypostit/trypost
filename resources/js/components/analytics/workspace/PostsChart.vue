@@ -41,7 +41,7 @@ const mode = ref<'bar' | 'stacked'>('stacked');
                     :aria-pressed="mode === 'bar'"
                     @click="mode = 'bar'"
                 >
-                    Bar
+                    {{ $t('analytics.dashboard.chart_bar') }}
                 </button>
                 <button
                     type="button"
@@ -55,7 +55,7 @@ const mode = ref<'bar' | 'stacked'>('stacked');
                     :aria-pressed="mode === 'stacked'"
                     @click="mode = 'stacked'"
                 >
-                    Stacked Bar
+                    {{ $t('analytics.dashboard.chart_stacked_bar') }}
                 </button>
             </div>
         </template>
@@ -82,6 +82,7 @@ const mode = ref<'bar' | 'stacked'>('stacked');
                     v-else
                     :accounts="posts.accounts"
                     :buckets="posts.buckets"
+                    :resolution="posts.resolution"
                     :colors="colors"
                 />
             </div>

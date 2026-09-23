@@ -8,17 +8,17 @@ import {
     ChartTooltip,
     ChartTooltipContent,
     componentToString,
-    type ChartConfig,
 } from '@/components/ui/chart';
-import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import dayjs from '@/dayjs';
-import { formatNumberCompact } from '@/lib/utils';
+import { activeLocale } from '@/language';
 
 import {
     accountColor,
     type FollowerAccount,
     type WorkspaceAnalyticsReport,
 } from '../types';
+
+import { accountChartConfig, formatCountTick } from './accountChart';
 
 type ChartPoint = {
     date: string;
@@ -45,21 +45,8 @@ const chartData = computed<ChartPoint[]>(() =>
     }),
 );
 
-const chartConfig = computed<ChartConfig>(() =>
-    Object.fromEntries(
-        props.accounts.map((account, index) => [
-            `account_${index}`,
-            {
-                label: account.username
-                    ? `@${account.username}`
-                    : account.name || account.platform,
-                color:
-                    props.colors[account.social_account_key] ??
-                    accountColor(index),
-                icon: getPlatformLogo(account.platform),
-            },
-        ]),
-    ),
+const chartConfig = computed(() =>
+    accountChartConfig(props.accounts, props.colors),
 );
 
 const xAccessor = (point: ChartPoint): number => point.index;
@@ -69,16 +56,19 @@ const valueAccessor =
         const value = point[`account_${index}`];
         return typeof value === 'number' ? value : undefined;
     };
-const formatDate = (tick: number | Date): string => {
-    const index = typeof tick === 'number' ? Math.round(tick) : 0;
-    const date = chartData.value[index]?.date;
-    return date ? dayjs(date).format('D MMM') : '';
-};
-const formatCount = (tick: number | Date): string =>
-    typeof tick === 'number' ? formatNumberCompact(tick) : '';
+const formatDate = computed(() => {
+    const locale = activeLocale.value.toLowerCase();
+
+    return (tick: number | Date): string => {
+        const index = typeof tick === 'number' ? Math.round(tick) : 0;
+        const date = chartData.value[index]?.date;
+
+        return date ? dayjs(date).locale(locale).format('D MMM') : '';
+    };
+});
 const tooltipTemplate = computed(() =>
     componentToString(chartConfig.value, ChartTooltipContent, {
-        labelFormatter: formatDate,
+        labelFormatter: formatDate.value,
     }),
 );
 </script>
@@ -132,7 +122,7 @@ const tooltipTemplate = computed(() =>
                 />
                 <VisAxis
                     type="y"
-                    :tick-format="formatCount"
+                    :tick-format="formatCountTick"
                     :num-ticks="5"
                     :grid-line="true"
                     :domain-line="false"

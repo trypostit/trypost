@@ -12,12 +12,13 @@ import {
     ChartTooltip,
     ChartTooltipContent,
     componentToString,
-    type ChartConfig,
 } from '@/components/ui/chart';
-import { getPlatformLogo } from '@/composables/usePlatformLogo';
-import { formatNumberCompact } from '@/lib/utils';
+import dayjs from '@/dayjs';
+import { activeLocale } from '@/language';
 
 import { accountColor, type PostAccount, type PostBucket } from '../types';
+
+import { accountChartConfig, formatCountTick } from './accountChart';
 
 type ChartPoint = {
     index: number;
@@ -28,12 +29,24 @@ type ChartPoint = {
 const props = defineProps<{
     accounts: PostAccount[];
     buckets: PostBucket[];
+    resolution: string;
     colors: Record<string, string>;
 }>();
 
+const bucketLabel = (bucket: PostBucket): string => {
+    const locale = activeLocale.value.toLowerCase();
+    const start = dayjs(bucket.start).locale(locale);
+    const end = dayjs(bucket.end).locale(locale);
+
+    if (props.resolution === 'monthly') return start.format('MMM YYYY');
+    if (bucket.start === bucket.end) return start.format('MMM D');
+
+    return `${start.format('MMM D')} – ${end.format('MMM D')}`;
+};
+
 const chartData = computed<ChartPoint[]>(() =>
     props.buckets.map((bucket, index) => {
-        const point: ChartPoint = { index, label: bucket.label };
+        const point: ChartPoint = { index, label: bucketLabel(bucket) };
 
         props.accounts.forEach((account, accountIndex) => {
             point[`account_${accountIndex}`] =
@@ -43,21 +56,8 @@ const chartData = computed<ChartPoint[]>(() =>
         return point;
     }),
 );
-const chartConfig = computed<ChartConfig>(() =>
-    Object.fromEntries(
-        props.accounts.map((account, index) => [
-            `account_${index}`,
-            {
-                label: account.username
-                    ? `@${account.username}`
-                    : account.name || account.platform,
-                color:
-                    props.colors[account.social_account_key] ??
-                    accountColor(index),
-                icon: getPlatformLogo(account.platform),
-            },
-        ]),
-    ),
+const chartConfig = computed(() =>
+    accountChartConfig(props.accounts, props.colors),
 );
 const xAccessor = (point: ChartPoint): number => point.index;
 const yAccessors = computed(() =>
@@ -77,8 +77,6 @@ const formatBucket = (tick: number | Date): string => {
     const index = typeof tick === 'number' ? Math.round(tick) : 0;
     return chartData.value[index]?.label ?? '';
 };
-const formatCount = (tick: number | Date): string =>
-    typeof tick === 'number' ? formatNumberCompact(tick) : '';
 const ticks = computed(() => props.buckets.map((_, index) => index));
 const tooltipTemplate = computed(() =>
     componentToString(chartConfig.value, ChartTooltipContent, {
@@ -123,7 +121,7 @@ const tooltipTriggers = computed(() => ({
             />
             <VisAxis
                 type="y"
-                :tick-format="formatCount"
+                :tick-format="formatCountTick"
                 :num-ticks="5"
                 :grid-line="true"
                 :domain-line="false"

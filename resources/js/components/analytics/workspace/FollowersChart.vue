@@ -20,9 +20,21 @@ const observedDays = props.followers.series.filter((point) =>
 ).length;
 const mode = ref<'line' | 'bar' | 'growth'>(observedDays > 1 ? 'line' : 'bar');
 const buttons = [
-    { mode: 'line', label: 'Line', test: 'followers-line' },
-    { mode: 'bar', label: 'Bar', test: 'followers-bar' },
-    { mode: 'growth', label: 'Growth', test: 'followers-growth' },
+    {
+        mode: 'line',
+        label: 'analytics.dashboard.chart_line',
+        test: 'followers-line',
+    },
+    {
+        mode: 'bar',
+        label: 'analytics.dashboard.chart_bar',
+        test: 'followers-bar',
+    },
+    {
+        mode: 'growth',
+        label: 'analytics.dashboard.chart_growth',
+        test: 'followers-growth',
+    },
 ] as const;
 </script>
 
@@ -51,7 +63,7 @@ const buttons = [
                     :aria-pressed="mode === button.mode"
                     @click="mode = button.mode"
                 >
-                    {{ button.label }}
+                    {{ $t(button.label) }}
                 </button>
             </div>
         </template>
@@ -94,7 +106,6 @@ const buttons = [
                                     : account.value,
                         }))
                     "
-                    :growth="mode === 'growth'"
                     :colors="colors"
                 />
             </div>

@@ -15,6 +15,7 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\AbstractApiPublicationCollector;
+use App\Support\Analytics\RetryAfter;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 
@@ -28,7 +29,7 @@ abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicatio
             throw new AnalyticsCollectionException(
                 'rate_limited',
                 'Publication metrics provider rate limited the request.',
-                $this->retryAfter($response),
+                RetryAfter::from($response),
             );
         }
 
@@ -37,25 +38,6 @@ abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicatio
         }
 
         return parent::successfulResponse($response);
-    }
-
-    private function retryAfter(Response $response): ?CarbonImmutable
-    {
-        $header = $response->header('Retry-After');
-
-        if (! is_string($header) || $header === '') {
-            return null;
-        }
-
-        if (ctype_digit($header)) {
-            return CarbonImmutable::now('UTC')->addSeconds((int) $header);
-        }
-
-        try {
-            return CarbonImmutable::parse($header)->utc();
-        } catch (\Throwable) {
-            return null;
-        }
     }
 
     protected function account(AnalyticsPublication $publication): SocialAccount

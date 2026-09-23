@@ -15,8 +15,8 @@ return new class extends Migration
     {
         Schema::create('analytics_account_daily_snapshots', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('workspace_id');
-            $table->uuid('social_account_id')->nullable();
+            $table->foreignUuid('workspace_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('social_account_id')->nullable()->constrained()->nullOnDelete();
             $table->uuid('social_account_key');
             $table->string('network', 32);
             $table->string('platform_user_id', 191);
@@ -33,10 +33,6 @@ return new class extends Migration
             $table->timestamp('collected_at');
             $table->timestamps();
 
-            $table->foreign('workspace_id', 'analytics_account_daily_workspace_fk')
-                ->references('id')->on('workspaces')->cascadeOnDelete();
-            $table->foreign('social_account_id', 'analytics_account_daily_account_fk')
-                ->references('id')->on('social_accounts')->nullOnDelete();
             $table->unique(
                 ['workspace_id', 'social_account_key', 'snapshot_date'],
                 'analytics_account_daily_identity_unique',
@@ -44,10 +40,6 @@ return new class extends Migration
             $table->index(
                 ['workspace_id', 'snapshot_date'],
                 'analytics_account_daily_workspace_date_index',
-            );
-            $table->index(
-                ['workspace_id', 'social_account_key', 'snapshot_date'],
-                'analytics_account_daily_account_date_index',
             );
         });
     }

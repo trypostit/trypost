@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Analytics;
 
 use App\Dto\Analytics\PublicationPage;
+use App\Dto\Analytics\TryPostPublicationIdentity;
 use App\Enums\Analytics\SyncCollector;
 use App\Enums\Analytics\SyncStatus;
 use App\Enums\SocialAccount\Platform;
@@ -18,7 +19,10 @@ class AdvanceAnalyticsSyncState
 {
     private const X_TIMELINE_LIMIT = 3200;
 
-    public function __construct(private readonly UpsertAnalyticsPublication $publications) {}
+    public function __construct(
+        private readonly UpsertAnalyticsPublication $publications,
+        private readonly ResolveAnalyticsAccountKey $accountKeys,
+    ) {}
 
     /**
      * @return array{cursor: ?string, revision: int, cutoff: CarbonImmutable}|null
@@ -89,8 +93,13 @@ class AdvanceAnalyticsSyncState
                 return ['advanced' => false, 'terminal' => true];
             }
 
+            $identity = $page->publications === [] ? null : TryPostPublicationIdentity::fromAccount(
+                $account,
+                $this->accountKeys->for($account),
+            );
+
             foreach ($page->publications as $publication) {
-                $this->publications->external($account, $publication);
+                $this->publications->external($account, $publication, $identity);
             }
 
             $checkpoint = $state->checkpoint ?? [];

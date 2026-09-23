@@ -27,7 +27,6 @@ export interface PostAccount extends AccountIdentityData {
 export interface PostBucket {
     start: string;
     end: string;
-    label: string;
     accounts: Record<string, number>;
     total: number;
 }

@@ -12,16 +12,14 @@ import {
     ChartTooltip,
     ChartTooltipContent,
     componentToString,
-    type ChartConfig,
 } from '@/components/ui/chart';
-import { getPlatformLogo } from '@/composables/usePlatformLogo';
-import { formatNumberCompact } from '@/lib/utils';
 
 import { accountColor, type AccountIdentityData } from '../types';
 
+import { accountChartConfig, formatCountTick } from './accountChart';
+
 const props = defineProps<{
     rows: { account: AccountIdentityData; value: number | null }[];
-    growth?: boolean;
     colors: Record<string, string>;
 }>();
 
@@ -32,20 +30,10 @@ const chartData = computed<BarPoint[]>(() =>
         value: row.value ?? 0,
     })),
 );
-const chartConfig = computed<ChartConfig>(() =>
-    Object.fromEntries(
-        props.rows.map((row, index) => [
-            `account_${index}`,
-            {
-                label: row.account.username
-                    ? `@${row.account.username}`
-                    : row.account.name || row.account.platform,
-                color:
-                    props.colors[row.account.social_account_key] ??
-                    accountColor(index),
-                icon: getPlatformLogo(row.account.platform),
-            },
-        ]),
+const chartConfig = computed(() =>
+    accountChartConfig(
+        props.rows.map((row) => row.account),
+        props.colors,
     ),
 );
 const chartHeight = computed(
@@ -57,8 +45,6 @@ const colorAccessor = (point: BarPoint): string => {
     const key = props.rows[point.index]?.account.social_account_key;
     return (key && props.colors[key]) || accountColor(point.index);
 };
-const formatCount = (tick: number | Date): string =>
-    typeof tick === 'number' ? formatNumberCompact(tick) : '';
 const formatAccount = (tick: number | Date): string => {
     const index = typeof tick === 'number' ? Math.round(tick) : 0;
     const account = props.rows[index]?.account;
@@ -107,7 +93,7 @@ const tooltipTriggers = computed(() => ({
             />
             <VisAxis
                 type="x"
-                :tick-format="formatCount"
+                :tick-format="formatCountTick"
                 :num-ticks="5"
                 :grid-line="true"
                 :domain-line="false"

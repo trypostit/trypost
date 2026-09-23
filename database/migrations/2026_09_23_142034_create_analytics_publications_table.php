@@ -15,10 +15,10 @@ return new class extends Migration
     {
         Schema::create('analytics_publications', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('workspace_id');
-            $table->uuid('social_account_id')->nullable();
+            $table->foreignUuid('workspace_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('social_account_id')->nullable()->constrained()->nullOnDelete();
             $table->uuid('social_account_key');
-            $table->uuid('post_platform_id')->nullable();
+            $table->foreignUuid('post_platform_id')->nullable()->constrained()->nullOnDelete();
             $table->string('network', 32);
             $table->string('platform_user_id', 191);
             $table->string('platform', 32);
@@ -40,21 +40,12 @@ return new class extends Migration
             $table->json('provider_metadata')->nullable();
             $table->timestamps();
 
-            $table->foreign('workspace_id', 'analytics_publications_workspace_fk')
-                ->references('id')->on('workspaces')->cascadeOnDelete();
-            $table->foreign('social_account_id', 'analytics_publications_account_fk')
-                ->references('id')->on('social_accounts')->nullOnDelete();
-            $table->foreign('post_platform_id', 'analytics_publications_post_platform_fk')
-                ->references('id')->on('post_platforms')->nullOnDelete();
-            $table->unique('post_platform_id', 'analytics_publications_post_platform_unique');
+            $table->unique('post_platform_id');
             $table->unique(
                 ['workspace_id', 'social_account_key', 'network', 'provider_post_id'],
                 'analytics_publications_identity_unique',
             );
-            $table->index(
-                ['workspace_id', 'provider_published_at'],
-                'analytics_publications_workspace_date_index',
-            );
+            $table->index(['workspace_id', 'provider_published_at']);
             $table->index(
                 ['workspace_id', 'social_account_key', 'provider_published_at'],
                 'analytics_publications_account_date_index',

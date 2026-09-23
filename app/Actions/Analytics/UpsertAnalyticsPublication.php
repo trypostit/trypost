@@ -22,8 +22,9 @@ class UpsertAnalyticsPublication
     public function external(
         SocialAccount $account,
         DiscoveredPublication $publication,
+        ?TryPostPublicationIdentity $identity = null,
     ): AnalyticsPublication {
-        $identity = TryPostPublicationIdentity::fromAccount(
+        $identity ??= TryPostPublicationIdentity::fromAccount(
             $account,
             $this->accountKeys->for($account),
         );
@@ -40,6 +41,7 @@ class UpsertAnalyticsPublication
             previewMetadata: $publication->previewMetadata,
             providerMetadata: $publication->providerMetadata,
             providerSyncedAt: now(),
+            liveAccount: $account,
         );
     }
 
@@ -81,6 +83,7 @@ class UpsertAnalyticsPublication
         ?array $providerMetadata,
         ?string $postPlatformId = null,
         ?\DateTimeInterface $providerSyncedAt = null,
+        ?SocialAccount $liveAccount = null,
     ): AnalyticsPublication {
         try {
             return $this->write(
@@ -96,6 +99,7 @@ class UpsertAnalyticsPublication
                 $providerMetadata,
                 $postPlatformId,
                 $providerSyncedAt,
+                $liveAccount,
                 true,
             );
         } catch (UniqueConstraintViolationException) {
@@ -112,6 +116,7 @@ class UpsertAnalyticsPublication
                 $providerMetadata,
                 $postPlatformId,
                 $providerSyncedAt,
+                $liveAccount,
                 false,
             );
         }
@@ -134,9 +139,10 @@ class UpsertAnalyticsPublication
         ?array $providerMetadata,
         ?string $postPlatformId,
         ?\DateTimeInterface $providerSyncedAt,
+        ?SocialAccount $liveAccount,
         bool $mayCreate,
     ): AnalyticsPublication {
-        return DB::transaction(function () use ($contentType, $excerpt, $identity, $mayCreate, $origin, $permalink, $postPlatformId, $previewMetadata, $providerContentType, $providerMetadata, $providerPostId, $providerPublishedAt, $providerSyncedAt): AnalyticsPublication {
+        return DB::transaction(function () use ($contentType, $excerpt, $identity, $liveAccount, $mayCreate, $origin, $permalink, $postPlatformId, $previewMetadata, $providerContentType, $providerMetadata, $providerPostId, $providerPublishedAt, $providerSyncedAt): AnalyticsPublication {
             $identityFields = [
                 'workspace_id' => $identity->workspaceId,
                 'social_account_key' => $identity->socialAccountKey,
@@ -169,7 +175,8 @@ class UpsertAnalyticsPublication
             ]);
 
             $values = [
-                'social_account_id' => SocialAccount::query()->whereKey($identity->socialAccountId)->value('id'),
+                'social_account_id' => $liveAccount?->id
+                    ?? SocialAccount::query()->whereKey($identity->socialAccountId)->value('id'),
                 'post_platform_id' => $postPlatformId ?? $publication->post_platform_id,
                 'platform_user_id' => $identity->platformUserId,
                 'platform' => $identity->platform,

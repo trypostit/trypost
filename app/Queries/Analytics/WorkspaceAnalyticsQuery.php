@@ -11,6 +11,7 @@ use App\Support\Analytics\PeriodBuckets;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\LazyCollection;
 
 class WorkspaceAnalyticsQuery
 {
@@ -20,14 +21,12 @@ class WorkspaceAnalyticsQuery
     public function for(Workspace $workspace, DateRange $range): array
     {
         $previous = $range->previous();
-        $publications = $this->publications($workspace, $previous->start, $range->end);
+        $publications = $this->publicationReport($workspace, $previous, $range);
         $followers = $this->followerRows($workspace, $previous->end, $range);
-        $currentPublications = $publications->filter(fn (object $row): bool => $this->inRange($row->provider_published_at, $range));
-        $previousPublications = $publications->filter(fn (object $row): bool => $this->inRange($row->provider_published_at, $previous));
         $currentFollowers = $this->followerTotal($followers, $range->end);
         $previousFollowers = $this->followerTotal($followers, $previous->end);
-        $current = $this->totals($currentPublications);
-        $prior = $this->totals($previousPublications);
+        $current = $publications['current_totals'];
+        $prior = $publications['previous_totals'];
 
         return [
             'bounds' => $this->boundsFor($workspace),
@@ -46,21 +45,20 @@ class WorkspaceAnalyticsQuery
                 'engagement_rate' => $this->comparison($current['engagement_rate'], $prior['engagement_rate']),
             ],
             'followers' => $this->followers($followers, $range, $currentFollowers),
-            'posts' => $this->posts($currentPublications, $range),
-            'top_posts' => [
-                'reactions' => $this->top($currentPublications, 'reactions_count'),
-                'comments' => $this->top($currentPublications, 'comments_count'),
-            ],
-            'performance' => $this->performance($currentPublications, $previousPublications),
+            'posts' => $publications['posts'],
+            'top_posts' => $publications['top_posts'],
+            'performance' => $publications['performance'],
             'coverage' => $this->coverage($workspace),
         ];
     }
 
-    private function publications(Workspace $workspace, CarbonImmutable $start, CarbonImmutable $end): Collection
+    private function publications(Workspace $workspace, CarbonImmutable $start, CarbonImmutable $end): LazyCollection
     {
         $latest = DB::table('analytics_publication_daily_snapshots as daily')
             ->join('analytics_publications as parent', 'parent.id', '=', 'daily.analytics_publication_id')
             ->where('parent.workspace_id', $workspace->id)
+            ->whereIn('parent.platform', Platform::analyticsValues())
+            ->whereBetween('parent.provider_published_at', [$start->startOfDay(), $end->endOfDay()])
             ->select('daily.analytics_publication_id')
             ->selectRaw('MAX(daily.snapshot_date) as latest_date')
             ->groupBy('daily.analytics_publication_id');
@@ -87,7 +85,92 @@ class WorkspaceAnalyticsQuery
                 'metric.reach_count', 'metric.engagement_count', 'metric.exposure_count',
                 'metric.exposure_kind', 'metric.collected_at',
             ])
-            ->get();
+            ->cursor();
+    }
+
+    /** @return array<string, mixed> */
+    private function publicationReport(Workspace $workspace, DateRange $previous, DateRange $current): array
+    {
+        $currentTotals = $this->emptyPublicationTotals();
+        $previousTotals = $this->emptyPublicationTotals();
+        $currentAccounts = [];
+        $previousAccounts = [];
+        $topReactions = [];
+        $topComments = [];
+        $buckets = $this->buckets->for($current);
+        $bucketIndexByDate = [];
+        $bucketCounts = [];
+
+        foreach ($buckets as $index => $bucket) {
+            for ($day = CarbonImmutable::parse($bucket['start'], 'UTC'); $day->toDateString() <= $bucket['end']; $day = $day->addDay()) {
+                $bucketIndexByDate[$day->toDateString()] = $index;
+            }
+        }
+
+        foreach ($this->publications($workspace, $previous->start, $current->end) as $row) {
+            $key = $row->social_account_key;
+
+            if (! $this->inRange($row->provider_published_at, $current)) {
+                $this->addPublicationTotals($previousTotals, $row);
+                $previousAccounts[$key] ??= $this->emptyPublicationTotals();
+                $this->addPublicationTotals($previousAccounts[$key], $row);
+
+                continue;
+            }
+
+            $this->addPublicationTotals($currentTotals, $row);
+            $currentAccounts[$key] ??= ['row' => $row, 'totals' => $this->emptyPublicationTotals()];
+            $this->addPublicationTotals($currentAccounts[$key]['totals'], $row);
+            $this->retainTopPublication($topReactions, $row, 'reactions_count');
+            $this->retainTopPublication($topComments, $row, 'comments_count');
+
+            $date = substr((string) $row->provider_published_at, 0, 10);
+            $index = $bucketIndexByDate[$date] ?? null;
+
+            if ($index !== null) {
+                $bucketCounts[$index][$key] = ($bucketCounts[$index][$key] ?? 0) + 1;
+            }
+        }
+
+        $postAccounts = [];
+
+        foreach ($currentAccounts as $key => $account) {
+            $row = $account['row'];
+            $postAccounts[] = [
+                'social_account_key' => $key,
+                'platform' => $row->platform,
+                'name' => $row->account_display_name,
+                'username' => $row->account_username,
+                'avatar_url' => $row->account_avatar_url,
+                'count' => $account['totals']['posts'],
+            ];
+        }
+
+        foreach ($buckets as $index => &$bucket) {
+            $bucket['accounts'] = array_fill_keys(array_keys($currentAccounts), 0);
+
+            foreach ($bucketCounts[$index] ?? [] as $key => $count) {
+                $bucket['accounts'][$key] = $count;
+            }
+
+            $bucket['total'] = array_sum($bucket['accounts']);
+        }
+        unset($bucket);
+
+        return [
+            'current_totals' => $this->finalizePublicationTotals($currentTotals),
+            'previous_totals' => $this->finalizePublicationTotals($previousTotals),
+            'posts' => [
+                'resolution' => $this->buckets->resolution($current),
+                'accounts' => $postAccounts,
+                'buckets' => $buckets,
+            ],
+            'top_posts' => [
+                'reactions' => $this->top($topReactions),
+                'comments' => $this->top($topComments),
+            ],
+            'performance' => $this->performance($currentAccounts, $previousAccounts),
+        ];
     }
 
     private function followerRows(Workspace $workspace, CarbonImmutable $previousEnd, DateRange $range): Collection
@@ -183,60 +266,70 @@ class WorkspaceAnalyticsQuery
         return ['total' => $total, 'accounts' => $accounts, 'series' => $series];
     }
 
-    /** @return array<string, mixed> */
-    private function posts(Collection $rows, DateRange $range): array
+    /** @return array{posts: int, reactions: int, comments: int, engagement: int, exposure: int, has_reactions: bool, has_comments: bool} */
+    private function emptyPublicationTotals(): array
     {
-        $accounts = $rows->groupBy('social_account_key')->map(function (Collection $items, string $key): array {
-            $row = $items->first();
-
-            return [
-                'social_account_key' => $key,
-                'platform' => $row->platform,
-                'name' => $row->account_display_name,
-                'username' => $row->account_username,
-                'avatar_url' => $row->account_avatar_url,
-                'count' => $items->count(),
-            ];
-        })->values()->all();
-        $buckets = $this->buckets->for($range);
-
-        foreach ($buckets as &$bucket) {
-            $counts = array_fill_keys(array_column($accounts, 'social_account_key'), 0);
-
-            foreach ($rows as $row) {
-                $date = substr((string) $row->provider_published_at, 0, 10);
-
-                if ($date >= $bucket['start'] && $date <= $bucket['end']) {
-                    $counts[$row->social_account_key]++;
-                }
-            }
-
-            $bucket['accounts'] = $counts;
-            $bucket['total'] = array_sum($counts);
-        }
-
         return [
-            'resolution' => $this->buckets->resolution($range),
-            'accounts' => $accounts,
-            'buckets' => $buckets,
+            'posts' => 0,
+            'reactions' => 0,
+            'comments' => 0,
+            'engagement' => 0,
+            'exposure' => 0,
+            'has_reactions' => false,
+            'has_comments' => false,
         ];
     }
 
-    /** @return array<string, int|float|null> */
-    private function totals(Collection $rows): array
+    /** @param array<string, int|bool> $totals */
+    private function addPublicationTotals(array &$totals, object $row): void
     {
-        $reactions = $rows->filter(fn (object $row): bool => $row->reactions_count !== null);
-        $comments = $rows->filter(fn (object $row): bool => $row->comments_count !== null);
-        $rateRows = $rows->filter(fn (object $row): bool => $row->engagement_count !== null
-            && $row->exposure_count !== null && (int) $row->exposure_count > 0);
-        $exposure = (int) $rateRows->sum('exposure_count');
+        $totals['posts']++;
 
+        if ($row->reactions_count !== null) {
+            $totals['has_reactions'] = true;
+            $totals['reactions'] += (int) $row->reactions_count;
+        }
+
+        if ($row->comments_count !== null) {
+            $totals['has_comments'] = true;
+            $totals['comments'] += (int) $row->comments_count;
+        }
+
+        if ($row->engagement_count !== null && $row->exposure_count !== null && (int) $row->exposure_count > 0) {
+            $totals['engagement'] += (int) $row->engagement_count;
+            $totals['exposure'] += (int) $row->exposure_count;
+        }
+    }
+
+    /**
+     * @param  array<string, int|bool>  $totals
+     * @return array{posts: int, reactions: ?int, comments: ?int, engagement_rate: ?float}
+     */
+    private function finalizePublicationTotals(array $totals): array
+    {
         return [
-            'posts' => $rows->count(),
-            'reactions' => $reactions->isEmpty() ? null : (int) $reactions->sum('reactions_count'),
-            'comments' => $comments->isEmpty() ? null : (int) $comments->sum('comments_count'),
-            'engagement_rate' => $exposure === 0 ? null : round(((int) $rateRows->sum('engagement_count')) / $exposure * 100, 2),
+            'posts' => $totals['posts'],
+            'reactions' => $totals['has_reactions'] ? $totals['reactions'] : null,
+            'comments' => $totals['has_comments'] ? $totals['comments'] : null,
+            'engagement_rate' => $totals['exposure'] === 0 ? null : round($totals['engagement'] / $totals['exposure'] * 100, 2),
         ];
+    }
+
+    /** @param list<object> $rows */
+    private function retainTopPublication(array &$rows, object $row, string $metric): void
+    {
+        if ($row->{$metric} === null) {
+            return;
+        }
+
+        $rows[] = $row;
+        usort($rows, fn (object $a, object $b): int => ((int) $b->{$metric} <=> (int) $a->{$metric})
+            ?: strcmp((string) $b->provider_published_at, (string) $a->provider_published_at)
+            ?: strcmp((string) $a->id, (string) $b->id));
+
+        if (count($rows) > 5) {
+            array_pop($rows);
+        }
     }
 
     /** @return array{value: int|float|null, previous: int|float|null, change: ?float} */
@@ -251,13 +344,8 @@ class WorkspaceAnalyticsQuery
     }
 
     /** @return list<array<string, mixed>> */
-    private function top(Collection $rows, string $metric): array
+    private function top(array $rows): array
     {
-        $eligible = $rows->filter(fn (object $row): bool => $row->{$metric} !== null)->all();
-        usort($eligible, fn (object $a, object $b): int => ((int) $b->{$metric} <=> (int) $a->{$metric})
-            ?: strcmp((string) $b->provider_published_at, (string) $a->provider_published_at)
-            ?: strcmp((string) $a->id, (string) $b->id));
-
         return array_map(function (object $row): array {
             return [
                 'id' => $row->id,
@@ -276,19 +364,18 @@ class WorkspaceAnalyticsQuery
                 'reactions' => $row->reactions_count === null ? null : (int) $row->reactions_count,
                 'comments' => $row->comments_count === null ? null : (int) $row->comments_count,
             ];
-        }, array_slice($eligible, 0, 5));
+        }, $rows);
     }
 
     /** @return list<array<string, mixed>> */
-    private function performance(Collection $current, Collection $previous): array
+    private function performance(array $current, array $previous): array
     {
-        $previousByAccount = $previous->groupBy('social_account_key');
         $rows = [];
 
-        foreach ($current->groupBy('social_account_key') as $key => $items) {
-            $representative = $items->first();
-            $totals = $this->totals($items);
-            $prior = $this->totals($previousByAccount->get($key, collect()));
+        foreach ($current as $key => $account) {
+            $representative = $account['row'];
+            $totals = $this->finalizePublicationTotals($account['totals']);
+            $prior = $this->finalizePublicationTotals($previous[$key] ?? $this->emptyPublicationTotals());
             $rows[] = [
                 'social_account_key' => $key,
                 'platform' => $representative->platform,

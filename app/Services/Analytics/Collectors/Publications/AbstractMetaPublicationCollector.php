@@ -8,6 +8,7 @@ use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\SocialAccount;
+use App\Support\Analytics\RetryAfter;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -40,7 +41,7 @@ abstract class AbstractMetaPublicationCollector
         throw new AnalyticsCollectionException(
             $category,
             "publication history collection failed with HTTP {$response->status()}",
-            $this->retryAt($response),
+            RetryAfter::from($response),
         );
     }
 
@@ -78,18 +79,5 @@ abstract class AbstractMetaPublicationCollector
     protected function preview(?string $url): ?array
     {
         return filled($url) ? ['thumbnail_url' => $url] : null;
-    }
-
-    private function retryAt(Response $response): ?CarbonImmutable
-    {
-        $retryAfter = $response->header('Retry-After');
-
-        if (! is_string($retryAfter) || $retryAfter === '') {
-            return null;
-        }
-
-        return ctype_digit($retryAfter)
-            ? CarbonImmutable::now('UTC')->addSeconds((int) $retryAfter)
-            : CarbonImmutable::parse($retryAfter)->utc();
     }
 }

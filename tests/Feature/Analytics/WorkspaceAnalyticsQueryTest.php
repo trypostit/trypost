@@ -118,6 +118,8 @@ test('workspace report keeps accounts separate and aggregates only latest normal
         ->and($report['bounds'])->toBe(['min' => '2026-08-25', 'max' => '2026-09-10'])
         ->and($report['posts']['resolution'])->toBe('daily')
         ->and(count($report['posts']['buckets']))->toBe(10)
+        ->and(array_column($report['posts']['buckets'], 'total'))->toBe([0, 0, 0, 0, 1, 1, 1, 0, 0, 0])
+        ->and(array_key_exists('label', $report['posts']['buckets'][0]))->toBeFalse()
         ->and(count($report['performance']))->toBe(3)
         ->and(count($report['followers']['accounts']))->toBe(3)
         ->and($report['followers']['total'])->toBe(170)
@@ -159,6 +161,37 @@ test('a deleted social account retains its historical performance row', function
     expect($report['performance'][0]['social_account_key'])->toBe($account->id)
         ->and($report['summary']['reactions']['value'])->toBe(0)
         ->and($report['summary']['comments']['value'])->toBeNull();
+});
+
+test('workspace report keeps only the five highest-ranked posts while streaming publication rows', function () {
+    $workspace = Workspace::factory()->create();
+    $account = analyticsReportAccount($workspace, Platform::Instagram);
+    $publications = [];
+
+    foreach ([0, 7, 2, 5, 9, 3, 8] as $reactions) {
+        $publications[$reactions] = analyticsReportPublication(
+            $account,
+            '2026-09-05 10:00:00',
+            $reactions,
+            0,
+            $reactions,
+            100,
+        );
+    }
+
+    $report = app(WorkspaceAnalyticsQuery::class)->for(
+        $workspace,
+        new DateRange(CarbonImmutable::parse('2026-09-01', 'UTC'), CarbonImmutable::parse('2026-09-10', 'UTC')),
+    );
+
+    expect($report['summary']['posts']['value'])->toBe(7)
+        ->and($report['summary']['reactions']['value'])->toBe(34)
+        ->and($report['posts']['buckets'][4]['total'])->toBe(7)
+        ->and($report['performance'][0]['posts']['value'])->toBe(7)
+        ->and(array_column($report['top_posts']['reactions'], 'id'))->toBe(array_map(
+            fn (int $reactions): string => $publications[$reactions]->id,
+            [9, 8, 7, 5, 3],
+        ));
 });
 
 test('publication detail uses the latest persisted metric snapshot without provider reads', function () {

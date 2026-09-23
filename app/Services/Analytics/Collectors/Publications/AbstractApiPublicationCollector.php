@@ -6,6 +6,7 @@ namespace App\Services\Analytics\Collectors\Publications;
 
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\SocialAccount;
+use App\Support\Analytics\RetryAfter;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -73,7 +74,7 @@ abstract class AbstractApiPublicationCollector
         throw new AnalyticsCollectionException(
             $category,
             "publication history collection failed with HTTP {$response->status()}",
-            $this->retryAt($response),
+            RetryAfter::from($response),
         );
     }
 
@@ -82,18 +83,5 @@ abstract class AbstractApiPublicationCollector
         $client = Http::acceptJson()->timeout(120);
 
         return $authenticated ? $client->withToken($account->access_token) : $client;
-    }
-
-    private function retryAt(Response $response): ?CarbonImmutable
-    {
-        $retryAfter = $response->header('Retry-After');
-
-        if (! is_string($retryAfter) || $retryAfter === '') {
-            return null;
-        }
-
-        return ctype_digit($retryAfter)
-            ? CarbonImmutable::now('UTC')->addSeconds((int) $retryAfter)
-            : CarbonImmutable::parse($retryAfter)->utc();
     }
 }

@@ -9,6 +9,7 @@ use App\Enums\Analytics\MetricPrecision;
 use App\Enums\Analytics\ObservationProvenance;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\SocialAccount;
+use App\Support\Analytics\RetryAfter;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -43,7 +44,7 @@ abstract class AbstractFollowerCollector
         throw new AnalyticsCollectionException(
             $category,
             "follower collection failed with HTTP {$response->status()}",
-            $this->retryAt($response),
+            RetryAfter::from($response),
         );
     }
 
@@ -64,18 +65,5 @@ abstract class AbstractFollowerCollector
             providerObservedAt: CarbonImmutable::now('UTC'),
             collectedAt: CarbonImmutable::now('UTC'),
         );
-    }
-
-    private function retryAt(Response $response): ?CarbonImmutable
-    {
-        $retryAfter = $response->header('Retry-After');
-
-        if (! is_string($retryAfter) || $retryAfter === '') {
-            return null;
-        }
-
-        return ctype_digit($retryAfter)
-            ? CarbonImmutable::now('UTC')->addSeconds((int) $retryAfter)
-            : CarbonImmutable::parse($retryAfter)->utc();
     }
 }

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Analytics\AdvanceAnalyticsSyncState;
+use App\Actions\Analytics\ResolveAnalyticsAccountKey;
 use App\Contracts\Analytics\PublicationHistoryCollector;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
@@ -187,6 +188,29 @@ test('a backfill job persists one page then advances its cursor and dispatches c
         ->and($state->fresh()->checkpoint)->toMatchArray(['cursor' => 'next-page', 'revision' => 1])
         ->and($state->fresh()->status)->toBe(SyncStatus::Running);
     Bus::assertDispatched(BackfillAccountPublications::class, fn ($job): bool => $job->socialAccountId === $account->id && $job->syncStateId === $state->id);
+});
+
+test('a publication page resolves the account identity once for every post', function () {
+    $account = SocialAccount::factory()->instagram()->create(['is_active' => true]);
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'target_since' => CarbonImmutable::parse('2025-09-23', 'UTC'),
+    ]);
+    $page = new PublicationPage([
+        new DiscoveredPublication('native-1', CarbonImmutable::parse('2026-08-01', 'UTC'), PublicationContentType::Image),
+        new DiscoveredPublication('native-2', CarbonImmutable::parse('2026-08-02', 'UTC'), PublicationContentType::Image),
+    ], null, true);
+
+    $keys = Mockery::mock(ResolveAnalyticsAccountKey::class);
+    $keys->shouldReceive('for')->once()->with(Mockery::on(fn (SocialAccount $model): bool => $model->id === $account->id))
+        ->andReturn($account->id);
+    app()->instance(ResolveAnalyticsAccountKey::class, $keys);
+
+    $sync = app(AdvanceAnalyticsSyncState::class);
+    $capture = $sync->begin($state->id);
+    $sync->handle($state->id, $capture['revision'], $account, $page);
+
+    expect(AnalyticsPublication::query()->where('social_account_key', $account->id)->count())->toBe(2);
 });
 
 test('backfill records truthful terminal coverage and initializes discovery high water', function (PublicationPage $page, SyncStatus $expectedStatus, ?string $reason) {

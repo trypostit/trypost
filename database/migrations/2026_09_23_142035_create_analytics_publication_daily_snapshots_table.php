@@ -40,10 +40,6 @@ return new class extends Migration
                 ['analytics_publication_id', 'snapshot_date'],
                 'analytics_publication_daily_identity_unique',
             );
-            $table->index(
-                ['analytics_publication_id', 'collected_at'],
-                'analytics_publication_daily_collected_index',
-            );
         });
     }
 
