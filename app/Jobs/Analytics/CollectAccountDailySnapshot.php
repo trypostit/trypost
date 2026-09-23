@@ -11,6 +11,7 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Followers\FollowerCollectorFactory;
+use App\Support\Analytics\AnalyticsJobLog;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -78,21 +79,28 @@ class CollectAccountDailySnapshot implements ShouldQueue
                 CarbonImmutable::parse($this->observationDate, 'UTC'),
             );
             $writer->handle($account, $observation);
+            app(AnalyticsJobLog::class)->record($account, 'followers', $this->observationDate, $this->attempts(), 'actual');
         } catch (AnalyticsCollectionException $exception) {
             if (in_array($exception->category, ['authentication', 'permission'], true)) {
+                app(AnalyticsJobLog::class)->record($account, 'followers', $this->observationDate, $this->attempts(), $exception->category);
                 $account->markAsTokenExpired('Analytics permission or authentication failed.', notify: false);
 
                 return;
             }
 
             if (! in_array($exception->category, ['transient', 'rate_limited'], true) || $this->attempts() >= 6) {
+                app(AnalyticsJobLog::class)->record($account, 'followers', $this->observationDate, $this->attempts(), $exception->category);
+
                 return;
             }
 
             $nextAttempt = $this->nextAttemptAt($exception->retryAt);
 
             if ($nextAttempt) {
+                app(AnalyticsJobLog::class)->record($account, 'followers', $this->observationDate, $this->attempts(), $exception->category, $nextAttempt->toIso8601String());
                 $this->release($nextAttempt);
+            } else {
+                app(AnalyticsJobLog::class)->record($account, 'followers', $this->observationDate, $this->attempts(), 'retry_window_exhausted');
             }
         }
     }

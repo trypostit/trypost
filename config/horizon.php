@@ -270,6 +270,21 @@ return [
             'tries' => 1,
             'nice' => 0,
         ],
+
+        'analytics' => [
+            'connection' => 'redis',
+            'queue' => ['analytics'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'minProcesses' => 1,
+            'maxProcesses' => 2,
+            'timeout' => 630,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 256,
+            'tries' => 1,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [
@@ -297,6 +312,12 @@ return [
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],
+
+            'analytics' => [
+                'maxProcesses' => 4,
+                'balanceMaxShift' => 1,
+                'balanceCooldown' => 3,
+            ],
         ],
 
         'local' => [
@@ -313,6 +334,10 @@ return [
             ],
 
             'webhooks' => [
+                'maxProcesses' => 1,
+            ],
+
+            'analytics' => [
                 'maxProcesses' => 1,
             ],
         ],

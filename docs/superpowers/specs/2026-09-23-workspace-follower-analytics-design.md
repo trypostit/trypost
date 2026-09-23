@@ -1,6 +1,13 @@
 # Workspace follower and post analytics — design
 
-**Status:** requirements and persistence design consolidated for implementation planning. Nothing implemented.
+**Status:** V1 implemented on `feat/workspace-analytics-backfill`; local rollout and cross-engine/provider validation remain separate release gates.
+
+The four analytics migrations have been applied to the local PostgreSQL app
+database. The workspace dashboard, queued daily collection and native-history
+import, persisted post metrics, and individual-publication detail are in the
+branch. This is not evidence that production app permissions, provider quotas,
+or MySQL behavior have been verified: run the controlled capability checks and
+canary rollout below before dispatching a global backfill. LinkedIn remains V2.
 
 ## Objective
 

@@ -12,6 +12,7 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsSyncState;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFactory;
+use App\Support\Analytics\AnalyticsJobLog;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\RateLimited;
@@ -82,10 +83,14 @@ class DiscoverAccountPublications implements ShouldQueue
             return;
         }
 
+        $cursorLabel = $capture['cursor'] === null ? 'cursor:start' : 'cursor:'.hash('sha256', $capture['cursor']);
+        app(AnalyticsJobLog::class)->record($account, 'publication_discovery', $cursorLabel, $this->attempts(), 'started');
+
         try {
             $page = $collectors->for($account)->page($account, $capture['cursor'], $capture['cutoff']);
             $result = $sync->handle($this->syncStateId, $capture['revision'], $account, $page);
         } catch (AnalyticsCollectionException $exception) {
+            app(AnalyticsJobLog::class)->record($account, 'publication_discovery', $cursorLabel, $this->attempts(), $exception->category);
             if ($exception->category === 'invalid_cursor') {
                 if ($sync->resetInvalidCursor($this->syncStateId, $capture['revision'])) {
                     self::dispatch($account->id, $this->syncStateId)->afterCommit();
@@ -104,6 +109,8 @@ class DiscoverAccountPublications implements ShouldQueue
             return;
         }
 
+        app(AnalyticsJobLog::class)->record($account, 'publication_discovery', $cursorLabel, $this->attempts(), $result['terminal'] ? 'completed' : 'page_advanced');
+
         $metrics->handle($account, $page);
 
         if ($result['advanced'] && ! $result['terminal']) {
@@ -114,6 +121,12 @@ class DiscoverAccountPublications implements ShouldQueue
     public function failed(?Throwable $exception): void
     {
         $state = AnalyticsSyncState::query()->find($this->syncStateId);
+
+        $account = SocialAccount::query()->find($this->socialAccountId);
+
+        if ($account) {
+            app(AnalyticsJobLog::class)->record($account, 'publication_discovery', 'cursor:queue_failed', $this->attempts(), 'queue_failed');
+        }
 
         if ($state && ! $state->isTerminal()) {
             $state->update([

@@ -8,6 +8,10 @@ use App\Listeners\StripeEventListener;
 use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\AiUsageLog;
+use App\Models\AnalyticsAccountDailySnapshot;
+use App\Models\AnalyticsPublication;
+use App\Models\AnalyticsPublicationDailySnapshot;
+use App\Models\AnalyticsSyncState;
 use App\Models\Invite;
 use App\Models\Media;
 use App\Models\Notification;
@@ -97,6 +101,10 @@ class AppServiceProvider extends ServiceProvider
             'accessToken' => AccessToken::class,
             'account' => Account::class,
             'aiUsageLog' => AiUsageLog::class,
+            'analyticsAccountDailySnapshot' => AnalyticsAccountDailySnapshot::class,
+            'analyticsPublication' => AnalyticsPublication::class,
+            'analyticsPublicationDailySnapshot' => AnalyticsPublicationDailySnapshot::class,
+            'analyticsSyncState' => AnalyticsSyncState::class,
             'invite' => Invite::class,
             'media' => Media::class,
             'notification' => Notification::class,

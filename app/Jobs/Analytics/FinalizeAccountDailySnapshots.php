@@ -11,6 +11,7 @@ use App\Enums\Analytics\ObservationProvenance;
 use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Followers\FollowerCollectorFactory;
+use App\Support\Analytics\AnalyticsJobLog;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -66,6 +67,8 @@ class FinalizeAccountDailySnapshots implements ShouldQueue
                     ->first();
 
                 if (! $previous) {
+                    app(AnalyticsJobLog::class)->record($account, 'followers', $date->toDateString(), $this->attempts(), 'unavailable_no_history');
+
                     return;
                 }
 
@@ -78,6 +81,7 @@ class FinalizeAccountDailySnapshots implements ShouldQueue
                     collectedAt: CarbonImmutable::now('UTC'),
                     metrics: $previous->metrics ?? [],
                 ));
+                app(AnalyticsJobLog::class)->record($account, 'followers', $date->toDateString(), $this->attempts(), 'carried_forward');
             });
     }
 }

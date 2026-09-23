@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
 use App\Enums\UserWorkspace\Role;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\Plan;
@@ -11,6 +13,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Tests\BrowserTestCase;
 use Tests\TestCase;
@@ -33,6 +36,9 @@ pest()->extend(TestCase::class)
 pest()->extend(BrowserTestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Browser');
+
+pest()->in('Feature/Social')
+    ->beforeEach(fn () => Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]));
 
 /*
 |--------------------------------------------------------------------------

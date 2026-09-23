@@ -7,6 +7,8 @@ use App\Enums\Repurpose\ItemStatus;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\Repurpose\PollRepurposeSource;
 use App\Jobs\Repurpose\ProcessRepurposeItem;
 use App\Models\Post;
@@ -18,6 +20,11 @@ use App\Models\Workspace;
 use App\Services\Repurpose\SourceFetcherFactory;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
+
+beforeEach(function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+});
 
 function fakeInstagramMedia(array $rows): void
 {

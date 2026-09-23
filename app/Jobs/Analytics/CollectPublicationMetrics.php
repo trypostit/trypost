@@ -12,6 +12,7 @@ use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Metrics\PublicationMetricsCollectorFactory;
+use App\Support\Analytics\AnalyticsJobLog;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -84,9 +85,12 @@ class CollectPublicationMetrics implements ShouldQueue
             try {
                 $observation = $collectors->for($publication->platform)->collect($publication, $date);
                 $writer->handle($publication, $observation);
+                app(AnalyticsJobLog::class)->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), 'actual');
             } catch (AnalyticsCollectionException $exception) {
+                app(AnalyticsJobLog::class)->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), $exception->category);
                 $this->retry($publication, $date, $exception->category, $exception->retryAt);
             } catch (ConnectionException) {
+                app(AnalyticsJobLog::class)->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), 'transient');
                 $this->retry($publication, $date, 'transient', null);
             }
         }
@@ -158,6 +162,12 @@ class CollectPublicationMetrics implements ShouldQueue
         if ($next->greaterThan($date->endOfDay())
             || ($isStory && $next->greaterThanOrEqualTo($publication->provider_published_at->addDay()))) {
             return;
+        }
+
+        $account = $publication->socialAccount;
+
+        if ($account) {
+            app(AnalyticsJobLog::class)->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), 'retry_scheduled', $next->toIso8601String());
         }
 
         self::dispatch(
