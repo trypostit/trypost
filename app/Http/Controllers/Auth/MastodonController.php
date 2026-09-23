@@ -20,7 +20,7 @@ class MastodonController extends SocialController
 {
     protected SocialPlatform $platform = SocialPlatform::Mastodon;
 
-    private const SCOPES = 'read:accounts write:statuses write:media';
+    private const SCOPES = 'read:accounts read:statuses write:statuses write:media';
 
     /**
      * Show form to enter Mastodon instance URL

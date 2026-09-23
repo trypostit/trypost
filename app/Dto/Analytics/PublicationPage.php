@@ -14,5 +14,6 @@ final readonly class PublicationPage
         public ?string $nextCursor,
         public bool $providerExhausted,
         public bool $providerLimited = false,
+        public ?string $partialReason = null,
     ) {}
 }

@@ -8,6 +8,7 @@ use App\Enums\UserWorkspace\Role;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia;
 
@@ -46,6 +47,7 @@ test('user can initiate mastodon oauth flow', function () {
     expect(session('mastodon_instance'))->toBe('https://mastodon.social');
     expect(session('mastodon_client_id'))->toBe('test-client-id');
     expect(session('mastodon_client_secret'))->toBe('test-client-secret');
+    Http::assertSent(fn (ClientRequest $request): bool => $request['scopes'] === 'read:accounts read:statuses write:statuses write:media');
 });
 
 test('user cannot connect to invalid mastodon instance', function () {
@@ -75,7 +77,7 @@ test('mastodon oauth callback creates account', function () {
         'https://mastodon.social/oauth/token' => Http::response([
             'access_token' => 'test-access-token',
             'token_type' => 'Bearer',
-            'scope' => 'read:accounts write:statuses write:media',
+            'scope' => 'read:accounts read:statuses write:statuses write:media',
             'created_at' => time(),
         ], 200),
         'https://mastodon.social/api/v1/accounts/verify_credentials' => Http::response([
@@ -105,7 +107,7 @@ test('mastodon oauth callback creates account', function () {
     ]);
 
     $account = SocialAccount::where('platform', Platform::Mastodon->value)->first();
-    expect($account->scopes)->toBe(['read:accounts', 'write:statuses', 'write:media']);
+    expect($account->scopes)->toBe(['read:accounts', 'read:statuses', 'write:statuses', 'write:media']);
 });
 
 test('mastodon callback fails with invalid state', function () {
@@ -235,7 +237,7 @@ test('mastodon callback reconnects the original card', function () {
         'https://mastodon.social/oauth/token' => Http::response([
             'access_token' => 'fresh-access-token',
             'token_type' => 'Bearer',
-            'scope' => 'read:accounts write:statuses write:media',
+            'scope' => 'read:accounts read:statuses write:statuses write:media',
             'created_at' => time(),
         ], 200),
         'https://mastodon.social/api/v1/accounts/verify_credentials' => Http::response([
@@ -282,7 +284,7 @@ test('mastodon reconnect that authorizes another account says so instead of conn
         'https://mastodon.social/oauth/token' => Http::response([
             'access_token' => 'other-access-token',
             'token_type' => 'Bearer',
-            'scope' => 'read:accounts write:statuses write:media',
+            'scope' => 'read:accounts read:statuses write:statuses write:media',
             'created_at' => time(),
         ], 200),
         'https://mastodon.social/api/v1/accounts/verify_credentials' => Http::response([

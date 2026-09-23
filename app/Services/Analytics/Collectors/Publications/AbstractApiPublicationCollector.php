@@ -7,6 +7,7 @@ namespace App\Services\Analytics\Collectors\Publications;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Throwable;
@@ -14,11 +15,13 @@ use Throwable;
 abstract class AbstractApiPublicationCollector
 {
     /** @param array<string, mixed> $query */
-    protected function get(SocialAccount $account, string $url, array $query = []): Response
-    {
-        $response = Http::acceptJson()
-            ->withToken($account->access_token)
-            ->timeout(120)
+    protected function get(
+        SocialAccount $account,
+        string $url,
+        array $query = [],
+        bool $authenticated = true,
+    ): Response {
+        $response = $this->client($account, $authenticated)
             ->get($url, array_filter($query, fn (mixed $value): bool => $value !== null && $value !== ''));
 
         return $this->successfulResponse($response);
@@ -27,10 +30,8 @@ abstract class AbstractApiPublicationCollector
     /** @param array<string, mixed> $payload */
     protected function post(SocialAccount $account, string $url, array $payload): Response
     {
-        $response = Http::acceptJson()
+        $response = $this->client($account, true)
             ->asJson()
-            ->withToken($account->access_token)
-            ->timeout(120)
             ->post($url, $payload);
 
         return $this->successfulResponse($response);
@@ -53,7 +54,7 @@ abstract class AbstractApiPublicationCollector
         }
     }
 
-    private function successfulResponse(Response $response): Response
+    protected function successfulResponse(Response $response): Response
     {
         if ($response->successful()) {
             return $response;
@@ -74,6 +75,13 @@ abstract class AbstractApiPublicationCollector
             "publication history collection failed with HTTP {$response->status()}",
             $this->retryAt($response),
         );
+    }
+
+    private function client(SocialAccount $account, bool $authenticated): PendingRequest
+    {
+        $client = Http::acceptJson()->timeout(120);
+
+        return $authenticated ? $client->withToken($account->access_token) : $client;
     }
 
     private function retryAt(Response $response): ?CarbonImmutable
