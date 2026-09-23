@@ -6,6 +6,7 @@ namespace App\Queries\Analytics;
 
 use App\Dto\Analytics\DateRange;
 use App\Enums\SocialAccount\Platform;
+use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Support\Analytics\PeriodBuckets;
 use Carbon\CarbonImmutable;
@@ -23,8 +24,15 @@ class WorkspaceAnalyticsQuery
         $previous = $range->previous();
         $publications = $this->publicationReport($workspace, $previous, $range);
         $followers = $this->followerRows($workspace, $previous->end, $range);
-        $currentFollowers = $this->followerTotal($followers, $range->end);
-        $previousFollowers = $this->followerTotal($followers, $previous->end);
+        $connectedAccounts = SocialAccount::query()
+            ->where('workspace_id', $workspace->id)
+            ->connected()
+            ->active()
+            ->includedInAnalytics()
+            ->where('created_at', '<=', $range->end->endOfDay())
+            ->get(['platform', 'platform_user_id', 'created_at']);
+        $currentFollowers = $this->followerTotal($followers, $range->end, $connectedAccounts);
+        $previousFollowers = $this->followerTotal($followers, $previous->end, $connectedAccounts);
         $current = $publications['current_totals'];
         $prior = $publications['previous_totals'];
 
@@ -183,7 +191,7 @@ class WorkspaceAnalyticsQuery
                     ->orWhereBetween('snapshot_date', [$range->start->toDateString(), $range->end->toDateString()]);
             })
             ->select([
-                'social_account_key', 'social_account_id', 'platform', 'network',
+                'social_account_key', 'social_account_id', 'platform', 'network', 'platform_user_id',
                 'account_display_name', 'account_username', 'account_avatar_url',
                 'snapshot_date', 'followers_count', 'provenance', 'precision', 'collected_at',
             ])
@@ -213,10 +221,21 @@ class WorkspaceAnalyticsQuery
         ];
     }
 
-    private function followerTotal(Collection $rows, CarbonImmutable $date): ?int
+    private function followerTotal(Collection $rows, CarbonImmutable $date, Collection $connectedAccounts): ?int
     {
         $onDate = $rows->filter(fn (object $row): bool => substr((string) $row->snapshot_date, 0, 10) === $date->toDateString()
             && $row->followers_count !== null);
+
+        foreach ($connectedAccounts as $account) {
+            if (CarbonImmutable::parse($account->created_at, 'UTC')->greaterThan($date->endOfDay())) {
+                continue;
+            }
+
+            if (! $onDate->contains(fn (object $row): bool => $row->network === $account->platform->network()
+                && $row->platform_user_id === $account->platform_user_id)) {
+                return null;
+            }
+        }
 
         return $onDate->isEmpty() ? null : (int) $onDate->sum('followers_count');
     }

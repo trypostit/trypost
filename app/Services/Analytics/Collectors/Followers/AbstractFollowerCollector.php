@@ -36,8 +36,10 @@ abstract class AbstractFollowerCollector
             return MetaAnalyticsResponse::successful($response, 'follower collection');
         }
 
+        $reason = (string) data_get($response->json(), 'error.errors.0.reason', '');
         $category = match (true) {
-            $response->status() === 429 => 'rate_limited',
+            $response->status() === 429,
+            in_array($reason, ['quotaExceeded', 'rateLimitExceeded', 'userRateLimitExceeded'], true) => 'rate_limited',
             $response->status() === 401 => 'authentication',
             $response->status() === 403 => 'permission',
             $response->serverError() => 'transient',

@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Jobs\Analytics\FinalizeAccountDailySnapshots;
 use Illuminate\Console\Scheduling\Schedule;
 
 test('follower collection and fallback are scheduled at the expected UTC times', function () {
@@ -11,7 +10,9 @@ test('follower collection and fallback are scheduled at the expected UTC times',
         (string) $event->command,
         'analytics:dispatch-account-daily',
     ));
-    $finalizer = $events->first(fn ($event): bool => $event->description === FinalizeAccountDailySnapshots::class);
+    $finalizer = $events->first(fn ($event): bool => $event->description === 'analytics:finalize-account-daily');
+    $recovery = $events->first(fn ($event): bool => $event->description === 'analytics:finalize-account-daily-recovery'
+        && $event->expression === '30 0 * * *');
     $discovery = $events->first(fn ($event): bool => str_contains(
         (string) $event->command,
         'analytics:dispatch-publication-discovery',
@@ -35,6 +36,11 @@ test('follower collection and fallback are scheduled at the expected UTC times',
         ->and($finalizer->timezone)->toBe('UTC')
         ->and($finalizer->withoutOverlapping)->toBeTrue()
         ->and($finalizer->onOneServer)->toBeTrue()
+        ->and($recovery)->not->toBeNull()
+        ->and($recovery->timezone)->toBe('UTC')
+        ->and($recovery->withoutOverlapping)->toBeTrue()
+        ->and($recovery->onOneServer)->toBeTrue()
+        ->and($recovery->mutexName())->not->toBe($finalizer->mutexName())
         ->and($discovery)->not->toBeNull()
         ->and($discovery->expression)->toBe('0 3 * * *')
         ->and($discovery->timezone)->toBe('UTC')

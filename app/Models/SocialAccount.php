@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Actions\Analytics\DispatchAccountAnalytics;
 use App\Enums\Notification\Channel;
 use App\Enums\Notification\Type;
 use App\Enums\PostPlatform\ContentType;
@@ -108,7 +109,7 @@ class SocialAccount extends Model
         // Two popups finishing at once for the same network must not interleave
         // a reconnect's update-and-realign transaction with a fresh insert.
         try {
-            return Cache::lock("social_connect:{$workspace->id}:{$platform->network()}", 10)
+            $account = Cache::lock("social_connect:{$workspace->id}:{$platform->network()}", 10)
                 ->block(5, fn (): self => static::persistIdentity(
                     $workspace,
                     $platform,
@@ -116,6 +117,14 @@ class SocialAccount extends Model
                     $values,
                     $reconnect,
                 ));
+
+            if ((! $account->wasRecentlyCreated || $reconnect?->id === $account->id)
+                && ! $account->wasChanged('status')
+                && ! $account->wasChanged('is_active')) {
+                app(DispatchAccountAnalytics::class)->handle($account);
+            }
+
+            return $account;
         } catch (LockTimeoutException) {
             throw NetworkAlreadyConnectedException::connectInProgress($platform);
         }

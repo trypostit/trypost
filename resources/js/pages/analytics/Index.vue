@@ -34,20 +34,24 @@ const { start: startImportPolling, stop: stopImportPolling } = usePoll(
     { only: ['report'] },
     { autoStart: false },
 );
+const { start: startIdlePolling, stop: stopIdlePolling } = usePoll(
+    15000,
+    { only: ['report'] },
+    { autoStart: false },
+);
 
-onMounted(() => {
-    if (importRunning.value) {
-        startImportPolling();
-    }
-});
-
-watch(importRunning, (running) => {
+const syncPolling = (running: boolean): void => {
     if (running) {
+        stopIdlePolling();
         startImportPolling();
     } else {
         stopImportPolling();
+        startIdlePolling();
     }
-});
+};
+
+onMounted(() => syncPolling(importRunning.value));
+watch(importRunning, syncPolling);
 
 const accountColors = computed<Record<string, string>>(() => {
     const keys = [

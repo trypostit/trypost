@@ -6,6 +6,7 @@ use App\Dto\Analytics\DateRange;
 use App\Enums\Analytics\ObservationProvenance;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\SocialAccount\Status;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsAccountDailySnapshot;
@@ -128,6 +129,62 @@ test('workspace report keeps accounts separate and aggregates only latest normal
 
     $performanceKeys = array_column($report['performance'], 'social_account_key');
     expect($performanceKeys)->toContain($instagramA->id, $instagramB->id, $x->id);
+});
+
+test('workspace follower total stays unavailable until every connected account has an observation', function () {
+    $workspace = Workspace::factory()->create();
+    $first = analyticsReportAccount($workspace, Platform::Instagram);
+    $second = analyticsReportAccount($workspace, Platform::Instagram);
+    $first->forceFill(['created_at' => '2026-09-01 00:00:00'])->saveQuietly();
+    $second->forceFill(['created_at' => '2026-09-01 00:00:00'])->saveQuietly();
+    analyticsReportFollower($first, '2026-09-10', 100);
+    $range = new DateRange(CarbonImmutable::parse('2026-09-01', 'UTC'), CarbonImmutable::parse('2026-09-10', 'UTC'));
+
+    $incomplete = app(WorkspaceAnalyticsQuery::class)->for($workspace, $range);
+
+    expect($incomplete['summary']['followers']['value'])->toBeNull()
+        ->and($incomplete['followers']['total'])->toBeNull();
+
+    analyticsReportFollower($second, '2026-09-10', 50, ObservationProvenance::CarriedForward);
+    $complete = app(WorkspaceAnalyticsQuery::class)->for($workspace, $range);
+
+    expect($complete['summary']['followers']['value'])->toBe(150)
+        ->and($complete['followers']['total'])->toBe(150);
+});
+
+test('reauthorizing an already connected account resumes analytics without treating a token refresh as a reconnect', function () {
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+
+    SocialAccount::connectIdentity(
+        $workspace,
+        Platform::Instagram,
+        $account->platform_user_id,
+        ['access_token' => 'new-oauth-token', 'status' => Status::Connected],
+    );
+
+    Queue::assertPushed(BootstrapAccountAnalytics::class, fn ($job): bool => $job->socialAccountId === $account->id
+        && $job->refreshOnTerminal);
+    Queue::assertPushed(CollectAccountDailySnapshot::class, fn ($job): bool => $job->socialAccountId === $account->id);
+
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+    SocialAccount::connectIdentity(
+        $workspace,
+        Platform::Instagram,
+        $account->platform_user_id,
+        ['access_token' => 'another-oauth-token', 'status' => Status::Connected],
+        $account,
+    );
+
+    Queue::assertPushed(BootstrapAccountAnalytics::class, 1);
+    Queue::assertPushed(CollectAccountDailySnapshot::class, 1);
+
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+    $account->refresh()->update(['access_token' => 'automatic-token-refresh']);
+
+    Queue::assertNotPushed(BootstrapAccountAnalytics::class);
+    Queue::assertNotPushed(CollectAccountDailySnapshot::class);
 });
 
 test('range boundaries and bucket resolutions are deterministic', function (int $days, string $resolution) {

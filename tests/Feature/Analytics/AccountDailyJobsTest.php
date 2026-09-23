@@ -192,6 +192,40 @@ test('finalizer carries the latest measured total and does not invent missing hi
         ->and(AnalyticsAccountDailySnapshot::query()->where('social_account_id', $withoutHistory->id)->exists())->toBeFalse();
 });
 
+test('next-day finalizer recovers a missed date without replacing actual observations', function () {
+    $account = SocialAccount::factory()->x()->create();
+    $writer = app(WriteAccountDailySnapshot::class);
+    $writer->handle($account, new AccountDailyObservation(
+        date: CarbonImmutable::parse('2026-09-21', 'UTC'),
+        followers: 50,
+        provenance: ObservationProvenance::Actual,
+        precision: MetricPrecision::Exact,
+        providerObservedAt: CarbonImmutable::parse('2026-09-21 02:00:00', 'UTC'),
+    ));
+    $job = new FinalizeAccountDailySnapshots(daysAgo: 1);
+
+    $job->handle($writer);
+    $job->handle($writer);
+
+    $recovered = AnalyticsAccountDailySnapshot::query()->whereDate('snapshot_date', '2026-09-22')->sole();
+    expect($recovered->followers_count)->toBe(50)
+        ->and($recovered->provenance)->toBe(ObservationProvenance::CarriedForward)
+        ->and($job->tries)->toBe(3)
+        ->and($job->backoff())->toBe([300, 900]);
+
+    $writer->handle($account, new AccountDailyObservation(
+        date: CarbonImmutable::parse('2026-09-22', 'UTC'),
+        followers: 52,
+        provenance: ObservationProvenance::Actual,
+        precision: MetricPrecision::Exact,
+        providerObservedAt: CarbonImmutable::parse('2026-09-22 02:00:00', 'UTC'),
+    ));
+    $job->handle($writer);
+
+    expect($recovered->fresh()->followers_count)->toBe(52)
+        ->and($recovered->fresh()->provenance)->toBe(ObservationProvenance::Actual);
+});
+
 function followerObservation(int $followers): AccountDailyObservation
 {
     return new AccountDailyObservation(

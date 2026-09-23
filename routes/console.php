@@ -42,7 +42,14 @@ Schedule::command(DispatchPublicationMetrics::class)
     ->withoutOverlapping()
     ->onOneServer();
 Schedule::job(new FinalizeAccountDailySnapshots)
+    ->name('analytics:finalize-account-daily')
     ->dailyAt('23:30')
+    ->timezone('UTC')
+    ->withoutOverlapping()
+    ->onOneServer();
+Schedule::job(new FinalizeAccountDailySnapshots(daysAgo: 1))
+    ->name('analytics:finalize-account-daily-recovery')
+    ->dailyAt('00:30')
     ->timezone('UTC')
     ->withoutOverlapping()
     ->onOneServer();

@@ -15,16 +15,35 @@ use App\Support\Analytics\AnalyticsJobLog;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class FinalizeAccountDailySnapshots implements ShouldQueue
 {
     use Queueable;
 
+    public int $tries = 3;
+
     public int $timeout = 300;
 
-    public function __construct(public ?string $observationDate = null)
+    /** @return list<int> */
+    public function backoff(): array
+    {
+        return [300, 900];
+    }
+
+    public function __construct(public ?string $observationDate = null, public int $daysAgo = 0)
     {
         $this->onQueue('analytics');
+    }
+
+    public function failed(?Throwable $exception): void
+    {
+        Log::error('Analytics follower snapshot finalization failed', [
+            'observation_date' => $this->observationDate,
+            'days_ago' => $this->daysAgo,
+            'exception' => $exception,
+        ]);
     }
 
     public function handle(
@@ -33,7 +52,7 @@ class FinalizeAccountDailySnapshots implements ShouldQueue
     ): void {
         $collectors ??= app(FollowerCollectorFactory::class);
         $date = CarbonImmutable::parse(
-            $this->observationDate ?? CarbonImmutable::now('UTC')->toDateString(),
+            $this->observationDate ?? CarbonImmutable::now('UTC')->subDays($this->daysAgo)->toDateString(),
             'UTC',
         );
 

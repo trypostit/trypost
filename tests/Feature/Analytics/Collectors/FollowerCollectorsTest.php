@@ -95,6 +95,15 @@ test('Meta follower failures use Graph error codes even when HTTP status is 400'
     [80002, 'rate_limited'],
 ]);
 
+test('YouTube follower quota failures are rate limited rather than permission failures', function (string $reason) {
+    Http::fake(['*' => Http::response(['error' => ['errors' => [['reason' => $reason]]]], 403)]);
+    $account = SocialAccount::factory()->youtube()->create();
+
+    expect(fn () => app(FollowerCollectorFactory::class)->for(Platform::YouTube)
+        ->collect($account, CarbonImmutable::today('UTC')))
+        ->toThrow(fn (AnalyticsCollectionException $exception): bool => $exception->category === 'rate_limited');
+})->with(['quotaExceeded', 'rateLimitExceeded', 'userRateLimitExceeded']);
+
 test('missing follower fields are unavailable rather than measured zero', function () {
     Http::fake(['*' => Http::response(['data' => ['public_metrics' => []]])]);
     $account = SocialAccount::factory()->x()->create();

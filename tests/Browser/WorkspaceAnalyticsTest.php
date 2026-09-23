@@ -121,6 +121,45 @@ test('workspace dashboard explains the empty state without inventing follower to
         ->assertNoConsoleLogs();
 });
 
+test('dashboard refreshes when the first analytics snapshot arrives after opening the page', function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
+
+    $this->actingAs($user);
+    Vite::useHotFile(storage_path('framework/testing/workspace-analytics-no-hot'));
+    $page = visit(route('app.analytics'));
+    $page->assertSee('Your analytics history is being prepared');
+
+    AnalyticsAccountDailySnapshot::factory()->create([
+        'workspace_id' => $workspace->id,
+        'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'platform' => $account->platform,
+        'network' => $account->platform->network(),
+        'platform_user_id' => $account->platform_user_id,
+        'snapshot_date' => now('UTC')->toDateString(),
+        'followers_count' => 123,
+    ]);
+
+    $page->script(<<<'JS'
+        (async () => {
+            for (let attempt = 0; attempt < 200; attempt++) {
+                if (document.body.innerText.includes('Total Followers')) return;
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+        })();
+    JS);
+
+    $page->assertSee('Total Followers')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+});
+
 test('import progress disappears after the queued backfill finishes without navigating away', function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     $user = User::factory()->create();

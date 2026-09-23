@@ -4,24 +4,20 @@ declare(strict_types=1);
 
 namespace App\Observers;
 
+use App\Actions\Analytics\DispatchAccountAnalytics;
 use App\Enums\SocialAccount\Status;
-use App\Jobs\Analytics\BootstrapAccountAnalytics;
-use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\PostHog\IdentifyConnectedPlatforms;
 use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\SocialAccount;
-use App\Services\Analytics\Collectors\Followers\FollowerCollectorFactory;
 use App\Services\PostHogService;
 use App\Services\Repurpose\RepurposeAccountSync;
-use Carbon\CarbonImmutable;
-use Throwable;
 
 class SocialAccountObserver
 {
     public function created(SocialAccount $socialAccount): void
     {
         $this->syncUsageAndIdentify($socialAccount);
-        $this->dispatchInitialAnalytics($socialAccount);
+        app(DispatchAccountAnalytics::class)->handle($socialAccount);
     }
 
     public function deleted(SocialAccount $socialAccount): void
@@ -48,7 +44,7 @@ class SocialAccountObserver
         }
 
         if (($connectionChanged && $isConnected) || $becameActive) {
-            $this->dispatchInitialAnalytics($socialAccount);
+            app(DispatchAccountAnalytics::class)->handle($socialAccount);
         }
     }
 
@@ -74,32 +70,6 @@ class SocialAccountObserver
                 (string) $socialAccount->workspace->account_id,
                 (string) $socialAccount->workspace_id,
             );
-        }
-    }
-
-    private function dispatchInitialAnalytics(SocialAccount $socialAccount): void
-    {
-        try {
-            $currentAccount = SocialAccount::query()
-                ->connected()
-                ->active()
-                ->includedInAnalytics()
-                ->find($socialAccount->id);
-
-            if (! $currentAccount) {
-                return;
-            }
-
-            if (app(FollowerCollectorFactory::class)->supports($currentAccount->platform)) {
-                CollectAccountDailySnapshot::dispatch(
-                    $currentAccount->id,
-                    CarbonImmutable::now('UTC')->toDateString(),
-                )->afterCommit();
-            }
-
-            BootstrapAccountAnalytics::dispatch($currentAccount->id, true)->afterCommit();
-        } catch (Throwable $exception) {
-            report($exception);
         }
     }
 }
