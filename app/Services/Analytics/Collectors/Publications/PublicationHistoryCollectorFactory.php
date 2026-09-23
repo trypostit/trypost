@@ -17,7 +17,11 @@ class PublicationHistoryCollectorFactory
             Platform::Instagram, Platform::InstagramFacebook => app(InstagramPublicationCollector::class),
             Platform::Facebook => app(FacebookPublicationCollector::class),
             Platform::Threads => app(ThreadsPublicationCollector::class),
-            default => throw AnalyticsCollectionException::unsupported("{$account->platform->value} publication history is not handled by a Meta collector"),
+            Platform::X => app(XPublicationCollector::class),
+            Platform::Pinterest => app(PinterestPublicationCollector::class),
+            Platform::YouTube => app(YouTubePublicationCollector::class),
+            Platform::TikTok => app(TikTokPublicationCollector::class),
+            default => throw AnalyticsCollectionException::unsupported("{$account->platform->value} publication history is not supported"),
         };
     }
 }

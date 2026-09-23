@@ -49,7 +49,7 @@ class AnalyticsController extends Controller
         $this->authorize('view', $workspace);
 
         $accounts = $workspace->socialAccounts()
-            ->where('is_active', true)
+            ->active()
             ->whereIn('platform', self::SUPPORTED_PLATFORMS)
             ->get()
             ->map(fn (SocialAccount $account) => [
