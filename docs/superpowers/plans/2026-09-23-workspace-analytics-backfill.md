@@ -10,6 +10,14 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-23-workspace-follower-analytics-design.md`
 
+**Execution status (2026-09-23):** Tasks 1–15 have been implemented and
+committed on the requested branch, with their focused tests recorded in the
+execution ledger. Task 16's code, PostgreSQL/MySQL tests, browser tests, and a
+single-workspace local Threads canary are complete. Its production provider
+capability checks, production canary, and global rollout remain open; the
+unchecked implementation steps below are the original TDD recipe, not a claim
+that their code has not been written.
+
 ## Global Constraints
 
 - Execute all tasks on one branch named `feat/workspace-analytics-backfill`.
