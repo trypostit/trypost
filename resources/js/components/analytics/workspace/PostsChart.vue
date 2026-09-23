@@ -42,8 +42,11 @@ const buttons = [
         >
             {{ $t('analytics.dashboard.no_post_data') }}
         </div>
-        <template v-else>
-            <div class="min-w-0 border-t border-foreground/15 pt-5">
+        <div
+            v-else
+            class="min-w-0 rounded-xl border-2 border-foreground bg-card p-4 shadow-sm sm:p-5"
+        >
+            <div class="min-w-0">
                 <HorizontalBarChart
                     v-if="mode === 'bar'"
                     :rows="
@@ -76,6 +79,6 @@ const buttons = [
                     </span>
                 </div>
             </div>
-        </template>
+        </div>
     </AnalyticsSection>
 </template>

@@ -63,7 +63,7 @@ const changeLabel = (key: string, change: number | null): string | null => {
 <template>
     <AnalyticsSection :title="$t('analytics.dashboard.summary')">
         <div
-            class="grid grid-cols-2 gap-3 xl:grid-cols-5"
+            class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5"
             data-testid="analytics-summary"
         >
             <div
@@ -72,7 +72,7 @@ const changeLabel = (key: string, change: number | null): string | null => {
                 class="flex min-h-28 min-w-0 flex-col justify-between rounded-xl border-2 border-foreground px-4 py-4 shadow-xs"
                 :class="
                     card.key === 'followers'
-                        ? 'col-span-2 bg-violet-100 text-foreground xl:col-span-1'
+                        ? 'bg-violet-100 text-foreground sm:col-span-2 lg:col-span-1'
                         : 'bg-background text-foreground'
                 "
             >

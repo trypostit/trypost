@@ -57,7 +57,10 @@ const thumbnailFor = (post: TopPost): string | null => {
         >
             {{ $t('analytics.dashboard.no_ranked_posts') }}
         </div>
-        <div v-else class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div
+            v-else
+            class="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5"
+        >
             <article
                 v-for="(post, index) in posts"
                 :key="post.id"

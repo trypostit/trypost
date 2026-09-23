@@ -11,20 +11,15 @@ defineProps<{
 </script>
 
 <template>
-    <section
-        class="rounded-xl border-2 border-foreground bg-card p-5 shadow-sm sm:p-6"
-    >
-        <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <section class="space-y-4" data-testid="analytics-section">
+        <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="space-y-1">
-                <h2
-                    class="text-2xl leading-tight font-semibold text-foreground"
-                    style="font-family: var(--font-display)"
-                >
+                <h2 class="text-lg leading-tight font-semibold text-foreground">
                     {{ title }}
                 </h2>
                 <p
                     v-if="subtitle || range"
-                    class="text-sm text-muted-foreground"
+                    class="text-xs text-muted-foreground"
                 >
                     {{
                         range

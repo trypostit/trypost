@@ -3,6 +3,14 @@ import { IconArrowDown, IconArrowsSort } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
 import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import {
     formatNumberCompact,
     formatPercent,
     formatPercentChange,
@@ -55,79 +63,65 @@ const change = (row: PerformanceRow, key: (typeof columns)[number]): string => {
         >
             {{ $t('analytics.dashboard.no_performance') }}
         </div>
-        <div
-            v-else
-            class="overflow-x-auto rounded-xl border-2 border-foreground"
-        >
-            <table class="w-full min-w-[720px] text-left text-sm">
-                <thead
-                    class="border-b-2 border-foreground bg-muted/40 text-xs text-foreground/70"
-                >
-                    <tr>
-                        <th scope="col" class="py-3 pr-4 pl-4 font-semibold">
-                            {{ $t('analytics.dashboard.channel') }}
-                        </th>
-                        <th
-                            v-for="column in columns"
-                            :key="column"
-                            scope="col"
-                            class="px-3 py-3 text-right font-semibold"
-                            :aria-sort="
-                                sortBy === column ? 'descending' : 'none'
-                            "
-                        >
-                            <button
-                                type="button"
-                                class="inline-flex items-center gap-1.5 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                                @click="sortBy = column"
-                            >
-                                {{ $t(`analytics.dashboard.${column}`) }}
-                                <IconArrowDown
-                                    v-if="sortBy === column"
-                                    class="size-3.5 text-primary"
-                                    aria-hidden="true"
-                                />
-                                <IconArrowsSort
-                                    v-else
-                                    class="size-3.5"
-                                    aria-hidden="true"
-                                />
-                            </button>
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="row in sorted"
-                        :key="row.social_account_key"
-                        class="border-b border-foreground/15 last:border-0 hover:bg-violet-50/60"
+        <Table v-else class="min-w-[720px]">
+            <TableHeader>
+                <TableRow>
+                    <TableHead>
+                        {{ $t('analytics.dashboard.channel') }}
+                    </TableHead>
+                    <TableHead
+                        v-for="column in columns"
+                        :key="column"
+                        class="text-right"
+                        :aria-sort="sortBy === column ? 'descending' : 'none'"
                     >
-                        <th scope="row" class="py-3 pr-4 pl-4 font-normal">
-                            <AccountIdentity :account="row" />
-                        </th>
-                        <td
-                            v-for="column in columns"
-                            :key="column"
-                            class="px-3 py-3 text-right tabular-nums"
+                        <button
+                            type="button"
+                            class="inline-flex items-center gap-1.5 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                            @click="sortBy = column"
                         >
-                            <span class="font-medium">{{
-                                display(row, column)
-                            }}</span>
-                            <span
-                                v-if="row[column].change !== null"
-                                class="ml-2 inline-flex rounded-md px-1.5 py-0.5 text-xs font-medium"
-                                :class="
-                                    row[column].change! >= 0
-                                        ? 'bg-emerald-50 text-emerald-700'
-                                        : 'bg-rose-50 text-rose-700'
-                                "
-                                >{{ row[column].change! >= 0 ? '↗' : '↘' }}
-                                {{ change(row, column) }}</span
-                            >
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+                            {{ $t(`analytics.dashboard.${column}`) }}
+                            <IconArrowDown
+                                v-if="sortBy === column"
+                                class="size-3.5 text-primary"
+                                aria-hidden="true"
+                            />
+                            <IconArrowsSort
+                                v-else
+                                class="size-3.5"
+                                aria-hidden="true"
+                            />
+                        </button>
+                    </TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                <TableRow v-for="row in sorted" :key="row.social_account_key">
+                    <th scope="row" class="px-3 py-3 text-left font-normal">
+                        <AccountIdentity :account="row" />
+                    </th>
+                    <TableCell
+                        v-for="column in columns"
+                        :key="column"
+                        class="text-right tabular-nums"
+                    >
+                        <span class="font-medium">{{
+                            display(row, column)
+                        }}</span>
+                        <span
+                            v-if="row[column].change !== null"
+                            class="ml-2 inline-flex rounded-md px-1.5 py-0.5 text-xs font-medium"
+                            :class="
+                                row[column].change! >= 0
+                                    ? 'bg-emerald-50 text-emerald-700'
+                                    : 'bg-rose-50 text-rose-700'
+                            "
+                            >{{ row[column].change! >= 0 ? '↗' : '↘' }}
+                            {{ change(row, column) }}</span
+                        >
+                    </TableCell>
+                </TableRow>
+            </TableBody>
+        </Table>
     </AnalyticsSection>
 </template>

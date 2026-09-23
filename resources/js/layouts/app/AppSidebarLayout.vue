@@ -67,7 +67,7 @@ onBeforeUnmount(() => {
                         fullWidth
                             ? 'flex min-h-0 flex-1 flex-col'
                             : 'mx-auto w-full max-w-7xl',
-                        !fullWidth && !$slots['header'] && !$slots['header-actions']
+                        !$slots['header'] && !$slots['header-actions']
                             ? 'pt-14 md:pt-0'
                             : '',
                     ]"

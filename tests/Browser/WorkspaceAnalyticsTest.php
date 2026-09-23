@@ -73,7 +73,7 @@ test('workspace dashboard separates accounts and switches chart and top-post mod
     JS);
 
     $page->assertSee('Total Followers')
-        ->assertScript('Array.from(document.querySelectorAll("section.rounded-xl.border-2.border-foreground > div.mb-6 h2")).map((heading) => heading.textContent.trim()).join("|")', 'Summary|Top 5 Posts|Performance|Followers|Posts')
+        ->assertScript('Array.from(document.querySelectorAll("[data-testid=analytics-section] h2")).map((heading) => heading.textContent.trim()).join("|")', 'Summary|Top 5 Posts|Performance|Followers|Posts')
         ->assertSee('@first')
         ->assertSee('@second')
         ->assertSee('Top 5 Posts')
@@ -94,6 +94,9 @@ test('workspace dashboard separates accounts and switches chart and top-post mod
         ->hover('[data-testid="posts-unovis-chart"] path[class$="-bar"] >> nth=0')
         ->assertPresent('[data-testid="analytics-chart-tooltip"] img[src*="/images/accounts/"]')
         ->click('@top-comments')
+        ->resize(375, 812)
+        ->assertScript('document.querySelector("h1")?.getBoundingClientRect().top > document.querySelector("[data-slot=sidebar-trigger]")?.getBoundingClientRect().bottom', true)
+        ->assertScript('document.documentElement.scrollWidth <= window.innerWidth + 2', true)
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, router, usePoll } from '@inertiajs/vue3';
+import { IconChartBar } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, onMounted, ref, watch } from 'vue';
 
@@ -13,6 +14,7 @@ import {
     accountColor,
     type WorkspaceAnalyticsReport,
 } from '@/components/analytics/workspace/types';
+import EmptyState from '@/components/EmptyState.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import dayjs from '@/dayjs';
@@ -94,7 +96,7 @@ const changeRange = (range: { start: Date; end: Date }): void => {
 <template>
     <AppLayout full-width>
         <Head :title="trans('sidebar.analytics')" />
-        <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
+        <div class="flex h-full flex-1 flex-col gap-8 px-6 py-8">
             <header class="flex flex-wrap items-end justify-between gap-4">
                 <PageHeader
                     :title="$t('sidebar.analytics')"
@@ -122,17 +124,12 @@ const changeRange = (range: { start: Date; end: Date }): void => {
 
             <ImportCoverage :coverage="report.coverage" />
 
-            <div
+            <EmptyState
                 v-if="!report.bounds.min"
-                class="rounded-xl border-2 border-dashed border-foreground/35 bg-card px-6 py-16 text-center"
-            >
-                <h2 class="text-base font-semibold">
-                    {{ $t('analytics.dashboard.no_data_title') }}
-                </h2>
-                <p class="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">
-                    {{ $t('analytics.dashboard.no_data_body') }}
-                </p>
-            </div>
+                :icon="IconChartBar"
+                :title="$t('analytics.dashboard.no_data_title')"
+                :description="$t('analytics.dashboard.no_data_body')"
+            />
 
             <template v-else>
                 <SummaryCards :report="report" />

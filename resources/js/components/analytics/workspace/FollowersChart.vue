@@ -57,7 +57,10 @@ const buttons = [
         >
             {{ $t('analytics.dashboard.no_follower_data') }}
         </div>
-        <template v-else>
+        <div
+            v-else
+            class="min-w-0 rounded-xl border-2 border-foreground bg-card p-4 shadow-sm sm:p-5"
+        >
             <div class="mb-4 flex flex-wrap items-baseline gap-2">
                 <span
                     class="text-4xl font-semibold tracking-tight tabular-nums"
@@ -126,6 +129,6 @@ const buttons = [
                     </span>
                 </div>
             </div>
-        </template>
+        </div>
     </AnalyticsSection>
 </template>
