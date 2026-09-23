@@ -1,5 +1,7 @@
 import { h, render, type Component } from 'vue';
 
+import { activeLocale } from '@/language';
+
 import type { ChartConfig } from '.';
 
 export function componentToString(
@@ -16,7 +18,7 @@ export function componentToString(
             'data' in source && source.data && typeof source.data === 'object'
                 ? (source.data as Record<string, unknown>)
                 : source;
-        const key = `${x}-${JSON.stringify(data)}`;
+        const key = `${activeLocale.value}-${x}-${JSON.stringify(data)}`;
         const cached = cache.get(key);
         if (cached) return cached;
 

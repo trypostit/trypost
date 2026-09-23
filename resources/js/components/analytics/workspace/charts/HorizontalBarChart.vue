@@ -13,6 +13,7 @@ import {
     ChartTooltipContent,
     componentToString,
 } from '@/components/ui/chart';
+import { getPlatformLabel } from '@/composables/usePlatformLogo';
 
 import { accountColor, type AccountIdentityData } from '../types';
 
@@ -52,7 +53,7 @@ const formatAccount = (tick: number | Date): string => {
 
     const label = account.username
         ? `@${account.username}`
-        : account.name || account.platform;
+        : account.name || getPlatformLabel(account.platform);
     return label.length > 12 ? `${label.slice(0, 11)}…` : label;
 };
 const categoryTicks = computed(() => props.rows.map((_, index) => index));

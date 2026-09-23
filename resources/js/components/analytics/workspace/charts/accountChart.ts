@@ -1,5 +1,8 @@
 import type { ChartConfig } from '@/components/ui/chart';
-import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import {
+    getPlatformLabel,
+    getPlatformLogo,
+} from '@/composables/usePlatformLogo';
 import { formatNumberCompact } from '@/lib/utils';
 
 import { accountColor, type AccountIdentityData } from '../types';
@@ -14,7 +17,7 @@ export const accountChartConfig = (
             {
                 label: account.username
                     ? `@${account.username}`
-                    : account.name || account.platform,
+                    : account.name || getPlatformLabel(account.platform),
                 color:
                     colors[account.social_account_key] ?? accountColor(index),
                 icon: getPlatformLogo(account.platform),

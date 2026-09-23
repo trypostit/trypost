@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import { activeLocale } from '@/language';
+
 import type { ChartConfig } from '.';
 
 const props = withDefaults(
@@ -47,7 +49,7 @@ const entries = computed(() =>
                     <span class="truncate">{{ entry.item.label }}</span>
                 </span>
                 <span class="font-medium tabular-nums">{{
-                    entry.value.toLocaleString()
+                    entry.value.toLocaleString(activeLocale)
                 }}</span>
             </div>
         </div>

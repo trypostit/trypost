@@ -70,6 +70,24 @@ test('every analytics enum value has a display translation', function (string $l
     expect(Arr::has($analytics, 'detail.page_title'))->toBeTrue("{$locale} is missing the publication page title");
 })->with(Locale::values());
 
+test('analytics interface copy does not fall back to English', function (string $locale) {
+    $english = require lang_path('en/analytics.php');
+    $translated = require lang_path("{$locale}/analytics.php");
+
+    foreach ([
+        'detail.labels.watch_time_milliseconds',
+        'detail.awaiting_metrics',
+        'detail.published_on',
+        'dashboard.workspace_description',
+        'dashboard.no_follower_data',
+        'dashboard.import_in_progress',
+        'dashboard.no_data_body',
+    ] as $key) {
+        expect(Arr::get($translated, $key))
+            ->not->toBe(Arr::get($english, $key), "{$locale} still uses English for {$key}");
+    }
+})->with(array_values(array_diff(Locale::values(), [Locale::English->value])));
+
 // Key presence alone cannot catch stale wording (same key, incomplete sentence).
 // Destructive account/workspace delete copy is additionally asserted in
 // tests/Unit/Settings/DeleteAccountCopyTest.php with per-locale content markers.

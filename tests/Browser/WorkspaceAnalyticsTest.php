@@ -110,6 +110,46 @@ test('workspace dashboard explains the empty state without inventing follower to
         ->assertNoConsoleLogs();
 });
 
+test('follower chart localizes tooltip values and names accounts without usernames', function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+    $user = User::factory()->create(['locale' => Locale::PortugueseBrazil]);
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+        'platform' => Platform::InstagramFacebook,
+        'username' => null,
+        'display_name' => null,
+    ]);
+
+    AnalyticsAccountDailySnapshot::factory()->create([
+        'workspace_id' => $workspace->id,
+        'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'platform' => Platform::InstagramFacebook,
+        'network' => Platform::InstagramFacebook->network(),
+        'platform_user_id' => $account->platform_user_id,
+        'account_display_name' => null,
+        'account_username' => null,
+        'snapshot_date' => '2026-09-23',
+        'followers_count' => 1234,
+    ]);
+
+    $this->actingAs($user);
+    Vite::useHotFile(storage_path('framework/testing/workspace-analytics-no-hot'));
+    $page = visit(route('app.analytics'));
+
+    $page->assertPresent('@accounts-unovis-bar-chart')
+        ->assertSee('Instagram')
+        ->assertDontSee('instagram-facebook')
+        ->hover('[data-testid="accounts-unovis-bar-chart"] path[class$="-bar"] >> nth=0')
+        ->assertScript('document.querySelector("[data-testid=analytics-chart-tooltip]")?.innerText.includes("1.234")', true)
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+});
+
 test('workspace dashboard abbreviates large percentage changes in the user locale', function (Locale $locale, string $expectedChange) {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     $user = User::factory()->create(['locale' => $locale]);
