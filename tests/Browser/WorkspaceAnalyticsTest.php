@@ -94,6 +94,7 @@ test('workspace dashboard separates accounts and switches chart and top-post mod
         ->hover('[data-testid="posts-unovis-chart"] path[class$="-bar"] >> nth=0')
         ->assertPresent('[data-testid="analytics-chart-tooltip"] img[src*="/images/accounts/"]')
         ->click('@top-comments')
+        ->assertScript('Array.from(document.querySelectorAll("[data-slot=sidebar-inset], [data-slot=sidebar-inset] > div")).filter((element) => ["auto", "scroll"].includes(getComputedStyle(element).overflowY) && element.scrollHeight > element.clientHeight).length', 1)
         ->resize(375, 812)
         ->assertScript('document.querySelector("h1")?.getBoundingClientRect().top > document.querySelector("[data-slot=sidebar-trigger]")?.getBoundingClientRect().bottom', true)
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth + 2', true)
