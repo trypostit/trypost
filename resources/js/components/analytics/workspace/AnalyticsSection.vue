@@ -1,5 +1,13 @@
 <script setup lang="ts">
-defineProps<{ title: string; subtitle?: string }>();
+import dayjs from '@/dayjs';
+
+import type { WorkspaceAnalyticsReport } from './types';
+
+defineProps<{
+    title: string;
+    subtitle?: string;
+    range?: WorkspaceAnalyticsReport['range'];
+}>();
 </script>
 
 <template>
@@ -14,8 +22,15 @@ defineProps<{ title: string; subtitle?: string }>();
                 >
                     {{ title }}
                 </h2>
-                <p v-if="subtitle" class="text-sm text-muted-foreground">
-                    {{ subtitle }}
+                <p
+                    v-if="subtitle || range"
+                    class="text-sm text-muted-foreground"
+                >
+                    {{
+                        range
+                            ? `${dayjs(range.start).format('D MMM YYYY')} – ${dayjs(range.end).format('D MMM YYYY')}`
+                            : subtitle
+                    }}
                 </p>
             </div>
             <slot name="actions" />

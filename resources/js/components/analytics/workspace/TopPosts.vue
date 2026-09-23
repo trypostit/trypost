@@ -8,6 +8,7 @@ import { formatNumberCompact } from '@/lib/utils';
 import { show as publicationShow } from '@/routes/app/analytics/publications';
 
 import AccountIdentity from './AccountIdentity.vue';
+import AnalyticsModeToggle from './AnalyticsModeToggle.vue';
 import AnalyticsSection from './AnalyticsSection.vue';
 import type { TopPost, WorkspaceAnalyticsReport } from './types';
 
@@ -16,6 +17,18 @@ const props = defineProps<{
     range: WorkspaceAnalyticsReport['range'];
 }>();
 const metric = ref<'reactions' | 'comments'>('reactions');
+const buttons = [
+    {
+        mode: 'reactions',
+        label: 'analytics.dashboard.reactions',
+        test: 'top-reactions',
+    },
+    {
+        mode: 'comments',
+        label: 'analytics.dashboard.comments',
+        test: 'top-comments',
+    },
+] as const;
 const posts = computed<TopPost[]>(() => props.topPosts[metric.value]);
 const thumbnailFor = (post: TopPost): string | null => {
     const value = post.preview_metadata?.thumbnail_url;
@@ -28,43 +41,14 @@ const thumbnailFor = (post: TopPost): string | null => {
 <template>
     <AnalyticsSection
         :title="$t('analytics.dashboard.top_posts')"
-        :subtitle="`${dayjs(range.start).format('D MMM YYYY')} – ${dayjs(range.end).format('D MMM YYYY')}`"
+        :range="range"
     >
         <template #actions>
-            <div
-                class="inline-flex rounded-lg border-2 border-foreground bg-card p-1 shadow-xs"
-                role="group"
-                :aria-label="$t('analytics.dashboard.top_posts_sort')"
-            >
-                <button
-                    type="button"
-                    data-testid="top-reactions"
-                    class="rounded-md px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-                    :class="
-                        metric === 'reactions'
-                            ? 'bg-violet-100 text-foreground'
-                            : 'text-foreground/65 hover:bg-muted hover:text-foreground'
-                    "
-                    :aria-pressed="metric === 'reactions'"
-                    @click="metric = 'reactions'"
-                >
-                    {{ $t('analytics.dashboard.reactions') }}
-                </button>
-                <button
-                    type="button"
-                    data-testid="top-comments"
-                    class="rounded-md px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-                    :class="
-                        metric === 'comments'
-                            ? 'bg-violet-100 text-foreground'
-                            : 'text-foreground/65 hover:bg-muted hover:text-foreground'
-                    "
-                    :aria-pressed="metric === 'comments'"
-                    @click="metric = 'comments'"
-                >
-                    {{ $t('analytics.dashboard.comments') }}
-                </button>
-            </div>
+            <AnalyticsModeToggle
+                v-model="metric"
+                label="analytics.dashboard.top_posts_sort"
+                :options="buttons"
+            />
         </template>
 
         <div

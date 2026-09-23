@@ -25,28 +25,20 @@ class DispatchPublicationMetrics extends Command
             ->connected()
             ->active()
             ->includedInAnalytics()
+            ->reorder()
             ->lazyById(100)
             ->each(function (SocialAccount $account) use ($now): void {
                 $days = $account->platform === Platform::X ? 20 : 30;
-                $batchSize = match ($account->platform) {
-                    Platform::Pinterest => 100,
-                    Platform::TikTok => 20,
-                    Platform::YouTube => 50,
-                    default => 1,
-                };
 
                 AnalyticsPublication::query()
                     ->available()
                     ->where('social_account_id', $account->id)
                     ->where('provider_published_at', '>=', $now->subDays($days)->startOfDay())
-                    ->lazyById($batchSize)
-                    ->chunk($batchSize)
-                    ->each(function ($publications) use ($now): void {
-                        CollectPublicationMetrics::dispatch(
-                            $publications->pluck('id')->all(),
-                            $now->toDateString(),
-                        );
-                    });
+                    ->lazyById(100)
+                    ->each(fn (AnalyticsPublication $publication) => CollectPublicationMetrics::dispatch(
+                        $publication->id,
+                        $now->toDateString(),
+                    ));
             });
 
         return self::SUCCESS;

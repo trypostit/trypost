@@ -24,6 +24,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(fn () => Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]));
@@ -48,6 +49,38 @@ test('publication jobs are provider limited and account overlap protected', func
         ->and($backfill->middleware()[1])->toBeInstanceOf(WithoutOverlapping::class)
         ->and($discovery->middleware()[0])->toBeInstanceOf(RateLimited::class)
         ->and($discovery->middleware()[1])->toBeInstanceOf(WithoutOverlapping::class);
+});
+
+test('discovery dispatcher loads sync states once for all accounts in a page', function () {
+    $accounts = SocialAccount::factory()->instagram()->count(3)->create(['is_active' => true]);
+
+    foreach ($accounts as $account) {
+        AnalyticsSyncState::factory()->create([
+            ...AnalyticsSyncState::identityFor($account),
+            'social_account_id' => $account->id,
+            'collector' => SyncCollector::PublicationBackfill,
+            'status' => SyncStatus::Complete,
+        ]);
+        AnalyticsSyncState::factory()->create([
+            ...AnalyticsSyncState::identityFor($account),
+            'social_account_id' => $account->id,
+            'collector' => SyncCollector::PublicationDiscovery,
+        ]);
+    }
+
+    Bus::fake();
+    $stateReads = [];
+    DB::listen(function ($query) use (&$stateReads): void {
+        if (str_starts_with(strtolower(ltrim($query->sql)), 'select')
+            && str_contains($query->sql, 'analytics_sync_states')) {
+            $stateReads[] = $query->sql;
+        }
+    });
+
+    $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
+
+    Bus::assertDispatchedTimes(DiscoverAccountPublications::class, 3);
+    expect($stateReads)->toHaveCount(1);
 });
 
 test('bootstrap creates separate backfill and discovery states and dispatches the first page', function () {

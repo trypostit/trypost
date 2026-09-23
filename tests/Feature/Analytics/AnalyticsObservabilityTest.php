@@ -32,7 +32,7 @@ test('horizon supervises every analytics job on a dedicated queue', function () 
         new BackfillTryPostPublications(['destination']),
         new BootstrapAccountAnalytics('account'),
         new CollectAccountDailySnapshot('account', '2026-09-23'),
-        new CollectPublicationMetrics(['publication'], '2026-09-23'),
+        new CollectPublicationMetrics('publication', '2026-09-23'),
         new DiscoverAccountPublications('account', 'state'),
         new FinalizeAccountDailySnapshots('2026-09-23'),
         new ScheduleInstagramStoryMetrics('publication'),

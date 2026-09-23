@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\FacebookPublicationCollector;
 use App\Services\Analytics\Collectors\Publications\InstagramPublicationCollector;
@@ -16,6 +17,15 @@ use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
     Bus::fake();
+});
+
+test('Meta history classifies revoked tokens from Graph error codes on HTTP 400', function () {
+    Http::fake(['*' => Http::response(['error' => ['code' => 190]], 400)]);
+    $account = SocialAccount::factory()->instagram()->create();
+
+    expect(fn () => app(InstagramPublicationCollector::class)
+        ->page($account, null, CarbonImmutable::today('UTC')->subYear()))
+        ->toThrow(fn (AnalyticsCollectionException $exception): bool => $exception->category === 'authentication');
 });
 
 test('instagram reads one owned media page without claiming expired stories', function () {

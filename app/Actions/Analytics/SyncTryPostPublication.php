@@ -9,6 +9,7 @@ use App\Enums\Analytics\PublicationContentType;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\AnalyticsPublication;
 use App\Models\PostPlatform;
+use App\Models\SocialAccount;
 use Illuminate\Support\Str;
 
 class SyncTryPostPublication
@@ -30,18 +31,21 @@ class SyncTryPostPublication
         return $this->fromIdentity(
             TryPostPublicationIdentity::fromAccount($account, $this->accountKeys->for($account)),
             $postPlatform,
+            $account,
         );
     }
 
     public function fromIdentity(
         TryPostPublicationIdentity $identity,
         PostPlatform $postPlatform,
+        ?SocialAccount $liveAccount = null,
     ): AnalyticsPublication {
         return $this->publications->tryPost(
             $identity,
             $postPlatform,
             $this->normalizedContentType($postPlatform),
             $this->excerpt($postPlatform),
+            $liveAccount,
         );
     }
 

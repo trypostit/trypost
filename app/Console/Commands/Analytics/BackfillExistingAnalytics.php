@@ -49,6 +49,7 @@ class BackfillExistingAnalytics extends Command
             ->active()
             ->includedInAnalytics()
             ->when($workspaceId, fn ($query) => $query->where('workspace_id', $workspaceId))
+            ->reorder()
             ->lazyById(100)
             ->each(fn (SocialAccount $account) => BootstrapAccountAnalytics::dispatch($account->id));
 

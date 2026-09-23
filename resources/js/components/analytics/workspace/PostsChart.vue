@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
-import dayjs from '@/dayjs';
 import { formatNumberCompact } from '@/lib/utils';
 
 import AccountIdentity from './AccountIdentity.vue';
+import AnalyticsModeToggle from './AnalyticsModeToggle.vue';
 import AnalyticsSection from './AnalyticsSection.vue';
 import HorizontalBarChart from './charts/HorizontalBarChart.vue';
 import StackedBarChart from './charts/StackedBarChart.vue';
@@ -16,48 +16,24 @@ defineProps<{
     colors: Record<string, string>;
 }>();
 const mode = ref<'bar' | 'stacked'>('stacked');
+const buttons = [
+    { mode: 'bar', label: 'analytics.dashboard.chart_bar', test: 'posts-bar' },
+    {
+        mode: 'stacked',
+        label: 'analytics.dashboard.chart_stacked_bar',
+        test: 'posts-stacked',
+    },
+] as const;
 </script>
 
 <template>
-    <AnalyticsSection
-        :title="$t('analytics.dashboard.posts')"
-        :subtitle="`${dayjs(range.start).format('D MMM YYYY')} – ${dayjs(range.end).format('D MMM YYYY')}`"
-    >
+    <AnalyticsSection :title="$t('analytics.dashboard.posts')" :range="range">
         <template #actions>
-            <div
-                class="inline-flex rounded-lg border-2 border-foreground bg-card p-1 shadow-xs"
-                role="group"
-                :aria-label="$t('analytics.dashboard.posts_chart_mode')"
-            >
-                <button
-                    type="button"
-                    data-testid="posts-bar"
-                    class="rounded-md px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-                    :class="
-                        mode === 'bar'
-                            ? 'bg-violet-100 text-foreground'
-                            : 'text-foreground/65 hover:bg-muted hover:text-foreground'
-                    "
-                    :aria-pressed="mode === 'bar'"
-                    @click="mode = 'bar'"
-                >
-                    {{ $t('analytics.dashboard.chart_bar') }}
-                </button>
-                <button
-                    type="button"
-                    data-testid="posts-stacked"
-                    class="rounded-md px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-                    :class="
-                        mode === 'stacked'
-                            ? 'bg-violet-100 text-foreground'
-                            : 'text-foreground/65 hover:bg-muted hover:text-foreground'
-                    "
-                    :aria-pressed="mode === 'stacked'"
-                    @click="mode = 'stacked'"
-                >
-                    {{ $t('analytics.dashboard.chart_stacked_bar') }}
-                </button>
-            </div>
+            <AnalyticsModeToggle
+                v-model="mode"
+                label="analytics.dashboard.posts_chart_mode"
+                :options="buttons"
+            />
         </template>
 
         <div

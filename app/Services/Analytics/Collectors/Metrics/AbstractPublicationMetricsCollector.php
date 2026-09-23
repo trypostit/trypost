@@ -15,31 +15,10 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\AbstractApiPublicationCollector;
-use App\Support\Analytics\RetryAfter;
 use Carbon\CarbonImmutable;
-use Illuminate\Http\Client\Response;
 
 abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicationCollector
 {
-    protected function successfulResponse(Response $response): Response
-    {
-        $errorCode = (int) $response->json('error.code', 0);
-
-        if (in_array($errorCode, [4, 17, 32, 80001, 80002], true)) {
-            throw new AnalyticsCollectionException(
-                'rate_limited',
-                'Publication metrics provider rate limited the request.',
-                RetryAfter::from($response),
-            );
-        }
-
-        if (in_array($errorCode, [1, 2], true)) {
-            throw new AnalyticsCollectionException('transient', 'Publication metrics provider is temporarily unavailable.');
-        }
-
-        return parent::successfulResponse($response);
-    }
-
     protected function account(AnalyticsPublication $publication): SocialAccount
     {
         $account = $publication->socialAccount;

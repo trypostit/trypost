@@ -6,7 +6,6 @@ namespace App\Console\Commands\Analytics;
 
 use App\Enums\Analytics\SyncCollector;
 use App\Jobs\Analytics\DiscoverAccountPublications;
-use App\Models\AnalyticsSyncState;
 use App\Models\SocialAccount;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -22,17 +21,14 @@ class DispatchPublicationDiscovery extends Command
             ->connected()
             ->active()
             ->includedInAnalytics()
+            ->with('analyticsSyncStates')
+            ->reorder()
             ->lazyById(100)
             ->each(function (SocialAccount $account): void {
-                $backfillIsTerminal = AnalyticsSyncState::query()
-                    ->where('social_account_id', $account->id)
-                    ->forCollector(SyncCollector::PublicationBackfill)
-                    ->terminal()
-                    ->exists();
-                $discovery = AnalyticsSyncState::query()
-                    ->where('social_account_id', $account->id)
-                    ->forCollector(SyncCollector::PublicationDiscovery)
-                    ->first();
+                $backfillIsTerminal = $account->analyticsSyncStates
+                    ->contains(fn ($state): bool => $state->collector === SyncCollector::PublicationBackfill && $state->isTerminal());
+                $discovery = $account->analyticsSyncStates
+                    ->first(fn ($state): bool => $state->collector === SyncCollector::PublicationDiscovery);
 
                 if ($backfillIsTerminal && $discovery) {
                     DiscoverAccountPublications::dispatch($account->id, $discovery->id);

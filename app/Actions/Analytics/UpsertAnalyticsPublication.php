@@ -50,6 +50,7 @@ class UpsertAnalyticsPublication
         PostPlatform $postPlatform,
         PublicationContentType $contentType,
         ?string $excerpt,
+        ?SocialAccount $liveAccount = null,
     ): AnalyticsPublication {
         return $this->persist(
             identity: $identity,
@@ -63,6 +64,7 @@ class UpsertAnalyticsPublication
             previewMetadata: null,
             providerMetadata: null,
             postPlatformId: $postPlatform->id,
+            liveAccount: $liveAccount,
         );
     }
 

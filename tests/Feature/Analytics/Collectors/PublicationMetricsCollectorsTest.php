@@ -263,6 +263,21 @@ test('Meta rate limiting in HTTP 400 is classified as retryable', function () {
         ->toThrow(fn (AnalyticsCollectionException $exception): bool => $exception->category === 'rate_limited');
 });
 
+test('Meta publication metrics classify missing permission on HTTP 400', function () {
+    Http::fake(['*' => Http::response(['error' => ['code' => 200]], 400)]);
+    $account = SocialAccount::factory()->instagram()->create();
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::Instagram,
+        'platform_user_id' => $account->platform_user_id,
+    ]);
+
+    expect(fn () => app(InstagramPublicationMetricsCollector::class)
+        ->collect($publication, CarbonImmutable::today('UTC')))
+        ->toThrow(fn (AnalyticsCollectionException $exception): bool => $exception->category === 'permission');
+});
+
 test('TikTok resolves a TryPost publish id before collecting the public video', function () {
     $account = SocialAccount::factory()->create(['platform' => Platform::TikTok]);
     $publication = AnalyticsPublication::factory()->create([

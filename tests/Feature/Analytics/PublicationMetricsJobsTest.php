@@ -44,9 +44,10 @@ test('metric job writes a daily snapshot once and never calls providers for excl
     $excluded = metricJobPublication(Platform::LinkedIn, $date->subDay());
     Http::fake(['*' => Http::response(['favourites_count' => 0, 'replies_count' => 2])]);
 
-    $job = new CollectPublicationMetrics([$included->id, $excluded->id], $date->toDateString());
+    $job = new CollectPublicationMetrics($included->id, $date->toDateString());
     app()->call([$job, 'handle']);
     app()->call([$job, 'handle']);
+    app()->call([(new CollectPublicationMetrics($excluded->id, $date->toDateString())), 'handle']);
 
     expect(AnalyticsPublicationDailySnapshot::query()->where('analytics_publication_id', $included->id)->count())->toBe(1)
         ->and(AnalyticsPublicationDailySnapshot::query()->where('analytics_publication_id', $excluded->id)->count())->toBe(0);
@@ -61,7 +62,7 @@ test('regular collection respects the X and non-X refresh windows', function (Pl
         ? ['data' => ['public_metrics' => ['like_count' => 1]]]
         : ['favourites_count' => 1])]);
 
-    app()->call([(new CollectPublicationMetrics([$publication->id], $date->toDateString())), 'handle']);
+    app()->call([(new CollectPublicationMetrics($publication->id, $date->toDateString())), 'handle']);
 
     expect(AnalyticsPublicationDailySnapshot::query()->where('analytics_publication_id', $publication->id)->exists())
         ->toBe($eligible, "{$platform->value} at {$age} days");
@@ -77,7 +78,7 @@ test('an old imported publication receives one baseline measurement only', funct
     CarbonImmutable::setTestNow($date);
     $publication = metricJobPublication(Platform::Mastodon, $date->subDays(180));
     Http::fake(['*' => Http::response(['favourites_count' => 5])]);
-    $job = new CollectPublicationMetrics([$publication->id], $date->toDateString(), baseline: true);
+    $job = new CollectPublicationMetrics($publication->id, $date->toDateString(), baseline: true);
 
     app()->call([$job, 'handle']);
     app()->call([$job, 'handle']);
@@ -110,11 +111,11 @@ test('transient metric failure preserves the last measured value and queues only
     Http::fake(['*' => Http::response(['error' => 'rate limit'], 429)]);
     Bus::fake([CollectPublicationMetrics::class]);
 
-    app()->call([(new CollectPublicationMetrics([$publication->id], $date->toDateString())), 'handle']);
+    app()->call([(new CollectPublicationMetrics($publication->id, $date->toDateString())), 'handle']);
 
     expect(AnalyticsPublicationDailySnapshot::query()->where('analytics_publication_id', $publication->id)->count())->toBe(1)
         ->and($publication->dailySnapshots()->first()->reactions_count)->toBe(6);
-    Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationIds === [$publication->id] && $job->retryNumber === 1);
+    Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $publication->id && $job->retryNumber === 1);
 });
 
 test('a disconnected account is skipped even when its publication remains available', function () {
@@ -124,7 +125,7 @@ test('a disconnected account is skipped even when its publication remains availa
     $publication->socialAccount->update(['status' => Status::Disconnected]);
     Http::fake(['*' => Http::response(['favourites_count' => 3])]);
 
-    app()->call([(new CollectPublicationMetrics([$publication->id], $date->toDateString())), 'handle']);
+    app()->call([(new CollectPublicationMetrics($publication->id, $date->toDateString())), 'handle']);
 
     expect($publication->dailySnapshots()->exists())->toBeFalse();
     Http::assertNothingSent();
@@ -144,7 +145,7 @@ test('an old discovered post queues a baseline only until it has one snapshot', 
     Bus::assertDispatched(CollectPublicationMetrics::class, 1);
 });
 
-test('daily dispatcher batches per connected account and excludes old or v2 publications', function () {
+test('daily dispatcher rate limits each eligible publication independently and excludes old or v2 publications', function () {
     $date = CarbonImmutable::parse('2026-09-23 12:00:00', 'UTC');
     CarbonImmutable::setTestNow($date);
     $first = metricJobPublication(Platform::TikTok, $date->subDay());
@@ -167,5 +168,7 @@ test('daily dispatcher batches per connected account and excludes old or v2 publ
 
     $this->artisan('analytics:dispatch-publication-metrics')->assertExitCode(0);
 
-    Bus::assertDispatched(CollectPublicationMetrics::class, 2);
+    Bus::assertDispatched(CollectPublicationMetrics::class, 21);
+    expect(Bus::dispatched(CollectPublicationMetrics::class)
+        ->pluck('publicationId')->unique())->toHaveCount(21);
 });

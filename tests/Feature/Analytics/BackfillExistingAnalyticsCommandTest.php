@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Analytics\ResolveAnalyticsAccountKey;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Status;
 use App\Jobs\Analytics\BackfillTryPostPublications;
@@ -11,6 +12,7 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 
 test('local publication backfill persists only successful included destinations with live identities', function () {
     Bus::fake();
@@ -87,4 +89,54 @@ test('rollout reports orphaned historical destinations without inventing an iden
         ->assertSuccessful();
 
     Bus::assertNotDispatched(BackfillTryPostPublications::class);
+});
+
+test('account backfill visits every identity once across ID pages despite platform sorting', function () {
+    $workspace = Workspace::factory()->create();
+    SocialAccount::factory()->instagram()->count(100)->create([
+        'workspace_id' => $workspace->id,
+        'is_active' => true,
+        'status' => Status::Connected,
+    ]);
+    SocialAccount::factory()->facebook()->create([
+        'id' => 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+        'workspace_id' => $workspace->id,
+        'is_active' => true,
+        'status' => Status::Connected,
+    ]);
+    Bus::fake();
+
+    $this->artisan('analytics:backfill-existing', ['--workspace' => $workspace->id])->assertSuccessful();
+
+    $jobs = Bus::dispatched(BootstrapAccountAnalytics::class);
+    expect($jobs)->toHaveCount(101)
+        ->and($jobs->pluck('socialAccountId')->unique())->toHaveCount(101);
+});
+
+test('local backfill resolves one account identity per batch without repeated account reads', function () {
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
+    $destinations = collect(range(1, 3))->map(function () use ($account, $workspace): PostPlatform {
+        $destination = PostPlatform::factory()->instagram()->published()->create([
+            'social_account_id' => $account->id,
+            'platform' => $account->platform,
+        ]);
+        $destination->post->update(['workspace_id' => $workspace->id]);
+
+        return $destination;
+    });
+    $accountKeys = Mockery::mock(ResolveAnalyticsAccountKey::class);
+    $accountKeys->shouldReceive('for')->once()->andReturn($account->id);
+    app()->instance(ResolveAnalyticsAccountKey::class, $accountKeys);
+    $accountReads = [];
+    DB::listen(function ($query) use (&$accountReads): void {
+        if (str_contains($query->sql, 'social_accounts')) {
+            $accountReads[] = $query->sql;
+        }
+    });
+
+    app()->call([new BackfillTryPostPublications($destinations->pluck('id')->all()), 'handle']);
+
+    expect($accountReads)->toHaveCount(1)
+        ->and(AnalyticsPublication::query()->whereIn('post_platform_id', $destinations->pluck('id'))->count())->toBe(3);
 });

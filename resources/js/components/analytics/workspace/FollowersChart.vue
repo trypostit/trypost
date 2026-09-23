@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
-import dayjs from '@/dayjs';
 import { formatNumberCompact } from '@/lib/utils';
 
 import AccountIdentity from './AccountIdentity.vue';
+import AnalyticsModeToggle from './AnalyticsModeToggle.vue';
 import AnalyticsSection from './AnalyticsSection.vue';
 import HorizontalBarChart from './charts/HorizontalBarChart.vue';
 import LineChart from './charts/LineChart.vue';
@@ -41,31 +41,14 @@ const buttons = [
 <template>
     <AnalyticsSection
         :title="$t('analytics.dashboard.followers')"
-        :subtitle="`${dayjs(range.start).format('D MMM YYYY')} – ${dayjs(range.end).format('D MMM YYYY')}`"
+        :range="range"
     >
         <template #actions>
-            <div
-                class="inline-flex rounded-lg border-2 border-foreground bg-card p-1 shadow-xs"
-                role="group"
-                :aria-label="$t('analytics.dashboard.followers_chart_mode')"
-            >
-                <button
-                    v-for="button in buttons"
-                    :key="button.mode"
-                    type="button"
-                    :data-testid="button.test"
-                    class="rounded-md px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-                    :class="
-                        mode === button.mode
-                            ? 'bg-violet-100 text-foreground'
-                            : 'text-foreground/65 hover:bg-muted hover:text-foreground'
-                    "
-                    :aria-pressed="mode === button.mode"
-                    @click="mode = button.mode"
-                >
-                    {{ $t(button.label) }}
-                </button>
-            </div>
+            <AnalyticsModeToggle
+                v-model="mode"
+                label="analytics.dashboard.followers_chart_mode"
+                :options="buttons"
+            />
         </template>
 
         <div

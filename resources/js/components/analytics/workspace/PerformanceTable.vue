@@ -2,7 +2,6 @@
 import { IconArrowDown, IconArrowsSort } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
-import dayjs from '@/dayjs';
 import { formatNumberCompact, formatPercentChange } from '@/lib/utils';
 
 import AccountIdentity from './AccountIdentity.vue';
@@ -44,7 +43,7 @@ const change = (row: PerformanceRow, key: (typeof columns)[number]): string => {
 <template>
     <AnalyticsSection
         :title="$t('analytics.dashboard.performance')"
-        :subtitle="`${dayjs(range.start).format('D MMM YYYY')} – ${dayjs(range.end).format('D MMM YYYY')}`"
+        :range="range"
     >
         <div
             v-if="rows.length === 0"

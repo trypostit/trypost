@@ -8,10 +8,64 @@ use App\Enums\PostPlatform\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
+use App\Models\Post;
 use App\Models\PostPlatform;
+use Illuminate\Support\Collection;
 
 class PublicationAnalyticsQuery
 {
+    /**
+     * @param  Collection<int, PostPlatform>  $destinations
+     * @return array<string, array<string, mixed>>
+     */
+    public function latestForPost(Post $post, Collection $destinations): array
+    {
+        $eligible = $destinations->filter(fn (PostPlatform $destination): bool => $this->isCollectable($destination));
+
+        $publications = $eligible->isEmpty() ? collect() : AnalyticsPublication::query()
+            ->available()
+            ->where('workspace_id', $post->workspace_id)
+            ->whereIn('post_platform_id', $eligible->pluck('id'))
+            ->whereIn('platform', Platform::analyticsValues())
+            ->get()
+            ->keyBy('post_platform_id');
+
+        $snapshots = collect();
+
+        if ($publications->isNotEmpty()) {
+            $snapshotTable = (new AnalyticsPublicationDailySnapshot)->getTable();
+            $latestDates = AnalyticsPublicationDailySnapshot::query()
+                ->whereIn('analytics_publication_id', $publications->pluck('id'))
+                ->select('analytics_publication_id')
+                ->selectRaw('MAX(snapshot_date) as latest_date')
+                ->groupBy('analytics_publication_id');
+
+            $snapshots = AnalyticsPublicationDailySnapshot::query()
+                ->joinSub($latestDates, 'latest', fn ($join) => $join
+                    ->on("{$snapshotTable}.analytics_publication_id", '=', 'latest.analytics_publication_id')
+                    ->on("{$snapshotTable}.snapshot_date", '=', 'latest.latest_date'))
+                ->select("{$snapshotTable}.*")
+                ->get()
+                ->keyBy('analytics_publication_id');
+        }
+
+        return $destinations->mapWithKeys(function (PostPlatform $destination) use ($publications, $snapshots): array {
+            if ($destination->status !== Status::Published || ! $destination->platform_post_id) {
+                return [$destination->id => $this->unavailable('not_published')];
+            }
+
+            if (! in_array($destination->platform->value, Platform::analyticsValues(), true)) {
+                return [$destination->id => $this->unavailable('platform_not_supported')];
+            }
+
+            $publication = $publications->get($destination->id);
+
+            return [$destination->id => $publication
+                ? $this->detail($publication, $snapshots->get($publication->id))
+                : $this->unavailable('not_collected')];
+        })->all();
+    }
+
     /** @return array<string, mixed> */
     public function latestForPostPlatform(PostPlatform $postPlatform): array
     {
@@ -42,6 +96,19 @@ class PublicationAnalyticsQuery
 
         $snapshot = $publication->dailySnapshots()->orderByDesc('snapshot_date')->first();
 
+        return $this->detail($publication, $snapshot);
+    }
+
+    private function isCollectable(PostPlatform $destination): bool
+    {
+        return $destination->status === Status::Published
+            && filled($destination->platform_post_id)
+            && in_array($destination->platform->value, Platform::analyticsValues(), true);
+    }
+
+    /** @return array<string, mixed> */
+    private function detail(AnalyticsPublication $publication, ?AnalyticsPublicationDailySnapshot $snapshot): array
+    {
         return [
             'available' => true,
             'reason' => null,

@@ -81,6 +81,20 @@ test('included platforms collect follower totals from their canonical read paths
         && $request['fields'] === 'follower_count');
 });
 
+test('Meta follower failures use Graph error codes even when HTTP status is 400', function (int $code, string $category) {
+    Http::fake(['*' => Http::response(['error' => ['code' => $code]], 400)]);
+    $account = SocialAccount::factory()->instagram()->create();
+
+    expect(fn () => app(FollowerCollectorFactory::class)->for(Platform::Instagram)
+        ->collect($account, CarbonImmutable::today('UTC')))
+        ->toThrow(fn (AnalyticsCollectionException $exception): bool => $exception->category === $category);
+})->with([
+    [190, 'authentication'],
+    [10, 'permission'],
+    [200, 'permission'],
+    [80002, 'rate_limited'],
+]);
+
 test('missing follower fields are unavailable rather than measured zero', function () {
     Http::fake(['*' => Http::response(['data' => ['public_metrics' => []]])]);
     $account = SocialAccount::factory()->x()->create();

@@ -58,7 +58,7 @@ class QueuePublicationMetricsForPage
         }
 
         CollectPublicationMetrics::dispatch(
-            [$publication->id],
+            $publication->id,
             $now->toDateString(),
             ! $recent,
         )->afterCommit();

@@ -50,7 +50,7 @@ class ScheduleInstagramStoryMetrics implements ShouldQueue
             }
 
             CollectPublicationMetrics::dispatch(
-                [$publication->id],
+                $publication->id,
                 $checkpoint->toDateString(),
                 false,
                 true,

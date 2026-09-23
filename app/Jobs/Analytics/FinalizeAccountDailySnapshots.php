@@ -40,6 +40,7 @@ class FinalizeAccountDailySnapshots implements ShouldQueue
         SocialAccount::query()
             ->connected()
             ->active()
+            ->reorder()
             ->lazyById(200)
             ->each(function (SocialAccount $account) use ($collectors, $date, $writer): void {
                 if (! $collectors->supports($account->platform)) {

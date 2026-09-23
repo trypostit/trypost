@@ -28,9 +28,8 @@ class CollectPublicationMetrics implements ShouldQueue
 
     public int $timeout = 180;
 
-    /** @param list<string> $publicationIds */
     public function __construct(
-        public array $publicationIds,
+        public string $publicationId,
         public string $observationDate,
         public bool $baseline = false,
         public bool $refreshSameDay = false,
@@ -44,7 +43,7 @@ class CollectPublicationMetrics implements ShouldQueue
     {
         return [
             new RateLimited('analytics-publications'),
-            (new WithoutOverlapping('analytics-metrics:'.md5(implode(',', $this->publicationIds)).":{$this->observationDate}"))
+            (new WithoutOverlapping("analytics-metrics:{$this->publicationId}:{$this->observationDate}"))
                 ->releaseAfter(300)
                 ->expireAfter($this->timeout + 30),
         ];
@@ -52,7 +51,7 @@ class CollectPublicationMetrics implements ShouldQueue
 
     public function providerRateLimitKey(): string
     {
-        $publication = AnalyticsPublication::query()->find($this->publicationIds[0] ?? '');
+        $publication = AnalyticsPublication::query()->find($this->publicationId);
 
         return $publication?->platform->network() ?? 'missing';
     }
@@ -68,31 +67,29 @@ class CollectPublicationMetrics implements ShouldQueue
     ): void {
         $date = CarbonImmutable::parse($this->observationDate, 'UTC');
 
-        foreach ($this->publicationIds as $publicationId) {
-            $publication = AnalyticsPublication::query()->available()->find($publicationId);
-            $account = $publication ? SocialAccount::query()
-                ->connected()
-                ->active()
-                ->includedInAnalytics()
-                ->find($publication->social_account_id) : null;
+        $publication = AnalyticsPublication::query()->available()->find($this->publicationId);
+        $account = $publication ? SocialAccount::query()
+            ->connected()
+            ->active()
+            ->includedInAnalytics()
+            ->find($publication->social_account_id) : null;
 
-            if (! $publication || ! $account || ! $this->eligible($publication, $account, $date)) {
-                continue;
-            }
+        if (! $publication || ! $account || ! $this->eligible($publication, $account, $date)) {
+            return;
+        }
 
-            $publication->setRelation('socialAccount', $account);
+        $publication->setRelation('socialAccount', $account);
 
-            try {
-                $observation = $collectors->for($publication->platform)->collect($publication, $date);
-                $writer->handle($publication, $observation);
-                app(AnalyticsJobLog::class)->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), 'actual');
-            } catch (AnalyticsCollectionException $exception) {
-                app(AnalyticsJobLog::class)->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), $exception->category);
-                $this->retry($publication, $date, $exception->category, $exception->retryAt);
-            } catch (ConnectionException) {
-                app(AnalyticsJobLog::class)->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), 'transient');
-                $this->retry($publication, $date, 'transient', null);
-            }
+        try {
+            $observation = $collectors->for($publication->platform)->collect($publication, $date);
+            $writer->handle($publication, $observation);
+            app(AnalyticsJobLog::class)->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), 'actual');
+        } catch (AnalyticsCollectionException $exception) {
+            app(AnalyticsJobLog::class)->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), $exception->category);
+            $this->retry($publication, $date, $exception->category, $exception->retryAt);
+        } catch (ConnectionException) {
+            app(AnalyticsJobLog::class)->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), 'transient');
+            $this->retry($publication, $date, 'transient', null);
         }
     }
 
@@ -171,7 +168,7 @@ class CollectPublicationMetrics implements ShouldQueue
         }
 
         self::dispatch(
-            [$publication->id],
+            $publication->id,
             $this->observationDate,
             $this->baseline,
             $this->refreshSameDay,

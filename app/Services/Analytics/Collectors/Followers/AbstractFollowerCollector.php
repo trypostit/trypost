@@ -9,6 +9,7 @@ use App\Enums\Analytics\MetricPrecision;
 use App\Enums\Analytics\ObservationProvenance;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\SocialAccount;
+use App\Support\Analytics\MetaAnalyticsResponse;
 use App\Support\Analytics\RetryAfter;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
@@ -31,13 +32,15 @@ abstract class AbstractFollowerCollector
             return $response;
         }
 
-        $code = (int) data_get($response->json(), 'error.code', 0);
-        $isMetaRateLimit = $meta && in_array($code, [4, 17, 32, 80001, 80002], true);
+        if ($meta) {
+            return MetaAnalyticsResponse::successful($response, 'follower collection');
+        }
+
         $category = match (true) {
-            $response->status() === 429, $isMetaRateLimit => 'rate_limited',
+            $response->status() === 429 => 'rate_limited',
             $response->status() === 401 => 'authentication',
             $response->status() === 403 => 'permission',
-            $response->serverError(), $meta && in_array($code, [1, 2], true) => 'transient',
+            $response->serverError() => 'transient',
             default => 'malformed',
         };
 
