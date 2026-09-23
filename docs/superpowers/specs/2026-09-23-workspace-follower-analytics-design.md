@@ -308,7 +308,7 @@ labels are presentation only and are never stored as metric identity. An
 unsupported metric is omitted or marked unavailable; an API error must not
 replace the most recent successful value with zero.
 
-### Video metric catalog
+### Content-specific metric catalog
 
 The initial content-type analysis establishes the following catalog. It is the
 minimum that the platform collectors should request and persist when supported
@@ -321,6 +321,8 @@ by the connected account, login type, API version, and media type.
 | Instagram Story | Views, reach, replies, shares, reposts, follows, profile visits/activity, link clicks, and navigation breakdown | The current collector only requests views, reach, and replies |
 | YouTube Short | Views, engaged views, watch time, average view duration, average percentage viewed, likes, comments, shares, subscribers gained, and subscribers lost | The current collector already has views, watch time, average duration, likes, comments, and shares, but omits engaged views, average percentage viewed, and subscriber change |
 | TikTok video | Views, likes, comments, and shares | The current Display API collector already exposes the complete performance set available to this integration; video duration is metadata, not watch time |
+| Pinterest image Pin | Impressions, saves, comments, reactions, engagements, engagement rate, save rate, Pin clicks/rate, outbound clicks/rate, profile visits, follows, total audience, and engaged audience | The current collector has impressions, saves, Pin clicks, and outbound clicks, but omits the remaining native and lifetime metrics |
+| Pinterest video Pin | Every applicable image-Pin metric plus video views, average video play time, 10-second plays, plays to 95%, and total play time | The current collector only adds basic video views and omits the richer video-retention metrics |
 
 Instagram Reel total watch time is displayed in minutes and average watch time
 in seconds, matching the reference UI, while persistence retains the canonical
@@ -357,6 +359,21 @@ rather than being inferred from view count and video duration.
 YouTube's per-video report already supports the retention metrics needed for
 Shorts. The collector expands its current query rather than introducing a
 second Shorts-specific API path.
+
+Pinterest uses two complementary sources. The Pin Analytics endpoint provides
+date-range metrics, including impressions, saves, engagement, clicks, rates,
+and video performance. `GET /pins/{pin_id}?pin_metrics=true` provides rolling
+and lifetime Pin metrics, including total comments and total reactions. The
+collector combines both into one idempotent observation while retaining each
+metric's time basis (`range`, `rolling_90_day`, or `lifetime`). A lifetime value
+must never be presented as though it occurred entirely inside the selected
+dashboard range.
+
+Pinterest's native engagement rate remains the provider-defined engagements
+divided by impressions. Saves, comments, and reactions are displayed as their
+own metrics; comments and reactions are not silently added to the provider's
+engagement numerator unless Pinterest includes them in the returned native
+definition. This keeps the reference labels without changing their meaning.
 
 Instagram Stories require an exception to the normal 30-day refresh window:
 their media insights are generally available for only 24 hours. A queued
@@ -720,6 +737,10 @@ Post-performance collector tests additionally cover:
 - YouTube Short watch time, average duration, average percentage viewed, and
   subscriber-change mapping;
 - TikTok never fabricating unsupported retention metrics;
+- Pinterest saves, comments, reactions, impressions, and native engagement
+  rate retain their distinct metric identities and time bases;
+- Pinterest video Pins map average play time, 10-second plays, 95% plays, and
+  total play time with explicit units;
 - unsupported, missing, malformed, and measured-zero distinctions.
 
 ### Queue and scheduling tests
@@ -867,6 +888,13 @@ design is approved and implemented.
 - TikTok Display API video query and Video Object fields:
   <https://developers.tiktok.com/docs/en/tiktok-api-v2-video-query> and
   <https://developers.tiktok.com/docs/en/tiktok-api-v2-video-object>
+- Pinterest organic reporting and metric definitions:
+  <https://developers.pinterest.com/docs/analytics-and-reports/organic-reporting/>
+  and
+  <https://developers.pinterest.com/docs/analytics-and-reports/metrics-glossary/>
+- Pinterest's official generated API client, including `pin_metrics` lifetime
+  comments/reactions and Pin Analytics parameters:
+  <https://github.com/pinterest/pinterest-python-generated-api-client/blob/main/docs/PinsApi.md>
 - Buffer Insights metric presentation and per-post behavior:
   <https://support.buffer.com/en-us/articles/using-insights-in-buffer-x4gLauQU5a>
 
