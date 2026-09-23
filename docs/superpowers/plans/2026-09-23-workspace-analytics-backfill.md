@@ -1330,6 +1330,12 @@ X timeline-cap safeguard (2026-09-23): regression tests now cover the
 stale-worker fencing, and count reset on invalid cursor or terminal restart.
 No live X request was made; billed-read cost remains a release gate.
 
+Account reactivation audit (2026-09-23): re-enabling an inactive connected
+account now dispatches its initial follower and publication bootstrap jobs.
+Previously the observer only reacted to a status change, so a paused account
+could stay without a backfill until an operator ran the rollout command.
+Disconnected or excluded accounts still do not start analytics collection.
+
 Before dispatching the production rollout:
 
 1. confirm the production TikTok app has `video.list` and `user.info.stats`;

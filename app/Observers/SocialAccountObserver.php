@@ -38,19 +38,17 @@ class SocialAccountObserver
     {
         app(RepurposeAccountSync::class)->accountChanged($socialAccount);
 
-        if (! $socialAccount->wasChanged('status')) {
-            return;
-        }
-
         $wasConnected = $socialAccount->getRawOriginal('status') === Status::Connected->value;
         $isConnected = $socialAccount->status === Status::Connected;
+        $connectionChanged = $socialAccount->wasChanged('status') && $wasConnected !== $isConnected;
+        $becameActive = $socialAccount->wasChanged('is_active') && $socialAccount->is_active;
 
-        if ($wasConnected !== $isConnected) {
+        if ($connectionChanged) {
             $this->identifyConnectedPlatforms($socialAccount);
+        }
 
-            if ($isConnected) {
-                $this->dispatchInitialAnalytics($socialAccount);
-            }
+        if (($connectionChanged && $isConnected) || $becameActive) {
+            $this->dispatchInitialAnalytics($socialAccount);
         }
     }
 
