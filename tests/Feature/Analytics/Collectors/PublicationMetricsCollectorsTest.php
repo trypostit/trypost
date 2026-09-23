@@ -140,6 +140,46 @@ test('pinterest preserves its rolling window basis', function () {
         ->and($metric->value)->toBe(0);
 });
 
+test('youtube falls back to current video statistics before Analytics has processed a new video', function () {
+    $analyticsApi = rtrim((string) config('trypost.platforms.youtube.analytics_api'), '/');
+    $dataApi = rtrim((string) config('trypost.platforms.youtube.data_api'), '/');
+    Http::fake([
+        "{$analyticsApi}/reports*" => Http::response([
+            'columnHeaders' => [['name' => 'views'], ['name' => 'likes']],
+            'rows' => [],
+        ]),
+        "{$dataApi}/videos*" => Http::response(['items' => [[
+            'id' => 'video-new',
+            'statistics' => ['viewCount' => '231', 'likeCount' => '0', 'commentCount' => '4'],
+        ]]]),
+    ]);
+    $account = SocialAccount::factory()->create(['platform' => Platform::YouTube]);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::YouTube,
+        'platform_user_id' => $account->platform_user_id,
+        'provider_post_id' => 'video-new',
+    ]);
+
+    $observation = app(YouTubePublicationMetricsCollector::class)
+        ->collect($publication, CarbonImmutable::parse('2026-09-23', 'UTC'));
+    $metrics = collect($observation->metrics)->keyBy(fn ($metric) => $metric->key->value);
+
+    expect($metrics->map(fn ($metric) => $metric->value)->all())->toBe([
+        'views' => 231,
+        'reactions' => 0,
+        'comments' => 4,
+        'engagements' => 4,
+    ])
+        ->and($metrics[MetricKey::Views->value]->timeBasis)->toBe(MetricTimeBasis::Lifetime);
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/reports')
+        && $request['filters'] === 'video==video-new');
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/videos')
+        && $request['part'] === 'statistics'
+        && $request['id'] === 'video-new');
+});
+
 test('a rate-limited metric request throws a retryable collection exception', function () {
     Http::fake(['*' => Http::response(['error' => 'rate limited'], 429, ['Retry-After' => '120'])]);
     $account = SocialAccount::factory()->create(['platform' => Platform::Mastodon]);

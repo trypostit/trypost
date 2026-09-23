@@ -10,6 +10,7 @@ use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\MetricUnit;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
+use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 
 class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsCollector implements PublicationMetricsCollector
@@ -34,6 +35,10 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
             throw AnalyticsCollectionException::malformed('YouTube Analytics response lacks column headers.');
         }
 
+        if ($row === null) {
+            return $this->currentVideoStatistics($account, $publication, $date);
+        }
+
         $values = [];
 
         if (is_array($row)) {
@@ -55,6 +60,33 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
             $this->count(MetricKey::Shares, $values, 'shares'),
             $this->count(MetricKey::SubscribersGained, $values, 'subscribersGained'),
             $this->count(MetricKey::SubscribersLost, $values, 'subscribersLost'),
+        ])));
+    }
+
+    private function currentVideoStatistics(
+        SocialAccount $account,
+        AnalyticsPublication $publication,
+        CarbonImmutable $date,
+    ): PublicationMetricObservation {
+        $response = $this->get($account,
+            rtrim((string) config('trypost.platforms.youtube.data_api'), '/').'/videos',
+            [
+                'part' => 'statistics',
+                'id' => $publication->provider_post_id,
+            ],
+        );
+        $video = $response->json('items.0');
+
+        if (! is_array($video) || data_get($video, 'id') !== $publication->provider_post_id) {
+            throw AnalyticsCollectionException::malformed('YouTube video statistics response does not match the publication.');
+        }
+
+        $statistics = (array) data_get($video, 'statistics', []);
+
+        return $this->observation($date, $this->withEngagements($this->present([
+            $this->count(MetricKey::Views, $statistics, 'viewCount'),
+            $this->count(MetricKey::Reactions, $statistics, 'likeCount'),
+            $this->count(MetricKey::Comments, $statistics, 'commentCount'),
         ])));
     }
 }

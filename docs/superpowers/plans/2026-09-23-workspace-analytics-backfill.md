@@ -1309,6 +1309,21 @@ cover an old Pin before a newer Pin and a Pin exactly on the cutoff with a
 remaining bookmark. The 137-test PostgreSQL analytics suite passes; live
 Pinterest permissions, volume, and bookmark behavior remain rollout checks.
 
+Instagram/YouTube local canary (2026-09-23): both accounts in workspace
+`01a0caa6-1121-732e-9197-4ab7bbc8b5d9` completed the publication backfill.
+Instagram has 50 publications, 50 metric snapshots, and one follower snapshot.
+YouTube imported 38 publications, but its two newest videos initially lacked
+metric snapshots because the Analytics API returned no processed rows. The
+official [YouTube data model](https://developers.google.com/youtube/analytics/data_model)
+documents a typical 48–72-hour delay and recommends Data API `videos.list`
+for current counts. A fallback now records views, likes, and comments from
+that endpoint when the Analytics report is empty; two isolated queued canary
+jobs produced the missing snapshots, bringing YouTube to 38/38. The isolated
+queue emptied. Re-running `analytics:backfill-existing` only for this workspace
+reported `historical_identity_unrecoverable=0` and left publication/snapshot
+counts unchanged. These are local app credentials and do not prove other
+platforms or production quotas.
+
 Before dispatching the production rollout:
 
 1. confirm the production TikTok app has `video.list` and `user.info.stats`;

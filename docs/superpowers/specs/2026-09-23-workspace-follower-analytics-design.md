@@ -565,6 +565,13 @@ YouTube's per-video report already supports the retention metrics needed for
 Shorts. The collector expands its current query rather than introducing a
 second Shorts-specific API path.
 
+YouTube Analytics data typically lags by 48–72 hours. When a video report has
+headers but no processed row, the collector uses `videos.list?part=statistics`
+for current lifetime views, likes, and comments. It stores only fields the Data
+API actually returns; missing values are not zero. Later scheduled collections
+can add watch time, retention, shares, and subscriber metrics once the Analytics
+report is available.
+
 On the individual YouTube post, the cross-network `Reactions` label maps to the
 native `likes` metric, `Comments` maps to `comments`, and `Video Views` maps to
 `views`. The YouTube Analytics API does not return a native per-video engagement
@@ -1392,6 +1399,10 @@ design is approved and implemented.
 - YouTube Analytics metrics and channel report combinations:
   <https://developers.google.com/youtube/analytics/metrics> and
   <https://developers.google.com/youtube/analytics/channel_reports>
+- YouTube Analytics data freshness and Data API video statistics:
+  <https://developers.google.com/youtube/analytics/data_model>,
+  <https://developers.google.com/youtube/v3/docs/videos/list>, and
+  <https://developers.google.com/youtube/v3/docs/videos#statistics>
 - TikTok Display API video list/query and Video Object fields:
   <https://developers.tiktok.com/docs/en/tiktok-api-v2-video-list>,
   <https://developers.tiktok.com/docs/en/tiktok-api-v2-video-query>, and
