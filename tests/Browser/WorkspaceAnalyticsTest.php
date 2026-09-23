@@ -73,6 +73,7 @@ test('workspace dashboard separates accounts and switches chart and top-post mod
     JS);
 
     $page->assertSee('Total Followers')
+        ->assertScript('Array.from(document.querySelectorAll("section.rounded-xl.border-2.border-foreground > div.mb-6 h2")).map((heading) => heading.textContent.trim()).join("|")', 'Summary|Top 5 Posts|Performance|Followers|Posts')
         ->assertSee('@first')
         ->assertSee('@second')
         ->assertSee('Top 5 Posts')

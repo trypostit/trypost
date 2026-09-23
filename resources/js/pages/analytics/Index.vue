@@ -136,6 +136,11 @@ const changeRange = (range: { start: Date; end: Date }): void => {
 
             <template v-else>
                 <SummaryCards :report="report" />
+                <TopPosts :top-posts="report.top_posts" :range="report.range" />
+                <PerformanceTable
+                    :rows="report.performance"
+                    :range="report.range"
+                />
                 <FollowersChart
                     :followers="report.followers"
                     :range="report.range"
@@ -145,11 +150,6 @@ const changeRange = (range: { start: Date; end: Date }): void => {
                     :posts="report.posts"
                     :range="report.range"
                     :colors="accountColors"
-                />
-                <TopPosts :top-posts="report.top_posts" :range="report.range" />
-                <PerformanceTable
-                    :rows="report.performance"
-                    :range="report.range"
                 />
             </template>
         </div>
