@@ -23,6 +23,9 @@ import dayjs from "@/dayjs"
 const props = defineProps<{
   modelValue: { start: Date, end: Date }
   triggerClass?: string
+  minDate?: Date
+  maxDate?: Date
+  disabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -53,6 +56,8 @@ const isUpdating = ref(false)
 const isOpen = ref(false)
 const { width } = useWindowSize()
 const numberOfMonths = computed(() => width.value < 640 ? 1 : 2)
+const minimum = computed(() => props.minDate ? toCalendarDate(props.minDate) : undefined)
+const maximum = computed(() => props.maxDate ? toCalendarDate(props.maxDate) : undefined)
 
 const range = (start: dayjs.Dayjs, end: dayjs.Dayjs) => ({
   start: toCalendarDate(start.toDate()),
@@ -82,7 +87,15 @@ const presetGroups = computed(() => [
 type Preset = { label: string, getValue: () => { start: any, end: any } }
 
 const applyPreset = (preset: Preset) => {
-  value.value = preset.getValue()
+  const selected = preset.getValue()
+  const lower = minimum.value?.toString()
+  const upper = maximum.value?.toString()
+  const clamp = (date: CalendarDate) => {
+    if (lower && date.toString() < lower) return minimum.value!
+    if (upper && date.toString() > upper) return maximum.value!
+    return date
+  }
+  value.value = { start: clamp(selected.start), end: clamp(selected.end) }
   isOpen.value = false
 }
 
@@ -122,6 +135,7 @@ watch(
     <PopoverTrigger as-child>
       <Button
         variant="outline"
+        :disabled="disabled"
         :class="cn(
           'w-full justify-start text-left font-medium sm:w-auto',
           !value && 'text-foreground/60',
@@ -169,6 +183,8 @@ watch(
             initial-focus
             :locale="calendarLocale"
             :number-of-months="numberOfMonths"
+            :min-value="minimum"
+            :max-value="maximum"
           />
         </div>
       </div>

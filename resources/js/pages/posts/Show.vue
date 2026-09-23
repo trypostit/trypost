@@ -20,7 +20,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { classify, isDocument as isDocumentItem, isVideo as isVideoItem, MediaType } from '@/lib/mediaType';
 import { index as postsIndex } from '@/routes/app/posts';
 import type { MediaItem } from '@/types/media';
-import { PostPlatformStatus, PostStatus } from '@/types/post';
+import { PostPlatformStatus } from '@/types/post';
 
 interface SocialAccount {
     id: string;

@@ -1,160 +1,110 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import { computed, ref } from 'vue';
+import { ref, watch } from 'vue';
 
-import AnalyticsAccountSelector from '@/components/analytics/AnalyticsAccountSelector.vue';
-import FacebookAnalytics from '@/components/analytics/FacebookAnalytics.vue';
-import GoogleBusinessAnalytics from '@/components/analytics/GoogleBusinessAnalytics.vue';
-import InstagramAnalytics from '@/components/analytics/InstagramAnalytics.vue';
-import LinkedInPageAnalytics from '@/components/analytics/LinkedInPageAnalytics.vue';
-import PinterestAnalytics from '@/components/analytics/PinterestAnalytics.vue';
-import TelegramAnalytics from '@/components/analytics/TelegramAnalytics.vue';
-import ThreadsAnalytics from '@/components/analytics/ThreadsAnalytics.vue';
-import TikTokAnalytics from '@/components/analytics/TikTokAnalytics.vue';
-import type { AnalyticsAccount } from '@/components/analytics/types';
-import XAnalytics from '@/components/analytics/XAnalytics.vue';
-import YouTubeAnalytics from '@/components/analytics/YouTubeAnalytics.vue';
+import FollowersChart from '@/components/analytics/workspace/FollowersChart.vue';
+import ImportCoverage from '@/components/analytics/workspace/ImportCoverage.vue';
+import PerformanceTable from '@/components/analytics/workspace/PerformanceTable.vue';
+import PostsChart from '@/components/analytics/workspace/PostsChart.vue';
+import SummaryCards from '@/components/analytics/workspace/SummaryCards.vue';
+import TopPosts from '@/components/analytics/workspace/TopPosts.vue';
+import type { WorkspaceAnalyticsReport } from '@/components/analytics/workspace/types';
 import PageHeader from '@/components/PageHeader.vue';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { analytics as analyticsRoute } from '@/routes/app';
 
-const props = defineProps<{
-    accounts: AnalyticsAccount[];
-}>();
-
-const selectedAccountId = ref<string | null>(props.accounts[0]?.id ?? null);
-
-const dateRange = ref({
-    start: dayjs().subtract(6, 'day').toDate(),
-    end: dayjs().toDate(),
+const props = defineProps<{ report: WorkspaceAnalyticsReport }>();
+const selectedRange = ref({
+    start: dayjs(props.report.range.start).toDate(),
+    end: dayjs(props.report.range.end).toDate(),
 });
 
-const selectedAccount = computed(() =>
-    props.accounts.find((a) => a.id === selectedAccountId.value),
+watch(
+    () => [props.report.range.start, props.report.range.end],
+    ([start, end]) => {
+        selectedRange.value = {
+            start: dayjs(start).toDate(),
+            end: dayjs(end).toDate(),
+        };
+    },
 );
 
-const platformSupportsDateRange = computed(() => {
-    if (!selectedAccount.value) return false;
-    return [
-        'instagram',
-        'instagram-facebook',
-        'facebook',
-        'youtube',
-        'pinterest',
-        'threads',
-        'x',
-        'linkedin-page',
-        'google_business',
-    ].includes(selectedAccount.value.platform);
-});
+const changeRange = (range: { start: Date; end: Date }): void => {
+    selectedRange.value = range;
+    const start = dayjs(range.start).format('YYYY-MM-DD');
+    const end = dayjs(range.end).format('YYYY-MM-DD');
+    if (start === props.report.range.start && end === props.report.range.end)
+        return;
+
+    router.get(
+        analyticsRoute.url(),
+        { start, end },
+        { preserveState: true, preserveScroll: true, replace: true },
+    );
+};
 </script>
 
 <template>
     <AppLayout>
         <Head :title="trans('sidebar.analytics')" />
-
         <div
-            class="mx-auto flex h-full w-full max-w-6xl flex-col gap-6 px-6 py-8"
+            class="mx-auto flex w-full max-w-[1560px] flex-col gap-5 px-4 py-7 sm:px-6 lg:px-8"
         >
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <PageHeader :title="$t('sidebar.analytics')" />
-                <div class="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-                    <AnalyticsAccountSelector
-                        :accounts="accounts"
-                        :selected-id="selectedAccountId"
-                        @select="selectedAccountId = $event"
-                    />
-                    <DateRangePicker
-                        v-if="platformSupportsDateRange"
-                        v-model="dateRange"
-                        trigger-class="h-auto gap-3 px-3 py-3 text-sm"
-                    />
-                </div>
-            </div>
+            <header class="flex flex-wrap items-end justify-between gap-4">
+                <PageHeader
+                    :title="$t('sidebar.analytics')"
+                    :description="
+                        $t('analytics.dashboard.workspace_description')
+                    "
+                />
+                <DateRangePicker
+                    :model-value="selectedRange"
+                    :min-date="
+                        report.bounds.min
+                            ? dayjs(report.bounds.min).toDate()
+                            : undefined
+                    "
+                    :max-date="
+                        report.bounds.max
+                            ? dayjs(report.bounds.max).toDate()
+                            : undefined
+                    "
+                    :disabled="!report.bounds.min"
+                    trigger-class="h-10 gap-3 text-sm"
+                    @update:model-value="changeRange"
+                />
+            </header>
+
+            <ImportCoverage :coverage="report.coverage" />
 
             <div
-                v-if="accounts.length === 0"
-                class="flex flex-1 items-center justify-center text-sm font-medium text-foreground/60"
+                v-if="!report.bounds.min"
+                class="rounded-xl border border-dashed border-border bg-card px-6 py-16 text-center"
             >
-                {{ $t('analytics.no_accounts') }}
+                <h2 class="text-base font-semibold">
+                    {{ $t('analytics.dashboard.no_data_title') }}
+                </h2>
+                <p class="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">
+                    {{ $t('analytics.dashboard.no_data_body') }}
+                </p>
             </div>
 
-            <div
-                v-else-if="!selectedAccountId"
-                class="flex flex-1 items-center justify-center text-sm font-medium text-foreground/60"
-            >
-                {{ $t('analytics.select_account') }}
-            </div>
-
-            <TikTokAnalytics
-                v-else-if="selectedAccount?.platform === 'tiktok'"
-                :account-id="selectedAccountId"
-            />
-
-            <InstagramAnalytics
-                v-else-if="
-                    selectedAccount?.platform === 'instagram' ||
-                    selectedAccount?.platform === 'instagram-facebook'
-                "
-                :account-id="selectedAccountId"
-                :date-range="dateRange"
-            />
-
-            <ThreadsAnalytics
-                v-else-if="selectedAccount?.platform === 'threads'"
-                :account-id="selectedAccountId"
-                :date-range="dateRange"
-            />
-
-            <FacebookAnalytics
-                v-else-if="selectedAccount?.platform === 'facebook'"
-                :account-id="selectedAccountId"
-                :date-range="dateRange"
-            />
-
-            <XAnalytics
-                v-else-if="selectedAccount?.platform === 'x'"
-                :account-id="selectedAccountId"
-                :date-range="dateRange"
-            />
-
-            <LinkedInPageAnalytics
-                v-else-if="selectedAccount?.platform === 'linkedin-page'"
-                :account-id="selectedAccountId"
-                :date-range="dateRange"
-            />
-
-            <PinterestAnalytics
-                v-else-if="selectedAccount?.platform === 'pinterest'"
-                :account-id="selectedAccountId"
-                :date-range="dateRange"
-            />
-
-            <YouTubeAnalytics
-                v-else-if="selectedAccount?.platform === 'youtube'"
-                :account-id="selectedAccountId"
-                :date-range="dateRange"
-            />
-
-            <GoogleBusinessAnalytics
-                v-else-if="selectedAccount?.platform === 'google_business'"
-                :account-id="selectedAccountId"
-                :date-range="dateRange"
-            />
-
-            <TelegramAnalytics
-                v-else-if="selectedAccount?.platform === 'telegram'"
-                :account-id="selectedAccountId"
-            />
-
-            <div
-                v-else
-                class="flex flex-1 items-center justify-center text-sm font-medium text-foreground/60"
-            >
-                {{ $t('analytics.no_data') }}
-            </div>
+            <template v-else>
+                <SummaryCards :report="report" />
+                <FollowersChart
+                    :followers="report.followers"
+                    :range="report.range"
+                />
+                <PostsChart :posts="report.posts" :range="report.range" />
+                <TopPosts :top-posts="report.top_posts" :range="report.range" />
+                <PerformanceTable
+                    :rows="report.performance"
+                    :range="report.range"
+                />
+            </template>
         </div>
     </AppLayout>
 </template>
