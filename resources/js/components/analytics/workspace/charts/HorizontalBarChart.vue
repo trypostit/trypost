@@ -1,67 +1,127 @@
 <script setup lang="ts">
+import {
+    VisAxis,
+    VisStackedBar,
+    VisStackedBarSelectors,
+    VisXYContainer,
+} from '@unovis/vue';
 import { computed } from 'vue';
 
+import {
+    ChartContainer,
+    ChartTooltip,
+    ChartTooltipContent,
+    componentToString,
+    type ChartConfig,
+} from '@/components/ui/chart';
+import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import { formatNumberCompact } from '@/lib/utils';
 
-import AccountIdentity from '../AccountIdentity.vue';
 import { accountColor, type AccountIdentityData } from '../types';
 
 const props = defineProps<{
     rows: { account: AccountIdentityData; value: number | null }[];
     growth?: boolean;
+    colors: Record<string, string>;
 }>();
 
-const maximum = computed(() =>
-    Math.max(1, ...props.rows.map((row) => Math.abs(row.value ?? 0))),
+type BarPoint = { index: number; value: number };
+const chartData = computed<BarPoint[]>(() =>
+    props.rows.map((row, index) => ({
+        index,
+        value: row.value ?? 0,
+    })),
 );
-const barStyle = (
-    value: number | null,
-    index: number,
-): Record<string, string> => ({
-    width: `${Math.max(value === 0 ? 1 : 0, (Math.abs(value ?? 0) / maximum.value) * (props.growth ? 50 : 100))}%`,
-    backgroundColor: accountColor(index),
-});
+const chartConfig = computed<ChartConfig>(() =>
+    Object.fromEntries(
+        props.rows.map((row, index) => [
+            `account_${index}`,
+            {
+                label: row.account.username
+                    ? `@${row.account.username}`
+                    : row.account.name || row.account.platform,
+                color:
+                    props.colors[row.account.social_account_key] ??
+                    accountColor(index),
+                icon: getPlatformLogo(row.account.platform),
+            },
+        ]),
+    ),
+);
+const chartHeight = computed(
+    () => `${Math.max(240, props.rows.length * 38 + 55)}px`,
+);
+const indexAccessor = (point: BarPoint): number => point.index;
+const valueAccessor = (point: BarPoint): number => point.value;
+const colorAccessor = (point: BarPoint): string => {
+    const key = props.rows[point.index]?.account.social_account_key;
+    return (key && props.colors[key]) || accountColor(point.index);
+};
+const formatCount = (tick: number | Date): string =>
+    typeof tick === 'number' ? formatNumberCompact(tick) : '';
+const formatAccount = (tick: number | Date): string => {
+    const index = typeof tick === 'number' ? Math.round(tick) : 0;
+    const account = props.rows[index]?.account;
+    if (!account) return '';
+
+    const label = account.username
+        ? `@${account.username}`
+        : account.name || account.platform;
+    return label.length > 12 ? `${label.slice(0, 11)}…` : label;
+};
+const categoryTicks = computed(() => props.rows.map((_, index) => index));
+const tooltipTemplate = computed(() =>
+    componentToString(chartConfig.value, ChartTooltipContent),
+);
+const tooltipTriggers = computed(() => ({
+    [VisStackedBarSelectors.bar]: (bar: {
+        datum: BarPoint;
+    }): string | undefined => {
+        const point = bar.datum;
+        return tooltipTemplate.value?.({
+            [`account_${point.index}`]: props.rows[point.index]?.value,
+        });
+    },
+}));
 </script>
 
 <template>
-    <div class="space-y-4 py-2">
-        <div
-            v-for="(row, index) in rows"
-            :key="row.account.social_account_key"
-            class="grid grid-cols-[minmax(8rem,13rem)_minmax(0,1fr)_auto] items-center gap-3"
+    <ChartContainer
+        :config="chartConfig"
+        class="w-full"
+        :style="{ height: chartHeight }"
+        data-testid="accounts-unovis-bar-chart"
+    >
+        <VisXYContainer
+            :data="chartData"
+            y-direction="south"
+            :padding="{ top: 12, right: 16, bottom: 0, left: 0 }"
         >
-            <AccountIdentity
-                :account="row.account"
-                :color="accountColor(index)"
+            <VisStackedBar
+                :x="indexAccessor"
+                :y="valueAccessor"
+                :color="colorAccessor"
+                orientation="horizontal"
+                :rounded-corners="4"
+                :bar-padding="0.32"
             />
-            <div
-                class="relative h-9 rounded-sm bg-muted/40"
-                :class="growth ? 'flex items-center' : ''"
-            >
-                <span
-                    v-if="growth"
-                    class="absolute top-0 bottom-0 left-1/2 w-px bg-foreground/40"
-                />
-                <span
-                    v-if="row.value !== null"
-                    class="absolute top-1 bottom-1 rounded-sm"
-                    :class="
-                        growth && row.value < 0
-                            ? 'right-1/2'
-                            : growth
-                              ? 'left-1/2'
-                              : 'left-0'
-                    "
-                    :style="barStyle(row.value, index)"
-                    :title="String(row.value)"
-                />
-            </div>
-            <span
-                class="w-12 text-right text-xs font-semibold text-foreground tabular-nums"
-                >{{
-                    row.value === null ? '—' : formatNumberCompact(row.value)
-                }}</span
-            >
-        </div>
-    </div>
+            <VisAxis
+                type="x"
+                :tick-format="formatCount"
+                :num-ticks="5"
+                :grid-line="true"
+                :domain-line="false"
+                :tick-line="false"
+            />
+            <VisAxis
+                type="y"
+                :tick-format="formatAccount"
+                :tick-values="categoryTicks"
+                :grid-line="false"
+                :domain-line="false"
+                :tick-line="false"
+            />
+            <ChartTooltip :triggers="tooltipTriggers" />
+        </VisXYContainer>
+    </ChartContainer>
 </template>

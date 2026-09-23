@@ -23,12 +23,14 @@ class AdvanceAnalyticsSyncState
     /**
      * @return array{cursor: ?string, revision: int, cutoff: CarbonImmutable}|null
      */
-    public function begin(string $stateId, bool $restartTerminal = false): ?array
+    public function begin(string $stateId, bool $restartTerminal = false, ?string $socialAccountId = null): ?array
     {
-        return DB::transaction(function () use ($restartTerminal, $stateId): ?array {
+        return DB::transaction(function () use ($restartTerminal, $socialAccountId, $stateId): ?array {
             $state = AnalyticsSyncState::query()->lockForUpdate()->find($stateId);
 
-            if (! $state || ($state->isTerminal() && ! $restartTerminal)) {
+            if (! $state
+                || ($socialAccountId !== null && $state->social_account_id !== $socialAccountId)
+                || ($state->isTerminal() && ! $restartTerminal)) {
                 return null;
             }
 
@@ -48,6 +50,9 @@ class AdvanceAnalyticsSyncState
                     'revision' => $revision,
                     ...($state->collector === SyncCollector::PublicationBackfill && $state->socialAccount?->platform === Platform::X
                         ? ['seen_count' => $seenCount]
+                        : []),
+                    ...(! empty($checkpoint['resumed_after_disconnect'])
+                        ? ['resumed_after_disconnect' => true]
                         : []),
                 ],
                 'last_error_category' => null,
@@ -80,7 +85,7 @@ class AdvanceAnalyticsSyncState
         return DB::transaction(function () use ($account, $capturedRevision, $page, $stateId): array {
             $state = AnalyticsSyncState::query()->lockForUpdate()->find($stateId);
 
-            if (! $state) {
+            if (! $state || $state->social_account_id !== $account->id) {
                 return ['advanced' => false, 'terminal' => true];
             }
 
@@ -147,12 +152,14 @@ class AdvanceAnalyticsSyncState
         });
     }
 
-    public function recordFailure(string $stateId, int $capturedRevision, string $category, bool $terminal): void
+    public function recordFailure(string $stateId, int $capturedRevision, string $category, bool $terminal, ?string $socialAccountId = null): void
     {
-        DB::transaction(function () use ($capturedRevision, $category, $stateId, $terminal): void {
+        DB::transaction(function () use ($capturedRevision, $category, $socialAccountId, $stateId, $terminal): void {
             $state = AnalyticsSyncState::query()->lockForUpdate()->find($stateId);
 
-            if (! $state || (int) data_get($state->checkpoint, 'revision', 0) !== $capturedRevision) {
+            if (! $state
+                || ($socialAccountId !== null && $state->social_account_id !== $socialAccountId)
+                || (int) data_get($state->checkpoint, 'revision', 0) !== $capturedRevision) {
                 return;
             }
 
@@ -163,12 +170,14 @@ class AdvanceAnalyticsSyncState
         });
     }
 
-    public function resetInvalidCursor(string $stateId, int $capturedRevision): bool
+    public function resetInvalidCursor(string $stateId, int $capturedRevision, ?string $socialAccountId = null): bool
     {
-        return DB::transaction(function () use ($capturedRevision, $stateId): bool {
+        return DB::transaction(function () use ($capturedRevision, $socialAccountId, $stateId): bool {
             $state = AnalyticsSyncState::query()->lockForUpdate()->find($stateId);
 
-            if (! $state || (int) data_get($state->checkpoint, 'revision', 0) !== $capturedRevision) {
+            if (! $state
+                || ($socialAccountId !== null && $state->social_account_id !== $socialAccountId)
+                || (int) data_get($state->checkpoint, 'revision', 0) !== $capturedRevision) {
                 return false;
             }
 
@@ -186,7 +195,36 @@ class AdvanceAnalyticsSyncState
         });
     }
 
-    private function initializeDiscovery(SocialAccount $account, ?CarbonImmutable $highWatermark): void
+    public function stopExpiredReconnectionCursor(string $stateId, int $capturedRevision, SocialAccount $account): ?string
+    {
+        return DB::transaction(function () use ($account, $capturedRevision, $stateId): ?string {
+            $state = AnalyticsSyncState::query()->lockForUpdate()->find($stateId);
+
+            if (! $state
+                || $state->social_account_id !== $account->id
+                || (int) data_get($state->checkpoint, 'revision', 0) !== $capturedRevision
+                || ! data_get($state->checkpoint, 'resumed_after_disconnect')
+                || $state->oldest_reached_at === null) {
+                return null;
+            }
+
+            $state->update([
+                'status' => SyncStatus::Partial,
+                'checkpoint' => [
+                    'cursor' => null,
+                    'revision' => $capturedRevision,
+                    ...(array_key_exists('seen_count', $state->checkpoint ?? [])
+                        ? ['seen_count' => (int) data_get($state->checkpoint, 'seen_count')]
+                        : []),
+                ],
+                'last_error_category' => 'reconnect_cursor_expired',
+            ]);
+
+            return $this->initializeDiscovery($account, $state->high_watermark_at)->id;
+        });
+    }
+
+    private function initializeDiscovery(SocialAccount $account, ?CarbonImmutable $highWatermark): AnalyticsSyncState
     {
         $latest = AnalyticsPublication::query()
             ->where('social_account_id', $account->id)
@@ -194,17 +232,28 @@ class AdvanceAnalyticsSyncState
         $initialHighWatermark = $highWatermark
             ?? ($latest ? CarbonImmutable::parse($latest, 'UTC') : CarbonImmutable::now('UTC'));
 
-        $state = AnalyticsSyncState::query()->firstOrCreate([
-            'social_account_id' => $account->id,
-            'collector' => SyncCollector::PublicationDiscovery,
-        ], [
-            'status' => SyncStatus::Pending,
-            'checkpoint' => ['cursor' => null, 'revision' => 0],
-        ]);
+        $state = AnalyticsSyncState::query()
+            ->where('social_account_id', $account->id)
+            ->forCollector(SyncCollector::PublicationDiscovery)
+            ->first()
+            ?? AnalyticsSyncState::query()->firstOrCreate([
+                ...AnalyticsSyncState::identityFor($account),
+                'collector' => SyncCollector::PublicationDiscovery,
+            ], [
+                'social_account_id' => $account->id,
+                'status' => SyncStatus::Pending,
+                'checkpoint' => ['cursor' => null, 'revision' => 0],
+            ]);
+
+        if ($state->workspace_id === null) {
+            $state->update(AnalyticsSyncState::identityFor($account));
+        }
 
         if (! $state->high_watermark_at || $initialHighWatermark->greaterThan($state->high_watermark_at)) {
             $state->update(['high_watermark_at' => $initialHighWatermark]);
         }
+
+        return $state;
     }
 
     private function earlier(?CarbonImmutable $current, mixed $candidate): ?CarbonImmutable

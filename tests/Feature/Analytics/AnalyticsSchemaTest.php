@@ -51,7 +51,8 @@ test('analytics tables expose the portable persistence contract', function () {
         ]))->toBeTrue()
         ->and(Schema::hasColumn('analytics_publication_daily_snapshots', 'workspace_id'))->toBeFalse()
         ->and(Schema::hasColumns('analytics_sync_states', [
-            'id', 'social_account_id', 'collector', 'status', 'checkpoint',
+            'id', 'social_account_id', 'workspace_id', 'network', 'platform_user_id',
+            'collector', 'status', 'checkpoint',
             'target_since', 'oldest_reached_at', 'high_watermark_at',
             'last_success_at', 'last_error_category',
         ]))->toBeTrue();
@@ -115,6 +116,9 @@ test('same-network accounts remain distinct and historical facts survive account
     DB::table('analytics_sync_states')->insert([
         'id' => Str::uuid()->toString(),
         'social_account_id' => $firstAccount->id,
+        'workspace_id' => $workspace->id,
+        'network' => $firstAccount->platform->network(),
+        'platform_user_id' => $firstAccount->platform_user_id,
         'collector' => SyncCollector::PublicationBackfill->value,
         'status' => SyncStatus::Pending->value,
         'created_at' => now(),
@@ -139,8 +143,11 @@ test('same-network accounts remain distinct and historical facts survive account
         'platform' => Platform::Instagram->value,
         'account_username' => 'first-account',
     ]);
-    $this->assertDatabaseMissing('analytics_sync_states', [
-        'social_account_id' => $firstAccount->id,
+    $this->assertDatabaseHas('analytics_sync_states', [
+        'social_account_id' => null,
+        'workspace_id' => $workspace->id,
+        'network' => $firstAccount->platform->network(),
+        'platform_user_id' => $firstAccount->platform_user_id,
     ]);
 });
 

@@ -1,43 +1,135 @@
 <script setup lang="ts">
+import {
+    VisAxis,
+    VisStackedBar,
+    VisStackedBarSelectors,
+    VisXYContainer,
+} from '@unovis/vue';
 import { computed } from 'vue';
+
+import {
+    ChartContainer,
+    ChartTooltip,
+    ChartTooltipContent,
+    componentToString,
+    type ChartConfig,
+} from '@/components/ui/chart';
+import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import { formatNumberCompact } from '@/lib/utils';
 
 import { accountColor, type PostAccount, type PostBucket } from '../types';
 
-const props = defineProps<{ accounts: PostAccount[]; buckets: PostBucket[] }>();
-const maximum = computed(() =>
-    Math.max(1, ...props.buckets.map((bucket) => bucket.total)),
+type ChartPoint = {
+    index: number;
+    label: string;
+    [key: string]: string | number;
+};
+
+const props = defineProps<{
+    accounts: PostAccount[];
+    buckets: PostBucket[];
+    colors: Record<string, string>;
+}>();
+
+const chartData = computed<ChartPoint[]>(() =>
+    props.buckets.map((bucket, index) => {
+        const point: ChartPoint = { index, label: bucket.label };
+
+        props.accounts.forEach((account, accountIndex) => {
+            point[`account_${accountIndex}`] =
+                bucket.accounts[account.social_account_key] ?? 0;
+        });
+
+        return point;
+    }),
 );
+const chartConfig = computed<ChartConfig>(() =>
+    Object.fromEntries(
+        props.accounts.map((account, index) => [
+            `account_${index}`,
+            {
+                label: account.username
+                    ? `@${account.username}`
+                    : account.name || account.platform,
+                color:
+                    props.colors[account.social_account_key] ??
+                    accountColor(index),
+                icon: getPlatformLogo(account.platform),
+            },
+        ]),
+    ),
+);
+const xAccessor = (point: ChartPoint): number => point.index;
+const yAccessors = computed(() =>
+    props.accounts.map(
+        (_, index) =>
+            (point: ChartPoint): number =>
+                Number(point[`account_${index}`] ?? 0),
+    ),
+);
+const barColors = computed(() =>
+    props.accounts.map(
+        (account, index) =>
+            props.colors[account.social_account_key] ?? accountColor(index),
+    ),
+);
+const formatBucket = (tick: number | Date): string => {
+    const index = typeof tick === 'number' ? Math.round(tick) : 0;
+    return chartData.value[index]?.label ?? '';
+};
+const formatCount = (tick: number | Date): string =>
+    typeof tick === 'number' ? formatNumberCompact(tick) : '';
+const ticks = computed(() => props.buckets.map((_, index) => index));
+const tooltipTemplate = computed(() =>
+    componentToString(chartConfig.value, ChartTooltipContent, {
+        labelFormatter: formatBucket,
+    }),
+);
+const tooltipTriggers = computed(() => ({
+    [VisStackedBarSelectors.bar]: (bar: {
+        datum: ChartPoint;
+    }): string | undefined => {
+        const point = bar.datum;
+        return tooltipTemplate.value?.(point, point.index);
+    },
+}));
 </script>
 
 <template>
-    <div class="overflow-x-auto">
-        <div
-            class="flex h-56 min-w-[440px] items-end gap-3 border-b border-border px-3"
+    <ChartContainer
+        :config="chartConfig"
+        cursor
+        class="h-72 w-full sm:h-80"
+        data-testid="posts-unovis-chart"
+    >
+        <VisXYContainer
+            :data="chartData"
+            :padding="{ top: 14, right: 8, bottom: 0, left: 0 }"
         >
-            <div
-                v-for="bucket in buckets"
-                :key="bucket.start"
-                class="flex min-w-0 flex-1 flex-col items-center gap-2"
-            >
-                <div
-                    class="flex h-44 w-full max-w-24 flex-col justify-end overflow-hidden rounded-t-sm bg-muted/30"
-                    :title="`${bucket.label}: ${bucket.total}`"
-                >
-                    <div
-                        v-for="(account, index) in accounts"
-                        :key="account.social_account_key"
-                        :style="{
-                            height: `${((bucket.accounts[account.social_account_key] ?? 0) / maximum) * 100}%`,
-                            backgroundColor: accountColor(index),
-                        }"
-                    />
-                </div>
-                <span
-                    class="w-full truncate text-center text-[11px] text-muted-foreground"
-                    :title="bucket.label"
-                    >{{ bucket.label }}</span
-                >
-            </div>
-        </div>
-    </div>
+            <VisStackedBar
+                :x="xAccessor"
+                :y="yAccessors"
+                :color="barColors"
+                :rounded-corners="4"
+                :bar-padding="0.35"
+            />
+            <VisAxis
+                type="x"
+                :tick-format="formatBucket"
+                :tick-values="ticks"
+                :grid-line="false"
+                :domain-line="false"
+                :tick-line="false"
+            />
+            <VisAxis
+                type="y"
+                :tick-format="formatCount"
+                :num-ticks="5"
+                :grid-line="true"
+                :domain-line="false"
+                :tick-line="false"
+            />
+            <ChartTooltip :triggers="tooltipTriggers" />
+        </VisXYContainer>
+    </ChartContainer>
 </template>

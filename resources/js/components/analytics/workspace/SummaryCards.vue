@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import { formatNumberCompact } from '@/lib/utils';
+import { formatNumberCompact, formatPercentChange } from '@/lib/utils';
 
 import AnalyticsSection from './AnalyticsSection.vue';
 import type { WorkspaceAnalyticsReport } from './types';
@@ -10,15 +10,15 @@ const props = defineProps<{ report: WorkspaceAnalyticsReport }>();
 
 const cards = computed(() => [
     {
-        key: 'posts',
-        label: 'analytics.dashboard.posts',
-        metric: props.report.summary.posts,
-        percent: false,
-    },
-    {
         key: 'followers',
         label: 'analytics.dashboard.total_followers',
         metric: props.report.summary.followers,
+        percent: false,
+    },
+    {
+        key: 'posts',
+        label: 'analytics.dashboard.posts',
+        metric: props.report.summary.posts,
         percent: false,
     },
     {
@@ -46,46 +46,53 @@ const display = (value: number | null, percent: boolean): string =>
 
 const changeLabel = (key: string, change: number | null): string | null => {
     if (change === null) return null;
-    const prefix = change > 0 ? '+' : '';
-    return `${prefix}${change}${key === 'followers' ? '' : '%'}`;
+    return key === 'followers'
+        ? `${change > 0 ? '+' : ''}${formatNumberCompact(change)}`
+        : formatPercentChange(change);
 };
 </script>
 
 <template>
-    <AnalyticsSection
-        :title="$t('analytics.dashboard.summary')"
-        :subtitle="$t('analytics.dashboard.latest_snapshot_hint')"
-    >
+    <AnalyticsSection :title="$t('analytics.dashboard.summary')">
         <div
-            class="grid gap-2 sm:grid-cols-2 xl:grid-cols-5"
+            class="grid grid-cols-2 gap-3 xl:grid-cols-5"
             data-testid="analytics-summary"
         >
             <div
                 v-for="card in cards"
                 :key="card.key"
-                class="min-w-0 rounded-lg border border-border bg-background px-4 py-3"
+                class="flex min-h-28 min-w-0 flex-col justify-between rounded-xl border-2 border-foreground px-4 py-4 shadow-xs"
+                :class="
+                    card.key === 'followers'
+                        ? 'col-span-2 bg-violet-100 text-foreground xl:col-span-1'
+                        : 'bg-background text-foreground'
+                "
             >
-                <p class="text-xs text-muted-foreground">
+                <p class="text-sm font-medium text-foreground/70">
                     {{ $t(card.label) }}
                 </p>
-                <div class="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                     <span
-                        class="text-2xl font-semibold text-foreground tabular-nums"
+                        class="text-3xl font-semibold tracking-tight text-foreground tabular-nums"
                         >{{ display(card.metric.value, card.percent) }}</span
                     >
                     <span
                         v-if="changeLabel(card.key, card.metric.change)"
-                        class="text-xs font-medium tabular-nums"
+                        class="rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums"
                         :class="
                             card.metric.change! >= 0
-                                ? 'text-emerald-700 dark:text-emerald-400'
-                                : 'text-rose-700 dark:text-rose-400'
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-rose-50 text-rose-700'
                         "
                     >
+                        {{ card.metric.change! >= 0 ? '↗' : '↘' }}
                         {{ changeLabel(card.key, card.metric.change) }}
                     </span>
                 </div>
             </div>
         </div>
+        <p class="mt-3 text-xs text-muted-foreground">
+            {{ $t('analytics.dashboard.latest_snapshot_hint') }}
+        </p>
     </AnalyticsSection>
 </template>

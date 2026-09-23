@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { IconArrowDown, IconArrowsSort } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
-import { formatNumberCompact } from '@/lib/utils';
+import dayjs from '@/dayjs';
+import { formatNumberCompact, formatPercentChange } from '@/lib/utils';
 
 import AccountIdentity from './AccountIdentity.vue';
 import AnalyticsSection from './AnalyticsSection.vue';
@@ -35,16 +37,14 @@ const display = (
 };
 const change = (row: PerformanceRow, key: (typeof columns)[number]): string => {
     const value = row[key].change;
-    return value === null
-        ? '—'
-        : `${value > 0 ? '+' : ''}${value}${key === 'engagement_rate' ? '%' : '%'}`;
+    return value === null ? '—' : formatPercentChange(value);
 };
 </script>
 
 <template>
     <AnalyticsSection
         :title="$t('analytics.dashboard.performance')"
-        :subtitle="`${range.start} – ${range.end}`"
+        :subtitle="`${dayjs(range.start).format('D MMM YYYY')} – ${dayjs(range.end).format('D MMM YYYY')}`"
     >
         <div
             v-if="rows.length === 0"
@@ -54,32 +54,41 @@ const change = (row: PerformanceRow, key: (typeof columns)[number]): string => {
         </div>
         <div
             v-else
-            class="overflow-x-auto rounded-lg border border-border bg-background"
+            class="overflow-x-auto rounded-xl border-2 border-foreground"
         >
             <table class="w-full min-w-[720px] text-left text-sm">
                 <thead
-                    class="border-b border-border bg-muted/25 text-xs text-muted-foreground"
+                    class="border-b-2 border-foreground bg-muted/40 text-xs text-foreground/70"
                 >
                     <tr>
-                        <th scope="col" class="px-4 py-3 font-medium">
+                        <th scope="col" class="py-3 pr-4 pl-4 font-semibold">
                             {{ $t('analytics.dashboard.channel') }}
                         </th>
                         <th
                             v-for="column in columns"
                             :key="column"
                             scope="col"
-                            class="px-4 py-3 text-right font-medium"
+                            class="px-3 py-3 text-right font-semibold"
+                            :aria-sort="
+                                sortBy === column ? 'descending' : 'none'
+                            "
                         >
                             <button
                                 type="button"
-                                class="inline-flex items-center gap-1 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                                :aria-sort="
-                                    sortBy === column ? 'descending' : undefined
-                                "
+                                class="inline-flex items-center gap-1.5 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                                 @click="sortBy = column"
                             >
                                 {{ $t(`analytics.dashboard.${column}`) }}
-                                <span aria-hidden="true">↕</span>
+                                <IconArrowDown
+                                    v-if="sortBy === column"
+                                    class="size-3.5 text-primary"
+                                    aria-hidden="true"
+                                />
+                                <IconArrowsSort
+                                    v-else
+                                    class="size-3.5"
+                                    aria-hidden="true"
+                                />
                             </button>
                         </th>
                     </tr>
@@ -88,29 +97,29 @@ const change = (row: PerformanceRow, key: (typeof columns)[number]): string => {
                     <tr
                         v-for="row in sorted"
                         :key="row.social_account_key"
-                        class="border-b border-border last:border-0"
+                        class="border-b border-foreground/15 last:border-0 hover:bg-violet-50/60"
                     >
-                        <th scope="row" class="px-4 py-3 font-normal">
+                        <th scope="row" class="py-3 pr-4 pl-4 font-normal">
                             <AccountIdentity :account="row" />
                         </th>
                         <td
                             v-for="column in columns"
                             :key="column"
-                            class="px-4 py-3 text-right tabular-nums"
+                            class="px-3 py-3 text-right tabular-nums"
                         >
                             <span class="font-medium">{{
                                 display(row, column)
                             }}</span>
                             <span
-                                class="ml-2 text-xs"
+                                v-if="row[column].change !== null"
+                                class="ml-2 inline-flex rounded-md px-1.5 py-0.5 text-xs font-medium"
                                 :class="
-                                    row[column].change === null
-                                        ? 'text-muted-foreground'
-                                        : row[column].change! >= 0
-                                          ? 'text-emerald-700 dark:text-emerald-400'
-                                          : 'text-rose-700 dark:text-rose-400'
+                                    row[column].change! >= 0
+                                        ? 'bg-emerald-50 text-emerald-700'
+                                        : 'bg-rose-50 text-rose-700'
                                 "
-                                >{{ change(row, column) }}</span
+                                >{{ row[column].change! >= 0 ? '↗' : '↘' }}
+                                {{ change(row, column) }}</span
                             >
                         </td>
                     </tr>

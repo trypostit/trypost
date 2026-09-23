@@ -8,7 +8,7 @@ import {
 
 import type { AccountIdentityData } from './types';
 
-const props = defineProps<{ account: AccountIdentityData; color?: string }>();
+const props = defineProps<{ account: AccountIdentityData }>();
 const label = computed(() =>
     props.account.username
         ? `@${props.account.username}`
@@ -18,11 +18,6 @@ const label = computed(() =>
 
 <template>
     <span class="inline-flex min-w-0 items-center gap-2">
-        <span
-            v-if="color"
-            class="size-2.5 shrink-0 rounded-sm"
-            :style="{ backgroundColor: color }"
-        />
         <img
             :src="getPlatformLogo(account.platform)"
             :alt="getPlatformLabel(account.platform)"

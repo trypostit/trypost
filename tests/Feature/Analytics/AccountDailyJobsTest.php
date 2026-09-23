@@ -67,6 +67,28 @@ test('collection job writes once and skips an existing actual observation', func
         ->and(AnalyticsAccountDailySnapshot::first()->followers_count)->toBe(25);
 });
 
+test('reconnecting the same identity keeps todays follower snapshot without another provider read', function () {
+    $account = SocialAccount::factory()->x()->create();
+    app(WriteAccountDailySnapshot::class)->handle($account, followerObservation(25));
+    $account->delete();
+    $replacement = SocialAccount::factory()->x()->create([
+        'workspace_id' => $account->workspace_id,
+        'platform_user_id' => $account->platform_user_id,
+    ]);
+    $factory = Mockery::mock(FollowerCollectorFactory::class);
+    $factory->shouldReceive('supports')->once()->with(Platform::X)->andReturnTrue();
+    $factory->shouldNotReceive('for');
+
+    (new CollectAccountDailySnapshot($replacement->id, '2026-09-23'))->handle(
+        $factory,
+        app(ResolveAnalyticsAccountKey::class),
+        app(WriteAccountDailySnapshot::class),
+    );
+
+    expect(AnalyticsAccountDailySnapshot::query()->count())->toBe(1)
+        ->and(AnalyticsAccountDailySnapshot::query()->firstOrFail()->social_account_key)->toBe($account->id);
+});
+
 test('collection job retries at spaced windows and honors a later provider retry time', function () {
     $account = SocialAccount::factory()->x()->create();
     $collector = Mockery::mock(FollowerCollector::class);

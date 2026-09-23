@@ -24,6 +24,17 @@ export const formatNumberCompact = (value: number): string => {
     }).format(value);
 };
 
+export const formatPercentChange = (value: number): string => {
+    const formatted =
+        Math.abs(value) >= 1000
+            ? formatNumberCompact(value)
+            : new Intl.NumberFormat('en-US', {
+                  maximumFractionDigits: 2,
+              }).format(value);
+
+    return `${value > 0 ? '+' : ''}${formatted}%`;
+};
+
 export const formatMoney = (cents: number): string => {
     const dollars = cents / 100;
     return dollars.toLocaleString('en-US', {

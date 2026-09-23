@@ -97,7 +97,7 @@ class SocialAccountObserver
                 )->afterCommit();
             }
 
-            BootstrapAccountAnalytics::dispatch($currentAccount->id)->afterCommit();
+            BootstrapAccountAnalytics::dispatch($currentAccount->id, true)->afterCommit();
         } catch (Throwable $exception) {
             report($exception);
         }

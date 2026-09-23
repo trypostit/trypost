@@ -36,10 +36,10 @@ test('imported Reel detail shows origin and watch time without publishing action
     AnalyticsPublicationDailySnapshot::factory()->create([
         'analytics_publication_id' => $publication->id,
         'reactions_count' => 27,
-        'watch_time_milliseconds' => 185000,
+        'watch_time_milliseconds' => 4042104000,
         'metrics' => [
             'reactions' => ['value' => 27, 'unit' => 'count', 'availability' => 'available'],
-            'watch_time_milliseconds' => ['value' => 185000, 'unit' => 'milliseconds', 'availability' => 'available'],
+            'watch_time_milliseconds' => ['value' => 4042104000, 'unit' => 'milliseconds', 'availability' => 'available'],
         ],
     ]);
     Vite::useHotFile(storage_path('framework/testing/publication-analytics-no-hot'));
@@ -50,6 +50,8 @@ test('imported Reel detail shows origin and watch time without publishing action
     $page->assertSee('Published on Instagram')
         ->assertSee('Behind the scenes')
         ->assertSee('Watch time')
+        ->assertSee('67.4K min')
+        ->assertDontSee('67368.4 min')
         ->assertMissing('@edit-publication')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();

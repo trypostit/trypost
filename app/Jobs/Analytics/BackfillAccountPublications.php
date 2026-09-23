@@ -66,9 +66,14 @@ class BackfillAccountPublications implements ShouldQueue
             ->active()
             ->includedInAnalytics()
             ->find($this->socialAccountId);
-        $capture = $sync->begin($this->syncStateId);
 
-        if (! $account || ! $capture) {
+        if (! $account) {
+            return;
+        }
+
+        $capture = $sync->begin($this->syncStateId, socialAccountId: $account->id);
+
+        if (! $capture) {
             return;
         }
 
@@ -81,7 +86,15 @@ class BackfillAccountPublications implements ShouldQueue
         } catch (AnalyticsCollectionException $exception) {
             app(AnalyticsJobLog::class)->record($account, 'publication_backfill', $cursorLabel, $this->attempts(), $exception->category);
             if ($exception->category === 'invalid_cursor') {
-                if ($sync->resetInvalidCursor($this->syncStateId, $capture['revision'])) {
+                $discoveryStateId = $sync->stopExpiredReconnectionCursor($this->syncStateId, $capture['revision'], $account);
+
+                if ($discoveryStateId) {
+                    DiscoverAccountPublications::dispatch($account->id, $discoveryStateId)->afterCommit();
+
+                    return;
+                }
+
+                if ($sync->resetInvalidCursor($this->syncStateId, $capture['revision'], $account->id)) {
                     self::dispatch($account->id, $this->syncStateId)->afterCommit();
                 }
 
@@ -89,7 +102,7 @@ class BackfillAccountPublications implements ShouldQueue
             }
 
             $transient = in_array($exception->category, ['transient', 'rate_limited'], true);
-            $sync->recordFailure($this->syncStateId, $capture['revision'], $exception->category, ! $transient);
+            $sync->recordFailure($this->syncStateId, $capture['revision'], $exception->category, ! $transient, $account->id);
 
             if ($transient) {
                 throw $exception;
@@ -117,7 +130,7 @@ class BackfillAccountPublications implements ShouldQueue
             app(AnalyticsJobLog::class)->record($account, 'publication_backfill', 'cursor:queue_failed', $this->attempts(), 'queue_failed');
         }
 
-        if ($state && ! $state->isTerminal()) {
+        if ($state && $state->social_account_id === $this->socialAccountId && ! $state->isTerminal()) {
             $state->update([
                 'status' => SyncStatus::Failed,
                 'last_error_category' => 'queue_failed',

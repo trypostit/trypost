@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
+import { IconArrowLeft, IconArrowUpRight } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import PublicationMetrics from '@/components/analytics/workspace/PublicationMetrics.vue';
 import type { PublicationAnalyticsDetail } from '@/components/analytics/workspace/types';
+import PageHeader from '@/components/PageHeader.vue';
 import {
     getPlatformLabel,
     getPlatformLogo,
@@ -42,57 +44,72 @@ const providerUrl = computed(() =>
 <template>
     <AppLayout>
         <Head :title="`${platformName} analytics`" />
-        <div
-            class="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-7 sm:px-6"
-        >
+        <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
             <Link
                 :href="analyticsRoute.url()"
-                class="w-fit text-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                >{{ $t('analytics.detail.back_to_analytics') }}</Link
+                class="inline-flex w-fit items-center gap-2 text-sm font-semibold text-foreground/70 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
+                <IconArrowLeft class="size-4" aria-hidden="true" />
+                {{ $t('analytics.detail.back_to_analytics') }}
+            </Link>
 
-            <article
-                class="rounded-xl border border-border bg-card p-5 shadow-xs sm:p-6"
-            >
-                <div
-                    class="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4"
-                >
-                    <div class="flex items-center gap-3">
-                        <img
-                            :src="getPlatformLogo(publication.platform)"
-                            :alt="platformName"
-                            class="size-9 rounded-lg object-contain"
-                        />
-                        <div>
-                            <h1 class="text-lg font-semibold text-foreground">
-                                {{ origin }}
-                            </h1>
-                            <p class="text-sm text-muted-foreground">
-                                {{
-                                    publication.account_username
-                                        ? `@${publication.account_username}`
-                                        : publication.account_display_name ||
-                                          platformName
-                                }}
-                            </p>
-                        </div>
-                    </div>
+            <header class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex min-w-0 items-center gap-4">
+                    <img
+                        :src="getPlatformLogo(publication.platform)"
+                        :alt="platformName"
+                        class="size-12 shrink-0 rounded-xl border-2 border-foreground bg-card p-2 shadow-xs"
+                    />
+                    <PageHeader
+                        :title="origin"
+                        :description="
+                            publication.account_username
+                                ? `@${publication.account_username}`
+                                : publication.account_display_name ||
+                                  platformName
+                        "
+                    />
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
                     <span
-                        class="rounded-full border border-border bg-muted/35 px-2.5 py-1 text-xs font-medium text-muted-foreground"
+                        class="rounded-full border-2 border-foreground bg-violet-100 px-3 py-1 text-xs font-semibold text-foreground capitalize"
                         >{{ publication.content_type }}</span
                     >
+                    <a
+                        v-if="providerUrl"
+                        :href="providerUrl"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex h-9 items-center gap-1.5 rounded-lg border-2 border-foreground bg-card px-3 text-sm font-semibold text-foreground shadow-xs hover:bg-violet-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    >
+                        {{ $t('analytics.dashboard.view_post') }}
+                        <IconArrowUpRight class="size-4" aria-hidden="true" />
+                    </a>
                 </div>
+            </header>
 
-                <div class="flex flex-col gap-4 py-5 sm:flex-row">
-                    <img
+            <article
+                class="rounded-xl border-2 border-foreground bg-card p-5 shadow-sm sm:p-6"
+            >
+                <div
+                    class="grid gap-6"
+                    :class="
+                        thumbnail ? 'md:grid-cols-[14rem_minmax(0,1fr)]' : ''
+                    "
+                >
+                    <div
                         v-if="thumbnail"
-                        :src="thumbnail"
-                        alt=""
-                        class="h-40 w-40 shrink-0 rounded-lg object-cover"
-                    />
-                    <div class="flex min-w-0 flex-1 flex-col gap-2">
+                        class="w-full max-w-56 overflow-hidden rounded-xl border-2 border-foreground bg-muted shadow-xs"
+                    >
+                        <img
+                            :src="thumbnail"
+                            alt=""
+                            class="aspect-[4/5] h-full w-full object-cover"
+                        />
+                    </div>
+                    <div class="flex min-w-0 flex-col justify-between gap-6">
                         <p
-                            class="text-sm leading-6 break-words whitespace-pre-wrap text-foreground"
+                            class="max-w-3xl text-base leading-7 break-words whitespace-pre-wrap text-foreground"
                         >
                             {{
                                 publication.excerpt ||
@@ -101,7 +118,7 @@ const providerUrl = computed(() =>
                         </p>
                         <p
                             v-if="publication.provider_published_at"
-                            class="text-xs text-muted-foreground"
+                            class="border-t border-foreground/15 pt-4 text-sm text-muted-foreground"
                         >
                             {{
                                 dayjs(publication.provider_published_at).format(
@@ -109,21 +126,10 @@ const providerUrl = computed(() =>
                                 )
                             }}
                         </p>
-                        <a
-                            v-if="providerUrl"
-                            :href="providerUrl"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="w-fit text-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                            >{{ $t('analytics.dashboard.view_post') }}</a
-                        >
                     </div>
                 </div>
-
-                <div class="border-t border-border pt-5">
-                    <PublicationMetrics :detail="detail" />
-                </div>
             </article>
+            <PublicationMetrics :detail="detail" />
         </div>
     </AppLayout>
 </template>

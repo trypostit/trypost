@@ -77,7 +77,11 @@ class DiscoverAccountPublications implements ShouldQueue
         }
 
         $state = AnalyticsSyncState::query()->find($this->syncStateId);
-        $capture = $sync->begin($this->syncStateId, restartTerminal: $state?->isTerminal() ?? false);
+        $capture = $sync->begin(
+            $this->syncStateId,
+            restartTerminal: $state?->isTerminal() ?? false,
+            socialAccountId: $account->id,
+        );
 
         if (! $capture) {
             return;
@@ -92,7 +96,7 @@ class DiscoverAccountPublications implements ShouldQueue
         } catch (AnalyticsCollectionException $exception) {
             app(AnalyticsJobLog::class)->record($account, 'publication_discovery', $cursorLabel, $this->attempts(), $exception->category);
             if ($exception->category === 'invalid_cursor') {
-                if ($sync->resetInvalidCursor($this->syncStateId, $capture['revision'])) {
+                if ($sync->resetInvalidCursor($this->syncStateId, $capture['revision'], $account->id)) {
                     self::dispatch($account->id, $this->syncStateId)->afterCommit();
                 }
 
@@ -100,7 +104,7 @@ class DiscoverAccountPublications implements ShouldQueue
             }
 
             $transient = in_array($exception->category, ['transient', 'rate_limited'], true);
-            $sync->recordFailure($this->syncStateId, $capture['revision'], $exception->category, ! $transient);
+            $sync->recordFailure($this->syncStateId, $capture['revision'], $exception->category, ! $transient, $account->id);
 
             if ($transient) {
                 throw $exception;
@@ -128,7 +132,7 @@ class DiscoverAccountPublications implements ShouldQueue
             app(AnalyticsJobLog::class)->record($account, 'publication_discovery', 'cursor:queue_failed', $this->attempts(), 'queue_failed');
         }
 
-        if ($state && ! $state->isTerminal()) {
+        if ($state && $state->social_account_id === $this->socialAccountId && ! $state->isTerminal()) {
             $state->update([
                 'status' => SyncStatus::Failed,
                 'last_error_category' => 'queue_failed',

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
+import { IconArrowUpRight } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
+import dayjs from '@/dayjs';
 import { formatNumberCompact } from '@/lib/utils';
 import { show as publicationShow } from '@/routes/app/analytics/publications';
 
@@ -15,27 +17,33 @@ const props = defineProps<{
 }>();
 const metric = ref<'reactions' | 'comments'>('reactions');
 const posts = computed<TopPost[]>(() => props.topPosts[metric.value]);
+const thumbnailFor = (post: TopPost): string | null => {
+    const value = post.preview_metadata?.thumbnail_url;
+    return typeof value === 'string' && /^https:\/\//i.test(value)
+        ? value
+        : null;
+};
 </script>
 
 <template>
     <AnalyticsSection
         :title="$t('analytics.dashboard.top_posts')"
-        :subtitle="`${range.start} – ${range.end}`"
+        :subtitle="`${dayjs(range.start).format('D MMM YYYY')} – ${dayjs(range.end).format('D MMM YYYY')}`"
     >
         <template #actions>
             <div
-                class="inline-flex rounded-lg border border-border bg-background p-1"
+                class="inline-flex rounded-lg border-2 border-foreground bg-card p-1 shadow-xs"
                 role="group"
                 :aria-label="$t('analytics.dashboard.top_posts_sort')"
             >
                 <button
                     type="button"
                     data-testid="top-reactions"
-                    class="rounded-md px-3 py-1 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    class="rounded-md px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
                     :class="
                         metric === 'reactions'
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-muted-foreground hover:text-foreground'
+                            ? 'bg-violet-100 text-foreground'
+                            : 'text-foreground/65 hover:bg-muted hover:text-foreground'
                     "
                     :aria-pressed="metric === 'reactions'"
                     @click="metric = 'reactions'"
@@ -45,11 +53,11 @@ const posts = computed<TopPost[]>(() => props.topPosts[metric.value]);
                 <button
                     type="button"
                     data-testid="top-comments"
-                    class="rounded-md px-3 py-1 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    class="rounded-md px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
                     :class="
                         metric === 'comments'
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-muted-foreground hover:text-foreground'
+                            ? 'bg-violet-100 text-foreground'
+                            : 'text-foreground/65 hover:bg-muted hover:text-foreground'
                     "
                     :aria-pressed="metric === 'comments'"
                     @click="metric = 'comments'"
@@ -69,36 +77,60 @@ const posts = computed<TopPost[]>(() => props.topPosts[metric.value]);
             <article
                 v-for="(post, index) in posts"
                 :key="post.id"
-                class="flex min-h-44 flex-col rounded-lg border border-border bg-background"
+                class="flex min-h-56 min-w-0 flex-col rounded-xl border-2 border-foreground bg-background p-4 shadow-xs"
             >
                 <div
-                    class="flex items-center justify-between border-b border-border bg-muted/35 px-3 py-2 text-xs font-semibold text-foreground"
+                    class="flex items-center justify-between gap-2 border-b border-foreground/15 pb-3 text-xs font-medium text-muted-foreground"
                 >
-                    <span>#{{ index + 1 }}</span>
-                    <span class="tabular-nums"
-                        >{{ formatNumberCompact(post[metric] ?? 0) }}
-                        {{ $t(`analytics.dashboard.${metric}`) }}</span
+                    <span
+                        class="flex size-7 items-center justify-center rounded-full border border-foreground bg-violet-100 font-semibold text-foreground"
+                        >{{ index + 1 }}</span
                     >
+                    <span class="tabular-nums">
+                        <strong class="text-sm text-foreground">{{
+                            formatNumberCompact(post[metric] ?? 0)
+                        }}</strong>
+                        {{ $t(`analytics.dashboard.${metric}`) }}
+                    </span>
                 </div>
-                <div class="flex flex-1 flex-col gap-2 p-3">
-                    <AccountIdentity
-                        :account="{
-                            social_account_key: post.social_account_key,
-                            platform: post.platform,
-                            name: post.name,
-                            username: post.username,
-                            avatar_url: null,
-                        }"
-                    />
-                    <p class="line-clamp-3 text-sm leading-5 text-foreground">
-                        {{
-                            post.excerpt || $t('analytics.dashboard.no_excerpt')
-                        }}
-                    </p>
+                <div class="flex flex-1 flex-col gap-3 pt-3">
                     <div
-                        class="mt-auto flex items-end justify-between gap-2 pt-2 text-xs text-muted-foreground"
+                        class="flex min-w-0 items-center justify-between gap-2"
                     >
-                        <span>{{
+                        <AccountIdentity
+                            :account="{
+                                social_account_key: post.social_account_key,
+                                platform: post.platform,
+                                name: post.name,
+                                username: post.username,
+                                avatar_url: null,
+                            }"
+                        />
+                        <span class="shrink-0 text-xs text-muted-foreground">{{
+                            dayjs(post.published_at).format('D MMM')
+                        }}</span>
+                    </div>
+                    <div class="flex min-h-16 gap-3">
+                        <p
+                            class="line-clamp-3 min-w-0 flex-1 text-sm leading-5 text-foreground"
+                        >
+                            {{
+                                post.excerpt ||
+                                $t('analytics.dashboard.no_excerpt')
+                            }}
+                        </p>
+                        <img
+                            v-if="thumbnailFor(post)"
+                            :src="thumbnailFor(post)!"
+                            alt=""
+                            loading="lazy"
+                            class="size-14 shrink-0 rounded-lg object-cover"
+                        />
+                    </div>
+                    <div
+                        class="mt-auto flex items-center justify-between gap-2 border-t border-foreground/10 pt-3 text-xs text-muted-foreground"
+                    >
+                        <span class="line-clamp-1">{{
                             post.origin === 'trypost'
                                 ? $t(
                                       'analytics.dashboard.published_via_trypost',
@@ -108,9 +140,11 @@ const posts = computed<TopPost[]>(() => props.topPosts[metric.value]);
                         <Link
                             v-if="post.availability === 'available'"
                             :href="publicationShow.url(post.id)"
-                            class="shrink-0 font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-                            >{{ $t('analytics.detail.details') }}</Link
+                            class="inline-flex shrink-0 items-center gap-0.5 font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                         >
+                            {{ $t('analytics.detail.details') }}
+                            <IconArrowUpRight class="size-3.5" />
+                        </Link>
                     </div>
                 </div>
             </article>

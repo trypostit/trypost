@@ -59,6 +59,10 @@ return new class extends Migration
                 ['workspace_id', 'social_account_key', 'provider_published_at'],
                 'analytics_publications_account_date_index',
             );
+            $table->index(
+                ['workspace_id', 'network', 'platform_user_id', 'provider_published_at'],
+                'analytics_publications_provider_identity_index',
+            );
         });
     }
 

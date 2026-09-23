@@ -73,8 +73,20 @@ test('workspace dashboard separates accounts and switches chart and top-post mod
         ->assertSee('@second')
         ->assertSee('Top 5 Posts')
         ->assertSee('Performance')
+        ->assertPresent('@accounts-unovis-bar-chart')
+        ->hover('[data-testid="accounts-unovis-bar-chart"] path[class$="-bar"] >> nth=0')
+        ->assertPresent('[data-testid="analytics-chart-tooltip"] img[src*="/images/accounts/"]')
+        ->assertMissing('[data-testid="analytics-chart-tooltip"] [style*="background-color"]')
+        ->click('@followers-line')
+        ->assertPresent('@followers-unovis-chart')
         ->click('@followers-growth')
+        ->assertPresent('@accounts-unovis-bar-chart')
+        ->click('@posts-bar')
+        ->assertPresent('@accounts-unovis-bar-chart')
         ->click('@posts-stacked')
+        ->assertPresent('@posts-unovis-chart')
+        ->hover('[data-testid="posts-unovis-chart"] path[class$="-bar"] >> nth=0')
+        ->assertPresent('[data-testid="analytics-chart-tooltip"] img[src*="/images/accounts/"]')
         ->click('@top-comments')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
@@ -93,6 +105,43 @@ test('workspace dashboard explains the empty state without inventing follower to
 
     $page->assertSee('Your analytics history is being prepared')
         ->assertMissing('@analytics-summary')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+});
+
+test('workspace dashboard abbreviates large percentage changes', function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+        'platform' => Platform::Instagram,
+    ]);
+
+    foreach ([['2026-09-01 10:00:00', 1], ['2026-09-23 10:00:00', 1866]] as [$publishedAt, $reactions]) {
+        $publication = AnalyticsPublication::factory()->create([
+            'workspace_id' => $workspace->id,
+            'social_account_id' => $account->id,
+            'social_account_key' => $account->id,
+            'platform' => Platform::Instagram,
+            'network' => Platform::Instagram->network(),
+            'provider_published_at' => $publishedAt,
+        ]);
+        AnalyticsPublicationDailySnapshot::factory()->create([
+            'analytics_publication_id' => $publication->id,
+            'reactions_count' => $reactions,
+        ]);
+    }
+
+    $this->actingAs($user);
+    Vite::useHotFile(storage_path('framework/testing/workspace-analytics-no-hot'));
+    $page = visit(route('app.analytics', ['start' => '2026-09-12', 'end' => '2026-09-23']));
+
+    $page->assertSee('+186.5K%')
+        ->assertDontSee('+186500%')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });

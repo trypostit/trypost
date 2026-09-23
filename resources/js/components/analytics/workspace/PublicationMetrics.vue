@@ -5,6 +5,7 @@ import { computed } from 'vue';
 import dayjs from '@/dayjs';
 import { formatNumberCompact } from '@/lib/utils';
 
+import AnalyticsSection from './AnalyticsSection.vue';
 import type {
     PublicationAnalyticsDetail,
     PublicationMetricFact,
@@ -110,8 +111,8 @@ const display = (key: string, fact: PublicationMetricFact): string => {
     if (fact.value === null) return '—';
     if (fact.unit === 'percent') return `${fact.value}%`;
     if (fact.unit === 'milliseconds') {
-        const divisor = key.includes('average') ? 1000 : 60000;
-        return `${Math.round((fact.value / divisor) * 10) / 10} ${key.includes('average') ? 's' : 'min'}`;
+        const average = key.includes('average');
+        return `${formatNumberCompact(fact.value / (average ? 1000 : 60000))} ${average ? 's' : 'min'}`;
     }
     return formatNumberCompact(fact.value);
 };
@@ -124,10 +125,10 @@ const stale = computed(() =>
 </script>
 
 <template>
-    <div class="space-y-4">
+    <div class="flex flex-col gap-6">
         <div
             v-if="detail.snapshot"
-            class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"
+            class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground"
         >
             <span
                 >{{ $t('analytics.detail.last_collected') }}
@@ -146,30 +147,34 @@ const stale = computed(() =>
 
         <p
             v-if="visibleGroups.length === 0"
-            class="text-sm text-muted-foreground"
+            class="rounded-xl border-2 border-dashed border-foreground/35 bg-card px-6 py-12 text-center text-sm text-muted-foreground"
         >
             {{ $t('analytics.detail.awaiting_metrics') }}
         </p>
-        <section
+        <AnalyticsSection
             v-for="group in visibleGroups"
             :key="group.label"
-            class="space-y-2"
+            :title="$t(group.label)"
         >
-            <h3 class="text-xs font-semibold text-muted-foreground">
-                {{ $t(group.label) }}
-            </h3>
-            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            <div
+                class="grid gap-3"
+                :class="
+                    group.metrics.length <= 2
+                        ? 'grid-cols-1 sm:grid-cols-2'
+                        : 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-5'
+                "
+            >
                 <div
                     v-for="metric in group.metrics"
                     :key="metric.key"
-                    class="rounded-lg border border-border bg-muted/25 px-3 py-2"
+                    class="flex min-h-28 min-w-0 flex-col justify-between rounded-xl border-2 border-foreground bg-background px-4 py-4 shadow-xs"
                     :title="metric.fact.time_basis || ''"
                 >
-                    <p class="text-xs text-muted-foreground">
+                    <p class="text-sm font-medium text-foreground/70">
                         {{ label(metric.key) }}
                     </p>
                     <p
-                        class="mt-1 text-lg font-semibold text-foreground tabular-nums"
+                        class="mt-3 text-2xl font-semibold tracking-tight break-words text-foreground tabular-nums"
                     >
                         {{ display(metric.key, metric.fact) }}
                     </p>
@@ -184,6 +189,6 @@ const stale = computed(() =>
                     </p>
                 </div>
             </div>
-        </section>
+        </AnalyticsSection>
     </div>
 </template>

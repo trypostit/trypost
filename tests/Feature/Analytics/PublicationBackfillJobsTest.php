@@ -88,6 +88,29 @@ test('bootstrap resumes a failed backfill from its last committed cursor', funct
     Bus::assertDispatched(BackfillAccountPublications::class, fn ($job): bool => $job->syncStateId === $state->id);
 });
 
+test('re-authorizing the same account starts incremental discovery without restarting complete backfill', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->x()->create(['is_active' => true]);
+    $backfill = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'status' => SyncStatus::Complete,
+    ]);
+    $discovery = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationDiscovery,
+        'status' => SyncStatus::Complete,
+        'high_watermark_at' => CarbonImmutable::parse('2026-09-20 12:00:00', 'UTC'),
+    ]);
+
+    (new BootstrapAccountAnalytics($account->id, true))->handleFor($account->id);
+
+    expect($backfill->fresh()->status)->toBe(SyncStatus::Complete);
+    Bus::assertNotDispatched(BackfillAccountPublications::class);
+    Bus::assertDispatched(DiscoverAccountPublications::class, fn ($job): bool => $job->syncStateId === $discovery->id);
+});
+
 test('x backfill reports provider limited when the 3200 post timeline ends before the target', function () {
     Bus::fake();
     $account = SocialAccount::factory()->create(['platform' => Platform::X, 'is_active' => true]);
@@ -315,6 +338,46 @@ test('an invalid provider cursor clears only the cursor and restarts the bounded
     Bus::assertDispatched(BackfillAccountPublications::class);
 });
 
+test('an expired cursor after reconnect preserves imported history instead of rereading it', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->x()->create(['is_active' => true]);
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'status' => SyncStatus::Running,
+        'checkpoint' => ['cursor' => 'expired-after-disconnect', 'revision' => 4, 'seen_count' => 100],
+        'oldest_reached_at' => CarbonImmutable::parse('2026-08-01', 'UTC'),
+        'high_watermark_at' => CarbonImmutable::parse('2026-09-20', 'UTC'),
+    ]);
+    $account->delete();
+    $replacement = SocialAccount::factory()->x()->create([
+        'workspace_id' => $account->workspace_id,
+        'platform_user_id' => $account->platform_user_id,
+        'is_active' => true,
+    ]);
+    (new BootstrapAccountAnalytics($replacement->id))->handleFor($replacement->id);
+    Bus::fake();
+
+    $collector = Mockery::mock(PublicationHistoryCollector::class);
+    $collector->shouldReceive('page')->once()
+        ->andThrow(new AnalyticsCollectionException('invalid_cursor', 'expired'));
+    $factory = Mockery::mock(PublicationHistoryCollectorFactory::class);
+    $factory->shouldReceive('for')->once()->andReturn($collector);
+    app()->instance(PublicationHistoryCollectorFactory::class, $factory);
+
+    app()->call([new BackfillAccountPublications($replacement->id, $state->id), 'handle']);
+
+    $discovery = AnalyticsSyncState::query()->where('social_account_id', $replacement->id)
+        ->forCollector(SyncCollector::PublicationDiscovery)->firstOrFail();
+
+    expect($state->fresh()->status)->toBe(SyncStatus::Partial)
+        ->and($state->fresh()->last_error_category)->toBe('reconnect_cursor_expired')
+        ->and($state->fresh()->oldest_reached_at?->toDateString())->toBe('2026-08-01')
+        ->and($discovery->high_watermark_at?->toDateString())->toBe('2026-09-20');
+    Bus::assertNotDispatched(BackfillAccountPublications::class);
+    Bus::assertDispatched(DiscoverAccountPublications::class, fn ($job): bool => $job->syncStateId === $discovery->id);
+});
+
 test('daily discovery is suppressed during backfill and resumes after terminal state', function () {
     Bus::fake();
     $account = SocialAccount::factory()->instagram()->create(['is_active' => true]);
@@ -352,7 +415,7 @@ test('daily discovery is suppressed during backfill and resumes after terminal s
         ->and($discovery->fresh()->last_success_at)->not->toBeNull();
 });
 
-test('deleting an account cascades operational states but retains publication history', function () {
+test('deleting an account detaches its sync state and retains publication history', function () {
     $account = SocialAccount::factory()->instagram()->create();
     $state = AnalyticsSyncState::factory()->create(['social_account_id' => $account->id]);
     $publication = AnalyticsPublication::factory()->create([
@@ -363,7 +426,191 @@ test('deleting an account cascades operational states but retains publication hi
 
     $account->delete();
 
-    expect(AnalyticsSyncState::query()->whereKey($state->id)->exists())->toBeFalse()
+    expect($state->fresh())->not->toBeNull()
+        ->and($state->fresh()->social_account_id)->toBeNull()
         ->and($publication->fresh())->not->toBeNull()
         ->and($publication->fresh()->social_account_id)->toBeNull();
+});
+
+test('reconnecting the same identity reuses completed history and discovers only newer posts', function (Platform $platform, Platform $reconnectedPlatform) {
+    Bus::fake();
+    $account = SocialAccount::factory()->create(['platform' => $platform, 'is_active' => true]);
+    $backfill = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'status' => SyncStatus::Complete,
+        'high_watermark_at' => CarbonImmutable::parse('2026-09-20 12:00:00', 'UTC'),
+    ]);
+    $discovery = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationDiscovery,
+        'status' => SyncStatus::Complete,
+        'high_watermark_at' => CarbonImmutable::parse('2026-09-20 12:00:00', 'UTC'),
+    ]);
+    $oldPublication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'network' => $platform->network(),
+        'platform_user_id' => $account->platform_user_id,
+        'platform' => $platform,
+        'provider_post_id' => 'before-disconnect',
+    ]);
+
+    $account->delete();
+    $replacement = SocialAccount::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'platform' => $reconnectedPlatform,
+        'platform_user_id' => $account->platform_user_id,
+        'is_active' => true,
+    ]);
+
+    (new BootstrapAccountAnalytics($replacement->id))->handleFor($replacement->id);
+
+    expect($backfill->fresh()->social_account_id)->toBe($replacement->id)
+        ->and($backfill->fresh()->status)->toBe(SyncStatus::Complete)
+        ->and($discovery->fresh()->social_account_id)->toBe($replacement->id)
+        ->and($oldPublication->fresh()->social_account_id)->toBe(
+            $platform === $reconnectedPlatform ? $replacement->id : null,
+        );
+    Bus::assertNotDispatched(BackfillAccountPublications::class);
+    Bus::assertDispatched(DiscoverAccountPublications::class, fn ($job): bool => $job->socialAccountId === $replacement->id && $job->syncStateId === $discovery->id);
+
+    $collector = Mockery::mock(PublicationHistoryCollector::class);
+    $collector->shouldReceive('page')->once()->withArgs(
+        fn (SocialAccount $received, ?string $cursor, CarbonImmutable $cutoff): bool => $received->is($replacement)
+            && $cursor === null
+            && $cutoff->equalTo(CarbonImmutable::parse('2026-09-17 12:00:00', 'UTC')),
+    )->andReturn(new PublicationPage([
+        new DiscoveredPublication('after-reconnect', CarbonImmutable::parse('2026-09-22 12:00:00', 'UTC'), PublicationContentType::Text),
+    ], null, true));
+    $factory = Mockery::mock(PublicationHistoryCollectorFactory::class);
+    $factory->shouldReceive('for')->once()->andReturn($collector);
+    app()->instance(PublicationHistoryCollectorFactory::class, $factory);
+    app()->call([new DiscoverAccountPublications($replacement->id, $discovery->id), 'handle']);
+
+    expect(AnalyticsPublication::query()->where('workspace_id', $replacement->workspace_id)->count())->toBe(2)
+        ->and(AnalyticsPublication::query()->where('provider_post_id', 'after-reconnect')->value('social_account_key'))->toBe($account->id);
+})->with([
+    'x' => [Platform::X, Platform::X],
+    'instagram' => [Platform::Instagram, Platform::Instagram],
+    'instagram via facebook' => [Platform::Instagram, Platform::InstagramFacebook],
+]);
+
+test('reconnecting during backfill resumes its cursor instead of starting from the first page', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->x()->create(['is_active' => true]);
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'status' => SyncStatus::Running,
+        'checkpoint' => ['cursor' => 'next-page', 'revision' => 4, 'seen_count' => 200],
+    ]);
+
+    $account->delete();
+    $replacement = SocialAccount::factory()->x()->create([
+        'workspace_id' => $account->workspace_id,
+        'platform_user_id' => $account->platform_user_id,
+        'is_active' => true,
+    ]);
+
+    (new BootstrapAccountAnalytics($replacement->id))->handleFor($replacement->id);
+
+    expect($state->fresh()->social_account_id)->toBe($replacement->id)
+        ->and($state->fresh()->status)->toBe(SyncStatus::Pending)
+        ->and($state->fresh()->checkpoint)->toMatchArray(['cursor' => 'next-page', 'revision' => 5, 'seen_count' => 200]);
+    Bus::assertDispatched(BackfillAccountPublications::class, fn ($job): bool => $job->socialAccountId === $replacement->id && $job->syncStateId === $state->id);
+    expect(app(AdvanceAnalyticsSyncState::class)->begin($state->id, socialAccountId: $account->id))->toBeNull();
+});
+
+test('a page fetched by the disconnected account cannot advance the rebound checkpoint', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->x()->create(['is_active' => true]);
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'status' => SyncStatus::Running,
+        'checkpoint' => ['cursor' => 'next-page', 'revision' => 4, 'seen_count' => 100],
+    ]);
+    $account->delete();
+    $replacement = SocialAccount::factory()->x()->create([
+        'workspace_id' => $account->workspace_id,
+        'platform_user_id' => $account->platform_user_id,
+        'is_active' => true,
+    ]);
+    (new BootstrapAccountAnalytics($replacement->id))->handleFor($replacement->id);
+
+    $result = app(AdvanceAnalyticsSyncState::class)->handle(
+        $state->id,
+        4,
+        $account,
+        new PublicationPage([
+            new DiscoveredPublication('stale-post', CarbonImmutable::parse('2026-09-01', 'UTC'), PublicationContentType::Text),
+        ], null, true),
+    );
+
+    expect($result)->toBe(['advanced' => false, 'terminal' => true])
+        ->and($state->fresh()->checkpoint)->toMatchArray(['cursor' => 'next-page', 'revision' => 5, 'seen_count' => 100])
+        ->and(AnalyticsPublication::query()->where('provider_post_id', 'stale-post')->exists())->toBeFalse();
+});
+
+test('a different account identity cannot inherit another accounts checkpoint', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->x()->create(['is_active' => true]);
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'status' => SyncStatus::Complete,
+    ]);
+    $account->delete();
+    $other = SocialAccount::factory()->x()->create([
+        'workspace_id' => $account->workspace_id,
+        'platform_user_id' => 'different-x-user',
+        'is_active' => true,
+    ]);
+
+    (new BootstrapAccountAnalytics($other->id))->handleFor($other->id);
+
+    $otherBackfill = AnalyticsSyncState::query()
+        ->where('social_account_id', $other->id)
+        ->forCollector(SyncCollector::PublicationBackfill)
+        ->firstOrFail();
+
+    expect($state->fresh()->social_account_id)->toBeNull()
+        ->and($otherBackfill->id)->not->toBe($state->id)
+        ->and($otherBackfill->status)->toBe(SyncStatus::Pending);
+    Bus::assertDispatched(BackfillAccountPublications::class, fn ($job): bool => $job->socialAccountId === $other->id);
+});
+
+test('history without a surviving checkpoint is marked partial and only new posts are discovered', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->instagram()->create(['is_active' => true]);
+    AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => null,
+        'social_account_key' => fake()->uuid(),
+        'network' => $account->platform->network(),
+        'platform_user_id' => $account->platform_user_id,
+        'platform' => $account->platform,
+        'provider_published_at' => CarbonImmutable::parse('2026-09-10 10:00:00', 'UTC'),
+    ]);
+
+    (new BootstrapAccountAnalytics($account->id))->handleFor($account->id);
+
+    $backfill = AnalyticsSyncState::query()->where('social_account_id', $account->id)
+        ->forCollector(SyncCollector::PublicationBackfill)->firstOrFail();
+    $discovery = AnalyticsSyncState::query()->where('social_account_id', $account->id)
+        ->forCollector(SyncCollector::PublicationDiscovery)->firstOrFail();
+
+    expect($backfill->status)->toBe(SyncStatus::Partial)
+        ->and($backfill->last_error_category)->toBe('prior_checkpoint_unavailable')
+        ->and($discovery->high_watermark_at?->toDateString())->toBe('2026-09-10');
+    Bus::assertNotDispatched(BackfillAccountPublications::class);
+    Bus::assertDispatched(DiscoverAccountPublications::class, fn ($job): bool => $job->syncStateId === $discovery->id);
+
+    (new BootstrapAccountAnalytics($account->id))->handleFor($account->id);
+
+    expect($backfill->fresh()->status)->toBe(SyncStatus::Partial);
+    Bus::assertNotDispatched(BackfillAccountPublications::class);
 });

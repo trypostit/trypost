@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import FollowersChart from '@/components/analytics/workspace/FollowersChart.vue';
 import ImportCoverage from '@/components/analytics/workspace/ImportCoverage.vue';
@@ -9,7 +9,10 @@ import PerformanceTable from '@/components/analytics/workspace/PerformanceTable.
 import PostsChart from '@/components/analytics/workspace/PostsChart.vue';
 import SummaryCards from '@/components/analytics/workspace/SummaryCards.vue';
 import TopPosts from '@/components/analytics/workspace/TopPosts.vue';
-import type { WorkspaceAnalyticsReport } from '@/components/analytics/workspace/types';
+import {
+    accountColor,
+    type WorkspaceAnalyticsReport,
+} from '@/components/analytics/workspace/types';
 import PageHeader from '@/components/PageHeader.vue';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import dayjs from '@/dayjs';
@@ -17,6 +20,20 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { analytics as analyticsRoute } from '@/routes/app';
 
 const props = defineProps<{ report: WorkspaceAnalyticsReport }>();
+const accountColors = computed<Record<string, string>>(() => {
+    const keys = [
+        ...new Set(
+            [
+                ...props.report.followers.accounts,
+                ...props.report.posts.accounts,
+            ].map((account) => account.social_account_key),
+        ),
+    ];
+
+    return Object.fromEntries(
+        keys.map((key, index) => [key, accountColor(index)]),
+    );
+});
 const selectedRange = ref({
     start: dayjs(props.report.range.start).toDate(),
     end: dayjs(props.report.range.end).toDate(),
@@ -50,9 +67,7 @@ const changeRange = (range: { start: Date; end: Date }): void => {
 <template>
     <AppLayout>
         <Head :title="trans('sidebar.analytics')" />
-        <div
-            class="mx-auto flex w-full max-w-[1560px] flex-col gap-5 px-4 py-7 sm:px-6 lg:px-8"
-        >
+        <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
             <header class="flex flex-wrap items-end justify-between gap-4">
                 <PageHeader
                     :title="$t('sidebar.analytics')"
@@ -82,7 +97,7 @@ const changeRange = (range: { start: Date; end: Date }): void => {
 
             <div
                 v-if="!report.bounds.min"
-                class="rounded-xl border border-dashed border-border bg-card px-6 py-16 text-center"
+                class="rounded-xl border-2 border-dashed border-foreground/35 bg-card px-6 py-16 text-center"
             >
                 <h2 class="text-base font-semibold">
                     {{ $t('analytics.dashboard.no_data_title') }}
@@ -97,8 +112,13 @@ const changeRange = (range: { start: Date; end: Date }): void => {
                 <FollowersChart
                     :followers="report.followers"
                     :range="report.range"
+                    :colors="accountColors"
                 />
-                <PostsChart :posts="report.posts" :range="report.range" />
+                <PostsChart
+                    :posts="report.posts"
+                    :range="report.range"
+                    :colors="accountColors"
+                />
                 <TopPosts :top-posts="report.top_posts" :range="report.range" />
                 <PerformanceTable
                     :rows="report.performance"

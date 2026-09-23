@@ -1,5 +1,18 @@
 <script setup lang="ts">
+import { VisAxis, VisLine, VisScatter, VisXYContainer } from '@unovis/vue';
 import { computed } from 'vue';
+
+import {
+    ChartContainer,
+    ChartCrosshair,
+    ChartTooltip,
+    ChartTooltipContent,
+    componentToString,
+    type ChartConfig,
+} from '@/components/ui/chart';
+import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import dayjs from '@/dayjs';
+import { formatNumberCompact } from '@/lib/utils';
 
 import {
     accountColor,
@@ -7,142 +20,131 @@ import {
     type WorkspaceAnalyticsReport,
 } from '../types';
 
+type ChartPoint = {
+    date: string;
+    index: number;
+    [key: string]: string | number | undefined;
+};
+
 const props = defineProps<{
     accounts: FollowerAccount[];
     series: WorkspaceAnalyticsReport['followers']['series'];
+    colors: Record<string, string>;
 }>();
 
-const plot = { left: 40, top: 18, width: 890, height: 176 };
-const maximum = computed(() =>
-    Math.max(
-        1,
-        ...props.series.flatMap((point) =>
-            Object.values(point.accounts).filter(
-                (value): value is number => value !== null,
-            ),
-        ),
-    ),
-);
-const x = (index: number): number =>
-    plot.left + (index / Math.max(1, props.series.length - 1)) * plot.width;
-const y = (value: number): number =>
-    plot.top + plot.height - (value / maximum.value) * plot.height;
-const ticks = computed(() =>
-    [0, 1, 2, 3, 4].map((step) => ({
-        value: (maximum.value * step) / 4,
-        y: y((maximum.value * step) / 4),
-    })),
-);
-const paths = computed(() =>
-    props.accounts.map((account, accountIndex) => {
-        let segmentOpen = false;
-        const segments: string[] = [];
+const chartData = computed<ChartPoint[]>(() =>
+    props.series.map((point, index) => {
+        const values: ChartPoint = { date: point.date, index };
 
-        props.series.forEach((point, index) => {
-            const value = point.accounts[account.social_account_key];
-            if (value === null || value === undefined) {
-                segmentOpen = false;
-                return;
-            }
-
-            segments.push(`${segmentOpen ? 'L' : 'M'} ${x(index)} ${y(value)}`);
-            segmentOpen = true;
+        props.accounts.forEach((account, accountIndex) => {
+            values[`account_${accountIndex}`] =
+                point.accounts[account.social_account_key] ?? undefined;
         });
 
-        return {
-            key: account.social_account_key,
-            path: segments.join(' '),
-            color: accountColor(accountIndex),
-        };
+        return values;
     }),
 );
 
-const points = computed(() =>
-    props.accounts.flatMap((account, accountIndex) =>
-        props.series.flatMap((point, index) => {
-            const value = point.accounts[account.social_account_key];
-            return value === null || value === undefined
-                ? []
-                : [
-                      {
-                          key: `${account.social_account_key}-${point.date}`,
-                          x: x(index),
-                          y: y(value),
-                          value,
-                          date: point.date,
-                          color: accountColor(accountIndex),
-                      },
-                  ];
-        }),
+const chartConfig = computed<ChartConfig>(() =>
+    Object.fromEntries(
+        props.accounts.map((account, index) => [
+            `account_${index}`,
+            {
+                label: account.username
+                    ? `@${account.username}`
+                    : account.name || account.platform,
+                color:
+                    props.colors[account.social_account_key] ??
+                    accountColor(index),
+                icon: getPlatformLogo(account.platform),
+            },
+        ]),
     ),
 );
 
-const labels = computed(() => {
-    if (!props.series.length) return [];
-    const last = props.series.length - 1;
-    return [...new Set([0, Math.round(last / 2), last])].map(
-        (index) => props.series[index]?.date ?? '',
-    );
-});
+const xAccessor = (point: ChartPoint): number => point.index;
+const valueAccessor =
+    (index: number) =>
+    (point: ChartPoint): number | undefined => {
+        const value = point[`account_${index}`];
+        return typeof value === 'number' ? value : undefined;
+    };
+const formatDate = (tick: number | Date): string => {
+    const index = typeof tick === 'number' ? Math.round(tick) : 0;
+    const date = chartData.value[index]?.date;
+    return date ? dayjs(date).format('D MMM') : '';
+};
+const formatCount = (tick: number | Date): string =>
+    typeof tick === 'number' ? formatNumberCompact(tick) : '';
+const tooltipTemplate = computed(() =>
+    componentToString(chartConfig.value, ChartTooltipContent, {
+        labelFormatter: formatDate,
+    }),
+);
 </script>
 
 <template>
     <div
-        class="min-w-[440px]"
         role="img"
         :aria-label="$t('analytics.dashboard.followers_line_description')"
     >
-        <svg
-            class="h-56 w-full overflow-visible"
-            viewBox="0 0 960 220"
-            preserveAspectRatio="none"
-            aria-hidden="true"
+        <ChartContainer
+            :config="chartConfig"
+            cursor
+            class="h-72 w-full sm:h-80"
+            data-testid="followers-unovis-chart"
         >
-            <g v-for="tick in ticks" :key="tick.y">
-                <line
-                    x1="40"
-                    :y1="tick.y"
-                    x2="930"
-                    :y2="tick.y"
-                    stroke="currentColor"
-                    class="text-border"
-                    stroke-width="1"
-                />
-                <text
-                    x="32"
-                    :y="tick.y + 4"
-                    text-anchor="end"
-                    class="fill-muted-foreground text-[11px]"
-                >
-                    {{ Math.round(tick.value).toLocaleString() }}
-                </text>
-            </g>
-            <path
-                v-for="line in paths"
-                :key="line.key"
-                :d="line.path"
-                fill="none"
-                :stroke="line.color"
-                stroke-width="3"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                vector-effect="non-scaling-stroke"
-            />
-            <circle
-                v-for="point in points"
-                :key="point.key"
-                :cx="point.x"
-                :cy="point.y"
-                r="3.5"
-                :fill="point.color"
+            <VisXYContainer
+                :data="chartData"
+                :padding="{ top: 16, right: 12, bottom: 0, left: 0 }"
             >
-                <title>
-                    {{ point.date }}: {{ point.value.toLocaleString() }}
-                </title>
-            </circle>
-        </svg>
-        <div class="ml-10 flex justify-between text-xs text-muted-foreground">
-            <span v-for="label in labels" :key="label">{{ label }}</span>
-        </div>
+                <template
+                    v-for="(account, index) in accounts"
+                    :key="account.social_account_key"
+                >
+                    <VisLine
+                        :x="xAccessor"
+                        :y="valueAccessor(index)"
+                        :color="
+                            colors[account.social_account_key] ??
+                            accountColor(index)
+                        "
+                        :line-width="2.5"
+                        curve-type="monotoneX"
+                    />
+                    <VisScatter
+                        :x="xAccessor"
+                        :y="valueAccessor(index)"
+                        :color="
+                            colors[account.social_account_key] ??
+                            accountColor(index)
+                        "
+                        :size="6"
+                    />
+                </template>
+                <VisAxis
+                    type="x"
+                    :tick-format="formatDate"
+                    :num-ticks="Math.min(chartData.length, 6)"
+                    :grid-line="false"
+                    :domain-line="false"
+                    :tick-line="false"
+                />
+                <VisAxis
+                    type="y"
+                    :tick-format="formatCount"
+                    :num-ticks="5"
+                    :grid-line="true"
+                    :domain-line="false"
+                    :tick-line="false"
+                />
+                <ChartCrosshair
+                    :template="tooltipTemplate"
+                    color="var(--foreground)"
+                    :circle-radius="4"
+                />
+                <ChartTooltip />
+            </VisXYContainer>
+        </ChartContainer>
     </div>
 </template>

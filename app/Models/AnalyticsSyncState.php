@@ -19,7 +19,8 @@ class AnalyticsSyncState extends Model
     use HasFactory, HasUuids;
 
     protected $fillable = [
-        'social_account_id', 'collector', 'status', 'checkpoint', 'target_since',
+        'social_account_id', 'workspace_id', 'network', 'platform_user_id',
+        'collector', 'status', 'checkpoint', 'target_since',
         'oldest_reached_at', 'high_watermark_at', 'last_success_at',
         'last_error_category',
     ];
@@ -45,6 +46,21 @@ class AnalyticsSyncState extends Model
     public function scopeForCollector(Builder $query, SyncCollector $collector): Builder
     {
         return $query->where('collector', $collector);
+    }
+
+    public function scopeForIdentity(Builder $query, SocialAccount $account): Builder
+    {
+        return $query->where(self::identityFor($account));
+    }
+
+    /** @return array{workspace_id: string, network: string, platform_user_id: string} */
+    public static function identityFor(SocialAccount $account): array
+    {
+        return [
+            'workspace_id' => $account->workspace_id,
+            'network' => $account->platform->network(),
+            'platform_user_id' => $account->platform_user_id,
+        ];
     }
 
     public function scopeTerminal(Builder $query): Builder
