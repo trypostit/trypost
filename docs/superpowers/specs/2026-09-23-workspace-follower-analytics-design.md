@@ -70,8 +70,34 @@ post analytics remain untouched.
 LinkedIn personal follower analytics requires `r_member_profileAnalytics`,
 which is provisioned through the vetted Community Management API product. That
 product must initially be the only product on a separate LinkedIn developer
-application. LinkedIn support can be reconsidered after TryPost receives the
-required product approval; it is not part of this delivery.
+application. It is not part of this delivery.
+
+### Planned v2: LinkedIn
+
+Follower analytics for both LinkedIn identity types are planned for v2:
+
+- LinkedIn personal profile follower count;
+- LinkedIn Page follower count.
+
+The v2 keeps the network consistent by introducing both identity types
+together. LinkedIn Page data is already technically accessible through the
+current application scopes, but personal-profile data remains gated by
+Community Management API approval and `r_member_profileAnalytics`.
+
+Before v2 implementation, TryPost must:
+
+1. create a separate LinkedIn developer application with no other provisioned
+   products;
+2. request and receive Community Management API access;
+3. confirm the production credential arrangement with LinkedIn after approval;
+4. add the newly provisioned analytics scope to the appropriate OAuth flow;
+5. require affected LinkedIn accounts to reconnect so their tokens contain the
+   approved scope;
+6. verify the current LinkedIn API version and data-retention requirements.
+
+If Community Management API access is not approved, LinkedIn personal cannot
+enter v2. Shipping LinkedIn Page alone would then require a new explicit
+product decision rather than happening implicitly.
 
 ## User experience
 
@@ -397,7 +423,8 @@ design is approved and implemented.
   yet known, so the choice would be speculative.
 - **Including either LinkedIn identity in v1.** Personal analytics require a
   separately vetted product, and the product decision for this release is to
-  exclude the network consistently.
+  defer the whole network to the planned v2 rather than ship partial LinkedIn
+  support.
 
 ## Delivery gates
 
@@ -408,3 +435,5 @@ design is approved and implemented.
    concrete classes, and ordered implementation tasks.
 4. Implementation begins only after that written plan is reviewed and its
    execution method is selected.
+5. LinkedIn follower analytics receives a separate v2 implementation plan
+   after the external Community Management API dependency is resolved.
