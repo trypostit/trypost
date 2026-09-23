@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\Analytics\SyncCollector;
+use App\Enums\Analytics\SyncStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
 use App\Enums\UserWorkspace\Role;
@@ -10,6 +12,7 @@ use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
+use App\Models\AnalyticsSyncState;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -106,6 +109,41 @@ test('workspace dashboard explains the empty state without inventing follower to
 
     $page->assertSee('Your analytics history is being prepared')
         ->assertMissing('@analytics-summary')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+});
+
+test('import progress disappears after the queued backfill finishes without navigating away', function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationBackfill,
+        'status' => SyncStatus::Running,
+    ]);
+
+    $this->actingAs($user);
+    Vite::useHotFile(storage_path('framework/testing/workspace-analytics-no-hot'));
+    $page = visit(route('app.analytics'));
+    $page->assertSee('Importing account history');
+
+    $state->update(['status' => SyncStatus::Complete]);
+    $page->script(<<<'JS'
+        (async () => {
+            for (let attempt = 0; attempt < 100; attempt++) {
+                if (!document.body.innerText.includes('Importing account history')) return;
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+        })();
+    JS);
+
+    $page->assertDontSee('Importing account history')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Console\Commands\Analytics;
 
 use App\Enums\Analytics\SyncCollector;
+use App\Enums\Analytics\SyncStatus;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\DiscoverAccountPublications;
 use App\Models\SocialAccount;
 use Illuminate\Console\Attributes\Description;
@@ -25,6 +27,15 @@ class DispatchPublicationDiscovery extends Command
             ->reorder()
             ->lazyById(100)
             ->each(function (SocialAccount $account): void {
+                $backfill = $account->analyticsSyncStates
+                    ->first(fn ($state): bool => $state->collector === SyncCollector::PublicationBackfill);
+
+                if ($backfill?->status === SyncStatus::Failed) {
+                    BootstrapAccountAnalytics::dispatch($account->id);
+
+                    return;
+                }
+
                 $backfillIsTerminal = $account->analyticsSyncStates
                     ->contains(fn ($state): bool => $state->collector === SyncCollector::PublicationBackfill && $state->isTerminal());
                 $discovery = $account->analyticsSyncStates

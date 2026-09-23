@@ -5,9 +5,13 @@ declare(strict_types=1);
 use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\MetricTimeBasis;
 use App\Enums\Analytics\PublicationContentType;
+use App\Enums\Analytics\PublicationOrigin;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
+use App\Models\Post;
+use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Metrics\BlueskyPublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Metrics\FacebookPublicationMetricsCollector;
@@ -280,12 +284,24 @@ test('Meta publication metrics classify missing permission on HTTP 400', functio
 
 test('TikTok resolves a TryPost publish id before collecting the public video', function () {
     $account = SocialAccount::factory()->create(['platform' => Platform::TikTok]);
+    $post = Post::factory()->create(['workspace_id' => $account->workspace_id]);
+    $postPlatform = PostPlatform::factory()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::TikTok,
+        'content_type' => ContentType::TikTokVideo,
+        'platform_post_id' => 'v_pub_abc',
+    ]);
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $account->workspace_id,
         'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'post_platform_id' => $postPlatform->id,
+        'network' => Platform::TikTok->network(),
         'platform' => Platform::TikTok,
         'platform_user_id' => $account->platform_user_id,
         'provider_post_id' => 'v_pub_abc',
+        'origin' => PublicationOrigin::TryPost,
     ]);
     Http::fake(['*' => Http::sequence()
         ->push(['data' => ['publicaly_available_post_id' => ['123456789']]])
@@ -297,6 +313,8 @@ test('TikTok resolves a TryPost publish id before collecting the public video', 
         ->collect($publication, CarbonImmutable::today('UTC'))->metrics)
         ->mapWithKeys(fn ($metric) => [$metric->key->value => $metric->value]);
 
-    expect($metrics->all())->toBe(['views' => 12, 'reactions' => 0, 'engagements' => 0]);
+    expect($metrics->all())->toBe(['views' => 12, 'reactions' => 0, 'engagements' => 0])
+        ->and($publication->fresh()->provider_post_id)->toBe('123456789')
+        ->and($postPlatform->fresh()->platform_post_id)->toBe('123456789');
     Http::assertSentCount(2);
 });

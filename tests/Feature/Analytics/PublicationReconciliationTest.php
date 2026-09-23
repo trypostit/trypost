@@ -7,9 +7,12 @@ use App\Actions\Analytics\UpsertAnalyticsPublication;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status;
+use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\SyncTryPostPublication as SyncTryPostPublicationJob;
 use App\Models\AnalyticsPublication;
+use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -58,6 +61,53 @@ test('duplicate provider pages are idempotent', function () {
     $upsert->external($account, discoveredPublication('remote-1'));
 
     expect(AnalyticsPublication::count())->toBe(1);
+});
+
+test('TikTok public video id merges a provisional TryPost post with earlier discovery and snapshots', function () {
+    $account = SocialAccount::factory()->create(['platform' => Platform::TikTok]);
+    $post = Post::factory()->create(['workspace_id' => $account->workspace_id]);
+    $postPlatform = PostPlatform::factory()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::TikTok,
+        'content_type' => ContentType::TikTokVideo,
+        'platform_post_id' => 'v_pub_provisional',
+    ]);
+    $provisional = app(SyncTryPostPublication::class)->handle($postPlatform);
+    $discovered = app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
+        providerPostId: '123456789',
+        publishedAt: CarbonImmutable::parse('2026-09-20 12:00:00', 'UTC'),
+        contentType: PublicationContentType::Video,
+        permalink: 'https://www.tiktok.com/@example/video/123456789',
+    ));
+    AnalyticsPublicationDailySnapshot::factory()->create([
+        'analytics_publication_id' => $provisional->id,
+        'snapshot_date' => '2026-09-21',
+        'collected_at' => '2026-09-21 10:00:00',
+        'views_count' => 5,
+    ]);
+    AnalyticsPublicationDailySnapshot::factory()->create([
+        'analytics_publication_id' => $discovered->id,
+        'snapshot_date' => '2026-09-21',
+        'collected_at' => '2026-09-21 12:00:00',
+        'views_count' => 12,
+    ]);
+
+    app(UpsertAnalyticsPublication::class)->reconcileTikTokPublicId($provisional, '123456789');
+
+    expect(AnalyticsPublication::query()->count())->toBe(1)
+        ->and($provisional->fresh()->provider_post_id)->toBe('123456789')
+        ->and($provisional->fresh()->origin)->toBe(PublicationOrigin::TryPost)
+        ->and(AnalyticsPublicationDailySnapshot::query()->count())->toBe(1)
+        ->and($provisional->dailySnapshots()->sole()->views_count)->toBe(12)
+        ->and($postPlatform->fresh()->platform_post_id)->toBe('123456789');
+
+    app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
+        providerPostId: '123456789',
+        publishedAt: CarbonImmutable::parse('2026-09-20 12:00:00', 'UTC'),
+        contentType: PublicationContentType::Video,
+    ));
+    expect(AnalyticsPublication::query()->count())->toBe(1);
 });
 
 test('database failures other than identity collisions are not swallowed', function () {

@@ -58,6 +58,12 @@ class AdvanceAnalyticsSyncState
                     ...(! empty($checkpoint['resumed_after_disconnect'])
                         ? ['resumed_after_disconnect' => true]
                         : []),
+                    ...(! empty($checkpoint['had_provider_limit'])
+                        ? ['had_provider_limit' => true]
+                        : []),
+                    ...(! $restartTerminal && ! empty($checkpoint['invalid_cursor_resets'])
+                        ? ['invalid_cursor_resets' => (int) $checkpoint['invalid_cursor_resets']]
+                        : []),
                 ],
                 'last_error_category' => null,
             ]);
@@ -128,11 +134,13 @@ class AdvanceAnalyticsSyncState
                 && $oldest
                 && $oldest->greaterThan($state->target_since)
                 && $seenCount >= self::X_TIMELINE_LIMIT;
+            $hadProviderLimit = $page->providerLimited || ! empty($checkpoint['had_provider_limit']);
+            $finished = $page->providerExhausted || $reachedTarget;
 
             $status = match (true) {
-                $page->providerLimited || $xTimelineLimited => SyncStatus::ProviderLimited,
-                filled($page->partialReason) && ($page->providerExhausted || $reachedTarget) => SyncStatus::Partial,
-                $page->providerExhausted || $reachedTarget => SyncStatus::Complete,
+                $xTimelineLimited, $hadProviderLimit && $finished => SyncStatus::ProviderLimited,
+                filled($page->partialReason) && $finished => SyncStatus::Partial,
+                $finished => SyncStatus::Complete,
                 default => SyncStatus::Running,
             };
 
@@ -142,12 +150,16 @@ class AdvanceAnalyticsSyncState
                     'cursor' => $status === SyncStatus::Running ? $page->nextCursor : null,
                     'revision' => $capturedRevision,
                     ...($isXBackfill ? ['seen_count' => $seenCount] : []),
+                    ...($hadProviderLimit && $status === SyncStatus::Running ? ['had_provider_limit' => true] : []),
+                    ...($status === SyncStatus::Running && ! empty($checkpoint['invalid_cursor_resets'])
+                        ? ['invalid_cursor_resets' => (int) $checkpoint['invalid_cursor_resets']]
+                        : []),
                 ],
                 'oldest_reached_at' => $oldest,
                 'high_watermark_at' => $highWatermark,
                 'last_success_at' => CarbonImmutable::now('UTC'),
                 'last_error_category' => match (true) {
-                    $page->providerLimited => 'provider_limited',
+                    $hadProviderLimit => 'provider_limited',
                     $xTimelineLimited => 'x_timeline_3200',
                     default => $page->partialReason,
                 },
@@ -190,12 +202,27 @@ class AdvanceAnalyticsSyncState
                 return false;
             }
 
+            $resets = (int) data_get($state->checkpoint, 'invalid_cursor_resets', 0);
+
+            if ($resets >= 1) {
+                $state->update([
+                    'status' => $state->collector === SyncCollector::PublicationBackfill
+                        ? SyncStatus::Partial
+                        : SyncStatus::Failed,
+                    'last_error_category' => 'invalid_cursor_repeated',
+                ]);
+
+                return false;
+            }
+
             $state->update([
                 'status' => SyncStatus::Pending,
                 'checkpoint' => [
                     'cursor' => null,
                     'revision' => $capturedRevision,
                     ...(array_key_exists('seen_count', $state->checkpoint ?? []) ? ['seen_count' => 0] : []),
+                    ...(! empty(data_get($state->checkpoint, 'had_provider_limit')) ? ['had_provider_limit' => true] : []),
+                    'invalid_cursor_resets' => $resets + 1,
                 ],
                 'last_error_category' => 'invalid_cursor',
             ]);

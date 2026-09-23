@@ -29,11 +29,11 @@ class AnalyticsController extends Controller
         $end = $bounds['max'] ? CarbonImmutable::parse($bounds['max'], 'UTC') : $today;
         $start = $end->subDays(29);
 
-        if (isset($validated['start'])) {
+        if ($bounds['min'] !== null && isset($validated['start'])) {
             $start = CarbonImmutable::parse($validated['start'], 'UTC');
         }
 
-        if (isset($validated['end'])) {
+        if ($bounds['max'] !== null && isset($validated['end'])) {
             $end = CarbonImmutable::parse($validated['end'], 'UTC');
         }
 

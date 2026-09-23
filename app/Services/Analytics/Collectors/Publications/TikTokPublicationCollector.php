@@ -10,6 +10,7 @@ use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationContentType;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\SocialAccount;
+use App\Support\Analytics\InvalidPublicationCursor;
 use Carbon\CarbonImmutable;
 
 class TikTokPublicationCollector extends AbstractApiPublicationCollector implements PublicationHistoryCollector
@@ -34,10 +35,15 @@ class TikTokPublicationCollector extends AbstractApiPublicationCollector impleme
             $account,
             config('trypost.platforms.tiktok.api').'/video/list/?fields='.self::FIELDS,
             $payload,
+            hasCursor: $cursor !== null,
         );
         $errorCode = data_get($response->json(), 'error.code');
 
         if (is_string($errorCode) && ! in_array($errorCode, ['', 'ok'], true)) {
+            if ($cursor !== null && $errorCode === 'invalid_params' && InvalidPublicationCursor::matches($response)) {
+                throw new AnalyticsCollectionException('invalid_cursor', 'TikTok publication history cursor expired');
+            }
+
             $category = match ($errorCode) {
                 'rate_limit_exceeded' => 'rate_limited',
                 'internal_error' => 'transient',

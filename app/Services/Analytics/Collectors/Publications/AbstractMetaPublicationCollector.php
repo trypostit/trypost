@@ -6,7 +6,9 @@ namespace App\Services\Analytics\Collectors\Publications;
 
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
+use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\SocialAccount;
+use App\Support\Analytics\InvalidPublicationCursor;
 use App\Support\Analytics\MetaAnalyticsResponse;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
@@ -23,6 +25,10 @@ abstract class AbstractMetaPublicationCollector
             ->withToken($account->access_token)
             ->timeout(120)
             ->get($url, array_filter($query, fn (mixed $value): bool => $value !== null && $value !== ''));
+
+        if (filled($query['after'] ?? null) && InvalidPublicationCursor::matches($response)) {
+            throw new AnalyticsCollectionException('invalid_cursor', 'publication history cursor expired');
+        }
 
         return MetaAnalyticsResponse::successful($response, 'publication history collection');
     }

@@ -145,7 +145,7 @@ test('an old discovered post queues a baseline only until it has one snapshot', 
     Bus::assertDispatched(CollectPublicationMetrics::class, 1);
 });
 
-test('daily dispatcher rate limits each eligible publication independently and excludes old or v2 publications', function () {
+test('daily dispatcher includes old publications without a baseline and excludes v2 publications', function () {
     $date = CarbonImmutable::parse('2026-09-23 12:00:00', 'UTC');
     CarbonImmutable::setTestNow($date);
     $first = metricJobPublication(Platform::TikTok, $date->subDay());
@@ -163,12 +163,33 @@ test('daily dispatcher rate limits each eligible publication independently and e
     }
 
     metricJobPublication(Platform::LinkedIn, $date->subDay());
-    metricJobPublication(Platform::Mastodon, $date->subDays(31));
+    $old = metricJobPublication(Platform::Mastodon, $date->subDays(31));
+    $expiredStory = metricJobPublication(Platform::Instagram, $date->subDays(31));
+    $expiredStory->update(['content_type' => PublicationContentType::Story]);
     Bus::fake([CollectPublicationMetrics::class]);
 
     $this->artisan('analytics:dispatch-publication-metrics')->assertExitCode(0);
 
-    Bus::assertDispatched(CollectPublicationMetrics::class, 21);
+    Bus::assertDispatched(CollectPublicationMetrics::class, 22);
+    Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $old->id && $job->baseline);
     expect(Bus::dispatched(CollectPublicationMetrics::class)
-        ->pluck('publicationId')->unique())->toHaveCount(21);
+        ->pluck('publicationId')->unique())->toHaveCount(22);
+});
+
+test('an old publication with an unsuccessful baseline is retried by the next daily dispatch', function () {
+    CarbonImmutable::setTestNow('2026-09-23 12:00:00 UTC');
+    $publication = metricJobPublication(Platform::Mastodon, CarbonImmutable::now('UTC')->subDays(180));
+    Http::fake(['*' => Http::response(['error' => 'unavailable'], 503)]);
+    Bus::fake([CollectPublicationMetrics::class]);
+
+    app()->call([(new CollectPublicationMetrics($publication->id, '2026-09-23', baseline: true)), 'handle']);
+    expect($publication->dailySnapshots()->exists())->toBeFalse();
+
+    CarbonImmutable::setTestNow('2026-09-24 02:00:00 UTC');
+    Bus::fake([CollectPublicationMetrics::class]);
+    $this->artisan('analytics:dispatch-publication-metrics')->assertSuccessful();
+
+    Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $publication->id
+        && $job->observationDate === '2026-09-24'
+        && $job->baseline);
 });

@@ -6,6 +6,7 @@ namespace App\Services\Analytics\Collectors\Publications;
 
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\SocialAccount;
+use App\Support\Analytics\InvalidPublicationCursor;
 use App\Support\Analytics\RetryAfter;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\PendingRequest;
@@ -25,15 +26,26 @@ abstract class AbstractApiPublicationCollector
         $response = $this->client($account, $authenticated)
             ->get($url, array_filter($query, fn (mixed $value): bool => $value !== null && $value !== ''));
 
+        if ((filled($query['pageToken'] ?? null)
+                || filled($query['pagination_token'] ?? null)
+                || filled($query['bookmark'] ?? null))
+            && InvalidPublicationCursor::matches($response)) {
+            throw new AnalyticsCollectionException('invalid_cursor', 'publication history cursor expired');
+        }
+
         return $this->successfulResponse($response);
     }
 
     /** @param array<string, mixed> $payload */
-    protected function post(SocialAccount $account, string $url, array $payload): Response
+    protected function post(SocialAccount $account, string $url, array $payload, bool $hasCursor = false): Response
     {
         $response = $this->client($account, true)
             ->asJson()
             ->post($url, $payload);
+
+        if ($hasCursor && InvalidPublicationCursor::matches($response)) {
+            throw new AnalyticsCollectionException('invalid_cursor', 'publication history cursor expired');
+        }
 
         return $this->successfulResponse($response);
     }

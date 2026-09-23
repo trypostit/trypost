@@ -15,6 +15,7 @@ use App\Support\Analytics\AnalyticsJobLog;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 
 class CollectAccountDailySnapshot implements ShouldQueue
@@ -87,21 +88,36 @@ class CollectAccountDailySnapshot implements ShouldQueue
                 return;
             }
 
-            if (! in_array($exception->category, ['transient', 'rate_limited'], true) || $this->attempts() >= 6) {
+            if (! in_array($exception->category, ['transient', 'rate_limited'], true)) {
                 app(AnalyticsJobLog::class)->record($account, 'followers', $this->observationDate, $this->attempts(), $exception->category);
 
                 return;
             }
 
-            $nextAttempt = $this->nextAttemptAt($exception->retryAt);
-
-            if ($nextAttempt) {
-                app(AnalyticsJobLog::class)->record($account, 'followers', $this->observationDate, $this->attempts(), $exception->category, $nextAttempt->toIso8601String());
-                $this->release($nextAttempt);
-            } else {
-                app(AnalyticsJobLog::class)->record($account, 'followers', $this->observationDate, $this->attempts(), 'retry_window_exhausted');
-            }
+            $this->retryTransient($account, $exception->category, $exception->retryAt);
+        } catch (ConnectionException) {
+            $this->retryTransient($account, 'transient', null);
         }
+    }
+
+    private function retryTransient(SocialAccount $account, string $category, ?CarbonImmutable $providerRetryAt): void
+    {
+        if ($this->attempts() >= 6) {
+            app(AnalyticsJobLog::class)->record($account, 'followers', $this->observationDate, $this->attempts(), $category);
+
+            return;
+        }
+
+        $nextAttempt = $this->nextAttemptAt($providerRetryAt);
+
+        if ($nextAttempt) {
+            app(AnalyticsJobLog::class)->record($account, 'followers', $this->observationDate, $this->attempts(), $category, $nextAttempt->toIso8601String());
+            $this->release($nextAttempt);
+
+            return;
+        }
+
+        app(AnalyticsJobLog::class)->record($account, 'followers', $this->observationDate, $this->attempts(), 'retry_window_exhausted');
     }
 
     private function nextAttemptAt(?CarbonImmutable $providerRetryAt): ?CarbonImmutable

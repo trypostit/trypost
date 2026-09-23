@@ -83,3 +83,18 @@ test('dashboard rejects invalid dates and never renders an excluded account', fu
             ->where('report.summary.followers.value', null)
             ->etc());
 });
+
+test('empty dashboard ignores an unbounded requested date range', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $this->actingAs($user)
+        ->get(route('app.analytics', ['start' => '1000-01-01', 'end' => '9999-12-31']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('report.bounds.min', null)
+            ->where('report.range.start', now('UTC')->startOfDay()->subDays(29)->toDateString())
+            ->where('report.range.end', now('UTC')->startOfDay()->toDateString())
+            ->etc());
+});

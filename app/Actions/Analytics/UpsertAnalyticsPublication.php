@@ -10,6 +10,7 @@ use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Models\AnalyticsPublication;
+use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -66,6 +67,74 @@ class UpsertAnalyticsPublication
             postPlatformId: $postPlatform->id,
             liveAccount: $liveAccount,
         );
+    }
+
+    public function reconcileTikTokPublicId(AnalyticsPublication $publication, string $publicId): void
+    {
+        DB::transaction(function () use ($publication, $publicId): void {
+            $current = AnalyticsPublication::query()->lockForUpdate()->findOrFail($publication->id);
+
+            if ($current->provider_post_id === $publicId || ! $current->post_platform_id) {
+                return;
+            }
+
+            $discovered = AnalyticsPublication::query()
+                ->where('workspace_id', $current->workspace_id)
+                ->where('social_account_key', $current->social_account_key)
+                ->where('network', $current->network)
+                ->where('provider_post_id', $publicId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($discovered) {
+                if ($discovered->post_platform_id && $discovered->post_platform_id !== $current->post_platform_id) {
+                    throw new \LogicException('TikTok public id is already attached to another TryPost publication.');
+                }
+
+                $discovered->dailySnapshots()->lockForUpdate()->reorder()->lazyById(100)->each(function (AnalyticsPublicationDailySnapshot $snapshot) use ($current): void {
+                    $existing = $current->dailySnapshots()
+                        ->whereDate('snapshot_date', $snapshot->snapshot_date->toDateString())
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (! $existing) {
+                        $snapshot->update(['analytics_publication_id' => $current->id]);
+
+                        return;
+                    }
+
+                    if ($snapshot->collected_at->greaterThan($existing->collected_at)) {
+                        $existing->fill($snapshot->only([
+                            'collected_at', 'provider_observed_at', 'metrics',
+                            'reactions_count', 'comments_count', 'shares_count', 'saves_count',
+                            'views_count', 'impressions_count', 'reach_count',
+                            'engagement_count', 'exposure_count', 'exposure_kind',
+                            'watch_time_milliseconds', 'average_watch_time_milliseconds',
+                        ]))->save();
+                    }
+
+                    $snapshot->delete();
+                });
+
+                $current->fill([
+                    'permalink' => $discovered->permalink ?? $current->permalink,
+                    'preview_metadata' => $discovered->preview_metadata ?? $current->preview_metadata,
+                    'provider_metadata' => $discovered->provider_metadata ?? $current->provider_metadata,
+                    'provider_synced_at' => $discovered->provider_synced_at ?? $current->provider_synced_at,
+                ]);
+                $discovered->delete();
+            }
+
+            $current->provider_post_id = $publicId;
+            $current->save();
+
+            PostPlatform::query()->whereKey($current->post_platform_id)->update([
+                'platform_post_id' => $publicId,
+                'platform_url' => $current->permalink,
+            ]);
+
+            $publication->setRawAttributes($current->getAttributes(), true);
+        });
     }
 
     /**

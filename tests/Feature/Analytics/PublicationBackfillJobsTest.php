@@ -83,6 +83,28 @@ test('discovery dispatcher loads sync states once for all accounts in a page', f
     expect($stateReads)->toHaveCount(1);
 });
 
+test('discovery dispatcher resumes failed backfill before incremental discovery', function () {
+    $account = SocialAccount::factory()->instagram()->create(['is_active' => true]);
+    AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationBackfill,
+        'status' => SyncStatus::Failed,
+        'checkpoint' => ['cursor' => 'saved-cursor', 'revision' => 3],
+    ]);
+    AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationDiscovery,
+    ]);
+    Bus::fake();
+
+    $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
+
+    Bus::assertDispatched(BootstrapAccountAnalytics::class, fn ($job): bool => $job->socialAccountId === $account->id);
+    Bus::assertNotDispatched(DiscoverAccountPublications::class);
+});
+
 test('bootstrap creates separate backfill and discovery states and dispatches the first page', function () {
     Bus::fake();
     CarbonImmutable::setTestNow('2026-09-23 10:00:00 UTC');
@@ -290,6 +312,31 @@ test('reaching the 365 day target stops pagination even when the provider has an
     Bus::assertNotDispatched(BackfillAccountPublications::class);
 });
 
+test('a limited page still advances to older pages and preserves its coverage warning', function () {
+    $account = SocialAccount::factory()->mastodon()->create(['is_active' => true]);
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'target_since' => CarbonImmutable::parse('2025-09-23', 'UTC'),
+    ]);
+    $sync = app(AdvanceAnalyticsSyncState::class);
+    $first = $sync->begin($state->id);
+
+    $result = $sync->handle($state->id, $first['revision'], $account, new PublicationPage([], 'older', false, true));
+
+    expect($result)->toBe(['advanced' => true, 'terminal' => false])
+        ->and($state->fresh()->status)->toBe(SyncStatus::Running)
+        ->and($state->fresh()->checkpoint)->toMatchArray(['cursor' => 'older', 'had_provider_limit' => true]);
+
+    $second = $sync->begin($state->id);
+    expect($second['cursor'])->toBe('older');
+    $sync->handle($state->id, $second['revision'], $account, new PublicationPage([
+        new DiscoveredPublication('older-post', CarbonImmutable::parse('2026-01-01', 'UTC'), PublicationContentType::Image),
+    ], null, true));
+
+    expect($state->fresh()->status)->toBe(SyncStatus::ProviderLimited)
+        ->and(AnalyticsPublication::query()->where('provider_post_id', 'older-post')->exists())->toBeTrue();
+});
+
 test('an unordered provider keeps paging even when a publication lands on the cutoff', function () {
     Bus::fake();
     $account = SocialAccount::factory()->create(['platform' => Platform::Pinterest, 'is_active' => true]);
@@ -393,6 +440,20 @@ test('an invalid provider cursor clears only the cursor and restarts the bounded
         ->and(data_get($state->fresh()->checkpoint, 'cursor'))->toBeNull()
         ->and(data_get($state->fresh()->checkpoint, 'seen_count'))->toBe(0);
     Bus::assertDispatched(BackfillAccountPublications::class);
+});
+
+test('a second invalid cursor stops the same backfill instead of looping forever', function () {
+    $account = SocialAccount::factory()->x()->create(['is_active' => true]);
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'checkpoint' => ['cursor' => 'bad-page', 'revision' => 0, 'invalid_cursor_resets' => 1],
+    ]);
+    $sync = app(AdvanceAnalyticsSyncState::class);
+    $capture = $sync->begin($state->id);
+
+    expect($sync->resetInvalidCursor($state->id, $capture['revision'], $account->id))->toBeFalse()
+        ->and($state->fresh()->status)->toBe(SyncStatus::Partial)
+        ->and($state->fresh()->last_error_category)->toBe('invalid_cursor_repeated');
 });
 
 test('an expired cursor after reconnect preserves imported history instead of rereading it', function () {

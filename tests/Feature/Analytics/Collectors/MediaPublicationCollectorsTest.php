@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Analytics\MetricTimeBasis;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\PinterestPublicationCollector;
 use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFactory;
@@ -167,6 +168,79 @@ test('youtube pages the uploads playlist and hydrates videos in one batch withou
         && $request['pageToken'] === 'youtube-cursor');
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/videos')
         && $request['id'] === 'video-1,video-2');
+});
+
+test('youtube classifies an invalid saved page token for bounded backfill recovery', function () {
+    $api = config('trypost.platforms.youtube.data_api');
+    Http::fake([
+        "{$api}/channels*" => Http::response([
+            'items' => [['contentDetails' => ['relatedPlaylists' => ['uploads' => 'uploads-1']]]],
+        ]),
+        "{$api}/playlistItems*" => Http::response([
+            'error' => ['errors' => [['reason' => 'invalidPageToken']]],
+        ], 400),
+    ]);
+    $account = SocialAccount::factory()->create(['platform' => Platform::YouTube]);
+
+    expect(fn () => app(YouTubePublicationCollector::class)->page(
+        $account,
+        'expired-token',
+        CarbonImmutable::parse('2026-01-01', 'UTC'),
+    ))->toThrow(AnalyticsCollectionException::class, 'publication history cursor expired');
+});
+
+test('x classifies an invalid pagination token without confusing other bad requests', function () {
+    $account = SocialAccount::factory()->x()->create();
+    Http::fake(['*' => Http::response(['detail' => 'The pagination_token is invalid'], 400)]);
+
+    expect(fn () => app(XPublicationCollector::class)->page(
+        $account,
+        'expired-token',
+        CarbonImmutable::parse('2026-01-01', 'UTC'),
+    ))->toThrow(fn (AnalyticsCollectionException $exception): bool => $exception->category === 'invalid_cursor');
+});
+
+test('a cursor-like provider error cannot restart a first-page request', function () {
+    $account = SocialAccount::factory()->x()->create();
+    Http::fake(['*' => Http::response(['detail' => 'The pagination_token is invalid'], 400)]);
+
+    expect(fn () => app(XPublicationCollector::class)->page(
+        $account,
+        null,
+        CarbonImmutable::parse('2026-01-01', 'UTC'),
+    ))->toThrow(fn (AnalyticsCollectionException $exception): bool => $exception->category === 'malformed');
+});
+
+test('tiktok classifies an invalid saved cursor from its successful HTTP envelope', function () {
+    $account = SocialAccount::factory()->create([
+        'platform' => Platform::TikTok,
+        'scopes' => ['video.list'],
+    ]);
+    Http::fake(['*' => Http::response([
+        'error' => ['code' => 'invalid_params', 'message' => 'Invalid cursor'],
+    ])]);
+
+    expect(fn () => app(TikTokPublicationCollector::class)->page(
+        $account,
+        '123456789',
+        CarbonImmutable::parse('2026-01-01', 'UTC'),
+    ))->toThrow(fn (AnalyticsCollectionException $exception): bool => $exception->category === 'invalid_cursor');
+});
+
+test('tiktok classifies an invalid saved cursor from HTTP 400', function () {
+    $account = SocialAccount::factory()->create([
+        'platform' => Platform::TikTok,
+        'scopes' => ['video.list'],
+    ]);
+    Http::fake(['*' => Http::response([
+        'error' => ['code' => 'invalid_params', 'message' => 'Invalid cursor'],
+    ], 400)]);
+
+    expect(fn () => app(TikTokPublicationCollector::class)->page(
+        $account,
+        '123456789',
+        CarbonImmutable::parse('2026-01-01', 'UTC'),
+    ))->toThrow(fn (AnalyticsCollectionException $exception): bool => $exception->category === 'invalid_cursor');
 });
 
 test('tiktok reads at most twenty videos and marks expiring covers', function () {

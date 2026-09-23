@@ -28,6 +28,15 @@ test('Meta history classifies revoked tokens from Graph error codes on HTTP 400'
         ->toThrow(fn (AnalyticsCollectionException $exception): bool => $exception->category === 'authentication');
 });
 
+test('Meta history resets an invalid saved paging cursor without treating it as a revoked token', function () {
+    Http::fake(['*' => Http::response(['error' => ['code' => 100, 'message' => 'Invalid cursor']], 400)]);
+    $account = SocialAccount::factory()->instagram()->create();
+
+    expect(fn () => app(InstagramPublicationCollector::class)
+        ->page($account, 'expired-cursor', CarbonImmutable::today('UTC')->subYear()))
+        ->toThrow(fn (AnalyticsCollectionException $exception): bool => $exception->category === 'invalid_cursor');
+});
+
 test('instagram reads one owned media page without claiming expired stories', function () {
     Http::fake([
         '*' => Http::response([

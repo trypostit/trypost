@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, usePoll } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import FollowersChart from '@/components/analytics/workspace/FollowersChart.vue';
 import ImportCoverage from '@/components/analytics/workspace/ImportCoverage.vue';
@@ -20,6 +20,33 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { analytics as analyticsRoute } from '@/routes/app';
 
 const props = defineProps<{ report: WorkspaceAnalyticsReport }>();
+const importRunning = computed(() =>
+    props.report.coverage.some(
+        (row) =>
+            row.collector === 'publication_backfill' &&
+            (row.status === 'pending' || row.status === 'running'),
+    ),
+);
+const { start: startImportPolling, stop: stopImportPolling } = usePoll(
+    5000,
+    { only: ['report'] },
+    { autoStart: false },
+);
+
+onMounted(() => {
+    if (importRunning.value) {
+        startImportPolling();
+    }
+});
+
+watch(importRunning, (running) => {
+    if (running) {
+        startImportPolling();
+    } else {
+        stopImportPolling();
+    }
+});
+
 const accountColors = computed<Record<string, string>>(() => {
     const keys = [
         ...new Set(

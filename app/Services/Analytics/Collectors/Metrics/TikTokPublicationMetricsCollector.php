@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics\Collectors\Metrics;
 
+use App\Actions\Analytics\UpsertAnalyticsPublication;
 use App\Contracts\Analytics\PublicationMetricsCollector;
 use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
@@ -13,6 +14,8 @@ use Carbon\CarbonImmutable;
 
 class TikTokPublicationMetricsCollector extends AbstractPublicationMetricsCollector implements PublicationMetricsCollector
 {
+    public function __construct(private readonly UpsertAnalyticsPublication $publications) {}
+
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
         $account = $this->account($publication);
@@ -28,6 +31,8 @@ class TikTokPublicationMetricsCollector extends AbstractPublicationMetricsCollec
             if (! ctype_digit($videoId)) {
                 throw new AnalyticsCollectionException('delayed', 'TikTok publication has no public video id yet.');
             }
+
+            $this->publications->reconcileTikTokPublicId($publication, $videoId);
         }
 
         $response = $this->post($account,

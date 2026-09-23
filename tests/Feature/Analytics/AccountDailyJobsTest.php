@@ -18,6 +18,7 @@ use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\Analytics\Collectors\Followers\FollowerCollectorFactory;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Bus;
 
@@ -114,6 +115,20 @@ test('collection job retries at spaced windows and honors a later provider retry
         ->withFakeQueueInteractions();
     $providerJob->handle($factory, app(ResolveAnalyticsAccountKey::class), app(WriteAccountDailySnapshot::class));
     $providerJob->assertReleased((5 * 60 * 60) + (30 * 60));
+});
+
+test('connection failures use the same spaced retry window', function () {
+    $account = SocialAccount::factory()->x()->create();
+    $collector = Mockery::mock(FollowerCollector::class);
+    $collector->shouldReceive('collect')->once()->andThrow(new ConnectionException('timed out'));
+    $factory = Mockery::mock(FollowerCollectorFactory::class);
+    $factory->shouldReceive('supports')->once()->with(Platform::X)->andReturnTrue();
+    $factory->shouldReceive('for')->once()->with(Platform::X)->andReturn($collector);
+    $job = (new CollectAccountDailySnapshot($account->id, '2026-09-23'))->withFakeQueueInteractions();
+
+    $job->handle($factory, app(ResolveAnalyticsAccountKey::class), app(WriteAccountDailySnapshot::class));
+
+    $job->assertReleased(4 * 60 * 60);
 });
 
 test('collection job stops when provider retry time falls outside the observation day', function () {
