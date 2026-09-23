@@ -9,7 +9,7 @@ initial workspace-level analytics view covering follower history and posts
 successfully published through TryPost.
 
 After the daily collection pipeline begins producing local snapshots, the page
-must answer four questions without querying social APIs at request time:
+must answer six questions without querying social APIs at request time:
 
 1. How many followers did this workspace have at the end of the selected
    period?
@@ -18,11 +18,15 @@ must answer four questions without querying social APIs at request time:
 3. Which accounts gained or lost followers?
 4. How many posts did each social account successfully publish during the
    selected period, and how was that volume distributed over time?
+5. How did publication volume, reactions, comments, and engagement compare
+   with the immediately preceding equivalent period?
+6. Which destination publications and social accounts performed best?
 
 Success means `/analytics` renders without making social API calls, daily
 follower collection is resilient to transient failures and rate limits, one
 broken platform cannot block another account's data, and post volume is derived
-from the local publication history.
+from the local publication history. Post-performance metrics are also collected
+ahead of page requests and retained locally.
 
 ## Scope boundary
 
@@ -109,8 +113,8 @@ product decision rather than happening implicitly.
 
 ### Workspace total
 
-The page displays a follower-total summary above the chart. It sums one daily
-follower value per included social account for the selected range's end date.
+The Total Followers card inside Summary sums one daily follower value per
+included social account for the selected range's end date.
 
 - An account contributes at most once.
 - Two accounts on the same network both contribute.
@@ -177,10 +181,110 @@ deactivated or disconnected. Account snapshot metadata stored with the
 destination is used for historical presentation when the live social-account
 row is no longer available.
 
+### Summary
+
+The page includes one workspace-level Summary block with exactly five cards:
+
+- **Posts:** successful destination publications whose `published_at` falls
+  inside the selected range.
+- **Total Followers:** the follower total at the selected range's end date,
+  using the same eligibility rules as the follower widget.
+- **Reactions:** the sum of the latest stored reactions for successful
+  destination publications inside the selected range.
+- **Comments:** the sum of the latest stored comments for successful
+  destination publications inside the selected range.
+- **Engagement Rate:** pooled engagement divided by pooled exposure for the
+  eligible destination publications inside the selected range.
+
+Cross-network labels are normalized for comparison. Reactions include native
+likes, favorites, and reactions. Comments include native comments and replies
+when the platform exposes replies as its comment-equivalent metric. The
+underlying native name remains available in the post detail and tooltip.
+
+Engagement follows the Buffer-style model approved for this design. Each
+platform collector normalizes the interactions that its API treats as
+engagement, such as reactions, comments, reposts/shares, saves, and clicks when
+available. Exposure uses the platform-appropriate impressions, reach, or views
+denominator. The workspace rate is calculated from the pooled numerator and
+pooled denominator, rather than averaging post percentages, so a low-exposure
+post does not weigh the same as a high-exposure post.
+
+A destination without a supported or valid exposure denominator is excluded
+from Engagement Rate only. Its supported reactions and comments still
+contribute to those cards. Unsupported metrics render as unavailable and are
+never converted to zero.
+
+### Period comparison
+
+Summary and Performance compare the selected inclusive range with the
+immediately preceding range of equal length. For example, a 30-day selection
+compares against the preceding 30 days. The comparison period is calculated
+automatically and is not a second user-selectable range.
+
+- Posts, Reactions, and Comments show percentage change.
+- Engagement Rate shows the relative percentage change between the two pooled
+  rates.
+- Total Followers shows the absolute follower change between the two period-end
+  totals, matching the reference design.
+- When the previous value is zero or unavailable, the UI shows a neutral
+  unavailable/new-data state instead of infinity or a fabricated percentage.
+- Partial historical coverage is disclosed in the tooltip and is not presented
+  as a complete comparison.
+
+### Top 5 Posts
+
+The page includes one Top 5 Posts block with a two-option toggle:
+
+- **Reactions** is the initial ranking;
+- **Comments** ranks the same eligible dataset by normalized comments.
+
+The ranking unit is the successful destination publication, not the parent
+post. A parent sent to multiple social accounts may therefore appear more than
+once when more than one destination qualifies. Only destinations published
+inside the selected range participate.
+
+Each card shows rank, normalized metric value, platform/account identity,
+publication date, content type, excerpt, thumbnail when available, and actions
+to open the TryPost post or its public social URL when supported. Ties are
+resolved by newest `published_at` and then by stable destination id so the order
+does not jump between requests.
+
+A destination whose selected ranking metric is unsupported is excluded from
+that ranking. Fewer than five cards are shown when fewer than five eligible
+destinations have a real value. An empty state replaces the list when none do.
+
+### Performance
+
+The page includes one Performance table with one row per social account that
+has a successful destination publication in the selected range. Multiple
+accounts on the same network remain separate rows.
+
+The fixed first-version columns are:
+
+- Channel;
+- Posts;
+- Reactions;
+- Comments;
+- Engagement Rate.
+
+Posts use the local successful-destination count. The other columns aggregate
+the latest stored post-performance observations using the same normalization
+and pooled-rate rules as Summary. Each supported numeric column can be sorted,
+and its current value includes the equivalent-period comparison when a valid
+comparison exists.
+
+When a network or content type does not expose a metric, the cell shows an
+unavailable marker rather than zero. Historical account snapshot metadata keeps
+rows presentable after an account is disconnected or deleted.
+
+These are exactly the three additional reporting blocks in v1: Summary, Top 5
+Posts, and Performance. More cards, ranking modes, or configurable Performance
+columns require a later product decision.
+
 ### Date range
 
 The existing analytics range date picker remains the shared page filter for the
-follower total, follower chart, and Posts widget.
+Summary, follower chart, Posts widget, Top 5 Posts, and Performance.
 
 - `minDate` is the earliest follower snapshot or successful TryPost publication
   available in the workspace.
@@ -203,10 +307,16 @@ the selected range overlaps that history.
 
 ```text
 Laravel scheduler (daily, UTC)
-    -> dispatch-only collection command
+    -> follower dispatch-only command
         -> one queued job per eligible social account
             -> platform follower collector
                 -> normalized follower observation
+                    -> persistence boundary
+
+    -> post-performance dispatch-only command
+        -> one queued job per eligible destination publication
+            -> platform post-metrics collector or trusted local metric source
+                -> normalized post-performance observation
                     -> persistence boundary
 
 End-of-day finalizer
@@ -296,6 +406,47 @@ no successful API observation that day:
 This keeps charts and workspace totals continuous during a platform outage
 without misclassifying a repeated value as a successful API fetch.
 
+## Post-performance collection
+
+Reactions, comments, engagement inputs, and Top 5 rankings must not trigger
+social API calls while `/analytics` is rendering. They are refreshed in daily
+queued jobs and stored behind the same persistence decision gate as follower
+observations.
+
+The daily dispatcher selects successful destination publications that have a
+platform post id, a connected account with the required access, and remain
+inside their refresh window:
+
+- X destinations: through 20 days after publication;
+- every other supported destination: through 30 days after publication.
+
+There is no free-versus-paid retention rule in TryPost. All workspaces use the
+same collection windows. The windows limit external API work only; all values
+already collected are retained permanently.
+
+Each eligible destination gets an independent queued job so one failing API or
+post cannot block another. The logical uniqueness key is post-performance +
+destination + UTC collection date. The job normalizes only metrics genuinely
+returned for that network and content type, preserving unsupported separately
+from a measured zero.
+
+Post-performance values are cumulative totals for that destination as of the
+collection timestamp. Summary, Top 5 Posts, and Performance use the latest
+stored observation for each destination selected by its publication date; they
+do not add daily snapshots together.
+
+The normal daily run collects once per UTC day. The final eligible day performs
+one final collection before the destination becomes inactive for scheduled
+refresh. Transient and rate-limit failures use the same widely spaced, same-day
+retry approach as follower collection. If the final-day collection fails, the
+latest successful observation remains available with its collection timestamp;
+the system does not replace it with zero.
+
+Metrics already maintained from trusted local events, such as webhook-backed
+reaction metadata, may be normalized from that local source without making a
+redundant provider request. Networks without post analytics still contribute
+their locally known Posts count but show other values as unavailable.
+
 ## Persistence decision gate
 
 This specification deliberately defines the **logical data requirements** but
@@ -317,6 +468,12 @@ must inventory each planned metric with:
 - exact, approximate, or estimated provenance;
 - availability and historical limits per platform.
 
+The newly approved post-performance catalog for this design consists of
+normalized reactions, normalized comments, normalized engagement numerator,
+exposure denominator and kind, provider collection timestamp, and availability
+status per destination. It does not remove the gate: the user may supply more
+metrics before the physical schema is selected.
+
 That follow-up design selects the physical schema and proves it on both
 PostgreSQL and MySQL. The implementation plan for this feature must not include
 a persistence migration until that decision is approved.
@@ -331,7 +488,12 @@ Regardless of the final schema, persistence must support:
 - exact versus approximate precision;
 - earliest/latest available workspace dates;
 - retaining history after an account is disconnected;
-- efficient aggregation at a selected end date.
+- efficient aggregation at a selected end date;
+- latest supported post-performance values per destination;
+- permanent retention after a destination leaves its refresh window;
+- unsupported versus measured-zero post metrics;
+- provider and collection timestamps needed to disclose freshness;
+- efficient workspace, publication-range, account, and ranking aggregations.
 
 Workspace totals are derived from account observations and are not stored as a
 second source of truth.
@@ -346,7 +508,7 @@ MySQL.
 ## Read path
 
 `/analytics` reads only local persisted data. It performs no request-time
-social API calls for either widget.
+social API calls for any analytics block.
 
 The server response supplies:
 
@@ -359,7 +521,12 @@ The server response supplies:
   truthful tooltips;
 - successful publication totals per social account;
 - zero-filled publication buckets and per-account values for the automatically
-  selected daily, weekly, or monthly resolution.
+  selected daily, weekly, or monthly resolution;
+- current and previous-period Summary values;
+- the two deterministic Top 5 rankings;
+- Performance rows and comparisons per social account;
+- freshness and availability metadata needed for tooltips and unavailable
+  states.
 
 The frontend derives Bar and Growth from this normalized response instead of
 requesting separate endpoints. Large date ranges may later be downsampled, but
@@ -384,7 +551,12 @@ Operational visibility must distinguish:
 - permanent authentication/permission rejection;
 - successful carried-forward fallback;
 - unavailable account with no historical value;
-- finalizer failure.
+- finalizer failure;
+- post-performance collection success;
+- post-performance metric unsupported;
+- post-performance retry or permanent collection failure;
+- post-performance destination leaving its refresh window with a final stored
+  value.
 
 Logs include workspace, social account, platform, observation date, attempt,
 and error category, but never access tokens or raw sensitive responses.
@@ -435,6 +607,14 @@ Each included platform needs tests for:
 
 HTTP calls are faked. Tests must not call live social APIs.
 
+Post-performance collector tests additionally cover:
+
+- native-to-normalized reaction and comment names;
+- cumulative metrics stored as one observation rather than summed across days;
+- engagement numerator and exposure denominator mapping;
+- content-type-specific metric availability;
+- unsupported, missing, malformed, and measured-zero distinctions.
+
 ### Queue and scheduling tests
 
 - The daily command dispatches one job per eligible account and none for
@@ -445,6 +625,14 @@ HTTP calls are faked. Tests must not call live social APIs.
 - A permanent authentication failure does not follow the transient retry loop.
 - Immediate collection is dispatched after a supported account is connected.
 - `withoutOverlapping()` and `onOneServer()` remain present on the schedule.
+- Post-performance jobs are dispatched only for successful destinations with a
+  usable platform id and access.
+- X destinations remain eligible through day 20; other supported destinations
+  remain eligible through day 30.
+- The final eligible day receives a final collection and older destinations no
+  longer create provider jobs.
+- Collection-window expiry never deletes an already stored value.
+- Unsupported metrics remain distinct from measured zero.
 
 ### Fallback tests
 
@@ -482,6 +670,18 @@ HTTP calls are faked. Tests must not call live social APIs.
 - Post aggregation is workspace-scoped through the parent post.
 - Historical publications retain presentable account information after the
   social account is disconnected or deleted.
+- Summary contains exactly Posts, Total Followers, Reactions, Comments, and
+  Engagement Rate.
+- Summary compares against the immediately preceding inclusive range of equal
+  length and handles zero, unavailable, and partial previous data safely.
+- Engagement Rate pools normalized engagement and exposure rather than
+  averaging per-post percentages.
+- Posts without a valid exposure denominator are excluded only from the rate.
+- Top 5 ranks destination publications deterministically by Reactions or
+  Comments and excludes unsupported values.
+- Performance returns one row per social account, keeps duplicate-network
+  accounts separate, supports sorting, and uses the same aggregation rules as
+  Summary.
 
 Database-dependent tests run on PostgreSQL and MySQL after the persistence
 design is approved and implemented.
@@ -518,6 +718,19 @@ design is approved and implemented.
 - **Using one fixed Posts bucket size.** A fixed daily view becomes noisy over
   long ranges, while a fixed weekly or monthly view hides useful short-range
   detail.
+- **Refreshing every historical post forever.** Engagement changes slow after
+  publication, while an unbounded daily job set would continually increase API
+  cost and rate-limit pressure. The last stored result remains available after
+  the 20/30-day refresh window closes.
+- **Applying plan-based analytics retention.** TryPost has no free analytics
+  tier in this design; collection and permanent local retention are consistent
+  for every workspace.
+- **Averaging individual engagement rates.** It overweights posts with little
+  exposure. Pooling the engagement and exposure totals produces a weighted
+  workspace/account rate.
+- **Treating unsupported metrics as zero.** Zero means the provider measured no
+  activity; unsupported means no measurement was available and must remain
+  visibly different.
 
 ## Delivery gates
 
