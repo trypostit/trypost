@@ -308,6 +308,74 @@ labels are presentation only and are never stored as metric identity. An
 unsupported metric is omitted or marked unavailable; an API error must not
 replace the most recent successful value with zero.
 
+### Buffer per-post reference audit
+
+Buffer's Sent-post and Insights documentation provides the following UX and
+normalization reference for individual posts. It is a discovery catalog, not
+proof that TryPost's credentials, scopes, account type, or current API version
+can retrieve every value. Each collector still requires verification against
+the network's official API documentation before implementation.
+
+| Channel | Per-post metrics exposed or named by Buffer |
+| --- | --- |
+| Instagram Professional | Reactions/likes, comments, reposts/shares, views or impressions, reach, saves, follows, and engagement rate; availability varies between Feed, Reel, and Story |
+| Facebook Page | Reactions, comments, shares/reposts, clicks, reach, views, impressions where still returned, and engagement rate; Group analytics are excluded |
+| X/Twitter | Reactions/likes, replies/comments, reposts, quotes, clicks, impressions on the Sent surface, and a Buffer-derived engagement rate |
+| LinkedIn Page | Reactions, comments, reposts/shares, impressions, engagement rate, and for video: views, total watch time in minutes, and unique viewers |
+| LinkedIn personal profile | Reactions, comments, reach, impressions, video views, and engagement rate; reliable repost counts are not available |
+| Pinterest business | Reactions, comments, saves, clicks, impressions, views, and engagement rate where Buffer has a valid exposure value |
+| Mastodon | Favorites/reactions, replies/comments, and reblogs/reposts |
+| TikTok | Reactions/likes, comments, shares/reposts, views, reach, and engagement rate |
+| YouTube | Reactions/likes, comments, video views, shares in aggregate reporting, and a derived engagement rate where Buffer can calculate one |
+| Threads | Reactions/likes, comments/replies, reposts, quotes, views, and engagement rate |
+| Bluesky | Reactions/likes, replies/comments, reposts, quotes, and a derived engagement rate |
+
+Buffer does not provide this per-post reference for Telegram, Discord, or
+Google Business Profile, and it does not expose post analytics for Instagram
+Personal accounts or Facebook Groups. Those absences do not remove TryPost
+capabilities: Telegram webhook reactions, Discord reactions/thread replies, and
+any official Google Business post data are evaluated from their own official
+APIs and existing local event sources.
+
+The Buffer product surfaces are not internally identical. Sent posts, the new
+Insights product, and the retiring Analyze product can expose different metrics
+and historical windows. For example, Buffer documents X impressions in Sent
+posts while also saying its Insights visibility view has no X impressions or
+views. TryPost records the provider metric identity, source, time basis, and
+formula so a value is never promoted merely because another Buffer surface
+lists it.
+
+Buffer's normalization vocabulary is useful and is adopted for cross-network
+presentation only:
+
+- `Reactions` covers native likes, favorites, and reactions;
+- `Comments` covers comments and reply-equivalents;
+- `Reposts` covers retweets, reblogs, reshares, and reposts;
+- native names and raw metric identities remain visible in post detail;
+- engagement rate must disclose whether it is provider-returned or derived,
+  plus its interaction numerator and exposure denominator.
+
+Compared with the existing request-time TryPost collectors, the audit produces
+the following implementation inventory. A Buffer-only metric is a candidate to
+verify, not permission to invent or request an undocumented field.
+
+| Channel | Existing TryPost per-post collector | Candidate gap to verify |
+| --- | --- | --- |
+| Facebook | Feed: impressions, reach, likes, clicks; Story: impressions, reach, interactions, reactions, replies, shares; Reel/video: plays, reactions, interactions | Feed comments/shares and richer Reel actions exposed by current Meta APIs |
+| Instagram | Reach, views, likes, comments, shares, saves, replies, or total interactions depending on content type | The expanded Feed/Reel/Story catalog below |
+| X/Twitter | Impressions, likes, retweets, replies, quotes, and bookmarks | Click metrics and their access level |
+| LinkedIn Page | Impressions, clicks, likes, comments, and shares | Provider engagement rate plus video views, watch time, and unique viewers |
+| LinkedIn personal profile | Likes and comments | Impressions, reach, reliable video views, and derived engagement inputs under the app's approved scopes |
+| Pinterest | Impressions, saves, Pin clicks, outbound clicks, and video views | Lifetime reactions/comments, rates, audience values, and video-retention metrics described below |
+| Mastodon | Favorites, replies, and reblogs | No Buffer-identified basic metric gap |
+| TikTok | Views, likes, comments, and shares | Reach is a Buffer candidate but is unavailable in TryPost's currently approved Display API fields |
+| YouTube | Views, total watch time, average view duration, likes, comments, and shares | Engaged views, average percentage viewed, and subscriber change described below |
+| Threads | Views, likes, replies, reposts, and quotes | No Buffer-identified basic metric gap |
+| Bluesky | Likes, replies, reposts, and quotes | No Buffer-identified basic metric gap |
+| Telegram | Locally persisted webhook reactions, plus chat/channel member count shown alongside the post today | Buffer has no comparison; keep account members separate from post performance |
+| Discord | Message reactions and thread replies, plus server member count shown alongside the post today | Buffer has no comparison; keep account members separate from post performance |
+| Google Business Profile | No individual-post collector | Buffer has no post-analytics reference; remain unsupported until official APIs prove a post-level metric |
+
 ### Content-specific metric catalog
 
 The initial content-type analysis establishes the following catalog. It is the
@@ -906,8 +974,12 @@ design is approved and implemented.
 - Pinterest's official generated API client, including `pin_metrics` lifetime
   comments/reactions and Pin Analytics parameters:
   <https://github.com/pinterest/pinterest-python-generated-api-client/blob/main/docs/PinsApi.md>
-- Buffer Insights metric presentation and per-post behavior:
-  <https://support.buffer.com/en-us/articles/using-insights-in-buffer-x4gLauQU5a>
+- Buffer sent-post metric matrix, Insights behavior, and documented
+  cross-surface/provider differences:
+  <https://support.buffer.com/en-us/articles/understanding-sent-post-metrics-within-buffers-publish-dashboard-kppgBDLK6y>,
+  <https://support.buffer.com/en-us/articles/using-insights-in-buffer-x4gLauQU5a>,
+  and
+  <https://support.buffer.com/en-us/articles/why-your-data-in-buffer-insights-might-look-different-from-native-analytics-CryTKTdV0u>
 
 ## Delivery gates
 
