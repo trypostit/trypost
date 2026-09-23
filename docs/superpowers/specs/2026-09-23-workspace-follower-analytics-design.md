@@ -319,7 +319,7 @@ by the connected account, login type, API version, and media type.
 | Instagram feed | Views, reach, likes/reactions, comments, shares, saves, reposts, total interactions, follows, profile visits, and profile activity | The current collector omits views, reposts, follows, profile visits, and profile activity |
 | Instagram Reel | Views, reach, likes/reactions, comments, shares, saves, reposts, total interactions, total watch time, average watch time, and skip rate when returned | The current collector already has views/reach/basic engagement but omits interactions, reposts, watch-time metrics, and skip rate |
 | Instagram Story | Views, reach, replies, shares, reposts, follows, profile visits/activity, link clicks, and navigation breakdown | The current collector only requests views, reach, and replies |
-| YouTube Short | Views, engaged views, watch time, average view duration, average percentage viewed, likes, comments, shares, subscribers gained, and subscribers lost | The current collector already has views, watch time, average duration, likes, comments, and shares, but omits engaged views, average percentage viewed, and subscriber change |
+| YouTube video or Short | Video views, engaged views, watch time, average view duration, average percentage viewed, likes/reactions, comments, shares, subscribers gained, and subscribers lost | The current collector already has views, watch time, average duration, likes, comments, and shares, but omits engaged views, average percentage viewed, and subscriber change |
 | TikTok video | Views, likes, comments, and shares | The current Display API collector already exposes the complete performance set available to this integration; video duration is metadata, not watch time |
 | Pinterest image Pin | Impressions, saves, comments, reactions, engagements, engagement rate, save rate, Pin clicks/rate, outbound clicks/rate, profile visits, follows, total audience, and engaged audience | The current collector has impressions, saves, Pin clicks, and outbound clicks, but omits the remaining native and lifetime metrics |
 | Pinterest video Pin | Every applicable image-Pin metric plus video views, average video play time, 10-second plays, plays to 95%, and total play time | The current collector only adds basic video views and omits the richer video-retention metrics |
@@ -359,6 +359,14 @@ rather than being inferred from view count and video duration.
 YouTube's per-video report already supports the retention metrics needed for
 Shorts. The collector expands its current query rather than introducing a
 second Shorts-specific API path.
+
+On the individual YouTube post, the cross-network `Reactions` label maps to the
+native `likes` metric, `Comments` maps to `comments`, and `Video Views` maps to
+`views`. The YouTube Analytics API does not return a native per-video engagement
+rate, so that native field is unavailable rather than fabricated. A normalized
+TryPost engagement rate used by Summary or Performance is a separately labelled
+derived value with its numerator and `views` denominator preserved; it must not
+be represented as a provider-returned YouTube metric.
 
 Pinterest uses two complementary sources. The Pin Analytics endpoint provides
 date-range metrics, including impressions, saves, engagement, clicks, rates,
@@ -736,6 +744,9 @@ Post-performance collector tests additionally cover:
 - Instagram Reel watch-time units and experimental/estimated flags;
 - YouTube Short watch time, average duration, average percentage viewed, and
   subscriber-change mapping;
+- YouTube post labels map likes to Reactions and views to Video Views while the
+  unavailable native engagement rate remains distinct from TryPost's derived
+  normalized rate;
 - TikTok never fabricating unsupported retention metrics;
 - Pinterest saves, comments, reactions, impressions, and native engagement
   rate retain their distinct metric identities and time bases;
