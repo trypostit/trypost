@@ -53,6 +53,7 @@ import {
 } from '@/components/ui/dialog';
 import {
     Popover,
+    PopoverAnchor,
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
@@ -938,7 +939,7 @@ const close = (): void => emit('update:open', false);
                     </p>
                     <template v-if="step === 1">
                         <div
-                            class="mx-auto flex w-full max-w-[744px] shrink-0 items-center gap-2"
+                            class="relative mx-auto flex h-16 w-full max-w-[744px] shrink-0 items-center gap-2"
                         >
                             <div
                                 class="flex min-w-0 gap-2 overflow-x-auto py-3 pr-3"
@@ -955,6 +956,12 @@ const close = (): void => emit('update:open', false);
                                 />
                             </div>
                             <Popover v-model:open="accountPickerOpen">
+                                <PopoverAnchor as-child>
+                                    <span
+                                        class="pointer-events-none absolute inset-x-0 top-0 h-full"
+                                        aria-hidden="true"
+                                    />
+                                </PopoverAnchor>
                                 <PopoverTrigger as-child>
                                     <Button
                                         type="button"
@@ -1219,7 +1226,7 @@ const close = (): void => emit('update:open', false);
 
                     <template v-else>
                         <div
-                            class="mx-auto flex w-full max-w-[744px] items-center gap-2 overflow-x-auto pt-3 pr-3 pb-2"
+                            class="relative mx-auto flex h-16 w-full max-w-[744px] items-center gap-2 overflow-x-auto py-3 pr-3"
                         >
                             <ComposerAccountChip
                                 v-for="account in selectedAccounts"
@@ -1237,6 +1244,12 @@ const close = (): void => emit('update:open', false);
                                 v-if="!initialPost"
                                 v-model:open="accountPickerOpen"
                             >
+                                <PopoverAnchor as-child>
+                                    <span
+                                        class="pointer-events-none absolute inset-x-0 top-0 h-full"
+                                        aria-hidden="true"
+                                    />
+                                </PopoverAnchor>
                                 <PopoverTrigger as-child>
                                     <Button
                                         type="button"

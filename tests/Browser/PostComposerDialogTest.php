@@ -92,8 +92,24 @@ test('composer can search channels, preview a selected account, and expand to th
         ->and($viewport['style'])->toContain('height: 100dvh');
     expect($page->script('document.querySelectorAll("[data-testid=composer-all-accounts] img").length'))->toBe(4);
 
-    $page->click('@composer-add-account')
-        ->click('@composer-select-all')
+    $composerPosition = <<<'JS'
+        (async () => {
+            const content = document.querySelector('[data-slot="popover-content"]');
+            await Promise.all(content.getAnimations().map((animation) => animation.finished));
+            const popover = content.getBoundingClientRect();
+            const editor = document.querySelector('[data-testid="composer-base-content"]').parentElement.getBoundingClientRect();
+            return { popoverLeft: popover.left, popoverTop: popover.top, editorTop: editor.top };
+        })()
+    JS;
+    $page->click('@composer-add-account');
+    $beforeSelection = $page->script($composerPosition);
+    $page->click('@composer-select-all');
+    $afterSelection = $page->script($composerPosition);
+    expect(abs($afterSelection['popoverLeft'] - $beforeSelection['popoverLeft']))->toBeLessThan(2)
+        ->and(abs($afterSelection['popoverTop'] - $beforeSelection['popoverTop']))->toBeLessThan(2)
+        ->and(abs($afterSelection['editorTop'] - $beforeSelection['editorTop']))->toBeLessThan(2);
+
+    $page
         ->assertVisible("@composer-account-{$instagram->id}")
         ->assertVisible("@composer-account-{$x->id}")
         ->click('@composer-select-all')
@@ -120,7 +136,24 @@ test('composer can search channels, preview a selected account, and expand to th
         ->assertVisible('@composer-preview-card')
         ->assertSee('Preview this caption')
         ->click('@composer-next')
-        ->assertVisible('@composer-customization')
+        ->assertVisible('@composer-customization');
+
+    $popoverPosition = <<<'JS'
+        (async () => {
+            const content = document.querySelector('[data-slot="popover-content"]');
+            await Promise.all(content.getAnimations().map((animation) => animation.finished));
+            const rect = content.getBoundingClientRect();
+            return { left: rect.left, top: rect.top };
+        })()
+    JS;
+    $page->click('@composer-add-account');
+    $beforeCustomizationSelection = $page->script($popoverPosition);
+    $page->click("@composer-account-option-{$x->id}");
+    $afterCustomizationSelection = $page->script($popoverPosition);
+    expect(abs($afterCustomizationSelection['left'] - $beforeCustomizationSelection['left']))->toBeLessThan(2)
+        ->and(abs($afterCustomizationSelection['top'] - $beforeCustomizationSelection['top']))->toBeLessThan(2);
+
+    $page->click("@composer-account-option-{$x->id}")
         ->click("@composer-account-{$instagram->id}")
         ->assertVisible("@composer-account-{$instagram->id}")
         ->click("@composer-remove-account-{$instagram->id}")
