@@ -10,7 +10,7 @@ use App\Models\AnalyticsPublication;
 use App\Services\Social\BlueskyLexicon;
 use Carbon\CarbonImmutable;
 
-class BlueskyPublicationMetricsCollector extends AbstractPublicationMetricsCollector implements PublicationMetricsCollector
+class BlueskyPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 {
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {

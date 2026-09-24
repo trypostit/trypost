@@ -19,6 +19,8 @@ use Carbon\CarbonImmutable;
 
 abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicationCollector
 {
+    abstract public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation;
+
     protected function account(AnalyticsPublication $publication): SocialAccount
     {
         $account = $publication->socialAccount;

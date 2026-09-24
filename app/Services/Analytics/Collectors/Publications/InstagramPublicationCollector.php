@@ -11,7 +11,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 
-class InstagramPublicationCollector extends AbstractMetaPublicationCollector implements PublicationHistoryCollector
+class InstagramPublicationCollector extends AbstractMetaPublicationCollector
 {
     private const PAGE_SIZE = 50;
 

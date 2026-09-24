@@ -12,7 +12,7 @@ use App\Services\Social\BlueskyLexicon;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
-class BlueskyPublicationCollector extends AbstractApiPublicationCollector implements PublicationHistoryCollector
+class BlueskyPublicationCollector extends AbstractPublicationHistoryCollector
 {
     private const PAGE_SIZE = 100;
 

@@ -13,7 +13,7 @@ use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 
-class InstagramPublicationMetricsCollector extends AbstractMetaPublicationMetricsCollector implements PublicationMetricsCollector
+class InstagramPublicationMetricsCollector extends AbstractMetaPublicationMetricsCollector
 {
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {

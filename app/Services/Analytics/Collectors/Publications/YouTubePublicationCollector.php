@@ -11,7 +11,7 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 
-class YouTubePublicationCollector extends AbstractApiPublicationCollector implements PublicationHistoryCollector
+class YouTubePublicationCollector extends AbstractPublicationHistoryCollector
 {
     private const PAGE_SIZE = 50;
 

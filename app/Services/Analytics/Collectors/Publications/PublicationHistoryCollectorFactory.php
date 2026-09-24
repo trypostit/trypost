@@ -15,7 +15,7 @@ class PublicationHistoryCollectorFactory
         return $platform->isIncludedInAnalytics();
     }
 
-    public function for(SocialAccount $account): PublicationHistoryCollector
+    public function for(SocialAccount $account): AbstractPublicationHistoryCollector
     {
         return match ($account->platform) {
             Platform::Instagram, Platform::InstagramFacebook => app(InstagramPublicationCollector::class),

@@ -10,7 +10,7 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use Carbon\CarbonImmutable;
 
-class ThreadsPublicationMetricsCollector extends AbstractMetaPublicationMetricsCollector implements PublicationMetricsCollector
+class ThreadsPublicationMetricsCollector extends AbstractMetaPublicationMetricsCollector
 {
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {

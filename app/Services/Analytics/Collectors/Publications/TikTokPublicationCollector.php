@@ -12,7 +12,7 @@ use App\Models\SocialAccount;
 use App\Support\Analytics\InvalidPublicationCursor;
 use Carbon\CarbonImmutable;
 
-class TikTokPublicationCollector extends AbstractApiPublicationCollector implements PublicationHistoryCollector
+class TikTokPublicationCollector extends AbstractPublicationHistoryCollector
 {
     private const PAGE_SIZE = 20;
 

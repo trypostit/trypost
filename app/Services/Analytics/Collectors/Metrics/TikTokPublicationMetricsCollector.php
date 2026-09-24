@@ -10,7 +10,7 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use Carbon\CarbonImmutable;
 
-class TikTokPublicationMetricsCollector extends AbstractPublicationMetricsCollector implements PublicationMetricsCollector
+class TikTokPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 {
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {

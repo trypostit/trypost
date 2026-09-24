@@ -18,7 +18,7 @@ use App\Jobs\Analytics\DiscoverAccountPublications;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsSyncState;
 use App\Models\SocialAccount;
-use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollector;
+use App\Services\Analytics\Collectors\Publications\AbstractPublicationHistoryCollector;
 use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFactory;
 use Carbon\CarbonImmutable;
 use Illuminate\Queue\Middleware\RateLimited;
@@ -31,7 +31,7 @@ beforeEach(fn () => Queue::fake([BootstrapAccountAnalytics::class, CollectAccoun
 
 function bindPublicationPage(PublicationPage $page): void
 {
-    $collector = Mockery::mock(PublicationHistoryCollector::class);
+    $collector = Mockery::mock(AbstractPublicationHistoryCollector::class);
     $collector->shouldReceive('page')->once()->andReturn($page);
 
     $factory = Mockery::mock(PublicationHistoryCollectorFactory::class);
@@ -464,7 +464,7 @@ test('a transient failure preserves the cursor for a later queue attempt', funct
         'social_account_id' => $account->id,
         'checkpoint' => ['cursor' => 'resume-here', 'revision' => 0],
     ]);
-    $collector = Mockery::mock(PublicationHistoryCollector::class);
+    $collector = Mockery::mock(AbstractPublicationHistoryCollector::class);
     $collector->shouldReceive('page')->once()->withArgs(
         fn (SocialAccount $received, ?string $cursor): bool => $received->is($account) && $cursor === 'resume-here',
     )->andThrow(new AnalyticsCollectionException('transient', 'temporary'));
@@ -495,7 +495,7 @@ test('an invalid provider cursor clears only the cursor and restarts the bounded
         'target_since' => $target,
         'oldest_reached_at' => $oldest,
     ]);
-    $collector = Mockery::mock(PublicationHistoryCollector::class);
+    $collector = Mockery::mock(AbstractPublicationHistoryCollector::class);
     $collector->shouldReceive('page')->once()
         ->andThrow(new AnalyticsCollectionException('invalid_cursor', 'expired'));
     $factory = Mockery::mock(PublicationHistoryCollectorFactory::class);
@@ -546,7 +546,7 @@ test('an expired cursor after reconnect preserves imported history instead of re
     (new BootstrapAccountAnalytics($replacement->id))->handleFor($replacement->id);
     Bus::fake();
 
-    $collector = Mockery::mock(PublicationHistoryCollector::class);
+    $collector = Mockery::mock(AbstractPublicationHistoryCollector::class);
     $collector->shouldReceive('page')->once()
         ->andThrow(new AnalyticsCollectionException('invalid_cursor', 'expired'));
     $factory = Mockery::mock(PublicationHistoryCollectorFactory::class);
@@ -588,7 +588,7 @@ test('daily discovery is suppressed during backfill and resumes after terminal s
     AnalyticsSyncState::query()->where('social_account_id', $account->id)
         ->where('collector', SyncCollector::PublicationBackfill)
         ->update(['status' => SyncStatus::Complete]);
-    $collector = Mockery::mock(PublicationHistoryCollector::class);
+    $collector = Mockery::mock(AbstractPublicationHistoryCollector::class);
     $collector->shouldReceive('page')->once()->withArgs(
         fn (SocialAccount $received, ?string $cursor, CarbonImmutable $cutoff): bool => $received->is($account)
             && $cursor === null
@@ -665,7 +665,7 @@ test('reconnecting the same identity reuses completed history and discovers only
     Bus::assertNotDispatched(BackfillAccountPublications::class);
     Bus::assertDispatched(DiscoverAccountPublications::class, fn ($job): bool => $job->socialAccountId === $replacement->id && $job->syncStateId === $discovery->id);
 
-    $collector = Mockery::mock(PublicationHistoryCollector::class);
+    $collector = Mockery::mock(AbstractPublicationHistoryCollector::class);
     $collector->shouldReceive('page')->once()->withArgs(
         fn (SocialAccount $received, ?string $cursor, CarbonImmutable $cutoff): bool => $received->is($replacement)
             && $cursor === null

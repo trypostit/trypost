@@ -8,9 +8,9 @@ use App\Dto\Analytics\PublicationPage;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 
-interface PublicationHistoryCollector
+abstract class AbstractPublicationHistoryCollector extends AbstractApiPublicationCollector
 {
-    public function page(
+    abstract public function page(
         SocialAccount $account,
         ?string $cursor,
         CarbonImmutable $cutoff,

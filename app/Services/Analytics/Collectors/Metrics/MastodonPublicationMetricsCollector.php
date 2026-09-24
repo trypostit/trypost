@@ -9,7 +9,7 @@ use App\Enums\Analytics\MetricKey;
 use App\Models\AnalyticsPublication;
 use Carbon\CarbonImmutable;
 
-class MastodonPublicationMetricsCollector extends AbstractPublicationMetricsCollector implements PublicationMetricsCollector
+class MastodonPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 {
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {

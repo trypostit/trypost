@@ -10,7 +10,7 @@ use App\Enums\Analytics\PublicationContentType;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 
-class ThreadsPublicationCollector extends AbstractMetaPublicationCollector implements PublicationHistoryCollector
+class ThreadsPublicationCollector extends AbstractMetaPublicationCollector
 {
     private const PAGE_SIZE = 50;
 

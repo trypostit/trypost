@@ -14,12 +14,12 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
-abstract class AbstractMetaPublicationCollector
+abstract class AbstractMetaPublicationCollector extends AbstractPublicationHistoryCollector
 {
     /**
      * @param  array<string, mixed>  $query
      */
-    protected function get(SocialAccount $account, string $url, array $query = []): Response
+    protected function get(SocialAccount $account, string $url, array $query = [], bool $authenticated = true): Response
     {
         $response = Http::acceptJson()
             ->withToken($account->access_token)
@@ -54,7 +54,7 @@ abstract class AbstractMetaPublicationCollector
         );
     }
 
-    protected function publishedAt(mixed $value): ?CarbonImmutable
+    protected function publishedAt(mixed $value, bool $timestamp = false): ?CarbonImmutable
     {
         if (! is_string($value) || $value === '') {
             return null;

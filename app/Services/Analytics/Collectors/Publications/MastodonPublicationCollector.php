@@ -11,7 +11,7 @@ use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 
-class MastodonPublicationCollector extends AbstractApiPublicationCollector implements PublicationHistoryCollector
+class MastodonPublicationCollector extends AbstractPublicationHistoryCollector
 {
     private const PAGE_SIZE = 40;
 

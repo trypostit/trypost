@@ -9,7 +9,7 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 
 class PublicationMetricsCollectorFactory
 {
-    public function for(Platform $platform): PublicationMetricsCollector
+    public function for(Platform $platform): AbstractPublicationMetricsCollector
     {
         return match ($platform) {
             Platform::Instagram, Platform::InstagramFacebook => app(InstagramPublicationMetricsCollector::class),

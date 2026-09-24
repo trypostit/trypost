@@ -11,7 +11,7 @@ use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 use Throwable;
 
-class FacebookPublicationCollector extends AbstractMetaPublicationCollector implements PublicationHistoryCollector
+class FacebookPublicationCollector extends AbstractMetaPublicationCollector
 {
     private const PAGE_SIZE = 50;
 

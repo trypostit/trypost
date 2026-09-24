@@ -11,7 +11,7 @@ use App\Enums\Analytics\PublicationContentType;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 
-class PinterestPublicationCollector extends AbstractApiPublicationCollector implements PublicationHistoryCollector
+class PinterestPublicationCollector extends AbstractPublicationHistoryCollector
 {
     private const PAGE_SIZE = 250;
 

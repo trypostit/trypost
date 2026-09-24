@@ -11,7 +11,7 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use Carbon\CarbonImmutable;
 
-class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetricsCollector implements PublicationMetricsCollector
+class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetricsCollector
 {
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
