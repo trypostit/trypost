@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Enums\Analytics\MetricKey;
+use App\Enums\Analytics\MetricTimeBasis;
+use App\Enums\Analytics\PublicationContentType;
 use App\Enums\User\Locale;
 use App\Enums\Workspace\ContentLanguage;
 use Illuminate\Support\Arr;
@@ -45,6 +48,46 @@ test('locale ships every base translation file with identical keys', function (s
     expect($missingFiles)->toBe([], "{$locale} is missing translation files: ".implode(', ', $missingFiles));
     expect($keyDrift)->toBe([], "{$locale} has key drift: ".json_encode($keyDrift, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 })->with(Locale::values());
+
+test('every analytics enum value has a display translation', function (string $locale) {
+    $analytics = require lang_path("{$locale}/analytics.php");
+
+    foreach (MetricKey::cases() as $metric) {
+        expect(Arr::has($analytics, "metrics.{$metric->value}") || Arr::has($analytics, "detail.labels.{$metric->value}"))
+            ->toBeTrue("{$locale} is missing a label for metric {$metric->value}");
+    }
+
+    foreach (MetricTimeBasis::cases() as $timeBasis) {
+        expect(Arr::has($analytics, "detail.time_basis.{$timeBasis->value}"))
+            ->toBeTrue("{$locale} is missing a label for time basis {$timeBasis->value}");
+    }
+
+    foreach (PublicationContentType::cases() as $contentType) {
+        expect(Arr::has($analytics, "detail.content_types.{$contentType->value}"))
+            ->toBeTrue("{$locale} is missing a label for content type {$contentType->value}");
+    }
+
+    expect(Arr::get($analytics, 'title'))->toBeString()->not->toBeEmpty();
+    expect(Arr::has($analytics, 'detail.page_title'))->toBeTrue("{$locale} is missing the publication page title");
+})->with(Locale::values());
+
+test('analytics interface copy does not fall back to English', function (string $locale) {
+    $english = require lang_path('en/analytics.php');
+    $translated = require lang_path("{$locale}/analytics.php");
+
+    foreach ([
+        'detail.labels.watch_time_milliseconds',
+        'detail.awaiting_metrics',
+        'detail.published_on',
+        'dashboard.workspace_description',
+        'dashboard.no_follower_data',
+        'dashboard.import_in_progress',
+        'dashboard.no_data_body',
+    ] as $key) {
+        expect(Arr::get($translated, $key))
+            ->not->toBe(Arr::get($english, $key), "{$locale} still uses English for {$key}");
+    }
+})->with(array_values(array_diff(Locale::values(), [Locale::English->value])));
 
 // Key presence alone cannot catch stale wording (same key, incomplete sentence).
 // Destructive account/workspace delete copy is additionally asserted in

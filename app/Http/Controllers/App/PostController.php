@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Actions\Post\CreatePost;
 use App\Actions\Post\DeletePost;
 use App\Actions\Post\DuplicatePost;
@@ -23,7 +24,6 @@ use App\Http\Resources\App\PlatformConfigResource;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Post;
 use App\Models\PostPlatform;
-use App\Services\Post\PostMetricsFetcher;
 use App\Services\Social\TikTokCreatorInfo;
 use App\Support\LinkTlds;
 use App\Support\PostStatusRules;
@@ -205,7 +205,7 @@ class PostController extends Controller
             abort(404);
         }
 
-        return response()->json(app(PostMetricsFetcher::class)->forPlatform($postPlatform));
+        return response()->json(app(ReadPublicationAnalytics::class)->forPlatform($postPlatform));
     }
 
     public function show(Request $request, Post $post): Response|RedirectResponse
@@ -227,6 +227,9 @@ class PostController extends Controller
         return Inertia::render('posts/Show', [
             'workspace' => $workspace,
             'post' => (new PostResource($post))->resolve(),
+            'postMetrics' => app(ReadPublicationAnalytics::class)->forPost($post)
+                ->mapWithKeys(fn (array $row): array => [$row['post_platform_id'] => $row['metrics']])
+                ->all(),
         ]);
     }
 

@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\VerifyWorkspaceConnections;
 use App\Mail\WorkspaceConnectionsDisconnected;
 use App\Models\SocialAccount;
@@ -12,6 +14,11 @@ use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
+
+beforeEach(function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+});
 
 test('job does nothing when workspace has no connected accounts', function () {
     Mail::fake();

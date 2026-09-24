@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
 
 #[ObservedBy(PostPlatformObserver::class)]
@@ -70,6 +71,11 @@ class PostPlatform extends Model
         return $this->belongsTo(SocialAccount::class);
     }
 
+    public function analyticsPublication(): HasOne
+    {
+        return $this->hasOne(AnalyticsPublication::class);
+    }
+
     /**
      * Only platforms still enabled for publishing — disabled ones are
      * excluded from PublishPost, so anything else that mirrors publish
@@ -88,6 +94,11 @@ class PostPlatform extends Model
     public function scopePublished(Builder $query): Builder
     {
         return $query->where('post_platforms.status', Status::Published);
+    }
+
+    public function scopeIncludedInAnalytics(Builder $query): Builder
+    {
+        return $query->whereIn('post_platforms.platform', SocialPlatform::analyticsValues());
     }
 
     /**

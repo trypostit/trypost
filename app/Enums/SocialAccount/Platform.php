@@ -34,6 +34,24 @@ enum Platform: string
         };
     }
 
+    public function isIncludedInAnalytics(): bool
+    {
+        return match ($this) {
+            self::LinkedIn, self::LinkedInPage, self::Telegram,
+            self::Discord, self::GoogleBusiness => false,
+            default => true,
+        };
+    }
+
+    /** @return list<string> */
+    public static function analyticsValues(): array
+    {
+        return array_values(array_map(
+            fn (self $platform): string => $platform->value,
+            array_filter(self::cases(), fn (self $platform): bool => $platform->isIncludedInAnalytics()),
+        ));
+    }
+
     /**
      * @return array<int, string>
      */

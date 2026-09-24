@@ -5,7 +5,6 @@
 
 import {
     GOOGLE_BUSINESS_CTA_ACTION_VALUES,
-    GOOGLE_BUSINESS_EVENT_TOPIC_TYPES,
     GoogleBusinessCtaAction,
     GoogleBusinessTopicType,
     googleBusinessCtaActionLabelKey,

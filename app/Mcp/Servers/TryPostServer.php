@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Mcp\Servers;
 
+use App\Mcp\Tools\Analytics\GetAnalyticsPublicationTool;
+use App\Mcp\Tools\Analytics\GetAnalyticsReportTool;
 use App\Mcp\Tools\ApiKey\CreateApiKeyTool;
 use App\Mcp\Tools\ApiKey\DeleteApiKeyTool;
 use App\Mcp\Tools\ApiKey\ListApiKeysTool;
@@ -64,7 +66,7 @@ use Laravel\Mcp\Server\Attributes\Version;
 #[Name('TryPost')]
 #[Version('1.0.0')]
 #[Icon('images/trypost/icon.png', mimeType: 'image/png')]
-#[Instructions('TryPost is a social media scheduling platform. Use this server to manage posts, the Asset Library, signatures, labels, social accounts, workspaces, outgoing webhooks, repurposes (auto-replicating videos posted outside TryPost), and API keys.')]
+#[Instructions('TryPost is a social media scheduling platform. Use this server to manage posts, analytics, the Asset Library, signatures, labels, social accounts, workspaces, outgoing webhooks, repurposes (auto-replicating videos posted outside TryPost), and API keys.')]
 class TryPostServer extends Server
 {
     public int $defaultPaginationLength = 100;
@@ -82,6 +84,10 @@ class TryPostServer extends Server
         RequestMediaUploadTool::class,
         AttachMediaFromUploadTool::class,
         GetPostMetricsTool::class,
+
+        // Analytics
+        GetAnalyticsReportTool::class,
+        GetAnalyticsPublicationTool::class,
 
         // Assets
         ListAssetsTool::class,

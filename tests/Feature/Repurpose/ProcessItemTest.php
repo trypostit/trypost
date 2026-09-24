@@ -14,6 +14,8 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Events\PostStatusChanged;
 use App\Exceptions\Repurpose\SourceDownloadException;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\PublishPost;
 use App\Jobs\Repurpose\ProcessRepurposeItem;
 use App\Models\Post;
@@ -30,7 +32,12 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+
+beforeEach(function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+});
 
 const REPURPOSE_VIDEO_URL = 'https://93.184.216.34/v.mp4';
 

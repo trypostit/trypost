@@ -9,7 +9,6 @@ use App\Actions\Repurpose\ResumeRepurpose;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\PauseReason;
 use App\Enums\Repurpose\Status;
-use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
 use App\Support\Repurpose\RepurposeTransition;
@@ -62,8 +61,8 @@ class RepurposeAccountSync
     {
         return SocialAccount::query()
             ->whereKey($account->id)
-            ->where('is_active', true)
-            ->where('status', AccountStatus::Connected)
+            ->connected()
+            ->active()
             ->exists();
     }
 

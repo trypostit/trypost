@@ -1,160 +1,159 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
-import { trans } from 'laravel-vue-i18n';
-import { computed, ref } from 'vue';
+import { Head, router, usePoll } from '@inertiajs/vue3';
+import { IconChartBar } from '@tabler/icons-vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
-import AnalyticsAccountSelector from '@/components/analytics/AnalyticsAccountSelector.vue';
-import FacebookAnalytics from '@/components/analytics/FacebookAnalytics.vue';
-import GoogleBusinessAnalytics from '@/components/analytics/GoogleBusinessAnalytics.vue';
-import InstagramAnalytics from '@/components/analytics/InstagramAnalytics.vue';
-import LinkedInPageAnalytics from '@/components/analytics/LinkedInPageAnalytics.vue';
-import PinterestAnalytics from '@/components/analytics/PinterestAnalytics.vue';
-import TelegramAnalytics from '@/components/analytics/TelegramAnalytics.vue';
-import ThreadsAnalytics from '@/components/analytics/ThreadsAnalytics.vue';
-import TikTokAnalytics from '@/components/analytics/TikTokAnalytics.vue';
-import type { AnalyticsAccount } from '@/components/analytics/types';
-import XAnalytics from '@/components/analytics/XAnalytics.vue';
-import YouTubeAnalytics from '@/components/analytics/YouTubeAnalytics.vue';
+import FollowersChart from '@/components/analytics/workspace/FollowersChart.vue';
+import ImportCoverage from '@/components/analytics/workspace/ImportCoverage.vue';
+import PerformanceTable from '@/components/analytics/workspace/PerformanceTable.vue';
+import PostsChart from '@/components/analytics/workspace/PostsChart.vue';
+import SummaryCards from '@/components/analytics/workspace/SummaryCards.vue';
+import TopPosts from '@/components/analytics/workspace/TopPosts.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { accountColor } from '@/lib/analyticsColors';
+import { analytics as analyticsRoute } from '@/routes/app';
+import type { WorkspaceAnalyticsReport } from '@/types/analytics';
 
-const props = defineProps<{
-    accounts: AnalyticsAccount[];
-}>();
-
-const selectedAccountId = ref<string | null>(props.accounts[0]?.id ?? null);
-
-const dateRange = ref({
-    start: dayjs().subtract(6, 'day').toDate(),
-    end: dayjs().toDate(),
-});
-
-const selectedAccount = computed(() =>
-    props.accounts.find((a) => a.id === selectedAccountId.value),
+const props = defineProps<{ report: WorkspaceAnalyticsReport }>();
+const importRunning = computed(() =>
+    props.report.coverage.some(
+        (row) =>
+            row.collector === 'publication_backfill' &&
+            (row.status === 'pending' || row.status === 'running'),
+    ),
+);
+const { start: startImportPolling, stop: stopImportPolling } = usePoll(
+    5000,
+    { only: ['report'] },
+    { autoStart: false },
+);
+const { start: startIdlePolling, stop: stopIdlePolling } = usePoll(
+    15000,
+    { only: ['report'] },
+    { autoStart: false },
 );
 
-const platformSupportsDateRange = computed(() => {
-    if (!selectedAccount.value) return false;
-    return [
-        'instagram',
-        'instagram-facebook',
-        'facebook',
-        'youtube',
-        'pinterest',
-        'threads',
-        'x',
-        'linkedin-page',
-        'google_business',
-    ].includes(selectedAccount.value.platform);
+const syncPolling = (running: boolean): void => {
+    if (running) {
+        stopIdlePolling();
+        startImportPolling();
+    } else {
+        stopImportPolling();
+        startIdlePolling();
+    }
+};
+
+onMounted(() => syncPolling(importRunning.value));
+watch(importRunning, syncPolling);
+
+const accountColors = computed<Record<string, string>>(() => {
+    const keys = [
+        ...new Set(
+            [
+                ...props.report.followers.accounts,
+                ...props.report.posts.accounts,
+            ].map((account) => account.social_account_key),
+        ),
+    ];
+
+    return Object.fromEntries(
+        keys.map((key, index) => [key, accountColor(index)]),
+    );
 });
+const selectedRange = ref({
+    start: dayjs(props.report.range.start).toDate(),
+    end: dayjs(props.report.range.end).toDate(),
+});
+
+watch(
+    () => [props.report.range.start, props.report.range.end],
+    ([start, end]) => {
+        selectedRange.value = {
+            start: dayjs(start).toDate(),
+            end: dayjs(end).toDate(),
+        };
+    },
+);
+
+const changeRange = (range: { start: Date; end: Date }): void => {
+    selectedRange.value = range;
+    const start = dayjs(range.start).format('YYYY-MM-DD');
+    const end = dayjs(range.end).format('YYYY-MM-DD');
+    if (start === props.report.range.start && end === props.report.range.end)
+        return;
+
+    router.get(
+        analyticsRoute.url(),
+        { start, end },
+        { preserveState: true, preserveScroll: true, replace: true },
+    );
+};
 </script>
 
 <template>
-    <AppLayout>
-        <Head :title="trans('sidebar.analytics')" />
-
-        <div
-            class="mx-auto flex h-full w-full max-w-6xl flex-col gap-6 px-6 py-8"
-        >
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <PageHeader :title="$t('sidebar.analytics')" />
-                <div class="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-                    <AnalyticsAccountSelector
-                        :accounts="accounts"
-                        :selected-id="selectedAccountId"
-                        @select="selectedAccountId = $event"
-                    />
-                    <DateRangePicker
-                        v-if="platformSupportsDateRange"
-                        v-model="dateRange"
-                        trigger-class="h-auto gap-3 px-3 py-3 text-sm"
-                    />
-                </div>
-            </div>
-
-            <div
-                v-if="accounts.length === 0"
-                class="flex flex-1 items-center justify-center text-sm font-medium text-foreground/60"
+    <AppLayout full-width>
+        <Head :title="$t('analytics.title')" />
+        <div class="flex min-h-full shrink-0 flex-col gap-8 px-6 py-8">
+            <header
+                class="flex flex-wrap items-end justify-between gap-4"
+                data-testid="analytics-page-header"
             >
-                {{ $t('analytics.no_accounts') }}
-            </div>
+                <PageHeader
+                    :title="$t('analytics.title')"
+                    :description="
+                        $t('analytics.dashboard.workspace_description')
+                    "
+                />
+                <DateRangePicker
+                    :model-value="selectedRange"
+                    :min-date="
+                        report.bounds.min
+                            ? dayjs(report.bounds.min).toDate()
+                            : undefined
+                    "
+                    :max-date="
+                        report.bounds.max
+                            ? dayjs(report.bounds.max).toDate()
+                            : undefined
+                    "
+                    :disabled="!report.bounds.min"
+                    trigger-class="h-10 gap-3 text-sm"
+                    @update:model-value="changeRange"
+                />
+            </header>
 
-            <div
-                v-else-if="!selectedAccountId"
-                class="flex flex-1 items-center justify-center text-sm font-medium text-foreground/60"
-            >
-                {{ $t('analytics.select_account') }}
-            </div>
+            <ImportCoverage :coverage="report.coverage" />
 
-            <TikTokAnalytics
-                v-else-if="selectedAccount?.platform === 'tiktok'"
-                :account-id="selectedAccountId"
+            <EmptyState
+                v-if="!report.bounds.min"
+                data-testid="analytics-empty-state"
+                :icon="IconChartBar"
+                :title="$t('analytics.dashboard.no_data_title')"
+                :description="$t('analytics.dashboard.no_data_body')"
             />
 
-            <InstagramAnalytics
-                v-else-if="
-                    selectedAccount?.platform === 'instagram' ||
-                    selectedAccount?.platform === 'instagram-facebook'
-                "
-                :account-id="selectedAccountId"
-                :date-range="dateRange"
-            />
-
-            <ThreadsAnalytics
-                v-else-if="selectedAccount?.platform === 'threads'"
-                :account-id="selectedAccountId"
-                :date-range="dateRange"
-            />
-
-            <FacebookAnalytics
-                v-else-if="selectedAccount?.platform === 'facebook'"
-                :account-id="selectedAccountId"
-                :date-range="dateRange"
-            />
-
-            <XAnalytics
-                v-else-if="selectedAccount?.platform === 'x'"
-                :account-id="selectedAccountId"
-                :date-range="dateRange"
-            />
-
-            <LinkedInPageAnalytics
-                v-else-if="selectedAccount?.platform === 'linkedin-page'"
-                :account-id="selectedAccountId"
-                :date-range="dateRange"
-            />
-
-            <PinterestAnalytics
-                v-else-if="selectedAccount?.platform === 'pinterest'"
-                :account-id="selectedAccountId"
-                :date-range="dateRange"
-            />
-
-            <YouTubeAnalytics
-                v-else-if="selectedAccount?.platform === 'youtube'"
-                :account-id="selectedAccountId"
-                :date-range="dateRange"
-            />
-
-            <GoogleBusinessAnalytics
-                v-else-if="selectedAccount?.platform === 'google_business'"
-                :account-id="selectedAccountId"
-                :date-range="dateRange"
-            />
-
-            <TelegramAnalytics
-                v-else-if="selectedAccount?.platform === 'telegram'"
-                :account-id="selectedAccountId"
-            />
-
-            <div
-                v-else
-                class="flex flex-1 items-center justify-center text-sm font-medium text-foreground/60"
-            >
-                {{ $t('analytics.no_data') }}
-            </div>
+            <template v-else>
+                <SummaryCards :report="report" />
+                <TopPosts :top-posts="report.top_posts" :range="report.range" />
+                <PerformanceTable
+                    :rows="report.performance"
+                    :range="report.range"
+                />
+                <FollowersChart
+                    :followers="report.followers"
+                    :range="report.range"
+                    :colors="accountColors"
+                />
+                <PostsChart
+                    :posts="report.posts"
+                    :range="report.range"
+                    :colors="accountColors"
+                />
+            </template>
         </div>
     </AppLayout>
 </template>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Ai;
 
+use App\Actions\Ai\RecordAiUsage;
 use App\Ai\Agents\PostImageRegenerator;
 use App\Enums\Media\Source;
 use App\Enums\Media\Type as MediaType;
@@ -12,7 +13,6 @@ use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
-use App\Services\Ai\RecordAiUsage;
 use App\Services\Image\TemplateImageGenerator;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

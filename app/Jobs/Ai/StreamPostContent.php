@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Jobs\Ai;
 
+use App\Actions\Ai\RecordAiUsage;
 use App\Ai\Agents\PostContentStreamer;
 use App\Models\Workspace;
-use App\Services\Ai\RecordAiUsage;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

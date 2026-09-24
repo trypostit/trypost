@@ -4,133 +4,38 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
-use App\Enums\SocialAccount\Platform;
-use App\Exceptions\PlatformUnavailableException;
+use App\Actions\Analytics\BuildWorkspaceAnalyticsReport;
+use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Http\Controllers\Controller;
-use App\Models\SocialAccount;
-use App\Services\Social\FacebookAnalytics;
-use App\Services\Social\GoogleBusinessAnalytics;
-use App\Services\Social\InstagramAnalytics;
-use App\Services\Social\LinkedInPageAnalytics;
-use App\Services\Social\PinterestAnalytics;
-use App\Services\Social\Telegram\TelegramAnalytics;
-use App\Services\Social\ThreadsAnalytics;
-use App\Services\Social\TikTokAnalytics;
-use App\Services\Social\XAnalytics;
-use App\Services\Social\YouTubeAnalytics;
-use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
+use App\Http\Requests\AnalyticsReportRequest;
+use App\Http\Requests\App\Analytics\ShowAnalyticsRequest;
+use App\Models\Post;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class AnalyticsController extends Controller
 {
-    private const SUPPORTED_PLATFORMS = [
-        Platform::TikTok,
-        Platform::Instagram,
-        Platform::InstagramFacebook,
-        Platform::Threads,
-        Platform::Facebook,
-        Platform::X,
-        Platform::LinkedInPage,
-        Platform::Pinterest,
-        Platform::YouTube,
-        Platform::Telegram,
-        Platform::GoogleBusiness,
-    ];
-
-    public function index(Request $request): Response
+    public function show(ShowAnalyticsRequest $request, string $post, ReadPublicationAnalytics $analytics): Response
     {
         $workspace = $request->user()->currentWorkspace;
-
         $this->authorize('view', $workspace);
 
-        $accounts = $workspace->socialAccounts()
-            ->where('is_active', true)
-            ->whereIn('platform', self::SUPPORTED_PLATFORMS)
-            ->get()
-            ->map(fn (SocialAccount $account) => [
-                'id' => $account->id,
-                'platform' => $account->platform->value,
-                'username' => $account->username,
-                'display_label' => $account->display_label,
-                'avatar_url' => $account->avatar_url,
-            ]);
+        $record = Post::query()->whereBelongsTo($workspace)->findOrFail($post);
 
-        return Inertia::render('analytics/Index', [
-            'accounts' => $accounts,
+        return Inertia::render('analytics/Publications/Show', [
+            'detail' => $analytics->latestForPostPublication($record, $request->validated('publication')),
         ]);
     }
 
-    public function show(Request $request, SocialAccount $account): JsonResponse
-    {
+    public function index(
+        AnalyticsReportRequest $request,
+        BuildWorkspaceAnalyticsReport $analytics,
+    ): Response {
         $workspace = $request->user()->currentWorkspace;
+        $this->authorize('view', $workspace);
 
-        if ($account->workspace_id !== $workspace->id) {
-            abort(HttpResponse::HTTP_FORBIDDEN);
-        }
-
-        $since = $request->has('since') ? Carbon::parse($request->input('since')) : null;
-        $until = $request->has('until') ? Carbon::parse($request->input('until')) : null;
-
-        $metrics = $this->metricsFor($account, $since, $until);
-
-        // Google aggregates search keywords by month, so they cannot be folded
-        // into the daily metric cards and travel as their own list.
-        if ($account->platform === Platform::GoogleBusiness) {
-            return response()->json([
-                'metrics' => $metrics,
-                'keywords' => $this->searchKeywordsFor($account, $since, $until),
-            ]);
-        }
-
-        return response()->json(['metrics' => $metrics]);
-    }
-
-    /**
-     * @return array<int, array{keyword: string, value: int, estimated: bool}>
-     */
-    private function searchKeywordsFor(SocialAccount $account, ?Carbon $since, ?Carbon $until): array
-    {
-        try {
-            return app(GoogleBusinessAnalytics::class)->getSearchKeywords($account, $since, $until);
-        } catch (PlatformUnavailableException|ConnectionException $e) {
-            report($e);
-
-            return [];
-        }
-    }
-
-    /**
-     * An unreachable platform is not a server error — empty numbers beat a 500
-     * on a page the user just opened. Narrow on purpose: catching Throwable
-     * would render a defect as "this account has no activity".
-     *
-     * @return array<int, array{label: string, value: int|string}>
-     */
-    private function metricsFor(SocialAccount $account, ?Carbon $since, ?Carbon $until): array
-    {
-        try {
-            return match ($account->platform) {
-                Platform::TikTok => app(TikTokAnalytics::class)->getMetrics($account),
-                Platform::Instagram, Platform::InstagramFacebook => app(InstagramAnalytics::class)->getMetrics($account, $since, $until),
-                Platform::Threads => app(ThreadsAnalytics::class)->getMetrics($account, $since, $until),
-                Platform::Facebook => app(FacebookAnalytics::class)->getMetrics($account, $since, $until),
-                Platform::X => app(XAnalytics::class)->getMetrics($account, $since, $until),
-                Platform::LinkedInPage => app(LinkedInPageAnalytics::class)->getMetrics($account, $since, $until),
-                Platform::Pinterest => app(PinterestAnalytics::class)->getMetrics($account, $since, $until),
-                Platform::YouTube => app(YouTubeAnalytics::class)->getMetrics($account, $since, $until),
-                Platform::Telegram => app(TelegramAnalytics::class)->getMetrics($account),
-                Platform::GoogleBusiness => app(GoogleBusinessAnalytics::class)->getMetrics($account, $since, $until),
-                default => [],
-            };
-        } catch (PlatformUnavailableException|ConnectionException $e) {
-            report($e);
-
-            return [];
-        }
+        return Inertia::render('analytics/Index', [
+            'report' => $analytics->forSelection($workspace, $request->validated()),
+        ]);
     }
 }

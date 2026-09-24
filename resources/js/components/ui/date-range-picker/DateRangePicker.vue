@@ -19,10 +19,14 @@ import { RangeCalendar } from "@/components/ui/range-calendar"
 import { useCalendarLocale } from "@/composables/useCalendarLocale"
 import { cn } from "@/lib/utils"
 import dayjs from "@/dayjs"
+import date from "@/date"
 
 const props = defineProps<{
   modelValue: { start: Date, end: Date }
   triggerClass?: string
+  minDate?: Date
+  maxDate?: Date
+  disabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -53,36 +57,53 @@ const isUpdating = ref(false)
 const isOpen = ref(false)
 const { width } = useWindowSize()
 const numberOfMonths = computed(() => width.value < 640 ? 1 : 2)
+const minimum = computed(() => props.minDate ? toCalendarDate(props.minDate) : undefined)
+const maximum = computed(() => props.maxDate ? toCalendarDate(props.maxDate) : undefined)
+const latestAvailableDay = computed(() => {
+  const today = dayjs().startOf("day")
+  const latest = props.maxDate ? dayjs(props.maxDate).startOf("day") : today
+  return latest.isBefore(today) ? latest : today
+})
 
 const range = (start: dayjs.Dayjs, end: dayjs.Dayjs) => ({
   start: toCalendarDate(start.toDate()),
   end: toCalendarDate(end.toDate()),
 })
 
-const presetGroups = computed(() => [
-  [
-    { label: trans('common.date_range_picker.today'), getValue: () => range(dayjs(), dayjs()) },
-    { label: trans('common.date_range_picker.yesterday'), getValue: () => range(dayjs().subtract(1, "day"), dayjs().subtract(1, "day")) },
-  ],
-  [
-    { label: trans('common.date_range_picker.last_7_days'), getValue: () => range(dayjs().subtract(6, "day"), dayjs()) },
-    { label: trans('common.date_range_picker.last_30_days'), getValue: () => range(dayjs().subtract(29, "day"), dayjs()) },
-    { label: trans('common.date_range_picker.last_3_months'), getValue: () => range(dayjs().subtract(3, "month"), dayjs()) },
-    { label: trans('common.date_range_picker.last_6_months'), getValue: () => range(dayjs().subtract(6, "month"), dayjs()) },
-    { label: trans('common.date_range_picker.last_12_months'), getValue: () => range(dayjs().subtract(12, "month").add(1, "day"), dayjs()) },
-  ],
-  [
-    { label: trans('common.date_range_picker.this_month'), getValue: () => range(dayjs().startOf("month"), dayjs().endOf("month")) },
-    { label: trans('common.date_range_picker.last_month'), getValue: () => range(dayjs().subtract(1, "month").startOf("month"), dayjs().subtract(1, "month").endOf("month")) },
-    { label: trans('common.date_range_picker.year_to_date'), getValue: () => range(dayjs().startOf("year"), dayjs()) },
-    { label: trans('common.date_range_picker.last_year'), getValue: () => range(dayjs().subtract(1, "year").startOf("year"), dayjs().subtract(1, "year").endOf("year")) },
-  ],
-])
+type Preset = { key: string, label: string, getValue: () => { start: CalendarDate, end: CalendarDate } }
 
-type Preset = { label: string, getValue: () => { start: any, end: any } }
+const presetGroups = computed<Preset[][]>(() => [
+  [
+    { key: 'today', label: trans('common.date_range_picker.today'), getValue: () => range(dayjs(), dayjs()) },
+    { key: 'yesterday', label: trans('common.date_range_picker.yesterday'), getValue: () => range(dayjs().subtract(1, "day"), dayjs().subtract(1, "day")) },
+  ],
+  [
+    { key: 'last_7_days', label: trans('common.date_range_picker.last_7_days'), getValue: () => range(latestAvailableDay.value.subtract(6, "day"), latestAvailableDay.value) },
+    { key: 'last_30_days', label: trans('common.date_range_picker.last_30_days'), getValue: () => range(latestAvailableDay.value.subtract(29, "day"), latestAvailableDay.value) },
+    { key: 'last_3_months', label: trans('common.date_range_picker.last_3_months'), getValue: () => range(latestAvailableDay.value.subtract(3, "month"), latestAvailableDay.value) },
+    { key: 'last_6_months', label: trans('common.date_range_picker.last_6_months'), getValue: () => range(latestAvailableDay.value.subtract(6, "month"), latestAvailableDay.value) },
+    { key: 'last_12_months', label: trans('common.date_range_picker.last_12_months'), getValue: () => range(latestAvailableDay.value.subtract(12, "month").add(1, "day"), latestAvailableDay.value) },
+  ],
+  [
+    { key: 'this_month', label: trans('common.date_range_picker.this_month'), getValue: () => range(dayjs().startOf("month"), dayjs().endOf("month")) },
+    { key: 'last_month', label: trans('common.date_range_picker.last_month'), getValue: () => range(dayjs().subtract(1, "month").startOf("month"), dayjs().subtract(1, "month").endOf("month")) },
+    { key: 'year_to_date', label: trans('common.date_range_picker.year_to_date'), getValue: () => range(dayjs().startOf("year"), dayjs()) },
+    { key: 'last_year', label: trans('common.date_range_picker.last_year'), getValue: () => range(dayjs().subtract(1, "year").startOf("year"), dayjs().subtract(1, "year").endOf("year")) },
+  ],
+].map(group => group.filter(preset => {
+  const selected = preset.getValue()
+  return (!minimum.value || selected.end.compare(minimum.value) >= 0)
+    && (!maximum.value || selected.start.compare(maximum.value) <= 0)
+})).filter(group => group.length > 0))
 
 const applyPreset = (preset: Preset) => {
-  value.value = preset.getValue()
+  const selected = preset.getValue()
+  const clamp = (date: CalendarDate) => {
+    if (minimum.value && date.compare(minimum.value) < 0) return minimum.value
+    if (maximum.value && date.compare(maximum.value) > 0) return maximum.value
+    return date
+  }
+  value.value = { start: clamp(selected.start), end: clamp(selected.end) }
   isOpen.value = false
 }
 
@@ -122,6 +143,8 @@ watch(
     <PopoverTrigger as-child>
       <Button
         variant="outline"
+        data-testid="date-range-picker-trigger"
+        :disabled="disabled"
         :class="cn(
           'w-full justify-start text-left font-medium sm:w-auto',
           !value && 'text-foreground/60',
@@ -130,11 +153,11 @@ watch(
       >
         <template v-if="value.start">
           <template v-if="value.end">
-            {{ dayjs(toDate(value.start)).format('LL') }} -
-            {{ dayjs(toDate(value.end)).format('LL') }}
+            {{ date.formatLocalDate(toDate(value.start)) }} -
+            {{ date.formatLocalDate(toDate(value.end)) }}
           </template>
           <template v-else>
-            {{ dayjs(toDate(value.start)).format('LL') }}
+            {{ date.formatLocalDate(toDate(value.start)) }}
           </template>
         </template>
         <template v-else>
@@ -151,7 +174,8 @@ watch(
             <div class="space-y-0.5 px-2">
               <Button
                 v-for="preset in group"
-                :key="preset.label"
+                :key="preset.key"
+                :data-testid="`date-range-preset-${preset.key}`"
                 variant="ghost"
                 size="sm"
                 class="h-7 w-full justify-start text-xs font-bold text-foreground hover:bg-violet-100 hover:text-foreground"
@@ -169,6 +193,8 @@ watch(
             initial-focus
             :locale="calendarLocale"
             :number-of-months="numberOfMonths"
+            :min-value="minimum"
+            :max-value="maximum"
           />
         </div>
       </div>
