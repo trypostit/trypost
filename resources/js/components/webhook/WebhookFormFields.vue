@@ -5,6 +5,7 @@ import { computed } from 'vue';
 
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Combobox,
     ComboboxAnchor,
@@ -28,6 +29,7 @@ const props = defineProps<{
     endpointId: string;
     endpointTestId: string;
     eventsTestId: string;
+    eventsControl?: 'checkboxes' | 'combobox';
     errors: {
         endpoint?: string;
         events?: string;
@@ -43,12 +45,20 @@ const triggerLabel = computed(() => {
         count: String(events.value.length),
     });
 });
+
+const updateEventSelection = (event: string, selected: boolean): void => {
+    events.value = selected
+        ? [...new Set([...events.value, event])]
+        : events.value.filter((selectedEvent) => selectedEvent !== event);
+};
 </script>
 
 <template>
     <div class="space-y-4">
         <div class="grid gap-2">
-            <Label :for="props.endpointId">{{ $t('webhooks.create.endpoint') }}</Label>
+            <Label :for="props.endpointId">{{
+                $t('webhooks.create.endpoint')
+            }}</Label>
             <Input
                 :id="props.endpointId"
                 v-model="endpoint"
@@ -60,7 +70,48 @@ const triggerLabel = computed(() => {
 
         <div class="grid gap-2">
             <Label>{{ $t('webhooks.create.events') }}</Label>
-            <Combobox v-model="events" multiple>
+            <div
+                v-if="props.eventsControl === 'checkboxes'"
+                :data-testid="props.eventsTestId"
+                class="rounded-md border"
+            >
+                <div
+                    v-for="group in webhookEventGroups"
+                    :key="group.labelKey"
+                    class="p-4"
+                >
+                    <p class="mb-3 text-sm font-medium">
+                        {{ $t(group.labelKey) }}
+                    </p>
+                    <div class="grid gap-3">
+                        <div
+                            v-for="event in group.events"
+                            :key="event"
+                            class="flex items-center gap-3"
+                        >
+                            <Checkbox
+                                :id="`${props.endpointId}-${event}`"
+                                :data-testid="`${props.eventsTestId}-${event.replaceAll('.', '-')}`"
+                                :model-value="events.includes(event)"
+                                @update:model-value="
+                                    (selected) =>
+                                        updateEventSelection(
+                                            event,
+                                            selected === true,
+                                        )
+                                "
+                            />
+                            <Label
+                                :for="`${props.endpointId}-${event}`"
+                                class="cursor-pointer font-normal"
+                            >
+                                {{ webhookEventLabel(event) }}
+                            </Label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <Combobox v-else v-model="events" multiple>
                 <ComboboxAnchor as-child>
                     <ComboboxTrigger as-child>
                         <Button
@@ -70,13 +121,19 @@ const triggerLabel = computed(() => {
                             type="button"
                         >
                             {{ triggerLabel }}
-                            <IconChevronDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            <IconChevronDown
+                                class="ml-2 h-4 w-4 shrink-0 opacity-50"
+                            />
                         </Button>
                     </ComboboxTrigger>
                 </ComboboxAnchor>
                 <ComboboxList class="w-full">
-                    <ComboboxInput :placeholder="trans('webhooks.create.search_events')" />
-                    <ComboboxEmpty>{{ $t('webhooks.create.no_events') }}</ComboboxEmpty>
+                    <ComboboxInput
+                        :placeholder="trans('webhooks.create.search_events')"
+                    />
+                    <ComboboxEmpty>{{
+                        $t('webhooks.create.no_events')
+                    }}</ComboboxEmpty>
                     <ComboboxGroup
                         v-for="group in webhookEventGroups"
                         :key="group.labelKey"
@@ -88,7 +145,9 @@ const triggerLabel = computed(() => {
                             :value="event"
                             :text-value="`${webhookEventLabel(event)} ${event}`"
                         >
-                            <span class="min-w-0 flex-1 truncate">{{ webhookEventLabel(event) }}</span>
+                            <span class="min-w-0 flex-1 truncate">{{
+                                webhookEventLabel(event)
+                            }}</span>
                             <ComboboxItemIndicator>
                                 <IconCheck class="ml-auto h-4 w-4" />
                             </ComboboxItemIndicator>

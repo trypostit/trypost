@@ -58,6 +58,7 @@ const submit = () => {
                         endpoint-id="create-endpoint"
                         endpoint-test-id="create-webhook-endpoint"
                         events-test-id="create-webhook-events"
+                        events-control="checkboxes"
                         :errors="form.errors"
                     />
                 </div>

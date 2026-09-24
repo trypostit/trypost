@@ -48,6 +48,16 @@ test('creating a webhook opens a full-height right-side sheet that can be dismis
 
     $page->assertVisible('@create-webhook-endpoint')
         ->assertVisible('@create-webhook-events')
+        ->assertVisible('@create-webhook-events-post-created')
+        ->assertVisible('@create-webhook-events-post-published')
+        ->assertDisabled('@create-webhook-submit')
+        ->click('@create-webhook-events-post-created')
+        ->click('@create-webhook-events-post-published')
+        ->assertEnabled('@create-webhook-submit')
+        ->click('@create-webhook-events-post-created')
+        ->assertEnabled('@create-webhook-submit')
+        ->click('@create-webhook-events-post-published')
+        ->assertDisabled('@create-webhook-submit')
         ->click('@cancel-create-webhook')
         ->assertMissing('@create-webhook-sheet')
         ->assertNoJavaScriptErrors();
