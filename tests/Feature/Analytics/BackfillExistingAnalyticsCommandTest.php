@@ -98,7 +98,7 @@ test('rollout reports orphaned historical destinations without inventing an iden
     Bus::assertNotDispatched(BackfillTryPostPublications::class);
 });
 
-test('deployment rollout dispatches only for workspaces with active paid subscriptions', function () {
+test('deployment rollout follows Cashier subscription eligibility', function () {
     Bus::fake();
     $eligibleAccounts = [];
     $eligibleDestinations = [];
@@ -132,7 +132,7 @@ test('deployment rollout dispatches only for workspaces with active paid subscri
             'social_account_id' => $socialAccount->id,
         ]);
 
-        if (in_array($status, ['active', 'grace_period', 'trialing'], true)) {
+        if (in_array($status, ['active', 'grace_period', 'trialing', 'past_due'], true)) {
             $orphan = PostPlatform::factory()->instagram()->published()->create([
                 'post_id' => Post::factory()->create(['workspace_id' => $workspace->id])->id,
                 'social_account_id' => $socialAccount->id,
@@ -140,7 +140,7 @@ test('deployment rollout dispatches only for workspaces with active paid subscri
             $orphan->updateQuietly(['social_account_id' => null]);
         }
 
-        if (in_array($status, ['active', 'grace_period'], true)) {
+        if (in_array($status, ['active', 'grace_period', 'trialing', 'past_due'], true)) {
             $eligibleAccounts[] = $socialAccount->id;
             $eligibleDestinations[] = $destination->id;
         }
@@ -148,7 +148,7 @@ test('deployment rollout dispatches only for workspaces with active paid subscri
 
     Bus::fake();
     $this->artisan('analytics:backfill-existing')
-        ->expectsOutputToContain('historical_identity_unrecoverable=2')
+        ->expectsOutputToContain('historical_identity_unrecoverable=4')
         ->assertSuccessful();
 
     expect(Bus::dispatched(BootstrapAccountAnalytics::class)->pluck('socialAccountId')->sort()->values()->all())->toBe(collect($eligibleAccounts)->sort()->values()->all())
@@ -159,6 +159,40 @@ test('deployment rollout dispatches only for workspaces with active paid subscri
     $this->artisan('analytics:backfill-existing', [
         '--workspace' => $workspaces['trialing']->id,
     ])->assertSuccessful();
+
+    Bus::assertDispatched(BootstrapAccountAnalytics::class);
+    Bus::assertDispatched(BackfillTryPostPublications::class);
+});
+
+test('deployment rollout uses the latest Cashier subscription of the account', function () {
+    Bus::fake();
+    $workspace = Workspace::factory()->create();
+    $workspace->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_'.fake()->uuid(),
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_123',
+        'created_at' => now()->subDays(2),
+    ]);
+    $workspace->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_'.fake()->uuid(),
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_123',
+        'ends_at' => now()->subDay(),
+        'created_at' => now()->subDay(),
+    ]);
+    $socialAccount = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
+    PostPlatform::factory()->instagram()->published()->create([
+        'post_id' => Post::factory()->create(['workspace_id' => $workspace->id])->id,
+        'social_account_id' => $socialAccount->id,
+    ]);
+
+    expect($workspace->account->fresh()->subscriptions->first()->ends_at?->isPast())->toBeTrue()
+        ->and($workspace->account->fresh()->subscribed(Account::SUBSCRIPTION_NAME))->toBeFalse();
+
+    Bus::fake();
+    $this->artisan('analytics:backfill-existing', ['--workspace' => $workspace->id])->assertSuccessful();
 
     Bus::assertNotDispatched(BootstrapAccountAnalytics::class);
     Bus::assertNotDispatched(BackfillTryPostPublications::class);

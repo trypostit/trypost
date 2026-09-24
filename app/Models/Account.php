@@ -7,14 +7,12 @@ namespace App\Models;
 use App\Models\Traits\HasUsage;
 use Carbon\CarbonInterface;
 use Database\Factories\AccountFactory;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Cashier\Billable;
-use Stripe\Subscription as StripeSubscription;
 
 class Account extends Model
 {
@@ -66,14 +64,6 @@ class Account extends Model
     public function invites(): HasMany
     {
         return $this->hasMany(Invite::class);
-    }
-
-    public function scopeWithActivePaidSubscription(Builder $query): Builder
-    {
-        return $query->whereHas('subscriptions', fn (Builder $subscriptions): Builder => $subscriptions
-            ->where('type', self::SUBSCRIPTION_NAME)
-            ->where('stripe_status', StripeSubscription::STATUS_ACTIVE)
-            ->active());
     }
 
     public function hasActiveSubscription(): bool
