@@ -38,12 +38,22 @@ test('creating a four account draft keeps composition in the browser until save'
     expect(Post::where('workspace_id', $workspace->id)->count())->toBe(0);
 
     foreach ($accounts as $account) {
-        $page->click("@composer-account-{$account->id}");
+        $page->click('@composer-add-account')->click("@composer-account-option-{$account->id}");
     }
 
-    $page->fill('@composer-base-content', 'A shared announcement')
-        ->click('@composer-next')
-        ->assertVisible('@composer-customization');
+    $page->assertVisible('@composer-save-draft')
+        ->assertVisible('@composer-schedule-trigger')
+        ->fill('@composer-base-content', 'A shared announcement');
+
+    expect($page->script('document.querySelectorAll("[data-testid=\"composer-preview-card\"]").length'))->toBe(4);
+    expect($page->script(<<<'JS'
+        (() => {
+            const list = document.querySelector('[data-testid="composer-previews-scroll"]');
+            if (!list || list.scrollHeight <= list.clientHeight) return false;
+            list.scrollTop = list.scrollHeight;
+            return list.scrollTop > 0;
+        })()
+    JS))->toBeTrue();
 
     expect(Post::where('workspace_id', $workspace->id)->count())->toBe(0);
 
@@ -60,6 +70,88 @@ test('creating a four account draft keeps composition in the browser until save'
     expect(Post::where('workspace_id', $workspace->id)->count())->toBe(4);
     expect(Post::where('workspace_id', $workspace->id)->pluck('content')->all())
         ->each->toBe('A shared announcement');
+});
+
+test('composer offers only immediate publishing and an explicit date and time', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $user->account_id,
+    ]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.create'));
+    $page->click('@composer-add-account')
+        ->click("@composer-account-option-{$account->id}")
+        ->click('@composer-schedule-trigger')
+        ->assertVisible('@composer-schedule-now')
+        ->assertVisible('@composer-schedule-custom')
+        ->assertDontSee('Next Available')
+        ->assertDontSee('Prioritize')
+        ->click('@composer-schedule-custom')
+        ->assertVisible('@post-time-picker');
+
+    $page->click('button:has-text("Cancel")')
+        ->click('@composer-schedule-trigger')
+        ->click('@composer-schedule-now')
+        ->click('@composer-next')
+        ->assertVisible('@composer-submit');
+    expect($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe('now');
+});
+
+test('create another reopens a fresh composer after saving a draft', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $user->account_id,
+    ]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.create'));
+    $page->click('@composer-add-account')
+        ->click("@composer-account-option-{$account->id}")
+        ->fill('@composer-base-content', 'First draft')
+        ->click('@composer-create-another')
+        ->click('@composer-save-draft');
+
+    $page->script(<<<'JS'
+        (async () => {
+            for (let attempt = 0; attempt < 80; attempt++) {
+                const composer = document.querySelector('[data-testid="composer-base-content"]');
+                if (composer && composer.value === '') return;
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+        })();
+    JS);
+
+    $page->assertVisible('@post-composer-dialog')
+        ->assertValue('@composer-base-content', '');
+    expect(Post::where('workspace_id', $workspace->id)->count())->toBe(1);
+});
+
+test('templates shortcut opens the available template wizard', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $user->account_id,
+    ]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+
+    visit(route('app.posts.create'))
+        ->click('@composer-templates')
+        ->assertVisible('@composer-template-wizard');
 });
 
 test('recovering an empty-target draft retains its caption media and labels', function () {
@@ -84,7 +176,7 @@ test('recovering an empty-target draft retains its caption media and labels', fu
     $page = visit(route('app.posts.edit', $legacy));
     $page->assertVisible('@post-composer-dialog')
         ->assertValue('@composer-base-content', 'Keep this draft')
-        ->click("@composer-account-{$account->id}")
+        ->click('@composer-add-account')->click("@composer-account-option-{$account->id}")
         ->click('@composer-next')
         ->click('@composer-save-draft');
     $page->script(<<<'JS'
@@ -146,8 +238,8 @@ test('account overrides inherit later shared edits and are discarded when an acc
     $this->actingAs($user);
 
     $page = visit(route('app.posts.create'));
-    $page->click("@composer-account-{$firstId}")
-        ->click("@composer-account-{$secondId}")
+    $page->click('@composer-add-account')->click("@composer-account-option-{$firstId}")
+        ->click('@composer-add-account')->click("@composer-account-option-{$secondId}")
         ->fill('@composer-base-content', 'Shared first')
         ->click('@composer-next')
         ->fill("@composer-caption-{$firstId}", '')
@@ -163,7 +255,7 @@ test('account overrides inherit later shared edits and are discarded when an acc
 
     $page->click('@composer-back')
         ->click("@composer-account-{$firstId}")
-        ->click("@composer-account-{$firstId}")
+        ->click('@composer-add-account')->click("@composer-account-option-{$firstId}")
         ->click('@composer-next')
         ->click("@composer-expand-{$firstId}");
 
@@ -182,7 +274,7 @@ test('X character count uses the same link defusing as its preview', function ()
     $this->actingAs($user);
 
     $page = visit(route('app.posts.create'));
-    $page->click("@composer-account-{$account->id}")
+    $page->click('@composer-add-account')->click("@composer-account-option-{$account->id}")
         ->fill('@composer-base-content', 'https://example.com/post')
         ->click('@composer-next')
         ->assertVisible('@composer-x-count');
@@ -202,7 +294,7 @@ test('selecting a new image uploads an asset before any post is saved', function
     $this->actingAs($user);
 
     $page = visit(route('app.posts.create'));
-    $page->click("@composer-account-{$account->id}")
+    $page->click('@composer-add-account')->click("@composer-account-option-{$account->id}")
         ->click('@composer-base-media');
 
     $base64 = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
@@ -236,7 +328,7 @@ test('cropping one account creates a separate asset and leaves the other account
 
     $page = visit(route('app.posts.create'));
     foreach ($accounts as $account) {
-        $page->click("@composer-account-{$account->id}");
+        $page->click('@composer-add-account')->click("@composer-account-option-{$account->id}");
     }
     $page->fill('@composer-base-content', 'Image for both')
         ->click('@composer-base-media');

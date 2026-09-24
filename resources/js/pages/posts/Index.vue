@@ -191,12 +191,18 @@ const onComposerOpenChange = (open: boolean): void => {
     if (!open) closeComposer();
 };
 
-const submitComposition = (composition: PostComposition): void => {
+const submitComposition = (
+    composition: PostComposition,
+    createAnother: boolean,
+): void => {
     composerSubmitting.value = true;
     const options = {
         preserveScroll: true,
         onSuccess: () => {
             composerOpen.value = false;
+            if (createAnother) {
+                router.visit(createPost.url());
+            }
         },
         onFinish: () => {
             composerSubmitting.value = false;

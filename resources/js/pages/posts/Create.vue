@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { IconPencil, IconSparkles } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
@@ -33,7 +33,11 @@ const props = withDefaults(defineProps<Props>(), {
 
 type View = 'choice' | 'ai';
 
-const view = ref<View>('choice');
+const view = ref<View>(
+    new URLSearchParams(usePage().url.split('?')[1] ?? '').has('templates')
+        ? 'ai'
+        : 'choice',
+);
 const submitting = ref(false);
 
 const aiHeader = ref<{ title: string; description: string } | null>(null);
@@ -146,6 +150,7 @@ const stepHeader = computed(() => {
                 <!-- AI flow -->
                 <AiPostWizard
                     v-else-if="view === 'ai'"
+                    data-testid="composer-template-wizard"
                     :social-accounts="socialAccounts"
                     :templates="templates"
                     :date="props.date"
