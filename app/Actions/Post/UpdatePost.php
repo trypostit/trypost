@@ -36,15 +36,25 @@ class UpdatePost
             throw ValidationException::withMessages(['social_account_id' => __('validation.in', ['attribute' => 'social account'])]);
         }
 
-        if (array_key_exists('content_type', $data) || array_key_exists('meta', $data)) {
+        if ($post->postPlatforms()->enabled()->count() === 1) {
+            $selectedTarget = $post->postPlatforms()->enabled()->sole();
+            if (array_key_exists('platforms', $data)) {
+                if (count($data['platforms']) !== 1 || data_get($data, 'platforms.0.id') !== $selectedTarget->id
+                    || array_key_exists('content_type', $data) || array_key_exists('meta', $data)) {
+                    throw ValidationException::withMessages(['platforms' => __('validation.in', ['attribute' => 'platforms'])]);
+                }
+
+                $data = [
+                    ...Arr::except($data, ['platforms']),
+                    ...Arr::only($data['platforms'][0], ['content_type', 'meta']),
+                ];
+            }
+
             return self::updateChannelPost($workspace, $post, $data);
         }
 
-        if (array_key_exists('platforms', $data) && $post->postPlatforms()->enabled()->count() === 1) {
-            $selectedTarget = $post->postPlatforms()->enabled()->sole();
-            if (count($data['platforms']) !== 1 || data_get($data, 'platforms.0.id') !== $selectedTarget->id) {
-                throw ValidationException::withMessages(['platforms' => __('validation.in', ['attribute' => 'platforms'])]);
-            }
+        if (array_key_exists('content_type', $data) || array_key_exists('meta', $data)) {
+            return self::updateChannelPost($workspace, $post, $data);
         }
 
         return DB::transaction(function () use ($post, $data): array {
@@ -164,7 +174,7 @@ class UpdatePost
                 'content_type' => $data['content_type'] ?? $target->content_type->value,
                 'meta' => $meta,
             ]],
-        ]);
+        ], $post->media ?? []);
 
         return DB::transaction(function () use ($post, $target, $data, $resolved, $meta, $status, $scheduledAt): array {
             $destination = $resolved['destinations'][0];

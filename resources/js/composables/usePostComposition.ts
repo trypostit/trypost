@@ -41,6 +41,13 @@ export interface ComposerInitialPost {
     label_ids: string[];
 }
 
+export interface ComposerInitialDraft {
+    content: string;
+    media: MediaItem[];
+    scheduled_at: string | null;
+    label_ids: string[];
+}
+
 type Override = Partial<
     Pick<DestinationDraft, 'content' | 'media' | 'content_type' | 'meta'>
 >;
@@ -51,11 +58,14 @@ const owns = (value: object, key: string): boolean =>
 export const usePostComposition = (
     accounts: () => ComposerAccount[],
     initial?: ComposerInitialPost | null,
+    initialDraft?: ComposerInitialDraft | null,
 ) => {
-    const content = ref(initial?.content ?? '');
-    const media = ref<MediaItem[]>(initial?.media ?? []);
-    const scheduledAt = ref(initial?.scheduled_at ?? '');
-    const labelIds = ref(initial?.label_ids ?? []);
+    const content = ref(initial?.content ?? initialDraft?.content ?? '');
+    const media = ref<MediaItem[]>(initial?.media ?? initialDraft?.media ?? []);
+    const scheduledAt = ref(
+        initial?.scheduled_at ?? initialDraft?.scheduled_at ?? '',
+    );
+    const labelIds = ref(initial?.label_ids ?? initialDraft?.label_ids ?? []);
     const selectedAccountIds = ref<string[]>(
         initial ? [initial.social_account_id] : [],
     );

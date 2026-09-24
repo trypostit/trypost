@@ -112,6 +112,10 @@ class UpdatePostRequest extends FormRequest
      */
     private function addMediaCompatibilityErrors(Validator $validator): void
     {
+        if ($this->filled('content_type') && ! $this->has('platforms')) {
+            return;
+        }
+
         /** @var Post $post */
         $post = $this->route('post');
 

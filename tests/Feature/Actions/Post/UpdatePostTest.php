@@ -90,6 +90,7 @@ test('execute keeps the google business jpeg when the target stays enabled', fun
     $post = Post::factory()->scheduled()->create([
         'workspace_id' => $workspace->id,
         'user_id' => $user->id,
+        'content' => 'Current promotion',
     ]);
     $target = PostPlatform::factory()->googleBusiness()->pendingReview()->create([
         'post_id' => $post->id,

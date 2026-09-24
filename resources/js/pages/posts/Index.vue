@@ -60,6 +60,7 @@ import {
 } from '@/composables/usePlatformLogo';
 import type {
     ComposerAccount,
+    ComposerInitialDraft,
     ComposerInitialPost,
     PostComposition,
 } from '@/composables/usePostComposition';
@@ -132,11 +133,15 @@ interface Props {
     };
     openComposer?: boolean;
     initialComposerDate?: string | null;
+    openComposerComments?: boolean;
+    highlightCommentId?: string | null;
+    authUserId: string;
     editPost?: Post | null;
     socialAccounts?: ComposerAccount[];
     platformConfigs?: Record<string, any>;
     pinterestBoards?: Record<string, any>;
     tiktokCreatorInfos?: Record<string, any>;
+    signatures?: { id: string; name: string; content: string }[];
 }
 
 const props = defineProps<Props>();
@@ -154,6 +159,18 @@ const initialPost = computed<ComposerInitialPost | null>(() => {
         social_account_id: target.social_account_id,
         content_type: target.content_type ?? '',
         meta: target.meta ?? {},
+        label_ids: post.labels?.map((label) => label.id) ?? [],
+    };
+});
+const recoveryDraft = computed<ComposerInitialDraft | null>(() => {
+    const post = props.editPost;
+    if (!post || post.post_platforms.some((target) => target.enabled))
+        return null;
+
+    return {
+        content: post.content ?? '',
+        media: post.media ?? [],
+        scheduled_at: date.formatUtcForDateTimeLocalInput(post.scheduled_at),
         label_ids: post.labels?.map((label) => label.id) ?? [],
     };
 });
@@ -656,6 +673,13 @@ useWorkspaceEcho(
         v-model:open="composerOpen"
         :social-accounts="socialAccounts ?? []"
         :initial-post="initialPost"
+        :initial-draft="recoveryDraft"
+        :post-id="editPost?.id"
+        :current-user-id="authUserId"
+        :open-comments="openComposerComments"
+        :highlight-comment-id="highlightCommentId"
+        :labels="labels"
+        :signatures="signatures ?? []"
         :initial-date="initialComposerDate"
         :submitting="composerSubmitting"
         :platform-configs="platformConfigs ?? {}"

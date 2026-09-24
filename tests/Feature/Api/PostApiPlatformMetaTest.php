@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Dto\MediaItem;
 use App\Enums\GoogleBusiness\TopicType;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Jobs\PublishPost;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -147,6 +149,32 @@ it('does not reject a Bluesky post whose stored video is a MOV', function () {
             'scheduled_at' => now()->addHour()->toIso8601String(),
         ])
         ->assertSuccessful();
+});
+
+it('rejects unowned media on the legacy single-platform update payload', function () {
+    $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $target = PostPlatform::factory()->linkedin()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $linkedin->id,
+        'enabled' => true,
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Draft->value,
+            'media' => [[
+                'id' => 'foreign-asset',
+                'path' => 'assets/foreign.jpg',
+                'url' => 'https://example.com/foreign.jpg',
+                'type' => 'image',
+            ]],
+            'platforms' => [['id' => $target->id]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['destinations.0.media.0.id']);
+
+    expect($post->fresh()->media)->toBeEmpty();
 });
 
 it('rejects publishing when the uploaded video runs past the content type duration cap', function () {
@@ -414,7 +442,11 @@ it('rejects publishing a Discord post without a channel', function () {
 it('publishes a Discord post when the channel is set', function () {
     Queue::fake();
 
-    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'content' => 'Ready for Discord',
+    ]);
     $platform = PostPlatform::factory()->discord()->create([
         'post_id' => $post->id,
         'social_account_id' => $this->discordAccount->id,
@@ -532,6 +564,65 @@ it('rejects non-http Pinterest links', function () {
         ->assertJsonValidationErrors([
             'platforms.0.meta.link' => __('posts.form.pinterest.link_invalid'),
         ]);
+});
+
+it('rejects scheduling an independent Pinterest draft without a board when settings are omitted', function () {
+    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
+    $image = Media::factory()->assets()->for($this->workspace, 'mediable')->create();
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'content' => 'A pin',
+        'media' => [MediaItem::fromMedia($image)->toArray()],
+    ]);
+    PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $pinterest->id,
+        'platform' => Platform::Pinterest,
+        'content_type' => ContentType::PinterestPin,
+        'meta' => [],
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Scheduled->value,
+            'scheduled_at' => now()->addDay()->toIso8601String(),
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('destinations.0.meta.board_id');
+
+    expect($post->fresh()->status)->toBe(PostStatus::Draft);
+});
+
+it('accepts changing an independent Instagram reel to a feed image during scheduling', function () {
+    Storage::fake(null, ['url' => 'https://cdn.example.com']);
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+    $image = Media::factory()->assets()->for($this->workspace, 'mediable')->create();
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'content' => 'Instagram image',
+        'media' => [MediaItem::fromMedia($image)->toArray()],
+    ]);
+    PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $instagram->id,
+        'platform' => Platform::Instagram,
+        'content_type' => ContentType::InstagramReel,
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Scheduled->value,
+            'scheduled_at' => now()->addDay()->toIso8601String(),
+            'content_type' => ContentType::InstagramFeed->value,
+        ])
+        ->assertOk();
+
+    expect($post->fresh()->status)->toBe(PostStatus::Scheduled)
+        ->and($post->postPlatforms()->sole()->content_type)->toBe(ContentType::InstagramFeed);
 });
 
 it('persists Google Business topic_type and offer meta on store', function () {

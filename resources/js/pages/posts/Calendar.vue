@@ -69,6 +69,9 @@ interface Props {
     view: 'day' | 'week' | 'month';
     openComposer?: boolean;
     initialComposerDate?: string | null;
+    authUserId: string;
+    labels?: { id: string; name: string; color: string }[];
+    signatures?: { id: string; name: string; content: string }[];
     socialAccounts?: ComposerAccount[];
     platformConfigs?: Record<string, any>;
     pinterestBoards?: Record<string, any>;
@@ -948,6 +951,9 @@ const formatTime = (scheduledAt: string): string => {
             v-if="openComposer"
             v-model:open="composerOpen"
             :social-accounts="socialAccounts ?? []"
+            :current-user-id="authUserId"
+            :labels="labels ?? []"
+            :signatures="signatures ?? []"
             :initial-date="initialComposerDate"
             :submitting="composerSubmitting"
             :platform-configs="platformConfigs ?? {}"

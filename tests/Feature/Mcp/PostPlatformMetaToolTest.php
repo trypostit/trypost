@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Dto\MediaItem;
 use App\Enums\GoogleBusiness\TopicType;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
@@ -14,6 +15,7 @@ use App\Mcp\Tools\Post\AttachMediaFromUploadTool;
 use App\Mcp\Tools\Post\CreatePostTool;
 use App\Mcp\Tools\Post\PublishPostTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -109,6 +111,7 @@ test('publish guard ignores disabled platforms missing meta', function () {
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
+        'content' => 'Ready to publish',
     ]);
     PostPlatform::factory()->linkedin()->create([
         'post_id' => $post->id,
@@ -384,6 +387,7 @@ test('publish post succeeds for a Discord platform with a channel', function () 
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
+        'content' => 'Ready for Discord',
     ]);
     PostPlatform::factory()->discord()->create([
         'post_id' => $post->id,
@@ -476,6 +480,35 @@ test('create post rejects invalid Pinterest destination link', function () {
         ]);
 
     $response->assertHasErrors();
+});
+
+test('updating an independent Pinterest draft cannot schedule without its stored board', function () {
+    $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
+    $image = Media::factory()->assets()->for($this->workspace, 'mediable')->create();
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'content' => 'A pin',
+        'media' => [MediaItem::fromMedia($image)->toArray()],
+    ]);
+    PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $pinterest->id,
+        'platform' => Platform::Pinterest,
+        'content_type' => ContentType::PinterestPin,
+        'meta' => [],
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdatePostTool::class, [
+            'post_id' => $post->id,
+            'status' => PostStatus::Scheduled->value,
+            'scheduled_at' => now()->addDay()->toIso8601String(),
+        ])
+        ->assertHasErrors();
+
+    expect($post->fresh()->status)->toBe(PostStatus::Draft);
 });
 
 test('create post persists Google Business topic_type and offer meta', function () {

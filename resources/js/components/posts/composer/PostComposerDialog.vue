@@ -6,6 +6,8 @@ import {
     IconCrop,
     IconLibraryPhoto,
     IconLoader2,
+    IconMessageCircle,
+    IconSparkles,
     IconTrash,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
@@ -13,6 +15,10 @@ import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 import ImageCropperDialog from '@/components/ImageCropperDialog.vue';
+import AiGenerateDialog from '@/components/posts/ai/AiGenerateDialog.vue';
+import AiRegenerateImageDialog from '@/components/posts/ai/AiRegenerateImageDialog.vue';
+import AiReviewDialog from '@/components/posts/ai/AiReviewDialog.vue';
+import CommentsTab from '@/components/posts/editor/CommentsTab.vue';
 import DiscordSettings from '@/components/posts/editor/DiscordSettings.vue';
 import FacebookSettings from '@/components/posts/editor/FacebookSettings.vue';
 import GoogleBusinessSettings from '@/components/posts/editor/GoogleBusinessSettings.vue';
@@ -22,6 +28,7 @@ import PinterestSettings from '@/components/posts/editor/PinterestSettings.vue';
 import TikTokSettings from '@/components/posts/editor/TikTokSettings.vue';
 import MediaPickerDialog from '@/components/posts/MediaPickerDialog.vue';
 import PlatformPreview from '@/components/posts/previews/PlatformPreview.vue';
+import SignaturesModal from '@/components/posts/SignaturesModal.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -39,6 +46,7 @@ import {
 import {
     usePostComposition,
     type ComposerAccount,
+    type ComposerInitialDraft,
     type ComposerInitialPost,
     type PostComposition,
 } from '@/composables/usePostComposition';
@@ -57,6 +65,13 @@ const props = withDefaults(
         open: boolean;
         socialAccounts: ComposerAccount[];
         initialPost?: ComposerInitialPost | null;
+        initialDraft?: ComposerInitialDraft | null;
+        postId?: string | null;
+        currentUserId?: string | null;
+        openComments?: boolean;
+        highlightCommentId?: string | null;
+        labels?: { id: string; name: string; color: string }[];
+        signatures?: { id: string; name: string; content: string }[];
         initialDate?: string | null;
         submitting?: boolean;
         platformConfigs?: Record<string, any>;
@@ -77,6 +92,13 @@ const props = withDefaults(
     }>(),
     {
         initialPost: null,
+        initialDraft: null,
+        postId: null,
+        currentUserId: null,
+        openComments: false,
+        highlightCommentId: null,
+        labels: () => [],
+        signatures: () => [],
         initialDate: null,
         submitting: false,
         platformConfigs: () => ({}),
@@ -93,6 +115,7 @@ const emit = defineEmits<{
 const composition = usePostComposition(
     () => props.socialAccounts,
     props.initialPost,
+    props.initialDraft,
 );
 if (
     !props.initialPost &&
@@ -120,6 +143,22 @@ const cropTarget = ref<{
     media: MediaItem;
 } | null>(null);
 const cropError = ref(false);
+const commentsOpen = ref(props.openComments);
+const aiGenerateOpen = ref(false);
+const aiReviewOpen = ref(false);
+const aiRegenerateOpen = ref(false);
+const aiMediaTarget = ref<{
+    accountId: string;
+    index: number;
+    media: MediaItem;
+} | null>(null);
+const persistedMediaIds = new Set(
+    (props.initialPost?.media ?? props.initialDraft?.media ?? []).map(
+        (item) => item.id,
+    ),
+);
+const signaturesModal = ref<InstanceType<typeof SignaturesModal> | null>(null);
+const signatureTargetId = ref<string | null>(null);
 
 const selectedAccounts = composition.selectedAccounts;
 const previewAccount = computed(
@@ -198,6 +237,64 @@ const onMediaPicked = (items: MediaItem[]): void => {
     } else {
         composition.media.value = [...composition.media.value, ...items];
     }
+};
+
+const toggleLabel = (id: string): void => {
+    composition.labelIds.value = composition.labelIds.value.includes(id)
+        ? composition.labelIds.value.filter((selected) => selected !== id)
+        : [...composition.labelIds.value, id];
+};
+
+const openSignatures = (accountId: string | null): void => {
+    signatureTargetId.value = accountId;
+    signaturesModal.value?.open();
+};
+
+const appendSignature = (signature: { content: string }): void => {
+    const account = selectedAccounts.value.find(
+        (selected) => selected.id === signatureTargetId.value,
+    );
+    const current = account
+        ? composition.resolvedDestination(account).content
+        : composition.content.value;
+    const next = `${current}${current.trim() ? '\n\n' : ''}${signature.content}`;
+    if (account) {
+        composition.setOverride(account.id, 'content', next);
+    } else {
+        composition.content.value = next;
+    }
+};
+
+const applyAiReview = (original: string, suggestion: string): void => {
+    composition.content.value = composition.content.value.replace(
+        original,
+        suggestion,
+    );
+};
+
+const beginAiRegenerate = (
+    accountId: string,
+    index: number,
+    media: MediaItem,
+): void => {
+    aiMediaTarget.value = { accountId, index, media };
+    aiRegenerateOpen.value = true;
+};
+
+const onAiMediaRegenerated = (payload: {
+    media: MediaItem;
+    targetMediaId: string;
+}): void => {
+    const target = aiMediaTarget.value;
+    const account = selectedAccounts.value.find(
+        (selected) => selected.id === target?.accountId,
+    );
+    if (!target || !account) return;
+    const items = [...composition.resolvedDestination(account).media];
+    if (items[target.index]?.id !== payload.targetMediaId) return;
+    items[target.index] = payload.media;
+    composition.setOverride(account.id, 'media', items);
+    aiMediaTarget.value = null;
 };
 
 const removeMedia = (accountId: string | null, index: number): void => {
@@ -318,12 +415,52 @@ const close = (): void => emit('update:open', false);
                         ><IconArrowLeft class="size-4"
                     /></Button>
                     <DialogTitle>{{
-                        initialPost
+                        initialPost || initialDraft
                             ? $t('posts.edit.title')
                             : $t('posts.create.title')
                     }}</DialogTitle>
                 </div>
                 <div class="flex items-center gap-2">
+                    <Button
+                        v-if="postId && commentsOpen"
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        data-testid="composer-back-to-post"
+                        @click="commentsOpen = false"
+                        >{{ $t('posts.edit.tabs.preview') }}</Button
+                    >
+                    <Button
+                        v-if="postId && !commentsOpen"
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        data-testid="composer-comments"
+                        @click="commentsOpen = true"
+                        ><IconMessageCircle class="size-4" />{{
+                            $t('posts.edit.tabs.comments')
+                        }}</Button
+                    >
+                    <Button
+                        v-if="postId && !commentsOpen"
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        data-testid="composer-ai-generate"
+                        @click="aiGenerateOpen = true"
+                        ><IconSparkles class="size-4" />{{
+                            $t('posts.ai.generate.title')
+                        }}</Button
+                    >
+                    <Button
+                        v-if="postId && !commentsOpen"
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        data-testid="composer-ai-review"
+                        @click="aiReviewOpen = true"
+                        >{{ $t('posts.ai.review.title') }}</Button
+                    >
                     <Link
                         v-if="!initialPost"
                         :href="createPost.url({ query: { ai: '1' } })"
@@ -341,6 +478,19 @@ const close = (): void => emit('update:open', false);
             </DialogHeader>
 
             <div
+                v-if="commentsOpen && postId && currentUserId"
+                class="min-h-0 flex-1 p-5"
+                data-testid="composer-comments-panel"
+            >
+                <CommentsTab
+                    :post-id="postId"
+                    :current-user-id="currentUserId"
+                    :highlight-comment-id="highlightCommentId"
+                />
+            </div>
+
+            <div
+                v-else
                 class="grid min-h-0 flex-1 md:grid-cols-[minmax(0,1fr)_minmax(280px,38%)]"
             >
                 <div class="min-h-0 space-y-5 overflow-y-auto p-5">
@@ -401,6 +551,35 @@ const close = (): void => emit('update:open', false);
                                 </button>
                             </div>
                         </div>
+                        <div v-if="labels.length" class="space-y-2">
+                            <p class="text-sm font-semibold">
+                                {{ $t('posts.edit.labels') }}
+                            </p>
+                            <div class="flex flex-wrap gap-2">
+                                <button
+                                    v-for="label in labels"
+                                    :key="label.id"
+                                    type="button"
+                                    :data-testid="`composer-label-${label.id}`"
+                                    :aria-pressed="
+                                        composition.labelIds.value.includes(
+                                            label.id,
+                                        )
+                                    "
+                                    class="rounded-full border px-3 py-1 text-sm"
+                                    :class="
+                                        composition.labelIds.value.includes(
+                                            label.id,
+                                        )
+                                            ? 'border-foreground bg-primary/15'
+                                            : 'border-border'
+                                    "
+                                    @click="toggleLabel(label.id)"
+                                >
+                                    {{ label.name }}
+                                </button>
+                            </div>
+                        </div>
                         <textarea
                             v-model="composition.content.value"
                             data-testid="composer-base-content"
@@ -409,6 +588,15 @@ const close = (): void => emit('update:open', false);
                                 $t('posts.create.steps.prompt_placeholder')
                             "
                         />
+                        <Button
+                            v-if="signatures.length"
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            data-testid="composer-base-signature"
+                            @click="openSignatures(null)"
+                            >{{ $t('posts.edit.signatures') }}</Button
+                        >
                         <div>
                             <Button
                                 type="button"
@@ -576,6 +764,14 @@ const close = (): void => emit('update:open', false);
                                         )
                                     "
                                 />
+                                <Button
+                                    v-if="signatures.length"
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    @click="openSignatures(expandedAccount.id)"
+                                    >{{ $t('posts.edit.signatures') }}</Button
+                                >
                                 <p
                                     v-if="expandedAccount.platform === 'x'"
                                     data-testid="composer-x-count"
@@ -646,6 +842,31 @@ const close = (): void => emit('update:open', false);
                                         <div
                                             class="absolute bottom-0 flex w-full justify-end gap-1 bg-card/90 p-1"
                                         >
+                                            <button
+                                                v-if="
+                                                    postId &&
+                                                    isImage(item) &&
+                                                    persistedMediaIds.has(
+                                                        item.id,
+                                                    )
+                                                "
+                                                type="button"
+                                                :data-testid="`composer-ai-regenerate-${expandedAccount.id}-${index}`"
+                                                :aria-label="
+                                                    $t(
+                                                        'posts.ai.image_regenerate.title',
+                                                    )
+                                                "
+                                                @click="
+                                                    beginAiRegenerate(
+                                                        expandedAccount.id,
+                                                        index,
+                                                        item,
+                                                    )
+                                                "
+                                            >
+                                                <IconSparkles class="size-4" />
+                                            </button>
                                             <button
                                                 v-if="canCrop(item)"
                                                 type="button"
@@ -923,5 +1144,31 @@ const close = (): void => emit('update:open', false);
         :output-width="cropDimensions.width"
         :output-height="cropDimensions.height"
         @cropped="onCropped"
+    />
+    <SignaturesModal
+        ref="signaturesModal"
+        :signatures="signatures"
+        @select="appendSignature"
+    />
+    <AiGenerateDialog
+        v-if="postId"
+        v-model:open="aiGenerateOpen"
+        :post-id="postId"
+        :current-content="composition.content.value"
+        @apply="composition.content.value = $event"
+    />
+    <AiReviewDialog
+        v-if="postId"
+        v-model:open="aiReviewOpen"
+        :post-id="postId"
+        :content="composition.content.value"
+        @apply="applyAiReview"
+    />
+    <AiRegenerateImageDialog
+        v-if="postId"
+        v-model:open="aiRegenerateOpen"
+        :post-id="postId"
+        :media-item="aiMediaTarget?.media ?? null"
+        @regenerated="onAiMediaRegenerated"
     />
 </template>

@@ -2,16 +2,19 @@
 
 declare(strict_types=1);
 
+use App\Dto\MediaItem;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Media;
 use App\Models\Post;
+use App\Models\PostComment;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Models\WorkspaceLabel;
 
 test('creating a four account draft keeps composition in the browser until save', function () {
     $user = User::factory()->create();
@@ -57,6 +60,78 @@ test('creating a four account draft keeps composition in the browser until save'
     expect(Post::where('workspace_id', $workspace->id)->count())->toBe(4);
     expect(Post::where('workspace_id', $workspace->id)->pluck('content')->all())
         ->each->toBe('A shared announcement');
+});
+
+test('recovering an empty-target draft retains its caption media and labels', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $asset = Media::factory()->assets()->for($workspace, 'mediable')->create();
+    $label = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id]);
+    $legacy = Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'status' => PostStatus::Draft,
+        'content' => 'Keep this draft',
+        'media' => [MediaItem::fromMedia($asset)->toArray()],
+    ]);
+    $legacy->labels()->attach($label);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.edit', $legacy));
+    $page->assertVisible('@post-composer-dialog')
+        ->assertValue('@composer-base-content', 'Keep this draft')
+        ->click("@composer-account-{$account->id}")
+        ->click('@composer-next')
+        ->click('@composer-save-draft');
+    $page->script(<<<'JS'
+        (async () => {
+            for (let attempt = 0; attempt < 80; attempt++) {
+                if (!document.querySelector('[data-testid="post-composer-dialog"]')) return;
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+        })();
+    JS);
+
+    $recovered = Post::where('workspace_id', $workspace->id)->sole();
+    expect($recovered->id)->not->toBe($legacy->id)
+        ->and($recovered->content)->toBe('Keep this draft')
+        ->and(data_get($recovered->media, '0.id'))->toBe($asset->id)
+        ->and($recovered->labels()->sole()->id)->toBe($label->id)
+        ->and($recovered->postPlatforms()->sole()->social_account_id)->toBe($account->id);
+});
+
+test('a comment deep link and AI editing tools remain available in the edit dialog', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'status' => PostStatus::Draft,
+        'content' => 'A draft to discuss',
+    ]);
+    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $account->id]);
+    $comment = PostComment::factory()->create([
+        'post_id' => $post->id,
+        'user_id' => $user->id,
+        'body' => 'Please review the opening line',
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.edit', ['post' => $post, 'tab' => 'comments', 'comment' => $comment->id]));
+    $page->assertVisible('@post-composer-dialog')
+        ->assertVisible('@composer-comments-panel')
+        ->assertSee('Please review the opening line')
+        ->click('@composer-back-to-post')
+        ->click('@composer-ai-generate')
+        ->assertVisible('@composer-ai-generate-dialog');
 });
 
 test('account overrides inherit later shared edits and are discarded when an account is removed', function () {

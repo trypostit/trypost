@@ -628,16 +628,14 @@ it('accepts and persists media alt text on create', function () {
 });
 
 it('accepts and persists media alt text on update', function () {
+    Storage::fake(null, ['url' => 'https://cdn.example.com']);
+    $asset = Media::factory()->assets()->for($this->workspace, 'mediable')->create(['path' => 'assets/foo.jpg']);
+    $media = MediaItem::fromMedia($asset, 'Updated alt text')->toArray();
+
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->putJson(route('api.posts.update', $this->post), [
             'status' => 'draft',
-            'media' => [[
-                'id' => 'media-1',
-                'path' => 'assets/foo.jpg',
-                'url' => 'https://cdn.trypost.test/assets/foo.jpg',
-                'type' => 'image',
-                'meta' => ['alt_text' => 'Updated alt text'],
-            ]],
+            'media' => [$media],
         ])
         ->assertOk();
 
@@ -645,21 +643,17 @@ it('accepts and persists media alt text on update', function () {
 });
 
 it('preserves every media meta key on update, not just alt_text', function () {
+    Storage::fake(null, ['url' => 'https://cdn.example.com']);
+    $asset = Media::factory()->assets()->for($this->workspace, 'mediable')->create([
+        'path' => 'assets/foo.jpg',
+        'meta' => ['width' => 1920, 'height' => 1080, 'duration' => 30],
+    ]);
+    $media = MediaItem::fromMedia($asset, 'A description of the photo')->toArray();
+
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->putJson(route('api.posts.update', $this->post), [
             'status' => 'draft',
-            'media' => [[
-                'id' => 'media-1',
-                'path' => 'assets/foo.jpg',
-                'url' => 'https://cdn.trypost.test/assets/foo.jpg',
-                'type' => 'image',
-                'meta' => [
-                    'width' => 1920,
-                    'height' => 1080,
-                    'duration' => 30,
-                    'alt_text' => 'A description of the photo',
-                ],
-            ]],
+            'media' => [$media],
         ])
         ->assertOk();
 

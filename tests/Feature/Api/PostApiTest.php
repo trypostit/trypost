@@ -761,6 +761,7 @@ it('publishes an unscheduled draft without requiring scheduled_at', function () 
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
         'scheduled_at' => null,
+        'content' => 'Ready to publish',
     ]);
 
     PostPlatform::factory()->create([

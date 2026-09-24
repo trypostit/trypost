@@ -666,13 +666,14 @@ test('scheduling across multiple platforms enforces the strictest content-length
 });
 
 test('draft save accepts media source metadata for ai regeneration', function () {
+    $asset = Media::factory()->assets()->for($this->workspace, 'mediable')->create([
+        'path' => 'ai-images/generated.webp',
+        'original_filename' => 'generated.webp',
+        'mime_type' => 'image/webp',
+    ]);
     $payload = [
         [
-            'id' => 'media-ai-keep-meta',
-            'path' => 'ai-images/generated.webp',
-            'url' => 'https://example.com/ai-images/generated.webp',
-            'type' => 'image',
-            'mime_type' => 'image/webp',
+            ...MediaItem::fromMedia($asset)->toArray(),
             'source' => 'ai',
             'source_meta' => [
                 'title' => 'Fix ECP typo',

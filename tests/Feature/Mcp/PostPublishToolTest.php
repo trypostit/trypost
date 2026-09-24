@@ -186,6 +186,7 @@ test('publish post immediate dispatches PublishPost job', function () {
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
         'scheduled_at' => null,
+        'content' => 'Ready to publish',
     ]);
 
     PostPlatform::factory()->linkedin()->create([
@@ -216,6 +217,7 @@ test('publish post scheduled does not dispatch immediately', function () {
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
+        'content' => 'Ready to schedule',
     ]);
 
     PostPlatform::factory()->linkedin()->create([

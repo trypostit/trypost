@@ -22,7 +22,7 @@ class PostCompositionValidator
      * @param  array<string, mixed>  $composition
      * @return array<string, mixed>
      */
-    public static function validate(Workspace $workspace, array $composition): array
+    public static function validate(Workspace $workspace, array $composition, array $existingMedia = []): array
     {
         Validator::make($composition, [
             'status' => ['required', Rule::in(['draft', 'scheduled', 'publishing'])],
@@ -108,7 +108,7 @@ class PostCompositionValidator
         }
 
         $validator = Validator::make($composition, [...$mediaRules, ...$metaRules], $metaMessages, $metaAttributes);
-        $validator->after(function (LaravelValidator $validator) use ($composition, $accounts, $assets): void {
+        $validator->after(function (LaravelValidator $validator) use ($composition, $accounts, $assets, $existingMedia): void {
             $seen = [];
 
             foreach ($composition['destinations'] as $index => $destination) {
@@ -134,6 +134,10 @@ class PostCompositionValidator
 
                 foreach ($destination['media'] as $mediaIndex => $media) {
                     $asset = $assets->get(data_get($media, 'id'));
+                    if (in_array($media, $existingMedia, true)) {
+                        continue;
+                    }
+
                     if (! $asset || $asset->path !== data_get($media, 'path')) {
                         $validator->errors()->add("{$key}.media.{$mediaIndex}.id", trans('validation.exists', ['attribute' => 'media']));
 

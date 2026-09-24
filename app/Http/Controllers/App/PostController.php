@@ -97,6 +97,9 @@ class PostController extends Controller
             ],
             'openComposer' => $composerRequested,
             'initialComposerDate' => $request->query('date'),
+            'openComposerComments' => $request->query('tab') === 'comments',
+            'highlightCommentId' => $request->query('comment'),
+            'authUserId' => $request->user()->id,
             'editPost' => $composerPost,
             ...$this->composerProps($workspace, $composerRequested),
         ]);
@@ -157,6 +160,8 @@ class PostController extends Controller
             'view' => $view,
             'openComposer' => $request->boolean('compose'),
             'initialComposerDate' => $request->query('date'),
+            'authUserId' => $request->user()->id,
+            'labels' => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
             ...$this->composerProps($workspace, $request->boolean('compose')),
         ]);
     }
@@ -178,6 +183,7 @@ class PostController extends Controller
                 $account->id => rescue(fn () => app(TikTokCreatorInfo::class)->fetch($account), null, report: false),
             ])->filter(),
             'xLinkTlds' => $requested && config('trypost.platforms.x.defuse_links') ? LinkTlds::all() : [],
+            'signatures' => $requested ? $workspace->signatures()->get(['id', 'name', 'content']) : [],
         ];
     }
 
@@ -295,7 +301,11 @@ class PostController extends Controller
             return redirect()->route('app.posts.show', $post);
         }
 
-        return redirect()->route('app.posts.index', ['edit' => $post->id]);
+        return redirect()->route('app.posts.index', [
+            'edit' => $post->id,
+            ...($request->query('tab') === 'comments' ? ['tab' => 'comments'] : []),
+            ...($request->filled('comment') ? ['comment' => $request->query('comment')] : []),
+        ]);
 
     }
 
