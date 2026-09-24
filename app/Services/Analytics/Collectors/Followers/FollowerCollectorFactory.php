@@ -14,7 +14,7 @@ class FollowerCollectorFactory
         return $platform->isIncludedInAnalytics();
     }
 
-    public function for(Platform $platform): FollowerCollector
+    public function for(Platform $platform): AbstractFollowerCollector
     {
         return match ($platform) {
             Platform::Instagram, Platform::InstagramFacebook => app(InstagramFollowerCollector::class),

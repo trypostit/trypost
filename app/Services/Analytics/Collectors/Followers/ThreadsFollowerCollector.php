@@ -8,7 +8,7 @@ use App\Dto\Analytics\AccountDailyObservation;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 
-class ThreadsFollowerCollector extends AbstractFollowerCollector implements FollowerCollector
+class ThreadsFollowerCollector extends AbstractFollowerCollector
 {
     public function collect(SocialAccount $account, CarbonImmutable $date): AccountDailyObservation
     {

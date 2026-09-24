@@ -15,7 +15,7 @@ use App\Jobs\Analytics\FinalizeAccountDailySnapshots;
 use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
-use App\Services\Analytics\Collectors\Followers\FollowerCollector;
+use App\Services\Analytics\Collectors\Followers\AbstractFollowerCollector;
 use App\Services\Analytics\Collectors\Followers\FollowerCollectorFactory;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
@@ -77,7 +77,7 @@ test('finalizer dispatches one job per eligible account for both scheduled dates
 
 test('collection job writes once and skips an existing actual observation', function () {
     $account = SocialAccount::factory()->x()->create();
-    $collector = Mockery::mock(FollowerCollector::class);
+    $collector = Mockery::mock(AbstractFollowerCollector::class);
     $collector->shouldReceive('collect')->once()->andReturn(followerObservation(25));
     $factory = Mockery::mock(FollowerCollectorFactory::class);
     $factory->shouldReceive('supports')->twice()->with(Platform::X)->andReturnTrue();
@@ -111,7 +111,7 @@ test('reconnecting the same identity keeps todays follower snapshot without anot
 
 test('collection job retries at spaced windows and honors a later provider retry time', function () {
     $account = SocialAccount::factory()->x()->create();
-    $collector = Mockery::mock(FollowerCollector::class);
+    $collector = Mockery::mock(AbstractFollowerCollector::class);
     $collector->shouldReceive('collect')->twice()
         ->andThrowExceptions([
             new AnalyticsCollectionException('transient', 'temporarily unavailable'),
@@ -138,7 +138,7 @@ test('collection job retries at spaced windows and honors a later provider retry
 
 test('connection failures use the same spaced retry window', function () {
     $account = SocialAccount::factory()->x()->create();
-    $collector = Mockery::mock(FollowerCollector::class);
+    $collector = Mockery::mock(AbstractFollowerCollector::class);
     $collector->shouldReceive('collect')->once()->andThrow(new ConnectionException('timed out'));
     $factory = Mockery::mock(FollowerCollectorFactory::class);
     $factory->shouldReceive('supports')->once()->with(Platform::X)->andReturnTrue();
@@ -152,7 +152,7 @@ test('connection failures use the same spaced retry window', function () {
 
 test('collection job stops when provider retry time falls outside the observation day', function () {
     $account = SocialAccount::factory()->x()->create();
-    $collector = Mockery::mock(FollowerCollector::class);
+    $collector = Mockery::mock(AbstractFollowerCollector::class);
     $collector->shouldReceive('collect')->once()->andThrow(new AnalyticsCollectionException(
         'rate_limited',
         'rate limited',
@@ -171,7 +171,7 @@ test('collection job stops when provider retry time falls outside the observatio
 
 test('analytics authorization failures do not disconnect an otherwise connected account', function (string $category) {
     $account = SocialAccount::factory()->instagram()->create();
-    $collector = Mockery::mock(FollowerCollector::class);
+    $collector = Mockery::mock(AbstractFollowerCollector::class);
     $collector->shouldReceive('collect')->once()->andThrow(new AnalyticsCollectionException(
         $category,
         'analytics endpoint rejected this request',

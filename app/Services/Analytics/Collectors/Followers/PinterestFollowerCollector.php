@@ -8,7 +8,7 @@ use App\Dto\Analytics\AccountDailyObservation;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 
-class PinterestFollowerCollector extends AbstractFollowerCollector implements FollowerCollector
+class PinterestFollowerCollector extends AbstractFollowerCollector
 {
     public function collect(SocialAccount $account, CarbonImmutable $date): AccountDailyObservation
     {

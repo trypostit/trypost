@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Http;
 
 abstract class AbstractFollowerCollector
 {
+    abstract public function collect(SocialAccount $account, CarbonImmutable $date): AccountDailyObservation;
+
     protected function get(
         SocialAccount $account,
         string $url,

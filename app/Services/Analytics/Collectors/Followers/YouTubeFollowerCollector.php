@@ -10,7 +10,7 @@ use App\Enums\Analytics\ObservationProvenance;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 
-class YouTubeFollowerCollector extends AbstractFollowerCollector implements FollowerCollector
+class YouTubeFollowerCollector extends AbstractFollowerCollector
 {
     public function collect(SocialAccount $account, CarbonImmutable $date): AccountDailyObservation
     {
