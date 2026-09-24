@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { Head, InfiniteScroll, router } from '@inertiajs/vue3';
-import { IconHash, IconPencil, IconSearch, IconTrash } from '@tabler/icons-vue';
+import { IconHash, IconPencil, IconPlus, IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import HeaderSearch from '@/components/HeaderSearch.vue';
 import HeaderTitle from '@/components/HeaderTitle.vue';
 import CreateSheet from '@/components/signatures/CreateSheet.vue';
 import EditDialog from '@/components/signatures/EditDialog.vue';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
     Table,
     TableBody,
@@ -95,29 +95,22 @@ const hasActiveSearch = computed(() => Boolean(searchQuery.value?.trim()));
             <HeaderTitle :title="$t('signatures.title')" :icon="IconHash" />
         </template>
 
-        <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
-            <div
-                class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        <template #header-actions>
+            <HeaderSearch
+                v-model="searchQuery"
+                :placeholder="trans('signatures.search')"
+            />
+            <Button
+                data-testid="create-signature-button"
+                :aria-label="$t('signatures.new')"
+                @click="isCreateSheetOpen = true"
             >
-                <div class="relative w-full sm:w-auto">
-                    <IconSearch
-                        class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-                    />
-                    <Input
-                        v-model="searchQuery"
-                        :placeholder="trans('signatures.search')"
-                        class="w-full pl-9 sm:w-64"
-                    />
-                </div>
+                <IconPlus class="size-4 sm:hidden" />
+                <span class="hidden sm:inline">{{ $t('signatures.new') }}</span>
+            </Button>
+        </template>
 
-                <Button
-                    data-testid="create-signature-button"
-                    @click="isCreateSheetOpen = true"
-                >
-                    {{ $t('signatures.new') }}
-                </Button>
-            </div>
-
+        <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
             <EmptyState
                 v-if="signatures.data.length === 0"
                 :icon="IconHash"

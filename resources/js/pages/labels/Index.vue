@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { Head, InfiniteScroll, router } from '@inertiajs/vue3';
-import { IconPencil, IconSearch, IconTag, IconTrash } from '@tabler/icons-vue';
+import { IconPencil, IconPlus, IconTag, IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import HeaderSearch from '@/components/HeaderSearch.vue';
 import HeaderTitle from '@/components/HeaderTitle.vue';
 import CreateSheet from '@/components/labels/CreateSheet.vue';
 import EditDialog from '@/components/labels/EditDialog.vue';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
     Table,
     TableBody,
@@ -89,33 +89,27 @@ const hasActiveSearch = computed(() => Boolean(searchQuery.value?.trim()));
             <HeaderTitle :title="$t('labels.title')" :icon="IconTag" />
         </template>
 
+        <template #header-actions>
+            <HeaderSearch
+                v-model="searchQuery"
+                :placeholder="trans('labels.search')"
+            />
+            <Button
+                data-testid="create-label-button"
+                :aria-label="$t('labels.new_label')"
+                @click="isCreateSheetOpen = true"
+            >
+                <IconPlus class="size-4 sm:hidden" />
+                <span class="hidden sm:inline">{{
+                    $t('labels.new_label')
+                }}</span>
+            </Button>
+        </template>
+
         <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
             <p class="text-sm text-muted-foreground">
                 {{ $t('labels.description') }}
             </p>
-
-            <div
-                class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-            >
-                <div class="relative w-full sm:w-auto">
-                    <IconSearch
-                        class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-                    />
-                    <Input
-                        v-model="searchQuery"
-                        :placeholder="trans('labels.search')"
-                        class="w-full pl-9 sm:w-64"
-                    />
-                </div>
-
-                <Button
-                    data-testid="create-label-button"
-                    @click="isCreateSheetOpen = true"
-                >
-                    {{ $t('labels.new_label') }}
-                </Button>
-            </div>
-
             <EmptyState
                 v-if="labels.data.length === 0"
                 :icon="IconTag"
