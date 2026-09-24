@@ -14,6 +14,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\TikTokAnalytics;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -281,6 +282,34 @@ test('tiktok analytics stops scanning at videos older than the publish instead o
 
     Http::assertSentCount(2);
 });
+
+test('tiktok video matching keeps the one-day cutoff inclusive without changing the published timestamp', function (int $secondsBeforeCutoff, ?string $expectedVideoId) {
+    $this->post->update(['content' => 'Boundary caption']);
+    $publishedAt = CarbonImmutable::parse('2026-09-23 12:00:00', 'UTC');
+    $videoId = '7000000000000000003';
+    $postPlatform = tiktokPostPlatform('v_pub_url~v2-1.boundary');
+    $postPlatform->update(['published_at' => $publishedAt]);
+
+    Http::fake([
+        $this->api.'/video/list/*' => Http::response([
+            'data' => [
+                'videos' => [[
+                    'id' => $videoId,
+                    'title' => 'Boundary caption',
+                    'create_time' => $publishedAt->subDay()->subSeconds($secondsBeforeCutoff)->getTimestamp(),
+                ]],
+                'has_more' => false,
+            ],
+            'error' => ['code' => 'ok'],
+        ]),
+    ]);
+
+    expect((new TikTokAnalytics)->findVideoIdByCaption($postPlatform))->toBe($expectedVideoId)
+        ->and($postPlatform->published_at->toDateTimeString())->toBe('2026-09-23 12:00:00');
+})->with([
+    'at cutoff' => [0, '7000000000000000003'],
+    'before cutoff' => [1, null],
+]);
 
 test('tiktok post metrics facade returns the saved video url and metrics without provider reads', function () {
     $videoId = '7685359243088103444';
