@@ -7,7 +7,7 @@ import { computed, ref, watch } from 'vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import HeaderTitle from '@/components/HeaderTitle.vue';
-import CreateDialog from '@/components/labels/CreateDialog.vue';
+import CreateSheet from '@/components/labels/CreateSheet.vue';
 import EditDialog from '@/components/labels/EditDialog.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,7 +60,7 @@ const search = debounce(() => {
 watch(searchQuery, () => search());
 
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
-const isCreateDialogOpen = ref(false);
+const isCreateSheetOpen = ref(false);
 const isEditDialogOpen = ref(false);
 const editingLabel = ref<Label | null>(null);
 
@@ -108,9 +108,12 @@ const hasActiveSearch = computed(() => Boolean(searchQuery.value?.trim()));
                     />
                 </div>
 
-                <Button @click="isCreateDialogOpen = true">{{
-                    $t('labels.new_label')
-                }}</Button>
+                <Button
+                    data-testid="create-label-button"
+                    @click="isCreateSheetOpen = true"
+                >
+                    {{ $t('labels.new_label') }}
+                </Button>
             </div>
 
             <EmptyState
@@ -206,7 +209,7 @@ const hasActiveSearch = computed(() => Boolean(searchQuery.value?.trim()));
         </div>
     </AppLayout>
 
-    <CreateDialog v-model:open="isCreateDialogOpen" />
+    <CreateSheet v-model:open="isCreateSheetOpen" />
     <EditDialog v-model:open="isEditDialogOpen" :label="editingLabel" />
 
     <ConfirmDeleteModal

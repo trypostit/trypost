@@ -7,7 +7,7 @@ import { computed, ref, watch } from 'vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import HeaderTitle from '@/components/HeaderTitle.vue';
-import CreateDialog from '@/components/signatures/CreateDialog.vue';
+import CreateSheet from '@/components/signatures/CreateSheet.vue';
 import EditDialog from '@/components/signatures/EditDialog.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,7 +66,7 @@ const search = debounce(() => {
 watch(searchQuery, () => search());
 
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
-const isCreateDialogOpen = ref(false);
+const isCreateSheetOpen = ref(false);
 const isEditDialogOpen = ref(false);
 const editingSignature = ref<Signature | null>(null);
 
@@ -110,9 +110,12 @@ const hasActiveSearch = computed(() => Boolean(searchQuery.value?.trim()));
                     />
                 </div>
 
-                <Button @click="isCreateDialogOpen = true">{{
-                    $t('signatures.new')
-                }}</Button>
+                <Button
+                    data-testid="create-signature-button"
+                    @click="isCreateSheetOpen = true"
+                >
+                    {{ $t('signatures.new') }}
+                </Button>
             </div>
 
             <EmptyState
@@ -207,7 +210,7 @@ const hasActiveSearch = computed(() => Boolean(searchQuery.value?.trim()));
         </div>
     </AppLayout>
 
-    <CreateDialog v-model:open="isCreateDialogOpen" />
+    <CreateSheet v-model:open="isCreateSheetOpen" />
     <EditDialog v-model:open="isEditDialogOpen" :signature="editingSignature" />
 
     <ConfirmDeleteModal
