@@ -50,7 +50,7 @@ return [
             'driver' => 'beanstalkd',
             'host' => env('BEANSTALKD_QUEUE_HOST', 'localhost'),
             'queue' => env('BEANSTALKD_QUEUE', 'default'),
-            'retry_after' => (int) env('BEANSTALKD_QUEUE_RETRY_AFTER', 960),
+            'retry_after' => (int) env('BEANSTALKD_QUEUE_RETRY_AFTER', 90),
             'block_for' => 0,
             'after_commit' => false,
         ],
