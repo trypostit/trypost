@@ -35,7 +35,7 @@ test('imported Reel detail shows origin and watch time without publishing action
         'excerpt' => 'Behind the scenes',
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
-        'analytics_publication_id' => $publication->id,
+        'publication_id' => $publication->id,
         'reactions_count' => 27,
         'watch_time_milliseconds' => 4042104000,
         'metrics' => [
@@ -48,11 +48,10 @@ test('imported Reel detail shows origin and watch time without publishing action
 
     $page = visit(route('app.analytics.publications.show', $publication));
 
-    $page->assertSee('Published on Instagram')
-        ->assertSee('Behind the scenes')
-        ->assertSee('Watch time')
-        ->assertSee('67.4K min')
-        ->assertDontSee('67368.4 min')
+    $page->assertScript('document.querySelector("[data-testid=analytics-publication-header]")?.innerText.includes("Published on Instagram")', true)
+        ->assertScript('document.querySelector("[data-testid=analytics-publication-excerpt]")?.innerText.includes("Behind the scenes")', true)
+        ->assertScript('document.querySelector("[data-testid=analytics-metric-watch_time_milliseconds]")?.innerText.includes("67.4K min")', true)
+        ->assertScript('document.querySelector("[data-testid=analytics-metric-watch_time_milliseconds]")?.innerText.includes("67368.4 min")', false)
         ->assertMissing('@edit-publication')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
@@ -75,7 +74,7 @@ test('publication detail translates metric labels, time basis, content type and 
         'content_type' => PublicationContentType::Reel,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
-        'analytics_publication_id' => $publication->id,
+        'publication_id' => $publication->id,
         'metrics' => [
             'watch_time_milliseconds' => [
                 'value' => 4042104000,
@@ -96,12 +95,12 @@ test('publication detail translates metric labels, time basis, content type and 
 
     $page = visit(route('app.analytics.publications.show', $publication));
 
-    $page->assertSee('Reels')
-        ->assertSee('Taxa de engajamento')
-        ->assertSee('12,5%')
-        ->assertPresent('[title="Desde a publicação"]')
+    $page->assertScript('document.querySelector("[data-testid=analytics-publication-header]")?.innerText.includes("Reels")', true)
+        ->assertScript('document.querySelector("[data-testid=analytics-metric-engagement_rate]")?.innerText.includes("Taxa de engajamento")', true)
+        ->assertScript('document.querySelector("[data-testid=analytics-metric-engagement_rate]")?.innerText.includes("12,5%")', true)
+        ->assertScript('document.querySelector("[data-testid=analytics-metric-engagement_rate]")?.getAttribute("title")', 'Desde a publicação')
         ->assertScript('document.title.includes("Analytics do Instagram")', true)
-        ->assertScript('document.body.innerText.includes("67,4\\u00a0mil min")', true)
+        ->assertScript('document.querySelector("[data-testid=analytics-metric-watch_time_milliseconds]")?.innerText.includes("67,4\\u00a0mil min")', true)
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });

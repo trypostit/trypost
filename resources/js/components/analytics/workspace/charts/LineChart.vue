@@ -9,8 +9,7 @@ import {
     ChartTooltipContent,
     componentToString,
 } from '@/components/ui/chart';
-import dayjs from '@/dayjs';
-import { activeLocale } from '@/language';
+import date from '@/date';
 
 import {
     accountColor,
@@ -56,19 +55,15 @@ const valueAccessor =
         const value = point[`account_${index}`];
         return typeof value === 'number' ? value : undefined;
     };
-const formatDate = computed(() => {
-    const locale = activeLocale.value.toLowerCase();
+const formatDate = (tick: number | Date): string => {
+    const index = typeof tick === 'number' ? Math.round(tick) : 0;
+    const day = chartData.value[index]?.date;
 
-    return (tick: number | Date): string => {
-        const index = typeof tick === 'number' ? Math.round(tick) : 0;
-        const date = chartData.value[index]?.date;
-
-        return date ? dayjs(date).locale(locale).format('D MMM') : '';
-    };
-});
+    return day ? date.formatMonthDay(day) : '';
+};
 const tooltipTemplate = computed(() =>
     componentToString(chartConfig.value, ChartTooltipContent, {
-        labelFormatter: formatDate.value,
+        labelFormatter: formatDate,
     }),
 );
 </script>

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Actions\Analytics\AdvanceAnalyticsSyncState;
 use App\Actions\Analytics\ResolveAnalyticsAccountKey;
-use App\Contracts\Analytics\PublicationHistoryCollector;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationContentType;
@@ -19,6 +18,7 @@ use App\Jobs\Analytics\DiscoverAccountPublications;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsSyncState;
 use App\Models\SocialAccount;
+use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollector;
 use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFactory;
 use Carbon\CarbonImmutable;
 use Illuminate\Queue\Middleware\RateLimited;
@@ -309,7 +309,7 @@ test('a backfill job persists one page then advances its cursor and dispatches c
 
     app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
 
-    expect(AnalyticsPublication::query()->where('provider_post_id', 'native-1')->exists())->toBeTrue()
+    expect(AnalyticsPublication::query()->where('remote_id', 'native-1')->exists())->toBeTrue()
         ->and($state->fresh()->checkpoint)->toMatchArray(['cursor' => 'next-page', 'revision' => 1])
         ->and($state->fresh()->status)->toBe(SyncStatus::Running);
     Bus::assertDispatched(BackfillAccountPublications::class, fn ($job): bool => $job->socialAccountId === $account->id && $job->syncStateId === $state->id);
@@ -404,7 +404,7 @@ test('a limited page still advances to older pages and preserves its coverage wa
     ], null, true));
 
     expect($state->fresh()->status)->toBe(SyncStatus::ProviderLimited)
-        ->and(AnalyticsPublication::query()->where('provider_post_id', 'older-post')->exists())->toBeTrue();
+        ->and(AnalyticsPublication::query()->where('remote_id', 'older-post')->exists())->toBeTrue();
 });
 
 test('an unordered provider keeps paging even when a publication lands on the cutoff', function () {
@@ -454,7 +454,7 @@ test('a stale page can reconcile facts but cannot move the current cursor backwa
             'revision' => $second['revision'],
             'seen_count' => 100,
         ])
-        ->and(AnalyticsPublication::query()->where('provider_post_id', 'stale-fact')->exists())->toBeTrue();
+        ->and(AnalyticsPublication::query()->where('remote_id', 'stale-fact')->exists())->toBeTrue();
 });
 
 test('a transient failure preserves the cursor for a later queue attempt', function () {
@@ -643,7 +643,7 @@ test('reconnecting the same identity reuses completed history and discovers only
         'network' => $platform->network(),
         'platform_user_id' => $account->platform_user_id,
         'platform' => $platform,
-        'provider_post_id' => 'before-disconnect',
+        'remote_id' => 'before-disconnect',
     ]);
 
     $account->delete();
@@ -679,7 +679,7 @@ test('reconnecting the same identity reuses completed history and discovers only
     app()->call([new DiscoverAccountPublications($replacement->id, $discovery->id), 'handle']);
 
     expect(AnalyticsPublication::query()->where('workspace_id', $replacement->workspace_id)->count())->toBe(2)
-        ->and(AnalyticsPublication::query()->where('provider_post_id', 'after-reconnect')->value('social_account_key'))->toBe($account->id);
+        ->and(AnalyticsPublication::query()->where('remote_id', 'after-reconnect')->value('social_account_key'))->toBe($account->id);
 })->with([
     'x' => [Platform::X, Platform::X],
     'instagram' => [Platform::Instagram, Platform::Instagram],
@@ -740,7 +740,7 @@ test('a page fetched by the disconnected account cannot advance the rebound chec
 
     expect($result)->toBe(['advanced' => false, 'terminal' => true])
         ->and($state->fresh()->checkpoint)->toMatchArray(['cursor' => 'next-page', 'revision' => 5, 'seen_count' => 100])
-        ->and(AnalyticsPublication::query()->where('provider_post_id', 'stale-post')->exists())->toBeFalse();
+        ->and(AnalyticsPublication::query()->where('remote_id', 'stale-post')->exists())->toBeFalse();
 });
 
 test('a different account identity cannot inherit another accounts checkpoint', function () {

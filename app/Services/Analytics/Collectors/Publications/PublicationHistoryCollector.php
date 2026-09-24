@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Contracts\Analytics;
+namespace App\Services\Analytics\Collectors\Publications;
 
 use App\Dto\Analytics\PublicationPage;
 use App\Models\SocialAccount;

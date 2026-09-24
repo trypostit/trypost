@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics\Collectors\Metrics;
 
-use App\Contracts\Analytics\PublicationMetricsCollector;
 use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\MetricUnit;
@@ -25,7 +24,7 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
                 'startDate' => $publication->provider_published_at->toDateString(),
                 'endDate' => $date->toDateString(),
                 'metrics' => 'views,engagedViews,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,likes,comments,shares,subscribersGained,subscribersLost',
-                'filters' => "video=={$publication->provider_post_id}",
+                'filters' => "video=={$publication->remote_id}",
             ],
         );
         $headers = $response->json('columnHeaders');
@@ -44,7 +43,7 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
         if (is_array($row)) {
             foreach ($headers as $index => $header) {
                 if (is_string(data_get($header, 'name')) && array_key_exists($index, $row)) {
-                    $values[$header['name']] = $row[$index];
+                    $values[data_get($header, 'name')] = data_get($row, $index);
                 }
             }
         }
@@ -72,12 +71,12 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
             rtrim((string) config('trypost.platforms.youtube.data_api'), '/').'/videos',
             [
                 'part' => 'statistics',
-                'id' => $publication->provider_post_id,
+                'id' => $publication->remote_id,
             ],
         );
         $video = $response->json('items.0');
 
-        if (! is_array($video) || data_get($video, 'id') !== $publication->provider_post_id) {
+        if (! is_array($video) || data_get($video, 'id') !== $publication->remote_id) {
             throw AnalyticsCollectionException::malformed('YouTube video statistics response does not match the publication.');
         }
 

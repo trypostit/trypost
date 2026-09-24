@@ -81,14 +81,14 @@ test('TikTok public video id merges a provisional TryPost post with earlier disc
         permalink: 'https://www.tiktok.com/@example/video/123456789',
     ));
     AnalyticsPublicationDailySnapshot::factory()->create([
-        'analytics_publication_id' => $provisional->id,
-        'snapshot_date' => '2026-09-21',
+        'publication_id' => $provisional->id,
+        'date' => '2026-09-21',
         'collected_at' => '2026-09-21 10:00:00',
         'views_count' => 5,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
-        'analytics_publication_id' => $discovered->id,
-        'snapshot_date' => '2026-09-21',
+        'publication_id' => $discovered->id,
+        'date' => '2026-09-21',
         'collected_at' => '2026-09-21 12:00:00',
         'views_count' => 12,
     ]);
@@ -96,7 +96,7 @@ test('TikTok public video id merges a provisional TryPost post with earlier disc
     app(UpsertAnalyticsPublication::class)->reconcileTikTokPublicId($provisional, '123456789');
 
     expect(AnalyticsPublication::query()->count())->toBe(1)
-        ->and($provisional->fresh()->provider_post_id)->toBe('123456789')
+        ->and($provisional->fresh()->remote_id)->toBe('123456789')
         ->and($provisional->fresh()->origin)->toBe(PublicationOrigin::TryPost)
         ->and(AnalyticsPublicationDailySnapshot::query()->count())->toBe(1)
         ->and($provisional->dailySnapshots()->sole()->views_count)->toBe(12)

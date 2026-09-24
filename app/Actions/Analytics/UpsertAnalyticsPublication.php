@@ -15,6 +15,7 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use LogicException;
 
 class UpsertAnalyticsPublication
 {
@@ -74,7 +75,7 @@ class UpsertAnalyticsPublication
         DB::transaction(function () use ($publication, $publicId): void {
             $current = AnalyticsPublication::query()->lockForUpdate()->findOrFail($publication->id);
 
-            if ($current->provider_post_id === $publicId || ! $current->post_platform_id) {
+            if ($current->remote_id === $publicId || ! $current->post_platform_id) {
                 return;
             }
 
@@ -82,23 +83,23 @@ class UpsertAnalyticsPublication
                 ->where('workspace_id', $current->workspace_id)
                 ->where('social_account_key', $current->social_account_key)
                 ->where('network', $current->network)
-                ->where('provider_post_id', $publicId)
+                ->where('remote_id', $publicId)
                 ->lockForUpdate()
                 ->first();
 
             if ($discovered) {
                 if ($discovered->post_platform_id && $discovered->post_platform_id !== $current->post_platform_id) {
-                    throw new \LogicException('TikTok public id is already attached to another TryPost publication.');
+                    throw new LogicException('TikTok public id is already attached to another TryPost publication.');
                 }
 
                 $discovered->dailySnapshots()->lockForUpdate()->reorder()->lazyById(100)->each(function (AnalyticsPublicationDailySnapshot $snapshot) use ($current): void {
                     $existing = $current->dailySnapshots()
-                        ->whereDate('snapshot_date', $snapshot->snapshot_date->toDateString())
+                        ->whereDate('date', $snapshot->date->toDateString())
                         ->lockForUpdate()
                         ->first();
 
                     if (! $existing) {
-                        $snapshot->update(['analytics_publication_id' => $current->id]);
+                        $snapshot->update(['publication_id' => $current->id]);
 
                         return;
                     }
@@ -125,7 +126,7 @@ class UpsertAnalyticsPublication
                 $discovered->delete();
             }
 
-            $current->provider_post_id = $publicId;
+            $current->remote_id = $publicId;
             $current->save();
 
             PostPlatform::query()->whereKey($current->post_platform_id)->update([
@@ -218,7 +219,7 @@ class UpsertAnalyticsPublication
                 'workspace_id' => $identity->workspaceId,
                 'social_account_key' => $identity->socialAccountKey,
                 'network' => $identity->network,
-                'provider_post_id' => $providerPostId,
+                'remote_id' => $providerPostId,
             ];
             $publication = AnalyticsPublication::query()
                 ->where($identityFields)

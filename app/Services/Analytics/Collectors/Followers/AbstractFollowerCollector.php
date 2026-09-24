@@ -10,7 +10,6 @@ use App\Enums\Analytics\ObservationProvenance;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\SocialAccount;
 use App\Support\Analytics\MetaAnalyticsResponse;
-use App\Support\Analytics\RetryAfter;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -36,21 +35,7 @@ abstract class AbstractFollowerCollector
             return MetaAnalyticsResponse::successful($response, 'follower collection');
         }
 
-        $reason = (string) data_get($response->json(), 'error.errors.0.reason', '');
-        $category = match (true) {
-            $response->status() === 429,
-            in_array($reason, ['quotaExceeded', 'rateLimitExceeded', 'userRateLimitExceeded'], true) => 'rate_limited',
-            $response->status() === 401 => 'authentication',
-            $response->status() === 403 => 'permission',
-            $response->serverError() => 'transient',
-            default => 'malformed',
-        };
-
-        throw new AnalyticsCollectionException(
-            $category,
-            "follower collection failed with HTTP {$response->status()}",
-            RetryAfter::from($response),
-        );
+        throw AnalyticsCollectionException::fromResponse($response, 'follower collection');
     }
 
     protected function observation(

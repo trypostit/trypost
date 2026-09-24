@@ -67,7 +67,7 @@ class CollectAccountDailySnapshot implements ShouldQueue
         $alreadyCollected = AnalyticsAccountDailySnapshot::query()
             ->where('workspace_id', $account->workspace_id)
             ->where('social_account_key', $accountKeys->for($account))
-            ->whereDate('snapshot_date', $this->observationDate)
+            ->whereDate('date', $this->observationDate)
             ->where('provenance', ObservationProvenance::Actual)
             ->exists();
 

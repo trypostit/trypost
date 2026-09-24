@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics\Collectors\Metrics;
 
-use App\Contracts\Analytics\PublicationMetricsCollector;
 use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
 use App\Models\AnalyticsPublication;
@@ -16,7 +15,7 @@ class MastodonPublicationMetricsCollector extends AbstractPublicationMetricsColl
     {
         $account = $this->account($publication);
         $instance = rtrim((string) data_get($account->meta, 'instance', config('trypost.platforms.mastodon.default_instance')), '/');
-        $response = $this->get($account, "{$instance}/api/v1/statuses/{$publication->provider_post_id}");
+        $response = $this->get($account, "{$instance}/api/v1/statuses/{$publication->remote_id}");
 
         $status = (array) $response->json();
 

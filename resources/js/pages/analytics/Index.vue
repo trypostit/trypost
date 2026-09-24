@@ -100,7 +100,10 @@ const changeRange = (range: { start: Date; end: Date }): void => {
     <AppLayout full-width>
         <Head :title="$t('analytics.title')" />
         <div class="flex min-h-full shrink-0 flex-col gap-8 px-6 py-8">
-            <header class="flex flex-wrap items-end justify-between gap-4">
+            <header
+                class="flex flex-wrap items-end justify-between gap-4"
+                data-testid="analytics-page-header"
+            >
                 <PageHeader
                     :title="$t('analytics.title')"
                     :description="
@@ -129,6 +132,7 @@ const changeRange = (range: { start: Date; end: Date }): void => {
 
             <EmptyState
                 v-if="!report.bounds.min"
+                data-testid="analytics-empty-state"
                 :icon="IconChartBar"
                 :title="$t('analytics.dashboard.no_data_title')"
                 :description="$t('analytics.dashboard.no_data_body')"

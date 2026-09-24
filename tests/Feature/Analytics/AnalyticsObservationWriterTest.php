@@ -39,10 +39,10 @@ test('account observations are idempotent and preserve historical account identi
 
     expect(AnalyticsAccountDailySnapshot::count())->toBe(2)
         ->and(AnalyticsAccountDailySnapshot::query()
-            ->whereDate('snapshot_date', '2026-09-22')
+            ->whereDate('date', '2026-09-22')
             ->value('followers_count'))->toBe(0)
         ->and(AnalyticsAccountDailySnapshot::query()
-            ->whereDate('snapshot_date', '2026-09-23')
+            ->whereDate('date', '2026-09-23')
             ->value('followers_count'))->toBeNull();
 
     $historicalKey = $account->id;
@@ -103,7 +103,7 @@ test('publication observations merge same-day metrics without erasing successful
         'network' => Platform::Instagram->network(),
         'platform_user_id' => $account->platform_user_id,
         'platform' => Platform::Instagram,
-        'provider_post_id' => 'provider-post-1',
+        'remote_id' => 'provider-post-1',
         'provider_published_at' => CarbonImmutable::parse('2026-09-20 10:00:00', 'UTC'),
         'origin' => PublicationOrigin::External,
         'content_type' => PublicationContentType::Reel,

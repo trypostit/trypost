@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics\Collectors\Publications;
 
-use App\Contracts\Analytics\PublicationHistoryCollector;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationContentType;
@@ -106,8 +105,8 @@ class MastodonPublicationCollector extends AbstractApiPublicationCollector imple
         $link = $response->header('Link');
 
         if (is_string($link) && preg_match('/<([^>]+)>;\s*rel="next"/', $link, $matches) === 1) {
-            parse_str((string) parse_url($matches[1], PHP_URL_QUERY), $query);
-            $cursor = $query['max_id'] ?? null;
+            parse_str((string) parse_url(data_get($matches, 1), PHP_URL_QUERY), $query);
+            $cursor = data_get($query, 'max_id');
 
             if (is_scalar($cursor) && (string) $cursor !== '') {
                 return (string) $cursor;

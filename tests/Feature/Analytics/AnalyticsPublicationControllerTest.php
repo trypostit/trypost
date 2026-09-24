@@ -36,7 +36,7 @@ test('imported publication detail reads persisted Reel metrics and identifies it
         'content_type' => PublicationContentType::Reel,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
-        'analytics_publication_id' => $publication->id,
+        'publication_id' => $publication->id,
         'watch_time_milliseconds' => 185000,
         'metrics' => [
             'watch_time_milliseconds' => ['value' => 185000, 'unit' => 'milliseconds', 'availability' => 'available'],
@@ -130,6 +130,14 @@ test('post analytics URL uses the post id and selects the requested destination'
         ->assertNotFound();
 
     $this->actingAs($user)
+        ->get(route('app.analytics.show', ['post' => $post->id, 'publication' => 'invalid']))
+        ->assertSessionHasErrors('publication');
+
+    $this->actingAs($user)
+        ->get(route('app.analytics.show', ['post' => $post->id, 'publication' => '']))
+        ->assertSessionHasErrors('publication');
+
+    $this->actingAs($user)
         ->get(route('app.analytics.show', $first->id))
         ->assertNotFound();
 });
@@ -165,7 +173,7 @@ test('TryPost post page receives its latest saved post metrics as a page prop', 
         'post_platform_id' => $destination->id,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
-        'analytics_publication_id' => $publication->id,
+        'publication_id' => $publication->id,
         'saves_count' => 6,
         'metrics' => ['saves' => ['value' => 6, 'unit' => 'count', 'availability' => 'available']],
     ]);

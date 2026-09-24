@@ -8,6 +8,7 @@ use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Dto\Analytics\DateRange;
 use App\Enums\Analytics\ObservationProvenance;
 use App\Enums\Analytics\PublicationContentType;
+use App\Enums\Analytics\SyncStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
@@ -15,6 +16,7 @@ use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
+use App\Models\AnalyticsSyncState;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -43,7 +45,7 @@ function analyticsReportFollower(SocialAccount $account, string $date, int $foll
         'network' => $account->platform->network(),
         'platform_user_id' => $account->platform_user_id,
         'platform' => $account->platform,
-        'snapshot_date' => $date,
+        'date' => $date,
         'followers_count' => $followers,
         'provenance' => $provenance,
     ]);
@@ -61,8 +63,8 @@ function analyticsReportPublication(SocialAccount $account, string $publishedAt,
         'provider_published_at' => CarbonImmutable::parse($publishedAt, 'UTC'),
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
-        'analytics_publication_id' => $publication->id,
-        'snapshot_date' => '2026-09-12',
+        'publication_id' => $publication->id,
+        'date' => '2026-09-12',
         'reactions_count' => $reactions,
         'comments_count' => $comments,
         'engagement_count' => $engagement,
@@ -91,8 +93,8 @@ test('workspace report keeps accounts separate and aggregates only latest normal
 
     $first = analyticsReportPublication($instagramA, '2026-09-05 10:00:00', 10, 2, 12, 100);
     AnalyticsPublicationDailySnapshot::factory()->create([
-        'analytics_publication_id' => $first->id,
-        'snapshot_date' => '2026-09-11',
+        'publication_id' => $first->id,
+        'date' => '2026-09-11',
         'reactions_count' => 999,
         'comments_count' => 999,
         'engagement_count' => 999,
@@ -171,6 +173,32 @@ test('workspace follower total stays unavailable until every connected account h
 
     expect($complete['summary']['followers']['value'])->toBe(150)
         ->and($complete['followers']['total'])->toBe(150);
+});
+
+test('workspace import coverage excludes inactive and disconnected accounts', function () {
+    $workspace = Workspace::factory()->create();
+    $active = analyticsReportAccount($workspace, Platform::Instagram);
+    $inactive = analyticsReportAccount($workspace, Platform::Instagram);
+    $disconnected = analyticsReportAccount($workspace, Platform::Instagram);
+    $foreign = analyticsReportAccount(Workspace::factory()->create(), Platform::Instagram);
+
+    foreach ([$active, $inactive, $disconnected, $foreign] as $account) {
+        AnalyticsSyncState::factory()->create([
+            ...AnalyticsSyncState::identityFor($account),
+            'social_account_id' => $account->id,
+            'status' => SyncStatus::Pending,
+        ]);
+    }
+
+    $inactive->update(['is_active' => false]);
+    $disconnected->update(['status' => Status::Disconnected]);
+
+    $report = app(BuildWorkspaceAnalyticsReport::class)->execute(
+        $workspace,
+        new DateRange(CarbonImmutable::parse('2026-09-01', 'UTC'), CarbonImmutable::parse('2026-09-10', 'UTC')),
+    );
+
+    expect(array_column($report['coverage'], 'social_account_id'))->toBe([$active->id]);
 });
 
 test('reauthorizing an already connected account resumes analytics without treating a token refresh as a reconnect', function () {
@@ -305,14 +333,14 @@ test('publication detail uses the latest persisted metric snapshot without provi
         'content_type' => PublicationContentType::Reel,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
-        'analytics_publication_id' => $publication->id,
-        'snapshot_date' => '2026-09-10',
+        'publication_id' => $publication->id,
+        'date' => '2026-09-10',
         'reactions_count' => 50,
         'metrics' => ['reactions' => ['value' => 50, 'unit' => 'count', 'availability' => 'available']],
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
-        'analytics_publication_id' => $publication->id,
-        'snapshot_date' => '2026-09-11',
+        'publication_id' => $publication->id,
+        'date' => '2026-09-11',
         'reactions_count' => 0,
         'watch_time_milliseconds' => 185000,
         'metrics' => [

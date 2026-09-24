@@ -23,6 +23,7 @@ class AnalyticsSyncState extends Model
         'workspace_id',
         'network',
         'platform_user_id',
+        'identity_key',
         'collector',
         'status',
         'checkpoint',
@@ -61,8 +62,19 @@ class AnalyticsSyncState extends Model
         return $query->where(self::identityFor($account));
     }
 
-    /** @return array{workspace_id: string, network: string, platform_user_id: string} */
+    /** @return array{workspace_id: string, network: string, platform_user_id: string, identity_key: string} */
     public static function identityFor(SocialAccount $account): array
+    {
+        $identity = self::providerIdentityFor($account);
+
+        return [
+            ...$identity,
+            'identity_key' => hash('sha256', json_encode(array_values($identity), JSON_THROW_ON_ERROR)),
+        ];
+    }
+
+    /** @return array{workspace_id: string, network: string, platform_user_id: string} */
+    public static function providerIdentityFor(SocialAccount $account): array
     {
         return [
             'workspace_id' => $account->workspace_id,

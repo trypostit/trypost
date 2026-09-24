@@ -10,10 +10,26 @@ use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
 use App\Models\PostPlatform;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class ReadPublicationAnalytics
 {
+    /** @return array<string, mixed> */
+    public function latestForPostPublication(Post $post, ?string $publicationId = null): array
+    {
+        $publication = AnalyticsPublication::query()
+            ->available()
+            ->where('workspace_id', $post->workspace_id)
+            ->whereIn('platform', Platform::analyticsValues())
+            ->whereHas('postPlatform', fn (Builder $query): Builder => $query->whereBelongsTo($post))
+            ->when($publicationId, fn (Builder $query): Builder => $query->whereKey($publicationId))
+            ->orderByDesc('provider_published_at')
+            ->firstOrFail();
+
+        return $this->latestForPublication($publication);
+    }
+
     /** @return Collection<int, array<string, mixed>> */
     public function forPost(Post $post): Collection
     {
@@ -28,7 +44,7 @@ class ReadPublicationAnalytics
             'status' => $destination->status->value,
             'platform_post_id' => $destination->platform_post_id,
             'platform_url' => $destination->platform_url,
-            'metrics' => $this->visibleDetail($details[$destination->id]),
+            'metrics' => $this->visibleDetail(data_get($details, $destination->id, $this->unavailable('not_collected'))),
         ]);
     }
 
@@ -59,18 +75,18 @@ class ReadPublicationAnalytics
         if ($publications->isNotEmpty()) {
             $snapshotTable = (new AnalyticsPublicationDailySnapshot)->getTable();
             $latestDates = AnalyticsPublicationDailySnapshot::query()
-                ->whereIn('analytics_publication_id', $publications->pluck('id'))
-                ->select('analytics_publication_id')
-                ->selectRaw('MAX(snapshot_date) as latest_date')
-                ->groupBy('analytics_publication_id');
+                ->whereIn('publication_id', $publications->pluck('id'))
+                ->select('publication_id')
+                ->selectRaw('MAX(date) as latest_date')
+                ->groupBy('publication_id');
 
             $snapshots = AnalyticsPublicationDailySnapshot::query()
                 ->joinSub($latestDates, 'latest', fn ($join) => $join
-                    ->on("{$snapshotTable}.analytics_publication_id", '=', 'latest.analytics_publication_id')
-                    ->on("{$snapshotTable}.snapshot_date", '=', 'latest.latest_date'))
+                    ->on("{$snapshotTable}.publication_id", '=', 'latest.publication_id')
+                    ->on("{$snapshotTable}.date", '=', 'latest.latest_date'))
                 ->select("{$snapshotTable}.*")
                 ->get()
-                ->keyBy('analytics_publication_id');
+                ->keyBy('publication_id');
         }
 
         return $destinations->mapWithKeys(function (PostPlatform $destination) use ($publications, $snapshots): array {
@@ -118,7 +134,7 @@ class ReadPublicationAnalytics
             return $this->unavailable('platform_not_supported');
         }
 
-        $snapshot = $publication->dailySnapshots()->orderByDesc('snapshot_date')->first();
+        $snapshot = $publication->dailySnapshots()->orderByDesc('date')->first();
 
         return $this->detail($publication, $snapshot);
     }
@@ -136,8 +152,8 @@ class ReadPublicationAnalytics
      */
     private function visibleDetail(array $detail): array
     {
-        if (! $detail['available']) {
-            return ['unsupported' => true, 'reason' => $detail['reason']];
+        if (! data_get($detail, 'available')) {
+            return ['unsupported' => true, 'reason' => data_get($detail, 'reason')];
         }
 
         return $detail;
@@ -174,7 +190,7 @@ class ReadPublicationAnalytics
     private function snapshot(AnalyticsPublicationDailySnapshot $snapshot): array
     {
         return [
-            'date' => $snapshot->snapshot_date->toDateString(),
+            'date' => $snapshot->date->toDateString(),
             'collected_at' => $snapshot->collected_at?->toIso8601String(),
             'provider_observed_at' => $snapshot->provider_observed_at?->toIso8601String(),
             'reactions_count' => $snapshot->reactions_count,

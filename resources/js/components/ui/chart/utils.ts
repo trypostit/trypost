@@ -4,11 +4,11 @@ import { activeLocale } from '@/language';
 
 import type { ChartConfig } from '.';
 
-export function componentToString(
+export const componentToString = (
     config: ChartConfig,
     component: Component,
     props: Record<string, unknown> = {},
-): ((data: Record<string, unknown>, x?: number | Date) => string) | undefined {
+): ((data: Record<string, unknown>, x?: number | Date) => string) | undefined => {
     if (typeof document === 'undefined') return undefined;
 
     const cache = new Map<string, string>();
@@ -29,4 +29,4 @@ export function componentToString(
         cache.set(key, content);
         return content;
     };
-}
+};

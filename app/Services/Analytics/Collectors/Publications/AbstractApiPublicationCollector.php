@@ -7,7 +7,6 @@ namespace App\Services\Analytics\Collectors\Publications;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\SocialAccount;
 use App\Support\Analytics\InvalidPublicationCursor;
-use App\Support\Analytics\RetryAfter;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -26,9 +25,9 @@ abstract class AbstractApiPublicationCollector
         $response = $this->client($account, $authenticated)
             ->get($url, array_filter($query, fn (mixed $value): bool => $value !== null && $value !== ''));
 
-        if ((filled($query['pageToken'] ?? null)
-                || filled($query['pagination_token'] ?? null)
-                || filled($query['bookmark'] ?? null))
+        if ((filled(data_get($query, 'pageToken'))
+                || filled(data_get($query, 'pagination_token'))
+                || filled(data_get($query, 'bookmark')))
             && InvalidPublicationCursor::matches($response)) {
             throw new AnalyticsCollectionException('invalid_cursor', 'publication history cursor expired');
         }
@@ -73,21 +72,7 @@ abstract class AbstractApiPublicationCollector
             return $response;
         }
 
-        $reason = (string) data_get($response->json(), 'error.errors.0.reason', '');
-        $category = match (true) {
-            $response->status() === 429,
-            in_array($reason, ['quotaExceeded', 'rateLimitExceeded', 'userRateLimitExceeded'], true) => 'rate_limited',
-            $response->status() === 401 => 'authentication',
-            $response->status() === 403 => 'permission',
-            $response->serverError() => 'transient',
-            default => 'malformed',
-        };
-
-        throw new AnalyticsCollectionException(
-            $category,
-            "publication history collection failed with HTTP {$response->status()}",
-            RetryAfter::from($response),
-        );
+        throw AnalyticsCollectionException::fromResponse($response, 'publication history collection');
     }
 
     private function client(SocialAccount $account, bool $authenticated): PendingRequest

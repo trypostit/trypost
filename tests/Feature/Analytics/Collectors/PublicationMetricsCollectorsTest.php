@@ -56,7 +56,7 @@ test('bluesky normalizes measured zero and does not fabricate omitted counts', f
         'social_account_id' => $account->id,
         'platform' => Platform::Bluesky,
         'platform_user_id' => $account->platform_user_id,
-        'provider_post_id' => 'record-key',
+        'remote_id' => 'record-key',
     ]);
 
     $observation = app(BlueskyPublicationMetricsCollector::class)->collect(
@@ -84,7 +84,7 @@ test('provider metric responses normalize measured values without inventing omit
         'social_account_id' => $account->id,
         'platform' => $platform,
         'platform_user_id' => $account->platform_user_id,
-        'provider_post_id' => $platform === Platform::Facebook ? 'page_123456789' : '123456789',
+        'remote_id' => $platform === Platform::Facebook ? 'page_123456789' : '123456789',
         'content_type' => $contentType,
     ]);
 
@@ -165,7 +165,7 @@ test('youtube falls back to current video statistics before Analytics has proces
         'social_account_id' => $account->id,
         'platform' => Platform::YouTube,
         'platform_user_id' => $account->platform_user_id,
-        'provider_post_id' => 'video-new',
+        'remote_id' => 'video-new',
     ]);
 
     $observation = app(YouTubePublicationMetricsCollector::class)
@@ -310,7 +310,7 @@ test('an imported Facebook video fetches video insights through its attachment t
         ->collect($publication, CarbonImmutable::parse('2026-09-23', 'UTC'))->metrics)
         ->keyBy(fn ($metric) => $metric->key->value);
 
-    expect($publication->provider_post_id)->toBe('page_video')
+    expect($publication->remote_id)->toBe('page_video')
         ->and($publication->provider_metadata)->toBe(['video_id' => 'video-123'])
         ->and($metrics[MetricKey::Views->value]->value)->toBe(42)
         ->and($metrics[MetricKey::Reactions->value]->value)->toBe(3);
@@ -380,7 +380,7 @@ test('TikTok resolves a TryPost publish id before collecting the public video', 
         'network' => Platform::TikTok->network(),
         'platform' => Platform::TikTok,
         'platform_user_id' => $account->platform_user_id,
-        'provider_post_id' => 'v_pub_abc',
+        'remote_id' => 'v_pub_abc',
         'origin' => PublicationOrigin::TryPost,
     ]);
     Http::fake(['*' => Http::sequence()
@@ -394,7 +394,7 @@ test('TikTok resolves a TryPost publish id before collecting the public video', 
         ->mapWithKeys(fn ($metric) => [$metric->key->value => $metric->value]);
 
     expect($metrics->all())->toBe(['views' => 12, 'reactions' => 0, 'engagements' => 0])
-        ->and($publication->fresh()->provider_post_id)->toBe('v_pub_abc')
+        ->and($publication->fresh()->remote_id)->toBe('v_pub_abc')
         ->and($postPlatform->fresh()->platform_post_id)->toBe('v_pub_abc');
     Http::assertSentCount(2);
 });

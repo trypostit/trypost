@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics\Collectors\Metrics;
 
-use App\Contracts\Analytics\PublicationMetricsCollector;
 use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
@@ -23,7 +22,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector i
         }
 
         $response = $this->get($account,
-            rtrim((string) config('trypost.platforms.x.api'), '/')."/tweets/{$publication->provider_post_id}",
+            rtrim((string) config('trypost.platforms.x.api'), '/')."/tweets/{$publication->remote_id}",
             ['tweet.fields' => implode(',', $fields)],
         );
         $tweet = $response->json('data');
@@ -32,8 +31,8 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector i
             throw AnalyticsCollectionException::malformed('X post response lacks data.');
         }
 
-        $public = (array) ($tweet['public_metrics'] ?? []);
-        $private = (array) ($tweet['non_public_metrics'] ?? []);
+        $public = (array) data_get($tweet, 'public_metrics', []);
+        $private = (array) data_get($tweet, 'non_public_metrics', []);
 
         return $this->observation($date, $this->withEngagements($this->present([
             $this->count(MetricKey::Impressions, $public, 'impression_count') ?? $this->count(MetricKey::Impressions, $private, 'impression_count'),

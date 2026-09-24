@@ -11,6 +11,7 @@ use App\Models\AnalyticsPublication;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use Illuminate\Support\Str;
+use LogicException;
 
 class SyncTryPostPublication
 {
@@ -25,7 +26,7 @@ class SyncTryPostPublication
         $account = $postPlatform->socialAccount;
 
         if (! $account) {
-            throw new \LogicException('A live social account is required to capture publication identity.');
+            throw new LogicException('A live social account is required to capture publication identity.');
         }
 
         return $this->fromIdentity(

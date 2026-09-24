@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Contracts\Analytics;
+namespace App\Services\Analytics\Collectors\Metrics;
 
 use App\Dto\Analytics\PublicationMetricObservation;
 use App\Models\AnalyticsPublication;

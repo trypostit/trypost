@@ -33,7 +33,7 @@ class AnalyticsAccountDailySnapshotFactory extends Factory
             'account_display_name' => fake()->name(),
             'account_username' => fake()->userName(),
             'account_avatar_url' => fake()->imageUrl(),
-            'snapshot_date' => today(),
+            'date' => today(),
             'followers_count' => fake()->numberBetween(0, 100000),
             'metrics' => null,
             'provenance' => ObservationProvenance::Actual,

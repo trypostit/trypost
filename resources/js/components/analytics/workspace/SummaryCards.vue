@@ -69,6 +69,7 @@ const changeLabel = (key: string, change: number | null): string | null => {
             <div
                 v-for="card in cards"
                 :key="card.key"
+                :data-testid="`analytics-summary-${card.key}`"
                 class="flex min-h-28 min-w-0 flex-col justify-between rounded-xl border-2 border-foreground px-4 py-4 shadow-xs"
                 :class="
                     card.key === 'followers'
@@ -86,6 +87,7 @@ const changeLabel = (key: string, change: number | null): string | null => {
                     >
                     <span
                         v-if="changeLabel(card.key, card.metric.change)"
+                        :data-testid="`analytics-summary-${card.key}-change`"
                         class="rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums"
                         :class="
                             card.metric.change! >= 0

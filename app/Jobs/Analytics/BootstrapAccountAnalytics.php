@@ -71,7 +71,7 @@ class BootstrapAccountAnalytics implements ShouldQueue
 
         if ($backfill->wasRecentlyCreated) {
             $historicalPublications = AnalyticsPublication::query()
-                ->where(AnalyticsSyncState::identityFor($account))
+                ->where(AnalyticsSyncState::providerIdentityFor($account))
                 ->where('origin', PublicationOrigin::External)
                 ->whereNull('social_account_id');
             $historicalNewest = $historicalPublications->max('provider_published_at');
@@ -98,7 +98,7 @@ class BootstrapAccountAnalytics implements ShouldQueue
 
         if ($backfillRebound || $recoveredWithoutCheckpoint) {
             AnalyticsPublication::query()
-                ->where(AnalyticsSyncState::identityFor($account))
+                ->where(AnalyticsSyncState::providerIdentityFor($account))
                 ->where('platform', $account->platform)
                 ->whereNull('social_account_id')
                 ->update(['social_account_id' => $account->id]);
@@ -162,7 +162,8 @@ class BootstrapAccountAnalytics implements ShouldQueue
         if ($rebound
             || $state->workspace_id !== $identity['workspace_id']
             || $state->network !== $identity['network']
-            || $state->platform_user_id !== $identity['platform_user_id']) {
+            || $state->platform_user_id !== $identity['platform_user_id']
+            || $state->identity_key !== $identity['identity_key']) {
             $checkpoint = $state->checkpoint ?? [];
             $state->update([
                 ...$identity,

@@ -32,7 +32,7 @@ class BuildPublicationAnalyticsReport
         $bucketCounts = [];
 
         foreach ($buckets as $index => $bucket) {
-            for ($day = CarbonImmutable::parse($bucket['start'], 'UTC'); $day->toDateString() <= $bucket['end']; $day = $day->addDay()) {
+            for ($day = CarbonImmutable::parse(data_get($bucket, 'start'), 'UTC'); $day->toDateString() <= data_get($bucket, 'end'); $day = $day->addDay()) {
                 $bucketIndexByDate[$day->toDateString()] = $index;
             }
         }
@@ -55,35 +55,35 @@ class BuildPublicationAnalyticsReport
             $this->retainTopPublication($topComments, $row, 'comments_count');
 
             $date = substr((string) $row->provider_published_at, 0, 10);
-            $index = $bucketIndexByDate[$date] ?? null;
+            $index = data_get($bucketIndexByDate, $date);
 
             if ($index !== null) {
-                $bucketCounts[$index][$key] = ($bucketCounts[$index][$key] ?? 0) + 1;
+                $bucketCounts[$index][$key] = (int) data_get($bucketCounts, "{$index}.{$key}", 0) + 1;
             }
         }
 
         $postAccounts = [];
 
         foreach ($currentAccounts as $key => $account) {
-            $row = $account['row'];
+            $row = data_get($account, 'row');
             $postAccounts[] = [
                 'social_account_key' => $key,
                 'platform' => $row->platform,
                 'name' => $row->account_display_name,
                 'username' => $row->account_username,
                 'avatar_url' => $row->account_avatar_url,
-                'count' => $account['totals']['posts'],
+                'count' => data_get($account, 'totals.posts'),
             ];
         }
 
         foreach ($buckets as $index => &$bucket) {
             $bucket['accounts'] = array_fill_keys(array_keys($currentAccounts), 0);
 
-            foreach ($bucketCounts[$index] ?? [] as $key => $count) {
+            foreach (data_get($bucketCounts, $index, []) as $key => $count) {
                 $bucket['accounts'][$key] = $count;
             }
 
-            $bucket['total'] = array_sum($bucket['accounts']);
+            $bucket['total'] = array_sum(data_get($bucket, 'accounts'));
         }
         unset($bucket);
 
@@ -106,20 +106,20 @@ class BuildPublicationAnalyticsReport
     private function publications(Workspace $workspace, CarbonImmutable $start, CarbonImmutable $end): LazyCollection
     {
         $latest = DB::table('analytics_publication_daily_snapshots as daily')
-            ->join('analytics_publications as parent', 'parent.id', '=', 'daily.analytics_publication_id')
+            ->join('analytics_publications as parent', 'parent.id', '=', 'daily.publication_id')
             ->where('parent.workspace_id', $workspace->id)
             ->whereIn('parent.platform', Platform::analyticsValues())
             ->whereBetween('parent.provider_published_at', [$start->startOfDay(), $end->endOfDay()])
-            ->select('daily.analytics_publication_id')
-            ->selectRaw('MAX(daily.snapshot_date) as latest_date')
-            ->groupBy('daily.analytics_publication_id');
+            ->select('daily.publication_id')
+            ->selectRaw('MAX(daily.date) as latest_date')
+            ->groupBy('daily.publication_id');
 
         return DB::table('analytics_publications as publication')
             ->leftJoin((new PostPlatform)->getTable().' as destination', 'destination.id', '=', 'publication.post_platform_id')
-            ->leftJoinSub($latest, 'latest', 'latest.analytics_publication_id', '=', 'publication.id')
+            ->leftJoinSub($latest, 'latest', 'latest.publication_id', '=', 'publication.id')
             ->leftJoin('analytics_publication_daily_snapshots as metric', function ($join): void {
-                $join->on('metric.analytics_publication_id', '=', 'publication.id')
-                    ->on('metric.snapshot_date', '=', 'latest.latest_date');
+                $join->on('metric.publication_id', '=', 'publication.id')
+                    ->on('metric.date', '=', 'latest.latest_date');
             })
             ->where('publication.workspace_id', $workspace->id)
             ->whereIn('publication.platform', Platform::analyticsValues())
@@ -128,7 +128,7 @@ class BuildPublicationAnalyticsReport
                 'publication.id', 'publication.social_account_key', 'publication.social_account_id',
                 'publication.post_platform_id', 'destination.post_id', 'publication.platform', 'publication.network',
                 'publication.account_display_name', 'publication.account_username',
-                'publication.account_avatar_url', 'publication.provider_post_id',
+                'publication.account_avatar_url', 'publication.remote_id',
                 'publication.provider_published_at', 'publication.origin', 'publication.content_type',
                 'publication.availability',
                 'publication.permalink', 'publication.excerpt', 'publication.preview_metadata',
@@ -182,10 +182,10 @@ class BuildPublicationAnalyticsReport
     private function finalizeTotals(array $totals): array
     {
         return [
-            'posts' => $totals['posts'],
-            'reactions' => $totals['has_reactions'] ? $totals['reactions'] : null,
-            'comments' => $totals['has_comments'] ? $totals['comments'] : null,
-            'engagement_rate' => $totals['exposure'] === 0 ? null : round($totals['engagement'] / $totals['exposure'] * 100, 2),
+            'posts' => data_get($totals, 'posts'),
+            'reactions' => data_get($totals, 'has_reactions') ? data_get($totals, 'reactions') : null,
+            'comments' => data_get($totals, 'has_comments') ? data_get($totals, 'comments') : null,
+            'engagement_rate' => data_get($totals, 'exposure') === 0 ? null : round(data_get($totals, 'engagement') / data_get($totals, 'exposure') * 100, 2),
         ];
     }
 
@@ -237,24 +237,24 @@ class BuildPublicationAnalyticsReport
         $rows = [];
 
         foreach ($current as $key => $account) {
-            $representative = $account['row'];
-            $totals = $this->finalizeTotals($account['totals']);
-            $prior = $this->finalizeTotals($previous[$key] ?? $this->emptyTotals());
+            $representative = data_get($account, 'row');
+            $totals = $this->finalizeTotals(data_get($account, 'totals'));
+            $prior = $this->finalizeTotals(data_get($previous, $key, $this->emptyTotals()));
             $rows[] = [
                 'social_account_key' => $key,
                 'platform' => $representative->platform,
                 'name' => $representative->account_display_name,
                 'username' => $representative->account_username,
                 'avatar_url' => $representative->account_avatar_url,
-                'posts' => MetricComparison::between($totals['posts'], $prior['posts']),
-                'reactions' => MetricComparison::between($totals['reactions'], $prior['reactions']),
-                'comments' => MetricComparison::between($totals['comments'], $prior['comments']),
-                'engagement_rate' => MetricComparison::between($totals['engagement_rate'], $prior['engagement_rate']),
+                'posts' => MetricComparison::between(data_get($totals, 'posts'), data_get($prior, 'posts')),
+                'reactions' => MetricComparison::between(data_get($totals, 'reactions'), data_get($prior, 'reactions')),
+                'comments' => MetricComparison::between(data_get($totals, 'comments'), data_get($prior, 'comments')),
+                'engagement_rate' => MetricComparison::between(data_get($totals, 'engagement_rate'), data_get($prior, 'engagement_rate')),
             ];
         }
 
-        usort($rows, fn (array $a, array $b): int => [$a['platform'], $a['username'], $a['social_account_key']]
-            <=> [$b['platform'], $b['username'], $b['social_account_key']]);
+        usort($rows, fn (array $a, array $b): int => [data_get($a, 'platform'), data_get($a, 'username'), data_get($a, 'social_account_key')]
+            <=> [data_get($b, 'platform'), data_get($b, 'username'), data_get($b, 'social_account_key')]);
 
         return $rows;
     }

@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('network', 32);
             $table->string('platform_user_id', 191);
             $table->string('platform', 32);
-            $table->string('provider_post_id', 191);
+            $table->string('remote_id', 191);
             $table->timestamp('provider_published_at');
             $table->string('origin', 32);
             $table->string('content_type', 32);
@@ -41,19 +41,9 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique('post_platform_id');
-            $table->unique(
-                ['workspace_id', 'social_account_key', 'network', 'provider_post_id'],
-                'analytics_publications_identity_unique',
-            );
+            $table->unique(['social_account_key', 'remote_id']);
             $table->index(['workspace_id', 'provider_published_at']);
-            $table->index(
-                ['workspace_id', 'social_account_key', 'provider_published_at'],
-                'analytics_publications_account_date_index',
-            );
-            $table->index(
-                ['workspace_id', 'network', 'platform_user_id', 'provider_published_at'],
-                'analytics_publications_provider_identity_index',
-            );
+            $table->index(['workspace_id', 'platform_user_id']);
         });
     }
 

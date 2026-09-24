@@ -41,8 +41,8 @@ test('web REST and MCP post metrics read the same persisted observation without 
         'content_type' => PublicationContentType::Reel,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
-        'analytics_publication_id' => $publication->id,
-        'snapshot_date' => '2026-09-20',
+        'publication_id' => $publication->id,
+        'date' => '2026-09-20',
         'reactions_count' => 7,
         'watch_time_milliseconds' => 180000,
         'metrics' => [
@@ -127,7 +127,7 @@ test('post metrics preserve metric keys and availability from persisted observat
         'platform' => Platform::Threads,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
-        'analytics_publication_id' => $publication->id,
+        'publication_id' => $publication->id,
         'metrics' => [
             'reactions' => ['value' => 9, 'unit' => 'count', 'availability' => 'available'],
         ],
@@ -156,18 +156,18 @@ test('post detail loads all destination observations in bounded queries', functi
             'social_account_id' => $account->id,
             'post_platform_id' => $destination->id,
             'platform' => Platform::Instagram,
-            'provider_post_id' => "provider-{$number}",
+            'remote_id' => "provider-{$number}",
         ]);
         AnalyticsPublicationDailySnapshot::factory()->create([
-            'analytics_publication_id' => $publication->id,
-            'snapshot_date' => '2026-09-23',
+            'publication_id' => $publication->id,
+            'date' => '2026-09-23',
             'reactions_count' => $number,
         ]);
 
         if ($number === 1) {
             AnalyticsPublicationDailySnapshot::factory()->create([
-                'analytics_publication_id' => $publication->id,
-                'snapshot_date' => '2026-09-22',
+                'publication_id' => $publication->id,
+                'date' => '2026-09-22',
                 'reactions_count' => 100,
             ]);
         }

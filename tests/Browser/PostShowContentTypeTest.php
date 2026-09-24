@@ -115,7 +115,7 @@ test('the post page loads metrics that arrive after publication without a manual
     $page->assertSee('Metrics have not been collected yet.');
 
     AnalyticsPublicationDailySnapshot::factory()->create([
-        'analytics_publication_id' => $publication->id,
+        'publication_id' => $publication->id,
         'reactions_count' => 77,
         'metrics' => [
             'reactions' => ['value' => 77, 'unit' => 'count', 'availability' => 'available'],

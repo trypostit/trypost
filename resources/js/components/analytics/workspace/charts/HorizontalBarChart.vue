@@ -70,6 +70,9 @@ const tooltipTriggers = computed(() => ({
         });
     },
 }));
+const barAttributes = {
+    [VisStackedBarSelectors.bar]: { 'data-testid': 'analytics-account-bar' },
+};
 </script>
 
 <template>
@@ -91,6 +94,7 @@ const tooltipTriggers = computed(() => ({
                 orientation="horizontal"
                 :rounded-corners="4"
                 :bar-padding="0.32"
+                :attributes="barAttributes"
             />
             <VisAxis
                 type="x"

@@ -32,7 +32,7 @@ class AnalyticsPublicationFactory extends Factory
             'network' => Platform::Instagram->network(),
             'platform_user_id' => fake()->uuid(),
             'platform' => Platform::Instagram,
-            'provider_post_id' => fake()->uuid(),
+            'remote_id' => fake()->uuid(),
             'provider_published_at' => now()->subDay(),
             'origin' => PublicationOrigin::External,
             'content_type' => PublicationContentType::Image,

@@ -17,6 +17,7 @@ use App\Enums\Analytics\SyncStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Models\AnalyticsSyncState;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
@@ -30,20 +31,20 @@ test('analytics tables expose the portable persistence contract', function () {
     expect(Schema::hasColumns('analytics_account_daily_snapshots', [
         'id', 'workspace_id', 'social_account_id', 'social_account_key', 'network',
         'platform_user_id', 'platform', 'account_display_name', 'account_username',
-        'account_avatar_url', 'snapshot_date', 'followers_count', 'metrics',
+        'account_avatar_url', 'date', 'followers_count', 'metrics',
         'provenance', 'precision', 'provider_observed_at', 'collected_at',
     ]))->toBeTrue()
         ->and(Schema::hasColumns('analytics_publications', [
             'id', 'workspace_id', 'social_account_id', 'social_account_key',
             'post_platform_id', 'network', 'platform_user_id', 'platform',
-            'provider_post_id', 'provider_published_at', 'origin', 'content_type',
+            'remote_id', 'provider_published_at', 'origin', 'content_type',
             'availability', 'provider_content_type', 'permalink', 'excerpt',
             'preview_metadata', 'account_display_name', 'account_username',
             'account_avatar_url', 'first_seen_at', 'last_seen_at',
             'provider_synced_at', 'provider_metadata',
         ]))->toBeTrue()
         ->and(Schema::hasColumns('analytics_publication_daily_snapshots', [
-            'id', 'analytics_publication_id', 'snapshot_date', 'collected_at',
+            'id', 'publication_id', 'date', 'collected_at',
             'provider_observed_at', 'metrics', 'reactions_count', 'comments_count',
             'shares_count', 'saves_count', 'views_count', 'impressions_count',
             'reach_count', 'engagement_count', 'exposure_count', 'exposure_kind',
@@ -51,11 +52,41 @@ test('analytics tables expose the portable persistence contract', function () {
         ]))->toBeTrue()
         ->and(Schema::hasColumn('analytics_publication_daily_snapshots', 'workspace_id'))->toBeFalse()
         ->and(Schema::hasColumns('analytics_sync_states', [
-            'id', 'social_account_id', 'workspace_id', 'network', 'platform_user_id',
+            'id', 'social_account_id', 'workspace_id', 'network', 'platform_user_id', 'identity_key',
             'collector', 'status', 'checkpoint',
             'target_since', 'oldest_reached_at', 'high_watermark_at',
             'last_success_at', 'last_error_category',
         ]))->toBeTrue();
+});
+
+test('analytics index and foreign key names fit the MySQL identifier limit', function () {
+    foreach ([
+        'analytics_account_daily_snapshots',
+        'analytics_publications',
+        'analytics_publication_daily_snapshots',
+        'analytics_sync_states',
+    ] as $table) {
+        foreach (Schema::getIndexes($table) as $index) {
+            expect(mb_strlen($index['name']))->toBeLessThanOrEqual(64);
+        }
+
+        foreach (Schema::getForeignKeys($table) as $foreignKey) {
+            expect(mb_strlen((string) $foreignKey['name']))->toBeLessThanOrEqual(64);
+        }
+    }
+});
+
+test('analytics sync identity stays stable across reconnects and distinct across workspaces', function () {
+    $first = SocialAccount::factory()->instagram()->create(['platform_user_id' => 'same-remote-user']);
+    $otherWorkspace = SocialAccount::factory()->instagram()->create(['platform_user_id' => 'same-remote-user']);
+    $reconnected = SocialAccount::factory()->instagram()->make([
+        'workspace_id' => $first->workspace_id,
+        'platform_user_id' => $first->platform_user_id,
+    ]);
+
+    expect(AnalyticsSyncState::identityFor($reconnected)['identity_key'])
+        ->toBe(AnalyticsSyncState::identityFor($first)['identity_key'])
+        ->not->toBe(AnalyticsSyncState::identityFor($otherWorkspace)['identity_key']);
 });
 
 test('same-network accounts remain distinct and historical facts survive account deletion', function () {
@@ -82,7 +113,7 @@ test('same-network accounts remain distinct and historical facts survive account
             'platform' => $account->platform->value,
             'account_display_name' => $account->display_name,
             'account_username' => $account->username,
-            'snapshot_date' => '2026-09-23',
+            'date' => '2026-09-23',
             'followers_count' => 0,
             'provenance' => ObservationProvenance::Actual->value,
             'precision' => MetricPrecision::Exact->value,
@@ -99,7 +130,7 @@ test('same-network accounts remain distinct and historical facts survive account
             'network' => $account->platform->network(),
             'platform_user_id' => $account->platform_user_id,
             'platform' => $account->platform->value,
-            'provider_post_id' => 'same-provider-post-id',
+            'remote_id' => 'same-provider-post-id',
             'provider_published_at' => now(),
             'origin' => PublicationOrigin::External->value,
             'content_type' => PublicationContentType::Image->value,
@@ -119,6 +150,7 @@ test('same-network accounts remain distinct and historical facts survive account
         'workspace_id' => $workspace->id,
         'network' => $firstAccount->platform->network(),
         'platform_user_id' => $firstAccount->platform_user_id,
+        'identity_key' => AnalyticsSyncState::identityFor($firstAccount)['identity_key'],
         'collector' => SyncCollector::PublicationBackfill->value,
         'status' => SyncStatus::Pending->value,
         'created_at' => now(),

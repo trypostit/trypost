@@ -17,7 +17,7 @@ class GetAnalyticsBounds
         $accounts = DB::table('analytics_account_daily_snapshots')
             ->where('workspace_id', $workspace->id)
             ->whereIn('platform', Platform::analyticsValues())
-            ->selectRaw('MIN(snapshot_date) as earliest, MAX(snapshot_date) as latest')
+            ->selectRaw('MIN(date) as earliest, MAX(date) as latest')
             ->first();
         $publications = DB::table('analytics_publications')
             ->where('workspace_id', $workspace->id)

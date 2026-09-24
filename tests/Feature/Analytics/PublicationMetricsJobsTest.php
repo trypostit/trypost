@@ -53,8 +53,8 @@ test('metric job writes a daily snapshot once and never calls providers for excl
     app()->call([$job, 'handle']);
     app()->call([(new CollectPublicationMetrics($excluded->id, $date->toDateString())), 'handle']);
 
-    expect(AnalyticsPublicationDailySnapshot::query()->where('analytics_publication_id', $included->id)->count())->toBe(1)
-        ->and(AnalyticsPublicationDailySnapshot::query()->where('analytics_publication_id', $excluded->id)->count())->toBe(0);
+    expect(AnalyticsPublicationDailySnapshot::query()->where('publication_id', $included->id)->count())->toBe(1)
+        ->and(AnalyticsPublicationDailySnapshot::query()->where('publication_id', $excluded->id)->count())->toBe(0);
     Http::assertSentCount(1);
 });
 
@@ -78,7 +78,7 @@ test('TikTok metric job reconciles a public video id before persisting metrics',
         'network' => Platform::TikTok->network(),
         'platform' => Platform::TikTok,
         'platform_user_id' => $account->platform_user_id,
-        'provider_post_id' => 'v_pub_abc',
+        'remote_id' => 'v_pub_abc',
         'origin' => PublicationOrigin::TryPost,
         'provider_published_at' => $date->subDay(),
     ]);
@@ -90,7 +90,7 @@ test('TikTok metric job reconciles a public video id before persisting metrics',
 
     app()->call([(new CollectPublicationMetrics($publication->id, $date->toDateString())), 'handle']);
 
-    expect($publication->fresh()->provider_post_id)->toBe('123456789')
+    expect($publication->fresh()->remote_id)->toBe('123456789')
         ->and($postPlatform->fresh()->platform_post_id)->toBe('123456789')
         ->and($publication->dailySnapshots()->first()->views_count)->toBe(12);
     Http::assertSentCount(2);
@@ -106,7 +106,7 @@ test('regular collection respects the X and non-X refresh windows', function (Pl
 
     app()->call([(new CollectPublicationMetrics($publication->id, $date->toDateString())), 'handle']);
 
-    expect(AnalyticsPublicationDailySnapshot::query()->where('analytics_publication_id', $publication->id)->exists())
+    expect(AnalyticsPublicationDailySnapshot::query()->where('publication_id', $publication->id)->exists())
         ->toBe($eligible, "{$platform->value} at {$age} days");
 })->with([
     [Platform::X, 20, true],
@@ -125,7 +125,7 @@ test('an old imported publication receives one baseline measurement only', funct
     app()->call([$job, 'handle']);
     app()->call([$job, 'handle']);
 
-    expect(AnalyticsPublicationDailySnapshot::query()->where('analytics_publication_id', $publication->id)->count())->toBe(1);
+    expect(AnalyticsPublicationDailySnapshot::query()->where('publication_id', $publication->id)->count())->toBe(1);
     Http::assertSentCount(1);
 });
 
@@ -146,8 +146,8 @@ test('transient metric failure preserves the last measured value and queues only
     CarbonImmutable::setTestNow($date);
     $publication = metricJobPublication(Platform::Mastodon, $date->subDay());
     AnalyticsPublicationDailySnapshot::factory()->create([
-        'analytics_publication_id' => $publication->id,
-        'snapshot_date' => $date->subDay()->toDateString(),
+        'publication_id' => $publication->id,
+        'date' => $date->subDay()->toDateString(),
         'reactions_count' => 6,
     ]);
     Http::fake(['*' => Http::response(['error' => 'rate limit'], 429)]);
@@ -155,7 +155,7 @@ test('transient metric failure preserves the last measured value and queues only
 
     app()->call([(new CollectPublicationMetrics($publication->id, $date->toDateString())), 'handle']);
 
-    expect(AnalyticsPublicationDailySnapshot::query()->where('analytics_publication_id', $publication->id)->count())->toBe(1)
+    expect(AnalyticsPublicationDailySnapshot::query()->where('publication_id', $publication->id)->count())->toBe(1)
         ->and($publication->dailySnapshots()->first()->reactions_count)->toBe(6);
     Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $publication->id && $job->retryNumber === 1);
 });
@@ -182,7 +182,7 @@ test('an old discovered post queues a baseline only until it has one snapshot', 
     app(QueuePublicationMetricsForPage::class)->queue($publication);
 
     Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->baseline);
-    AnalyticsPublicationDailySnapshot::factory()->create(['analytics_publication_id' => $publication->id]);
+    AnalyticsPublicationDailySnapshot::factory()->create(['publication_id' => $publication->id]);
     app(QueuePublicationMetricsForPage::class)->queue($publication);
     Bus::assertDispatched(CollectPublicationMetrics::class, 1);
 });

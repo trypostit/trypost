@@ -13,8 +13,8 @@ import {
     ChartTooltipContent,
     componentToString,
 } from '@/components/ui/chart';
+import date from '@/date';
 import dayjs from '@/dayjs';
-import { activeLocale } from '@/language';
 
 import { accountColor, type PostAccount, type PostBucket } from '../types';
 
@@ -34,14 +34,13 @@ const props = defineProps<{
 }>();
 
 const bucketLabel = (bucket: PostBucket): string => {
-    const locale = activeLocale.value.toLowerCase();
-    const start = dayjs(bucket.start).locale(locale);
-    const end = dayjs(bucket.end).locale(locale);
+    const start = dayjs(bucket.start);
 
-    if (props.resolution === 'monthly') return start.format('MMM YYYY');
-    if (bucket.start === bucket.end) return start.format('MMM D');
+    if (props.resolution === 'monthly')
+        return date.formatMonthYear(start.month() + 1, start.year());
+    if (bucket.start === bucket.end) return date.formatMonthDay(bucket.start);
 
-    return `${start.format('MMM D')} – ${end.format('MMM D')}`;
+    return `${date.formatMonthDay(bucket.start)} – ${date.formatMonthDay(bucket.end)}`;
 };
 
 const chartData = computed<ChartPoint[]>(() =>
@@ -91,6 +90,9 @@ const tooltipTriggers = computed(() => ({
         return tooltipTemplate.value?.(point, point.index);
     },
 }));
+const barAttributes = {
+    [VisStackedBarSelectors.bar]: { 'data-testid': 'analytics-post-bar' },
+};
 </script>
 
 <template>
@@ -110,6 +112,7 @@ const tooltipTriggers = computed(() => ({
                 :color="barColors"
                 :rounded-corners="4"
                 :bar-padding="0.35"
+                :attributes="barAttributes"
             />
             <VisAxis
                 type="x"

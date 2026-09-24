@@ -63,7 +63,7 @@ class FinalizeAccountDailySnapshot implements ShouldQueue
         $date = CarbonImmutable::parse($this->observationDate, 'UTC');
         $hasActual = AnalyticsAccountDailySnapshot::query()
             ->where('workspace_id', $account->workspace_id)
-            ->whereDate('snapshot_date', $this->observationDate)
+            ->whereDate('date', $this->observationDate)
             ->where('social_account_key', $accountKeys->for($account))
             ->where('provenance', ObservationProvenance::Actual)
             ->exists();
@@ -76,9 +76,9 @@ class FinalizeAccountDailySnapshot implements ShouldQueue
             ->where('workspace_id', $account->workspace_id)
             ->where('network', $account->platform->network())
             ->where('platform_user_id', $account->platform_user_id)
-            ->whereDate('snapshot_date', '<', $this->observationDate)
+            ->whereDate('date', '<', $this->observationDate)
             ->whereNotNull('followers_count')
-            ->latest('snapshot_date')
+            ->latest('date')
             ->first();
 
         if (! $previous) {

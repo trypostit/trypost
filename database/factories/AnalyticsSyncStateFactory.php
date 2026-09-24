@@ -24,6 +24,7 @@ class AnalyticsSyncStateFactory extends Factory
     {
         return [
             'social_account_id' => SocialAccount::factory(),
+            'identity_key' => hash('sha256', fake()->uuid()),
             'collector' => SyncCollector::PublicationBackfill,
             'status' => SyncStatus::Pending,
             'checkpoint' => null,

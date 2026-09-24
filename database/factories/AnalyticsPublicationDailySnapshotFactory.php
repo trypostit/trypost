@@ -21,8 +21,8 @@ class AnalyticsPublicationDailySnapshotFactory extends Factory
     public function definition(): array
     {
         return [
-            'analytics_publication_id' => AnalyticsPublication::factory(),
-            'snapshot_date' => today(),
+            'publication_id' => AnalyticsPublication::factory(),
+            'date' => today(),
             'collected_at' => now(),
             'provider_observed_at' => now(),
             'metrics' => null,

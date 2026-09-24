@@ -11,7 +11,7 @@ import {
     getPlatformLabel,
     getPlatformLogo,
 } from '@/composables/usePlatformLogo';
-import dayjs from '@/dayjs';
+import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { analytics as analyticsRoute } from '@/routes/app';
 
@@ -57,7 +57,10 @@ const providerUrl = computed(() =>
                 {{ $t('analytics.detail.back_to_analytics') }}
             </Link>
 
-            <header class="flex flex-wrap items-center justify-between gap-4">
+            <header
+                class="flex flex-wrap items-center justify-between gap-4"
+                data-testid="analytics-publication-header"
+            >
                 <div class="flex min-w-0 items-center gap-4">
                     <img
                         :src="getPlatformLogo(publication.platform)"
@@ -118,6 +121,7 @@ const providerUrl = computed(() =>
                     <div class="flex min-w-0 flex-col justify-between gap-6">
                         <p
                             class="max-w-3xl text-base leading-7 break-words whitespace-pre-wrap text-foreground"
+                            data-testid="analytics-publication-excerpt"
                         >
                             {{
                                 publication.excerpt ||
@@ -129,8 +133,8 @@ const providerUrl = computed(() =>
                             class="border-t border-foreground/15 pt-4 text-sm text-muted-foreground"
                         >
                             {{
-                                dayjs(publication.provider_published_at).format(
-                                    'LLL',
+                                date.formatDateTime(
+                                    publication.provider_published_at,
                                 )
                             }}
                         </p>

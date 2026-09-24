@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics\Collectors\Metrics;
 
-use App\Contracts\Analytics\PublicationMetricsCollector;
 use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
 use App\Models\AnalyticsPublication;
@@ -16,7 +15,7 @@ class BlueskyPublicationMetricsCollector extends AbstractPublicationMetricsColle
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
         $account = $this->account($publication);
-        $uri = "at://{$account->platform_user_id}/".BlueskyLexicon::FEED_POST."/{$publication->provider_post_id}";
+        $uri = "at://{$account->platform_user_id}/".BlueskyLexicon::FEED_POST."/{$publication->remote_id}";
         $response = $this->get($account,
             rtrim((string) config('trypost.platforms.bluesky.public_appview'), '/').'/xrpc/'.BlueskyLexicon::GET_POSTS,
             ['uris' => [$uri]],

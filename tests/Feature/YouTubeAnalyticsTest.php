@@ -207,7 +207,7 @@ test('youtube follower facts appear in the workspace analytics report', function
         'platform' => Platform::YouTube,
         'network' => Platform::YouTube->network(),
         'platform_user_id' => $this->youtubeAccount->platform_user_id,
-        'snapshot_date' => '2026-09-23',
+        'date' => '2026-09-23',
         'followers_count' => 50,
     ]);
 

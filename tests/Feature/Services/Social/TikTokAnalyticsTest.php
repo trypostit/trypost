@@ -320,7 +320,7 @@ test('tiktok post metrics facade returns the saved video url and metrics without
     ]);
     $publication = AnalyticsPublication::query()->where('post_platform_id', $postPlatform->id)->firstOrFail();
     AnalyticsPublicationDailySnapshot::factory()->create([
-        'analytics_publication_id' => $publication->id,
+        'publication_id' => $publication->id,
         'views_count' => 5,
         'metrics' => ['views' => ['value' => 5, 'unit' => 'count', 'availability' => 'available']],
     ]);

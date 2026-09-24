@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Actions\Analytics\WriteAccountDailySnapshot;
-use App\Contracts\Analytics\FollowerCollector;
 use App\Dto\Analytics\AccountDailyObservation;
 use App\Enums\Analytics\MetricPrecision;
 use App\Enums\Analytics\ObservationProvenance;
@@ -16,6 +15,7 @@ use App\Jobs\Analytics\FinalizeAccountDailySnapshots;
 use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\Services\Analytics\Collectors\Followers\FollowerCollector;
 use App\Services\Analytics\Collectors\Followers\FollowerCollectorFactory;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
@@ -204,7 +204,7 @@ test('finalizer carries the latest measured total and does not invent missing hi
     app()->call([new FinalizeAccountDailySnapshot($withHistory->id, '2026-09-23'), 'handle']);
     app()->call([new FinalizeAccountDailySnapshot($withoutHistory->id, '2026-09-23'), 'handle']);
 
-    $carried = AnalyticsAccountDailySnapshot::query()->whereDate('snapshot_date', '2026-09-23')->sole();
+    $carried = AnalyticsAccountDailySnapshot::query()->whereDate('date', '2026-09-23')->sole();
     expect($carried->social_account_id)->toBe($withHistory->id)
         ->and($carried->followers_count)->toBe(50)
         ->and($carried->provenance)->toBe(ObservationProvenance::CarriedForward)
@@ -226,7 +226,7 @@ test('finalization worker skips accounts disconnected after dispatch', function 
 
     app()->call([$job, 'handle']);
 
-    expect(AnalyticsAccountDailySnapshot::query()->whereDate('snapshot_date', '2026-09-23')->exists())->toBeFalse();
+    expect(AnalyticsAccountDailySnapshot::query()->whereDate('date', '2026-09-23')->exists())->toBeFalse();
 });
 
 test('next-day finalizer recovers a missed date without replacing actual observations', function () {
@@ -244,7 +244,7 @@ test('next-day finalizer recovers a missed date without replacing actual observa
     app()->call([$job, 'handle']);
     app()->call([$job, 'handle']);
 
-    $recovered = AnalyticsAccountDailySnapshot::query()->whereDate('snapshot_date', '2026-09-22')->sole();
+    $recovered = AnalyticsAccountDailySnapshot::query()->whereDate('date', '2026-09-22')->sole();
     expect($recovered->followers_count)->toBe(50)
         ->and($recovered->provenance)->toBe(ObservationProvenance::CarriedForward)
         ->and($job->tries)->toBe(3)

@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Actions\Analytics;
 
 use App\Dto\Analytics\DateRange;
-use App\Enums\SocialAccount\Platform;
+use App\Models\AnalyticsSyncState;
 use App\Models\Workspace;
 use App\Support\Analytics\MetricComparison;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Builder;
 
 class BuildWorkspaceAnalyticsReport
 {
@@ -27,48 +27,50 @@ class BuildWorkspaceAnalyticsReport
         $previous = $range->previous();
         $publications = $this->publications->execute($workspace, $previous, $range);
         $followers = $this->followers->execute($workspace, $previous, $range);
-        $current = $publications['current_totals'];
-        $prior = $publications['previous_totals'];
-        $currentFollowers = $followers['current_total'];
-        $previousFollowers = $followers['previous_total'];
+        $current = data_get($publications, 'current_totals');
+        $prior = data_get($publications, 'previous_totals');
+        $currentFollowers = data_get($followers, 'current_total');
+        $previousFollowers = data_get($followers, 'previous_total');
 
         return [
             'bounds' => $bounds ?? $this->bounds->execute($workspace),
             'range' => $range->toArray(),
             'previous_range' => $previous->toArray(),
             'summary' => [
-                'posts' => MetricComparison::between($current['posts'], $prior['posts']),
+                'posts' => MetricComparison::between(data_get($current, 'posts'), data_get($prior, 'posts')),
                 'followers' => [
                     'value' => $currentFollowers,
                     'previous' => $previousFollowers,
                     'change' => $currentFollowers !== null && $previousFollowers !== null
                         ? $currentFollowers - $previousFollowers : null,
                 ],
-                'reactions' => MetricComparison::between($current['reactions'], $prior['reactions']),
-                'comments' => MetricComparison::between($current['comments'], $prior['comments']),
-                'engagement_rate' => MetricComparison::between($current['engagement_rate'], $prior['engagement_rate']),
+                'reactions' => MetricComparison::between(data_get($current, 'reactions'), data_get($prior, 'reactions')),
+                'comments' => MetricComparison::between(data_get($current, 'comments'), data_get($prior, 'comments')),
+                'engagement_rate' => MetricComparison::between(data_get($current, 'engagement_rate'), data_get($prior, 'engagement_rate')),
             ],
-            'followers' => $followers['followers'],
-            'posts' => $publications['posts'],
-            'top_posts' => $publications['top_posts'],
-            'performance' => $publications['performance'],
+            'followers' => data_get($followers, 'followers'),
+            'posts' => data_get($publications, 'posts'),
+            'top_posts' => data_get($publications, 'top_posts'),
+            'performance' => data_get($publications, 'performance'),
             'coverage' => $this->coverage($workspace),
         ];
     }
 
-    /** @return list<object> */
+    /** @return list<array<string, mixed>> */
     private function coverage(Workspace $workspace): array
     {
-        return DB::table('analytics_sync_states as state')
-            ->join('social_accounts as account', 'account.id', '=', 'state.social_account_id')
-            ->where('account.workspace_id', $workspace->id)
-            ->whereIn('account.platform', Platform::analyticsValues())
+        return AnalyticsSyncState::query()
+            ->whereHas('socialAccount', fn (Builder $accounts): Builder => $accounts
+                ->whereBelongsTo($workspace)
+                ->connected()
+                ->active()
+                ->includedInAnalytics())
             ->select([
-                'state.social_account_id', 'state.collector', 'state.status',
-                'state.target_since', 'state.oldest_reached_at', 'state.high_watermark_at',
-                'state.last_success_at', 'state.last_error_category',
+                'social_account_id', 'collector', 'status',
+                'target_since', 'oldest_reached_at', 'high_watermark_at',
+                'last_success_at', 'last_error_category',
             ])
             ->get()
-            ->all();
+            ->toArray();
     }
 }

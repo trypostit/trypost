@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics\Collectors\Followers;
 
-use App\Contracts\Analytics\FollowerCollector;
 use App\Dto\Analytics\AccountDailyObservation;
 use App\Enums\Analytics\MetricPrecision;
 use App\Enums\Analytics\ObservationProvenance;

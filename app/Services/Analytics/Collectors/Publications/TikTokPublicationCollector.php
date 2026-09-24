@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics\Collectors\Publications;
 
-use App\Contracts\Analytics\PublicationHistoryCollector;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationContentType;
@@ -109,7 +108,7 @@ class TikTokPublicationCollector extends AbstractApiPublicationCollector impleme
     private function coverExpiresAt(string $url): ?string
     {
         parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
-        $expires = $query['x-expires'] ?? $query['expires'] ?? null;
+        $expires = data_get($query, 'x-expires') ?? data_get($query, 'expires');
 
         return is_scalar($expires) && ctype_digit((string) $expires)
             ? CarbonImmutable::createFromTimestampUTC((int) $expires)->toIso8601String()

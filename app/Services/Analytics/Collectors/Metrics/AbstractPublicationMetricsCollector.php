@@ -46,13 +46,15 @@ abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicatio
         string $field,
         MetricTimeBasis $timeBasis = MetricTimeBasis::Lifetime,
     ): ?MetricValue {
-        if (! array_key_exists($field, $source) || ! is_numeric($source[$field])) {
+        $value = data_get($source, $field);
+
+        if (! is_numeric($value)) {
             return null;
         }
 
         return new MetricValue(
             key: $key,
-            value: (int) $source[$field],
+            value: (int) $value,
             unit: MetricUnit::Count,
             timeBasis: $timeBasis,
             precision: MetricPrecision::Exact,
@@ -69,15 +71,17 @@ abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicatio
         float $multiplier = 1,
         MetricTimeBasis $timeBasis = MetricTimeBasis::Lifetime,
     ): ?MetricValue {
-        if (! array_key_exists($field, $source) || ! is_numeric($source[$field])) {
+        $value = data_get($source, $field);
+
+        if (! is_numeric($value)) {
             return null;
         }
 
         return new MetricValue(
             key: $key,
             value: $unit === MetricUnit::Milliseconds
-                ? (int) round((float) $source[$field] * $multiplier)
-                : (float) $source[$field] * $multiplier,
+                ? (int) round((float) $value * $multiplier)
+                : (float) $value * $multiplier,
             unit: $unit,
             timeBasis: $timeBasis,
             precision: MetricPrecision::Exact,
@@ -92,19 +96,21 @@ abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicatio
         $values = [];
 
         foreach ($data as $item) {
-            if (! is_array($item) || ! is_string($item['name'] ?? null)) {
+            $name = data_get($item, 'name');
+
+            if (! is_array($item) || ! is_string($name)) {
                 continue;
             }
 
             $value = data_get($item, 'total_value.value') ?? data_get($item, 'values.0.value');
 
             if (is_numeric($value)) {
-                $values[$item['name']] = $value + 0;
+                $values[$name] = $value + 0;
             } elseif (is_array($value) && $value !== []) {
                 $numbers = array_filter($value, 'is_numeric');
 
                 if (count($numbers) === count($value)) {
-                    $values[$item['name']] = array_sum($numbers);
+                    $values[$name] = array_sum($numbers);
                 }
             }
         }

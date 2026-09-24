@@ -26,7 +26,7 @@ abstract class AbstractMetaPublicationCollector
             ->timeout(120)
             ->get($url, array_filter($query, fn (mixed $value): bool => $value !== null && $value !== ''));
 
-        if (filled($query['after'] ?? null) && InvalidPublicationCursor::matches($response)) {
+        if (filled(data_get($query, 'after')) && InvalidPublicationCursor::matches($response)) {
             throw new AnalyticsCollectionException('invalid_cursor', 'publication history cursor expired');
         }
 

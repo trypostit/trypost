@@ -1118,10 +1118,10 @@ test('platform metrics reads persisted X analytics without a provider request', 
         'post_platform_id' => $pp->id,
         'platform' => Platform::X,
         'network' => Platform::X->network(),
-        'provider_post_id' => '1234567890',
+        'remote_id' => '1234567890',
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
-        'analytics_publication_id' => $publication->id,
+        'publication_id' => $publication->id,
         'impressions_count' => 500,
         'reactions_count' => 42,
         'metrics' => ['impressions' => ['value' => 500, 'unit' => 'count', 'availability' => 'available']],
@@ -1165,11 +1165,11 @@ test('platform metrics reads persisted TikTok analytics without a provider reque
         'post_platform_id' => $pp->id,
         'platform' => Platform::TikTok,
         'network' => Platform::TikTok->network(),
-        'provider_post_id' => '7685359243088103444',
+        'remote_id' => '7685359243088103444',
         'content_type' => PublicationContentType::Video,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
-        'analytics_publication_id' => $publication->id,
+        'publication_id' => $publication->id,
         'views_count' => 220,
         'reactions_count' => 11,
         'metrics' => ['views' => ['value' => 220, 'unit' => 'count', 'availability' => 'available']],

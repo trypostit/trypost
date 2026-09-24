@@ -29,7 +29,7 @@ class AnalyticsPublication extends Model
         'network',
         'platform_user_id',
         'platform',
-        'provider_post_id',
+        'remote_id',
         'provider_published_at',
         'origin',
         'content_type',
@@ -80,7 +80,7 @@ class AnalyticsPublication extends Model
 
     public function dailySnapshots(): HasMany
     {
-        return $this->hasMany(AnalyticsPublicationDailySnapshot::class);
+        return $this->hasMany(AnalyticsPublicationDailySnapshot::class, 'publication_id');
     }
 
     public function scopeAvailable(Builder $query): Builder

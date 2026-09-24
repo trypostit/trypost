@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics\Collectors\Metrics;
 
-use App\Contracts\Analytics\PublicationMetricsCollector;
 use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\MetricTimeBasis;
@@ -27,7 +26,7 @@ class PinterestPublicationMetricsCollector extends AbstractPublicationMetricsCol
         }
 
         $response = $this->get($account,
-            rtrim((string) config('trypost.platforms.pinterest.api'), '/')."/pins/{$publication->provider_post_id}/analytics",
+            rtrim((string) config('trypost.platforms.pinterest.api'), '/')."/pins/{$publication->remote_id}/analytics",
             [
                 'start_date' => $date->subDays(89)->toDateString(),
                 'end_date' => $date->toDateString(),
@@ -58,7 +57,7 @@ class PinterestPublicationMetricsCollector extends AbstractPublicationMetricsCol
             $this->decimal(MetricKey::TotalPlayTimeMilliseconds, $values, 'VIDEO_V50_WATCH_TIME', MetricUnit::Milliseconds, timeBasis: $basis),
         ]);
         $details = $this->get($account,
-            rtrim((string) config('trypost.platforms.pinterest.api'), '/')."/pins/{$publication->provider_post_id}",
+            rtrim((string) config('trypost.platforms.pinterest.api'), '/')."/pins/{$publication->remote_id}",
             ['pin_metrics' => 'true'],
         )->json();
         $lifetime = (array) (data_get($details, 'pin_metrics.all.lifetime_metrics')

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics\Collectors\Metrics;
 
-use App\Contracts\Analytics\PublicationMetricsCollector;
 use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\PublicationContentType;
@@ -19,8 +18,8 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
         $account = $this->account($publication);
         $isStory = $publication->content_type === PublicationContentType::Story;
         $videoId = data_get($publication->provider_metadata, 'video_id');
-        $isVideo = ! $isStory && (filled($videoId) || ! str_contains($publication->provider_post_id, '_'));
-        $insightsId = $isVideo && filled($videoId) ? $videoId : $publication->provider_post_id;
+        $isVideo = ! $isStory && (filled($videoId) || ! str_contains($publication->remote_id, '_'));
+        $insightsId = $isVideo && filled($videoId) ? $videoId : $publication->remote_id;
         $edge = $isVideo ? 'video_insights' : 'insights';
         $fields = match (true) {
             $isStory => ['page_story_impressions_by_story_id', 'page_story_impressions_by_story_id_unique', 'story_interaction', 'pages_fb_story_thread_lightweight_reactions', 'pages_fb_story_replies', 'pages_fb_story_shares'],
@@ -41,7 +40,7 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
 
         if (! $isStory) {
             $details = $this->get($account,
-                rtrim((string) config('trypost.platforms.facebook.graph_api'), '/')."/{$publication->provider_post_id}",
+                rtrim((string) config('trypost.platforms.facebook.graph_api'), '/')."/{$publication->remote_id}",
                 [
                     'fields' => 'reactions.limit(0).summary(true),comments.limit(0).summary(true),shares',
                     'access_token' => $account->access_token,

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics\Collectors\Metrics;
 
-use App\Contracts\Analytics\PublicationMetricsCollector;
 use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\MetricUnit;
@@ -24,7 +23,7 @@ class InstagramPublicationMetricsCollector extends AbstractMetaPublicationMetric
         $fields = $isStory
             ? ['reach', 'views', 'replies']
             : ['reach', 'views', 'likes', 'comments', 'shares', 'saved'];
-        $url = $account->platform->instagramGraphBaseUrl()."/{$publication->provider_post_id}/insights";
+        $url = $account->platform->instagramGraphBaseUrl()."/{$publication->remote_id}/insights";
         $response = $this->get($account, $url, ['metric' => implode(',', $fields), 'access_token' => $account->access_token]);
         $items = $response->json('data');
 

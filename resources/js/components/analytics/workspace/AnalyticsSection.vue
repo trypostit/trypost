@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import dayjs from '@/dayjs';
+import date from '@/date';
 
 import type { WorkspaceAnalyticsReport } from './types';
 
@@ -14,7 +14,10 @@ defineProps<{
     <section class="space-y-4" data-testid="analytics-section">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="space-y-1">
-                <h2 class="text-lg leading-tight font-semibold text-foreground">
+                <h2
+                    class="text-lg leading-tight font-semibold text-foreground"
+                    data-testid="analytics-section-title"
+                >
                     {{ title }}
                 </h2>
                 <p
@@ -23,7 +26,7 @@ defineProps<{
                 >
                     {{
                         range
-                            ? `${dayjs(range.start).format('D MMM YYYY')} – ${dayjs(range.end).format('D MMM YYYY')}`
+                            ? `${date.formatDayMonthYear(range.start)} – ${date.formatDayMonthYear(range.end)}`
                             : subtitle
                     }}
                 </p>

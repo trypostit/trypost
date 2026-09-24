@@ -31,7 +31,7 @@ test('workspace dashboard reads local follower facts and clamps the selected dat
             'platform' => $socialAccount->platform,
             'network' => $socialAccount->platform->network(),
             'platform_user_id' => $socialAccount->platform_user_id,
-            'snapshot_date' => '2026-09-20',
+            'date' => '2026-09-20',
             'followers_count' => $followers,
         ]);
     }
@@ -62,7 +62,7 @@ test('dashboard rejects invalid dates and never renders an excluded account', fu
         'platform' => Platform::LinkedIn,
         'network' => Platform::LinkedIn->network(),
         'platform_user_id' => $linkedIn->platform_user_id,
-        'snapshot_date' => '2026-09-20',
+        'date' => '2026-09-20',
         'followers_count' => 100,
     ]);
 
@@ -75,12 +75,51 @@ test('dashboard rejects invalid dates and never renders an excluded account', fu
         ->assertSessionHasErrors('end');
 
     $this->actingAs($user)
+        ->get(route('app.analytics', ['start' => '']))
+        ->assertSessionHasErrors('start');
+
+    $this->actingAs($user)
         ->get(route('app.analytics'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('analytics/Index')
             ->where('report.bounds.min', null)
             ->where('report.summary.followers.value', null)
+            ->etc());
+});
+
+test('dashboard keeps the default range inside available data when only one date is selected', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Instagram]);
+
+    foreach (['2026-09-01', '2026-09-20'] as $date) {
+        AnalyticsAccountDailySnapshot::factory()->create([
+            'workspace_id' => $workspace->id,
+            'social_account_id' => $account->id,
+            'social_account_key' => $account->id,
+            'platform' => Platform::Instagram,
+            'network' => Platform::Instagram->network(),
+            'platform_user_id' => $account->platform_user_id,
+            'date' => $date,
+        ]);
+    }
+
+    $this->actingAs($user)
+        ->get(route('app.analytics', ['start' => '2026-09-30']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('report.range.start', '2026-09-20')
+            ->where('report.range.end', '2026-09-20')
+            ->etc());
+
+    $this->actingAs($user)
+        ->get(route('app.analytics', ['end' => '2026-08-01']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('report.range.start', '2026-09-01')
+            ->where('report.range.end', '2026-09-01')
             ->etc());
 });
 

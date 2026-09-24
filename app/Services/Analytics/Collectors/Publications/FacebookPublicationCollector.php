@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics\Collectors\Publications;
 
-use App\Contracts\Analytics\PublicationHistoryCollector;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationContentType;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
+use Throwable;
 
 class FacebookPublicationCollector extends AbstractMetaPublicationCollector implements PublicationHistoryCollector
 {
@@ -106,7 +106,7 @@ class FacebookPublicationCollector extends AbstractMetaPublicationCollector impl
                 config('trypost.platforms.facebook.graph_api')."/{$videoId}",
                 ['fields' => 'picture,permalink_url'],
             )->json();
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return [];
         }
     }

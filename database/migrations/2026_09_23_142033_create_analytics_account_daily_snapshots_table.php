@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('account_display_name')->nullable();
             $table->string('account_username')->nullable();
             $table->text('account_avatar_url')->nullable();
-            $table->date('snapshot_date');
+            $table->date('date');
             $table->bigInteger('followers_count')->nullable();
             $table->json('metrics')->nullable();
             $table->string('provenance', 32);
@@ -33,14 +33,8 @@ return new class extends Migration
             $table->timestamp('collected_at');
             $table->timestamps();
 
-            $table->unique(
-                ['workspace_id', 'social_account_key', 'snapshot_date'],
-                'analytics_account_daily_identity_unique',
-            );
-            $table->index(
-                ['workspace_id', 'snapshot_date'],
-                'analytics_account_daily_workspace_date_index',
-            );
+            $table->unique(['social_account_key', 'date']);
+            $table->index(['workspace_id', 'date']);
         });
     }
 

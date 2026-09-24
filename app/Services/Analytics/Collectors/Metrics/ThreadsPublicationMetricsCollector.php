@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics\Collectors\Metrics;
 
-use App\Contracts\Analytics\PublicationMetricsCollector;
 use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
@@ -17,7 +16,7 @@ class ThreadsPublicationMetricsCollector extends AbstractMetaPublicationMetricsC
     {
         $account = $this->account($publication);
         $response = $this->get($account,
-            rtrim((string) config('trypost.platforms.threads.graph_api'), '/')."/{$publication->provider_post_id}/insights",
+            rtrim((string) config('trypost.platforms.threads.graph_api'), '/')."/{$publication->remote_id}/insights",
             ['metric' => 'views,likes,replies,reposts,quotes'],
         );
         $items = $response->json('data');

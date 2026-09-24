@@ -17,6 +17,7 @@ const pending = computed(() =>
 <template>
     <div
         v-if="pending.length"
+        data-testid="analytics-import-coverage"
         class="flex items-center gap-2.5 rounded-xl border-2 border-foreground bg-violet-50 px-4 py-3 text-sm text-foreground"
         role="status"
     >

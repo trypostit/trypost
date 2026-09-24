@@ -15,8 +15,8 @@ return new class extends Migration
     {
         Schema::create('analytics_publication_daily_snapshots', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('analytics_publication_id');
-            $table->date('snapshot_date');
+            $table->uuid('publication_id');
+            $table->date('date');
             $table->timestamp('collected_at');
             $table->timestamp('provider_observed_at')->nullable();
             $table->json('metrics')->nullable();
@@ -34,12 +34,8 @@ return new class extends Migration
             $table->bigInteger('average_watch_time_milliseconds')->nullable();
             $table->timestamps();
 
-            $table->foreign('analytics_publication_id', 'analytics_publication_daily_parent_fk')
-                ->references('id')->on('analytics_publications')->cascadeOnDelete();
-            $table->unique(
-                ['analytics_publication_id', 'snapshot_date'],
-                'analytics_publication_daily_identity_unique',
-            );
+            $table->foreign('publication_id')->references('id')->on('analytics_publications')->cascadeOnDelete();
+            $table->unique(['publication_id', 'date']);
         });
     }
 

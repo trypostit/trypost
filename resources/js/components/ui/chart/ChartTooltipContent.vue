@@ -42,6 +42,7 @@ const entries = computed(() =>
                 >
                     <img
                         v-if="entry.item.icon"
+                        data-testid="analytics-tooltip-icon"
                         :src="entry.item.icon"
                         alt=""
                         class="size-4 shrink-0 object-contain"

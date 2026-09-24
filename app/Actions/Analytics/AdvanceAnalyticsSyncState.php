@@ -39,13 +39,13 @@ class AdvanceAnalyticsSyncState
             }
 
             $checkpoint = $state->checkpoint ?? [];
-            $revision = ((int) ($checkpoint['revision'] ?? 0)) + 1;
+            $revision = ((int) data_get($checkpoint, 'revision', 0)) + 1;
             $cursor = $restartTerminal && $state->isTerminal()
                 ? null
-                : ($checkpoint['cursor'] ?? null);
+                : data_get($checkpoint, 'cursor');
             $seenCount = $restartTerminal && $state->isTerminal()
                 ? 0
-                : (int) ($checkpoint['seen_count'] ?? 0);
+                : (int) data_get($checkpoint, 'seen_count', 0);
 
             $state->update([
                 'status' => SyncStatus::Running,
@@ -55,14 +55,14 @@ class AdvanceAnalyticsSyncState
                     ...($state->collector === SyncCollector::PublicationBackfill && $state->socialAccount?->platform === Platform::X
                         ? ['seen_count' => $seenCount]
                         : []),
-                    ...(! empty($checkpoint['resumed_after_disconnect'])
+                    ...(data_get($checkpoint, 'resumed_after_disconnect')
                         ? ['resumed_after_disconnect' => true]
                         : []),
-                    ...(! empty($checkpoint['had_provider_limit'])
+                    ...(data_get($checkpoint, 'had_provider_limit')
                         ? ['had_provider_limit' => true]
                         : []),
-                    ...(! $restartTerminal && ! empty($checkpoint['invalid_cursor_resets'])
-                        ? ['invalid_cursor_resets' => (int) $checkpoint['invalid_cursor_resets']]
+                    ...(! $restartTerminal && data_get($checkpoint, 'invalid_cursor_resets')
+                        ? ['invalid_cursor_resets' => (int) data_get($checkpoint, 'invalid_cursor_resets')]
                         : []),
                 ],
                 'last_error_category' => null,
@@ -110,7 +110,7 @@ class AdvanceAnalyticsSyncState
 
             $checkpoint = $state->checkpoint ?? [];
 
-            if ((int) ($checkpoint['revision'] ?? 0) !== $capturedRevision) {
+            if ((int) data_get($checkpoint, 'revision', 0) !== $capturedRevision) {
                 return ['advanced' => false, 'terminal' => $state->isTerminal()];
             }
 
@@ -126,7 +126,7 @@ class AdvanceAnalyticsSyncState
                 && $oldest->lessThanOrEqualTo($state->target_since);
             $isXBackfill = $state->collector === SyncCollector::PublicationBackfill
                 && $account->platform === Platform::X;
-            $seenCount = (int) ($checkpoint['seen_count'] ?? 0) + count($page->publications);
+            $seenCount = (int) data_get($checkpoint, 'seen_count', 0) + count($page->publications);
             $xTimelineLimited = $isXBackfill
                 && $page->providerExhausted
                 && ! $reachedTarget
@@ -134,7 +134,7 @@ class AdvanceAnalyticsSyncState
                 && $oldest
                 && $oldest->greaterThan($state->target_since)
                 && $seenCount >= self::X_TIMELINE_LIMIT;
-            $hadProviderLimit = $page->providerLimited || ! empty($checkpoint['had_provider_limit']);
+            $hadProviderLimit = $page->providerLimited || data_get($checkpoint, 'had_provider_limit');
             $finished = $page->providerExhausted || $reachedTarget;
 
             $status = match (true) {
@@ -151,8 +151,8 @@ class AdvanceAnalyticsSyncState
                     'revision' => $capturedRevision,
                     ...($isXBackfill ? ['seen_count' => $seenCount] : []),
                     ...($hadProviderLimit && $status === SyncStatus::Running ? ['had_provider_limit' => true] : []),
-                    ...($status === SyncStatus::Running && ! empty($checkpoint['invalid_cursor_resets'])
-                        ? ['invalid_cursor_resets' => (int) $checkpoint['invalid_cursor_resets']]
+                    ...($status === SyncStatus::Running && data_get($checkpoint, 'invalid_cursor_resets')
+                        ? ['invalid_cursor_resets' => (int) data_get($checkpoint, 'invalid_cursor_resets')]
                         : []),
                 ],
                 'oldest_reached_at' => $oldest,

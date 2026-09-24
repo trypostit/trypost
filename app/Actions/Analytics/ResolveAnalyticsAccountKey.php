@@ -20,7 +20,7 @@ class ResolveAnalyticsAccountKey
 
         $snapshotKey = AnalyticsAccountDailySnapshot::query()
             ->where($identity)
-            ->latest('snapshot_date')
+            ->latest('date')
             ->value('social_account_key');
 
         if (is_string($snapshotKey)) {

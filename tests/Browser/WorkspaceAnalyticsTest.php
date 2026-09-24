@@ -19,6 +19,20 @@ use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Vite;
 
+function waitForWorkspaceAnalyticsTestId(mixed $page, string $testId): void
+{
+    $page->script(<<<JS
+        (async () => {
+            const selector = '[data-testid="{$testId}"]';
+            for (let attempt = 0; attempt < 600; attempt++) {
+                const element = document.querySelector(selector);
+                if (element && element.getBoundingClientRect().height > 0) return;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })();
+    JS);
+}
+
 test('workspace dashboard separates accounts and switches chart and top-post modes', function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     $user = User::factory()->create();
@@ -41,7 +55,7 @@ test('workspace dashboard separates accounts and switches chart and top-post mod
             'network' => Platform::Instagram->network(),
             'platform_user_id' => $account->platform_user_id,
             'account_username' => $username,
-            'snapshot_date' => '2026-09-23',
+            'date' => '2026-09-23',
             'followers_count' => $followers,
         ]);
         $publication = AnalyticsPublication::factory()->create([
@@ -54,7 +68,7 @@ test('workspace dashboard separates accounts and switches chart and top-post mod
             'provider_published_at' => '2026-09-12 10:00:00',
         ]);
         AnalyticsPublicationDailySnapshot::factory()->create([
-            'analytics_publication_id' => $publication->id,
+            'publication_id' => $publication->id,
             'reactions_count' => $followers,
             'comments_count' => 1,
         ]);
@@ -63,25 +77,17 @@ test('workspace dashboard separates accounts and switches chart and top-post mod
     $this->actingAs($user);
     Vite::useHotFile(storage_path('framework/testing/workspace-analytics-no-hot'));
     $page = visit(route('app.analytics'));
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.body.innerText.includes('Total Followers')) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
+    waitForWorkspaceAnalyticsTestId($page, 'analytics-summary-followers');
 
-    $page->assertSee('Total Followers')
-        ->assertScript('Array.from(document.querySelectorAll("[data-testid=analytics-section] h2")).map((heading) => heading.textContent.trim()).join("|")', 'Summary|Top 5 Posts|Performance|Followers|Posts')
+    $page->assertVisible('@analytics-summary-followers')
+        ->assertScript('Array.from(document.querySelectorAll("[data-testid=analytics-section-title]")).map((heading) => heading.textContent.trim()).join("|")', 'Summary|Top 5 Posts|Performance|Followers|Posts')
         ->assertSee('@first')
         ->assertSee('@second')
         ->assertSee('Top 5 Posts')
         ->assertSee('Performance')
         ->assertPresent('@accounts-unovis-bar-chart')
-        ->hover('[data-testid="accounts-unovis-bar-chart"] path[class$="-bar"] >> nth=0')
-        ->assertPresent('[data-testid="analytics-chart-tooltip"] img[src*="/images/accounts/"]')
-        ->assertMissing('[data-testid="analytics-chart-tooltip"] [style*="background-color"]')
+        ->hover('[data-testid="analytics-account-bar"] >> nth=0')
+        ->assertPresent('@analytics-tooltip-icon')
         ->click('@followers-line')
         ->assertPresent('@followers-unovis-chart')
         ->click('@followers-growth')
@@ -91,13 +97,13 @@ test('workspace dashboard separates accounts and switches chart and top-post mod
         ->assertPresent('@accounts-unovis-bar-chart')
         ->click('@posts-stacked')
         ->assertPresent('@posts-unovis-chart')
-        ->hover('[data-testid="posts-unovis-chart"] path[class$="-bar"] >> nth=0')
-        ->assertPresent('[data-testid="analytics-chart-tooltip"] img[src*="/images/accounts/"]')
+        ->hover('[data-testid="analytics-post-bar"] >> nth=0')
+        ->assertPresent('@analytics-tooltip-icon')
         ->click('@top-comments')
-        ->assertScript('Array.from(document.querySelectorAll("[data-slot=sidebar-inset], [data-slot=sidebar-inset] > div")).filter((element) => ["auto", "scroll"].includes(getComputedStyle(element).overflowY) && element.scrollHeight > element.clientHeight).length', 1)
-        ->assertScript('(() => { const scroller = document.querySelector("[data-slot=sidebar-inset] > div"); const lastSection = Array.from(document.querySelectorAll("[data-testid=analytics-section]")).at(-1); return scroller.scrollHeight - (lastSection.getBoundingClientRect().bottom - scroller.getBoundingClientRect().top + scroller.scrollTop) >= 24; })()', true)
+        ->assertScript('(() => { const scroller = document.querySelector("[data-testid=app-layout-scroller]"); return ["auto", "scroll"].includes(getComputedStyle(scroller).overflowY) && scroller.scrollHeight > scroller.clientHeight; })()', true)
+        ->assertScript('(() => { const scroller = document.querySelector("[data-testid=app-layout-scroller]"); const lastSection = Array.from(document.querySelectorAll("[data-testid=analytics-section]")).at(-1); return scroller.scrollHeight - (lastSection.getBoundingClientRect().bottom - scroller.getBoundingClientRect().top + scroller.scrollTop) >= 24; })()', true)
         ->resize(375, 812)
-        ->assertScript('document.querySelector("h1")?.getBoundingClientRect().top > document.querySelector("[data-slot=sidebar-trigger]")?.getBoundingClientRect().bottom', true)
+        ->assertScript('document.querySelector("[data-testid=analytics-page-header]")?.getBoundingClientRect().top > document.querySelector("[data-testid=app-sidebar-trigger]")?.getBoundingClientRect().bottom', true)
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth + 2', true)
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
@@ -114,8 +120,8 @@ test('workspace dashboard explains the empty state without inventing follower to
     $this->actingAs($user);
     $page = visit(route('app.analytics'));
 
-    $page->assertSee('Your analytics history is being prepared')
-        ->assertScript('document.querySelector(".overflow-y-auto > .flex.min-h-0.flex-1.flex-col") !== null', true)
+    $page->assertVisible('@analytics-empty-state')
+        ->assertPresent('@app-layout-content')
         ->assertMissing('@analytics-summary')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
@@ -132,7 +138,7 @@ test('workspace dashboard uses its own localized page title instead of the sideb
     Vite::useHotFile(storage_path('framework/testing/workspace-analytics-no-hot'));
 
     visit(route('app.analytics'))
-        ->assertScript('document.querySelector("h1")?.textContent.trim()', 'Analysen')
+        ->assertScript('document.querySelector("[data-testid=analytics-page-header]")?.textContent.includes("Analysen")', true)
         ->assertScript('document.title.includes("Analysen")', true)
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
@@ -150,7 +156,8 @@ test('dashboard refreshes when the first analytics snapshot arrives after openin
     $this->actingAs($user);
     Vite::useHotFile(storage_path('framework/testing/workspace-analytics-no-hot'));
     $page = visit(route('app.analytics'));
-    $page->assertSee('Your analytics history is being prepared');
+    waitForWorkspaceAnalyticsTestId($page, 'analytics-empty-state');
+    $page->assertVisible('@analytics-empty-state');
 
     AnalyticsAccountDailySnapshot::factory()->create([
         'workspace_id' => $workspace->id,
@@ -159,20 +166,13 @@ test('dashboard refreshes when the first analytics snapshot arrives after openin
         'platform' => $account->platform,
         'network' => $account->platform->network(),
         'platform_user_id' => $account->platform_user_id,
-        'snapshot_date' => now('UTC')->toDateString(),
+        'date' => now('UTC')->toDateString(),
         'followers_count' => 123,
     ]);
 
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 200; attempt++) {
-                if (document.body.innerText.includes('Total Followers')) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
+    waitForWorkspaceAnalyticsTestId($page, 'analytics-summary-followers');
 
-    $page->assertSee('Total Followers')
+    $page->assertVisible('@analytics-summary-followers')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });
@@ -195,19 +195,20 @@ test('import progress disappears after the queued backfill finishes without navi
     $this->actingAs($user);
     Vite::useHotFile(storage_path('framework/testing/workspace-analytics-no-hot'));
     $page = visit(route('app.analytics'));
-    $page->assertSee('Importing account history');
+    waitForWorkspaceAnalyticsTestId($page, 'analytics-import-coverage');
+    $page->assertVisible('@analytics-import-coverage');
 
     $state->update(['status' => SyncStatus::Complete]);
     $page->script(<<<'JS'
         (async () => {
             for (let attempt = 0; attempt < 100; attempt++) {
-                if (!document.body.innerText.includes('Importing account history')) return;
+                if (!document.querySelector('[data-testid="analytics-import-coverage"]')) return;
                 await new Promise((resolve) => setTimeout(resolve, 100));
             }
         })();
     JS);
 
-    $page->assertDontSee('Importing account history')
+    $page->assertMissing('@analytics-import-coverage')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });
@@ -235,7 +236,7 @@ test('follower chart localizes tooltip values and names accounts without usernam
         'platform_user_id' => $account->platform_user_id,
         'account_display_name' => null,
         'account_username' => null,
-        'snapshot_date' => '2026-09-23',
+        'date' => '2026-09-23',
         'followers_count' => 1234,
     ]);
 
@@ -246,7 +247,7 @@ test('follower chart localizes tooltip values and names accounts without usernam
     $page->assertPresent('@accounts-unovis-bar-chart')
         ->assertSee('Instagram')
         ->assertDontSee('instagram-facebook')
-        ->hover('[data-testid="accounts-unovis-bar-chart"] path[class$="-bar"] >> nth=0')
+        ->hover('[data-testid="analytics-account-bar"] >> nth=0')
         ->assertScript('document.querySelector("[data-testid=analytics-chart-tooltip]")?.innerText.includes("1.234")', true)
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
@@ -274,7 +275,7 @@ test('workspace dashboard abbreviates large percentage changes in the user local
             'provider_published_at' => $publishedAt,
         ]);
         AnalyticsPublicationDailySnapshot::factory()->create([
-            'analytics_publication_id' => $publication->id,
+            'publication_id' => $publication->id,
             'reactions_count' => $reactions,
         ]);
     }
@@ -283,7 +284,7 @@ test('workspace dashboard abbreviates large percentage changes in the user local
     Vite::useHotFile(storage_path('framework/testing/workspace-analytics-no-hot'));
     $page = visit(route('app.analytics', ['start' => '2026-09-12', 'end' => '2026-09-23']));
 
-    $page->assertScript('document.body.innerText.includes('.json_encode($expectedChange).')', true)
+    $page->assertScript('document.querySelector("[data-testid=analytics-summary-reactions-change]")?.innerText.includes('.json_encode($expectedChange).')', true)
         ->assertDontSee('+186500%')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();

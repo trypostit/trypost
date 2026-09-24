@@ -35,7 +35,7 @@ class WriteAccountDailySnapshot
             $identity = [
                 'workspace_id' => $account->workspace_id,
                 'social_account_key' => $this->accountKeys->for($account),
-                'snapshot_date' => $observation->date->toDateString(),
+                'date' => $observation->date->toDateString(),
             ];
             $snapshot = AnalyticsAccountDailySnapshot::query()->where($identity)->lockForUpdate()->first();
 

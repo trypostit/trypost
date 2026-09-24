@@ -28,7 +28,7 @@ class AnalyticsAccountDailySnapshot extends Model
         'account_display_name',
         'account_username',
         'account_avatar_url',
-        'snapshot_date',
+        'date',
         'followers_count',
         'metrics',
         'provenance',
@@ -41,7 +41,7 @@ class AnalyticsAccountDailySnapshot extends Model
     {
         return [
             'platform' => Platform::class,
-            'snapshot_date' => 'immutable_date',
+            'date' => 'immutable_date',
             'followers_count' => 'integer',
             'metrics' => 'array',
             'provenance' => ObservationProvenance::class,

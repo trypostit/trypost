@@ -3,7 +3,7 @@ import { Link } from '@inertiajs/vue3';
 import { IconArrowUpRight } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
-import dayjs from '@/dayjs';
+import date from '@/date';
 import { formatNumberCompact } from '@/lib/utils';
 import { show as analyticsShow } from '@/routes/app/analytics';
 import { show as publicationShow } from '@/routes/app/analytics/publications';
@@ -95,7 +95,7 @@ const thumbnailFor = (post: TopPost): string | null => {
                             }"
                         />
                         <span class="shrink-0 text-xs text-muted-foreground">{{
-                            dayjs(post.published_at).format('D MMM')
+                            date.formatDateShort(post.published_at)
                         }}</span>
                     </div>
                     <div class="flex min-h-16 gap-3">

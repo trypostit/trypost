@@ -89,7 +89,7 @@ class CollectPublicationMetrics implements ShouldQueue
 
             if ($collector instanceof TikTokPublicationMetricsCollector
                 && $publication->post_platform_id
-                && ! ctype_digit($publication->provider_post_id)) {
+                && ! ctype_digit($publication->remote_id)) {
                 $publications->reconcileTikTokPublicId($publication, $collector->publicVideoId($publication));
             }
 
@@ -129,8 +129,8 @@ class CollectPublicationMetrics implements ShouldQueue
         }
 
         return $this->refreshSameDay || ! AnalyticsPublicationDailySnapshot::query()
-            ->where('analytics_publication_id', $publication->id)
-            ->whereDate('snapshot_date', $this->observationDate)
+            ->where('publication_id', $publication->id)
+            ->whereDate('date', $this->observationDate)
             ->exists();
     }
 

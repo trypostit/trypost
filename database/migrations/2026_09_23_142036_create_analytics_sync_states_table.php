@@ -19,6 +19,7 @@ return new class extends Migration
             $table->foreignUuid('workspace_id')->nullable()->constrained()->cascadeOnDelete();
             $table->string('network', 32)->nullable();
             $table->string('platform_user_id', 191)->nullable();
+            $table->string('identity_key', 64);
             $table->string('collector', 32);
             $table->string('status', 32);
             $table->json('checkpoint')->nullable();
@@ -30,10 +31,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['social_account_id', 'collector']);
-            $table->unique(
-                ['workspace_id', 'network', 'platform_user_id', 'collector'],
-                'analytics_sync_states_identity_unique',
-            );
+            $table->unique(['identity_key', 'collector']);
             $table->index(['collector', 'status']);
         });
     }

@@ -17,8 +17,8 @@ class AnalyticsPublicationDailySnapshot extends Model
     use HasFactory, HasUuids;
 
     protected $fillable = [
-        'analytics_publication_id',
-        'snapshot_date',
+        'publication_id',
+        'date',
         'collected_at',
         'provider_observed_at',
         'metrics',
@@ -39,7 +39,7 @@ class AnalyticsPublicationDailySnapshot extends Model
     protected function casts(): array
     {
         return [
-            'snapshot_date' => 'immutable_date',
+            'date' => 'immutable_date',
             'collected_at' => 'immutable_datetime',
             'provider_observed_at' => 'immutable_datetime',
             'metrics' => 'array',
@@ -60,6 +60,6 @@ class AnalyticsPublicationDailySnapshot extends Model
 
     public function publication(): BelongsTo
     {
-        return $this->belongsTo(AnalyticsPublication::class, 'analytics_publication_id');
+        return $this->belongsTo(AnalyticsPublication::class, 'publication_id');
     }
 }

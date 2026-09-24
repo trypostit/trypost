@@ -26,7 +26,7 @@ class QueuePublicationMetricsForPage
         AnalyticsPublication::query()
             ->available()
             ->where('social_account_id', $account->id)
-            ->whereIn('provider_post_id', $providerIds)
+            ->whereIn('remote_id', $providerIds)
             ->each(function (AnalyticsPublication $publication): void {
                 $this->queue($publication);
             });

@@ -34,22 +34,22 @@ class WritePublicationDailySnapshot
     ): AnalyticsPublicationDailySnapshot {
         return DB::transaction(function () use ($publication, $observation, $mayCreate): AnalyticsPublicationDailySnapshot {
             $snapshot = AnalyticsPublicationDailySnapshot::query()
-                ->where('analytics_publication_id', $publication->id)
-                ->whereDate('snapshot_date', $observation->date->toDateString())
+                ->where('publication_id', $publication->id)
+                ->whereDate('date', $observation->date->toDateString())
                 ->lockForUpdate()
                 ->first();
 
             if (! $snapshot) {
                 if (! $mayCreate) {
                     $snapshot = AnalyticsPublicationDailySnapshot::query()
-                        ->where('analytics_publication_id', $publication->id)
-                        ->whereDate('snapshot_date', $observation->date->toDateString())
+                        ->where('publication_id', $publication->id)
+                        ->whereDate('date', $observation->date->toDateString())
                         ->lockForUpdate()
                         ->firstOrFail();
                 } else {
                     $snapshot = new AnalyticsPublicationDailySnapshot([
-                        'analytics_publication_id' => $publication->id,
-                        'snapshot_date' => $observation->date->toDateString(),
+                        'publication_id' => $publication->id,
+                        'date' => $observation->date->toDateString(),
                     ]);
                 }
             }
@@ -77,7 +77,7 @@ class WritePublicationDailySnapshot
     {
         foreach ($incoming as $metric) {
             $key = $metric->key->value;
-            $current = $existing[$key] ?? null;
+            $current = data_get($existing, $key);
             $currentIsMeasured = data_get($current, 'availability') === MetricAvailability::Available->value
                 && is_numeric(data_get($current, 'value'));
             $incomingIsMeasured = $metric->availability === MetricAvailability::Available
@@ -139,7 +139,7 @@ class WritePublicationDailySnapshot
     /** @param array<string, array<string, mixed>> $metrics */
     private function measuredInteger(array $metrics, MetricKey $key): ?int
     {
-        $metric = $metrics[$key->value] ?? null;
+        $metric = data_get($metrics, $key->value);
         $value = data_get($metric, 'value');
 
         if (

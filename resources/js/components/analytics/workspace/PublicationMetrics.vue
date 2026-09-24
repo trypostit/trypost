@@ -2,6 +2,7 @@
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
+import date from '@/date';
 import dayjs from '@/dayjs';
 import { formatNumberCompact, formatPercent } from '@/lib/utils';
 
@@ -130,7 +131,7 @@ const stale = computed(() =>
                 >{{ $t('analytics.detail.last_collected') }}
                 <time :datetime="detail.snapshot.collected_at || undefined">{{
                     detail.snapshot.collected_at
-                        ? dayjs(detail.snapshot.collected_at).format('LLL')
+                        ? date.formatDateTime(detail.snapshot.collected_at)
                         : detail.snapshot.date
                 }}</time></span
             >
@@ -163,6 +164,7 @@ const stale = computed(() =>
                 <div
                     v-for="metric in group.metrics"
                     :key="metric.key"
+                    :data-testid="`analytics-metric-${metric.key}`"
                     class="flex min-h-28 min-w-0 flex-col justify-between rounded-xl border-2 border-foreground bg-background px-4 py-4 shadow-xs"
                     :title="
                         metric.fact.time_basis

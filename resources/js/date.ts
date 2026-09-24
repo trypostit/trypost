@@ -6,15 +6,15 @@ import { activeLocale } from '@/language';
  * not reactive, so reading the ref here is what makes a computed re-run when the
  * language changes instead of serving the previous one from cache.
  */
-const localized = (value?: dayjs.ConfigType) => dayjs(value).locale(activeLocale.value.toLowerCase());
+const localized = (value?: dayjs.ConfigType) =>
+    dayjs(value).locale(activeLocale.value.toLowerCase());
 
 /**
  * Obtém o timezone do usuário
  * Tenta pegar do Inertia page props primeiro, senão usa o timezone do browser
  */
-function getUserTimezone(): string {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone;
-}
+const getUserTimezone = (): string =>
+    Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 /** Resolve scheduled local datetime for platform previews, else now. */
 const resolvePreviewPostedAt = (postedAt?: string | null) => {
@@ -59,7 +59,20 @@ export default {
             return '—';
         }
 
-        return dayjs.utc(date).tz(getUserTimezone()).format('LLL');
+        return dayjs
+            .utc(date)
+            .tz(getUserTimezone())
+            .locale(activeLocale.value.toLowerCase())
+            .format('LLL');
+    },
+
+    formatDateShort(date: string | null | undefined) {
+        if (!date) return '—';
+        return dayjs
+            .utc(date)
+            .tz(getUserTimezone())
+            .locale(activeLocale.value.toLowerCase())
+            .format('D MMM');
     },
 
     /**
@@ -89,14 +102,18 @@ export default {
      * Short day + month for chart axes (day-first so locales keep natural order).
      */
     formatMonthDay(date: string | Date) {
-        return dayjs(date).format('D MMM');
+        return localized(date).format('D MMM');
+    },
+
+    formatDayMonthYear(date: string | Date) {
+        return localized(date).format('D MMM YYYY');
     },
 
     /**
      * Short month + day + year for chart tooltips (locale-aware via L).
      */
     formatMonthDayYear(date: string | Date) {
-        return dayjs(date).format('L');
+        return localized(date).format('L');
     },
 
     formatXPreview(postedAt?: string | null) {
@@ -115,7 +132,7 @@ export default {
      * @param justNowLabel Localized fallback when no schedule is set (e.g. common.just_now).
      */
     formatFacebookPreview(postedAt?: string | null, justNowLabel?: string) {
-        if (! postedAt && justNowLabel) {
+        if (!postedAt && justNowLabel) {
             return justNowLabel;
         }
 
@@ -228,7 +245,7 @@ export default {
      * @returns String formatada (ex: "Fev/2025")
      */
     formatMonthYear(month: number, year: number): string {
-        return dayjs(new Date(year, month - 1, 1)).format('MMM YYYY');
+        return localized(new Date(year, month - 1, 1)).format('MMM YYYY');
     },
 
     formatAge(birthDate: string): string {
@@ -297,7 +314,10 @@ export default {
      */
     formatUtcForDateTimeLocalInput(date: string | null | undefined): string {
         if (!date) return '';
-        return dayjs.utc(date).tz(getUserTimezone()).format('YYYY-MM-DDTHH:mm:00');
+        return dayjs
+            .utc(date)
+            .tz(getUserTimezone())
+            .format('YYYY-MM-DDTHH:mm:00');
     },
 
     /**

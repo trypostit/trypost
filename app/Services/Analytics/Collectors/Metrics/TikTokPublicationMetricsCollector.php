@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics\Collectors\Metrics;
 
-use App\Contracts\Analytics\PublicationMetricsCollector;
 use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
@@ -32,7 +31,7 @@ class TikTokPublicationMetricsCollector extends AbstractPublicationMetricsCollec
         }
 
         $video = collect((array) $response->json('data.videos', []))
-            ->first(fn (mixed $item): bool => is_array($item) && (string) ($item['id'] ?? '') === $videoId);
+            ->first(fn (mixed $item): bool => is_array($item) && (string) data_get($item, 'id', '') === $videoId);
 
         if (! is_array($video)) {
             throw AnalyticsCollectionException::malformed('TikTok video query did not return the requested video.');
@@ -48,7 +47,7 @@ class TikTokPublicationMetricsCollector extends AbstractPublicationMetricsCollec
 
     public function publicVideoId(AnalyticsPublication $publication): string
     {
-        $videoId = $publication->provider_post_id;
+        $videoId = $publication->remote_id;
 
         if (! ctype_digit($videoId)) {
             $status = $this->post($this->account($publication),

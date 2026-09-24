@@ -41,21 +41,21 @@ class BuildFollowerAnalyticsReport
             ->where('workspace_id', $workspace->id)
             ->whereIn('platform', Platform::analyticsValues())
             ->where(function ($query) use ($previousEnd, $range): void {
-                $query->whereDate('snapshot_date', $previousEnd->toDateString())
-                    ->orWhereBetween('snapshot_date', [$range->start->toDateString(), $range->end->toDateString()]);
+                $query->whereDate('date', $previousEnd->toDateString())
+                    ->orWhereBetween('date', [$range->start->toDateString(), $range->end->toDateString()]);
             })
             ->select([
                 'social_account_key', 'social_account_id', 'platform', 'network', 'platform_user_id',
                 'account_display_name', 'account_username', 'account_avatar_url',
-                'snapshot_date', 'followers_count', 'provenance', 'precision', 'collected_at',
+                'date', 'followers_count', 'provenance', 'precision', 'collected_at',
             ])
-            ->orderBy('snapshot_date')
+            ->orderBy('date')
             ->get();
     }
 
     private function total(Collection $rows, CarbonImmutable $date, Collection $connectedAccounts): ?int
     {
-        $onDate = $rows->filter(fn (object $row): bool => substr((string) $row->snapshot_date, 0, 10) === $date->toDateString()
+        $onDate = $rows->filter(fn (object $row): bool => substr((string) $row->date, 0, 10) === $date->toDateString()
             && $row->followers_count !== null);
 
         foreach ($connectedAccounts as $account) {
@@ -75,15 +75,15 @@ class BuildFollowerAnalyticsReport
     /** @return array<string, mixed> */
     private function followers(Collection $rows, DateRange $range, ?int $total): array
     {
-        $current = $rows->filter(fn (object $row): bool => substr((string) $row->snapshot_date, 0, 10) >= $range->start->toDateString()
-            && substr((string) $row->snapshot_date, 0, 10) <= $range->end->toDateString());
+        $current = $rows->filter(fn (object $row): bool => substr((string) $row->date, 0, 10) >= $range->start->toDateString()
+            && substr((string) $row->date, 0, 10) <= $range->end->toDateString());
         $byAccount = $current->groupBy('social_account_key');
         $accounts = [];
 
         foreach ($byAccount as $key => $values) {
             $first = $values->first();
             $last = $values->last();
-            $end = $values->first(fn (object $row): bool => substr((string) $row->snapshot_date, 0, 10) === $range->end->toDateString());
+            $end = $values->first(fn (object $row): bool => substr((string) $row->date, 0, 10) === $range->end->toDateString());
             $accounts[] = [
                 'social_account_key' => $key,
                 'social_account_id' => $last->social_account_id,
@@ -99,10 +99,10 @@ class BuildFollowerAnalyticsReport
             ];
         }
 
-        usort($accounts, fn (array $a, array $b): int => [$a['platform'], $a['username'], $a['social_account_key']]
-            <=> [$b['platform'], $b['username'], $b['social_account_key']]);
+        usort($accounts, fn (array $a, array $b): int => [data_get($a, 'platform'), data_get($a, 'username'), data_get($a, 'social_account_key')]
+            <=> [data_get($b, 'platform'), data_get($b, 'username'), data_get($b, 'social_account_key')]);
         $series = [];
-        $byDate = $current->groupBy(fn (object $row): string => substr((string) $row->snapshot_date, 0, 10));
+        $byDate = $current->groupBy(fn (object $row): string => substr((string) $row->date, 0, 10));
 
         for ($day = $range->start; $day->lessThanOrEqualTo($range->end); $day = $day->addDay()) {
             $date = $day->toDateString();
