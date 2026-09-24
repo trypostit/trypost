@@ -2,24 +2,34 @@
 import { useHttp } from '@inertiajs/vue3';
 import {
     IconArrowLeft,
+    IconArrowsMaximize,
+    IconArrowsMinimize,
     IconCalendar,
+    IconCheck,
     IconChevronDown,
     IconCrop,
+    IconEye,
     IconLibraryPhoto,
     IconLoader2,
-    IconMaximize,
     IconMessageCircle,
+    IconPhotoPlus,
     IconPlus,
+    IconSearch,
     IconSparkles,
+    IconTag,
     IconTrash,
+    IconWand,
     IconX,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import ImageCropperDialog from '@/components/ImageCropperDialog.vue';
 import AiRegenerateImageDialog from '@/components/posts/ai/AiRegenerateImageDialog.vue';
+import ComposerAccountChip from '@/components/posts/composer/ComposerAccountChip.vue';
+import ComposerAccountStack from '@/components/posts/composer/ComposerAccountStack.vue';
+import ComposerEditorToolbar from '@/components/posts/composer/ComposerEditorToolbar.vue';
 import CommentsTab from '@/components/posts/editor/CommentsTab.vue';
 import DiscordSettings from '@/components/posts/editor/DiscordSettings.vue';
 import FacebookSettings from '@/components/posts/editor/FacebookSettings.vue';
@@ -142,7 +152,6 @@ if (
 const { contentFor } = useXLinkDefuser();
 const errors = usePageErrors();
 const step = ref<1 | 2>(props.initialPost ? 2 : 1);
-const previewVisible = ref(true);
 const assistantOpen = ref(props.openAssistant);
 const assistantScreen = ref<'actions' | 'prompt' | 'suggestion'>('actions');
 const assistantMode = ref<'write_more' | 'rephrase' | 'shorten' | 'expand'>(
@@ -155,6 +164,10 @@ const assistantBusy = ref(false);
 const assistantHttp = useHttp({ mode: '', current_content: '', prompt: '' });
 const expandedDialog = ref(false);
 const accountPickerOpen = ref(false);
+const accountSearch = ref('');
+const labelSearch = ref('');
+const labelsOpen = ref(false);
+const lastUsedAccountIds = ref<string[]>([]);
 const scheduleMenuOpen = ref(false);
 const timePickerOpen = ref(false);
 const createAnother = ref(false);
@@ -171,6 +184,7 @@ const mediaPicker = ref<InstanceType<typeof MediaPickerDialog> | null>(null);
 const pickingForAccountId = ref<string | null>(null);
 const cropping = ref(false);
 const cropUploading = ref(false);
+const mediaUploading = ref(false);
 const cropTarget = ref<{
     accountId: string;
     index: number;
@@ -193,6 +207,63 @@ const signaturesModal = ref<InstanceType<typeof SignaturesModal> | null>(null);
 const signatureTargetId = ref<string | null>(null);
 
 const selectedAccounts = composition.selectedAccounts;
+const selectedLabels = computed(() =>
+    props.labels.filter((label) =>
+        composition.labelIds.value.includes(label.id),
+    ),
+);
+const filteredLabels = computed(() => {
+    const query = labelSearch.value.trim().toLocaleLowerCase();
+
+    return query
+        ? props.labels.filter((label) =>
+              label.name.toLocaleLowerCase().includes(query),
+          )
+        : props.labels;
+});
+watch(labelsOpen, (isOpen) => {
+    if (!isOpen) {
+        labelSearch.value = '';
+    }
+});
+const filteredAccounts = computed(() => {
+    const query = accountSearch.value.trim().toLocaleLowerCase();
+
+    return query
+        ? props.socialAccounts.filter((account) =>
+              [
+                  account.display_name,
+                  account.username,
+                  getPlatformLabel(account.platform),
+              ].some((value) => value.toLocaleLowerCase().includes(query)),
+          )
+        : props.socialAccounts;
+});
+const recentlyUsedAccounts = computed(() =>
+    props.socialAccounts.filter((account) =>
+        lastUsedAccountIds.value.includes(account.id),
+    ),
+);
+const hasSharedPreview = computed(
+    () =>
+        Boolean(composition.content.value.trim()) ||
+        composition.media.value.length > 0,
+);
+
+onMounted(() => {
+    try {
+        const saved = JSON.parse(
+            localStorage.getItem('trypost:composer:last-used-accounts') ?? '[]',
+        );
+        if (Array.isArray(saved)) {
+            lastUsedAccountIds.value = saved.filter(
+                (id): id is string => typeof id === 'string',
+            );
+        }
+    } catch {
+        lastUsedAccountIds.value = [];
+    }
+});
 const previewAccount = computed(
     () =>
         selectedAccounts.value.find(
@@ -228,7 +299,8 @@ const canSubmit = computed(
     () =>
         selectedAccounts.value.length > 0 &&
         !props.submitting &&
-        !cropUploading.value,
+        !cropUploading.value &&
+        !mediaUploading.value,
 );
 const scheduleLabel = computed(() =>
     scheduleMode.value === 'custom' && composition.scheduledAt.value
@@ -250,13 +322,40 @@ const videoDurationSec = computed(
 const selectAccount = (account: ComposerAccount): void => {
     composition.toggleAccount(account.id);
     if (!composition.selectedAccountIds.value.includes(account.id)) {
-        if (expandedAccountId.value === account.id)
-            expandedAccountId.value = null;
-        if (previewAccountId.value === account.id)
+        if (expandedAccountId.value === account.id) {
+            expandedAccountId.value =
+                composition.selectedAccountIds.value[0] ?? null;
+        }
+        if (previewAccountId.value === account.id) {
             previewAccountId.value =
                 composition.selectedAccountIds.value[0] ?? null;
+        }
     } else {
         previewAccountId.value = account.id;
+    }
+};
+
+const removeAccount = (account: ComposerAccount): void => {
+    selectAccount(account);
+
+    if (!selectedAccounts.value.length) {
+        step.value = 1;
+    }
+};
+
+const selectAccounts = (accounts: ComposerAccount[]): void => {
+    if (props.initialPost) return;
+
+    const allSelected = accounts.every((account) =>
+        composition.selectedAccountIds.value.includes(account.id),
+    );
+    for (const account of accounts) {
+        if (
+            composition.selectedAccountIds.value.includes(account.id) ===
+            allSelected
+        ) {
+            selectAccount(account);
+        }
     }
 };
 
@@ -278,6 +377,60 @@ const onMediaPicked = (items: MediaItem[]): void => {
         ]);
     } else {
         composition.media.value = [...composition.media.value, ...items];
+    }
+};
+
+const onMediaDropped = async (
+    event: DragEvent,
+    accountId: string | null,
+): Promise<void> => {
+    const files = Array.from(event.dataTransfer?.files ?? []);
+    if (!files.length || mediaUploading.value) return;
+
+    mediaUploading.value = true;
+    const uploadedItems: MediaItem[] = [];
+
+    try {
+        for (const file of files) {
+            const uploaded = await uploadChunked({
+                file,
+                url: assetsStoreChunked.url(),
+                collection: 'assets',
+            });
+            if (!uploaded.id || !uploaded.path || !uploaded.url) {
+                throw new Error('Incomplete asset upload');
+            }
+            uploadedItems.push({
+                id: uploaded.id,
+                path: uploaded.path,
+                url: uploaded.url,
+                type: uploaded.type,
+                mime_type: uploaded.mime_type ?? file.type,
+                original_filename: uploaded.original_filename ?? file.name,
+                size: file.size,
+                meta: uploaded.meta,
+            });
+        }
+    } catch {
+        toast.error(trans('posts.composer.media_upload_failed'));
+    } finally {
+        if (uploadedItems.length && accountId) {
+            const account = selectedAccounts.value.find(
+                (selected) => selected.id === accountId,
+            );
+            if (account) {
+                composition.setOverride(accountId, 'media', [
+                    ...composition.resolvedDestination(account).media,
+                    ...uploadedItems,
+                ]);
+            }
+        } else if (uploadedItems.length) {
+            composition.media.value = [
+                ...composition.media.value,
+                ...uploadedItems,
+            ];
+        }
+        mediaUploading.value = false;
     }
 };
 
@@ -304,6 +457,21 @@ const appendSignature = (signature: { content: string }): void => {
         composition.setOverride(account.id, 'content', next);
     } else {
         composition.content.value = next;
+    }
+};
+
+const appendEmoji = (emoji: string, accountId: string | null): void => {
+    const account = selectedAccounts.value.find(
+        (selected) => selected.id === accountId,
+    );
+    if (account) {
+        composition.setOverride(
+            account.id,
+            'content',
+            `${composition.resolvedDestination(account).content}${emoji}`,
+        );
+    } else {
+        composition.content.value += emoji;
     }
 };
 
@@ -468,6 +636,14 @@ const submit = (status: PostComposition['status']): void => {
         );
         if (!payload.scheduled_at) return;
     }
+    try {
+        localStorage.setItem(
+            'trypost:composer:last-used-accounts',
+            JSON.stringify(composition.selectedAccountIds.value),
+        );
+    } catch {
+        // Browser storage is optional; publishing must still work without it.
+    }
     emit('submit', payload, createAnother.value && !props.postId);
 };
 
@@ -495,15 +671,18 @@ const close = (): void => emit('update:open', false);
 <template>
     <Dialog :open="open" @update:open="emit('update:open', $event)">
         <DialogContent
-            class="flex h-[min(90dvh,900px)] max-w-[calc(100%-1rem)] flex-col gap-0 overflow-hidden p-0"
+            class="flex max-h-none max-w-[calc(100%-1rem)] flex-col gap-0 overflow-hidden border-border p-0 shadow-2xl"
             :class="
-                expandedDialog ? 'sm:max-w-[calc(100%-2rem)]' : 'sm:max-w-6xl'
+                expandedDialog
+                    ? 'top-0! left-0! h-dvh! w-screen! max-w-none! translate-x-0! translate-y-0! rounded-none! border-0!'
+                    : 'h-[min(92dvh,900px)] sm:max-w-[1100px]'
             "
+            :style="expandedDialog ? { height: '100dvh' } : undefined"
             :show-close-button="false"
             data-testid="post-composer-dialog"
         >
             <DialogHeader
-                class="flex-row items-center justify-between border-b px-5 py-4"
+                class="flex-row items-center justify-between gap-3 border-b px-5 py-3.5"
             >
                 <div class="flex items-center gap-3">
                     <Button
@@ -520,48 +699,136 @@ const close = (): void => emit('update:open', false);
                             ? $t('posts.edit.title')
                             : $t('posts.create.title')
                     }}</DialogTitle>
-                    <Popover>
+                    <Popover v-model:open="labelsOpen">
                         <PopoverTrigger as-child>
                             <Button
                                 type="button"
                                 variant="outline"
-                                size="sm"
+                                size="default"
+                                class="max-w-72 gap-2 px-3"
                                 data-testid="composer-tags-trigger"
                             >
-                                {{ $t('posts.edit.labels') }}
-                                <IconChevronDown class="size-4" />
+                                <IconTag
+                                    v-if="!selectedLabels.length"
+                                    class="size-4"
+                                />
+                                <span v-if="!selectedLabels.length">{{
+                                    $t('posts.edit.labels')
+                                }}</span>
+                                <span
+                                    v-else
+                                    class="flex min-w-0 items-center gap-1.5 overflow-hidden"
+                                >
+                                    <span
+                                        v-for="label in selectedLabels.slice(
+                                            0,
+                                            2,
+                                        )"
+                                        :key="label.id"
+                                        class="flex min-w-0 items-center gap-1"
+                                    >
+                                        <span
+                                            class="size-2 shrink-0 rounded-full"
+                                            :style="{
+                                                backgroundColor: label.color,
+                                            }"
+                                        />
+                                        <span class="truncate">{{
+                                            label.name
+                                        }}</span>
+                                    </span>
+                                    <span
+                                        v-if="selectedLabels.length > 2"
+                                        class="shrink-0 text-muted-foreground"
+                                        >+{{ selectedLabels.length - 2 }}</span
+                                    >
+                                </span>
+                                <IconChevronDown
+                                    class="size-4 shrink-0 text-muted-foreground"
+                                />
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent class="w-56 space-y-2" align="start">
+                        <PopoverContent class="w-64 p-2" align="start">
+                            <div class="relative mb-2">
+                                <IconSearch
+                                    class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                                />
+                                <input
+                                    v-model="labelSearch"
+                                    type="search"
+                                    role="combobox"
+                                    aria-controls="composer-label-options"
+                                    :aria-expanded="labelsOpen"
+                                    :aria-label="
+                                        $t('posts.label_search_placeholder')
+                                    "
+                                    :placeholder="
+                                        $t('posts.label_search_placeholder')
+                                    "
+                                    data-testid="composer-label-search"
+                                    class="h-9 w-full rounded-md border bg-background pr-3 pl-9 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                />
+                            </div>
                             <p
-                                v-if="!labels.length"
-                                class="text-sm text-muted-foreground"
+                                v-if="!filteredLabels.length"
+                                class="px-2 py-3 text-sm text-muted-foreground"
                             >
                                 {{ $t('posts.no_labels') }}
                             </p>
-                            <button
-                                v-for="label in labels"
-                                :key="label.id"
-                                type="button"
-                                :data-testid="`composer-label-${label.id}`"
-                                :aria-pressed="
-                                    composition.labelIds.value.includes(
-                                        label.id,
-                                    )
-                                "
-                                class="flex w-full items-center gap-2 rounded p-2 text-left text-sm hover:bg-muted"
-                                @click="toggleLabel(label.id)"
+                            <div
+                                id="composer-label-options"
+                                role="listbox"
+                                aria-multiselectable="true"
+                                class="max-h-60 space-y-0.5 overflow-y-auto"
                             >
-                                <span
-                                    class="size-3 rounded-full"
-                                    :style="{ backgroundColor: label.color }"
-                                />
-                                {{ label.name }}
-                            </button>
+                                <button
+                                    v-for="label in filteredLabels"
+                                    :key="label.id"
+                                    type="button"
+                                    role="option"
+                                    :data-testid="`composer-label-${label.id}`"
+                                    :aria-selected="
+                                        composition.labelIds.value.includes(
+                                            label.id,
+                                        )
+                                    "
+                                    class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                                    @click.stop="toggleLabel(label.id)"
+                                >
+                                    <span
+                                        class="flex size-4 shrink-0 items-center justify-center rounded border"
+                                        :class="
+                                            composition.labelIds.value.includes(
+                                                label.id,
+                                            )
+                                                ? 'border-primary bg-primary text-primary-foreground'
+                                                : 'border-border'
+                                        "
+                                    >
+                                        <IconCheck
+                                            v-if="
+                                                composition.labelIds.value.includes(
+                                                    label.id,
+                                                )
+                                            "
+                                            class="size-3"
+                                        />
+                                    </span>
+                                    <span
+                                        class="size-2.5 shrink-0 rounded-full"
+                                        :style="{
+                                            backgroundColor: label.color,
+                                        }"
+                                    />
+                                    <span class="truncate">{{
+                                        label.name
+                                    }}</span>
+                                </button>
+                            </div>
                         </PopoverContent>
                     </Popover>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1.5">
                     <Button
                         v-if="postId && commentsOpen"
                         type="button"
@@ -590,7 +857,7 @@ const close = (): void => emit('update:open', false);
                         :aria-pressed="assistantOpen"
                         data-testid="composer-ai-assistant"
                         @click="assistantOpen = true"
-                        ><IconSparkles class="size-4" />{{
+                        ><IconWand class="size-4" />{{
                             $t('posts.composer.assistant_title')
                         }}</Button
                     >
@@ -598,22 +865,38 @@ const close = (): void => emit('update:open', false);
                         type="button"
                         variant="ghost"
                         size="sm"
-                        :aria-pressed="!assistantOpen && previewVisible"
+                        :aria-pressed="!assistantOpen && !commentsOpen"
                         data-testid="composer-preview-toggle"
+                        :class="
+                            !assistantOpen && !commentsOpen
+                                ? 'bg-primary/10 text-primary hover:bg-primary/15'
+                                : ''
+                        "
                         @click="
                             assistantOpen = false;
-                            previewVisible = true;
+                            commentsOpen = false;
                         "
-                        >{{ $t('posts.edit.tabs.preview') }}</Button
+                        ><IconEye class="size-4" />{{
+                            $t('posts.edit.tabs.preview')
+                        }}</Button
                     >
                     <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        :aria-label="$t('posts.composer.expand')"
+                        :aria-label="
+                            expandedDialog
+                                ? $t('posts.composer.collapse')
+                                : $t('posts.composer.expand')
+                        "
+                        data-testid="composer-expand-dialog"
                         @click="expandedDialog = !expandedDialog"
                     >
-                        <IconMaximize class="size-4" />
+                        <IconArrowsMinimize
+                            v-if="expandedDialog"
+                            class="size-4"
+                        />
+                        <IconArrowsMaximize v-else class="size-4" />
                     </Button>
                     <Button
                         type="button"
@@ -640,16 +923,11 @@ const close = (): void => emit('update:open', false);
 
             <div
                 v-else
-                class="grid min-h-0 flex-1"
-                :class="
-                    assistantOpen || previewVisible
-                        ? 'md:grid-cols-[minmax(0,1fr)_minmax(280px,38%)]'
-                        : 'grid-cols-1'
-                "
+                class="grid min-h-0 flex-1 md:grid-cols-[minmax(0,1fr)_minmax(320px,34%)]"
             >
                 <div
-                    class="min-h-0 overflow-y-auto p-5"
-                    :class="step === 1 ? 'flex flex-col gap-5' : 'space-y-5'"
+                    class="min-h-0 overflow-y-auto px-5 py-5"
+                    :class="step === 1 ? 'flex flex-col gap-5' : 'space-y-4'"
                 >
                     <p
                         v-if="Object.keys(errors).length"
@@ -659,57 +937,34 @@ const close = (): void => emit('update:open', false);
                         {{ Object.values(errors)[0] }}
                     </p>
                     <template v-if="step === 1">
-                        <div class="flex shrink-0 items-center gap-2">
+                        <div
+                            class="mx-auto flex w-full max-w-[744px] shrink-0 items-center gap-2"
+                        >
                             <div
-                                class="flex min-w-0 gap-2 overflow-x-auto"
+                                class="flex min-w-0 gap-2 overflow-x-auto py-3 pr-3"
                                 data-testid="composer-accounts"
                             >
-                                <button
+                                <ComposerAccountChip
                                     v-for="account in selectedAccounts"
                                     :key="account.id"
-                                    type="button"
-                                    :data-testid="`composer-account-${account.id}`"
-                                    :aria-pressed="
-                                        composition.selectedAccountIds.value.includes(
-                                            account.id,
-                                        )
-                                    "
-                                    class="relative shrink-0 rounded-lg border p-1"
-                                    :class="
-                                        composition.selectedAccountIds.value.includes(
-                                            account.id,
-                                        )
-                                            ? 'border-primary bg-primary/10'
-                                            : 'border-border'
-                                    "
-                                    @click="selectAccount(account)"
-                                >
-                                    <img
-                                        :src="
-                                            account.avatar_url ||
-                                            getPlatformLogo(account.platform)
-                                        "
-                                        alt=""
-                                        class="size-7 rounded-full object-cover"
-                                    />
-                                    <span class="sr-only">{{
-                                        account.display_name || account.username
-                                    }}</span>
-                                    <img
-                                        :src="getPlatformLogo(account.platform)"
-                                        :alt="
-                                            getPlatformLabel(account.platform)
-                                        "
-                                        class="absolute -right-1 -bottom-1 size-4 rounded-full bg-background"
-                                    />
-                                </button>
+                                    :account="account"
+                                    :active="previewAccountId === account.id"
+                                    removable
+                                    @focus="previewAccountId = account.id"
+                                    @remove="removeAccount(account)"
+                                />
                             </div>
                             <Popover v-model:open="accountPickerOpen">
                                 <PopoverTrigger as-child>
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        size="icon"
+                                        :size="
+                                            selectedAccounts.length
+                                                ? 'icon-lg'
+                                                : 'lg'
+                                        "
+                                        class="shrink-0 gap-2 px-4"
                                         :aria-label="
                                             $t(
                                                 'posts.edit.platforms_dialog.title',
@@ -718,89 +973,201 @@ const close = (): void => emit('update:open', false);
                                         data-testid="composer-add-account"
                                     >
                                         <IconPlus class="size-4" />
+                                        <span v-if="!selectedAccounts.length">{{
+                                            $t('posts.edit.tabs.channels')
+                                        }}</span>
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent
-                                    class="max-h-64 w-64 space-y-1 overflow-y-auto"
+                                    class="w-[min(380px,calc(100vw-2rem))] p-2"
                                     align="start"
                                 >
-                                    <button
-                                        v-for="account in socialAccounts"
-                                        :key="account.id"
-                                        type="button"
-                                        :data-testid="`composer-account-option-${account.id}`"
-                                        :aria-pressed="
-                                            composition.selectedAccountIds.value.includes(
-                                                account.id,
-                                            )
-                                        "
-                                        class="flex w-full items-center gap-2 rounded p-2 text-left text-sm hover:bg-muted"
-                                        @click="
-                                            selectAccount(account);
-                                            accountPickerOpen = false;
-                                        "
-                                    >
-                                        <img
-                                            :src="
-                                                account.avatar_url ||
-                                                getPlatformLogo(
-                                                    account.platform,
+                                    <div class="relative mb-3">
+                                        <IconSearch
+                                            class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                                        />
+                                        <input
+                                            v-model="accountSearch"
+                                            type="search"
+                                            data-testid="composer-account-search"
+                                            :placeholder="
+                                                $t(
+                                                    'posts.form.discord.search_channel',
                                                 )
                                             "
-                                            alt=""
-                                            class="size-7 rounded-full object-cover"
+                                            class="h-10 w-full rounded-md border bg-background pr-3 pl-9 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                         />
-                                        <span class="min-w-0 flex-1 truncate">{{
-                                            account.display_name ||
-                                            account.username
+                                    </div>
+                                    <div
+                                        class="mb-1 flex items-center justify-between px-2 text-xs font-medium text-muted-foreground"
+                                    >
+                                        <span>{{
+                                            $t('posts.edit.tabs.channels')
                                         }}</span>
-                                        <span
+                                        <button
                                             v-if="
+                                                filteredAccounts.length &&
+                                                !initialPost
+                                            "
+                                            type="button"
+                                            class="text-foreground hover:underline"
+                                            data-testid="composer-select-all"
+                                            @click="
+                                                selectAccounts(filteredAccounts)
+                                            "
+                                        >
+                                            {{
+                                                filteredAccounts.every(
+                                                    (account) =>
+                                                        composition.selectedAccountIds.value.includes(
+                                                            account.id,
+                                                        ),
+                                                )
+                                                    ? $t(
+                                                          'posts.composer.deselect_all',
+                                                      )
+                                                    : $t(
+                                                          'posts.composer.select_all',
+                                                      )
+                                            }}
+                                        </button>
+                                    </div>
+                                    <div
+                                        class="max-h-72 space-y-0.5 overflow-y-auto"
+                                    >
+                                        <button
+                                            v-for="account in filteredAccounts"
+                                            :key="account.id"
+                                            type="button"
+                                            :data-testid="`composer-account-option-${account.id}`"
+                                            :aria-pressed="
                                                 composition.selectedAccountIds.value.includes(
                                                     account.id,
                                                 )
                                             "
-                                            >✓</span
+                                            class="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-muted"
+                                            @click="selectAccount(account)"
                                         >
-                                    </button>
+                                            <span class="relative shrink-0">
+                                                <img
+                                                    :src="
+                                                        account.avatar_url ||
+                                                        getPlatformLogo(
+                                                            account.platform,
+                                                        )
+                                                    "
+                                                    alt=""
+                                                    class="size-8 rounded-md object-cover"
+                                                />
+                                                <img
+                                                    :src="
+                                                        getPlatformLogo(
+                                                            account.platform,
+                                                        )
+                                                    "
+                                                    :alt="
+                                                        getPlatformLabel(
+                                                            account.platform,
+                                                        )
+                                                    "
+                                                    class="absolute -right-1 -bottom-1 size-4 rounded-full bg-background"
+                                                />
+                                            </span>
+                                            <span
+                                                class="min-w-0 flex-1 truncate"
+                                                >{{
+                                                    account.display_name ||
+                                                    account.username
+                                                }}</span
+                                            >
+                                            <span
+                                                class="flex size-4 shrink-0 items-center justify-center rounded border"
+                                                :class="
+                                                    composition.selectedAccountIds.value.includes(
+                                                        account.id,
+                                                    )
+                                                        ? 'border-primary bg-primary text-primary-foreground'
+                                                        : 'border-input'
+                                                "
+                                            >
+                                                <IconCheck
+                                                    v-if="
+                                                        composition.selectedAccountIds.value.includes(
+                                                            account.id,
+                                                        )
+                                                    "
+                                                    class="size-3"
+                                                />
+                                            </span>
+                                        </button>
+                                        <p
+                                            v-if="!filteredAccounts.length"
+                                            class="px-2 py-4 text-center text-sm text-muted-foreground"
+                                        >
+                                            {{
+                                                $t(
+                                                    'posts.form.discord.no_channels',
+                                                )
+                                            }}
+                                        </p>
+                                    </div>
                                 </PopoverContent>
                             </Popover>
+                            <template
+                                v-if="
+                                    !selectedAccounts.length &&
+                                    socialAccounts.length > 1
+                                "
+                            >
+                                <Button
+                                    v-if="recentlyUsedAccounts.length"
+                                    type="button"
+                                    variant="outline"
+                                    size="lg"
+                                    class="shrink-0 gap-2 border-dashed px-4"
+                                    data-testid="composer-last-used"
+                                    @click="
+                                        selectAccounts(recentlyUsedAccounts)
+                                    "
+                                    >{{ $t('posts.composer.last_used') }}
+                                    <ComposerAccountStack
+                                        :accounts="recentlyUsedAccounts"
+                                    />
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="lg"
+                                    class="shrink-0 gap-2 border-dashed px-4"
+                                    data-testid="composer-all-accounts"
+                                    @click="selectAccounts(socialAccounts)"
+                                    >{{ $t('sidebar.posts.all') }}
+                                    <ComposerAccountStack
+                                        :accounts="socialAccounts"
+                                    />
+                                </Button>
+                            </template>
                         </div>
                         <div
-                            class="flex min-h-64 flex-1 flex-col rounded-xl border border-border bg-card p-4"
+                            class="mx-auto flex min-h-64 w-full max-w-[744px] flex-1 flex-col rounded-xl border border-border bg-card p-4 shadow-xs"
+                            @dragover.prevent
+                            @drop.prevent="onMediaDropped($event, null)"
                         >
                             <textarea
                                 v-model="composition.content.value"
                                 data-testid="composer-base-content"
-                                class="min-h-40 w-full flex-1 resize-none bg-transparent outline-none"
+                                class="min-h-40 w-full flex-1 resize-none bg-transparent text-sm leading-6 outline-none placeholder:text-muted-foreground/65"
                                 :placeholder="
                                     $t('posts.create.steps.prompt_placeholder')
                                 "
                             />
-                            <Button
-                                v-if="signatures.length"
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                data-testid="composer-base-signature"
-                                @click="openSignatures(null)"
-                                >{{ $t('posts.edit.signatures') }}</Button
-                            >
                             <div>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    data-testid="composer-base-media"
-                                    @click="openMediaPicker(null)"
-                                    ><IconLibraryPhoto class="size-4" />{{
-                                        $t('posts.edit.media_picker.add')
-                                    }}</Button
-                                >
-                                <div class="mt-3 flex flex-wrap gap-3">
+                                <div class="flex flex-wrap gap-3">
                                     <div
                                         v-for="(item, index) in composition
                                             .media.value"
                                         :key="`${item.id}-${index}`"
+                                        data-testid="composer-media-item"
                                         class="relative size-24 overflow-hidden rounded-lg border"
                                     >
                                         <img
@@ -823,56 +1190,197 @@ const close = (): void => emit('update:open', false);
                                             <IconTrash class="size-3" />
                                         </button>
                                     </div>
+                                    <button
+                                        type="button"
+                                        data-testid="composer-base-media"
+                                        :disabled="mediaUploading"
+                                        class="flex size-28 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border text-center text-xs text-muted-foreground transition-colors hover:border-primary hover:bg-primary/5 hover:text-foreground"
+                                        @click="openMediaPicker(null)"
+                                    >
+                                        <IconLoader2
+                                            v-if="mediaUploading"
+                                            class="size-5 animate-spin"
+                                        />
+                                        <IconPhotoPlus v-else class="size-5" />
+                                        <span>{{
+                                            $t('posts.form.drag_and_drop')
+                                        }}</span>
+                                    </button>
                                 </div>
                             </div>
+                            <ComposerEditorToolbar
+                                test-id-prefix="composer-base"
+                                @add-media="openMediaPicker(null)"
+                                @select-emoji="appendEmoji($event, null)"
+                                @open-signatures="openSignatures(null)"
+                            />
                         </div>
                     </template>
 
                     <template v-else>
-                        <div class="space-y-2">
-                            <button
+                        <div
+                            class="mx-auto flex w-full max-w-[744px] items-center gap-2 overflow-x-auto pt-3 pr-3 pb-2"
+                        >
+                            <ComposerAccountChip
                                 v-for="account in selectedAccounts"
                                 :key="account.id"
-                                type="button"
-                                :data-testid="`composer-expand-${account.id}`"
-                                class="flex w-full items-center gap-3 rounded-xl border p-3 text-left"
-                                :class="
-                                    expandedAccountId === account.id
-                                        ? 'border-primary bg-primary/10'
-                                        : 'border-border'
-                                "
-                                @click="
+                                :account="account"
+                                :active="expandedAccountId === account.id"
+                                :removable="!initialPost"
+                                @focus="
                                     expandedAccountId = account.id;
                                     previewAccountId = account.id;
                                 "
+                                @remove="removeAccount(account)"
+                            />
+                            <Popover
+                                v-if="!initialPost"
+                                v-model:open="accountPickerOpen"
                             >
-                                <img
-                                    :src="
-                                        account.avatar_url ||
-                                        getPlatformLogo(account.platform)
-                                    "
-                                    alt=""
-                                    class="size-9 rounded-full object-cover"
-                                />
-                                <span class="flex-1"
-                                    ><strong class="block text-sm">{{
-                                        account.display_name || account.username
-                                    }}</strong
-                                    ><small>{{
-                                        getPlatformLabel(account.platform)
-                                    }}</small></span
+                                <PopoverTrigger as-child>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        data-testid="composer-add-account"
+                                        :aria-label="
+                                            $t(
+                                                'posts.edit.platforms_dialog.title',
+                                            )
+                                        "
+                                        ><IconPlus class="size-4"
+                                    /></Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                    align="start"
+                                    class="w-[min(380px,calc(100vw-2rem))] p-2"
                                 >
-                                <span class="text-xs">{{
-                                    expandedAccountId === account.id ? '−' : '+'
-                                }}</span>
-                            </button>
+                                    <div class="relative mb-2">
+                                        <IconSearch
+                                            class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                                        />
+                                        <input
+                                            v-model="accountSearch"
+                                            type="search"
+                                            :placeholder="
+                                                $t(
+                                                    'posts.form.discord.search_channel',
+                                                )
+                                            "
+                                            class="h-10 w-full rounded-md border bg-background pr-3 pl-9 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        />
+                                    </div>
+                                    <div class="max-h-72 overflow-y-auto">
+                                        <button
+                                            v-for="account in filteredAccounts"
+                                            :key="account.id"
+                                            type="button"
+                                            :data-testid="`composer-account-option-${account.id}`"
+                                            :aria-pressed="
+                                                composition.selectedAccountIds.value.includes(
+                                                    account.id,
+                                                )
+                                            "
+                                            class="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-muted"
+                                            @click="selectAccount(account)"
+                                        >
+                                            <span class="relative shrink-0">
+                                                <img
+                                                    :src="
+                                                        account.avatar_url ||
+                                                        getPlatformLogo(
+                                                            account.platform,
+                                                        )
+                                                    "
+                                                    alt=""
+                                                    class="size-8 rounded-md object-cover"
+                                                />
+                                                <img
+                                                    :src="
+                                                        getPlatformLogo(
+                                                            account.platform,
+                                                        )
+                                                    "
+                                                    :alt="
+                                                        getPlatformLabel(
+                                                            account.platform,
+                                                        )
+                                                    "
+                                                    class="absolute -right-1 -bottom-1 size-4 rounded-full bg-background"
+                                                />
+                                            </span>
+                                            <span
+                                                class="min-w-0 flex-1 truncate"
+                                                >{{
+                                                    account.display_name ||
+                                                    account.username
+                                                }}</span
+                                            >
+                                            <span
+                                                class="flex size-4 shrink-0 items-center justify-center rounded border"
+                                                :class="
+                                                    composition.selectedAccountIds.value.includes(
+                                                        account.id,
+                                                    )
+                                                        ? 'border-primary bg-primary text-primary-foreground'
+                                                        : 'border-input'
+                                                "
+                                            >
+                                                <IconCheck
+                                                    v-if="
+                                                        composition.selectedAccountIds.value.includes(
+                                                            account.id,
+                                                        )
+                                                    "
+                                                    class="size-3"
+                                                />
+                                            </span>
+                                        </button>
+                                        <p
+                                            v-if="!filteredAccounts.length"
+                                            class="px-2 py-4 text-center text-sm text-muted-foreground"
+                                        >
+                                            {{
+                                                $t(
+                                                    'posts.form.discord.no_channels',
+                                                )
+                                            }}
+                                        </p>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
                         </div>
                         <div
                             v-if="expandedAccount && expandedDestination"
                             :key="expandedAccount.id"
-                            class="space-y-4 rounded-xl border p-4"
+                            class="mx-auto flex min-h-[540px] w-full max-w-[744px] flex-col gap-4 rounded-xl border bg-card p-4 shadow-xs"
                             data-testid="composer-customization"
+                            @dragover.prevent
+                            @drop.prevent="
+                                onMediaDropped($event, expandedAccount.id)
+                            "
                         >
+                            <div
+                                class="flex items-center gap-2 text-sm font-medium"
+                            >
+                                <img
+                                    :src="
+                                        getPlatformLogo(
+                                            expandedAccount.platform,
+                                        )
+                                    "
+                                    :alt="
+                                        getPlatformLabel(
+                                            expandedAccount.platform,
+                                        )
+                                    "
+                                    class="size-5 rounded-full"
+                                />
+                                <span>{{
+                                    expandedAccount.display_name ||
+                                    expandedAccount.username
+                                }}</span>
+                            </div>
                             <div
                                 v-if="
                                     getContentTypeOptions(
@@ -881,7 +1389,7 @@ const close = (): void => emit('update:open', false);
                                 "
                             >
                                 <label
-                                    class="mb-1 block text-sm font-semibold"
+                                    class="mb-1 block text-xs font-medium text-muted-foreground"
                                     :for="`composer-type-${expandedAccount.id}`"
                                     >{{
                                         $t('posts.create.steps.format_title')
@@ -891,7 +1399,7 @@ const close = (): void => emit('update:open', false);
                                     :id="`composer-type-${expandedAccount.id}`"
                                     :value="expandedDestination.content_type"
                                     :data-testid="`composer-type-${expandedAccount.id}`"
-                                    class="w-full rounded-lg border p-2"
+                                    class="w-full rounded-lg border bg-background p-2 text-sm"
                                     @change="
                                         composition.setOverride(
                                             expandedAccount.id,
@@ -912,12 +1420,12 @@ const close = (): void => emit('update:open', false);
                                     </option>
                                 </select>
                             </div>
-                            <div>
+                            <div class="flex min-h-40 flex-1 flex-col">
                                 <div
                                     class="mb-1 flex items-center justify-between"
                                 >
                                     <label
-                                        class="text-sm font-semibold"
+                                        class="sr-only"
                                         :for="`composer-caption-${expandedAccount.id}`"
                                         >{{ $t('posts.edit.caption') }}</label
                                     ><Button
@@ -945,7 +1453,7 @@ const close = (): void => emit('update:open', false);
                                     :id="`composer-caption-${expandedAccount.id}`"
                                     :value="expandedDestination.content"
                                     :data-testid="`composer-caption-${expandedAccount.id}`"
-                                    class="min-h-28 w-full resize-y rounded-lg border p-3"
+                                    class="min-h-40 w-full flex-1 resize-none bg-transparent py-2 text-sm leading-6 outline-none placeholder:text-muted-foreground/65"
                                     @input="
                                         composition.setOverride(
                                             expandedAccount.id,
@@ -956,14 +1464,6 @@ const close = (): void => emit('update:open', false);
                                         )
                                     "
                                 />
-                                <Button
-                                    v-if="signatures.length"
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    @click="openSignatures(expandedAccount.id)"
-                                    >{{ $t('posts.edit.signatures') }}</Button
-                                >
                                 <p
                                     v-if="expandedAccount.platform === 'x'"
                                     data-testid="composer-x-count"
@@ -978,10 +1478,8 @@ const close = (): void => emit('update:open', false);
                                 </p>
                             </div>
                             <div>
-                                <div
-                                    class="mb-2 flex items-center justify-between"
-                                >
-                                    <span class="text-sm font-semibold">{{
+                                <div class="flex items-center justify-between">
+                                    <span class="sr-only">{{
                                         $t('posts.create.steps.media_title')
                                     }}</span
                                     ><Button
@@ -1005,15 +1503,23 @@ const close = (): void => emit('update:open', false);
                                         }}</Button
                                     >
                                 </div>
-                                <Button
+                                <button
                                     type="button"
-                                    variant="outline"
+                                    :disabled="mediaUploading"
                                     :data-testid="`composer-media-${expandedAccount.id}`"
+                                    class="flex size-28 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border text-center text-xs text-muted-foreground transition-colors hover:border-primary hover:bg-primary/5 hover:text-foreground"
                                     @click="openMediaPicker(expandedAccount.id)"
-                                    ><IconLibraryPhoto class="size-4" />{{
-                                        $t('posts.edit.media_picker.add')
-                                    }}</Button
                                 >
+                                    <IconLoader2
+                                        v-if="mediaUploading"
+                                        class="size-5 animate-spin"
+                                    /><IconPhotoPlus
+                                        v-else
+                                        class="size-5"
+                                    /><span>{{
+                                        $t('posts.form.drag_and_drop')
+                                    }}</span>
+                                </button>
                                 <div class="mt-3 flex flex-wrap gap-3">
                                     <div
                                         v-for="(
@@ -1100,6 +1606,18 @@ const close = (): void => emit('update:open', false);
                                         $t('posts.composer.crop_upload_failed')
                                     }}
                                 </p>
+                                <ComposerEditorToolbar
+                                    :test-id-prefix="`composer-${expandedAccount.id}`"
+                                    @add-media="
+                                        openMediaPicker(expandedAccount.id)
+                                    "
+                                    @select-emoji="
+                                        appendEmoji($event, expandedAccount.id)
+                                    "
+                                    @open-signatures="
+                                        openSignatures(expandedAccount.id)
+                                    "
+                                />
                             </div>
                             <InstagramSettings
                                 v-if="
@@ -1261,12 +1779,45 @@ const close = (): void => emit('update:open', false);
                                 "
                             />
                         </div>
+                        <div class="mx-auto w-full max-w-[744px] space-y-2">
+                            <button
+                                v-for="account in selectedAccounts.filter(
+                                    (selected) =>
+                                        selected.id !== expandedAccountId,
+                                )"
+                                :key="account.id"
+                                type="button"
+                                :data-testid="`composer-expand-${account.id}`"
+                                class="flex w-full items-center gap-3 rounded-xl border bg-card px-3 py-3 text-left shadow-xs transition-colors hover:bg-muted/40"
+                                @click="
+                                    expandedAccountId = account.id;
+                                    previewAccountId = account.id;
+                                "
+                            >
+                                <img
+                                    :src="getPlatformLogo(account.platform)"
+                                    :alt="getPlatformLabel(account.platform)"
+                                    class="size-6 shrink-0 rounded-full"
+                                />
+                                <span
+                                    class="min-w-0 flex-1 truncate text-sm text-muted-foreground"
+                                    >{{
+                                        composition.resolvedDestination(account)
+                                            .content ||
+                                        account.display_name ||
+                                        account.username
+                                    }}</span
+                                >
+                                <IconChevronDown
+                                    class="size-4 -rotate-90 text-muted-foreground"
+                                />
+                            </button>
+                        </div>
                     </template>
                 </div>
 
                 <aside
-                    v-if="assistantOpen || previewVisible"
-                    class="hidden min-h-0 flex-col border-l bg-muted/30 md:flex"
+                    class="hidden min-h-0 flex-col border-l bg-background md:flex"
                 >
                     <template v-if="assistantOpen">
                         <div class="shrink-0 border-b px-5 py-4">
@@ -1414,32 +1965,44 @@ const close = (): void => emit('update:open', false);
                     </template>
                     <template v-else>
                         <h3
-                            class="shrink-0 border-b px-5 py-4 text-sm font-semibold"
+                            class="shrink-0 px-6 pt-5 pb-2 text-sm font-semibold"
                         >
                             {{
                                 step === 1
                                     ? $t('posts.composer.post_previews')
-                                    : $t('posts.edit.tabs.preview')
+                                    : `${getPlatformLabel(previewAccount?.platform ?? '')} ${$t('posts.edit.tabs.preview')}`
                             }}
                         </h3>
                         <div
-                            class="min-h-0 flex-1 space-y-8 overflow-y-auto p-5"
+                            class="min-h-0 flex-1 space-y-8 overflow-y-auto px-6 pt-2 pb-6"
                             data-testid="composer-previews-scroll"
                         >
-                            <template v-if="step === 1">
+                            <template
+                                v-if="
+                                    step === 1 &&
+                                    selectedAccounts.length &&
+                                    hasSharedPreview
+                                "
+                            >
                                 <section
                                     v-for="account in selectedAccounts"
                                     :key="account.id"
                                     data-testid="composer-preview-card"
-                                    class="space-y-3"
+                                    class="mx-auto max-w-[340px] space-y-3"
                                 >
-                                    <h4 class="text-sm text-muted-foreground">
+                                    <h4
+                                        class="flex items-center gap-2 text-sm text-muted-foreground"
+                                    >
+                                        <img
+                                            :src="
+                                                getPlatformLogo(
+                                                    account.platform,
+                                                )
+                                            "
+                                            alt=""
+                                            class="size-4 rounded-full"
+                                        />
                                         {{ getPlatformLabel(account.platform) }}
-                                        ·
-                                        {{
-                                            account.display_name ||
-                                            account.username
-                                        }}
                                     </h4>
                                     <PlatformPreview
                                         :platform="account.platform"
@@ -1467,15 +2030,64 @@ const close = (): void => emit('update:open', false);
                                     />
                                 </section>
                             </template>
-                            <PlatformPreview
-                                v-else-if="previewAccount && previewDestination"
-                                :platform="previewAccount.platform"
-                                :social-account="previewAccount"
-                                :content="previewDestination.content"
-                                :media="previewDestination.media"
-                                :content-type="previewDestination.content_type"
-                                :meta="previewDestination.meta"
-                            />
+                            <div
+                                v-else-if="
+                                    step === 2 &&
+                                    previewAccount &&
+                                    previewDestination &&
+                                    (previewDestination.content.trim() ||
+                                        previewDestination.media.length)
+                                "
+                                class="mx-auto max-w-[340px]"
+                            >
+                                <PlatformPreview
+                                    :platform="previewAccount.platform"
+                                    :social-account="previewAccount"
+                                    :content="previewDestination.content"
+                                    :media="previewDestination.media"
+                                    :content-type="
+                                        previewDestination.content_type
+                                    "
+                                    :meta="previewDestination.meta"
+                                />
+                            </div>
+                            <div
+                                v-else
+                                class="flex h-full min-h-64 flex-col items-center justify-center gap-5 text-center text-muted-foreground"
+                                data-testid="composer-empty-preview"
+                            >
+                                <div
+                                    class="w-36 overflow-hidden rounded-xl border bg-muted/30 shadow-sm"
+                                >
+                                    <div
+                                        class="flex items-center gap-2 border-b bg-background p-3"
+                                    >
+                                        <span
+                                            class="size-4 rounded-full bg-muted"
+                                        />
+                                        <span
+                                            class="h-1.5 w-16 rounded-full bg-muted"
+                                        />
+                                    </div>
+                                    <div
+                                        class="flex h-24 items-center justify-center bg-muted/50"
+                                    >
+                                        <IconLibraryPhoto
+                                            class="size-7 text-muted-foreground/40"
+                                        />
+                                    </div>
+                                    <div class="space-y-2 bg-background p-3">
+                                        <span
+                                            class="block h-1.5 w-full rounded-full bg-muted"
+                                        /><span
+                                            class="block h-1.5 w-2/3 rounded-full bg-muted"
+                                        />
+                                    </div>
+                                </div>
+                                <p class="text-sm">
+                                    {{ $t('posts.composer.preview_empty') }}
+                                </p>
+                            </div>
                         </div>
                     </template>
                 </aside>

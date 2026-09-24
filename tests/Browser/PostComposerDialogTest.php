@@ -15,6 +15,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
+use App\Models\WorkspaceSignature;
 
 test('new post buttons open the global dialog without changing the page URL', function () {
     $user = User::factory()->create();
@@ -45,6 +46,156 @@ test('new post buttons open the global dialog without changing the page URL', fu
         ->assertScript('new URLSearchParams(location.search).get("tab")', 'scheduled');
 });
 
+test('composer can search channels, preview a selected account, and expand to the full viewport', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $user->account_id,
+    ]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $instagram = SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+        'platform' => Platform::Instagram,
+    ]);
+    $x = SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+        'platform' => Platform::X,
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.create'));
+    $page->assertVisible('@composer-empty-preview')
+        ->assertVisible('@composer-all-accounts')
+        ->click('@composer-preview-toggle')
+        ->click('@composer-preview-toggle')
+        ->assertVisible('@composer-empty-preview')
+        ->click('@composer-expand-dialog');
+
+    $viewport = $page->script(<<<'JS'
+        (async () => {
+            const dialog = document.querySelector('[data-testid="post-composer-dialog"]');
+            for (let attempt = 0; attempt < 30; attempt++) {
+                if (Math.abs(dialog.getBoundingClientRect().width - window.innerWidth) < 2) break;
+                await new Promise((resolve) => setTimeout(resolve, 20));
+            }
+            return {
+                width: dialog.getBoundingClientRect().width,
+                height: dialog.getBoundingClientRect().height,
+                viewportWidth: window.innerWidth,
+                style: dialog.getAttribute('style'),
+            };
+        })()
+    JS);
+    expect(abs($viewport['width'] - $viewport['viewportWidth']))->toBeLessThan(2)
+        ->and($viewport['style'])->toContain('height: 100dvh');
+    expect($page->script('document.querySelectorAll("[data-testid=composer-all-accounts] img").length'))->toBe(4);
+
+    $page->click('@composer-add-account')
+        ->click('@composer-select-all')
+        ->assertVisible("@composer-account-{$instagram->id}")
+        ->assertVisible("@composer-account-{$x->id}")
+        ->click('@composer-select-all')
+        ->assertMissing("@composer-account-{$instagram->id}")
+        ->assertMissing("@composer-account-{$x->id}")
+        ->fill('@composer-account-search', 'Instagram')
+        ->assertVisible("@composer-account-option-{$instagram->id}")
+        ->assertMissing("@composer-account-option-{$x->id}")
+        ->click("@composer-account-option-{$instagram->id}")
+        ->assertVisible('@composer-account-search')
+        ->fill('@composer-account-search', '')
+        ->click("@composer-account-option-{$x->id}")
+        ->assertVisible("@composer-account-option-{$instagram->id}")
+        ->click("@composer-account-option-{$x->id}")
+        ->click("@composer-account-{$instagram->id}")
+        ->assertVisible('[data-slot="tooltip-content"]')
+        ->assertVisible("@composer-account-{$instagram->id}")
+        ->click("@composer-remove-account-{$instagram->id}")
+        ->assertMissing("@composer-account-{$instagram->id}")
+        ->click('@composer-add-account')
+        ->fill('@composer-account-search', '')
+        ->click('@composer-select-all')
+        ->fill('@composer-base-content', 'Preview this caption')
+        ->assertVisible('@composer-preview-card')
+        ->assertSee('Preview this caption')
+        ->click('@composer-next')
+        ->assertVisible('@composer-customization')
+        ->click("@composer-account-{$instagram->id}")
+        ->assertVisible("@composer-account-{$instagram->id}")
+        ->click("@composer-remove-account-{$instagram->id}")
+        ->assertMissing("@composer-account-{$instagram->id}")
+        ->assertVisible("@composer-account-{$x->id}")
+        ->assertVisible('@composer-customization');
+});
+
+test('composer searches and selects multiple labels and exposes emoji and signatures below media', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $user->account_id,
+    ]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $firstLabel = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Marketing']);
+    $secondLabel = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Product']);
+    WorkspaceSignature::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Campaign signature', 'content' => '#campaign']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.create'));
+    $page->click('@composer-tags-trigger')
+        ->fill('@composer-label-search', 'Mark')
+        ->assertVisible("@composer-label-{$firstLabel->id}")
+        ->assertMissing("@composer-label-{$secondLabel->id}")
+        ->click("@composer-label-{$firstLabel->id}")
+        ->assertVisible('@composer-label-search')
+        ->fill('@composer-label-search', 'Prod')
+        ->click("@composer-label-{$secondLabel->id}")
+        ->assertVisible('@composer-label-search');
+
+    expect($page->script(<<<'JS'
+        [...document.querySelectorAll('[data-testid^="composer-label-"][role="option"]')].map((option) => [option.dataset.testid, option.getAttribute('aria-selected')])
+    JS))->toEqual([["composer-label-{$secondLabel->id}", 'true']]);
+
+    $page->fill('@composer-label-search', '')
+        ->assertVisible("@composer-label-{$firstLabel->id}");
+    expect($page->script(<<<'JS'
+        [...document.querySelectorAll('[data-testid^="composer-label-"][role="option"]')].filter((option) => option.getAttribute('aria-selected') === 'true').length
+    JS))->toBe(2);
+
+    $page->click('@composer-tags-trigger')
+        ->click('@composer-base-emoji')
+        ->click('button[aria-label="grinning face"]')
+        ->assertValue('@composer-base-content', '😀')
+        ->click('@composer-base-signature')
+        ->click('text=Campaign signature')
+        ->assertValue('@composer-base-content', "😀\n\n#campaign")
+        ->click('@composer-add-account')
+        ->click("@composer-account-option-{$account->id}")
+        ->click('@composer-next')
+        ->assertVisible("@composer-{$account->id}-toolbar")
+        ->click("@composer-{$account->id}-emoji")
+        ->click('button[aria-label="grinning face with big eyes"]')
+        ->assertValue("@composer-caption-{$account->id}", "😀\n\n#campaign😃")
+        ->click('@composer-save-draft');
+
+    $page->script(<<<'JS'
+        (async () => {
+            for (let attempt = 0; attempt < 80; attempt++) {
+                if (!document.querySelector('[data-testid="post-composer-dialog"]')) return;
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+        })();
+    JS);
+
+    expect(Post::where('workspace_id', $workspace->id)->sole()->labels()->pluck('workspace_labels.id')->all())
+        ->toHaveCount(2)
+        ->toContain($firstLabel->id)
+        ->toContain($secondLabel->id);
+});
+
 test('creating a four account draft keeps composition in the browser until save', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
@@ -65,10 +216,15 @@ test('creating a four account draft keeps composition in the browser until save'
     $page = visit(route('app.posts.create'));
     $page->assertVisible('@post-composer-dialog');
     expect(Post::where('workspace_id', $workspace->id)->count())->toBe(0);
+    expect($page->script('getComputedStyle(document.querySelector("[data-testid=composer-all-accounts] [aria-hidden=true]")).filter'))->toBe('grayscale(1)')
+        ->and($page->script('document.querySelector("[data-testid=composer-all-accounts]").textContent'))->toContain('+2');
 
+    $page->click('@composer-add-account');
     foreach ($accounts as $account) {
-        $page->click('@composer-add-account')->click("@composer-account-option-{$account->id}");
+        $page->click("@composer-account-option-{$account->id}")
+            ->assertVisible('@composer-account-search');
     }
+    expect($page->script('getComputedStyle(document.querySelector("[data-testid^=composer-account-] img")).filter'))->toBe('none');
 
     $page->assertVisible('@composer-save-draft')
         ->assertVisible('@composer-schedule-trigger')
@@ -257,7 +413,14 @@ test('a comment deep link and AI assistant remain available in the edit dialog',
         ->click('@composer-back-to-post')
         ->click('@composer-ai-assistant')
         ->assertVisible('@composer-assistant-panel')
-        ->assertVisible('@composer-ai-rephrase');
+        ->assertVisible('@composer-ai-rephrase')
+        ->click('@composer-ai-assistant')
+        ->assertVisible('@composer-assistant-panel')
+        ->click('@composer-preview-toggle')
+        ->assertVisible('@composer-previews-scroll')
+        ->assertMissing('@composer-assistant-panel')
+        ->click('@composer-preview-toggle')
+        ->assertVisible('@composer-previews-scroll');
 });
 
 test('account overrides inherit later shared edits and are discarded when an account is removed', function () {
@@ -273,7 +436,7 @@ test('account overrides inherit later shared edits and are discarded when an acc
 
     $page = visit(route('app.posts.create'));
     $page->click('@composer-add-account')->click("@composer-account-option-{$firstId}")
-        ->click('@composer-add-account')->click("@composer-account-option-{$secondId}")
+        ->click("@composer-account-option-{$secondId}")
         ->fill('@composer-base-content', 'Shared first')
         ->click('@composer-next')
         ->fill("@composer-caption-{$firstId}", '')
@@ -288,7 +451,7 @@ test('account overrides inherit later shared edits and are discarded when an acc
         ->and($secondCaption)->toBe('Shared second');
 
     $page->click('@composer-back')
-        ->click("@composer-account-{$firstId}")
+        ->click("@composer-remove-account-{$firstId}")
         ->click('@composer-add-account')->click("@composer-account-option-{$firstId}")
         ->click('@composer-next')
         ->click("@composer-expand-{$firstId}");
@@ -351,6 +514,42 @@ test('selecting a new image uploads an asset before any post is saved', function
         ->and(Post::where('workspace_id', $workspace->id)->count())->toBe(0);
 });
 
+test('dropping an image into the composer uploads it without saving a post', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $user->account_id,
+    ]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.create'));
+    $page->click('@composer-add-account')->click("@composer-account-option-{$account->id}");
+
+    $base64 = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $page->script(<<<JS
+        (async () => {
+            const bytes = Uint8Array.from(atob('{$base64}'), (character) => character.charCodeAt(0));
+            const transfer = new DataTransfer();
+            transfer.items.add(new File([bytes], 'dropped-image.png', { type: 'image/png' }));
+            document.querySelector('[data-testid="composer-base-content"]').parentElement.dispatchEvent(
+                new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }),
+            );
+            for (let attempt = 0; attempt < 100; attempt++) {
+                if (document.querySelectorAll('[data-testid="composer-media-item"]').length === 1) return;
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+        })();
+    JS);
+
+    $page->assertVisible('@composer-media-item');
+    expect(Media::where('mediable_id', $workspace->id)->where('collection', 'assets')->count())->toBe(1)
+        ->and(Post::where('workspace_id', $workspace->id)->count())->toBe(0);
+});
+
 test('cropping one account creates a separate asset and leaves the other account image intact', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
@@ -361,8 +560,9 @@ test('cropping one account creates a separate asset and leaves the other account
     $this->actingAs($user);
 
     $page = visit(route('app.posts.create'));
+    $page->click('@composer-add-account');
     foreach ($accounts as $account) {
-        $page->click('@composer-add-account')->click("@composer-account-option-{$account->id}");
+        $page->click("@composer-account-option-{$account->id}");
     }
     $page->fill('@composer-base-content', 'Image for both')
         ->click('@composer-base-media');
