@@ -70,8 +70,29 @@ test('composer can search channels, preview a selected account, and expand to th
         ->assertVisible('@composer-all-accounts')
         ->click('@composer-preview-toggle')
         ->click('@composer-preview-toggle')
-        ->assertVisible('@composer-empty-preview')
-        ->click('@composer-expand-dialog');
+        ->assertVisible('@composer-empty-preview');
+
+    $sheet = $page->script(<<<'JS'
+        (async () => {
+            const panel = document.querySelector('[data-testid="post-composer-dialog"]');
+            await Promise.all(panel.getAnimations().map((animation) => animation.finished));
+            const rect = panel.getBoundingClientRect();
+            return {
+                slot: panel.dataset.slot,
+                left: rect.left,
+                right: rect.right,
+                height: rect.height,
+                viewportWidth: window.innerWidth,
+                viewportHeight: window.innerHeight,
+            };
+        })()
+    JS);
+    expect($sheet['slot'])->toBe('sheet-content')
+        ->and($sheet['left'])->toBeGreaterThan(0)
+        ->and(abs($sheet['right'] - $sheet['viewportWidth']))->toBeLessThan(2)
+        ->and(abs($sheet['height'] - $sheet['viewportHeight']))->toBeLessThan(2);
+
+    $page->click('@composer-expand-dialog');
 
     $viewport = $page->script(<<<'JS'
         (async () => {
@@ -84,12 +105,12 @@ test('composer can search channels, preview a selected account, and expand to th
                 width: dialog.getBoundingClientRect().width,
                 height: dialog.getBoundingClientRect().height,
                 viewportWidth: window.innerWidth,
-                style: dialog.getAttribute('style'),
+                viewportHeight: window.innerHeight,
             };
         })()
     JS);
     expect(abs($viewport['width'] - $viewport['viewportWidth']))->toBeLessThan(2)
-        ->and($viewport['style'])->toContain('height: 100dvh');
+        ->and(abs($viewport['height'] - $viewport['viewportHeight']))->toBeLessThan(2);
     expect($page->script('document.querySelectorAll("[data-testid=composer-all-accounts] img").length'))->toBe(4);
 
     $composerPosition = <<<'JS'
@@ -203,6 +224,53 @@ test('composer reuses the phone previews for Facebook and TikTok even before med
         ['platform' => 'Facebook', 'hasPhone' => true, 'hasCaption' => true],
         ['platform' => 'TikTok', 'hasPhone' => true, 'hasCaption' => true],
     ]);
+});
+
+test('composer slide-over fills the mobile viewport without horizontal overflow', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $user->account_id,
+    ]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    SocialAccount::factory()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.create'))->resize(375, 812);
+    $page->assertVisible('@post-composer-dialog')
+        ->click('@composer-add-account')
+        ->click('@composer-select-all')
+        ->fill('@composer-base-content', 'Mobile preview')
+        ->click('@composer-preview-toggle')
+        ->assertVisible('@composer-preview-card');
+
+    $dimensions = $page->script(<<<'JS'
+        (async () => {
+            const panel = document.querySelector('[data-testid="post-composer-dialog"]');
+            await Promise.all(panel.getAnimations().map((animation) => animation.finished));
+            const rect = panel.getBoundingClientRect();
+            return {
+                left: rect.left,
+                right: rect.right,
+                width: rect.width,
+                height: rect.height,
+                viewportWidth: window.innerWidth,
+                viewportHeight: window.innerHeight,
+                scrollWidth: panel.scrollWidth,
+            };
+        })()
+    JS);
+
+    expect(abs($dimensions['left']))->toBeLessThan(2)
+        ->and(abs($dimensions['right'] - $dimensions['viewportWidth']))->toBeLessThan(2)
+        ->and(abs($dimensions['width'] - $dimensions['viewportWidth']))->toBeLessThan(2)
+        ->and(abs($dimensions['height'] - $dimensions['viewportHeight']))->toBeLessThan(2)
+        ->and($dimensions['scrollWidth'])->toBeLessThanOrEqual($dimensions['viewportWidth']);
+
+    $page->click('@composer-mobile-compose')
+        ->assertVisible('@composer-base-content');
 });
 
 test('composer searches and selects multiple labels and exposes emoji and signatures below media', function () {

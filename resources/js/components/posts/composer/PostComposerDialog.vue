@@ -46,18 +46,18 @@ import SignaturesModal from '@/components/posts/SignaturesModal.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import {
     Popover,
     PopoverAnchor,
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+    Sheet,
+    SheetContent,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
 import { usePageErrors } from '@/composables/usePageErrors';
 import {
     getContentTypeOptions,
@@ -165,6 +165,7 @@ const assistantError = ref('');
 const assistantBusy = ref(false);
 const assistantHttp = useHttp({ mode: '', current_content: '', prompt: '' });
 const expandedDialog = ref(false);
+const mobilePanelOpen = ref(false);
 const accountPickerOpen = ref(false);
 const accountSearch = ref('');
 const labelSearch = ref('');
@@ -671,22 +672,18 @@ const close = (): void => emit('update:open', false);
 </script>
 
 <template>
-    <Dialog :open="open" @update:open="emit('update:open', $event)">
-        <DialogContent
-            class="flex max-h-none max-w-[calc(100%-1rem)] flex-col gap-0 overflow-hidden border-border p-0 shadow-2xl"
-            :class="
-                expandedDialog
-                    ? 'top-0! left-0! h-dvh! w-screen! max-w-none! translate-x-0! translate-y-0! rounded-none! border-0!'
-                    : 'h-[min(92dvh,900px)] sm:max-w-[1100px]'
-            "
-            :style="expandedDialog ? { height: '100dvh' } : undefined"
+    <Sheet :open="open" @update:open="emit('update:open', $event)">
+        <SheetContent
+            side="right"
+            class="h-dvh! w-screen! max-w-none! gap-0 overflow-hidden border-border p-0 shadow-2xl sm:w-[min(1280px,calc(100vw-3rem))]!"
+            :class="expandedDialog ? 'border-l-0! sm:w-screen!' : ''"
             :show-close-button="false"
             data-testid="post-composer-dialog"
         >
-            <DialogHeader
-                class="flex-row items-center justify-between gap-3 border-b px-5 py-3.5"
+            <SheetHeader
+                class="flex-row flex-wrap items-center justify-between gap-2 border-b px-4 py-3 sm:flex-nowrap sm:gap-3 sm:px-5 sm:py-3.5"
             >
-                <div class="flex items-center gap-3">
+                <div class="flex min-w-0 items-center gap-3">
                     <Button
                         v-if="step === 2 && !initialPost"
                         type="button"
@@ -696,11 +693,11 @@ const close = (): void => emit('update:open', false);
                         @click="step = 1"
                         ><IconArrowLeft class="size-4"
                     /></Button>
-                    <DialogTitle>{{
+                    <SheetTitle>{{
                         initialPost || initialDraft
                             ? $t('posts.edit.title')
                             : $t('posts.create.title')
-                    }}</DialogTitle>
+                    }}</SheetTitle>
                     <Popover v-model:open="labelsOpen">
                         <PopoverTrigger as-child>
                             <Button
@@ -830,7 +827,9 @@ const close = (): void => emit('update:open', false);
                         </PopoverContent>
                     </Popover>
                 </div>
-                <div class="flex items-center gap-1.5">
+                <div
+                    class="flex w-full min-w-0 items-center justify-end gap-1.5 sm:w-auto"
+                >
                     <Button
                         v-if="postId && commentsOpen"
                         type="button"
@@ -858,7 +857,10 @@ const close = (): void => emit('update:open', false);
                         size="sm"
                         :aria-pressed="assistantOpen"
                         data-testid="composer-ai-assistant"
-                        @click="assistantOpen = true"
+                        @click="
+                            assistantOpen = true;
+                            mobilePanelOpen = true;
+                        "
                         ><IconWand class="size-4" />{{
                             $t('posts.composer.assistant_title')
                         }}</Button
@@ -877,6 +879,7 @@ const close = (): void => emit('update:open', false);
                         @click="
                             assistantOpen = false;
                             commentsOpen = false;
+                            mobilePanelOpen = true;
                         "
                         ><IconEye class="size-4" />{{
                             $t('posts.edit.tabs.preview')
@@ -909,7 +912,7 @@ const close = (): void => emit('update:open', false);
                         ><IconX class="size-4"
                     /></Button>
                 </div>
-            </DialogHeader>
+            </SheetHeader>
 
             <div
                 v-if="commentsOpen && postId && currentUserId"
@@ -929,7 +932,10 @@ const close = (): void => emit('update:open', false);
             >
                 <div
                     class="min-h-0 overflow-y-auto px-5 py-5"
-                    :class="step === 1 ? 'flex flex-col gap-5' : 'space-y-4'"
+                    :class="[
+                        step === 1 ? 'flex flex-col gap-5' : 'space-y-4',
+                        mobilePanelOpen ? 'max-md:hidden' : '',
+                    ]"
                 >
                     <p
                         v-if="Object.keys(errors).length"
@@ -1831,8 +1837,21 @@ const close = (): void => emit('update:open', false);
                 </div>
 
                 <aside
-                    class="hidden min-h-0 flex-col border-l bg-background md:flex"
+                    class="min-h-0 flex-col border-l bg-background"
+                    :class="mobilePanelOpen ? 'flex' : 'hidden md:flex'"
                 >
+                    <div class="border-b px-4 py-2 md:hidden">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            data-testid="composer-mobile-compose"
+                            @click="mobilePanelOpen = false"
+                        >
+                            <IconArrowLeft class="size-4" />
+                            {{ $t('posts.edit.tabs.compose') }}
+                        </Button>
+                    </div>
                     <template v-if="assistantOpen">
                         <div class="shrink-0 border-b px-5 py-4">
                             <h3 class="text-sm font-semibold">
@@ -2020,6 +2039,7 @@ const close = (): void => emit('update:open', false);
                                     </h4>
                                     <PhoneMockup
                                         data-testid="composer-phone-preview"
+                                        class="max-md:mb-[-160px] max-md:w-[304px] max-md:origin-top-left max-md:scale-[.8]"
                                     >
                                         <PlatformPreview
                                             :platform="account.platform"
@@ -2060,6 +2080,7 @@ const close = (): void => emit('update:open', false);
                             >
                                 <PhoneMockup
                                     data-testid="composer-phone-preview"
+                                    class="max-md:mb-[-160px] max-md:w-[304px] max-md:origin-top-left max-md:scale-[.8]"
                                 >
                                     <PlatformPreview
                                         :platform="previewAccount.platform"
@@ -2115,7 +2136,7 @@ const close = (): void => emit('update:open', false);
                 </aside>
             </div>
 
-            <DialogFooter
+            <SheetFooter
                 class="flex-col gap-3 border-t px-5 py-3 sm:flex-row sm:items-center sm:justify-between"
             >
                 <div class="flex flex-1 items-center gap-4">
@@ -2218,9 +2239,9 @@ const close = (): void => emit('update:open', false);
                         >
                     </template>
                 </div>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
+            </SheetFooter>
+        </SheetContent>
+    </Sheet>
 
     <MediaPickerDialog ref="mediaPicker" @select="onMediaPicked" />
     <PickTimePopover
