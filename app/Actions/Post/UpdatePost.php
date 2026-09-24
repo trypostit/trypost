@@ -12,12 +12,14 @@ use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\Workspace;
+use App\Support\PostCompositionValidator;
 use App\Support\PostStatusRules;
 use App\Support\Social\AbandonGoogleBusinessReview;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class UpdatePost
 {
@@ -28,6 +30,21 @@ class UpdatePost
     {
         if (PostStatusRules::blocksEditing($post)) {
             return ['post' => $post, 'action' => PostAction::Finalized];
+        }
+
+        if (array_key_exists('social_account_id', $data)) {
+            throw ValidationException::withMessages(['social_account_id' => __('validation.in', ['attribute' => 'social account'])]);
+        }
+
+        if (array_key_exists('content_type', $data) || array_key_exists('meta', $data)) {
+            return self::updateChannelPost($workspace, $post, $data);
+        }
+
+        if (array_key_exists('platforms', $data) && $post->postPlatforms()->count() === 1) {
+            $selectedTarget = $post->postPlatforms()->sole();
+            if (count($data['platforms']) !== 1 || data_get($data, 'platforms.0.id') !== $selectedTarget->id) {
+                throw ValidationException::withMessages(['platforms' => __('validation.in', ['attribute' => 'platforms'])]);
+            }
         }
 
         return DB::transaction(function () use ($post, $data): array {
@@ -96,6 +113,74 @@ class UpdatePost
                         fn (string $id) => app(GoogleBusinessDerivativeCleaner::class)->cleanup($id),
                     );
                 });
+            }
+
+            if ($status === PostStatus::Publishing->value) {
+                $post->update(['scheduled_at' => now()]);
+                PublishPost::dispatch($post)->afterCommit();
+
+                return ['post' => $post, 'action' => PostAction::Publishing];
+            }
+
+            if ($status === PostStatus::Scheduled->value) {
+                return ['post' => $post, 'action' => PostAction::Scheduled];
+            }
+
+            return ['post' => $post, 'action' => null];
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{post: Post, action: PostAction|null}
+     */
+    private static function updateChannelPost(Workspace $workspace, Post $post, array $data): array
+    {
+        if (array_key_exists('platforms', $data)) {
+            throw ValidationException::withMessages(['platforms' => __('validation.in', ['attribute' => 'platforms'])]);
+        }
+
+        if ($post->postPlatforms()->enabled()->count() !== 1 || $post->postPlatforms()->count() !== 1) {
+            throw ValidationException::withMessages(['post' => PostStatusRules::editBlockedMessage()]);
+        }
+
+        $target = $post->postPlatforms()->enabled()->sole();
+        $meta = array_filter(
+            array_merge($target->meta ?? [], $data['meta'] ?? []),
+            fn (mixed $value): bool => $value !== null,
+        );
+        $status = $data['status'] ?? $post->status->value;
+        $scheduledAt = array_key_exists('scheduled_at', $data)
+            ? $data['scheduled_at']
+            : $post->scheduled_at?->toIso8601String();
+        $resolved = PostCompositionValidator::validate($workspace, [
+            'status' => $status,
+            'content' => array_key_exists('content', $data) ? $data['content'] : $post->content,
+            'media' => $data['media'] ?? $post->media ?? [],
+            'scheduled_at' => $scheduledAt,
+            'label_ids' => $data['label_ids'] ?? $post->labels()->pluck('workspace_labels.id')->all(),
+            'destinations' => [[
+                'social_account_id' => $target->social_account_id,
+                'content_type' => $data['content_type'] ?? $target->content_type->value,
+                'meta' => $meta,
+            ]],
+        ]);
+
+        return DB::transaction(function () use ($post, $target, $data, $resolved, $meta, $status, $scheduledAt): array {
+            $destination = $resolved['destinations'][0];
+            $post->update([
+                'content' => $destination['content'],
+                'media' => $destination['media'],
+                'status' => $status,
+                'scheduled_at' => $scheduledAt ? Carbon::parse($scheduledAt)->utc() : null,
+            ]);
+            $target->update([
+                'content_type' => $destination['content_type'],
+                'meta' => $meta,
+            ]);
+
+            if (array_key_exists('label_ids', $data)) {
+                $post->labels()->sync($data['label_ids']);
             }
 
             if ($status === PostStatus::Publishing->value) {

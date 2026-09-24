@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Dto\MediaItem;
 use App\Enums\GoogleBusiness\TopicType;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\UserWorkspace\Role;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -686,7 +688,7 @@ test('draft save accepts media source metadata for ai regeneration', function ()
         ->put(route('app.posts.update', $this->post), [
             'status' => Status::Draft->value,
             'media' => $payload,
-            'platforms' => [],
+            'platforms' => [['id' => $this->postPlatform->id]],
         ]);
 
     $response->assertSessionDoesntHaveErrors();
@@ -694,6 +696,28 @@ test('draft save accepts media source metadata for ai regeneration', function ()
     $this->post->refresh();
     expect(data_get($this->post->media, '0.source'))->toBe('ai');
     expect(data_get($this->post->media, '0.source_meta.title'))->toBe('Fix ECP typo');
+});
+
+test('the web update accepts a compatible type change for the fixed account', function () {
+    $this->socialAccount->update(['platform' => Platform::Instagram, 'is_active' => true]);
+    $this->postPlatform->update([
+        'platform' => Platform::Instagram,
+        'content_type' => ContentType::InstagramFeed,
+    ]);
+    $video = Media::factory()->assets()->video()->for($this->workspace, 'mediable')->create();
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.posts.update', $this->post), [
+            'status' => Status::Scheduled->value,
+            'scheduled_at' => now()->addDay()->toIso8601String(),
+            'content' => 'Reel atualizado',
+            'media' => [MediaItem::fromMedia($video)->toArray()],
+            'content_type' => ContentType::InstagramReel->value,
+        ]);
+
+    $response->assertSessionDoesntHaveErrors();
+    expect($this->postPlatform->fresh()->content_type)->toBe(ContentType::InstagramReel)
+        ->and($this->post->fresh()->content)->toBe('Reel atualizado');
 });
 
 test('instagram_carousel is rejected as a content_type — carousel is a feed post with multiple images', function () {

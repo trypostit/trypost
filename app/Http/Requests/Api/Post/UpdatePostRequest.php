@@ -49,6 +49,9 @@ class UpdatePostRequest extends FormRequest
                 ),
             ],
             ...PostMediaRules::rules(hosted: false),
+            'social_account_id' => ['prohibited'],
+            'content_type' => ['sometimes', 'string', Rule::in(array_column(ContentType::cases(), 'value'))],
+            'meta' => ['sometimes', 'array'],
             'platforms' => ['sometimes', 'array'],
             'platforms.*.id' => ['required', 'uuid', Rule::exists('post_platforms', 'id')->where('post_id', $this->route('post')->id)],
             'platforms.*.content_type' => [
