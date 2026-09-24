@@ -218,6 +218,21 @@ test('range boundaries and bucket resolutions are deterministic', function (int 
         ->and($range->previous()->days())->toBe($days);
 })->with([[14, 'daily'], [15, 'weekly'], [90, 'weekly'], [91, 'monthly']]);
 
+test('date ranges count both endpoints and preserve length across month boundaries', function (string $start, string $end, int $days, string $previousStart, string $previousEnd) {
+    $range = new DateRange(
+        CarbonImmutable::parse($start, 'UTC'),
+        CarbonImmutable::parse($end, 'UTC'),
+    );
+
+    expect($range->days())->toBe($days)
+        ->and($range->previous()->days())->toBe($days)
+        ->and($range->previous()->toArray())->toBe(['start' => $previousStart, 'end' => $previousEnd]);
+})->with([
+    ['2026-09-01', '2026-09-01', 1, '2026-08-31', '2026-08-31'],
+    ['2026-09-01', '2026-09-10', 10, '2026-08-22', '2026-08-31'],
+    ['2024-02-28', '2024-03-01', 3, '2024-02-25', '2024-02-27'],
+]);
+
 test('invalid reversed date range is rejected', function () {
     expect(fn () => new DateRange(
         CarbonImmutable::parse('2026-09-10', 'UTC'),

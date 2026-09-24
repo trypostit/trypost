@@ -25,14 +25,14 @@ final readonly class DateRange
 
     public function days(): int
     {
-        return (int) $this->start->diffInDays($this->end) + 1;
+        return (int) $this->start->diffInDays($this->end->addDay());
     }
 
     public function previous(): self
     {
         $end = $this->start->subDay();
 
-        return new self($end->subDays($this->days() - 1), $end);
+        return new self($this->start->subDays($this->days()), $end);
     }
 
     /** @return array{start: string, end: string} */
