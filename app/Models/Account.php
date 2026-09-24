@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Cashier\Billable;
+use Stripe\Subscription as StripeSubscription;
 
 class Account extends Model
 {
@@ -71,10 +72,8 @@ class Account extends Model
     {
         return $query->whereHas('subscriptions', fn (Builder $subscriptions): Builder => $subscriptions
             ->where('type', self::SUBSCRIPTION_NAME)
-            ->where('stripe_status', 'active')
-            ->where(fn (Builder $subscription): Builder => $subscription
-                ->whereNull('ends_at')
-                ->orWhere('ends_at', '>', now())));
+            ->where('stripe_status', StripeSubscription::STATUS_ACTIVE)
+            ->active());
     }
 
     public function hasActiveSubscription(): bool
