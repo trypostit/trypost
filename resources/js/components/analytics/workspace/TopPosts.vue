@@ -5,6 +5,7 @@ import { computed, ref } from 'vue';
 
 import dayjs from '@/dayjs';
 import { formatNumberCompact } from '@/lib/utils';
+import { show as analyticsShow } from '@/routes/app/analytics';
 import { show as publicationShow } from '@/routes/app/analytics/publications';
 
 import AccountIdentity from './AccountIdentity.vue';
@@ -126,7 +127,13 @@ const thumbnailFor = (post: TopPost): string | null => {
                         }}</span>
                         <Link
                             v-if="post.availability === 'available'"
-                            :href="publicationShow.url(post.id)"
+                            :href="
+                                post.post_id
+                                    ? analyticsShow.url(post.post_id, {
+                                          query: { publication: post.id },
+                                      })
+                                    : publicationShow.url(post.id)
+                            "
                             class="inline-flex shrink-0 items-center gap-0.5 font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                         >
                             {{ $t('analytics.detail.details') }}

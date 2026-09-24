@@ -72,6 +72,79 @@ test('external publication detail is isolated by immutable workspace id and excl
         ->assertNotFound();
 });
 
+test('post analytics URL uses the post id and selects the requested destination', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $post = Post::factory()->published()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id]);
+    $otherPost = Post::factory()->published()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id]);
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Instagram]);
+    $pinterest = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Pinterest]);
+    $firstDestination = PostPlatform::factory()->instagram()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+    ]);
+    $secondDestination = PostPlatform::factory()->pinterest()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $pinterest->id,
+    ]);
+    $otherDestination = PostPlatform::factory()->instagram()->published()->create([
+        'post_id' => $otherPost->id,
+        'social_account_id' => $account->id,
+    ]);
+    $first = AnalyticsPublication::factory()->create([
+        'workspace_id' => $workspace->id,
+        'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'post_platform_id' => $firstDestination->id,
+        'platform' => Platform::Instagram,
+    ]);
+    $second = AnalyticsPublication::factory()->create([
+        'workspace_id' => $workspace->id,
+        'social_account_id' => $pinterest->id,
+        'social_account_key' => $pinterest->id,
+        'post_platform_id' => $secondDestination->id,
+        'platform' => Platform::Pinterest,
+        'network' => Platform::Pinterest->network(),
+    ]);
+    $other = AnalyticsPublication::factory()->create([
+        'workspace_id' => $workspace->id,
+        'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'post_platform_id' => $otherDestination->id,
+        'platform' => Platform::Instagram,
+    ]);
+
+    expect(route('app.analytics.show', $post))->toEndWith("/analytics/{$post->id}");
+
+    $this->actingAs($user)
+        ->get(route('app.analytics.show', ['post' => $post->id, 'publication' => $second->id]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('analytics/Publications/Show')
+            ->where('detail.publication.id', $second->id)
+            ->etc());
+
+    $this->actingAs($user)
+        ->get(route('app.analytics.show', ['post' => $post->id, 'publication' => $other->id]))
+        ->assertNotFound();
+
+    $this->actingAs($user)
+        ->get(route('app.analytics.show', $first->id))
+        ->assertNotFound();
+});
+
+test('post analytics detail does not cross workspaces', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $foreignPost = Post::factory()->published()->create(['workspace_id' => Workspace::factory()->create()->id]);
+
+    $this->actingAs($user)
+        ->get(route('app.analytics.show', $foreignPost))
+        ->assertNotFound();
+});
+
 test('TryPost post page receives its latest saved post metrics as a page prop', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);

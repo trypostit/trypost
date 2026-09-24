@@ -125,10 +125,30 @@ test('workspace report keeps accounts separate and aggregates only latest normal
         ->and(count($report['followers']['accounts']))->toBe(3)
         ->and($report['followers']['total'])->toBe(170)
         ->and($report['top_posts']['reactions'][0]['social_account_key'])->toBe($instagramA->id)
+        ->and($report['top_posts']['reactions'][0]['post_id'])->toBeNull()
         ->and($report['top_posts']['reactions'][0]['reactions'])->toBe(10);
 
     $performanceKeys = array_column($report['performance'], 'social_account_key');
     expect($performanceKeys)->toContain($instagramA->id, $instagramB->id, $x->id);
+});
+
+test('top posts include the source post id for TryPost publications', function () {
+    $workspace = Workspace::factory()->create();
+    $account = analyticsReportAccount($workspace, Platform::Instagram);
+    $post = Post::factory()->published()->create(['workspace_id' => $workspace->id]);
+    $destination = PostPlatform::factory()->instagram()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+    ]);
+    $publication = analyticsReportPublication($account, '2026-09-05 10:00:00', 5, 1, 6, 100);
+    $publication->update(['post_platform_id' => $destination->id]);
+
+    $report = app(WorkspaceAnalyticsQuery::class)->for(
+        $workspace,
+        new DateRange(CarbonImmutable::parse('2026-09-01', 'UTC'), CarbonImmutable::parse('2026-09-10', 'UTC')),
+    );
+
+    expect($report['top_posts']['reactions'][0]['post_id'])->toBe($post->id);
 });
 
 test('workspace follower total stays unavailable until every connected account has an observation', function () {

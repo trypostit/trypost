@@ -6,6 +6,7 @@ namespace App\Queries\Analytics;
 
 use App\Dto\Analytics\DateRange;
 use App\Enums\SocialAccount\Platform;
+use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Support\Analytics\PeriodBuckets;
@@ -72,6 +73,7 @@ class WorkspaceAnalyticsQuery
             ->groupBy('daily.analytics_publication_id');
 
         return DB::table('analytics_publications as publication')
+            ->leftJoin((new PostPlatform)->getTable().' as destination', 'destination.id', '=', 'publication.post_platform_id')
             ->leftJoinSub($latest, 'latest', 'latest.analytics_publication_id', '=', 'publication.id')
             ->leftJoin('analytics_publication_daily_snapshots as metric', function ($join): void {
                 $join->on('metric.analytics_publication_id', '=', 'publication.id')
@@ -82,7 +84,7 @@ class WorkspaceAnalyticsQuery
             ->whereBetween('publication.provider_published_at', [$start->startOfDay(), $end->endOfDay()])
             ->select([
                 'publication.id', 'publication.social_account_key', 'publication.social_account_id',
-                'publication.post_platform_id', 'publication.platform', 'publication.network',
+                'publication.post_platform_id', 'destination.post_id', 'publication.platform', 'publication.network',
                 'publication.account_display_name', 'publication.account_username',
                 'publication.account_avatar_url', 'publication.provider_post_id',
                 'publication.provider_published_at', 'publication.origin', 'publication.content_type',
@@ -369,6 +371,7 @@ class WorkspaceAnalyticsQuery
             return [
                 'id' => $row->id,
                 'post_platform_id' => $row->post_platform_id,
+                'post_id' => $row->post_id,
                 'social_account_key' => $row->social_account_key,
                 'platform' => $row->platform,
                 'name' => $row->account_display_name,

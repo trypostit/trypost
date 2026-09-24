@@ -191,6 +191,7 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     // Analytics
     Route::get('analytics', [AnalyticsController::class, 'index'])->name('app.analytics');
     Route::get('analytics/publications/{publication}', [AnalyticsPublicationController::class, 'show'])->name('app.analytics.publications.show');
+    Route::get('analytics/{post}', [AnalyticsController::class, 'show'])->name('app.analytics.show');
 
     // Calendar
     Route::get('calendar', [PostController::class, 'calendar'])->name('app.calendar');

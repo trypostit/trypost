@@ -5,15 +5,41 @@ declare(strict_types=1);
 namespace App\Http\Controllers\App;
 
 use App\Dto\Analytics\DateRange;
+use App\Enums\SocialAccount\Platform;
 use App\Http\Controllers\Controller;
+use App\Models\AnalyticsPublication;
+use App\Models\Post;
+use App\Queries\Analytics\PublicationAnalyticsQuery;
 use App\Queries\Analytics\WorkspaceAnalyticsQuery;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AnalyticsController extends Controller
 {
+    public function show(Request $request, string $post, PublicationAnalyticsQuery $analytics): Response
+    {
+        $workspace = $request->user()->currentWorkspace;
+        $this->authorize('view', $workspace);
+
+        $record = Post::query()->whereBelongsTo($workspace)->findOrFail($post);
+        $publication = AnalyticsPublication::query()
+            ->available()
+            ->whereBelongsTo($workspace)
+            ->whereIn('platform', Platform::analyticsValues())
+            ->whereHas('postPlatform', fn (Builder $query): Builder => $query->whereBelongsTo($record));
+
+        if ($request->query('publication')) {
+            $publication->whereKey($request->query('publication'));
+        }
+
+        return Inertia::render('analytics/Publications/Show', [
+            'detail' => $analytics->latestForPublication($publication->orderByDesc('provider_published_at')->firstOrFail()),
+        ]);
+    }
+
     public function index(Request $request, WorkspaceAnalyticsQuery $analytics): Response
     {
         $workspace = $request->user()->currentWorkspace;

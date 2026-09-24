@@ -34,6 +34,7 @@ export interface PostBucket {
 export interface TopPost {
     id: string;
     post_platform_id: string | null;
+    post_id: string | null;
     social_account_key: string;
     platform: string;
     name: string | null;
