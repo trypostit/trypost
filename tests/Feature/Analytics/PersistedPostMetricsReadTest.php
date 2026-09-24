@@ -6,6 +6,8 @@ use App\Enums\Analytics\PublicationContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Mcp\Servers\TryPostServer;
+use App\Mcp\Tools\Post\GetPostMetricsTool;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
@@ -16,8 +18,9 @@ use App\Services\Post\PostMetricsFetcher;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Testing\Fluent\AssertableJson;
 
-test('web and REST post metrics read the same persisted observation without a provider call', function () {
+test('web REST and MCP post metrics read the same persisted observation without a provider call', function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     $access = createApiTestToken();
     $user = $access['user'];
@@ -52,21 +55,30 @@ test('web and REST post metrics read the same persisted observation without a pr
     $this->actingAs($user)
         ->getJson(route('app.posts.platforms.metrics', [$post, $destination]))
         ->assertOk()
-        ->assertJsonPath('0.label', __('analytics.metrics.likes'))
-        ->assertJsonPath('0.value', 7)
-        ->assertJsonCount(1);
+        ->assertJsonPath('available', true)
+        ->assertJsonPath('metrics.reactions.value', 7)
+        ->assertJsonPath('metrics.watch_time_milliseconds.value', 180000);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$access['plain_token']])
         ->getJson(route('api.posts.metrics', $post))
         ->assertOk()
-        ->assertJsonPath('platforms.0.metrics.0.label', __('analytics.metrics.likes'))
-        ->assertJsonPath('platforms.0.metrics.0.value', 7)
-        ->assertJsonPath('platforms.0.analytics.metrics.watch_time_milliseconds.value', 180000);
+        ->assertJsonPath('platforms.0.metrics.available', true)
+        ->assertJsonPath('platforms.0.metrics.metrics.reactions.value', 7)
+        ->assertJsonPath('platforms.0.metrics.metrics.watch_time_milliseconds.value', 180000)
+        ->assertJsonMissingPath('platforms.0.analytics');
 
-    expect(app(PostMetricsFetcher::class)->forPlatform($destination)['snapshot']['reactions_count'])->toBe(7)
-        ->and(app(PostMetricsFetcher::class)->forPlatformLegacy($destination))->toBe([
-            ['label' => __('analytics.metrics.likes'), 'value' => 7],
-        ]);
+    TryPostServer::actingAs($user)
+        ->tool(GetPostMetricsTool::class, ['post_id' => $post->id])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json
+            ->where('post_id', $post->id)
+            ->where('platforms.0.metrics.available', true)
+            ->where('platforms.0.metrics.metrics.reactions.value', 7)
+            ->where('platforms.0.metrics.metrics.watch_time_milliseconds.value', 180000)
+            ->missing('platforms.0.analytics')
+            ->etc());
+
+    expect(app(PostMetricsFetcher::class)->forPlatform($destination)['snapshot']['reactions_count'])->toBe(7);
     Http::assertNothingSent();
 });
 
@@ -86,13 +98,21 @@ test('excluded destinations expose no analytics and a foreign post cannot be rea
         ->assertJsonPath('unsupported', true)
         ->assertJsonPath('reason', 'platform_not_supported');
 
+    TryPostServer::actingAs($access['user'])
+        ->tool(GetPostMetricsTool::class, ['post_id' => $post->id])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json
+            ->where('platforms.0.metrics.unsupported', true)
+            ->where('platforms.0.metrics.reason', 'platform_not_supported')
+            ->etc());
+
     $foreignPost = Post::factory()->published()->create();
     $this->actingAs($access['user'])
         ->getJson(route('app.posts.platforms.metrics', [$foreignPost, $destination]))
         ->assertNotFound();
 });
 
-test('legacy post metrics keep network-specific reaction labels', function () {
+test('post metrics preserve metric keys and availability from persisted observations', function () {
     $workspace = Workspace::factory()->create();
     $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
     $post = Post::factory()->published()->create(['workspace_id' => $workspace->id]);
@@ -113,8 +133,10 @@ test('legacy post metrics keep network-specific reaction labels', function () {
         ],
     ]);
 
-    expect(app(PostMetricsFetcher::class)->forPlatformLegacy($destination))->toBe([
-        ['label' => __('analytics.metrics.likes'), 'value' => 9],
+    expect(app(PostMetricsFetcher::class)->forPlatform($destination)['metrics']['reactions'])->toBe([
+        'value' => 9,
+        'unit' => 'count',
+        'availability' => 'available',
     ]);
 });
 

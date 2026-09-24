@@ -205,7 +205,7 @@ class PostController extends Controller
             abort(404);
         }
 
-        return response()->json(app(PostMetricsFetcher::class)->forPlatformLegacy($postPlatform));
+        return response()->json(app(PostMetricsFetcher::class)->forPlatform($postPlatform));
     }
 
     public function show(Request $request, Post $post): Response|RedirectResponse

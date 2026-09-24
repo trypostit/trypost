@@ -1132,9 +1132,9 @@ test('platform metrics reads persisted X analytics without a provider request', 
         ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]));
 
     $response->assertOk();
-    $response->assertJsonPath('0.label', __('analytics.metrics.impressions'));
-    $response->assertJsonPath('0.value', 500);
-    $response->assertJsonCount(1);
+    $response->assertJsonPath('available', true);
+    $response->assertJsonPath('metrics.impressions.value', 500);
+    $response->assertJsonPath('metrics.impressions.unit', 'count');
     Http::assertNothingSent();
 });
 
@@ -1180,9 +1180,9 @@ test('platform metrics reads persisted TikTok analytics without a provider reque
         ->getJson(route('app.posts.platforms.metrics', ['post' => $post->id, 'postPlatform' => $pp->id]));
 
     $response->assertOk();
-    $response->assertJsonPath('0.label', __('analytics.metrics.views'));
-    $response->assertJsonPath('0.value', 220);
-    $response->assertJsonCount(1);
+    $response->assertJsonPath('available', true);
+    $response->assertJsonPath('metrics.views.value', 220);
+    $response->assertJsonPath('metrics.views.unit', 'count');
     Http::assertNothingSent();
 });
 
