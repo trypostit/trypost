@@ -70,19 +70,19 @@ const submit = () => {
 
                 <DialogFooter>
                     <Button
-                        type="submit"
-                        data-testid="edit-webhook-submit"
-                        :disabled="form.processing || form.events.length === 0"
-                    >
-                        {{ $t('webhooks.edit.submit') }}
-                    </Button>
-                    <Button
                         variant="secondary"
                         type="button"
                         data-testid="cancel-edit-webhook"
                         @click="open = false"
                     >
                         {{ $t('webhooks.edit.cancel') }}
+                    </Button>
+                    <Button
+                        type="submit"
+                        data-testid="edit-webhook-submit"
+                        :disabled="form.processing || form.events.length === 0"
+                    >
+                        {{ $t('webhooks.edit.submit') }}
                     </Button>
                 </DialogFooter>
             </form>

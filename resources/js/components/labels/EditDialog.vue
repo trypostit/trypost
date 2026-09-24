@@ -34,13 +34,17 @@ const form = useForm({
     color: '',
 });
 
-watch(() => props.label, (label) => {
-    if (label) {
-        form.name = label.name;
-        form.color = label.color;
-        form.clearErrors();
-    }
-}, { immediate: true });
+watch(
+    () => props.label,
+    (label) => {
+        if (label) {
+            form.name = label.name;
+            form.color = label.color;
+            form.clearErrors();
+        }
+    },
+    { immediate: true },
+);
 
 const submit = () => {
     if (!props.label) return;
@@ -76,19 +80,32 @@ const submit = () => {
                 </div>
 
                 <div class="space-y-2">
-                    <Label for="edit-color">{{ $t('labels.edit.color') }}</Label>
+                    <Label for="edit-color">{{
+                        $t('labels.edit.color')
+                    }}</Label>
                     <HexColorInput v-model="form.color" name="color" />
-                    <p v-if="form.errors.color" class="text-sm text-destructive">
+                    <p
+                        v-if="form.errors.color"
+                        class="text-sm text-destructive"
+                    >
                         {{ form.errors.color }}
                     </p>
                 </div>
 
                 <DialogFooter>
-                    <Button type="submit" :disabled="form.processing">
-                        {{ form.processing ? $t('labels.edit.submitting') : $t('labels.edit.submit') }}
-                    </Button>
-                    <Button type="button" variant="secondary" @click="open = false">
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        @click="open = false"
+                    >
                         {{ $t('common.cancel') }}
+                    </Button>
+                    <Button type="submit" :disabled="form.processing">
+                        {{
+                            form.processing
+                                ? $t('labels.edit.submitting')
+                                : $t('labels.edit.submit')
+                        }}
                     </Button>
                 </DialogFooter>
             </form>

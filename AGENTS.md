@@ -204,6 +204,10 @@ Vue components must have a single root element.
 
 # Project-Specific Rules
 
+## Dialog and slide-over actions
+
+In dialogs and slide-overs with Cancel and a primary action, render **Cancel first, primary action last** in the DOM and visually. On desktop, Cancel belongs to the left of the primary action; on mobile, the primary action remains last. Apply this to destructive confirmations as well. Do not reverse the order only with CSS, because keyboard and screen-reader order must match what users see. If there are other secondary actions, place them between Cancel and the primary action.
+
 ## Stripe Checkout (env knobs)
 
 Checkout options are configured only via env — do not hardcode trial/coupon/promo behavior in controllers. All of it goes through `App\Support\Billing\ConfigureSubscriptionCheckout` (called from `StartSubscriptionCheckout`).

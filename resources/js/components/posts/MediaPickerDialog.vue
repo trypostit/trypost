@@ -70,6 +70,9 @@ defineExpose({ open, close });
             </div>
 
             <DialogFooter class="border-t px-6 py-3">
+                <Button type="button" variant="ghost" @click="close">
+                    {{ trans('posts.edit.media_picker.cancel') }}
+                </Button>
                 <Button
                     type="button"
                     data-testid="media-picker-confirm"
@@ -86,9 +89,6 @@ defineExpose({ open, close });
                     <template v-else>
                         {{ trans('posts.edit.media_picker.add') }}
                     </template>
-                </Button>
-                <Button type="button" variant="ghost" @click="close">
-                    {{ trans('posts.edit.media_picker.cancel') }}
                 </Button>
             </DialogFooter>
         </DialogContent>

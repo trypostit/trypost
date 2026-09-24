@@ -290,6 +290,15 @@ const providerEnabled = (provider: SocialProvider): boolean =>
                                 </div>
 
                                 <DialogFooter class="gap-2">
+                                    <DialogClose as-child>
+                                        <Button variant="secondary">
+                                            {{
+                                                $t(
+                                                    'settings.authentication.sessions.cancel',
+                                                )
+                                            }}
+                                        </Button>
+                                    </DialogClose>
                                     <Button
                                         type="submit"
                                         :disabled="processing"
@@ -300,15 +309,6 @@ const providerEnabled = (provider: SocialProvider): boolean =>
                                             )
                                         }}
                                     </Button>
-                                    <DialogClose as-child>
-                                        <Button variant="secondary">
-                                            {{
-                                                $t(
-                                                    'settings.authentication.sessions.cancel',
-                                                )
-                                            }}
-                                        </Button>
-                                    </DialogClose>
                                 </DialogFooter>
                             </Form>
                         </DialogContent>

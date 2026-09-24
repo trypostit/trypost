@@ -191,6 +191,12 @@ watch(open, () => {
             </div>
 
             <DialogFooter>
+                <Button variant="outline" @click="open = false">
+                    {{ $t('posts.ai.generate.cancel') }}
+                </Button>
+                <Button v-if="canRetry" variant="outline" @click="retry">
+                    {{ $t('posts.ai.generate.retry') }}
+                </Button>
                 <Button
                     v-if="status === 'idle' || status === 'streaming'"
                     :loading="dispatching || status === 'streaming'"
@@ -201,12 +207,6 @@ watch(open, () => {
                 </Button>
                 <Button v-if="canApply" @click="apply">
                     {{ $t('posts.ai.generate.apply') }}
-                </Button>
-                <Button v-if="canRetry" variant="outline" @click="retry">
-                    {{ $t('posts.ai.generate.retry') }}
-                </Button>
-                <Button variant="outline" @click="open = false">
-                    {{ $t('posts.ai.generate.cancel') }}
                 </Button>
             </DialogFooter>
         </DialogContent>

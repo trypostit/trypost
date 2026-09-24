@@ -418,6 +418,9 @@ onBeforeUnmount(() => resizeObserver?.disconnect());
             </p>
 
             <DialogFooter>
+                <Button type="button" variant="outline" @click="close">
+                    {{ $t('common.photo_upload.crop_cancel') }}
+                </Button>
                 <Button
                     type="button"
                     data-testid="crop-save"
@@ -425,9 +428,6 @@ onBeforeUnmount(() => resizeObserver?.disconnect());
                     @click="save"
                 >
                     {{ $t('common.photo_upload.crop_save') }}
-                </Button>
-                <Button type="button" variant="outline" @click="close">
-                    {{ $t('common.photo_upload.crop_cancel') }}
                 </Button>
             </DialogFooter>
         </DialogContent>

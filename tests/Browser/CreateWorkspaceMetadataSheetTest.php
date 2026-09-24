@@ -31,11 +31,14 @@ test('workspace metadata creation uses a right-side sheet and still saves', func
             }
 
             const rect = sheet.getBoundingClientRect();
+            const cancel = sheet.querySelector('[data-testid="cancel-create-{$resource}"]');
+            const action = sheet.querySelector('[data-testid="submit-create-{$resource}"]');
 
             return {
                 leftOfCenter: rect.left > window.innerWidth / 2,
                 rightAligned: Math.abs(rect.right - window.innerWidth) < 2,
                 fullHeight: Math.abs(rect.height - window.innerHeight) < 2,
+                cancelBeforeAction: cancel.getBoundingClientRect().right <= action.getBoundingClientRect().left,
             };
         })();
     JS);
@@ -43,7 +46,8 @@ test('workspace metadata creation uses a right-side sheet and still saves', func
     expect($layout)
         ->leftOfCenter->toBeTrue()
         ->rightAligned->toBeTrue()
-        ->fullHeight->toBeTrue();
+        ->fullHeight->toBeTrue()
+        ->cancelBeforeAction->toBeTrue();
 
     $name = "New {$resource}";
     $page->fill("@create-{$resource}-name", $name);

@@ -32,7 +32,9 @@ const onSuccess = () => {
     <Dialog v-model:open="open">
         <DialogContent class="sm:max-w-md">
             <DialogHeader>
-                <DialogTitle>{{ $t('settings.api_keys.create_dialog.title') }}</DialogTitle>
+                <DialogTitle>{{
+                    $t('settings.api_keys.create_dialog.title')
+                }}</DialogTitle>
                 <DialogDescription>
                     {{ $t('settings.api_keys.create_dialog.description') }}
                 </DialogDescription>
@@ -44,31 +46,47 @@ const onSuccess = () => {
                 @success="onSuccess"
             >
                 <div class="grid gap-2">
-                    <Label for="token-name">{{ $t('settings.api_keys.create_dialog.name') }}</Label>
+                    <Label for="token-name">{{
+                        $t('settings.api_keys.create_dialog.name')
+                    }}</Label>
                     <Input
                         id="token-name"
                         name="name"
-                        :placeholder="trans('settings.api_keys.create_dialog.name_placeholder')"
+                        :placeholder="
+                            trans(
+                                'settings.api_keys.create_dialog.name_placeholder',
+                            )
+                        "
                     />
                     <InputError :message="errors.name" />
                 </div>
                 <div class="grid gap-2">
-                    <Label>{{ $t('settings.api_keys.create_dialog.expires') }}</Label>
+                    <Label>{{
+                        $t('settings.api_keys.create_dialog.expires')
+                    }}</Label>
                     <DatePicker
                         name="token-expires"
                         v-model="expiresAt"
                         :show-time="false"
-                        :placeholder="trans('settings.api_keys.create_dialog.expires_placeholder')"
+                        :placeholder="
+                            trans(
+                                'settings.api_keys.create_dialog.expires_placeholder',
+                            )
+                        "
                     />
                     <input type="hidden" name="expires_at" :value="expiresAt" />
                     <InputError :message="errors.expires_at" />
                 </div>
                 <DialogFooter>
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        @click="open = false"
+                    >
+                        {{ $t('settings.api_keys.create_dialog.cancel') }}
+                    </Button>
                     <Button type="submit" :disabled="processing">
                         {{ $t('settings.api_keys.create_dialog.submit') }}
-                    </Button>
-                    <Button type="button" variant="secondary" @click="open = false">
-                        {{ $t('settings.api_keys.create_dialog.cancel') }}
                     </Button>
                 </DialogFooter>
             </Form>

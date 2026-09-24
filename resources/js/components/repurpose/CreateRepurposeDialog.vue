@@ -84,13 +84,13 @@ const submit = () => {
                 </div>
 
                 <DialogFooter>
+                    <Button type="button" variant="ghost" @click="open = false">
+                        {{ $t('common.cancel') }}
+                    </Button>
                     <Button as-child data-testid="connect-account-cta">
                         <Link :href="accounts.url()">{{
                             $t('repurposes.create.connect')
                         }}</Link>
-                    </Button>
-                    <Button type="button" variant="ghost" @click="open = false">
-                        {{ $t('common.cancel') }}
                     </Button>
                 </DialogFooter>
             </div>
@@ -156,6 +156,9 @@ const submit = () => {
                 </div>
 
                 <DialogFooter>
+                    <Button type="button" variant="ghost" @click="open = false">
+                        {{ $t('common.cancel') }}
+                    </Button>
                     <Button
                         type="submit"
                         data-testid="create-repurpose-submit"
@@ -164,9 +167,6 @@ const submit = () => {
                         "
                     >
                         {{ $t('repurposes.create.submit') }}
-                    </Button>
-                    <Button type="button" variant="ghost" @click="open = false">
-                        {{ $t('common.cancel') }}
                     </Button>
                 </DialogFooter>
             </form>

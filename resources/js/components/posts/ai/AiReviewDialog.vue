@@ -181,15 +181,15 @@ watch(open, (isOpen) => {
             </div>
 
             <DialogFooter>
+                <Button variant="outline" @click="open = false">
+                    {{ $t('posts.ai.review.cancel') }}
+                </Button>
                 <Button
                     v-if="hasSuggestions"
                     :disabled="allApplied"
                     @click="applyAll"
                 >
                     {{ $t('posts.ai.review.apply_all') }}
-                </Button>
-                <Button variant="outline" @click="open = false">
-                    {{ $t('posts.ai.review.cancel') }}
                 </Button>
             </DialogFooter>
         </DialogContent>

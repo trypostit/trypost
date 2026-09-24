@@ -46,15 +46,15 @@ const handleRotate = () => {
                 </DialogDescription>
             </DialogHeader>
             <DialogFooter>
+                <Button variant="outline" @click="open = false">
+                    {{ $t('webhooks.rotate.cancel') }}
+                </Button>
                 <Button
                     data-testid="rotate-secret-submit"
                     :disabled="rotating"
                     @click="handleRotate"
                 >
                     {{ $t('webhooks.rotate.submit') }}
-                </Button>
-                <Button variant="outline" @click="open = false">
-                    {{ $t('webhooks.rotate.cancel') }}
                 </Button>
             </DialogFooter>
         </DialogContent>

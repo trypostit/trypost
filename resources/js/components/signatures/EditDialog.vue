@@ -34,13 +34,17 @@ const form = useForm({
     content: '',
 });
 
-watch(() => props.signature, (signature) => {
-    if (signature) {
-        form.name = signature.name;
-        form.content = signature.content;
-        form.clearErrors();
-    }
-}, { immediate: true });
+watch(
+    () => props.signature,
+    (signature) => {
+        if (signature) {
+            form.name = signature.name;
+            form.content = signature.content;
+            form.clearErrors();
+        }
+    },
+    { immediate: true },
+);
 
 const submit = () => {
     if (!props.signature) return;
@@ -63,7 +67,9 @@ const submit = () => {
             </DialogHeader>
             <form @submit.prevent="submit" class="space-y-4">
                 <div class="grid gap-2">
-                    <Label for="edit-name">{{ $t('signatures.edit.name') }}</Label>
+                    <Label for="edit-name">{{
+                        $t('signatures.edit.name')
+                    }}</Label>
                     <Input
                         id="edit-name"
                         v-model="form.name"
@@ -76,28 +82,43 @@ const submit = () => {
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="edit-content">{{ $t('signatures.edit.content') }}</Label>
+                    <Label for="edit-content">{{
+                        $t('signatures.edit.content')
+                    }}</Label>
                     <Textarea
                         id="edit-content"
                         v-model="form.content"
-                        :placeholder="trans('signatures.edit.content_placeholder')"
+                        :placeholder="
+                            trans('signatures.edit.content_placeholder')
+                        "
                         rows="4"
                         :class="{ 'border-destructive': form.errors.content }"
                     />
                     <p class="text-sm text-muted-foreground">
                         {{ $t('signatures.edit.content_hint') }}
                     </p>
-                    <p v-if="form.errors.content" class="text-sm text-destructive">
+                    <p
+                        v-if="form.errors.content"
+                        class="text-sm text-destructive"
+                    >
                         {{ form.errors.content }}
                     </p>
                 </div>
 
                 <DialogFooter>
-                    <Button type="submit" :disabled="form.processing">
-                        {{ form.processing ? $t('signatures.edit.submitting') : $t('signatures.edit.submit') }}
-                    </Button>
-                    <Button type="button" variant="outline" @click="open = false">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        @click="open = false"
+                    >
                         {{ $t('common.cancel') }}
+                    </Button>
+                    <Button type="submit" :disabled="form.processing">
+                        {{
+                            form.processing
+                                ? $t('signatures.edit.submitting')
+                                : $t('signatures.edit.submit')
+                        }}
                     </Button>
                 </DialogFooter>
             </form>

@@ -2,7 +2,14 @@
 import { computed, ref, watch } from 'vue';
 
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { MediaItem } from '@/types/media';
@@ -45,11 +52,15 @@ const save = () => {
         <DialogContent class="sm:max-w-xl" data-testid="alt-text-dialog">
             <DialogHeader>
                 <DialogTitle>{{ $t('posts.edit.alt_text.edit') }}</DialogTitle>
-                <DialogDescription>{{ $t('posts.edit.alt_text.hint') }}</DialogDescription>
+                <DialogDescription>{{
+                    $t('posts.edit.alt_text.hint')
+                }}</DialogDescription>
             </DialogHeader>
 
             <div class="space-y-2">
-                <Label for="alt-text-input">{{ $t('posts.edit.alt_text.label') }}</Label>
+                <Label for="alt-text-input">{{
+                    $t('posts.edit.alt_text.label')
+                }}</Label>
                 <Textarea
                     id="alt-text-input"
                     v-model="value"
@@ -59,7 +70,9 @@ const save = () => {
                 />
                 <p
                     class="text-right text-xs tabular-nums"
-                    :class="isOverLimit ? 'text-destructive' : 'text-foreground/60'"
+                    :class="
+                        isOverLimit ? 'text-destructive' : 'text-foreground/60'
+                    "
                     data-testid="alt-text-counter"
                 >
                     {{ length }} / {{ MAX_ALT_TEXT_LENGTH }}
@@ -67,11 +80,15 @@ const save = () => {
             </div>
 
             <DialogFooter>
-                <Button data-testid="alt-text-save" :disabled="isOverLimit" @click="save">
-                    {{ $t('posts.edit.alt_text.save') }}
-                </Button>
                 <Button variant="outline" @click="open = false">
                     {{ $t('posts.edit.cancel') }}
+                </Button>
+                <Button
+                    data-testid="alt-text-save"
+                    :disabled="isOverLimit"
+                    @click="save"
+                >
+                    {{ $t('posts.edit.alt_text.save') }}
                 </Button>
             </DialogFooter>
         </DialogContent>
