@@ -95,7 +95,7 @@ export default {
             return '—';
         }
 
-        return dayjs(date).format('LL');
+        return localized(date).format('LL');
     },
 
     /**

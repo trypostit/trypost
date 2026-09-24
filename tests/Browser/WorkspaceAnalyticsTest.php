@@ -127,6 +127,55 @@ test('workspace dashboard explains the empty state without inventing follower to
         ->assertNoConsoleLogs();
 });
 
+test('date presets use the latest available observation when analytics history is old', function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+    $user = User::factory()->create(['locale' => Locale::PortugueseBrazil]);
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
+
+    foreach (['2026-01-01', '2026-07-01'] as $date) {
+        AnalyticsAccountDailySnapshot::factory()->create([
+            'workspace_id' => $workspace->id,
+            'social_account_id' => $account->id,
+            'social_account_key' => $account->id,
+            'platform' => $account->platform,
+            'network' => $account->platform->network(),
+            'platform_user_id' => $account->platform_user_id,
+            'date' => $date,
+            'followers_count' => 100,
+        ]);
+    }
+
+    $this->actingAs($user);
+    Vite::useHotFile(storage_path('framework/testing/workspace-analytics-no-hot'));
+    $page = visit(route('app.analytics', ['start' => '2026-01-01', 'end' => '2026-02-01']));
+    waitForWorkspaceAnalyticsTestId($page, 'date-range-picker-trigger');
+
+    $page->assertScript('document.querySelector("[data-testid=date-range-picker-trigger]")?.textContent.includes("janeiro")', true)
+        ->click('@date-range-picker-trigger');
+    waitForWorkspaceAnalyticsTestId($page, 'date-range-preset-last_30_days');
+
+    $page->assertMissing('@date-range-preset-today')
+        ->click('@date-range-preset-last_30_days');
+    $page->script(<<<'JS'
+        (async () => {
+            for (let attempt = 0; attempt < 100; attempt++) {
+                const query = new URLSearchParams(location.search);
+                if (query.get('start') === '2026-06-02' && query.get('end') === '2026-07-01') return;
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+        })();
+    JS);
+
+    $page->assertScript('new URLSearchParams(location.search).get("start")', '2026-06-02')
+        ->assertScript('new URLSearchParams(location.search).get("end")', '2026-07-01')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+});
+
 test('workspace dashboard uses its own localized page title instead of the sidebar label', function () {
     $user = User::factory()->create(['locale' => Locale::German]);
     $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);

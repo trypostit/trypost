@@ -400,7 +400,7 @@ The fix isn't softer copy — it's **matching the value prop to the reader's ris
 
 **Value-prop swap in practice** — same product, two audiences:
 
-- *Startup landing page:* "Ship your first integration this afternoon. No sales calls, no procurement." 
+- *Startup landing page:* "Ship your first integration this afternoon. No sales calls, no procurement."
 - *Enterprise landing page:* "SOC 2 Type II, 99.99% uptime SLA, and a named implementation lead. Roll out with confidence."
 
 When a page has to serve both, don't average them into mush — segment the traffic (separate pages, or a persona split) and let each read its own version of the truth.

@@ -41,16 +41,19 @@ class BuildPublicationAnalyticsReport
             $key = $row->social_account_key;
 
             if (! $this->inRange($row->provider_published_at, $current)) {
-                $this->addTotals($previousTotals, $row);
-                $previousAccounts[$key] ??= $this->emptyTotals();
-                $this->addTotals($previousAccounts[$key], $row);
+                $previousTotals = $this->addTotals($previousTotals, $row);
+                $previousAccounts[$key] = $this->addTotals(
+                    data_get($previousAccounts, $key, $this->emptyTotals()),
+                    $row,
+                );
 
                 continue;
             }
 
-            $this->addTotals($currentTotals, $row);
-            $currentAccounts[$key] ??= ['row' => $row, 'totals' => $this->emptyTotals()];
-            $this->addTotals($currentAccounts[$key]['totals'], $row);
+            $currentTotals = $this->addTotals($currentTotals, $row);
+            $account = data_get($currentAccounts, $key, ['row' => $row, 'totals' => $this->emptyTotals()]);
+            $account['totals'] = $this->addTotals(data_get($account, 'totals'), $row);
+            $currentAccounts[$key] = $account;
             $this->retainTopPublication($topReactions, $row, 'reactions_count');
             $this->retainTopPublication($topComments, $row, 'comments_count');
 
@@ -154,25 +157,30 @@ class BuildPublicationAnalyticsReport
         ];
     }
 
-    /** @param array<string, int|bool> $totals */
-    private function addTotals(array &$totals, object $row): void
+    /**
+     * @param  array{posts: int, reactions: int, comments: int, engagement: int, exposure: int, has_reactions: bool, has_comments: bool}  $totals
+     * @return array{posts: int, reactions: int, comments: int, engagement: int, exposure: int, has_reactions: bool, has_comments: bool}
+     */
+    private function addTotals(array $totals, object $row): array
     {
-        $totals['posts']++;
+        $totals['posts'] = data_get($totals, 'posts') + 1;
 
         if ($row->reactions_count !== null) {
             $totals['has_reactions'] = true;
-            $totals['reactions'] += (int) $row->reactions_count;
+            $totals['reactions'] = data_get($totals, 'reactions') + (int) $row->reactions_count;
         }
 
         if ($row->comments_count !== null) {
             $totals['has_comments'] = true;
-            $totals['comments'] += (int) $row->comments_count;
+            $totals['comments'] = data_get($totals, 'comments') + (int) $row->comments_count;
         }
 
         if ($row->engagement_count !== null && $row->exposure_count !== null && (int) $row->exposure_count > 0) {
-            $totals['engagement'] += (int) $row->engagement_count;
-            $totals['exposure'] += (int) $row->exposure_count;
+            $totals['engagement'] = data_get($totals, 'engagement') + (int) $row->engagement_count;
+            $totals['exposure'] = data_get($totals, 'exposure') + (int) $row->exposure_count;
         }
+
+        return $totals;
     }
 
     /**
