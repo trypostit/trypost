@@ -51,8 +51,5 @@ test('follower collection and fallback are scheduled at the expected UTC times',
         ->and($metrics->timezone)->toBe('UTC')
         ->and($metrics->withoutOverlapping)->toBeTrue()
         ->and($metrics->onOneServer)->toBeTrue();
-    expect($rollout)->not->toBeNull()
-        ->and($rollout->expression)->toBe('0 * * * *')
-        ->and($rollout->withoutOverlapping)->toBeTrue()
-        ->and($rollout->onOneServer)->toBeTrue();
+    expect($rollout)->toBeNull();
 });

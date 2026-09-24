@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Console\Commands\Analytics\BackfillExistingAnalytics;
 use App\Console\Commands\Analytics\DispatchAccountDailyAnalytics;
 use App\Console\Commands\Analytics\DispatchPublicationDiscovery;
 use App\Console\Commands\Analytics\DispatchPublicationMetrics;
@@ -25,7 +24,6 @@ Schedule::command(RecoverStuckPosts::class)->everyThirtyMinutes()->withoutOverla
 Schedule::command(ReconcileGoogleBusinessPosts::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(PruneWebhookLogs::class)->daily()->withoutOverlapping()->onOneServer();
 Schedule::command(PollRepurposes::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
-Schedule::command(BackfillExistingAnalytics::class)->hourly()->withoutOverlapping(120)->onOneServer();
 Schedule::command(DispatchAccountDailyAnalytics::class)
     ->dailyAt('02:00')
     ->timezone('UTC')

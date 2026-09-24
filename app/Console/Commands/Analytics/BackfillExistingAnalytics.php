@@ -18,7 +18,7 @@ use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 
 #[Signature('analytics:backfill-existing {--workspace= : Limit rollout to one workspace UUID} {--include-unsubscribed : Explicitly include workspaces without an active paid subscription}')]
-#[Description('Dispatch resumable analytics backfills for existing accounts and publications')]
+#[Description('Manually dispatch historical analytics backfills for existing accounts and publications')]
 class BackfillExistingAnalytics extends Command
 {
     public function handle(): int

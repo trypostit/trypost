@@ -187,7 +187,7 @@ test('account backfill visits every identity once across ID pages despite platfo
         ->and($jobs->pluck('socialAccountId')->unique())->toHaveCount(101);
 });
 
-test('hourly rollout only redispatches missing publications and unfinished account bootstraps', function () {
+test('manual rollout rerun only redispatches missing publications and unfinished account bootstraps', function () {
     Bus::fake();
     $workspace = Workspace::factory()->create();
     $account = SocialAccount::factory()->instagram()->create([
@@ -228,7 +228,7 @@ test('hourly rollout only redispatches missing publications and unfinished accou
     Bus::assertNotDispatched(CollectAccountDailySnapshot::class);
 });
 
-test('hourly rollout recovers a stale bootstrap without repeating a recent one', function () {
+test('manual rollout rerun recovers a stale bootstrap without repeating a recent one', function () {
     Bus::fake();
     $workspace = Workspace::factory()->create();
     $staleAccount = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id, 'is_active' => true]);

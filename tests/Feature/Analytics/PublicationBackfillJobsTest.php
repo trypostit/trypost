@@ -94,6 +94,7 @@ test('discovery dispatcher resumes failed backfill before incremental discovery'
         'social_account_id' => $account->id,
         'collector' => SyncCollector::PublicationBackfill,
         'status' => SyncStatus::Failed,
+        'last_error_category' => 'queue_failed',
         'checkpoint' => ['cursor' => 'saved-cursor', 'revision' => 3],
     ]);
     AnalyticsSyncState::factory()->create([
@@ -107,6 +108,71 @@ test('discovery dispatcher resumes failed backfill before incremental discovery'
 
     Bus::assertDispatched(BootstrapAccountAnalytics::class, fn ($job): bool => $job->socialAccountId === $account->id);
     Bus::assertNotDispatched(DiscoverAccountPublications::class);
+});
+
+test('daily discovery does not retry a backfill rejected for missing permission', function () {
+    $account = SocialAccount::factory()->instagram()->create(['is_active' => true]);
+    AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationBackfill,
+        'status' => SyncStatus::Failed,
+        'last_error_category' => 'permission',
+    ]);
+    AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationDiscovery,
+    ]);
+    Bus::fake();
+
+    $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
+
+    Bus::assertNotDispatched(BootstrapAccountAnalytics::class);
+    Bus::assertNotDispatched(DiscoverAccountPublications::class);
+});
+
+test('daily discovery recovers stale bootstraps without starting the manual rollout or interrupting delayed retries', function () {
+    $stalePending = SocialAccount::factory()->instagram()->create(['is_active' => true]);
+    $staleRunning = SocialAccount::factory()->instagram()->create(['is_active' => true]);
+    $recentPending = SocialAccount::factory()->instagram()->create(['is_active' => true]);
+    $rateLimited = SocialAccount::factory()->instagram()->create(['is_active' => true]);
+    $awaitingRollout = SocialAccount::factory()->instagram()->create(['is_active' => true]);
+    $readyForDiscovery = SocialAccount::factory()->instagram()->create(['is_active' => true]);
+
+    foreach ([
+        [$stalePending, SyncStatus::Pending, null, 3],
+        [$staleRunning, SyncStatus::Running, null, 3],
+        [$recentPending, SyncStatus::Pending, null, 1],
+        [$rateLimited, SyncStatus::Running, 'rate_limited', 3],
+        [$readyForDiscovery, SyncStatus::Complete, null, 3],
+    ] as [$account, $status, $errorCategory, $hoursAgo]) {
+        $state = AnalyticsSyncState::factory()->create([
+            ...AnalyticsSyncState::identityFor($account),
+            'social_account_id' => $account->id,
+            'collector' => SyncCollector::PublicationBackfill,
+            'status' => $status,
+            'last_error_category' => $errorCategory,
+        ]);
+        $state->updated_at = now()->subHours($hoursAgo);
+        $state->saveQuietly();
+    }
+
+    AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($readyForDiscovery),
+        'social_account_id' => $readyForDiscovery->id,
+        'collector' => SyncCollector::PublicationDiscovery,
+    ]);
+
+    Bus::fake();
+
+    $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
+
+    expect(Bus::dispatched(BootstrapAccountAnalytics::class)->pluck('socialAccountId')->sort()->values()->all())
+        ->toBe(collect([$stalePending->id, $staleRunning->id])->sort()->values()->all());
+    Bus::assertDispatched(DiscoverAccountPublications::class, fn ($job): bool => $job->socialAccountId === $readyForDiscovery->id);
+    Bus::assertDispatchedTimes(DiscoverAccountPublications::class, 1);
+    Bus::assertNotDispatched(BackfillAccountPublications::class);
 });
 
 test('bootstrap creates separate backfill and discovery states and dispatches the first page', function () {
