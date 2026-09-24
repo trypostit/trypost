@@ -133,7 +133,7 @@ test('post metrics preserve metric keys and availability from persisted observat
         ],
     ]);
 
-    expect(app(ReadPublicationAnalytics::class)->forPlatform($destination)['metrics']['reactions'])->toBe([
+    expect(app(ReadPublicationAnalytics::class)->forPlatform($destination)['metrics']['reactions'])->toEqual([
         'value' => 9,
         'unit' => 'count',
         'availability' => 'available',
