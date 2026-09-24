@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Analytics;
 
+use App\Actions\Analytics\UpsertAnalyticsPublication;
 use App\Actions\Analytics\WritePublicationDailySnapshot;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\SocialAccount\Platform;
@@ -12,6 +13,7 @@ use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Metrics\PublicationMetricsCollectorFactory;
+use App\Services\Analytics\Collectors\Metrics\TikTokPublicationMetricsCollector;
 use App\Support\Analytics\AnalyticsJobLog;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -63,6 +65,7 @@ class CollectPublicationMetrics implements ShouldQueue
 
     public function handle(
         PublicationMetricsCollectorFactory $collectors,
+        UpsertAnalyticsPublication $publications,
         WritePublicationDailySnapshot $writer,
     ): void {
         $date = CarbonImmutable::parse($this->observationDate, 'UTC');
@@ -81,7 +84,15 @@ class CollectPublicationMetrics implements ShouldQueue
         $publication->setRelation('socialAccount', $account);
 
         try {
-            $observation = $collectors->for($publication->platform)->collect($publication, $date);
+            $collector = $collectors->for($publication->platform);
+
+            if ($collector instanceof TikTokPublicationMetricsCollector
+                && $publication->post_platform_id
+                && ! ctype_digit($publication->provider_post_id)) {
+                $publications->reconcileTikTokPublicId($publication, $collector->publicVideoId($publication));
+            }
+
+            $observation = $collector->collect($publication, $date);
             $writer->handle($publication, $observation);
             app(AnalyticsJobLog::class)->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), 'actual');
         } catch (AnalyticsCollectionException $exception) {

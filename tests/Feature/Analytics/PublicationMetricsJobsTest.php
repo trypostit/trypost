@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Actions\Analytics\QueuePublicationMetricsForPage;
 use App\Enums\Analytics\PublicationContentType;
+use App\Enums\Analytics\PublicationOrigin;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
@@ -12,6 +14,8 @@ use App\Jobs\Analytics\CollectPublicationMetrics;
 use App\Jobs\Analytics\ScheduleInstagramStoryMetrics;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
+use App\Models\Post;
+use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Bus;
@@ -52,6 +56,44 @@ test('metric job writes a daily snapshot once and never calls providers for excl
     expect(AnalyticsPublicationDailySnapshot::query()->where('analytics_publication_id', $included->id)->count())->toBe(1)
         ->and(AnalyticsPublicationDailySnapshot::query()->where('analytics_publication_id', $excluded->id)->count())->toBe(0);
     Http::assertSentCount(1);
+});
+
+test('TikTok metric job reconciles a public video id before persisting metrics', function () {
+    $date = CarbonImmutable::parse('2026-09-23 12:00:00', 'UTC');
+    CarbonImmutable::setTestNow($date);
+    $account = SocialAccount::factory()->create(['platform' => Platform::TikTok]);
+    $post = Post::factory()->create(['workspace_id' => $account->workspace_id]);
+    $postPlatform = PostPlatform::factory()->published()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::TikTok,
+        'content_type' => ContentType::TikTokVideo,
+        'platform_post_id' => 'v_pub_abc',
+    ]);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'post_platform_id' => $postPlatform->id,
+        'network' => Platform::TikTok->network(),
+        'platform' => Platform::TikTok,
+        'platform_user_id' => $account->platform_user_id,
+        'provider_post_id' => 'v_pub_abc',
+        'origin' => PublicationOrigin::TryPost,
+        'provider_published_at' => $date->subDay(),
+    ]);
+    Http::fake(['*' => Http::sequence()
+        ->push(['data' => ['publicaly_available_post_id' => ['123456789']]])
+        ->push(['error' => ['code' => 'ok'], 'data' => ['videos' => [[
+            'id' => '123456789', 'view_count' => 12, 'like_count' => 1,
+        ]]]])]);
+
+    app()->call([(new CollectPublicationMetrics($publication->id, $date->toDateString())), 'handle']);
+
+    expect($publication->fresh()->provider_post_id)->toBe('123456789')
+        ->and($postPlatform->fresh()->platform_post_id)->toBe('123456789')
+        ->and($publication->dailySnapshots()->first()->views_count)->toBe(12);
+    Http::assertSentCount(2);
 });
 
 test('regular collection respects the X and non-X refresh windows', function (Platform $platform, int $age, bool $eligible) {

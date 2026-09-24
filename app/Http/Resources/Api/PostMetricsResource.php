@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api;
 
-use App\Services\Post\PostMetricsFetcher;
+use App\Actions\Analytics\ReadPublicationAnalytics;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -20,7 +20,7 @@ class PostMetricsResource extends JsonResource
     {
         return [
             'post_id' => $this->id,
-            'platforms' => app(PostMetricsFetcher::class)->forPost($this->resource)->all(),
+            'platforms' => app(ReadPublicationAnalytics::class)->forPost($this->resource)->all(),
         ];
     }
 }

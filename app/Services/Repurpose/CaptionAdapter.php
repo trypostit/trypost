@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Repurpose;
 
+use App\Actions\Ai\RecordAiUsage;
 use App\Ai\Agents\PostContentShortener;
 use App\Enums\SocialAccount\Platform;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Services\Ai\RecordAiUsage;
 use App\Services\Social\ContentSanitizer;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
@@ -14,7 +15,6 @@ use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
-use App\Services\Post\PostMetricsFetcher;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -78,7 +78,7 @@ test('web REST and MCP post metrics read the same persisted observation without 
             ->missing('platforms.0.analytics')
             ->etc());
 
-    expect(app(PostMetricsFetcher::class)->forPlatform($destination)['snapshot']['reactions_count'])->toBe(7);
+    expect(app(ReadPublicationAnalytics::class)->forPlatform($destination)['snapshot']['reactions_count'])->toBe(7);
     Http::assertNothingSent();
 });
 
@@ -133,7 +133,7 @@ test('post metrics preserve metric keys and availability from persisted observat
         ],
     ]);
 
-    expect(app(PostMetricsFetcher::class)->forPlatform($destination)['metrics']['reactions'])->toBe([
+    expect(app(ReadPublicationAnalytics::class)->forPlatform($destination)['metrics']['reactions'])->toBe([
         'value' => 9,
         'unit' => 'count',
         'availability' => 'available',
@@ -181,7 +181,7 @@ test('post detail loads all destination observations in bounded queries', functi
         }
     });
 
-    $metrics = app(PostMetricsFetcher::class)->forPost($post);
+    $metrics = app(ReadPublicationAnalytics::class)->forPost($post);
 
     expect($metrics)->toHaveCount(3)
         ->and($metrics->pluck('metrics.snapshot.reactions_count')->sort()->values()->all())->toBe([1, 2, 3])

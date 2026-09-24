@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\Ai\RecordAiUsage;
 use App\Ai\Agents\PostContentReviewer;
 use App\Http\Requests\App\Ai\ReviewPostContentRequest;
 use App\Models\Post;
-use App\Services\Ai\RecordAiUsage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\Response;

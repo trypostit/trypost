@@ -14,6 +14,30 @@ use Illuminate\Support\Collection;
 
 class ReadPublicationAnalytics
 {
+    /** @return Collection<int, array<string, mixed>> */
+    public function forPost(Post $post): Collection
+    {
+        $destinations = $post->postPlatforms
+            ->where('enabled', true)
+            ->values();
+        $details = $this->latestForPost($post, $destinations);
+
+        return $destinations->map(fn (PostPlatform $destination): array => [
+            'post_platform_id' => $destination->id,
+            'platform' => $destination->platform->value,
+            'status' => $destination->status->value,
+            'platform_post_id' => $destination->platform_post_id,
+            'platform_url' => $destination->platform_url,
+            'metrics' => $this->visibleDetail($details[$destination->id]),
+        ]);
+    }
+
+    /** @return array<string, mixed> */
+    public function forPlatform(PostPlatform $postPlatform): array
+    {
+        return $this->visibleDetail($this->latestForPostPlatform($postPlatform));
+    }
+
     /**
      * @param  Collection<int, PostPlatform>  $destinations
      * @return array<string, array<string, mixed>>
@@ -104,6 +128,19 @@ class ReadPublicationAnalytics
         return $destination->status === Status::Published
             && filled($destination->platform_post_id)
             && in_array($destination->platform->value, Platform::analyticsValues(), true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $detail
+     * @return array<string, mixed>
+     */
+    private function visibleDetail(array $detail): array
+    {
+        if (! $detail['available']) {
+            return ['unsupported' => true, 'reason' => $detail['reason']];
+        }
+
+        return $detail;
     }
 
     /** @return array<string, mixed> */

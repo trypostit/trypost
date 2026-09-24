@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Analytics\Collectors\Metrics;
 
-use App\Actions\Analytics\UpsertAnalyticsPublication;
 use App\Contracts\Analytics\PublicationMetricsCollector;
 use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
@@ -14,26 +13,10 @@ use Carbon\CarbonImmutable;
 
 class TikTokPublicationMetricsCollector extends AbstractPublicationMetricsCollector implements PublicationMetricsCollector
 {
-    public function __construct(private readonly UpsertAnalyticsPublication $publications) {}
-
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
         $account = $this->account($publication);
-        $videoId = $publication->provider_post_id;
-
-        if (! ctype_digit($videoId)) {
-            $status = $this->post($account,
-                rtrim((string) config('trypost.platforms.tiktok.api'), '/').'/post/publish/status/fetch/',
-                ['publish_id' => $videoId],
-            );
-            $videoId = (string) $status->json('data.publicaly_available_post_id.0', '');
-
-            if (! ctype_digit($videoId)) {
-                throw new AnalyticsCollectionException('delayed', 'TikTok publication has no public video id yet.');
-            }
-
-            $this->publications->reconcileTikTokPublicId($publication, $videoId);
-        }
+        $videoId = $this->publicVideoId($publication);
 
         $response = $this->post($account,
             rtrim((string) config('trypost.platforms.tiktok.api'), '/').'/video/query/?fields=id,view_count,like_count,comment_count,share_count',
@@ -61,5 +44,24 @@ class TikTokPublicationMetricsCollector extends AbstractPublicationMetricsCollec
             $this->count(MetricKey::Comments, $video, 'comment_count'),
             $this->count(MetricKey::Shares, $video, 'share_count'),
         ])));
+    }
+
+    public function publicVideoId(AnalyticsPublication $publication): string
+    {
+        $videoId = $publication->provider_post_id;
+
+        if (! ctype_digit($videoId)) {
+            $status = $this->post($this->account($publication),
+                rtrim((string) config('trypost.platforms.tiktok.api'), '/').'/post/publish/status/fetch/',
+                ['publish_id' => $videoId],
+            );
+            $videoId = (string) $status->json('data.publicaly_available_post_id.0', '');
+
+            if (! ctype_digit($videoId)) {
+                throw new AnalyticsCollectionException('delayed', 'TikTok publication has no public video id yet.');
+            }
+        }
+
+        return $videoId;
     }
 }

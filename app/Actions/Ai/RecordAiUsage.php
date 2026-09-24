@@ -2,31 +2,18 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Ai;
+namespace App\Actions\Ai;
 
 use App\Enums\Ai\UsageType;
 use App\Models\AiUsageLog;
 use App\Models\Workspace;
+use App\Services\Ai\CreditCost;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-/**
- * Persists an AI usage row and debits credits from the account's monthly
- * quota. Credits are billed at the account level (Workspace::account_id);
- * workspace_id is recorded for analytics.
- *
- * Wraps the create in a try/catch so a tracking failure NEVER bubbles up
- * and breaks the actual AI flow — at worst we miss a usage row and the
- * user gets unblocked.
- */
 final class RecordAiUsage
 {
-    /**
-     * Record a usage entry for a text generation. Credits are computed from
-     * total_tokens via CreditCost::forText().
-     *
-     * @param  array<string, mixed>  $metadata
-     */
+    /** @param array<string, mixed> $metadata */
     public static function recordText(
         Workspace $workspace,
         int $promptTokens,
@@ -38,12 +25,11 @@ final class RecordAiUsage
         array $metadata = [],
     ): void {
         $totalTokens = $promptTokens + $completionTokens;
-        $credits = CreditCost::forText($totalTokens);
 
         self::persist(
             workspace: $workspace,
             type: UsageType::Text,
-            credits: $credits,
+            credits: CreditCost::forText($totalTokens),
             provider: $provider,
             model: $model,
             promptTokens: $promptTokens,
@@ -55,12 +41,7 @@ final class RecordAiUsage
         );
     }
 
-    /**
-     * Record a usage entry for an AI image generation (gpt-image-* etc.).
-     * Credits are flat per call via CreditCost::forImage($model).
-     *
-     * @param  array<string, mixed>  $metadata
-     */
+    /** @param array<string, mixed> $metadata */
     public static function recordImage(
         Workspace $workspace,
         string $provider,
@@ -69,12 +50,10 @@ final class RecordAiUsage
         ?string $postId = null,
         array $metadata = [],
     ): void {
-        $credits = CreditCost::forImage($model);
-
         self::persist(
             workspace: $workspace,
             type: UsageType::Image,
-            credits: $credits,
+            credits: CreditCost::forImage($model),
             provider: $provider,
             model: $model,
             promptTokens: 0,
@@ -86,12 +65,7 @@ final class RecordAiUsage
         );
     }
 
-    /**
-     * Record a usage entry for an image-template generation. Templates do not
-     * call an LLM (composed via Unsplash + branding) so we charge zero credits.
-     *
-     * @param  array<string, mixed>  $metadata
-     */
+    /** @param array<string, mixed> $metadata */
     public static function recordTemplate(
         Workspace $workspace,
         ?string $provider = null,
@@ -114,9 +88,7 @@ final class RecordAiUsage
         );
     }
 
-    /**
-     * @param  array<string, mixed>  $metadata
-     */
+    /** @param array<string, mixed> $metadata */
     private static function persist(
         Workspace $workspace,
         UsageType $type,
@@ -145,11 +117,11 @@ final class RecordAiUsage
                 'credits' => $credits,
                 'metadata' => $metadata !== [] ? $metadata : null,
             ]);
-        } catch (Throwable $e) {
+        } catch (Throwable $exception) {
             Log::warning('Failed to record AI usage', [
                 'workspace_id' => $workspace->id,
                 'type' => $type->value,
-                'error' => $e->getMessage(),
+                'error' => $exception->getMessage(),
             ]);
         }
     }

@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Image;
 
+use App\Actions\Ai\RecordAiUsage;
 use App\Enums\Workspace\ImageStyle;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\Ai\AiImageClient;
-use App\Services\Ai\RecordAiUsage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Drivers\Gd\Driver;

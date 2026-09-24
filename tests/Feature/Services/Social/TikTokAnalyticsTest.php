@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
@@ -12,7 +13,6 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Services\Post\PostMetricsFetcher;
 use App\Services\Social\TikTokAnalytics;
 use Illuminate\Support\Facades\Http;
 
@@ -298,7 +298,7 @@ test('tiktok post metrics facade returns the saved video url and metrics without
 
     Http::fake();
 
-    $platforms = app(PostMetricsFetcher::class)->forPost($this->post->fresh());
+    $platforms = app(ReadPublicationAnalytics::class)->forPost($this->post->fresh());
 
     expect($platforms->first())->toMatchArray([
         'platform_post_id' => $videoId,

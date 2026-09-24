@@ -394,7 +394,7 @@ test('TikTok resolves a TryPost publish id before collecting the public video', 
         ->mapWithKeys(fn ($metric) => [$metric->key->value => $metric->value]);
 
     expect($metrics->all())->toBe(['views' => 12, 'reactions' => 0, 'engagements' => 0])
-        ->and($publication->fresh()->provider_post_id)->toBe('123456789')
-        ->and($postPlatform->fresh()->platform_post_id)->toBe('123456789');
+        ->and($publication->fresh()->provider_post_id)->toBe('v_pub_abc')
+        ->and($postPlatform->fresh()->platform_post_id)->toBe('v_pub_abc');
     Http::assertSentCount(2);
 });

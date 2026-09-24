@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools\Post;
 
+use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Models\Post;
-use App\Services\Post\PostMetricsFetcher;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -34,7 +34,7 @@ class GetPostMetricsTool extends Tool
 
         return Response::structured([
             'post_id' => $post->id,
-            'platforms' => app(PostMetricsFetcher::class)->forPost($post)->all(),
+            'platforms' => app(ReadPublicationAnalytics::class)->forPost($post)->all(),
         ]);
     }
 
