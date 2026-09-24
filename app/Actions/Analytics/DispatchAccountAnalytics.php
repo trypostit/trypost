@@ -13,6 +13,8 @@ use Throwable;
 
 class DispatchAccountAnalytics
 {
+    public function __construct(private readonly FollowerCollectorFactory $collectors) {}
+
     public function handle(SocialAccount $socialAccount): void
     {
         try {
@@ -26,7 +28,7 @@ class DispatchAccountAnalytics
                 return;
             }
 
-            if (app(FollowerCollectorFactory::class)->supports($currentAccount->platform)) {
+            if ($this->collectors->supports($currentAccount->platform)) {
                 CollectAccountDailySnapshot::dispatch(
                     $currentAccount->id,
                     CarbonImmutable::now('UTC')->toDateString(),

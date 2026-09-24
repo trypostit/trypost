@@ -10,6 +10,7 @@ use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\Analytics\CollectPublicationMetrics;
 use App\Jobs\Analytics\DiscoverAccountPublications;
+use App\Jobs\Analytics\FinalizeAccountDailySnapshot;
 use App\Jobs\Analytics\FinalizeAccountDailySnapshots;
 use App\Jobs\Analytics\ScheduleInstagramStoryMetrics;
 use App\Jobs\Analytics\SyncTryPostPublication;
@@ -34,6 +35,7 @@ test('horizon supervises every analytics job on a dedicated queue', function () 
         new CollectAccountDailySnapshot('account', '2026-09-23'),
         new CollectPublicationMetrics('publication', '2026-09-23'),
         new DiscoverAccountPublications('account', 'state'),
+        new FinalizeAccountDailySnapshot('account', '2026-09-23'),
         new FinalizeAccountDailySnapshots('2026-09-23'),
         new ScheduleInstagramStoryMetrics('publication'),
         new SyncTryPostPublication(new TryPostPublicationIdentity(

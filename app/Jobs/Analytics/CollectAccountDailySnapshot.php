@@ -52,6 +52,7 @@ class CollectAccountDailySnapshot implements ShouldQueue
         FollowerCollectorFactory $collectors,
         ResolveAnalyticsAccountKey $accountKeys,
         WriteAccountDailySnapshot $writer,
+        AnalyticsJobLog $log,
     ): void {
         $account = SocialAccount::query()
             ->connected()
@@ -80,30 +81,30 @@ class CollectAccountDailySnapshot implements ShouldQueue
                 CarbonImmutable::parse($this->observationDate, 'UTC'),
             );
             $writer->handle($account, $observation);
-            app(AnalyticsJobLog::class)->record($account, 'followers', $this->observationDate, $this->attempts(), 'actual');
+            $log->record($account, 'followers', $this->observationDate, $this->attempts(), 'actual');
         } catch (AnalyticsCollectionException $exception) {
             if (in_array($exception->category, ['authentication', 'permission'], true)) {
-                app(AnalyticsJobLog::class)->record($account, 'followers', $this->observationDate, $this->attempts(), $exception->category);
+                $log->record($account, 'followers', $this->observationDate, $this->attempts(), $exception->category);
 
                 return;
             }
 
             if (! in_array($exception->category, ['transient', 'rate_limited'], true)) {
-                app(AnalyticsJobLog::class)->record($account, 'followers', $this->observationDate, $this->attempts(), $exception->category);
+                $log->record($account, 'followers', $this->observationDate, $this->attempts(), $exception->category);
 
                 return;
             }
 
-            $this->retryTransient($account, $exception->category, $exception->retryAt);
+            $this->retryTransient($account, $exception->category, $exception->retryAt, $log);
         } catch (ConnectionException) {
-            $this->retryTransient($account, 'transient', null);
+            $this->retryTransient($account, 'transient', null, $log);
         }
     }
 
-    private function retryTransient(SocialAccount $account, string $category, ?CarbonImmutable $providerRetryAt): void
+    private function retryTransient(SocialAccount $account, string $category, ?CarbonImmutable $providerRetryAt, AnalyticsJobLog $log): void
     {
         if ($this->attempts() >= 6) {
-            app(AnalyticsJobLog::class)->record($account, 'followers', $this->observationDate, $this->attempts(), $category);
+            $log->record($account, 'followers', $this->observationDate, $this->attempts(), $category);
 
             return;
         }
@@ -111,13 +112,13 @@ class CollectAccountDailySnapshot implements ShouldQueue
         $nextAttempt = $this->nextAttemptAt($providerRetryAt);
 
         if ($nextAttempt) {
-            app(AnalyticsJobLog::class)->record($account, 'followers', $this->observationDate, $this->attempts(), $category, $nextAttempt->toIso8601String());
+            $log->record($account, 'followers', $this->observationDate, $this->attempts(), $category, $nextAttempt->toIso8601String());
             $this->release($nextAttempt);
 
             return;
         }
 
-        app(AnalyticsJobLog::class)->record($account, 'followers', $this->observationDate, $this->attempts(), 'retry_window_exhausted');
+        $log->record($account, 'followers', $this->observationDate, $this->attempts(), 'retry_window_exhausted');
     }
 
     private function nextAttemptAt(?CarbonImmutable $providerRetryAt): ?CarbonImmutable

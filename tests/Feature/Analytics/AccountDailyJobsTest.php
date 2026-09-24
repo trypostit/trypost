@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Actions\Analytics\ResolveAnalyticsAccountKey;
 use App\Actions\Analytics\WriteAccountDailySnapshot;
 use App\Contracts\Analytics\FollowerCollector;
 use App\Dto\Analytics\AccountDailyObservation;
@@ -12,6 +11,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Jobs\Analytics\FinalizeAccountDailySnapshot;
 use App\Jobs\Analytics\FinalizeAccountDailySnapshots;
 use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\SocialAccount;
@@ -52,6 +52,29 @@ test('dispatcher queues every eligible account independently', function () {
     }
 });
 
+test('finalizer dispatches one job per eligible account for both scheduled dates', function () {
+    $first = SocialAccount::factory()->instagram()->create();
+    $second = SocialAccount::factory()->x()->create();
+    SocialAccount::factory()->linkedin()->create();
+    SocialAccount::factory()->x()->create(['is_active' => false]);
+    SocialAccount::factory()->x()->disconnected()->create();
+
+    app()->call([new FinalizeAccountDailySnapshots, 'handle']);
+
+    Bus::assertDispatched(FinalizeAccountDailySnapshot::class, 2);
+    Bus::assertDispatched(FinalizeAccountDailySnapshot::class, fn ($job): bool => $job->socialAccountId === $first->id
+        && $job->observationDate === '2026-09-23'
+        && $job->queue === 'analytics');
+    Bus::assertDispatched(FinalizeAccountDailySnapshot::class, fn ($job): bool => $job->socialAccountId === $second->id
+        && $job->observationDate === '2026-09-23');
+
+    app()->call([new FinalizeAccountDailySnapshots(daysAgo: 1), 'handle']);
+
+    Bus::assertDispatched(FinalizeAccountDailySnapshot::class, 4);
+    Bus::assertDispatched(FinalizeAccountDailySnapshot::class, fn ($job): bool => $job->socialAccountId === $first->id
+        && $job->observationDate === '2026-09-22');
+});
+
 test('collection job writes once and skips an existing actual observation', function () {
     $account = SocialAccount::factory()->x()->create();
     $collector = Mockery::mock(FollowerCollector::class);
@@ -61,8 +84,8 @@ test('collection job writes once and skips an existing actual observation', func
     $factory->shouldReceive('for')->once()->with(Platform::X)->andReturn($collector);
     $job = new CollectAccountDailySnapshot($account->id, '2026-09-23');
 
-    $job->handle($factory, app(ResolveAnalyticsAccountKey::class), app(WriteAccountDailySnapshot::class));
-    $job->handle($factory, app(ResolveAnalyticsAccountKey::class), app(WriteAccountDailySnapshot::class));
+    app()->call([$job, 'handle'], ['collectors' => $factory]);
+    app()->call([$job, 'handle'], ['collectors' => $factory]);
 
     expect(AnalyticsAccountDailySnapshot::count())->toBe(1)
         ->and(AnalyticsAccountDailySnapshot::first()->followers_count)->toBe(25);
@@ -80,11 +103,7 @@ test('reconnecting the same identity keeps todays follower snapshot without anot
     $factory->shouldReceive('supports')->once()->with(Platform::X)->andReturnTrue();
     $factory->shouldNotReceive('for');
 
-    (new CollectAccountDailySnapshot($replacement->id, '2026-09-23'))->handle(
-        $factory,
-        app(ResolveAnalyticsAccountKey::class),
-        app(WriteAccountDailySnapshot::class),
-    );
+    app()->call([new CollectAccountDailySnapshot($replacement->id, '2026-09-23'), 'handle'], ['collectors' => $factory]);
 
     expect(AnalyticsAccountDailySnapshot::query()->count())->toBe(1)
         ->and(AnalyticsAccountDailySnapshot::query()->firstOrFail()->social_account_key)->toBe($account->id);
@@ -108,12 +127,12 @@ test('collection job retries at spaced windows and honors a later provider retry
 
     $windowJob = (new CollectAccountDailySnapshot($account->id, '2026-09-23'))
         ->withFakeQueueInteractions();
-    $windowJob->handle($factory, app(ResolveAnalyticsAccountKey::class), app(WriteAccountDailySnapshot::class));
+    app()->call([$windowJob, 'handle'], ['collectors' => $factory]);
     $windowJob->assertReleased(4 * 60 * 60);
 
     $providerJob = (new CollectAccountDailySnapshot($account->id, '2026-09-23'))
         ->withFakeQueueInteractions();
-    $providerJob->handle($factory, app(ResolveAnalyticsAccountKey::class), app(WriteAccountDailySnapshot::class));
+    app()->call([$providerJob, 'handle'], ['collectors' => $factory]);
     $providerJob->assertReleased((5 * 60 * 60) + (30 * 60));
 });
 
@@ -126,7 +145,7 @@ test('connection failures use the same spaced retry window', function () {
     $factory->shouldReceive('for')->once()->with(Platform::X)->andReturn($collector);
     $job = (new CollectAccountDailySnapshot($account->id, '2026-09-23'))->withFakeQueueInteractions();
 
-    $job->handle($factory, app(ResolveAnalyticsAccountKey::class), app(WriteAccountDailySnapshot::class));
+    app()->call([$job, 'handle'], ['collectors' => $factory]);
 
     $job->assertReleased(4 * 60 * 60);
 });
@@ -145,7 +164,7 @@ test('collection job stops when provider retry time falls outside the observatio
     $job = (new CollectAccountDailySnapshot($account->id, '2026-09-23'))
         ->withFakeQueueInteractions();
 
-    $job->handle($factory, app(ResolveAnalyticsAccountKey::class), app(WriteAccountDailySnapshot::class));
+    app()->call([$job, 'handle'], ['collectors' => $factory]);
 
     $job->assertNotReleased();
 });
@@ -163,7 +182,7 @@ test('analytics authorization failures do not disconnect an otherwise connected 
     $job = (new CollectAccountDailySnapshot($account->id, '2026-09-23'))
         ->withFakeQueueInteractions();
 
-    $job->handle($factory, app(ResolveAnalyticsAccountKey::class), app(WriteAccountDailySnapshot::class));
+    app()->call([$job, 'handle'], ['collectors' => $factory]);
 
     expect($account->fresh()->status)->toBe(Status::Connected)
         ->and(AnalyticsAccountDailySnapshot::query()->where('social_account_id', $account->id)->exists())->toBeFalse();
@@ -182,7 +201,8 @@ test('finalizer carries the latest measured total and does not invent missing hi
         providerObservedAt: CarbonImmutable::parse('2026-09-22 02:00:00', 'UTC'),
     ));
 
-    (new FinalizeAccountDailySnapshots('2026-09-23'))->handle(app(WriteAccountDailySnapshot::class));
+    app()->call([new FinalizeAccountDailySnapshot($withHistory->id, '2026-09-23'), 'handle']);
+    app()->call([new FinalizeAccountDailySnapshot($withoutHistory->id, '2026-09-23'), 'handle']);
 
     $carried = AnalyticsAccountDailySnapshot::query()->whereDate('snapshot_date', '2026-09-23')->sole();
     expect($carried->social_account_id)->toBe($withHistory->id)
@@ -190,6 +210,23 @@ test('finalizer carries the latest measured total and does not invent missing hi
         ->and($carried->provenance)->toBe(ObservationProvenance::CarriedForward)
         ->and($carried->provider_observed_at?->toDateTimeString())->toBe('2026-09-22 02:00:00')
         ->and(AnalyticsAccountDailySnapshot::query()->where('social_account_id', $withoutHistory->id)->exists())->toBeFalse();
+});
+
+test('finalization worker skips accounts disconnected after dispatch', function () {
+    $account = SocialAccount::factory()->x()->create();
+    app(WriteAccountDailySnapshot::class)->handle($account, new AccountDailyObservation(
+        date: CarbonImmutable::parse('2026-09-22', 'UTC'),
+        followers: 50,
+        provenance: ObservationProvenance::Actual,
+        precision: MetricPrecision::Exact,
+        providerObservedAt: CarbonImmutable::parse('2026-09-22 02:00:00', 'UTC'),
+    ));
+    $job = new FinalizeAccountDailySnapshot($account->id, '2026-09-23');
+    $account->delete();
+
+    app()->call([$job, 'handle']);
+
+    expect(AnalyticsAccountDailySnapshot::query()->whereDate('snapshot_date', '2026-09-23')->exists())->toBeFalse();
 });
 
 test('next-day finalizer recovers a missed date without replacing actual observations', function () {
@@ -202,10 +239,10 @@ test('next-day finalizer recovers a missed date without replacing actual observa
         precision: MetricPrecision::Exact,
         providerObservedAt: CarbonImmutable::parse('2026-09-21 02:00:00', 'UTC'),
     ));
-    $job = new FinalizeAccountDailySnapshots(daysAgo: 1);
+    $job = new FinalizeAccountDailySnapshot($account->id, '2026-09-22');
 
-    $job->handle($writer);
-    $job->handle($writer);
+    app()->call([$job, 'handle']);
+    app()->call([$job, 'handle']);
 
     $recovered = AnalyticsAccountDailySnapshot::query()->whereDate('snapshot_date', '2026-09-22')->sole();
     expect($recovered->followers_count)->toBe(50)
@@ -220,7 +257,7 @@ test('next-day finalizer recovers a missed date without replacing actual observa
         precision: MetricPrecision::Exact,
         providerObservedAt: CarbonImmutable::parse('2026-09-22 02:00:00', 'UTC'),
     ));
-    $job->handle($writer);
+    app()->call([$job, 'handle']);
 
     expect($recovered->fresh()->followers_count)->toBe(52)
         ->and($recovered->fresh()->provenance)->toBe(ObservationProvenance::Actual);

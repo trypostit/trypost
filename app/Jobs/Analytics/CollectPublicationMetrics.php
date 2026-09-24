@@ -67,6 +67,7 @@ class CollectPublicationMetrics implements ShouldQueue
         PublicationMetricsCollectorFactory $collectors,
         UpsertAnalyticsPublication $publications,
         WritePublicationDailySnapshot $writer,
+        AnalyticsJobLog $log,
     ): void {
         $date = CarbonImmutable::parse($this->observationDate, 'UTC');
 
@@ -94,13 +95,13 @@ class CollectPublicationMetrics implements ShouldQueue
 
             $observation = $collector->collect($publication, $date);
             $writer->handle($publication, $observation);
-            app(AnalyticsJobLog::class)->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), 'actual');
+            $log->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), 'actual');
         } catch (AnalyticsCollectionException $exception) {
-            app(AnalyticsJobLog::class)->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), $exception->category);
-            $this->retry($publication, $date, $exception->category, $exception->retryAt);
+            $log->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), $exception->category);
+            $this->retry($publication, $date, $exception->category, $exception->retryAt, $log);
         } catch (ConnectionException) {
-            app(AnalyticsJobLog::class)->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), 'transient');
-            $this->retry($publication, $date, 'transient', null);
+            $log->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), 'transient');
+            $this->retry($publication, $date, 'transient', null, $log);
         }
     }
 
@@ -138,6 +139,7 @@ class CollectPublicationMetrics implements ShouldQueue
         CarbonImmutable $date,
         string $category,
         ?CarbonImmutable $providerRetryAt,
+        AnalyticsJobLog $log,
     ): void {
         if (! in_array($category, ['rate_limited', 'transient', 'delayed'], true) || $this->retryNumber >= 5) {
             return;
@@ -175,7 +177,7 @@ class CollectPublicationMetrics implements ShouldQueue
         $account = $publication->socialAccount;
 
         if ($account) {
-            app(AnalyticsJobLog::class)->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), 'retry_scheduled', $next->toIso8601String());
+            $log->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), 'retry_scheduled', $next->toIso8601String());
         }
 
         self::dispatch(
