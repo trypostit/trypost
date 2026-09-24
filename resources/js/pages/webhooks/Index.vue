@@ -17,7 +17,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import CreateWebhookDialog from '@/components/webhook/CreateWebhookDialog.vue';
+import CreateWebhookSheet from '@/components/webhook/CreateWebhookSheet.vue';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { destroy, show } from '@/routes/app/webhooks';
@@ -28,7 +28,7 @@ defineProps<{
     webhooks: Webhook[];
 }>();
 
-const createDialogOpen = ref(false);
+const createSheetOpen = ref(false);
 const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(
     null,
 );
@@ -59,7 +59,7 @@ const handleDelete = (webhook: Webhook) => {
         <template #header-actions>
             <Button
                 data-testid="create-webhook-button"
-                @click="createDialogOpen = true"
+                @click="createSheetOpen = true"
             >
                 {{ $t('webhooks.new') }}
             </Button>
@@ -178,7 +178,7 @@ const handleDelete = (webhook: Webhook) => {
         </div>
     </AppLayout>
 
-    <CreateWebhookDialog v-model:open="createDialogOpen" />
+    <CreateWebhookSheet v-model:open="createSheetOpen" />
     <ConfirmDeleteModal
         ref="confirmDeleteModal"
         :title="$t('webhooks.delete.title')"
