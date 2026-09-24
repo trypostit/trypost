@@ -19,9 +19,17 @@ class AnalyticsSyncState extends Model
     use HasFactory, HasUuids;
 
     protected $fillable = [
-        'social_account_id', 'workspace_id', 'network', 'platform_user_id',
-        'collector', 'status', 'checkpoint', 'target_since',
-        'oldest_reached_at', 'high_watermark_at', 'last_success_at',
+        'social_account_id',
+        'workspace_id',
+        'network',
+        'platform_user_id',
+        'collector',
+        'status',
+        'checkpoint',
+        'target_since',
+        'oldest_reached_at',
+        'high_watermark_at',
+        'last_success_at',
         'last_error_category',
     ];
 

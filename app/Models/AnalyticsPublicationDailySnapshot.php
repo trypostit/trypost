@@ -17,11 +17,23 @@ class AnalyticsPublicationDailySnapshot extends Model
     use HasFactory, HasUuids;
 
     protected $fillable = [
-        'analytics_publication_id', 'snapshot_date', 'collected_at',
-        'provider_observed_at', 'metrics', 'reactions_count', 'comments_count',
-        'shares_count', 'saves_count', 'views_count', 'impressions_count',
-        'reach_count', 'engagement_count', 'exposure_count', 'exposure_kind',
-        'watch_time_milliseconds', 'average_watch_time_milliseconds',
+        'analytics_publication_id',
+        'snapshot_date',
+        'collected_at',
+        'provider_observed_at',
+        'metrics',
+        'reactions_count',
+        'comments_count',
+        'shares_count',
+        'saves_count',
+        'views_count',
+        'impressions_count',
+        'reach_count',
+        'engagement_count',
+        'exposure_count',
+        'exposure_kind',
+        'watch_time_milliseconds',
+        'average_watch_time_milliseconds',
     ];
 
     protected function casts(): array

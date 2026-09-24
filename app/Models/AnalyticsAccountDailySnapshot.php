@@ -19,10 +19,22 @@ class AnalyticsAccountDailySnapshot extends Model
     use HasFactory, HasUuids;
 
     protected $fillable = [
-        'workspace_id', 'social_account_id', 'social_account_key', 'network',
-        'platform_user_id', 'platform', 'account_display_name', 'account_username',
-        'account_avatar_url', 'snapshot_date', 'followers_count', 'metrics',
-        'provenance', 'precision', 'provider_observed_at', 'collected_at',
+        'workspace_id',
+        'social_account_id',
+        'social_account_key',
+        'network',
+        'platform_user_id',
+        'platform',
+        'account_display_name',
+        'account_username',
+        'account_avatar_url',
+        'snapshot_date',
+        'followers_count',
+        'metrics',
+        'provenance',
+        'precision',
+        'provider_observed_at',
+        'collected_at',
     ];
 
     protected function casts(): array

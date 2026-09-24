@@ -22,12 +22,29 @@ class AnalyticsPublication extends Model
     use HasFactory, HasUuids;
 
     protected $fillable = [
-        'workspace_id', 'social_account_id', 'social_account_key', 'post_platform_id',
-        'network', 'platform_user_id', 'platform', 'provider_post_id',
-        'provider_published_at', 'origin', 'content_type', 'availability',
-        'provider_content_type', 'permalink', 'excerpt', 'preview_metadata',
-        'account_display_name', 'account_username', 'account_avatar_url',
-        'first_seen_at', 'last_seen_at', 'provider_synced_at', 'provider_metadata',
+        'workspace_id',
+        'social_account_id',
+        'social_account_key',
+        'post_platform_id',
+        'network',
+        'platform_user_id',
+        'platform',
+        'provider_post_id',
+        'provider_published_at',
+        'origin',
+        'content_type',
+        'availability',
+        'provider_content_type',
+        'permalink',
+        'excerpt',
+        'preview_metadata',
+        'account_display_name',
+        'account_username',
+        'account_avatar_url',
+        'first_seen_at',
+        'last_seen_at',
+        'provider_synced_at',
+        'provider_metadata',
     ];
 
     protected function casts(): array
