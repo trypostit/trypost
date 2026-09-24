@@ -6,7 +6,6 @@ import { computed } from 'vue';
 import ProfileController from '@/actions/App/Http/Controllers/App/Settings/ProfileController';
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import InputError from '@/components/InputError.vue';
-import PageHeader from '@/components/PageHeader.vue';
 import PhotoUpload from '@/components/PhotoUpload.vue';
 import SettingsTabsNav from '@/components/settings/SettingsTabsNav.vue';
 import { Button } from '@/components/ui/button';
@@ -16,7 +15,11 @@ import { Separator } from '@/components/ui/separator';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { edit as editAuthentication } from '@/routes/app/authentication';
 import { preferences as notificationPreferences } from '@/routes/app/notifications';
-import { deletePhoto, edit as editProfile, uploadPhoto } from '@/routes/app/profile';
+import {
+    deletePhoto,
+    edit as editProfile,
+    uploadPhoto,
+} from '@/routes/app/profile';
 import { send } from '@/routes/verification';
 
 interface Props {
@@ -30,21 +33,32 @@ const page = usePage();
 const user = computed(() => page.props.auth.user);
 
 const tabs = computed(() => [
-    { name: 'profile', label: trans('settings.nav.profile'), href: editProfile().url },
-    { name: 'authentication', label: trans('settings.nav.authentication'), href: editAuthentication().url },
-    { name: 'notifications', label: trans('settings.nav.notifications'), href: notificationPreferences().url },
+    {
+        name: 'profile',
+        label: trans('settings.nav.profile'),
+        href: editProfile().url,
+    },
+    {
+        name: 'authentication',
+        label: trans('settings.nav.authentication'),
+        href: editAuthentication().url,
+    },
+    {
+        name: 'notifications',
+        label: trans('settings.nav.notifications'),
+        href: notificationPreferences().url,
+    },
 ]);
 </script>
 
 <template>
     <Head :title="$t('settings.profile.title')" />
 
-    <AppLayout>
+    <AppLayout :title="$t('settings.hub.title')">
         <div class="mx-auto max-w-4xl space-y-8 px-6 py-8">
-            <PageHeader
-                :title="$t('settings.hub.title')"
-                :description="$t('settings.hub.description')"
-            />
+            <p class="text-sm text-muted-foreground">
+                {{ $t('settings.hub.description') }}
+            </p>
 
             <SettingsTabsNav :tabs="tabs" active="profile" />
 
@@ -78,26 +92,34 @@ const tabs = computed(() => [
                         v-slot="{ errors, processing }"
                     >
                         <div class="grid gap-2">
-                            <Label for="name">{{ $t('settings.profile.name') }}</Label>
+                            <Label for="name">{{
+                                $t('settings.profile.name')
+                            }}</Label>
                             <Input
                                 id="name"
                                 name="name"
                                 :default-value="user.name"
                                 autocomplete="name"
-                                :placeholder="trans('settings.profile.name_placeholder')"
+                                :placeholder="
+                                    trans('settings.profile.name_placeholder')
+                                "
                             />
                             <InputError :message="errors.name" />
                         </div>
 
                         <div class="grid gap-2">
-                            <Label for="email">{{ $t('settings.profile.email') }}</Label>
+                            <Label for="email">{{
+                                $t('settings.profile.email')
+                            }}</Label>
                             <Input
                                 id="email"
                                 type="email"
                                 name="email"
                                 :default-value="user.email"
                                 autocomplete="username"
-                                :placeholder="trans('settings.profile.email_placeholder')"
+                                :placeholder="
+                                    trans('settings.profile.email_placeholder')
+                                "
                             />
                             <InputError :message="errors.email" />
                         </div>
@@ -110,7 +132,11 @@ const tabs = computed(() => [
                                     as="button"
                                     class="font-semibold text-foreground underline decoration-foreground/30 underline-offset-4 transition-colors hover:decoration-foreground"
                                 >
-                                    {{ $t('settings.profile.resend_verification') }}
+                                    {{
+                                        $t(
+                                            'settings.profile.resend_verification',
+                                        )
+                                    }}
                                 </Link>
                             </p>
 

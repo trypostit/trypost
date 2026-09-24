@@ -53,45 +53,83 @@ onMounted(() => {
 <template>
     <Head :title="$t('billing.processing.page_title')" />
 
-    <section class="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-6">
+    <section
+        class="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-6"
+    >
         <!-- Dot pattern overlay -->
         <div
             class="pointer-events-none absolute inset-0 opacity-[0.06]"
-            style="background-image: radial-gradient(circle, #0a0a0a 1px, transparent 1px); background-size: 28px 28px;"
+            style="
+                background-image: radial-gradient(
+                    circle,
+                    #0a0a0a 1px,
+                    transparent 1px
+                );
+                background-size: 28px 28px;
+            "
         />
 
         <!-- Soft violet glow blobs -->
-        <div class="pointer-events-none absolute -top-24 -left-24 size-[440px] rounded-full bg-violet-200/50 blur-3xl" />
-        <div class="pointer-events-none absolute -bottom-32 -right-24 size-[440px] rounded-full bg-fuchsia-200/30 blur-3xl" />
+        <div
+            class="pointer-events-none absolute -top-24 -left-24 size-[440px] rounded-full bg-violet-200/50 blur-3xl"
+        />
+        <div
+            class="pointer-events-none absolute -right-24 -bottom-32 size-[440px] rounded-full bg-fuchsia-200/30 blur-3xl"
+        />
 
         <!-- Mockup window -->
-        <div class="relative w-full max-w-md -rotate-1 overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-xl">
+        <div
+            class="relative w-full max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-lg"
+        >
             <!-- Title bar -->
-            <div class="flex items-center gap-3 border-b-2 border-foreground bg-muted px-4 py-2.5">
+            <div
+                class="flex items-center gap-3 border-b border-border bg-muted px-4 py-2.5"
+            >
                 <div class="flex gap-1.5">
-                    <span class="size-3 rounded-full border border-foreground bg-rose-300" />
-                    <span class="size-3 rounded-full border border-foreground bg-amber-300" />
-                    <span class="size-3 rounded-full border border-foreground bg-emerald-300" />
+                    <span
+                        class="size-3 rounded-full border border-foreground bg-rose-300"
+                    />
+                    <span
+                        class="size-3 rounded-full border border-foreground bg-amber-300"
+                    />
+                    <span
+                        class="size-3 rounded-full border border-foreground bg-emerald-300"
+                    />
                 </div>
-                <div class="ml-2 min-w-0 truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                <div
+                    class="ml-2 min-w-0 truncate text-[10px] font-bold tracking-widest text-muted-foreground uppercase"
+                >
                     trypost.it · checkout
                 </div>
-                <span class="ml-auto inline-flex items-center gap-1.5 rounded-md border-2 border-foreground bg-foreground px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-background shadow-2xs">
+                <span
+                    class="ml-auto inline-flex items-center gap-1.5 rounded-md border border-border bg-foreground px-2 py-0.5 text-[10px] font-black tracking-widest text-background uppercase shadow-2xs"
+                >
                     <span class="relative flex size-1.5">
-                        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/80" />
-                        <span class="relative inline-flex size-1.5 rounded-full bg-emerald-400" />
+                        <span
+                            class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/80"
+                        />
+                        <span
+                            class="relative inline-flex size-1.5 rounded-full bg-emerald-400"
+                        />
                     </span>
                     Live
                 </span>
             </div>
 
             <!-- Body -->
-            <div class="flex flex-col items-center gap-5 px-8 py-12 text-center">
-                <div class="flex size-16 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-200 shadow-sm -rotate-2">
+            <div
+                class="flex flex-col items-center gap-5 px-8 py-12 text-center"
+            >
+                <div
+                    class="flex size-16 items-center justify-center rounded-2xl border border-border bg-muted shadow-xs"
+                >
                     <IconLoader2 class="size-8 animate-spin text-foreground" />
                 </div>
                 <div>
-                    <h2 class="text-2xl font-normal tracking-tight text-foreground" style="font-family: var(--font-display);">
+                    <h2
+                        class="text-2xl font-normal tracking-tight text-foreground"
+                        style="font-family: var(--font-display)"
+                    >
                         {{ $t('billing.processing.title') }}
                     </h2>
                     <p class="mt-2 text-sm leading-relaxed text-foreground/70">

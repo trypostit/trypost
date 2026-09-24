@@ -23,11 +23,15 @@ defineEmits<{
 
 <template>
     <header
-        class="flex shrink-0 flex-col gap-3 border-b-2 border-foreground bg-card px-4 py-3 md:flex-row md:items-center md:justify-between md:px-6"
+        class="flex shrink-0 flex-col gap-3 border-b border-border bg-card px-4 py-3 md:flex-row md:items-center md:justify-between md:px-6"
     >
         <div class="flex min-w-0 items-center gap-3 pl-12 md:pl-0">
             <Link :href="index.url()">
-                <Button variant="outline" size="icon-sm" :aria-label="$t('common.back')">
+                <Button
+                    variant="outline"
+                    size="icon-sm"
+                    :aria-label="$t('common.back')"
+                >
                     <IconArrowLeft class="size-4" />
                 </Button>
             </Link>
@@ -36,7 +40,10 @@ defineEmits<{
                     <h1 class="truncate text-lg font-semibold text-foreground">
                         {{ $t('webhooks.title') }}
                     </h1>
-                    <Badge :variant="webhookStatusVariant(webhook.status)" class="shrink-0">
+                    <Badge
+                        :variant="webhookStatusVariant(webhook.status)"
+                        class="shrink-0"
+                    >
                         {{ $t(`webhooks.status.${webhook.status}`) }}
                     </Badge>
                 </div>

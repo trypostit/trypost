@@ -7,7 +7,6 @@ import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import McpAdvancedClients from '@/components/mcp/McpAdvancedClients.vue';
 import McpPrimarySetup from '@/components/mcp/McpPrimarySetup.vue';
-import PageHeader from '@/components/PageHeader.vue';
 import SettingsTabsNav from '@/components/settings/SettingsTabsNav.vue';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceSettingsTabs } from '@/composables/useWorkspaceSettingsTabs';
@@ -46,12 +45,11 @@ const confirmDisconnect = (client: ConnectedClient): void => {
 <template>
     <Head :title="$t('mcp.title')" />
 
-    <AppLayout>
+    <AppLayout :title="$t('settings.hub.title')">
         <div class="mx-auto max-w-4xl space-y-8 px-6 py-8">
-            <PageHeader
-                :title="$t('settings.hub.title')"
-                :description="$t('settings.hub.description')"
-            />
+            <p class="text-sm text-muted-foreground">
+                {{ $t('settings.hub.description') }}
+            </p>
 
             <SettingsTabsNav :tabs="tabs" active="mcp" />
 
@@ -77,7 +75,7 @@ const confirmDisconnect = (client: ConnectedClient): void => {
 
                     <div
                         v-if="connectedClients.length === 0"
-                        class="rounded-xl border-2 border-dashed border-foreground/25 bg-card/40 px-4 py-6 text-center text-sm font-medium text-foreground/60"
+                        class="rounded-xl border border-dashed border-border bg-muted/40 px-4 py-6 text-center text-sm font-medium text-muted-foreground"
                         data-testid="mcp-connected-empty"
                     >
                         {{ $t('mcp.connected_empty') }}
@@ -87,11 +85,11 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                         <div
                             v-for="client in connectedClients"
                             :key="client.client_id"
-                            class="flex items-center gap-4 rounded-xl border-2 border-foreground bg-card p-4 shadow-2xs"
+                            class="flex items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-2xs"
                             :data-testid="`mcp-connected-client-${client.client_id}`"
                         >
                             <div
-                                class="inline-flex size-10 -rotate-2 flex-shrink-0 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-100 shadow-2xs"
+                                class="inline-flex size-10 flex-shrink-0 items-center justify-center rounded-xl border border-border bg-muted shadow-xs"
                             >
                                 <IconPlugConnected
                                     class="size-5 text-foreground"
@@ -99,7 +97,9 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                 />
                             </div>
                             <div class="min-w-0 flex-1 space-y-0.5">
-                                <div class="truncate text-sm font-bold text-foreground">
+                                <div
+                                    class="truncate text-sm font-bold text-foreground"
+                                >
                                     {{ client.name }}
                                 </div>
                                 <div

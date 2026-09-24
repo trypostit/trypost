@@ -10,58 +10,39 @@ const props = defineProps<ToasterProps>()
     v-bind="props"
     position="bottom-right"
     :style="{
-      '--normal-bg': 'var(--card)',
-      '--normal-text': 'var(--foreground)',
-      '--normal-border': 'var(--foreground)',
-      '--success-bg': '#d1fae5',
-      '--success-text': 'var(--foreground)',
-      '--success-border': 'var(--foreground)',
-      '--error-bg': '#fee2e2',
-      '--error-text': 'var(--foreground)',
-      '--error-border': 'var(--foreground)',
-      '--warning-bg': '#fef3c7',
-      '--warning-text': 'var(--foreground)',
-      '--warning-border': 'var(--foreground)',
-      '--info-bg': '#ede9fe',
-      '--info-text': 'var(--foreground)',
-      '--info-border': 'var(--foreground)',
+      '--normal-bg': 'var(--popover)',
+      '--normal-text': 'var(--popover-foreground)',
+      '--normal-border': 'var(--border)',
+      '--success-bg': 'var(--popover)',
+      '--success-text': 'var(--popover-foreground)',
+      '--success-border': 'var(--border)',
+      '--error-bg': 'var(--popover)',
+      '--error-text': 'var(--popover-foreground)',
+      '--error-border': 'var(--border)',
+      '--warning-bg': 'var(--popover)',
+      '--warning-text': 'var(--popover-foreground)',
+      '--warning-border': 'var(--border)',
+      '--info-bg': 'var(--popover)',
+      '--info-text': 'var(--popover-foreground)',
+      '--info-border': 'var(--border)',
     }"
   />
 </template>
 
 <style>
-/* Indies sticker toast — ink 2px border + solid offset ink shadow, no blur. */
-[data-sonner-toast] {
-  border-width: 2px !important;
-  border-radius: var(--radius-lg) !important;
-  box-shadow: 4px 4px 0 0 #0a0a0a !important;
-  font-weight: 500;
-}
-
-[data-sonner-toast] [data-title] {
-  font-weight: 600;
-}
-
 [data-sonner-toast][data-type="success"] [data-icon] {
-  color: #047857 !important;
+  color: var(--success) !important;
 }
 
 [data-sonner-toast][data-type="error"] [data-icon] {
-  color: #b91c1c !important;
+  color: var(--error) !important;
 }
 
 [data-sonner-toast][data-type="warning"] [data-icon] {
-  color: #b45309 !important;
+  color: var(--warning) !important;
 }
 
 [data-sonner-toast][data-type="info"] [data-icon] {
-  color: #5b21b6 !important;
-}
-
-/* Action / cancel buttons inside a toast pick up the indies button look. */
-[data-sonner-toast] [data-button] {
-  border: 2px solid #0a0a0a !important;
-  box-shadow: 1px 1px 0 0 #0a0a0a !important;
-  font-weight: 600;
+  color: var(--info) !important;
 }
 </style>

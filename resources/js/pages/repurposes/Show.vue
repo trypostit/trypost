@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { IconAlertTriangle, IconCircleCheck, IconHistory, IconLoader2 } from '@tabler/icons-vue';
+import {
+    IconAlertTriangle,
+    IconCircleCheck,
+    IconHistory,
+    IconLoader2,
+} from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, onUnmounted, ref, watch } from 'vue';
 
@@ -16,7 +21,13 @@ import RepurposeLifecycle from '@/components/repurpose/RepurposeLifecycle.vue';
 import RepurposeSummary from '@/components/repurpose/RepurposeSummary.vue';
 import SourceFormatCard from '@/components/repurpose/SourceFormatCard.vue';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformMetaIssue } from '@/composables/usePostCompliance';
@@ -25,7 +36,11 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { MediaType } from '@/lib/mediaType';
 import { destroy, update } from '@/routes/app/repurposes';
 import type { PinterestBoard } from '@/types';
-import type { Channel, ChannelAccount, ChannelTikTokCreatorInfo } from '@/types/channel';
+import type {
+    Channel,
+    ChannelAccount,
+    ChannelTikTokCreatorInfo,
+} from '@/types/channel';
 import type { MediaItem } from '@/types/media';
 import type {
     FlowNode,
@@ -48,11 +63,16 @@ const props = defineProps<{
     publishModes: PublishModeOption[];
     recommendedFormats: Record<string, string>;
     platformConfigs: Record<string, { publishConfig?: Record<string, any> }>;
-    pinterestBoards: Record<string, { boards: PinterestBoard[]; truncated: boolean }>;
+    pinterestBoards: Record<
+        string,
+        { boards: PinterestBoard[]; truncated: boolean }
+    >;
     tiktokCreatorInfos: Record<string, ChannelTikTokCreatorInfo | null>;
 }>();
 
-const availableAccountIds = new Set(props.destinationAccounts.map((account) => account.id));
+const availableAccountIds = new Set(
+    props.destinationAccounts.map((account) => account.id),
+);
 
 const form = useForm<{
     source_social_account_id: string | null;
@@ -75,7 +95,9 @@ const plannedMedia = computed<MediaItem[]>(() => [
 ]);
 
 const destinationAccounts = computed(() =>
-    props.destinationAccounts.filter((account) => account.id !== form.source_social_account_id),
+    props.destinationAccounts.filter(
+        (account) => account.id !== form.source_social_account_id,
+    ),
 );
 
 watch(
@@ -89,39 +111,61 @@ watch(
 
 const channels = computed<Channel[]>(() =>
     destinationAccounts.value.map((account) => {
-        const index = form.destinations.findIndex((item) => item.social_account_id === account.id);
+        const index = form.destinations.findIndex(
+            (item) => item.social_account_id === account.id,
+        );
         const destination = form.destinations[index];
 
         return {
             id: account.id,
             platform: account.platform,
-            issue: index === -1 ? null : getPlatformMetaIssue(account.platform, destination.meta ?? {}),
+            issue:
+                index === -1
+                    ? null
+                    : getPlatformMetaIssue(
+                          account.platform,
+                          destination.meta ?? {},
+                      ),
             displayName: account.display_name,
             username: account.username ?? null,
             avatarUrl: account.avatar_url,
             socialAccount: account,
-            contentType: destination?.content_type ?? props.recommendedFormats[account.id] ?? '',
+            contentType:
+                destination?.content_type ??
+                props.recommendedFormats[account.id] ??
+                '',
             meta: destination?.meta ?? {},
             boards: props.pinterestBoards?.[account.id]?.boards ?? [],
-            boardsTruncated: props.pinterestBoards?.[account.id]?.truncated ?? false,
+            boardsTruncated:
+                props.pinterestBoards?.[account.id]?.truncated ?? false,
             creatorInfo: props.tiktokCreatorInfos?.[account.id] ?? null,
-            publishConfig: props.platformConfigs?.[account.id]?.publishConfig ?? {},
-            contentTypeError: errors.value[`destinations.${index}.content_type`],
+            publishConfig:
+                props.platformConfigs?.[account.id]?.publishConfig ?? {},
+            contentTypeError:
+                errors.value[`destinations.${index}.content_type`],
         };
     }),
 );
 
-const selectedAccountIds = computed(() => form.destinations.map((destination) => destination.social_account_id));
+const selectedAccountIds = computed(() =>
+    form.destinations.map((destination) => destination.social_account_id),
+);
 
 const pausedDestinations = computed(() =>
     props.destinationAccounts
-        .filter((account) => account.is_active === false && selectedAccountIds.value.includes(account.id))
+        .filter(
+            (account) =>
+                account.is_active === false &&
+                selectedAccountIds.value.includes(account.id),
+        )
         .map((account) => account.display_label ?? account.display_name),
 );
 
 const toggleDestination = (accountId: string) => {
     if (selectedAccountIds.value.includes(accountId)) {
-        form.destinations = form.destinations.filter((destination) => destination.social_account_id !== accountId);
+        form.destinations = form.destinations.filter(
+            (destination) => destination.social_account_id !== accountId,
+        );
 
         return;
     }
@@ -136,9 +180,14 @@ const toggleDestination = (accountId: string) => {
     ];
 };
 
-const updateDestination = (accountId: string, changes: Partial<RepurposeDestination>) => {
+const updateDestination = (
+    accountId: string,
+    changes: Partial<RepurposeDestination>,
+) => {
     form.destinations = form.destinations.map((destination) =>
-        destination.social_account_id === accountId ? { ...destination, ...changes } : destination,
+        destination.social_account_id === accountId
+            ? { ...destination, ...changes }
+            : destination,
     );
 };
 
@@ -150,8 +199,9 @@ const setDestinationMeta = (accountId: string, meta: Record<string, any>) =>
 
 const selectedSourceAccount = computed(
     () =>
-        props.sourceAccounts.find((account) => account.id === form.source_social_account_id)
-        ?? props.repurpose.source_account,
+        props.sourceAccounts.find(
+            (account) => account.id === form.source_social_account_id,
+        ) ?? props.repurpose.source_account,
 );
 
 const flowSource = computed<FlowNode>(() => ({
@@ -162,19 +212,32 @@ const flowSource = computed<FlowNode>(() => ({
 
 const flowDestinations = computed<FlowNode[]>(() =>
     form.destinations.flatMap((destination) => {
-        const account = props.destinationAccounts.find((item) => item.id === destination.social_account_id);
+        const account = props.destinationAccounts.find(
+            (item) => item.id === destination.social_account_id,
+        );
 
         return account
-            ? [{ platform: account.platform, label: account.display_name, username: account.username }]
+            ? [
+                  {
+                      platform: account.platform,
+                      label: account.display_name,
+                      username: account.username,
+                  },
+              ]
             : [];
     }),
 );
 
 const currentFormatLabel = computed(
-    () => props.sourceFormats.find((option) => option.value === form.source_format)?.label ?? '',
+    () =>
+        props.sourceFormats.find(
+            (option) => option.value === form.source_format,
+        )?.label ?? '',
 );
 
-const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
+const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(
+    null,
+);
 
 const isSaving = ref(false);
 const showSaved = ref(false);
@@ -193,16 +256,25 @@ const save = () => {
         preserveScroll: true,
         onSuccess: () => {
             showSaved.value = true;
-            setTimeout(() => { showSaved.value = false; }, 2000);
+            setTimeout(() => {
+                showSaved.value = false;
+            }, 2000);
         },
-        onFinish: () => { isSaving.value = false; },
+        onFinish: () => {
+            isSaving.value = false;
+        },
     });
 };
 
 const debouncedSave = debounce(save, 1500);
 
 watch(
-    () => [form.source_social_account_id, form.source_format, form.publish_mode, form.destinations],
+    () => [
+        form.source_social_account_id,
+        form.source_format,
+        form.publish_mode,
+        form.destinations,
+    ],
     () => {
         showSaved.value = false;
         debouncedSave();
@@ -218,7 +290,10 @@ const blockedReason = computed<string | null>(() => {
     }
 
     const issues = channels.value
-        .filter((channel) => selectedAccountIds.value.includes(channel.id) && channel.issue)
+        .filter(
+            (channel) =>
+                selectedAccountIds.value.includes(channel.id) && channel.issue,
+        )
         .map((channel) => `${channel.displayName}: ${channel.issue}`);
 
     return issues.length > 0 ? issues.join('\n') : null;
@@ -242,14 +317,20 @@ const handleDelete = () => {
                     <div class="space-y-2">
                         <div class="flex flex-wrap items-center gap-3">
                             <h1
-                                class="text-2xl font-semibold leading-tight text-foreground sm:text-4xl"
+                                class="text-2xl leading-tight font-semibold text-foreground sm:text-4xl"
                                 style="font-family: var(--font-display)"
                             >
                                 {{ $t('repurposes.show.title') }}
                             </h1>
 
-                            <Badge :variant="repurposeStatusVariant(repurpose.status)">
-                                {{ $t(`repurposes.status.${repurpose.status}`) }}
+                            <Badge
+                                :variant="
+                                    repurposeStatusVariant(repurpose.status)
+                                "
+                            >
+                                {{
+                                    $t(`repurposes.status.${repurpose.status}`)
+                                }}
                             </Badge>
                         </div>
 
@@ -275,7 +356,10 @@ const handleDelete = () => {
                             class="flex items-center gap-1.5 text-xs font-semibold text-emerald-700"
                             data-testid="repurpose-saved"
                         >
-                            <IconCircleCheck class="size-3.5" stroke-width="2.5" />
+                            <IconCircleCheck
+                                class="size-3.5"
+                                stroke-width="2.5"
+                            />
                             {{ $t('repurposes.show.saved') }}
                         </span>
 
@@ -287,11 +371,14 @@ const handleDelete = () => {
                     </div>
                 </div>
 
-                <RepurposeHealthBanner :repurpose="repurpose" :accounts="destinationAccounts" />
+                <RepurposeHealthBanner
+                    :repurpose="repurpose"
+                    :accounts="destinationAccounts"
+                />
 
                 <p
                     v-if="repurpose.last_error"
-                    class="flex items-start gap-2 rounded-lg border-2 border-foreground bg-rose-50 p-2 text-xs font-semibold text-rose-700"
+                    class="flex items-start gap-2 rounded-lg border border-border bg-rose-50 p-2 text-xs font-semibold text-rose-700"
                 >
                     <IconAlertTriangle class="mt-0.5 size-3.5 shrink-0" />
                     {{ repurpose.last_error }}
@@ -299,14 +386,21 @@ const handleDelete = () => {
 
                 <Card>
                     <CardContent class="py-6">
-                        <RepurposeFlow :source="flowSource" :destinations="flowDestinations" size="lg" />
+                        <RepurposeFlow
+                            :source="flowSource"
+                            :destinations="flowDestinations"
+                            size="lg"
+                        />
                     </CardContent>
                 </Card>
             </header>
 
             <Tabs default-value="configuration">
                 <TabsList>
-                    <TabsTrigger value="configuration" data-testid="tab-configuration">
+                    <TabsTrigger
+                        value="configuration"
+                        data-testid="tab-configuration"
+                    >
                         {{ $t('repurposes.tabs.configuration') }}
                     </TabsTrigger>
                     <TabsTrigger value="activity" data-testid="tab-activity">
@@ -315,7 +409,9 @@ const handleDelete = () => {
                 </TabsList>
 
                 <TabsContent value="configuration">
-                    <div class="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
+                    <div
+                        class="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start"
+                    >
                         <div class="space-y-4 lg:sticky lg:top-6">
                             <SourceFormatCard
                                 v-model:account="form.source_social_account_id"
@@ -325,14 +421,23 @@ const handleDelete = () => {
                                 :error="form.errors.source_social_account_id"
                             />
 
-                            <PublishModeCard v-model="form.publish_mode" :modes="publishModes" />
+                            <PublishModeCard
+                                v-model="form.publish_mode"
+                                :modes="publishModes"
+                            />
                         </div>
 
                         <div class="space-y-4">
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>{{ $t('repurposes.destinations.title') }}</CardTitle>
-                                    <CardDescription>{{ $t('repurposes.destinations.description') }}</CardDescription>
+                                    <CardTitle>{{
+                                        $t('repurposes.destinations.title')
+                                    }}</CardTitle>
+                                    <CardDescription>{{
+                                        $t(
+                                            'repurposes.destinations.description',
+                                        )
+                                    }}</CardDescription>
                                 </CardHeader>
 
                                 <CardContent>
@@ -341,7 +446,17 @@ const handleDelete = () => {
                                         class="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs leading-relaxed text-amber-700 dark:text-amber-400"
                                         data-testid="paused-destinations-note"
                                     >
-                                        {{ $t('repurposes.destinations.paused_note', { accounts: pausedDestinations.join(', ') }) }}
+                                        {{
+                                            $t(
+                                                'repurposes.destinations.paused_note',
+                                                {
+                                                    accounts:
+                                                        pausedDestinations.join(
+                                                            ', ',
+                                                        ),
+                                                },
+                                            )
+                                        }}
                                     </p>
 
                                     <ChannelConfigurator
@@ -349,7 +464,9 @@ const handleDelete = () => {
                                         :media="plannedMedia"
                                         :selected-ids="selectedAccountIds"
                                         @toggle="toggleDestination"
-                                        @update:content-type="setDestinationContentType"
+                                        @update:content-type="
+                                            setDestinationContentType
+                                        "
                                         @update:meta="setDestinationMeta"
                                     />
 
@@ -378,7 +495,6 @@ const handleDelete = () => {
                         </CardContent>
                     </Card>
                 </TabsContent>
-
             </Tabs>
         </div>
 

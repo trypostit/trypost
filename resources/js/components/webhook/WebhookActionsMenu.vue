@@ -42,12 +42,16 @@ const sendingTest = ref(false);
 const sendTestEvent = () => {
     sendingTest.value = true;
 
-    router.post(sendTest.url(props.webhook), {}, {
-        preserveScroll: true,
-        onFinish: () => {
-            sendingTest.value = false;
+    router.post(
+        sendTest.url(props.webhook),
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                sendingTest.value = false;
+            },
         },
-    });
+    );
 };
 
 const toggleStatus = () => {
@@ -74,17 +78,27 @@ const toggleStatus = () => {
 <template>
     <DropdownMenu>
         <DropdownMenuTrigger as-child>
-            <Button variant="outline" size="icon" data-testid="webhook-actions-trigger">
+            <Button
+                variant="outline"
+                size="icon-sm"
+                data-testid="webhook-actions-trigger"
+            >
                 <IconDots class="size-4" />
             </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-            <DropdownMenuItem data-testid="edit-webhook-button" @click="emit('edit')">
+            <DropdownMenuItem
+                data-testid="edit-webhook-button"
+                @click="emit('edit')"
+            >
                 <IconPencil class="size-4" />
                 {{ $t('webhooks.actions.edit') }}
             </DropdownMenuItem>
             <DropdownMenuItem :disabled="togglingStatus" @click="toggleStatus">
-                <IconPlayerPlay v-if="webhook.status !== WebhookStatus.Enabled" class="size-4" />
+                <IconPlayerPlay
+                    v-if="webhook.status !== WebhookStatus.Enabled"
+                    class="size-4"
+                />
                 <IconPlayerPause v-else class="size-4" />
                 {{
                     webhook.status === WebhookStatus.Enabled
@@ -108,7 +122,9 @@ const toggleStatus = () => {
             <DropdownMenuSeparator />
             <DropdownMenuItem
                 data-testid="copy-id-button"
-                @click="copyToClipboard(webhook.id, trans('webhooks.copied.id'))"
+                @click="
+                    copyToClipboard(webhook.id, trans('webhooks.copied.id'))
+                "
             >
                 <IconCopy class="size-4" />
                 {{ $t('webhooks.actions.copy_id') }}

@@ -45,16 +45,23 @@ const focusFirstInput = () => {
             :title="$t('settings.delete_account.heading')"
             :description="$t('settings.delete_account.description')"
         />
-        <div class="space-y-4 rounded-xl border-2 border-foreground bg-rose-50 p-4 shadow-2xs">
-            <div class="relative space-y-0.5 text-rose-700">
-                <p class="font-bold">{{ $t('settings.delete_account.warning') }}</p>
-                <p class="text-sm font-medium">
+        <div
+            class="space-y-4 rounded-md border border-destructive/30 bg-destructive/5 p-4"
+        >
+            <div class="space-y-0.5">
+                <p class="text-sm font-medium text-destructive">
+                    {{ $t('settings.delete_account.warning') }}
+                </p>
+                <p class="text-sm text-muted-foreground">
                     {{ $t('settings.delete_account.warning_message') }}
                 </p>
             </div>
             <Dialog>
                 <DialogTrigger as-child>
-                    <Button variant="destructive" data-test="delete-user-button">
+                    <Button
+                        variant="destructive"
+                        data-test="delete-user-button"
+                    >
                         {{ $t('settings.delete_account.button') }}
                     </Button>
                 </DialogTrigger>
@@ -70,11 +77,20 @@ const focusFirstInput = () => {
                         v-slot="{ errors, processing, reset, clearErrors }"
                     >
                         <DialogHeader class="space-y-3">
-                            <DialogTitle>{{ $t('settings.delete_account.modal_title') }}</DialogTitle>
+                            <DialogTitle>{{
+                                $t('settings.delete_account.modal_title')
+                            }}</DialogTitle>
                             <DialogDescription>
-                                {{ hasPassword
-                                    ? $t('settings.delete_account.modal_description_password')
-                                    : trans('settings.delete_account.modal_description_email', { email: userEmail }) }}
+                                {{
+                                    hasPassword
+                                        ? $t(
+                                              'settings.delete_account.modal_description_password',
+                                          )
+                                        : trans(
+                                              'settings.delete_account.modal_description_email',
+                                              { email: userEmail },
+                                          )
+                                }}
                             </DialogDescription>
                         </DialogHeader>
 
@@ -87,37 +103,38 @@ const focusFirstInput = () => {
                                 type="password"
                                 name="password"
                                 ref="passwordInput"
-                                :placeholder="trans('settings.delete_account.password_placeholder')"
+                                :placeholder="
+                                    trans(
+                                        'settings.delete_account.password_placeholder',
+                                    )
+                                "
                             />
                             <InputError :message="errors.password" />
                         </div>
 
                         <div v-else class="grid gap-2">
-                            <Label for="email_confirmation" class="sr-only">Email</Label>
+                            <Label for="email_confirmation" class="sr-only"
+                                >Email</Label
+                            >
                             <Input
                                 id="email_confirmation"
                                 type="email"
                                 name="email_confirmation"
                                 ref="emailInput"
-                                :placeholder="trans('settings.delete_account.email_placeholder')"
+                                :placeholder="
+                                    trans(
+                                        'settings.delete_account.email_placeholder',
+                                    )
+                                "
                                 autocomplete="off"
                             />
                             <InputError :message="errors.email_confirmation" />
                         </div>
 
-                        <DialogFooter class="gap-2">
-                             <Button
-                                type="submit"
-                                variant="destructive"
-                                :disabled="processing"
-                                data-test="confirm-delete-user-button"
-                            >
-                                {{ $t('settings.delete_account.confirm') }}
-                            </Button>
-
+                        <DialogFooter>
                             <DialogClose as-child>
                                 <Button
-                                    variant="secondary"
+                                    variant="outline"
                                     @click="
                                         () => {
                                             clearErrors();
@@ -128,6 +145,15 @@ const focusFirstInput = () => {
                                     {{ $t('settings.delete_account.cancel') }}
                                 </Button>
                             </DialogClose>
+
+                            <Button
+                                type="submit"
+                                variant="destructive"
+                                :disabled="processing"
+                                data-test="confirm-delete-user-button"
+                            >
+                                {{ $t('settings.delete_account.confirm') }}
+                            </Button>
                         </DialogFooter>
                     </Form>
                 </DialogContent>

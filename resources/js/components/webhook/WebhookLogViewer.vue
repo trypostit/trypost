@@ -19,10 +19,11 @@ const { liveLogs, selectedLog, newLogIds, selectLog } = useWebhookLogs(
 </script>
 
 <template>
-    <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <div
             v-if="liveLogs.length > 0"
-            class="grid min-h-[28rem] min-w-0 flex-1 grid-cols-1 overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-2xs lg:min-h-0 lg:grid-cols-3"
+            class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row"
+            data-testid="webhook-log-viewer"
         >
             <WebhookLogList
                 :logs="liveLogs"

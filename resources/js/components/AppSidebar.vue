@@ -172,8 +172,8 @@ const workspaceNavItems = computed<NavItem[]>(() => [
                                     <Avatar
                                         :src="currentWorkspace?.logo_url"
                                         :name="currentWorkspace?.name ?? '?'"
-                                        class="h-8 w-8 shrink-0 rounded-md border-2 border-foreground"
-                                        fallback-class="bg-violet-100 text-violet-700 font-bold"
+                                        class="h-8 w-8 shrink-0 rounded-md border border-border"
+                                        fallback-class="bg-primary/10 text-primary-text font-medium"
                                     />
                                     <div
                                         class="grid min-w-0 flex-1 text-left text-sm leading-tight"
@@ -240,11 +240,11 @@ const workspaceNavItems = computed<NavItem[]>(() => [
         <SidebarFooter>
             <div
                 v-if="subscriptionPastDue"
-                class="mx-1 mb-1 rounded-md border-2 border-destructive bg-destructive/10 p-3"
+                class="mx-1 mb-1 rounded-md border border-destructive bg-destructive/10 p-3"
             >
                 <div class="flex items-center gap-2 text-destructive">
                     <IconAlertTriangle class="size-4 shrink-0" />
-                    <span class="text-sm font-semibold">{{
+                    <span class="text-sm font-medium">{{
                         $t('billing.past_due_notice.title')
                     }}</span>
                 </div>

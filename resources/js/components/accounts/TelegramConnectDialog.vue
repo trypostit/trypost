@@ -211,7 +211,7 @@ onUnmounted(clearExpiry);
                 <ol class="space-y-4 text-sm">
                     <li class="flex gap-3">
                         <span
-                            class="flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-foreground text-xs font-semibold"
+                            class="flex size-6 shrink-0 items-center justify-center rounded-full border border-border text-xs font-semibold"
                             >1</span
                         >
                         <span>{{
@@ -222,7 +222,7 @@ onUnmounted(clearExpiry);
                     </li>
                     <li class="flex gap-3">
                         <span
-                            class="flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-foreground text-xs font-semibold"
+                            class="flex size-6 shrink-0 items-center justify-center rounded-full border border-border text-xs font-semibold"
                             >2</span
                         >
                         <div class="min-w-0 flex-1 space-y-2">

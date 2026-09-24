@@ -27,34 +27,41 @@ const displaySecret = computed(() => {
         return props.webhook.signing_secret;
     }
 
-    return `${props.webhook.signing_secret.slice(0, 5)}••••••••••••`;
+    return `${props.webhook.signing_secret.slice(0, 5)}••••••••••••••••`;
 });
 </script>
 
 <template>
-    <div
-        class="grid gap-6 rounded-xl border-2 border-foreground bg-card p-4 shadow-2xs sm:p-5 lg:grid-cols-2"
+    <dl
+        class="grid shrink-0 gap-x-8 gap-y-4 border-b border-border px-4 py-3 text-sm lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:px-6"
+        data-testid="webhook-overview"
     >
-        <div class="space-y-2">
-            <p class="text-sm font-bold text-foreground">
+        <div class="min-w-0">
+            <dt class="mb-1.5 text-xs font-medium text-muted-foreground">
                 {{ $t('webhooks.show.signing_secret') }}
-            </p>
-            <div class="flex items-stretch gap-2">
+            </dt>
+            <dd class="flex min-w-0 items-center gap-1.5">
                 <code
-                    class="flex h-10 min-w-0 flex-1 items-center rounded-md border-2 border-foreground bg-background px-3 font-mono text-sm font-bold text-foreground shadow-2xs"
+                    class="flex h-8 min-w-0 flex-1 items-center overflow-hidden rounded-md border border-input bg-muted px-2.5 font-mono text-xs text-foreground"
+                    data-testid="signing-secret"
                 >
-                    <span class="block truncate">{{ displaySecret }}</span>
+                    <span class="block min-w-0 truncate">{{
+                        displaySecret
+                    }}</span>
                 </code>
-                <TooltipProvider>
+                <TooltipProvider :delay-duration="200">
                     <Tooltip>
                         <TooltipTrigger as-child>
                             <Button
                                 variant="outline"
-                                size="icon"
+                                size="icon-sm"
                                 data-testid="toggle-secret"
                                 @click="secretVisible = !secretVisible"
                             >
-                                <IconEyeOff v-if="secretVisible" class="size-4" />
+                                <IconEyeOff
+                                    v-if="secretVisible"
+                                    class="size-4"
+                                />
                                 <IconEye v-else class="size-4" />
                             </Button>
                         </TooltipTrigger>
@@ -66,13 +73,11 @@ const displaySecret = computed(() => {
                             }}
                         </TooltipContent>
                     </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger as-child>
                             <Button
                                 variant="outline"
-                                size="icon"
+                                size="icon-sm"
                                 data-testid="copy-secret"
                                 @click="
                                     copyToClipboard(
@@ -89,18 +94,26 @@ const displaySecret = computed(() => {
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
-            </div>
+            </dd>
         </div>
 
-        <div class="space-y-2">
-            <p class="text-sm font-bold text-foreground">
+        <div class="min-w-0">
+            <dt class="mb-1.5 text-xs font-medium text-muted-foreground">
                 {{ $t('webhooks.show.listening_for') }}
-            </p>
-            <div class="flex flex-wrap gap-1.5">
-                <Badge v-for="event in webhook.events" :key="event" variant="outline">
+                <span class="text-muted-foreground/70"
+                    >({{ webhook.events.length }})</span
+                >
+            </dt>
+            <dd class="flex flex-wrap gap-1">
+                <Badge
+                    v-for="event in webhook.events"
+                    :key="event"
+                    variant="secondary"
+                    class="font-normal"
+                >
                     {{ webhookEventLabel(event) }}
                 </Badge>
-            </div>
+            </dd>
         </div>
-    </div>
+    </dl>
 </template>

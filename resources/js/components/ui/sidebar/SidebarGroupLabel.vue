@@ -11,7 +11,7 @@ const props = defineProps<PrimitiveProps & {
 
 <template>
   <Primitive data-slot="sidebar-group-label" data-sidebar="group-label" :as="as" :as-child="asChild" :class="cn(
-    'text-sidebar-foreground/50 ring-sidebar-ring flex h-7 shrink-0 items-center rounded-md px-2 text-[11px] font-black uppercase tracking-widest outline-hidden transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
+    'text-sidebar-foreground/50 ring-sidebar-ring flex h-7 shrink-0 items-center rounded-md px-2 text-xs font-medium outline-hidden transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
     'group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0',
     props.class)">
     <slot />

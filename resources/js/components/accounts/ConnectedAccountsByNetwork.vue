@@ -63,6 +63,7 @@ const variantLabel = (
                     :platform="group.platform.value"
                     size="sm"
                     :tilt="false"
+                    plain
                 />
                 <h2
                     class="truncate text-lg leading-tight font-semibold text-foreground"
@@ -97,7 +98,7 @@ const variantLabel = (
 
                 <button
                     type="button"
-                    class="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-foreground/40 px-3 py-2.5 text-left text-foreground/60 transition-colors hover:border-foreground hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                    class="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border px-3 py-2.5 text-left text-muted-foreground transition-colors hover:border-primary hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
                     :data-testid="
                         group.accounts.length > 0
                             ? `connect-another-${group.platform.value}`
@@ -106,7 +107,7 @@ const variantLabel = (
                     @click="emit('connect', group.platform.value)"
                 >
                     <span
-                        class="inline-flex size-10 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-current"
+                        class="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-dashed border-current"
                     >
                         <IconPlus class="size-4" stroke-width="2.5" />
                     </span>

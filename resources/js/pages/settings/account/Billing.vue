@@ -6,7 +6,6 @@ import { computed, ref } from 'vue';
 
 import PlanPicker from '@/components/billing/PlanPicker.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
-import PageHeader from '@/components/PageHeader.vue';
 import SettingsTabsNav from '@/components/settings/SettingsTabsNav.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -74,8 +73,7 @@ const page = usePage<SharedData>();
 const plans = computed((): PlanOption[] => page.props.plans ?? []);
 const authPlan = computed((): AuthPlan | null => page.props.auth.plan);
 const currentInterval = computed(
-    (): BillingInterval =>
-        authPlan.value?.interval ?? DEFAULT_BILLING_INTERVAL,
+    (): BillingInterval => authPlan.value?.interval ?? DEFAULT_BILLING_INTERVAL,
 );
 
 const subscriptionStatus = computed(() => {
@@ -126,12 +124,11 @@ const changePlan = (planId: string, interval: BillingInterval): void => {
 <template>
     <Head :title="$t('billing.title')" />
 
-    <AppLayout>
+    <AppLayout :title="$t('settings.hub.title')">
         <div class="mx-auto max-w-5xl space-y-8 px-6 py-8">
-            <PageHeader
-                :title="$t('settings.hub.title')"
-                :description="$t('settings.hub.description')"
-            />
+            <p class="text-sm text-muted-foreground">
+                {{ $t('settings.hub.description') }}
+            </p>
 
             <SettingsTabsNav :tabs="tabs" active="billing" />
 
@@ -196,10 +193,10 @@ const changePlan = (planId: string, interval: BillingInterval): void => {
                     />
 
                     <div
-                        class="flex flex-wrap items-center gap-4 rounded-2xl border-2 border-foreground bg-card p-4 shadow-2xs"
+                        class="flex flex-wrap items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-2xs"
                     >
                         <span
-                            class="inline-flex size-12 rotate-2 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-200 shadow-2xs"
+                            class="inline-flex size-12 items-center justify-center rounded-xl border border-border bg-muted shadow-xs"
                         >
                             <IconCreditCard
                                 class="size-6 text-foreground"
@@ -247,10 +244,10 @@ const changePlan = (planId: string, interval: BillingInterval): void => {
                         <div
                             v-for="invoice in invoices"
                             :key="invoice.id"
-                            class="flex items-center gap-4 rounded-xl border-2 border-foreground bg-card p-4 shadow-2xs"
+                            class="flex items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-2xs"
                         >
                             <span
-                                class="inline-flex size-10 -rotate-2 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-100 shadow-2xs"
+                                class="inline-flex size-10 items-center justify-center rounded-xl border border-border bg-muted shadow-xs"
                             >
                                 <IconFileText
                                     class="size-5 text-foreground"

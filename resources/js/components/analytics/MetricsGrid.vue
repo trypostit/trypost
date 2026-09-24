@@ -46,43 +46,116 @@ withDefaults(
 // (English regardless of UI locale), so substring matching covers things
 // like "Profile views", "Video views", "Total likes", etc. without a
 // per-platform mapping.
-type StickerTone = { bg: string; rotate: string };
+type MetricTone = { bg: string };
 
 const TONES = {
-    eye: { bg: 'bg-violet-200', rotate: '-rotate-2' },
-    heart: { bg: 'bg-rose-200', rotate: 'rotate-2' },
-    chat: { bg: 'bg-sky-200', rotate: '-rotate-1' },
-    share: { bg: 'bg-emerald-200', rotate: 'rotate-1' },
-    star: { bg: 'bg-amber-200', rotate: '-rotate-2' },
-    play: { bg: 'bg-fuchsia-200', rotate: 'rotate-1' },
-    users: { bg: 'bg-cyan-200', rotate: '-rotate-1' },
-    default: { bg: 'bg-foreground/10', rotate: 'rotate-1' },
-} satisfies Record<string, StickerTone>;
+    eye: { bg: 'bg-violet-100' },
+    heart: { bg: 'bg-rose-100' },
+    chat: { bg: 'bg-sky-100' },
+    share: { bg: 'bg-emerald-100' },
+    star: { bg: 'bg-amber-100' },
+    play: { bg: 'bg-fuchsia-100' },
+    users: { bg: 'bg-cyan-100' },
+    default: { bg: 'bg-muted' },
+} satisfies Record<string, MetricTone>;
 
 interface Mapping {
     icon: FunctionalComponent;
-    tone: StickerTone;
+    tone: MetricTone;
 }
 
 // Multi-locale keyword matching. Keys are lowercased substrings of metric labels
 // across English, Portuguese, and Spanish so icons render correctly regardless
 // of the active locale. Order matters — earlier rules win.
 const MATCHES: Array<{ keys: string[]; mapping: Mapping }> = [
-    { keys: ['view', 'visualiz', 'vista', 'impress', 'impres', 'reach', 'alcanc'], mapping: { icon: IconEye, tone: TONES.eye } },
-    { keys: ['like', 'curtid', 'me gust', 'favour', 'favorit', 'reaction', 'love'], mapping: { icon: IconHeart, tone: TONES.heart } },
-    { keys: ['reply', 'replies', 'respost', 'respue', 'comment', 'coment'], mapping: { icon: IconMessage, tone: TONES.chat } },
-    { keys: ['repost', 'reblog', 'retweet'], mapping: { icon: IconRepeat, tone: TONES.share } },
-    { keys: ['quote', 'cita'], mapping: { icon: IconQuote, tone: TONES.share } },
-    { keys: ['save', 'salv', 'guardad', 'bookmark'], mapping: { icon: IconBookmark, tone: TONES.star } },
-    { keys: ['watch', 'duration', 'duraç', 'duración', 'minut', 'tempo', 'time'], mapping: { icon: IconClock, tone: TONES.play } },
-    { keys: ['video', 'vídeo', 'play'], mapping: { icon: IconPlayerPlay, tone: TONES.play } },
-    { keys: ['follower', 'seguidor', 'subscriber', 'inscrit', 'suscrip', 'audience'], mapping: { icon: IconUserPlus, tone: TONES.users } },
-    { keys: ['profile', 'perfil', 'visit'], mapping: { icon: IconUsers, tone: TONES.users } },
-    { keys: ['click', 'cliqu', 'clic'], mapping: { icon: IconClick, tone: TONES.share } },
-    { keys: ['tap', 'pointer'], mapping: { icon: IconPointer, tone: TONES.share } },
-    { keys: ['engage', 'engaj', 'engagement', 'interacti', 'interaç'], mapping: { icon: IconActivity, tone: TONES.heart } },
+    {
+        keys: [
+            'view',
+            'visualiz',
+            'vista',
+            'impress',
+            'impres',
+            'reach',
+            'alcanc',
+        ],
+        mapping: { icon: IconEye, tone: TONES.eye },
+    },
+    {
+        keys: [
+            'like',
+            'curtid',
+            'me gust',
+            'favour',
+            'favorit',
+            'reaction',
+            'love',
+        ],
+        mapping: { icon: IconHeart, tone: TONES.heart },
+    },
+    {
+        keys: ['reply', 'replies', 'respost', 'respue', 'comment', 'coment'],
+        mapping: { icon: IconMessage, tone: TONES.chat },
+    },
+    {
+        keys: ['repost', 'reblog', 'retweet'],
+        mapping: { icon: IconRepeat, tone: TONES.share },
+    },
+    {
+        keys: ['quote', 'cita'],
+        mapping: { icon: IconQuote, tone: TONES.share },
+    },
+    {
+        keys: ['save', 'salv', 'guardad', 'bookmark'],
+        mapping: { icon: IconBookmark, tone: TONES.star },
+    },
+    {
+        keys: [
+            'watch',
+            'duration',
+            'duraç',
+            'duración',
+            'minut',
+            'tempo',
+            'time',
+        ],
+        mapping: { icon: IconClock, tone: TONES.play },
+    },
+    {
+        keys: ['video', 'vídeo', 'play'],
+        mapping: { icon: IconPlayerPlay, tone: TONES.play },
+    },
+    {
+        keys: [
+            'follower',
+            'seguidor',
+            'subscriber',
+            'inscrit',
+            'suscrip',
+            'audience',
+        ],
+        mapping: { icon: IconUserPlus, tone: TONES.users },
+    },
+    {
+        keys: ['profile', 'perfil', 'visit'],
+        mapping: { icon: IconUsers, tone: TONES.users },
+    },
+    {
+        keys: ['click', 'cliqu', 'clic'],
+        mapping: { icon: IconClick, tone: TONES.share },
+    },
+    {
+        keys: ['tap', 'pointer'],
+        mapping: { icon: IconPointer, tone: TONES.share },
+    },
+    {
+        keys: ['engage', 'engaj', 'engagement', 'interacti', 'interaç'],
+        mapping: { icon: IconActivity, tone: TONES.heart },
+    },
     { keys: ['thumb'], mapping: { icon: IconThumbUp, tone: TONES.share } },
-    { keys: ['shar', 'compart'], mapping: { icon: IconShare, tone: TONES.share } },
+    {
+        keys: ['shar', 'compart'],
+        mapping: { icon: IconShare, tone: TONES.share },
+    },
 ];
 
 const matchMetric = (label: string): Mapping => {
@@ -96,7 +169,10 @@ const matchMetric = (label: string): Mapping => {
 
 <template>
     <!-- Loading -->
-    <div v-if="loading" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div
+        v-if="loading"
+        class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+    >
         <Card v-for="i in skeletonCount" :key="i">
             <CardContent class="p-6">
                 <div class="flex items-start justify-between gap-3">
@@ -109,22 +185,34 @@ const matchMetric = (label: string): Mapping => {
     </div>
 
     <!-- Metrics -->
-    <div v-else-if="metrics.length > 0" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div
+        v-else-if="metrics.length > 0"
+        class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+    >
         <Card v-for="metric in metrics" :key="metric.label">
             <CardContent class="p-6">
                 <div class="flex items-start justify-between gap-3">
-                    <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ metric.label }}</p>
+                    <p
+                        class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                    >
+                        {{ metric.label }}
+                    </p>
                     <span
                         :class="[
-                            'inline-flex size-10 shrink-0 items-center justify-center rounded-2xl border-2 border-foreground shadow-2xs',
+                            'inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-border shadow-xs',
                             matchMetric(metric.label).tone.bg,
-                            matchMetric(metric.label).tone.rotate,
                         ]"
                     >
-                        <component :is="matchMetric(metric.label).icon" class="size-5 text-foreground" stroke-width="2" />
+                        <component
+                            :is="matchMetric(metric.label).icon"
+                            class="size-5 text-foreground"
+                            stroke-width="2"
+                        />
                     </span>
                 </div>
-                <p class="mt-3 text-3xl font-bold tabular-nums tracking-tight text-foreground">
+                <p
+                    class="mt-3 text-3xl font-bold tracking-tight text-foreground tabular-nums"
+                >
                     {{ formatNumber(metric.value) }}
                 </p>
             </CardContent>
@@ -132,7 +220,10 @@ const matchMetric = (label: string): Mapping => {
     </div>
 
     <!-- No Data -->
-    <div v-else class="flex h-full items-center justify-center text-sm font-medium text-foreground/60">
+    <div
+        v-else
+        class="flex h-full items-center justify-center text-sm font-medium text-foreground/60"
+    >
         {{ emptyLabel }}
     </div>
 </template>

@@ -20,7 +20,7 @@ const forwardedProps = useForwardProps(delegatedProps)
     data-slot="dropdown-menu-sub-trigger"
     v-bind="forwardedProps"
     :class="cn(
-      'focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium outline-hidden select-none data-[inset]:pl-8 [&_svg:not([class*=\'text-\'])]:text-foreground/60 [&_svg]:size-4 [&_svg]:shrink-0',
+      'focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[inset]:pl-8 [&_svg:not([class*=\'text-\'])]:text-muted-foreground [&_svg]:size-4 [&_svg]:shrink-0',
       props.class,
     )"
   >

@@ -47,12 +47,14 @@ const fetchMetrics = async () => {
     keywords.value = [];
 
     try {
-        const response = await http.get(showAnalytics.url(props.accountId, {
-            query: {
-                since: dayjs(props.dateRange.start).format('YYYY-MM-DD'),
-                until: dayjs(props.dateRange.end).format('YYYY-MM-DD'),
-            },
-        }));
+        const response = await http.get(
+            showAnalytics.url(props.accountId, {
+                query: {
+                    since: dayjs(props.dateRange.start).format('YYYY-MM-DD'),
+                    until: dayjs(props.dateRange.end).format('YYYY-MM-DD'),
+                },
+            }),
+        );
         metrics.value = response?.metrics || [];
         keywords.value = response?.keywords || [];
     } catch {
@@ -63,13 +65,20 @@ const fetchMetrics = async () => {
     }
 };
 
-watch(() => props.accountId, () => {
-    fetchMetrics();
-});
+watch(
+    () => props.accountId,
+    () => {
+        fetchMetrics();
+    },
+);
 
-watch(() => props.dateRange, () => {
-    fetchMetrics();
-}, { deep: true });
+watch(
+    () => props.dateRange,
+    () => {
+        fetchMetrics();
+    },
+    { deep: true },
+);
 
 onMounted(() => {
     fetchMetrics();
@@ -80,17 +89,28 @@ defineExpose({ supportsDateRange: true });
 
 <template>
     <div class="space-y-6">
-        <MetricsGrid :metrics="metrics" :loading="isLoading" :empty-label="trans('analytics.no_data')" />
+        <MetricsGrid
+            :metrics="metrics"
+            :loading="isLoading"
+            :empty-label="trans('analytics.no_data')"
+        />
 
-        <section v-if="!isLoading && keywords.length" data-testid="gbp-search-keywords">
+        <section
+            v-if="!isLoading && keywords.length"
+            data-testid="gbp-search-keywords"
+        >
             <header class="mb-3 flex items-baseline justify-between gap-2">
                 <h3 class="text-sm font-semibold">
                     {{ trans('analytics.search_keywords.title') }}
                 </h3>
-                <span class="text-xs text-muted-foreground">{{ keywordPeriod }}</span>
+                <span class="text-xs text-muted-foreground">{{
+                    keywordPeriod
+                }}</span>
             </header>
 
-            <ul class="divide-y-2 divide-foreground/10 overflow-hidden rounded-lg border-2 border-foreground/10">
+            <ul
+                class="divide-y divide-border overflow-hidden rounded-lg border border-border"
+            >
                 <li
                     v-for="keyword in keywords"
                     :key="keyword.keyword"
@@ -99,8 +119,17 @@ defineExpose({ supportsDateRange: true });
                     <span class="truncate">{{ keyword.keyword }}</span>
                     <span
                         class="shrink-0 font-semibold tabular-nums"
-                        :title="keyword.estimated ? trans('analytics.search_keywords.estimated') : undefined"
-                    >{{ keyword.estimated ? `<${keyword.value}` : keyword.value }}</span>
+                        :title="
+                            keyword.estimated
+                                ? trans('analytics.search_keywords.estimated')
+                                : undefined
+                        "
+                        >{{
+                            keyword.estimated
+                                ? `<${keyword.value}`
+                                : keyword.value
+                        }}</span
+                    >
                 </li>
             </ul>
         </section>

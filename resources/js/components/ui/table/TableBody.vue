@@ -10,7 +10,7 @@ const props = defineProps<{
 <template>
   <tbody
     data-slot="table-body"
-    :class="cn('[&_tr:last-child]:border-0', props.class)"
+    :class="cn('', props.class)"
   >
     <slot />
   </tbody>

@@ -50,7 +50,7 @@ const paused = computed(() => props.account.is_active === false);
 <template>
     <div
         :class="[
-            'group @container relative flex items-center gap-3 rounded-xl border-2 border-foreground px-3 py-2.5 shadow-xs',
+            'group @container relative flex items-center gap-3 rounded-xl border border-border px-3 py-2.5 shadow-xs',
             lost ? 'bg-amber-50' : paused ? 'bg-muted/60' : 'bg-card',
         ]"
         :data-testid="`account-card-${account.id}`"
@@ -60,13 +60,13 @@ const paused = computed(() => props.account.is_active === false);
                 :src="account.avatar_url"
                 :name="account.display_name || account.username"
                 :class="[
-                    'size-10 rounded-full border-2 border-foreground shadow-2xs',
+                    'size-10 rounded-full border border-border shadow-2xs',
                     paused && !lost ? 'grayscale' : '',
                 ]"
                 fallback-class="bg-secondary text-xs font-black"
             />
             <span
-                class="absolute -right-1 -bottom-1 inline-flex size-5 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs"
+                class="absolute -right-1 -bottom-1 inline-flex size-5 items-center justify-center overflow-hidden rounded-full border border-border bg-card shadow-2xs"
             >
                 <img
                     :src="getPlatformLogo(account.platform)"

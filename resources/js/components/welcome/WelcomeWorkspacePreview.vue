@@ -50,7 +50,7 @@ const isCurrent = (key: WelcomeStep): boolean => props.step === key;
 const EMPTY_NETWORK_SLOTS = 3;
 
 const PENDING_CLASS =
-    'inline-flex items-center rounded-full border-2 border-dashed border-foreground/25 px-3 py-1 text-xs font-semibold text-muted-foreground';
+    'inline-flex items-center rounded-full border border-dashed border-border px-3 py-1 text-xs font-semibold text-muted-foreground';
 </script>
 
 <template>
@@ -63,7 +63,7 @@ const PENDING_CLASS =
         </h2>
 
         <div
-            class="overflow-hidden rounded-2xl border-2 border-foreground bg-card shadow-md"
+            class="overflow-hidden rounded-2xl border border-border bg-card shadow-md"
         >
             <ul class="divide-y divide-foreground/10">
                 <li
@@ -71,7 +71,7 @@ const PENDING_CLASS =
                     :key="row.key"
                     :class="[
                         'px-5 py-4 transition-colors duration-300 motion-reduce:transition-none',
-                        isCurrent(row.key) ? 'bg-violet-50/70' : '',
+                        isCurrent(row.key) ? 'bg-amber-50/70' : '',
                     ]"
                     :data-testid="`welcome-preview-${row.key}`"
                 >
@@ -83,7 +83,7 @@ const PENDING_CLASS =
                         </span>
                         <span
                             v-if="row.done"
-                            class="inline-flex size-5 items-center justify-center rounded-full border-2 border-foreground bg-emerald-200 text-emerald-800"
+                            class="inline-flex size-5 items-center justify-center rounded-full border border-border bg-emerald-200 text-emerald-800"
                             aria-hidden="true"
                         >
                             <IconCheck class="size-3" stroke-width="3" />
@@ -94,11 +94,11 @@ const PENDING_CLASS =
                         <template v-if="row.key === 'persona'">
                             <span
                                 v-if="persona"
-                                class="inline-flex max-w-full items-center gap-2 rounded-full border-2 border-foreground bg-card py-1 ps-1 pe-3 shadow-2xs"
+                                class="inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-card py-1 ps-1 pe-3 shadow-2xs"
                             >
                                 <span
                                     :class="[
-                                        'inline-flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-foreground',
+                                        'inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-border',
                                         persona.meta.badge,
                                     ]"
                                 >
@@ -128,11 +128,11 @@ const PENDING_CLASS =
                                 <span
                                     v-for="goal in goals"
                                     :key="goal.value"
-                                    class="inline-flex max-w-full items-center gap-2 rounded-full border-2 border-foreground bg-card py-1 ps-1 pe-3 shadow-2xs"
+                                    class="inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-card py-1 ps-1 pe-3 shadow-2xs"
                                 >
                                     <span
                                         :class="[
-                                            'inline-flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-foreground',
+                                            'inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-border',
                                             goal.meta.badge,
                                         ]"
                                     >
@@ -185,11 +185,11 @@ const PENDING_CLASS =
                                                         :name="
                                                             network.display_label
                                                         "
-                                                        class="size-10 shrink-0 rounded-full border-2 border-foreground shadow-2xs"
+                                                        class="size-10 shrink-0 rounded-full border border-border shadow-2xs"
                                                         fallback-class="bg-secondary text-xs font-black"
                                                     />
                                                     <span
-                                                        class="absolute -right-1 -bottom-1 inline-flex size-5 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs"
+                                                        class="absolute -right-1 -bottom-1 inline-flex size-5 items-center justify-center overflow-hidden rounded-full border border-border bg-card shadow-2xs"
                                                     >
                                                         <img
                                                             :src="
@@ -239,7 +239,7 @@ const PENDING_CLASS =
                                 <span
                                     v-for="slot in EMPTY_NETWORK_SLOTS"
                                     :key="slot"
-                                    class="size-10 shrink-0 rounded-xl border-2 border-dashed border-foreground/25"
+                                    class="size-10 shrink-0 rounded-xl border border-dashed border-border"
                                     aria-hidden="true"
                                 />
                                 <span

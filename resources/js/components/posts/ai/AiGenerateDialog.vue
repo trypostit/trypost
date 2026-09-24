@@ -177,7 +177,7 @@ watch(open, () => {
                         >{{ $t('posts.ai.generate.preview_label') }}</Label
                     >
                     <div
-                        class="min-h-[120px] rounded-lg border-2 border-foreground bg-card px-3 py-2 text-sm font-medium break-words whitespace-pre-wrap text-foreground shadow-2xs"
+                        class="min-h-[120px] rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium break-words whitespace-pre-wrap text-foreground shadow-2xs"
                     >
                         {{ previewText || '...' }}
                     </div>

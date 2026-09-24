@@ -6,7 +6,7 @@ import { ref } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
-import PageHeader from '@/components/PageHeader.vue';
+import HeaderTitle from '@/components/HeaderTitle.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,7 +29,9 @@ defineProps<{
 }>();
 
 const createDialogOpen = ref(false);
-const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
+const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(
+    null,
+);
 
 const openWebhook = (webhook: Webhook) => {
     router.visit(show.url(webhook));
@@ -46,19 +48,24 @@ const handleDelete = (webhook: Webhook) => {
 <template>
     <Head :title="$t('webhooks.title')" />
 
-    <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
-            <PageHeader
+    <AppLayout full-width>
+        <template #header>
+            <HeaderTitle
                 :title="$t('webhooks.title')"
-                :description="$t('webhooks.description')"
+                :total="webhooks.length"
             />
+        </template>
 
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-                <Button data-testid="create-webhook-button" @click="createDialogOpen = true">
-                    {{ $t('webhooks.new') }}
-                </Button>
-            </div>
+        <template #header-actions>
+            <Button
+                data-testid="create-webhook-button"
+                @click="createDialogOpen = true"
+            >
+                {{ $t('webhooks.new') }}
+            </Button>
+        </template>
 
+        <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
             <EmptyState
                 v-if="webhooks.length === 0"
                 :icon="IconWebhook"
@@ -66,39 +73,66 @@ const handleDelete = (webhook: Webhook) => {
                 :description="$t('webhooks.empty_description')"
             />
 
-            <div v-else>
+            <div
+                v-else
+                class="min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain pb-px"
+                data-testid="webhooks-scroll"
+            >
                 <Table>
-                    <TableHeader>
+                    <TableHeader sticky>
                         <TableRow>
-                            <TableHead>{{ $t('webhooks.table.endpoint') }}</TableHead>
-                            <TableHead>{{ $t('webhooks.table.events') }}</TableHead>
-                            <TableHead>{{ $t('webhooks.table.status') }}</TableHead>
-                            <TableHead>{{ $t('webhooks.table.last_sent') }}</TableHead>
+                            <TableHead>{{
+                                $t('webhooks.table.endpoint')
+                            }}</TableHead>
+                            <TableHead>{{
+                                $t('webhooks.table.events')
+                            }}</TableHead>
+                            <TableHead>{{
+                                $t('webhooks.table.status')
+                            }}</TableHead>
+                            <TableHead>{{
+                                $t('webhooks.table.last_sent')
+                            }}</TableHead>
                             <TableHead class="text-right" />
                         </TableRow>
                     </TableHeader>
-                    <TableBody>
+                    <TableBody id="webhooks-body">
                         <TableRow
                             v-for="webhook in webhooks"
                             :key="webhook.id"
                             class="cursor-pointer"
+                            :data-testid="`webhook-row-${webhook.id}`"
                             @click="openWebhook(webhook)"
                         >
-                            <TableCell class="max-w-[160px] font-medium sm:max-w-md">
-                                <p class="truncate">{{ webhook.endpoint }}</p>
+                            <TableCell
+                                class="max-w-[160px] font-medium sm:max-w-md"
+                            >
+                                <p class="truncate">
+                                    {{ webhook.endpoint }}
+                                </p>
                             </TableCell>
                             <TableCell>
                                 {{
                                     transChoice(
                                         'webhooks.events_count',
                                         webhook.events.length,
-                                        { count: String(webhook.events.length) },
+                                        {
+                                            count: String(
+                                                webhook.events.length,
+                                            ),
+                                        },
                                     )
                                 }}
                             </TableCell>
                             <TableCell>
-                                <Badge :variant="webhookStatusVariant(webhook.status)">
-                                    {{ $t(`webhooks.status.${webhook.status}`) }}
+                                <Badge
+                                    :variant="
+                                        webhookStatusVariant(webhook.status)
+                                    "
+                                >
+                                    {{
+                                        $t(`webhooks.status.${webhook.status}`)
+                                    }}
                                 </Badge>
                             </TableCell>
                             <TableCell>
@@ -113,7 +147,9 @@ const handleDelete = (webhook: Webhook) => {
                                         variant="outline"
                                         size="icon"
                                         class="size-8"
-                                        :aria-label="$t('webhooks.actions.view')"
+                                        :aria-label="
+                                            $t('webhooks.actions.view')
+                                        "
                                         data-testid="row-actions-trigger"
                                         @click="openWebhook(webhook)"
                                     >
@@ -123,11 +159,15 @@ const handleDelete = (webhook: Webhook) => {
                                         variant="outline"
                                         size="icon"
                                         class="size-8 bg-rose-100 hover:bg-rose-200"
-                                        :aria-label="$t('webhooks.actions.delete')"
+                                        :aria-label="
+                                            $t('webhooks.actions.delete')
+                                        "
                                         data-testid="delete-webhook-button"
                                         @click="handleDelete(webhook)"
                                     >
-                                        <IconTrash class="size-4 text-rose-700" />
+                                        <IconTrash
+                                            class="size-4 text-rose-700"
+                                        />
                                     </Button>
                                 </div>
                             </TableCell>
@@ -135,15 +175,15 @@ const handleDelete = (webhook: Webhook) => {
                     </TableBody>
                 </Table>
             </div>
-
-            <CreateWebhookDialog v-model:open="createDialogOpen" />
-            <ConfirmDeleteModal
-                ref="confirmDeleteModal"
-                :title="$t('webhooks.delete.title')"
-                :description="$t('webhooks.delete.description')"
-                :action="$t('webhooks.delete.confirm')"
-                :cancel="$t('webhooks.delete.cancel')"
-            />
         </div>
     </AppLayout>
+
+    <CreateWebhookDialog v-model:open="createDialogOpen" />
+    <ConfirmDeleteModal
+        ref="confirmDeleteModal"
+        :title="$t('webhooks.delete.title')"
+        :description="$t('webhooks.delete.description')"
+        :action="$t('webhooks.delete.confirm')"
+        :cancel="$t('webhooks.delete.cancel')"
+    />
 </template>

@@ -674,12 +674,12 @@ const close = (): void => emit('update:open', false);
                                             account.id,
                                         )
                                     "
-                                    class="relative shrink-0 rounded-lg border-2 p-1"
+                                    class="relative shrink-0 rounded-lg border p-1"
                                     :class="
                                         composition.selectedAccountIds.value.includes(
                                             account.id,
                                         )
-                                            ? 'border-foreground bg-primary/15'
+                                            ? 'border-primary bg-primary/10'
                                             : 'border-border'
                                     "
                                     @click="selectAccount(account)"
@@ -767,7 +767,7 @@ const close = (): void => emit('update:open', false);
                             </Popover>
                         </div>
                         <div
-                            class="flex min-h-64 flex-1 flex-col rounded-xl border-2 border-border bg-card p-4"
+                            class="flex min-h-64 flex-1 flex-col rounded-xl border border-border bg-card p-4"
                         >
                             <textarea
                                 v-model="composition.content.value"
@@ -835,10 +835,10 @@ const close = (): void => emit('update:open', false);
                                 :key="account.id"
                                 type="button"
                                 :data-testid="`composer-expand-${account.id}`"
-                                class="flex w-full items-center gap-3 rounded-xl border-2 p-3 text-left"
+                                class="flex w-full items-center gap-3 rounded-xl border p-3 text-left"
                                 :class="
                                     expandedAccountId === account.id
-                                        ? 'border-foreground bg-primary/10'
+                                        ? 'border-primary bg-primary/10'
                                         : 'border-border'
                                 "
                                 @click="
@@ -1313,7 +1313,9 @@ const close = (): void => emit('update:open', false);
                                 <IconLoader2
                                     v-if="assistantBusy"
                                     class="mt-4 size-5 animate-spin"
-                                    :aria-label="$t('posts.composer.assistant_generate')"
+                                    :aria-label="
+                                        $t('posts.composer.assistant_generate')
+                                    "
                                     role="status"
                                 />
                             </template>

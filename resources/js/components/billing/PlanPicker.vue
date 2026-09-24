@@ -25,13 +25,13 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
-import { Platform } from '@/types/platform';
 import {
     PLAN_CHANGE_LABELS,
     planChangeAction,
     type BillingInterval,
     type PlanOption,
 } from '@/types/plan';
+import { Platform } from '@/types/platform';
 
 export type { PlanOption };
 
@@ -167,9 +167,12 @@ const selectLabel = (plan: PlanOption): string => {
             : trans('billing.plans.switch_to_monthly');
     }
 
-    return trans(PLAN_CHANGE_LABELS[planChangeAction(currentPlan.value, plan)], {
-        plan: plan.name,
-    });
+    return trans(
+        PLAN_CHANGE_LABELS[planChangeAction(currentPlan.value, plan)],
+        {
+            plan: plan.name,
+        },
+    );
 };
 
 const isUnlimited = (plan: PlanOption): boolean =>
@@ -202,7 +205,7 @@ const sharedFeatures = computed<PlanFeature[]>(() =>
             class="grid grid-cols-[1fr_auto_1fr] items-center gap-x-4"
         >
             <div
-                class="col-start-2 inline-flex isolate justify-self-center gap-1.5 rounded-full border-2 border-foreground bg-card p-1 shadow-2xs"
+                class="isolate col-start-2 inline-flex gap-1.5 justify-self-center rounded-full border border-border bg-card p-1 shadow-2xs"
             >
                 <Button
                     v-for="option in ['monthly', 'yearly'] as const"
@@ -235,7 +238,7 @@ const sharedFeatures = computed<PlanFeature[]>(() =>
             <article
                 v-for="plan in plans"
                 :key="plan.id"
-                class="flex flex-col gap-4 rounded-2xl border-2 border-foreground p-5 shadow-2xs"
+                class="flex flex-col gap-4 rounded-2xl border border-border p-5 shadow-2xs"
                 :class="
                     isFeatured(plan)
                         ? 'bg-violet-50 dark:bg-violet-950/30'
@@ -312,14 +315,14 @@ const sharedFeatures = computed<PlanFeature[]>(() =>
                 </div>
 
                 <div
-                    class="flex items-center gap-3 rounded-xl border-2 border-foreground px-3.5 py-2.5 text-start shadow-2xs"
+                    class="flex items-center gap-3 rounded-xl border border-border px-3.5 py-2.5 text-start shadow-2xs"
                     :class="
                         isUnlimited(plan) ? 'bg-violet-200' : 'bg-amber-200'
                     "
                     :data-testid="`plan-highlight-${plan.slug}`"
                 >
                     <span
-                        class="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border-2 border-foreground bg-card"
+                        class="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-card"
                     >
                         <IconBuilding class="size-4.5" stroke-width="2.25" />
                     </span>
@@ -378,7 +381,7 @@ const sharedFeatures = computed<PlanFeature[]>(() =>
                             class="flex items-center gap-2.5 text-sm font-medium text-foreground"
                         >
                             <span
-                                class="inline-flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-foreground bg-rose-200"
+                                class="inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-rose-200"
                             >
                                 <IconWorld class="size-3" stroke-width="2.25" />
                             </span>
@@ -459,7 +462,7 @@ const sharedFeatures = computed<PlanFeature[]>(() =>
                             class="flex items-center gap-2.5 text-sm font-medium text-foreground"
                         >
                             <span
-                                class="inline-flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-foreground"
+                                class="inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-border"
                                 :class="feature.tone"
                             >
                                 <component

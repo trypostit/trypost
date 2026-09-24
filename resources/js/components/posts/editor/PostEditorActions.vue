@@ -5,7 +5,12 @@ import { computed } from 'vue';
 import InputError from '@/components/InputError.vue';
 import PickTimePopover from '@/components/posts/PickTimePopover.vue';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { PostStatus } from '@/types/post';
 
@@ -26,7 +31,9 @@ withDefaults(
 );
 
 const hasPickedTime = defineModel<boolean>('hasPickedTime', { required: true });
-const scheduledDateTime = defineModel<string>('scheduledDateTime', { required: true });
+const scheduledDateTime = defineModel<string>('scheduledDateTime', {
+    required: true,
+});
 
 const emit = defineEmits<{
     (e: 'delete'): void;
@@ -43,14 +50,17 @@ const scheduledAtError = computed(() => errors.value.scheduled_at);
         v-if="isScheduled && canEdit"
         type="button"
         variant="outline"
-        class="bg-background hover:bg-violet-50"
+        class="bg-background hover:bg-amber-50"
         :disabled="isSubmitting"
         @click="emit('unschedule')"
     >
         {{ $t('posts.edit.unschedule_cta') }}
     </Button>
 
-    <div v-else-if="!isReadOnly && canEdit" class="flex w-full flex-col gap-1 lg:w-auto lg:items-end">
+    <div
+        v-else-if="!isReadOnly && canEdit"
+        class="flex w-full flex-col gap-1 lg:w-auto lg:items-end"
+    >
         <div class="flex w-full items-center gap-2 lg:w-auto">
             <TooltipProvider>
                 <Tooltip>
@@ -66,7 +76,9 @@ const scheduledAtError = computed(() => errors.value.scheduled_at);
                             <IconTrash class="size-4 text-rose-700" />
                         </Button>
                     </TooltipTrigger>
-                    <TooltipContent>{{ $t('posts.edit.delete') }}</TooltipContent>
+                    <TooltipContent>{{
+                        $t('posts.edit.delete')
+                    }}</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -88,7 +100,10 @@ const scheduledAtError = computed(() => errors.value.scheduled_at);
                             </PickTimePopover>
                         </span>
                     </TooltipTrigger>
-                    <TooltipContent v-if="postActionTooltip" class="max-w-xs whitespace-pre-line">
+                    <TooltipContent
+                        v-if="postActionTooltip"
+                        class="max-w-xs whitespace-pre-line"
+                    >
                         {{ postActionTooltip }}
                     </TooltipContent>
                 </Tooltip>
@@ -100,13 +115,27 @@ const scheduledAtError = computed(() => errors.value.scheduled_at);
                                 type="button"
                                 class="w-full lg:w-auto"
                                 :disabled="isPostActionDisabled"
-                                @click="emit('submit', hasPickedTime ? PostStatus.Scheduled : PostStatus.Publishing)"
+                                @click="
+                                    emit(
+                                        'submit',
+                                        hasPickedTime
+                                            ? PostStatus.Scheduled
+                                            : PostStatus.Publishing,
+                                    )
+                                "
                             >
-                                {{ hasPickedTime ? $t('posts.edit.schedule') : $t('posts.edit.post_now') }}
+                                {{
+                                    hasPickedTime
+                                        ? $t('posts.edit.schedule')
+                                        : $t('posts.edit.post_now')
+                                }}
                             </Button>
                         </span>
                     </TooltipTrigger>
-                    <TooltipContent v-if="postActionTooltip" class="max-w-xs whitespace-pre-line">
+                    <TooltipContent
+                        v-if="postActionTooltip"
+                        class="max-w-xs whitespace-pre-line"
+                    >
                         {{ postActionTooltip }}
                     </TooltipContent>
                 </Tooltip>

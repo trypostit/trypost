@@ -145,16 +145,16 @@ watch(
     </PopoverTrigger>
     <PopoverContent class="w-auto p-0" align="end">
       <div class="flex flex-col sm:flex-row">
-        <div class="hidden flex-col border-b-2 border-foreground py-2 sm:flex sm:w-[170px] sm:shrink-0 sm:border-b-0 sm:border-r-2">
+        <div class="hidden flex-col border-b border-border py-2 sm:flex sm:w-[170px] sm:shrink-0 sm:border-r sm:border-b-0">
           <template v-for="(group, groupIndex) in presetGroups" :key="groupIndex">
-            <div v-if="groupIndex > 0" class="my-1 border-t-2 border-dashed border-foreground/20" />
+            <div v-if="groupIndex > 0" class="my-1 border-t border-border" />
             <div class="space-y-0.5 px-2">
               <Button
                 v-for="preset in group"
                 :key="preset.label"
                 variant="ghost"
                 size="sm"
-                class="h-7 w-full justify-start text-xs font-bold text-foreground hover:bg-violet-100 hover:text-foreground"
+                class="h-7 w-full justify-start text-xs font-medium text-muted-foreground hover:bg-amber-100 hover:text-amber-950"
                 @click="applyPreset(preset)"
               >
                 {{ preset.label }}

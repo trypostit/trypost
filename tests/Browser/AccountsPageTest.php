@@ -68,6 +68,36 @@ test('a workspace without accounts lists every network with a connect slot', fun
         ->assertNoJavaScriptErrors();
 });
 
+test('connections page uses the Connect design shell and palette', function () {
+    $this->actingAs(accountsOwner());
+
+    $page = visit(route('app.accounts'));
+
+    waitForAccountsTestId($page, 'accounts-scroll');
+
+    $page->assertVisible('@header-title')
+        ->assertVisible('@accounts-scroll')
+        ->assertNoJavaScriptErrors();
+
+    $design = $page->script(<<<'JS'
+        (() => {
+            const root = getComputedStyle(document.documentElement);
+            const shell = getComputedStyle(document.querySelector('[data-testid="app-content-shell"]'));
+
+            return {
+                primary: root.getPropertyValue('--primary').trim(),
+                border: root.getPropertyValue('--border').trim(),
+                shellRadius: shell.borderRadius,
+            };
+        })();
+    JS);
+
+    expect($design)
+        ->primary->toBe('#fa5d19')
+        ->border->toBe('#e9e6e3')
+        ->shellRadius->not->toBe('0px');
+});
+
 test('every network is listed, connected ones grouped with a slot for one more', function () {
     $user = accountsOwnerWithLinkedIn();
 

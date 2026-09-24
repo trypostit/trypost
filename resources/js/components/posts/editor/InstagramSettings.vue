@@ -39,11 +39,19 @@ const emit = defineEmits<{
 const open = ref(false);
 
 const variants = [
-    { value: ContentType.InstagramFeed, labelKey: 'posts.form.instagram.variant.feed' },
-    { value: ContentType.InstagramReel, labelKey: 'posts.form.instagram.variant.reel' },
-    { value: ContentType.InstagramStory, labelKey: 'posts.form.instagram.variant.story' },
+    {
+        value: ContentType.InstagramFeed,
+        labelKey: 'posts.form.instagram.variant.feed',
+    },
+    {
+        value: ContentType.InstagramReel,
+        labelKey: 'posts.form.instagram.variant.reel',
+    },
+    {
+        value: ContentType.InstagramStory,
+        labelKey: 'posts.form.instagram.variant.story',
+    },
 ] as const;
-
 
 const aspectRatios = [
     { value: '1:1', labelKey: 'posts.form.instagram.aspect.square' },
@@ -67,50 +75,94 @@ const pickAspectRatio = (value: string) => {
 </script>
 
 <template>
-    <div class="rounded-xl border-2 border-foreground bg-card shadow-2xs">
+    <div class="rounded-xl border border-border bg-card shadow-2xs">
         <button
             type="button"
             class="flex w-full cursor-pointer items-center justify-between gap-3 p-4 text-sm"
             @click="open = !open"
         >
             <span class="flex min-w-0 items-center gap-2">
-                <span class="inline-flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs">
-                    <img :src="getPlatformLogo(socialAccount?.platform ?? 'instagram')" alt="Instagram" class="size-full object-cover" />
+                <span
+                    class="inline-flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-card shadow-2xs"
+                >
+                    <img
+                        :src="
+                            getPlatformLogo(
+                                socialAccount?.platform ?? 'instagram',
+                            )
+                        "
+                        alt="Instagram"
+                        class="size-full object-cover"
+                    />
                 </span>
-                <span class="truncate font-bold text-foreground">{{ $t('posts.form.instagram.settings') }}</span>
-                <span v-if="socialAccount?.username" class="truncate font-medium text-foreground/60">·&nbsp;@{{ socialAccount.username }}</span>
+                <span class="truncate font-bold text-foreground">{{
+                    $t('posts.form.instagram.settings')
+                }}</span>
+                <span
+                    v-if="socialAccount?.username"
+                    class="truncate font-medium text-foreground/60"
+                    >·&nbsp;@{{ socialAccount.username }}</span
+                >
             </span>
-            <IconChevronUp v-if="open" class="size-4 shrink-0 text-foreground/60" />
-            <IconChevronDown v-else class="size-4 shrink-0 text-foreground/60" />
+            <IconChevronUp
+                v-if="open"
+                class="size-4 shrink-0 text-foreground/60"
+            />
+            <IconChevronDown
+                v-else
+                class="size-4 shrink-0 text-foreground/60"
+            />
         </button>
 
-        <div v-if="open" class="space-y-5 border-t-2 border-foreground/10 px-4 pb-4 pt-4">
-            <div v-if="socialAccount" class="flex items-center gap-3 rounded-lg bg-foreground/5 p-3">
+        <div
+            v-if="open"
+            class="space-y-5 border-t border-border px-4 pt-4 pb-4"
+        >
+            <div
+                v-if="socialAccount"
+                class="flex items-center gap-3 rounded-lg bg-foreground/5 p-3"
+            >
                 <Avatar
                     :src="socialAccount.avatar_url"
                     :name="socialAccount.display_label"
-                    class="size-9 shrink-0 rounded-full border-2 border-foreground shadow-2xs"
+                    class="size-9 shrink-0 rounded-full border border-border shadow-2xs"
                 />
                 <div class="min-w-0 flex-1">
-                    <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.instagram.posting_to') }}</p>
+                    <p
+                        class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                    >
+                        {{ $t('posts.form.instagram.posting_to') }}
+                    </p>
                     <p class="truncate text-sm">
-                        <span class="font-bold text-foreground">{{ socialAccount.display_label }}</span>
-                        <span v-if="socialAccount?.username" class="font-medium text-foreground/60">&nbsp;@{{ socialAccount.username }}</span>
+                        <span class="font-bold text-foreground">{{
+                            socialAccount.display_label
+                        }}</span>
+                        <span
+                            v-if="socialAccount?.username"
+                            class="font-medium text-foreground/60"
+                            >&nbsp;@{{ socialAccount.username }}</span
+                        >
                     </p>
                 </div>
             </div>
 
             <div class="space-y-2">
-                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.instagram.variant_label') }}</p>
+                <p
+                    class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                >
+                    {{ $t('posts.form.instagram.variant_label') }}
+                </p>
                 <div class="flex flex-wrap gap-2">
                     <button
                         v-for="variant in variants"
                         :key="variant.value"
                         type="button"
-                        class="cursor-pointer rounded-full border-2 px-3 py-1 text-xs font-bold uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                        :class="contentType === variant.value
-                            ? 'border-foreground bg-violet-100 text-foreground shadow-2xs'
-                            : 'border-foreground/30 text-foreground/70 hover:border-foreground hover:text-foreground'"
+                        class="cursor-pointer rounded-md border px-3 py-1 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                        :class="
+                            contentType === variant.value
+                                ? 'border-amber-300 bg-amber-100 text-amber-950 shadow-xs'
+                                : 'border-border bg-card text-muted-foreground hover:border-amber-200 hover:bg-amber-50 hover:text-foreground'
+                        "
                         :disabled="disabled"
                         @click="pickVariant(variant.value)"
                     >
@@ -120,16 +172,22 @@ const pickAspectRatio = (value: string) => {
             </div>
 
             <div v-if="isFeed" class="space-y-2">
-                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.instagram.aspect_label') }}</p>
+                <p
+                    class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                >
+                    {{ $t('posts.form.instagram.aspect_label') }}
+                </p>
                 <div class="flex flex-wrap gap-2">
                     <button
                         v-for="ratio in aspectRatios"
                         :key="ratio.value"
                         type="button"
-                        class="cursor-pointer rounded-full border-2 px-3 py-1 text-xs font-bold uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                        :class="selectedAspectRatio === ratio.value
-                            ? 'border-foreground bg-violet-100 text-foreground shadow-2xs'
-                            : 'border-foreground/30 text-foreground/70 hover:border-foreground hover:text-foreground'"
+                        class="cursor-pointer rounded-md border px-3 py-1 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                        :class="
+                            selectedAspectRatio === ratio.value
+                                ? 'border-amber-300 bg-amber-100 text-amber-950 shadow-xs'
+                                : 'border-border bg-card text-muted-foreground hover:border-amber-200 hover:bg-amber-50 hover:text-foreground'
+                        "
                         :disabled="disabled"
                         @click="pickAspectRatio(ratio.value)"
                     >
@@ -138,7 +196,11 @@ const pickAspectRatio = (value: string) => {
                 </div>
             </div>
 
-            <MediaRulesWarning :content-type="contentType" :media="media" :platform="Platform.Instagram" />
+            <MediaRulesWarning
+                :content-type="contentType"
+                :media="media"
+                :platform="Platform.Instagram"
+            />
         </div>
     </div>
 </template>

@@ -45,9 +45,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <SidebarProvider :default-open="isOpen">
+    <SidebarProvider :default-open="isOpen" class="bg-sidebar">
         <AppSidebar />
-        <SidebarInset class="overflow-x-hidden">
+        <SidebarInset
+            class="overflow-hidden bg-card md:m-2 md:ml-0 md:rounded-xl md:border md:border-border md:shadow-xs"
+            data-testid="app-content-shell"
+        >
             <AppHeader v-if="$slots['header'] || $slots['header-actions']">
                 <template v-if="$slots['header']" #left>
                     <slot name="header" />
@@ -58,7 +61,7 @@ onBeforeUnmount(() => {
             </AppHeader>
             <SidebarTrigger
                 v-else
-                class="absolute top-3 left-4 z-30 size-10 rounded-md border-2 border-foreground bg-card text-foreground shadow-2xs md:hidden"
+                class="absolute top-3 left-4 z-30 size-10 rounded-md border border-border bg-card text-foreground shadow-xs md:hidden"
             />
             <div
                 :class="

@@ -26,7 +26,7 @@ const isTopBar = computed(() => props.status !== PostStatus.Scheduled);
 <template>
     <div
         data-testid="editor-mobile-nav"
-        class="flex shrink-0 gap-1 overflow-x-auto border-b-2 border-foreground bg-card py-3 pr-2 lg:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        class="flex shrink-0 [scrollbar-width:none] gap-1 overflow-x-auto border-b border-border bg-card py-3 pr-2 lg:hidden [&::-webkit-scrollbar]:hidden"
         :class="isTopBar ? 'pl-16' : 'pl-2'"
     >
         <button
@@ -34,10 +34,12 @@ const isTopBar = computed(() => props.status !== PostStatus.Scheduled);
             :key="item.key"
             type="button"
             :data-testid="`editor-nav-${item.key}`"
-            class="inline-flex h-10 shrink-0 items-center rounded-md border-2 px-3 text-sm font-semibold transition-colors"
-            :class="activeView === item.key
-                ? 'border-foreground bg-violet-100 text-foreground'
-                : 'border-transparent text-foreground/60 hover:text-foreground'"
+            class="inline-flex h-10 shrink-0 items-center rounded-md border px-3 text-sm font-semibold shadow-xs transition-[color,background-color,border-color,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+            :class="
+                activeView === item.key
+                    ? 'border-amber-300 bg-amber-200 text-amber-950 hover:bg-amber-300'
+                    : 'border-border bg-card text-muted-foreground hover:border-amber-200 hover:bg-amber-50 hover:text-foreground'
+            "
             @click="activeView = item.key"
         >
             {{ $t(item.label) }}

@@ -1,9 +1,22 @@
 <script setup lang="ts">
 import { trans } from 'laravel-vue-i18n';
-import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    ref,
+    useTemplateRef,
+    watch,
+} from 'vue';
 
 import { Input } from '@/components/ui/input';
-import { CATEGORY_ICON, EMOJIS, EMOJI_CATEGORIES, type Emoji, type EmojiCategory } from '@/data/emojis';
+import {
+    CATEGORY_ICON,
+    EMOJIS,
+    EMOJI_CATEGORIES,
+    type Emoji,
+    type EmojiCategory,
+} from '@/data/emojis';
 
 const RECENTS_KEY = 'trypost.emoji.recents';
 const RECENTS_MAX = 24;
@@ -25,7 +38,9 @@ const readRecents = (): string[] => {
         const raw = localStorage.getItem(RECENTS_KEY);
         if (!raw) return [];
         const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed.filter((c) => typeof c === 'string') : [];
+        return Array.isArray(parsed)
+            ? parsed.filter((c) => typeof c === 'string')
+            : [];
     } catch {
         return [];
     }
@@ -83,7 +98,10 @@ const persistRecents = () => {
 
 const onPick = (emoji: Emoji) => {
     emit('select', emoji.c);
-    const next = [emoji.c, ...recents.value.filter((c) => c !== emoji.c)].slice(0, RECENTS_MAX);
+    const next = [emoji.c, ...recents.value.filter((c) => c !== emoji.c)].slice(
+        0,
+        RECENTS_MAX,
+    );
     recents.value = next;
     persistRecents();
 };
@@ -100,7 +118,8 @@ const onScroll = () => {
     const container = scrollEl.value;
     if (!container || isSearching.value) return;
     const top = container.scrollTop + 8;
-    let current: EmojiCategory | 'recent' = recentEmojis.value.length > 0 ? 'recent' : 'smileys';
+    let current: EmojiCategory | 'recent' =
+        recentEmojis.value.length > 0 ? 'recent' : 'smileys';
     for (const category of EMOJI_CATEGORIES) {
         const header = headerRefs.value[category];
         if (header && header.offsetTop <= top) {
@@ -121,8 +140,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="flex w-[min(340px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[10px] bg-card text-foreground">
-        <div class="border-b-2 border-foreground/10 p-2">
+    <div
+        class="flex w-[min(340px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[10px] bg-card text-foreground"
+    >
+        <div class="border-b border-border p-2">
             <Input
                 v-model="search"
                 type="search"
@@ -162,7 +183,7 @@ onBeforeUnmount(() => {
                 <section v-if="recentEmojis.length > 0">
                     <h3
                         :ref="setHeaderRef('recent')"
-                        class="sticky top-0 z-10 bg-card/95 px-1 py-1.5 text-[11px] font-black uppercase tracking-widest text-foreground/60 backdrop-blur"
+                        class="sticky top-0 z-10 bg-card/95 px-1 py-1.5 text-[11px] font-black tracking-widest text-foreground/60 uppercase backdrop-blur"
                     >
                         {{ categoryLabel('recent') }}
                     </h3>
@@ -184,7 +205,7 @@ onBeforeUnmount(() => {
                 <section v-for="category in EMOJI_CATEGORIES" :key="category">
                     <h3
                         :ref="setHeaderRef(category)"
-                        class="sticky top-0 z-10 bg-card/95 px-1 py-1.5 text-[11px] font-black uppercase tracking-widest text-foreground/60 backdrop-blur"
+                        class="sticky top-0 z-10 bg-card/95 px-1 py-1.5 text-[11px] font-black tracking-widest text-foreground/60 uppercase backdrop-blur"
                     >
                         {{ categoryLabel(category) }}
                     </h3>
@@ -205,12 +226,18 @@ onBeforeUnmount(() => {
             </template>
         </div>
 
-        <div class="flex items-center justify-between border-t-2 border-foreground/10 px-1 py-1">
+        <div
+            class="flex items-center justify-between border-t border-border px-1 py-1"
+        >
             <button
                 v-if="recentEmojis.length > 0"
                 type="button"
                 class="flex size-8 cursor-pointer items-center justify-center rounded-md text-base transition-colors hover:bg-foreground/5 focus:bg-foreground/5 focus:outline-none"
-                :class="activeCategory === 'recent' && !isSearching ? 'bg-violet-100 ring-2 ring-foreground' : ''"
+                :class="
+                    activeCategory === 'recent' && !isSearching
+                        ? 'bg-amber-100 ring-2 ring-amber-300'
+                        : ''
+                "
                 :title="categoryLabel('recent')"
                 :aria-label="categoryLabel('recent')"
                 @click="scrollToCategory('recent')"
@@ -222,7 +249,11 @@ onBeforeUnmount(() => {
                 :key="category"
                 type="button"
                 class="flex size-8 cursor-pointer items-center justify-center rounded-md text-base transition-colors hover:bg-foreground/5 focus:bg-foreground/5 focus:outline-none"
-                :class="activeCategory === category && !isSearching ? 'bg-violet-100 ring-2 ring-foreground' : ''"
+                :class="
+                    activeCategory === category && !isSearching
+                        ? 'bg-amber-100 ring-2 ring-amber-300'
+                        : ''
+                "
                 :title="categoryLabel(category)"
                 :aria-label="categoryLabel(category)"
                 @click="scrollToCategory(category)"

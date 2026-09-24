@@ -23,9 +23,9 @@ import {
 } from '@/actions/App/Http/Controllers/App/PostController';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import HeaderTitle from '@/components/HeaderTitle.vue';
 import LabelBadge from '@/components/labels/LabelBadge.vue';
 import LabelFilter from '@/components/labels/LabelFilter.vue';
-import PageHeader from '@/components/PageHeader.vue';
 import PostComposerDialog from '@/components/posts/composer/PostComposerDialog.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -368,12 +368,14 @@ useWorkspaceEcho(
 <template>
     <Head :title="pageTitle" />
 
-    <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
-            <PageHeader :title="pageTitle" />
+    <AppLayout full-width>
+        <template #header>
+            <HeaderTitle :title="pageTitle" />
+        </template>
 
+        <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
             <nav
-                class="flex gap-5 overflow-x-auto border-b"
+                class="flex shrink-0 gap-5 overflow-x-auto border-b border-border px-6 pt-4"
                 :aria-label="$t('posts.title')"
                 data-testid="posts-tabs"
             >
@@ -401,12 +403,12 @@ useWorkspaceEcho(
 
             <!-- Toolbar -->
             <div
-                class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                class="flex shrink-0 flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
             >
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
                     <div class="relative w-full sm:w-64">
                         <IconSearch
-                            class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-foreground/60"
+                            class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
                         />
                         <Input
                             v-model="searchQuery"
@@ -446,14 +448,18 @@ useWorkspaceEcho(
                 "
             />
 
-            <div v-else>
+            <div
+                v-else
+                class="min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain pb-px"
+                data-testid="posts-scroll"
+            >
                 <InfiniteScroll
                     data="posts"
                     items-element="#posts-body"
                     preserve-url
                 >
                     <Table>
-                        <TableHeader>
+                        <TableHeader sticky>
                             <TableRow>
                                 <TableHead>{{
                                     $t('posts.table.post')
@@ -499,7 +505,7 @@ useWorkspaceEcho(
                                                             as-child
                                                         >
                                                             <span
-                                                                class="inline-flex size-6 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs"
+                                                                class="inline-flex size-6 items-center justify-center overflow-hidden rounded-full border border-border bg-card shadow-2xs"
                                                             >
                                                                 <img
                                                                     :src="

@@ -15,7 +15,10 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
+import {
+    getPlatformLabel,
+    getPlatformLogo,
+} from '@/composables/usePlatformLogo';
 import { accounts } from '@/routes/app';
 import { store } from '@/routes/app/repurposes';
 import type { ChannelAccount } from '@/types/channel';
@@ -29,7 +32,6 @@ const open = defineModel<boolean>('open', { default: false });
 const form = useForm({
     source_social_account_id: '',
 });
-
 
 const accountOptions = computed(() =>
     props.sourceAccounts.map((account) => ({
@@ -64,12 +66,18 @@ const submit = () => {
         <DialogContent data-testid="create-repurpose-dialog">
             <DialogHeader>
                 <DialogTitle>{{ $t('repurposes.create.title') }}</DialogTitle>
-                <DialogDescription>{{ $t('repurposes.create.description') }}</DialogDescription>
+                <DialogDescription>{{
+                    $t('repurposes.create.description')
+                }}</DialogDescription>
             </DialogHeader>
 
             <div v-if="sourceAccounts.length === 0" class="space-y-4 py-2">
-                <div class="flex items-start gap-3 rounded-lg border-2 border-dashed border-foreground/20 p-4">
-                    <IconPlugConnected class="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+                <div
+                    class="flex items-start gap-3 rounded-md border border-dashed border-border bg-muted/30 p-4"
+                >
+                    <IconPlugConnected
+                        class="mt-0.5 size-5 shrink-0 text-muted-foreground"
+                    />
                     <p class="text-sm text-muted-foreground">
                         {{ $t('repurposes.create.no_accounts') }}
                     </p>
@@ -77,7 +85,9 @@ const submit = () => {
 
                 <DialogFooter>
                     <Button as-child data-testid="connect-account-cta">
-                        <Link :href="accounts.url()">{{ $t('repurposes.create.connect') }}</Link>
+                        <Link :href="accounts.url()">{{
+                            $t('repurposes.create.connect')
+                        }}</Link>
                     </Button>
                     <Button type="button" variant="ghost" @click="open = false">
                         {{ $t('common.cancel') }}
@@ -87,7 +97,9 @@ const submit = () => {
 
             <form v-else class="space-y-4" @submit.prevent="submit">
                 <div class="space-y-2">
-                    <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">
+                    <p
+                        class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                    >
                         {{ $t('repurposes.create.source_label') }}
                     </p>
 
@@ -95,10 +107,16 @@ const submit = () => {
                         <SearchableSelect
                             v-model="form.source_social_account_id"
                             :options="accountOptions"
-                            :placeholder="$t('repurposes.create.source_placeholder')"
-                            :search-placeholder="$t('repurposes.create.source_search')"
+                            :placeholder="
+                                $t('repurposes.create.source_placeholder')
+                            "
+                            :search-placeholder="
+                                $t('repurposes.create.source_search')
+                            "
                             :empty-text="$t('repurposes.create.source_empty')"
-                            :invalid="Boolean(form.errors.source_social_account_id)"
+                            :invalid="
+                                Boolean(form.errors.source_social_account_id)
+                            "
                         >
                             <template #option="{ option, compact }">
                                 <img
@@ -114,10 +132,17 @@ const submit = () => {
                                     data-testid="source-account-option"
                                 />
 
-                                <span v-if="compact" class="truncate">{{ option.label }}</span>
+                                <span v-if="compact" class="truncate">{{
+                                    option.label
+                                }}</span>
                                 <span v-else class="min-w-0 text-left">
-                                    <span class="block truncate text-sm font-bold">{{ option.label }}</span>
-                                    <span class="block truncate text-xs text-muted-foreground">
+                                    <span
+                                        class="block truncate text-sm font-bold"
+                                        >{{ option.label }}</span
+                                    >
+                                    <span
+                                        class="block truncate text-xs text-muted-foreground"
+                                    >
                                         {{ getPlatformLabel(option.platform) }}
                                     </span>
                                 </span>
@@ -125,14 +150,18 @@ const submit = () => {
                         </SearchableSelect>
                     </div>
 
-                    <InputError :message="form.errors.source_social_account_id" />
+                    <InputError
+                        :message="form.errors.source_social_account_id"
+                    />
                 </div>
 
                 <DialogFooter>
                     <Button
                         type="submit"
                         data-testid="create-repurpose-submit"
-                        :disabled="form.processing || !form.source_social_account_id"
+                        :disabled="
+                            form.processing || !form.source_social_account_id
+                        "
                     >
                         {{ $t('repurposes.create.submit') }}
                     </Button>

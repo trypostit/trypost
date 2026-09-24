@@ -21,9 +21,9 @@ const forwardedProps = useForwardProps(delegatedProps)
     :class="cn(
       buttonVariants({ variant: 'ghost' }),
       'size-8 cursor-pointer p-0 font-medium hover:bg-foreground/5 data-[selected]:opacity-100',
-      // Today (not selected): violet pastel pill
-      '[&[data-today]:not([data-selected])]:bg-violet-100 [&[data-today]:not([data-selected])]:text-foreground [&[data-today]:not([data-selected])]:font-bold',
-      // Selection start: ink primary pill
+      // Today (not selected): warm highlight
+      '[&[data-today]:not([data-selected])]:bg-amber-100 [&[data-today]:not([data-selected])]:text-amber-950 [&[data-today]:not([data-selected])]:font-semibold',
+      // Selection start: brand pill
       'data-[selection-start]:bg-primary data-[selection-start]:text-primary-foreground data-[selection-start]:font-bold data-[selection-start]:hover:bg-primary data-[selection-start]:hover:text-primary-foreground data-[selection-start]:focus:bg-primary data-[selection-start]:focus:text-primary-foreground',
       // Selection end
       'data-[selection-end]:bg-primary data-[selection-end]:text-primary-foreground data-[selection-end]:font-bold data-[selection-end]:hover:bg-primary data-[selection-end]:hover:text-primary-foreground data-[selection-end]:focus:bg-primary data-[selection-end]:focus:text-primary-foreground',

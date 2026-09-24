@@ -2,7 +2,11 @@
 import { computed, ref, watch } from 'vue';
 
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 
 interface Props {
     modelValue: string | null | undefined;
@@ -22,8 +26,24 @@ const emit = defineEmits<{
 
 const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
 const PRESETS = [
-    '#000000', '#737373', '#ffffff', '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e',
-    '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#ec4899',
+    '#000000',
+    '#737373',
+    '#ffffff',
+    '#ef4444',
+    '#f97316',
+    '#f59e0b',
+    '#eab308',
+    '#84cc16',
+    '#22c55e',
+    '#10b981',
+    '#14b8a6',
+    '#06b6d4',
+    '#0ea5e9',
+    '#3b82f6',
+    '#6366f1',
+    '#8b5cf6',
+    '#d946ef',
+    '#ec4899',
 ];
 
 const text = ref(props.modelValue ?? '');
@@ -35,7 +55,9 @@ const saturation = ref(1);
 const value = ref(1);
 
 const isValid = computed(() => text.value === '' || HEX_RE.test(text.value));
-const swatchColor = computed(() => (isValid.value && text.value !== '' ? text.value : ''));
+const swatchColor = computed(() =>
+    isValid.value && text.value !== '' ? text.value : '',
+);
 
 // --- color math -------------------------------------------------------------
 
@@ -59,12 +81,21 @@ const hexToRgb = (hex: string): [number, number, number] | null => {
 };
 
 const rgbToHex = (r: number, g: number, b: number): string => {
-    const toHex = (n: number) => Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, '0');
+    const toHex = (n: number) =>
+        Math.round(Math.max(0, Math.min(255, n)))
+            .toString(16)
+            .padStart(2, '0');
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 };
 
-const rgbToHsv = (r: number, g: number, b: number): [number, number, number] => {
-    const rn = r / 255, gn = g / 255, bn = b / 255;
+const rgbToHsv = (
+    r: number,
+    g: number,
+    b: number,
+): [number, number, number] => {
+    const rn = r / 255,
+        gn = g / 255,
+        bn = b / 255;
     const max = Math.max(rn, gn, bn);
     const min = Math.min(rn, gn, bn);
     const d = max - min;
@@ -80,11 +111,17 @@ const rgbToHsv = (r: number, g: number, b: number): [number, number, number] => 
     return [h, s, max];
 };
 
-const hsvToRgb = (h: number, s: number, v: number): [number, number, number] => {
+const hsvToRgb = (
+    h: number,
+    s: number,
+    v: number,
+): [number, number, number] => {
     const c = v * s;
     const hh = h / 60;
     const x = c * (1 - Math.abs((hh % 2) - 1));
-    let r = 0, g = 0, b = 0;
+    let r = 0,
+        g = 0,
+        b = 0;
     if (hh >= 0 && hh < 1) [r, g, b] = [c, x, 0];
     else if (hh < 2) [r, g, b] = [x, c, 0];
     else if (hh < 3) [r, g, b] = [0, c, x];
@@ -97,7 +134,7 @@ const hsvToRgb = (h: number, s: number, v: number): [number, number, number] => 
 
 const syncHsvFromHex = (hex: string) => {
     const rgb = hexToRgb(hex);
-    if (! rgb) return;
+    if (!rgb) return;
     const [h, s, v] = rgbToHsv(...rgb);
     if (s > 0) hue.value = h;
     saturation.value = s;
@@ -127,7 +164,7 @@ const hueRef = ref<HTMLElement | null>(null);
 
 const setSvFromEvent = (event: PointerEvent) => {
     const el = svRef.value;
-    if (! el) return;
+    if (!el) return;
     const rect = el.getBoundingClientRect();
     const x = Math.min(Math.max(event.clientX - rect.left, 0), rect.width);
     const y = Math.min(Math.max(event.clientY - rect.top, 0), rect.height);
@@ -138,7 +175,7 @@ const setSvFromEvent = (event: PointerEvent) => {
 
 const setHueFromEvent = (event: PointerEvent) => {
     const el = hueRef.value;
-    if (! el) return;
+    if (!el) return;
     const rect = el.getBoundingClientRect();
     const x = Math.min(Math.max(event.clientX - rect.left, 0), rect.width);
     hue.value = rect.width === 0 ? 0 : (x / rect.width) * 360;
@@ -168,7 +205,7 @@ const onHuePointerMove = (event: PointerEvent) => {
 const onTextInput = (event: Event) => {
     const target = event.target as HTMLInputElement;
     let next = target.value;
-    if (next !== '' && ! next.startsWith('#')) next = `#${next}`;
+    if (next !== '' && !next.startsWith('#')) next = `#${next}`;
     text.value = next.slice(0, 9);
 
     if (text.value === '') {
@@ -207,8 +244,12 @@ const huePointerStyle = computed(() => ({
                 <button
                     type="button"
                     :disabled="disabled"
-                    class="size-10 shrink-0 cursor-pointer rounded-md border-2 border-foreground bg-card shadow-xs transition-shadow hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
-                    :style="swatchColor ? { backgroundColor: swatchColor } : undefined"
+                    class="size-10 shrink-0 cursor-pointer rounded-md border border-border bg-card shadow-xs transition-shadow hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                    :style="
+                        swatchColor
+                            ? { backgroundColor: swatchColor }
+                            : undefined
+                    "
                     :aria-label="placeholder"
                 />
             </PopoverTrigger>
@@ -236,7 +277,18 @@ const huePointerStyle = computed(() => ({
                 <div
                     ref="hueRef"
                     class="relative h-3 w-full cursor-pointer touch-none rounded-full"
-                    style="background: linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%);"
+                    style="
+                        background: linear-gradient(
+                            to right,
+                            #f00 0%,
+                            #ff0 17%,
+                            #0f0 33%,
+                            #0ff 50%,
+                            #00f 67%,
+                            #f0f 83%,
+                            #f00 100%
+                        );
+                    "
                     @pointerdown="onHuePointerDown"
                     @pointermove="onHuePointerMove"
                 >
@@ -251,7 +303,11 @@ const huePointerStyle = computed(() => ({
                     :model-value="text"
                     :placeholder="placeholder"
                     class="font-mono"
-                    :class="!isValid ? 'border-destructive focus-visible:ring-destructive' : ''"
+                    :class="
+                        !isValid
+                            ? 'border-destructive focus-visible:ring-destructive'
+                            : ''
+                    "
                     spellcheck="false"
                     @input="onTextInput"
                 />
@@ -262,7 +318,7 @@ const huePointerStyle = computed(() => ({
                         v-for="hex in PRESETS"
                         :key="hex"
                         type="button"
-                        class="size-5 cursor-pointer rounded-full border-2 border-foreground transition-transform hover:scale-110"
+                        class="size-5 cursor-pointer rounded-full border border-border transition-transform hover:scale-110"
                         :style="{ backgroundColor: hex }"
                         :aria-label="hex"
                         @click="pickPreset(hex)"
@@ -277,7 +333,11 @@ const huePointerStyle = computed(() => ({
             :placeholder="placeholder"
             :disabled="disabled"
             class="font-mono"
-            :class="!isValid ? 'border-destructive focus-visible:ring-destructive' : ''"
+            :class="
+                !isValid
+                    ? 'border-destructive focus-visible:ring-destructive'
+                    : ''
+            "
             spellcheck="false"
             @input="onTextInput"
         />

@@ -28,7 +28,7 @@ usePoll(10000, { only: ['auth'] });
             data-testid="welcome-subscription-required"
         >
             <span
-                class="inline-flex size-14 -rotate-2 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-100 shadow-2xs"
+                class="inline-flex size-14 items-center justify-center rounded-xl border border-border bg-muted shadow-xs"
             >
                 <IconCreditCard class="size-7 text-foreground" />
             </span>

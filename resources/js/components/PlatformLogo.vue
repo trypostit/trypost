@@ -72,7 +72,7 @@ const plainImageClass = computed(
                 theme.bg,
                 tilt ? theme.rotate : '',
                 boxClass,
-                'inline-flex items-center justify-center border-2 border-foreground shadow-sm transition-transform group-hover:!rotate-0',
+                'inline-flex items-center justify-center border border-border shadow-sm transition-transform group-hover:!rotate-0',
             ]"
             :title="nativeTitle"
         >

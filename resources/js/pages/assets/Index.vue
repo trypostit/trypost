@@ -2,7 +2,7 @@
 import { Head } from '@inertiajs/vue3';
 
 import GalleryBrowser from '@/components/assets/GalleryBrowser.vue';
-import PageHeader from '@/components/PageHeader.vue';
+import HeaderTitle from '@/components/HeaderTitle.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 </script>
 
@@ -10,8 +10,11 @@ import AppLayout from '@/layouts/AppLayout.vue';
     <Head :title="$t('assets.title')" />
 
     <AppLayout>
+        <template #header>
+            <HeaderTitle :title="$t('assets.title')" />
+        </template>
+
         <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
-            <PageHeader :title="$t('assets.title')" />
             <GalleryBrowser mode="standalone" />
         </div>
     </AppLayout>

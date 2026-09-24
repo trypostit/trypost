@@ -9,7 +9,6 @@ import CreateApiKeyDialog from '@/components/api-keys/CreateApiKeyDialog.vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
-import PageHeader from '@/components/PageHeader.vue';
 import SettingsTabsNav from '@/components/settings/SettingsTabsNav.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -65,12 +64,11 @@ const tabs = useWorkspaceSettingsTabs();
 <template>
     <Head :title="$t('settings.api_keys.page_title')" />
 
-    <AppLayout>
+    <AppLayout :title="$t('settings.hub.title')">
         <div class="mx-auto max-w-4xl space-y-8 px-6 py-8">
-            <PageHeader
-                :title="$t('settings.hub.title')"
-                :description="$t('settings.hub.description')"
-            />
+            <p class="text-sm text-muted-foreground">
+                {{ $t('settings.hub.description') }}
+            </p>
 
             <SettingsTabsNav :tabs="tabs" active="api-keys" />
 
@@ -89,14 +87,14 @@ const tabs = useWorkspaceSettingsTabs();
             <!-- New token alert -->
             <div
                 v-if="newToken"
-                class="rounded-xl border-2 border-foreground bg-emerald-50 p-4 shadow-2xs"
+                class="rounded-xl border border-border bg-emerald-50 p-4 shadow-2xs"
             >
                 <p class="mb-2 text-sm font-bold text-emerald-800">
                     {{ $t('settings.api_keys.new_token_message') }}
                 </p>
                 <div class="flex items-stretch gap-2">
                     <code
-                        class="flex h-9 min-w-0 flex-1 items-center rounded-md border-2 border-foreground bg-card px-3 font-mono text-sm font-bold text-foreground shadow-2xs"
+                        class="flex h-9 min-w-0 flex-1 items-center rounded-md border border-border bg-card px-3 font-mono text-sm font-bold text-foreground shadow-2xs"
                     >
                         <span class="block truncate">{{ newToken }}</span>
                     </code>

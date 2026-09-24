@@ -15,7 +15,7 @@ import TikTokAnalytics from '@/components/analytics/TikTokAnalytics.vue';
 import type { AnalyticsAccount } from '@/components/analytics/types';
 import XAnalytics from '@/components/analytics/XAnalytics.vue';
 import YouTubeAnalytics from '@/components/analytics/YouTubeAnalytics.vue';
-import PageHeader from '@/components/PageHeader.vue';
+import HeaderTitle from '@/components/HeaderTitle.vue';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -55,11 +55,14 @@ const platformSupportsDateRange = computed(() => {
     <AppLayout>
         <Head :title="trans('sidebar.analytics')" />
 
+        <template #header>
+            <HeaderTitle :title="$t('sidebar.analytics')" />
+        </template>
+
         <div
             class="mx-auto flex h-full w-full max-w-6xl flex-col gap-6 px-6 py-8"
         >
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <PageHeader :title="$t('sidebar.analytics')" />
+            <div class="flex flex-wrap items-center justify-end gap-3">
                 <div class="flex w-full flex-wrap items-center gap-3 sm:w-auto">
                     <AnalyticsAccountSelector
                         :accounts="accounts"

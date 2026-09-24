@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
-import { IconAlertTriangle, IconCopy } from '@tabler/icons-vue';
+import { IconCopy } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
@@ -64,7 +64,9 @@ const isConfirmed = computed(
 );
 
 const remove = () => {
-    if (!url.value || !isConfirmed.value) return;
+    if (!url.value || !isConfirmed.value) {
+        return;
+    }
 
     processing.value = true;
 
@@ -119,31 +121,24 @@ defineExpose({
 
 <template>
     <Dialog :open="isOpen" @update:open="onOpenChange">
-        <DialogContent :show-close-button="false" class="sm:max-w-md">
-            <DialogHeader class="items-start text-left">
-                <div class="flex items-start gap-3">
-                    <div
-                        class="inline-flex size-12 -rotate-3 shrink-0 items-center justify-center rounded-2xl border-2 border-foreground bg-rose-200 shadow-2xs"
-                    >
-                        <IconAlertTriangle class="size-6 text-rose-700" stroke-width="2.25" />
-                    </div>
-                    <div class="flex-1 space-y-1">
-                        <DialogTitle>{{ title }}</DialogTitle>
-                        <DialogDescription class="space-y-1">
-                            <span class="block">{{ description }}</span>
-                            <span class="block font-semibold text-rose-700">
-                                {{ trans('common.confirm_modal.cannot_be_undone') }}
-                            </span>
-                        </DialogDescription>
-                    </div>
-                </div>
+        <DialogContent class="sm:max-w-md" data-testid="confirm-delete-modal">
+            <DialogHeader>
+                <DialogTitle>{{ title }}</DialogTitle>
+                <DialogDescription class="space-y-1">
+                    <span class="block">{{ description }}</span>
+                    <span class="block font-medium text-destructive">
+                        {{ trans('common.confirm_modal.cannot_be_undone') }}
+                    </span>
+                </DialogDescription>
             </DialogHeader>
 
             <div v-if="requiresConfirmation" class="space-y-2">
-                <p class="flex flex-wrap items-center gap-1 text-sm text-foreground/80">
+                <p
+                    class="flex flex-wrap items-center gap-1 text-sm text-muted-foreground"
+                >
                     <span>{{ trans('common.confirm_modal.type') }}</span>
                     <code
-                        class="inline-flex items-center gap-1.5 rounded-md border-2 border-foreground bg-amber-100 px-1.5 py-0.5 font-mono text-xs font-bold break-all text-foreground shadow-2xs"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-xs font-medium break-all text-foreground"
                     >
                         {{ confirmText }}
                         <TooltipProvider>
@@ -152,11 +147,13 @@ defineExpose({
                                     <button
                                         type="button"
                                         tabindex="-1"
-                                        class="inline-flex shrink-0 cursor-pointer items-center rounded text-foreground/60 hover:text-foreground"
+                                        class="inline-flex shrink-0 cursor-pointer items-center rounded text-muted-foreground hover:text-foreground"
                                         @click="
                                             copyToClipboard(
                                                 confirmText,
-                                                trans('common.confirm_modal.copy_to_clipboard'),
+                                                trans(
+                                                    'common.confirm_modal.copy_to_clipboard',
+                                                ),
                                             )
                                         "
                                     >
@@ -164,7 +161,13 @@ defineExpose({
                                     </button>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                    <p>{{ trans('common.confirm_modal.copy_to_clipboard') }}</p>
+                                    <p>
+                                        {{
+                                            trans(
+                                                'common.confirm_modal.copy_to_clipboard',
+                                            )
+                                        }}
+                                    </p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -175,22 +178,25 @@ defineExpose({
                     v-model="confirmInput"
                     autocomplete="off"
                     autofocus
+                    data-testid="confirm-delete-input"
                 />
             </div>
 
-            <DialogFooter class="sm:justify-start sm:gap-2">
+            <DialogFooter>
+                <Button
+                    variant="outline"
+                    data-testid="confirm-delete-cancel"
+                    @click="close"
+                >
+                    {{ cancel }}
+                </Button>
                 <Button
                     variant="destructive"
+                    data-testid="confirm-delete-action"
                     :disabled="processing || !isConfirmed"
                     @click="remove"
                 >
                     {{ action }}
-                </Button>
-                <Button
-                    variant="outline"
-                    @click="close"
-                >
-                    {{ cancel }}
                 </Button>
             </DialogFooter>
         </DialogContent>

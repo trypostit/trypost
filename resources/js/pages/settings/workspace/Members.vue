@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 
-import PageHeader from '@/components/PageHeader.vue';
 import SettingsTabsNav from '@/components/settings/SettingsTabsNav.vue';
 import UsersTab from '@/components/settings/UsersTab.vue';
 import { useWorkspaceSettingsTabs } from '@/composables/useWorkspaceSettingsTabs';
@@ -44,12 +43,11 @@ const tabs = useWorkspaceSettingsTabs();
 <template>
     <Head :title="$t('settings.members.title')" />
 
-    <AppLayout>
+    <AppLayout :title="$t('settings.hub.title')">
         <div class="mx-auto max-w-4xl space-y-8 px-6 py-8">
-            <PageHeader
-                :title="$t('settings.hub.title')"
-                :description="$t('settings.hub.description')"
-            />
+            <p class="text-sm text-muted-foreground">
+                {{ $t('settings.hub.description') }}
+            </p>
 
             <SettingsTabsNav :tabs="tabs" active="members" />
 
