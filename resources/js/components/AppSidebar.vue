@@ -21,10 +21,7 @@ import {
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
-import {
-    create as createPost,
-    index as postsIndex,
-} from '@/actions/App/Http/Controllers/App/PostController';
+import { index as postsIndex } from '@/actions/App/Http/Controllers/App/PostController';
 import NavMain from '@/components/NavMain.vue';
 import NotificationBell from '@/components/NotificationBell.vue';
 import { Avatar } from '@/components/ui/avatar';
@@ -249,7 +246,12 @@ const workspaceNavItems = computed<NavItem[]>(() => [
 
         <SidebarContent class="gap-px">
             <div v-if="currentWorkspace && canCreatePost" class="px-2 py-2">
-                <Link :href="createPost.url()" class="block">
+                <Link
+                    :href="
+                        postsIndex.url(undefined, { query: { compose: '1' } })
+                    "
+                    class="block"
+                >
                     <Button class="w-full">
                         {{ $t('sidebar.create_post') }}
                     </Button>

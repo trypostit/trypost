@@ -2,11 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Ai\Agents\PostWritingAssistant;
 use App\Dto\MediaItem;
 use App\Enums\Post\CreatedVia;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Mcp\Servers\TryPostServer;
+use App\Mcp\Tools\Post\AssistPostContentTool;
 use App\Mcp\Tools\Post\CreatePostsTool;
 use App\Mcp\Tools\Post\CreatePostTool;
 use App\Mcp\Tools\Post\DeletePostTool;
@@ -32,6 +34,21 @@ beforeEach(function () {
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::LinkedIn,
     ]);
+});
+
+test('assistant tool returns a suggestion without creating a post', function () {
+    PostWritingAssistant::fake(['A revised caption']);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(AssistPostContentTool::class, [
+            'mode' => 'rephrase',
+            'current_content' => 'The original caption',
+        ])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json
+            ->where('content', 'A revised caption'));
+
+    $this->assertDatabaseCount('posts', 0);
 });
 
 test('list posts returns wrapped posts array with PostResource shape', function () {

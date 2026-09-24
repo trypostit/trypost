@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ApiKeyController;
 use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\LabelController;
 use App\Http\Controllers\Api\PlatformController;
+use App\Http\Controllers\Api\PostAiAssistantController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\RepurposeController;
 use App\Http\Controllers\Api\SignatureController;
@@ -24,6 +25,7 @@ Route::middleware(['auth:api', 'workspace.token', 'throttle:api'])->group(functi
     // Posts
     Route::get('/posts', [PostController::class, 'index'])->name('api.posts.index');
     Route::post('/posts/batch', [PostController::class, 'storeBatch'])->name('api.posts.batch.store');
+    Route::post('/posts/ai/assist', PostAiAssistantController::class)->name('api.posts.ai.assist');
     Route::post('/posts', [PostController::class, 'store'])->name('api.posts.store');
     Route::get('/posts/{post}', [PostController::class, 'show'])->name('api.posts.show');
     Route::put('/posts/{post}', [PostController::class, 'update'])->name('api.posts.update');

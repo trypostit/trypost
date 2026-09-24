@@ -137,7 +137,7 @@ test('create another reopens a fresh composer after saving a draft', function ()
     expect(Post::where('workspace_id', $workspace->id)->count())->toBe(1);
 });
 
-test('templates shortcut opens the available template wizard', function () {
+test('composer has the assistant in its sidebar and no template shortcut', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'user_id' => $user->id,
@@ -150,8 +150,12 @@ test('templates shortcut opens the available template wizard', function () {
     $this->actingAs($user);
 
     visit(route('app.posts.create'))
-        ->click('@composer-templates')
-        ->assertVisible('@composer-template-wizard');
+        ->assertMissing('@composer-templates')
+        ->click('@composer-ai-assistant')
+        ->assertVisible('@composer-assistant-panel')
+        ->click('@composer-ai-write_more')
+        ->assertVisible('@composer-ai-prompt')
+        ->assertVisible('@composer-ai-generate');
 });
 
 test('recovering an empty-target draft retains its caption media and labels', function () {
@@ -196,7 +200,7 @@ test('recovering an empty-target draft retains its caption media and labels', fu
         ->and($recovered->postPlatforms()->sole()->social_account_id)->toBe($account->id);
 });
 
-test('a comment deep link and AI editing tools remain available in the edit dialog', function () {
+test('a comment deep link and AI assistant remain available in the edit dialog', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
     $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
@@ -222,8 +226,9 @@ test('a comment deep link and AI editing tools remain available in the edit dial
         ->assertVisible('@composer-comments-panel')
         ->assertSee('Please review the opening line')
         ->click('@composer-back-to-post')
-        ->click('@composer-ai-generate')
-        ->assertVisible('@composer-ai-generate-dialog');
+        ->click('@composer-ai-assistant')
+        ->assertVisible('@composer-assistant-panel')
+        ->assertVisible('@composer-ai-rephrase');
 });
 
 test('account overrides inherit later shared edits and are discarded when an account is removed', function () {

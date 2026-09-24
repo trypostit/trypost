@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { useHttp } from '@inertiajs/vue3';
 import {
     IconArrowLeft,
     IconCalendar,
@@ -19,9 +19,7 @@ import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 import ImageCropperDialog from '@/components/ImageCropperDialog.vue';
-import AiGenerateDialog from '@/components/posts/ai/AiGenerateDialog.vue';
 import AiRegenerateImageDialog from '@/components/posts/ai/AiRegenerateImageDialog.vue';
-import AiReviewDialog from '@/components/posts/ai/AiReviewDialog.vue';
 import CommentsTab from '@/components/posts/editor/CommentsTab.vue';
 import DiscordSettings from '@/components/posts/editor/DiscordSettings.vue';
 import FacebookSettings from '@/components/posts/editor/FacebookSettings.vue';
@@ -65,7 +63,7 @@ import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import date from '@/date';
 import { isImage } from '@/lib/mediaType';
 import { storeChunked as assetsStoreChunked } from '@/routes/app/assets';
-import { create as createPost } from '@/routes/app/posts';
+import { assist as assistPostAi } from '@/routes/app/posts/ai';
 import type { PinterestBoardsPayload } from '@/types';
 import type { MediaItem } from '@/types/media';
 import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
@@ -80,6 +78,7 @@ const props = withDefaults(
         postId?: string | null;
         currentUserId?: string | null;
         openComments?: boolean;
+        openAssistant?: boolean;
         highlightCommentId?: string | null;
         labels?: { id: string; name: string; color: string }[];
         signatures?: { id: string; name: string; content: string }[];
@@ -107,6 +106,7 @@ const props = withDefaults(
         postId: null,
         currentUserId: null,
         openComments: false,
+        openAssistant: false,
         highlightCommentId: null,
         labels: () => [],
         signatures: () => [],
@@ -143,6 +143,16 @@ const { contentFor } = useXLinkDefuser();
 const errors = usePageErrors();
 const step = ref<1 | 2>(props.initialPost ? 2 : 1);
 const previewVisible = ref(true);
+const assistantOpen = ref(props.openAssistant);
+const assistantScreen = ref<'actions' | 'prompt' | 'suggestion'>('actions');
+const assistantMode = ref<'write_more' | 'rephrase' | 'shorten' | 'expand'>(
+    'write_more',
+);
+const assistantPrompt = ref('');
+const assistantSuggestion = ref('');
+const assistantError = ref('');
+const assistantBusy = ref(false);
+const assistantHttp = useHttp({ mode: '', current_content: '', prompt: '' });
 const expandedDialog = ref(false);
 const accountPickerOpen = ref(false);
 const scheduleMenuOpen = ref(false);
@@ -168,8 +178,6 @@ const cropTarget = ref<{
 } | null>(null);
 const cropError = ref(false);
 const commentsOpen = ref(props.openComments);
-const aiGenerateOpen = ref(false);
-const aiReviewOpen = ref(false);
 const aiRegenerateOpen = ref(false);
 const aiMediaTarget = ref<{
     accountId: string;
@@ -210,6 +218,11 @@ const expandedOverride = computed(() =>
     expandedAccountId.value
         ? (composition.overrides.value[expandedAccountId.value] ?? {})
         : {},
+);
+const assistantContent = computed(() =>
+    step.value === 2 && expandedDestination.value
+        ? expandedDestination.value.content
+        : composition.content.value,
 );
 const canSubmit = computed(
     () =>
@@ -294,11 +307,49 @@ const appendSignature = (signature: { content: string }): void => {
     }
 };
 
-const applyAiReview = (original: string, suggestion: string): void => {
-    composition.content.value = composition.content.value.replace(
-        original,
-        suggestion,
-    );
+const startAssistant = (mode: typeof assistantMode.value): void => {
+    assistantMode.value = mode;
+    assistantSuggestion.value = '';
+    assistantError.value = '';
+    if (mode === 'write_more') {
+        assistantScreen.value = 'prompt';
+        return;
+    }
+    void generateAssistantSuggestion();
+};
+
+const generateAssistantSuggestion = async (): Promise<void> => {
+    assistantBusy.value = true;
+    assistantError.value = '';
+    assistantHttp.mode = assistantMode.value;
+    assistantHttp.current_content = assistantContent.value;
+    assistantHttp.prompt = assistantPrompt.value;
+    try {
+        const result = (await assistantHttp.post(assistPostAi.url())) as {
+            content: string;
+        };
+        if (!result.content?.trim()) throw new Error('Empty AI suggestion');
+        assistantSuggestion.value = result.content;
+        assistantScreen.value = 'suggestion';
+    } catch {
+        assistantError.value = trans('posts.composer.assistant_error');
+    } finally {
+        assistantBusy.value = false;
+    }
+};
+
+const applyAssistantSuggestion = (): void => {
+    if (step.value === 2 && expandedAccount.value) {
+        composition.setOverride(
+            expandedAccount.value.id,
+            'content',
+            assistantSuggestion.value,
+        );
+    } else {
+        composition.content.value = assistantSuggestion.value;
+    }
+    assistantScreen.value = 'actions';
+    assistantSuggestion.value = '';
 };
 
 const beginAiRegenerate = (
@@ -511,17 +562,6 @@ const close = (): void => emit('update:open', false);
                     </Popover>
                 </div>
                 <div class="flex items-center gap-2">
-                    <Link
-                        v-if="!postId"
-                        :href="
-                            createPost.url({
-                                query: { ai: '1', templates: '1' },
-                            })
-                        "
-                        class="text-sm"
-                        data-testid="composer-templates"
-                        >{{ $t('posts.composer.templates') }}</Link
-                    >
                     <Button
                         v-if="postId && commentsOpen"
                         type="button"
@@ -543,40 +583,27 @@ const close = (): void => emit('update:open', false);
                         }}</Button
                     >
                     <Button
-                        v-if="postId && !commentsOpen"
+                        v-if="!commentsOpen"
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        data-testid="composer-ai-generate"
-                        @click="aiGenerateOpen = true"
+                        :aria-pressed="assistantOpen"
+                        data-testid="composer-ai-assistant"
+                        @click="assistantOpen = true"
                         ><IconSparkles class="size-4" />{{
-                            $t('posts.ai.generate.title')
+                            $t('posts.composer.assistant_title')
                         }}</Button
-                    >
-                    <Button
-                        v-if="postId && !commentsOpen"
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        data-testid="composer-ai-review"
-                        @click="aiReviewOpen = true"
-                        >{{ $t('posts.ai.review.title') }}</Button
-                    >
-                    <Link
-                        v-if="!initialPost"
-                        :href="createPost.url({ query: { ai: '1' } })"
-                        class="text-sm"
-                        ><IconSparkles class="inline size-4" />{{
-                            $t('posts.create.ai_title')
-                        }}</Link
                     >
                     <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        :aria-pressed="previewVisible"
+                        :aria-pressed="!assistantOpen && previewVisible"
                         data-testid="composer-preview-toggle"
-                        @click="previewVisible = !previewVisible"
+                        @click="
+                            assistantOpen = false;
+                            previewVisible = true;
+                        "
                         >{{ $t('posts.edit.tabs.preview') }}</Button
                     >
                     <Button
@@ -615,7 +642,7 @@ const close = (): void => emit('update:open', false);
                 v-else
                 class="grid min-h-0 flex-1"
                 :class="
-                    previewVisible
+                    assistantOpen || previewVisible
                         ? 'md:grid-cols-[minmax(0,1fr)_minmax(280px,38%)]'
                         : 'grid-cols-1'
                 "
@@ -1238,67 +1265,217 @@ const close = (): void => emit('update:open', false);
                 </div>
 
                 <aside
-                    v-if="previewVisible"
+                    v-if="assistantOpen || previewVisible"
                     class="hidden min-h-0 flex-col border-l bg-muted/30 md:flex"
                 >
-                    <h3
-                        class="shrink-0 border-b px-5 py-4 text-sm font-semibold"
-                    >
-                        {{
-                            step === 1
-                                ? $t('posts.composer.post_previews')
-                                : $t('posts.edit.tabs.preview')
-                        }}
-                    </h3>
-                    <div
-                        class="min-h-0 flex-1 space-y-8 overflow-y-auto p-5"
-                        data-testid="composer-previews-scroll"
-                    >
-                        <template v-if="step === 1">
-                            <section
-                                v-for="account in selectedAccounts"
-                                :key="account.id"
-                                data-testid="composer-preview-card"
-                                class="space-y-3"
-                            >
-                                <h4 class="text-sm text-muted-foreground">
-                                    {{ getPlatformLabel(account.platform) }} ·
+                    <template v-if="assistantOpen">
+                        <div class="shrink-0 border-b px-5 py-4">
+                            <h3 class="text-sm font-semibold">
+                                {{ $t('posts.composer.assistant_title') }}
+                            </h3>
+                        </div>
+                        <div
+                            class="min-h-0 flex-1 overflow-y-auto p-5"
+                            data-testid="composer-assistant-panel"
+                        >
+                            <template v-if="assistantScreen === 'actions'">
+                                <p class="mb-4 text-sm">
                                     {{
-                                        account.display_name || account.username
+                                        $t('posts.composer.assistant_question')
+                                    }}
+                                </p>
+                                <div class="space-y-2">
+                                    <Button
+                                        v-for="mode in [
+                                            'write_more',
+                                            'rephrase',
+                                            'shorten',
+                                            'expand',
+                                        ] as const"
+                                        :key="mode"
+                                        type="button"
+                                        variant="outline"
+                                        class="w-full justify-start"
+                                        :disabled="
+                                            assistantBusy ||
+                                            (mode !== 'write_more' &&
+                                                !assistantContent.trim())
+                                        "
+                                        :data-testid="`composer-ai-${mode}`"
+                                        @click="startAssistant(mode)"
+                                        >{{
+                                            $t(
+                                                `posts.composer.assistant_${mode}`,
+                                            )
+                                        }}</Button
+                                    >
+                                </div>
+                                <IconLoader2
+                                    v-if="assistantBusy"
+                                    class="mt-4 size-5 animate-spin"
+                                    :aria-label="$t('posts.composer.assistant_generate')"
+                                    role="status"
+                                />
+                            </template>
+                            <template v-else-if="assistantScreen === 'prompt'">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    :aria-label="
+                                        $t('posts.composer.assistant_back')
+                                    "
+                                    @click="assistantScreen = 'actions'"
+                                    ><IconArrowLeft class="size-4"
+                                /></Button>
+                                <label
+                                    for="assistant-prompt"
+                                    class="mt-6 mb-2 block text-sm font-medium"
+                                    >{{
+                                        $t(
+                                            'posts.composer.assistant_prompt_question',
+                                        )
+                                    }}</label
+                                >
+                                <textarea
+                                    id="assistant-prompt"
+                                    v-model="assistantPrompt"
+                                    data-testid="composer-ai-prompt"
+                                    :placeholder="
+                                        $t(
+                                            'posts.composer.assistant_prompt_placeholder',
+                                        )
+                                    "
+                                    class="min-h-40 w-full rounded-md border bg-background p-3 text-sm"
+                                />
+                                <p class="mt-2 text-xs text-muted-foreground">
+                                    {{ $t('posts.composer.assistant_tip') }}
+                                </p>
+                                <Button
+                                    type="button"
+                                    class="mt-3 ml-auto flex"
+                                    data-testid="composer-ai-generate"
+                                    :disabled="
+                                        assistantBusy || !assistantPrompt.trim()
+                                    "
+                                    @click="generateAssistantSuggestion"
+                                    ><IconLoader2
+                                        v-if="assistantBusy"
+                                        class="size-4 animate-spin"
+                                    /><IconSparkles v-else class="size-4" />{{
+                                        $t('posts.composer.assistant_generate')
+                                    }}</Button
+                                >
+                            </template>
+                            <template v-else>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    :aria-label="
+                                        $t('posts.composer.assistant_back')
+                                    "
+                                    @click="assistantScreen = 'actions'"
+                                    ><IconArrowLeft class="size-4"
+                                /></Button>
+                                <h4 class="mt-5 mb-3 text-sm font-medium">
+                                    {{
+                                        $t(
+                                            'posts.composer.assistant_suggestion',
+                                        )
                                     }}
                                 </h4>
-                                <PlatformPreview
-                                    :platform="account.platform"
-                                    :social-account="account"
-                                    :content="
-                                        composition.resolvedDestination(account)
-                                            .content
-                                    "
-                                    :media="
-                                        composition.resolvedDestination(account)
-                                            .media
-                                    "
-                                    :content-type="
-                                        composition.resolvedDestination(account)
-                                            .content_type
-                                    "
-                                    :meta="
-                                        composition.resolvedDestination(account)
-                                            .meta
-                                    "
-                                />
-                            </section>
-                        </template>
-                        <PlatformPreview
-                            v-else-if="previewAccount && previewDestination"
-                            :platform="previewAccount.platform"
-                            :social-account="previewAccount"
-                            :content="previewDestination.content"
-                            :media="previewDestination.media"
-                            :content-type="previewDestination.content_type"
-                            :meta="previewDestination.meta"
-                        />
-                    </div>
+                                <p
+                                    class="rounded-md border bg-background p-3 text-sm whitespace-pre-wrap"
+                                    data-testid="composer-ai-suggestion"
+                                >
+                                    {{ assistantSuggestion }}
+                                </p>
+                                <Button
+                                    type="button"
+                                    class="mt-3"
+                                    data-testid="composer-ai-apply"
+                                    @click="applyAssistantSuggestion"
+                                    >{{
+                                        $t('posts.composer.assistant_apply')
+                                    }}</Button
+                                >
+                            </template>
+                            <p
+                                v-if="assistantError"
+                                role="alert"
+                                class="mt-3 text-sm text-destructive"
+                            >
+                                {{ assistantError }}
+                            </p>
+                        </div>
+                    </template>
+                    <template v-else>
+                        <h3
+                            class="shrink-0 border-b px-5 py-4 text-sm font-semibold"
+                        >
+                            {{
+                                step === 1
+                                    ? $t('posts.composer.post_previews')
+                                    : $t('posts.edit.tabs.preview')
+                            }}
+                        </h3>
+                        <div
+                            class="min-h-0 flex-1 space-y-8 overflow-y-auto p-5"
+                            data-testid="composer-previews-scroll"
+                        >
+                            <template v-if="step === 1">
+                                <section
+                                    v-for="account in selectedAccounts"
+                                    :key="account.id"
+                                    data-testid="composer-preview-card"
+                                    class="space-y-3"
+                                >
+                                    <h4 class="text-sm text-muted-foreground">
+                                        {{ getPlatformLabel(account.platform) }}
+                                        ·
+                                        {{
+                                            account.display_name ||
+                                            account.username
+                                        }}
+                                    </h4>
+                                    <PlatformPreview
+                                        :platform="account.platform"
+                                        :social-account="account"
+                                        :content="
+                                            composition.resolvedDestination(
+                                                account,
+                                            ).content
+                                        "
+                                        :media="
+                                            composition.resolvedDestination(
+                                                account,
+                                            ).media
+                                        "
+                                        :content-type="
+                                            composition.resolvedDestination(
+                                                account,
+                                            ).content_type
+                                        "
+                                        :meta="
+                                            composition.resolvedDestination(
+                                                account,
+                                            ).meta
+                                        "
+                                    />
+                                </section>
+                            </template>
+                            <PlatformPreview
+                                v-else-if="previewAccount && previewDestination"
+                                :platform="previewAccount.platform"
+                                :social-account="previewAccount"
+                                :content="previewDestination.content"
+                                :media="previewDestination.media"
+                                :content-type="previewDestination.content_type"
+                                :meta="previewDestination.meta"
+                            />
+                        </div>
+                    </template>
                 </aside>
             </div>
 
@@ -1428,20 +1605,6 @@ const close = (): void => emit('update:open', false);
         ref="signaturesModal"
         :signatures="signatures"
         @select="appendSignature"
-    />
-    <AiGenerateDialog
-        v-if="postId"
-        v-model:open="aiGenerateOpen"
-        :post-id="postId"
-        :current-content="composition.content.value"
-        @apply="composition.content.value = $event"
-    />
-    <AiReviewDialog
-        v-if="postId"
-        v-model:open="aiReviewOpen"
-        :post-id="postId"
-        :content="composition.content.value"
-        @apply="applyAiReview"
     />
     <AiRegenerateImageDialog
         v-if="postId"

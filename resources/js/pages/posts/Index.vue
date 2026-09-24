@@ -13,7 +13,6 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
 
 import {
-    create as createPost,
     destroy as destroyPost,
     duplicate as duplicatePost,
     edit as editPostRoute,
@@ -132,6 +131,7 @@ interface Props {
         labels: string[];
     };
     openComposer?: boolean;
+    openComposerAssistant?: boolean;
     initialComposerDate?: string | null;
     openComposerComments?: boolean;
     highlightCommentId?: string | null;
@@ -201,7 +201,9 @@ const submitComposition = (
         onSuccess: () => {
             composerOpen.value = false;
             if (createAnother) {
-                router.visit(createPost.url());
+                router.visit(
+                    postsIndex.url(undefined, { query: { compose: '1' } }),
+                );
             }
         },
         onFinish: () => {
@@ -383,7 +385,9 @@ useWorkspaceEcho(
 
                 <Link
                     v-if="canCreatePost"
-                    :href="createPost.url()"
+                    :href="
+                        postsIndex.url(undefined, { query: { compose: '1' } })
+                    "
                     class="w-full sm:w-auto"
                 >
                     <Button class="w-full sm:w-auto">{{
@@ -683,6 +687,7 @@ useWorkspaceEcho(
         :post-id="editPost?.id"
         :current-user-id="authUserId"
         :open-comments="openComposerComments"
+        :open-assistant="openComposerAssistant"
         :highlight-comment-id="highlightCommentId"
         :labels="labels"
         :signatures="signatures ?? []"

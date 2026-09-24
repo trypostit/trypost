@@ -15,6 +15,7 @@ use App\Mcp\Tools\Label\DeleteLabelTool;
 use App\Mcp\Tools\Label\ListLabelsTool;
 use App\Mcp\Tools\Label\UpdateLabelTool;
 use App\Mcp\Tools\Platform\ListContentTypesTool;
+use App\Mcp\Tools\Post\AssistPostContentTool;
 use App\Mcp\Tools\Post\AttachMediaFromUploadTool;
 use App\Mcp\Tools\Post\AttachMediaFromUrlTool;
 use App\Mcp\Tools\Post\CreatePostsTool;
@@ -73,6 +74,7 @@ class TryPostServer extends Server
     protected array $tools = [
         // Posts
         ListPostsTool::class,
+        AssistPostContentTool::class,
         GetPostTool::class,
         CreatePostTool::class,
         CreatePostsTool::class,

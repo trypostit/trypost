@@ -11,7 +11,7 @@ use App\Http\Controllers\App\GiphyController;
 use App\Http\Controllers\App\LinkPreviewController;
 use App\Http\Controllers\App\McpSettingsController;
 use App\Http\Controllers\App\NotificationController;
-use App\Http\Controllers\App\PostAiCreateController;
+use App\Http\Controllers\App\PostAiAssistantController;
 use App\Http\Controllers\App\PostAiGenerateController;
 use App\Http\Controllers\App\PostAiRegenerateMediaController;
 use App\Http\Controllers\App\PostAiReviewController;
@@ -209,11 +209,12 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
         ->name('app.posts.link-preview');
 
     // Post AI
+    Route::post('posts/ai/assist', PostAiAssistantController::class)
+        ->middleware('throttle:10,1')
+        ->name('app.posts.ai.assist');
     Route::post('posts/{post}/ai/generate', [PostAiGenerateController::class, 'generate'])->name('app.posts.ai.generate');
     Route::post('posts/{post}/media/{mediaId}/ai/regenerate', [PostAiRegenerateMediaController::class, 'regenerate'])->name('app.posts.ai.regenerate-media');
     Route::post('posts/{post}/ai/review', [PostAiReviewController::class, 'review'])->name('app.posts.ai.review');
-    Route::post('posts/ai/create', [PostAiCreateController::class, 'start'])->name('app.posts.ai.create');
-    Route::get('posts/ai/{creationId}/loading', [PostAiCreateController::class, 'loading'])->name('app.posts.ai.loading')->whereUuid('creationId');
 
     // Post Comments
     Route::get('posts/{post}/comments', [PostCommentController::class, 'index'])->name('app.posts.comments.index');
