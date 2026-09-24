@@ -54,6 +54,19 @@ test('horizon supervises every analytics job on a dedicated queue', function () 
     }
 });
 
+test('queue visibility outlasts analytics job timeouts on supported queue drivers', function () {
+    $longestAnalyticsJob = max(
+        (new BackfillAccountPublications('account', 'state'))->timeout,
+        (new CollectAccountDailySnapshot('account', '2026-09-23'))->timeout,
+        (new CollectPublicationMetrics('publication', '2026-09-23'))->timeout,
+        (new FinalizeAccountDailySnapshots('2026-09-23'))->timeout,
+    );
+
+    foreach (['database', 'beanstalkd', 'redis'] as $connection) {
+        expect(config("queue.connections.{$connection}.retry_after"))->toBeGreaterThan($longestAnalyticsJob);
+    }
+});
+
 test('analytics log contexts identify the work without exposing credentials or raw responses', function () {
     Bus::fake();
     $account = SocialAccount::factory()->instagram()->create([
