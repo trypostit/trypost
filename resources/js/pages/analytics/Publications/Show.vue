@@ -5,7 +5,6 @@ import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import PublicationMetrics from '@/components/analytics/workspace/PublicationMetrics.vue';
-import type { PublicationAnalyticsDetail } from '@/components/analytics/workspace/types';
 import PageHeader from '@/components/PageHeader.vue';
 import {
     getPlatformLabel,
@@ -14,6 +13,7 @@ import {
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { analytics as analyticsRoute } from '@/routes/app';
+import type { PublicationAnalyticsDetail } from '@/types/analytics';
 
 const props = defineProps<{ detail: PublicationAnalyticsDetail }>();
 const publication = computed(() => props.detail.publication);

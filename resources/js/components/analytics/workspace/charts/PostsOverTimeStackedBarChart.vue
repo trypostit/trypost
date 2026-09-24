@@ -16,7 +16,8 @@ import {
 import date from '@/date';
 import dayjs from '@/dayjs';
 
-import { accountColor, type PostAccount, type PostBucket } from '../types';
+import { accountColor } from '@/lib/analyticsColors';
+import type { PostAccount, PostBucket } from '@/types/analytics';
 
 import {
     formatCountTick,

@@ -6,11 +6,11 @@ import date from '@/date';
 import dayjs from '@/dayjs';
 import { formatNumberCompact, formatPercent } from '@/lib/utils';
 
-import AnalyticsSection from './AnalyticsSection.vue';
 import type {
     PublicationAnalyticsDetail,
     PublicationMetricFact,
-} from './types';
+} from '@/types/analytics';
+import AnalyticsSection from './AnalyticsSection.vue';
 
 const props = defineProps<{ detail: PublicationAnalyticsDetail }>();
 

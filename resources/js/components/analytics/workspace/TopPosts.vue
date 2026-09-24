@@ -8,10 +8,10 @@ import { formatNumberCompact } from '@/lib/utils';
 import { show as analyticsShow } from '@/routes/app/analytics';
 import { show as publicationShow } from '@/routes/app/analytics/publications';
 
+import type { TopPost, WorkspaceAnalyticsReport } from '@/types/analytics';
 import AccountIdentity from './AccountIdentity.vue';
 import AnalyticsModeToggle from './AnalyticsModeToggle.vue';
 import AnalyticsSection from './AnalyticsSection.vue';
-import type { TopPost, WorkspaceAnalyticsReport } from './types';
 
 const props = defineProps<{
     topPosts: WorkspaceAnalyticsReport['top_posts'];

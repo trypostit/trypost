@@ -16,9 +16,12 @@ import {
     formatPercentChange,
 } from '@/lib/utils';
 
+import type {
+    PerformanceRow,
+    WorkspaceAnalyticsReport,
+} from '@/types/analytics';
 import AccountIdentity from './AccountIdentity.vue';
 import AnalyticsSection from './AnalyticsSection.vue';
-import type { PerformanceRow, WorkspaceAnalyticsReport } from './types';
 
 const props = defineProps<{
     rows: WorkspaceAnalyticsReport['performance'];

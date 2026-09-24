@@ -7,8 +7,8 @@ import {
     formatPercentChange,
 } from '@/lib/utils';
 
+import type { WorkspaceAnalyticsReport } from '@/types/analytics';
 import AnalyticsSection from './AnalyticsSection.vue';
-import type { WorkspaceAnalyticsReport } from './types';
 
 const props = defineProps<{ report: WorkspaceAnalyticsReport }>();
 

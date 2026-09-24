@@ -10,10 +10,6 @@ import {
 import { trans } from 'laravel-vue-i18n';
 import { computed, onMounted, ref, watch } from 'vue';
 
-import type {
-    PublicationAnalyticsDetail,
-    UnsupportedPublicationAnalytics,
-} from '@/components/analytics/workspace/types';
 import ImagePreviewDialog from '@/components/ImagePreviewDialog.vue';
 import LabelBadge from '@/components/labels/LabelBadge.vue';
 import PostPlatformMetrics from '@/components/posts/PostPlatformMetrics.vue';
@@ -47,6 +43,10 @@ import {
     MediaType,
 } from '@/lib/mediaType';
 import { index as postsIndex } from '@/routes/app/posts';
+import type {
+    PublicationAnalyticsDetail,
+    UnsupportedPublicationAnalytics,
+} from '@/types/analytics';
 import type { MediaItem } from '@/types/media';
 import { PostPlatformStatus } from '@/types/post';
 

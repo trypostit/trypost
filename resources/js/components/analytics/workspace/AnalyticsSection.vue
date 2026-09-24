@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import date from '@/date';
 
-import type { WorkspaceAnalyticsReport } from './types';
+import type { WorkspaceAnalyticsReport } from '@/types/analytics';
 
 defineProps<{
     title: string;

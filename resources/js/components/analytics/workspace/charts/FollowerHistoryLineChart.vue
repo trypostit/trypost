@@ -11,11 +11,11 @@ import {
 } from '@/components/ui/chart';
 import date from '@/date';
 
-import {
-    accountColor,
-    type FollowerAccount,
-    type WorkspaceAnalyticsReport,
-} from '../types';
+import { accountColor } from '@/lib/analyticsColors';
+import type {
+    FollowerAccount,
+    WorkspaceAnalyticsReport,
+} from '@/types/analytics';
 
 import {
     formatCountTick,

@@ -9,16 +9,14 @@ import PerformanceTable from '@/components/analytics/workspace/PerformanceTable.
 import PostsChart from '@/components/analytics/workspace/PostsChart.vue';
 import SummaryCards from '@/components/analytics/workspace/SummaryCards.vue';
 import TopPosts from '@/components/analytics/workspace/TopPosts.vue';
-import {
-    accountColor,
-    type WorkspaceAnalyticsReport,
-} from '@/components/analytics/workspace/types';
 import EmptyState from '@/components/EmptyState.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { accountColor } from '@/lib/analyticsColors';
 import { analytics as analyticsRoute } from '@/routes/app';
+import type { WorkspaceAnalyticsReport } from '@/types/analytics';
 
 const props = defineProps<{ report: WorkspaceAnalyticsReport }>();
 const importRunning = computed(() =>

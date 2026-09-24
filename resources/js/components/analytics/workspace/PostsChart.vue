@@ -2,13 +2,13 @@
 import { ref } from 'vue';
 
 import { formatNumberCompact } from '@/lib/utils';
+import type { WorkspaceAnalyticsReport } from '@/types/analytics';
 
 import AccountIdentity from './AccountIdentity.vue';
 import AnalyticsModeToggle from './AnalyticsModeToggle.vue';
 import AnalyticsSection from './AnalyticsSection.vue';
 import PostsOverTimeStackedBarChart from './charts/PostsOverTimeStackedBarChart.vue';
 import SocialAccountMetricBarChart from './charts/SocialAccountMetricBarChart.vue';
-import type { WorkspaceAnalyticsReport } from './types';
 
 defineProps<{
     posts: WorkspaceAnalyticsReport['posts'];

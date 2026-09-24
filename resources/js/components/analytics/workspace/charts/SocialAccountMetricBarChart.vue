@@ -15,7 +15,8 @@ import {
 } from '@/components/ui/chart';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 
-import { accountColor, type AccountIdentityData } from '../types';
+import { accountColor } from '@/lib/analyticsColors';
+import type { AccountIdentityData } from '@/types/analytics';
 
 import {
     formatCountTick,

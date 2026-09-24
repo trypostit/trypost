@@ -2,7 +2,7 @@
 import { IconClockHour4 } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import type { CoverageRow } from './types';
+import type { CoverageRow } from '@/types/analytics';
 
 const props = defineProps<{ coverage: CoverageRow[] }>();
 const pending = computed(() =>

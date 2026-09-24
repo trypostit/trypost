@@ -5,7 +5,7 @@ import PublicationMetrics from '@/components/analytics/workspace/PublicationMetr
 import type {
     PublicationAnalyticsDetail,
     UnsupportedPublicationAnalytics,
-} from '@/components/analytics/workspace/types';
+} from '@/types/analytics';
 
 const props = defineProps<{
     detail?: PublicationAnalyticsDetail | UnsupportedPublicationAnalytics;
