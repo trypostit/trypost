@@ -236,9 +236,9 @@ $this->artisan('posts:audit-legacy', ['--strict' => true])->assertFailed();
 ```
 
 - [ ] **Step 2: Run** that focused test and observe red before its fix. If it was already covered in Task 8 and no new defect appears, use that existing red/green evidence and add no duplicate test.
-- [ ] **Step 3: Apply** the smallest regression fix. Deployment order: back up production; deploy command code with new UI/write paths disabled; pause new post writes and `posts:process-scheduled`; drain affected publishing workers; audit and resolve zero-target scheduled blockers; split; run strict audit and reconcile counts; enable new UI/routes; resume scheduler/workers. If pre-enable checks fail, keep old routes and resume processing. After enablement, use forward fixes rather than restoring an old snapshot.
+- [ ] **Step 3: Apply** the smallest regression fix. The branch contains the composer and new write paths together, so cut over during a maintenance window: back up production; pause post writes and `posts:process-scheduled`; drain affected publishing workers; deploy the branch while application ingress remains closed; run the read-only audit, resolve zero-target scheduled and unavailable-target blockers, split editable multi-target rows, then run strict audit and reconcile counts before reopening ingress and resuming workers/scheduler. If the gate fails, keep ingress closed and restore the prior application release against the unchanged backup or fix forward after assessing any writes. Do not run the split on live data outside the maintenance window.
 - [ ] **Step 4: Run** affected post/API/MCP/command/browser tests on both engines, TypeScript check/lint, localization parity, Wayfinder generation/check, route listing and Pint. Verify four-account draft/schedule through web, API and MCP yields four IDs; editing one leaves three unchanged; old aggregate GET/history/analytics still load.
-- [ ] **Step 5: Commit** regression fixes as `fix(posts): complete independent-post cutover` if any; record audit/split counts and go/no-go result in the deployment record.
+- [ ] **Step 5: Commit** regression fixes as `fix(posts): complete independent-post cutover` if any; record actual production audit/split counts, snapshot rehearsal, both-engine results and go/no-go decision in the deployment record when that work is authorized and available.
 
 ## Completion criteria
 
@@ -248,3 +248,7 @@ $this->artisan('posts:audit-legacy', ['--strict' => true])->assertFailed();
 - Existing navigation remains usable, and opening the composer never creates a post.
 - Web, API, MCP and internal producers use shared Actions; settled legacy IDs/analytics remain readable.
 - Production audit/split is repeatable, rehearsed on a production snapshot and both engines, and blocks enablement on anomalies.
+
+## Release gate still requiring an environment
+
+The local branch can be completed and reviewed without touching production. A release is **not** approved by local tests alone. Before production cutover, run the audit/split against a restored production snapshot on its database engine and check row counts, target IDs, schedules, media, labels, comments, history and analytics references. Run the suite on MySQL as well as PostgreSQL. Record those results and a fresh production backup before entering the maintenance window above. No production audit, split or deployment has been run as part of local implementation.

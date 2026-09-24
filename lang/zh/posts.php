@@ -5,6 +5,11 @@ return [
     'search' => '搜索帖子…',
     'all_posts' => '所有帖子',
     'new_post' => '新建帖子',
+    'composer' => [
+        'save_draft' => '保存草稿',
+        'use_shared' => '使用共享内容',
+        'crop_upload_failed' => '无法上传裁剪后的图片。原图仍保持选中。',
+    ],
     'no_posts' => '未找到帖子',
     'no_search_results' => '没有与搜索匹配的帖子',
     'try_different_search' => '换一个关键词，或清除搜索。',

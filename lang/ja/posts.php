@@ -5,6 +5,11 @@ return [
     'search' => '投稿を検索...',
     'all_posts' => 'すべての投稿',
     'new_post' => '新規投稿',
+    'composer' => [
+        'save_draft' => '下書きを保存',
+        'use_shared' => '共通の内容を使用',
+        'crop_upload_failed' => '切り抜いた画像をアップロードできませんでした。元の画像が選択されたままです。',
+    ],
     'no_posts' => '投稿が見つかりません',
     'no_search_results' => '検索に一致する投稿がありません',
     'try_different_search' => '別のキーワードを試すか、検索をクリアしてください。',

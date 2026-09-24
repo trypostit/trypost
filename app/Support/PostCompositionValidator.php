@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Dto\MediaItem;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
@@ -61,6 +62,28 @@ class PostCompositionValidator
             ->filter(fn (mixed $id): bool => is_string($id) && Str::isUuid($id))
             ->unique();
         $assets = $workspace->media()->whereIn('id', $mediaIds)->get()->keyBy('id');
+
+        foreach ($composition['destinations'] as &$destination) {
+            foreach ($destination['media'] as &$media) {
+                $asset = $assets->get(data_get($media, 'id'));
+                if (! $asset || $asset->path !== data_get($media, 'path') || $asset->url !== data_get($media, 'url')) {
+                    continue;
+                }
+
+                $canonical = MediaItem::fromMedia($asset)->toArray();
+                if (is_array(data_get($media, 'meta')) && array_key_exists('alt_text', $media['meta'])) {
+                    $canonical['meta'] = [...($asset->meta ?? []), 'alt_text' => $media['meta']['alt_text']];
+                }
+                foreach (['source', 'source_meta'] as $field) {
+                    if (array_key_exists($field, $media)) {
+                        $canonical[$field] = $media[$field];
+                    }
+                }
+                $media = $canonical;
+            }
+            unset($media);
+        }
+        unset($destination);
 
         $mediaRules = [];
         foreach (PostMediaRules::rules(hosted: true) as $key => $rules) {

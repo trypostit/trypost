@@ -230,6 +230,20 @@ test('calendar does not include unscheduled drafts', function () {
         );
 });
 
+test('calendar opens the same composer with its selected date', function () {
+    $date = now()->addDay()->format('Y-m-d');
+
+    $this->actingAs($this->user)
+        ->get(route('app.calendar', ['compose' => 1, 'date' => $date]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('posts/Calendar')
+            ->where('openComposer', true)
+            ->where('initialComposerDate', $date)
+            ->has('socialAccounts', 1)
+        );
+});
+
 // Create tests
 test('create requires authentication', function () {
     $response = $this->get(route('app.posts.create'));
@@ -237,26 +251,24 @@ test('create requires authentication', function () {
     $response->assertRedirect(route('login'));
 });
 
-test('create renders the wizard page', function () {
+test('create opens the composer on the posts page', function () {
     $response = $this->actingAs($this->user)->get(route('app.posts.create'));
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('posts/Create', false)
-        ->where('date', null)
-        ->has('socialAccounts', 1)
-        ->where('socialAccounts.0.id', $this->socialAccount->id)
-    );
+    $response->assertRedirect(route('app.posts.index', ['compose' => 1]));
+    $this->actingAs($this->user)->get(route('app.posts.index', ['compose' => 1]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('posts/Index', false)
+            ->where('openComposer', true)
+            ->has('socialAccounts', 1)
+            ->where('socialAccounts.0.id', $this->socialAccount->id)
+        );
 });
 
-test('create forwards date query param to the page', function () {
+test('create forwards date query param to the composer', function () {
     $response = $this->actingAs($this->user)->get(route('app.posts.create', ['date' => '2026-06-01']));
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('posts/Create', false)
-        ->where('date', '2026-06-01')
-    );
+    $response->assertRedirect(route('app.posts.index', ['compose' => 1, 'date' => '2026-06-01']));
 });
 
 test('create redirects to workspaces.create when user has no workspace', function () {
@@ -275,45 +287,115 @@ test('store post requires authentication', function () {
 });
 
 test('store post redirects to accounts if no social accounts connected', function () {
+    $accountId = $this->socialAccount->id;
     $this->socialAccount->delete();
 
-    $response = $this->actingAs($this->user)->post(route('app.posts.store'));
+    $response = $this->actingAs($this->user)->post(route('app.posts.store'), [
+        'status' => 'draft',
+        'content' => 'Text',
+        'destinations' => [[
+            'social_account_id' => $accountId,
+            'content_type' => ContentType::LinkedInPost->value,
+        ]],
+    ]);
 
     $response->assertRedirect(route('app.accounts'));
 });
 
-test('store post creates draft and redirects to edit', function () {
-    $response = $this->actingAs($this->user)->post(route('app.posts.store'));
+test('opening the composer creates no draft', function () {
+    $this->actingAs($this->user)->get(route('app.posts.create'))
+        ->assertRedirect(route('app.posts.index', ['compose' => 1]));
 
-    $response->assertRedirect();
-
-    $post = Post::where('workspace_id', $this->workspace->id)->first();
-    expect($post)->not->toBeNull();
-    expect($post->status)->toBe(PostStatus::Draft);
-    expect($post->created_via)->toBe(CreatedVia::Web);
-    expect($post->postPlatforms)->toHaveCount(1);
+    expect(Post::where('workspace_id', $this->workspace->id)->count())->toBe(0);
 });
 
-test('store post leaves scheduled_at null when no date is provided', function () {
-    $this->actingAs($this->user)->post(route('app.posts.store'))->assertRedirect();
+test('store post creates one independent draft per selected account', function () {
+    $accounts = collect([$this->socialAccount])->concat(
+        SocialAccount::factory()->count(3)->create([
+            'workspace_id' => $this->workspace->id,
+            'platform' => Platform::LinkedIn,
+        ]),
+    );
 
-    $post = Post::where('workspace_id', $this->workspace->id)->first();
-    expect($post->scheduled_at)->toBeNull();
-});
-
-test('store post schedules draft on the date param when provided', function () {
     $this->actingAs($this->user)->post(route('app.posts.store'), [
-        'date' => '2026-06-15',
-    ])->assertRedirect();
+        'status' => 'draft',
+        'content' => 'Shared caption',
+        'media' => [],
+        'destinations' => $accounts->map(fn ($account) => [
+            'social_account_id' => $account->id,
+            'content_type' => ContentType::LinkedInPost->value,
+            'meta' => [],
+        ])->all(),
+    ])->assertRedirect(route('app.posts.index'));
 
-    $post = Post::where('workspace_id', $this->workspace->id)->first();
-    expect($post->scheduled_at->utc()->format('Y-m-d H:i:s'))->toBe('2026-06-15 09:00:00');
+    $posts = Post::where('workspace_id', $this->workspace->id)->with('postPlatforms')->get();
+    expect($posts)->toHaveCount(4);
+    foreach ($posts as $post) {
+        expect($post->status)->toBe(PostStatus::Draft)
+            ->and($post->content)->toBe('Shared caption')
+            ->and($post->created_via)->toBe(CreatedVia::Web)
+            ->and($post->scheduled_at)->toBeNull()
+            ->and($post->postPlatforms)->toHaveCount(1);
+    }
 });
 
-test('store post rejects invalid date format', function () {
+test('store post schedules each selected account independently', function () {
+    $other = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+    ]);
+    $date = now()->addDay()->startOfMinute()->toIso8601String();
+
+    $this->actingAs($this->user)->post(route('app.posts.store'), [
+        'status' => 'scheduled',
+        'content' => 'Scheduled caption',
+        'media' => [],
+        'scheduled_at' => $date,
+        'destinations' => collect([$this->socialAccount, $other])->map(fn ($account) => [
+            'social_account_id' => $account->id,
+            'content_type' => ContentType::LinkedInPost->value,
+            'meta' => [],
+        ])->all(),
+    ])->assertRedirect(route('app.posts.index'));
+
+    expect(Post::where('workspace_id', $this->workspace->id)->where('status', PostStatus::Scheduled)->count())->toBe(2);
+    expect(Post::where('workspace_id', $this->workspace->id)->pluck('scheduled_at')->unique())->toHaveCount(1);
+});
+
+test('saving a zero-target legacy draft creates independent posts and removes the empty draft', function () {
+    $legacy = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'content' => 'Legacy caption',
+    ]);
+    $other = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
+    $accounts = [$this->socialAccount, $other];
+
+    $this->actingAs($this->user)->post(route('app.posts.store'), [
+        'recover_post_id' => $legacy->id,
+        'status' => 'draft',
+        'content' => 'Recovered caption',
+        'media' => [],
+        'destinations' => array_map(fn ($account) => [
+            'social_account_id' => $account->id,
+            'content_type' => ContentType::LinkedInPost->value,
+            'meta' => [],
+        ], $accounts),
+    ])->assertRedirect(route('app.posts.index'));
+
+    expect(Post::find($legacy->id))->toBeNull()
+        ->and(Post::where('workspace_id', $this->workspace->id)->count())->toBe(2)
+        ->and(Post::where('workspace_id', $this->workspace->id)->where('content', 'Recovered caption')->count())->toBe(2);
+});
+
+test('store post rejects invalid schedule format', function () {
     $this->actingAs($this->user)
-        ->post(route('app.posts.store'), ['date' => 'not-a-date'])
-        ->assertSessionHasErrors(['date']);
+        ->post(route('app.posts.store'), ['status' => 'scheduled', 'scheduled_at' => 'not-a-date', 'destinations' => [[
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => ContentType::LinkedInPost->value,
+        ]]])
+        ->assertSessionHasErrors(['scheduled_at']);
 
     expect(Post::where('workspace_id', $this->workspace->id)->count())->toBe(0);
 });
@@ -330,7 +412,7 @@ test('edit post requires authentication', function () {
     $response->assertRedirect(route('login'));
 });
 
-test('edit post shows edit page', function () {
+test('edit post opens its account in the composer', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
@@ -344,12 +426,14 @@ test('edit post shows edit page', function () {
 
     $response = $this->actingAs($this->user)->get(route('app.posts.edit', $post));
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('posts/Edit')
-        ->has('post')
-        ->has('socialAccounts')
-    );
+    $response->assertRedirect(route('app.posts.index', ['edit' => $post->id]));
+    $this->actingAs($this->user)->get(route('app.posts.index', ['edit' => $post->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('posts/Index')
+            ->where('editPost.id', $post->id)
+            ->has('socialAccounts')
+        );
 });
 
 test('edit exposes null scheduled_at for an unscheduled draft', function () {
@@ -366,11 +450,11 @@ test('edit exposes null scheduled_at for an unscheduled draft', function () {
     ]);
 
     $this->actingAs($this->user)
-        ->get(route('app.posts.edit', $post))
+        ->get(route('app.posts.index', ['edit' => $post->id]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('posts/Edit')
-            ->where('post.scheduled_at', null)
+            ->component('posts/Index')
+            ->where('editPost.scheduled_at', null)
         );
 });
 
@@ -420,7 +504,7 @@ test('edit allows draft and scheduled posts', function () {
 
         $this->actingAs($this->user)
             ->get(route('app.posts.edit', $post))
-            ->assertOk();
+            ->assertRedirect(route('app.posts.index', ['edit' => $post->id]));
     }
 });
 
@@ -914,11 +998,11 @@ test('edit post includes workspace labels', function () {
         'color' => '#FF0000',
     ]);
 
-    $response = $this->actingAs($this->user)->get(route('app.posts.edit', $post));
+    $response = $this->actingAs($this->user)->get(route('app.posts.index', ['edit' => $post->id]));
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
-        ->component('posts/Edit')
+        ->component('posts/Index')
         ->has('labels', 1)
         ->where('labels.0.name', 'Marketing')
     );
@@ -1312,11 +1396,28 @@ test('show page redirects editable posts to edit', function () {
             'user_id' => $this->user->id,
             'status' => $status,
         ]);
+        PostPlatform::factory()->create([
+            'post_id' => $post->id,
+            'social_account_id' => $this->socialAccount->id,
+            'enabled' => true,
+        ]);
 
         $this->actingAs($this->user)
             ->get(route('app.posts.show', $post))
             ->assertRedirect(route('app.posts.edit', $post));
     }
+});
+
+test('a scheduled legacy post without an enabled account remains viewable', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Scheduled,
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.show', $post))
+        ->assertInertia(fn ($page) => $page->component('posts/Show', false));
 });
 
 test('failed posts render show without redirecting to edit', function () {
@@ -1648,10 +1749,10 @@ test('the editor receives the tld list only while x link defusing is on', functi
     ]);
 
     $this->actingAs($this->user)
-        ->get(route('app.posts.edit', $post))
+        ->get(route('app.posts.index', ['edit' => $post->id]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('posts/Edit')
+            ->component('posts/Index')
             ->where('xLinkTlds', fn (Collection $tlds): bool => $expectsList
                 ? $tlds->contains('com') && $tlds->count() === count(LinkTlds::all())
                 : $tlds->isEmpty())

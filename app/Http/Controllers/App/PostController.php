@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
-use App\Actions\Post\CreatePost;
+use App\Actions\Post\CreatePosts;
 use App\Actions\Post\DeletePost;
 use App\Actions\Post\DuplicatePost;
-use App\Actions\Post\SyncPostPlatforms;
+use App\Actions\Post\RecoverEmptyDraft;
 use App\Actions\Post\UpdatePost;
 use App\Actions\SocialAccount\ListPinterestBoards;
 use App\Ai\Templates\AiContentTemplate;
@@ -23,6 +23,7 @@ use App\Http\Resources\App\PlatformConfigResource;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Post;
 use App\Models\PostPlatform;
+use App\Models\Workspace;
 use App\Services\Post\PostMetricsFetcher;
 use App\Services\Social\TikTokCreatorInfo;
 use App\Support\LinkTlds;
@@ -72,6 +73,19 @@ class PostController extends Controller
             fn ($q) => $q->whereIn('workspace_labels.id', $labelIds),
         ));
 
+        $composerPost = null;
+        if ($request->filled('edit')) {
+            $composerPost = $workspace->posts()
+                ->with(['postPlatforms' => fn ($query) => $query->enabled()->with('socialAccount'), 'labels'])
+                ->findOrFail($request->query('edit'));
+            $this->authorize('update', $composerPost);
+            if (PostStatusRules::blocksEditing($composerPost) || ! $this->canOpenComposer($composerPost)) {
+                return redirect()->route('app.posts.show', $composerPost);
+            }
+        }
+
+        $composerRequested = $request->boolean('compose') || $composerPost !== null;
+
         return Inertia::render('posts/Index', [
             'workspace' => $workspace,
             'posts' => Inertia::scroll(fn () => $query->latest('scheduled_at')->paginate(config('app.pagination.default'))),
@@ -81,6 +95,10 @@ class PostController extends Controller
                 'search' => $request->input('search', ''),
                 'labels' => $labelIds,
             ],
+            'openComposer' => $composerRequested,
+            'initialComposerDate' => $request->query('date'),
+            'editPost' => $composerPost,
+            ...$this->composerProps($workspace, $composerRequested),
         ]);
     }
 
@@ -137,14 +155,41 @@ class PostController extends Controller
             'currentWeekStart' => $weekStart->format('Y-m-d'),
             'currentMonth' => $monthDate->format('Y-m-d'),
             'view' => $view,
+            'openComposer' => $request->boolean('compose'),
+            'initialComposerDate' => $request->query('date'),
+            ...$this->composerProps($workspace, $request->boolean('compose')),
         ]);
     }
 
-    public function create(Request $request): Response
+    /**
+     * @return array<string, mixed>
+     */
+    private function composerProps(Workspace $workspace, bool $requested): array
+    {
+        $socialAccounts = $requested ? $workspace->socialAccounts()->active()->get() : collect();
+
+        return [
+            'socialAccounts' => $requested ? SocialAccountResource::collection($socialAccounts) : [],
+            'platformConfigs' => $socialAccounts->mapWithKeys(fn ($account) => [$account->id => new PlatformConfigResource($account)]),
+            'pinterestBoards' => $socialAccounts->where('platform', Platform::Pinterest)->mapWithKeys(fn ($account) => [
+                $account->id => rescue(fn () => ListPinterestBoards::execute($account), ['boards' => [], 'truncated' => false], report: false),
+            ]),
+            'tiktokCreatorInfos' => $socialAccounts->where('platform', Platform::TikTok)->mapWithKeys(fn ($account) => [
+                $account->id => rescue(fn () => app(TikTokCreatorInfo::class)->fetch($account), null, report: false),
+            ])->filter(),
+            'xLinkTlds' => $requested && config('trypost.platforms.x.defuse_links') ? LinkTlds::all() : [],
+        ];
+    }
+
+    public function create(Request $request): RedirectResponse|Response
     {
         $workspace = $request->user()->currentWorkspace;
 
         $this->authorize('createPost', $workspace);
+
+        if (! $request->boolean('ai')) {
+            return redirect()->route('app.posts.index', ['compose' => 1, 'date' => $request->query('date')]);
+        }
 
         $registry = app(AiTemplateRegistry::class);
 
@@ -188,13 +233,19 @@ class PostController extends Controller
                 : redirect()->route('app.calendar');
         }
 
-        $post = CreatePost::execute($workspace, $request->user(), [
-            'date' => $request->input('date'),
-            'media' => $request->input('media', []),
+        $composition = [
+            ...$request->only(['status', 'content', 'media', 'scheduled_at', 'label_ids', 'destinations']),
             'created_via' => CreatedVia::Web,
-        ]);
+        ];
+        if ($request->filled('recover_post_id')) {
+            $legacy = $workspace->posts()->findOrFail($request->input('recover_post_id'));
+            $this->authorize('update', $legacy);
+            $posts = RecoverEmptyDraft::execute($workspace, $request->user(), $legacy, $composition);
+        } else {
+            $posts = CreatePosts::execute($workspace, $request->user(), $composition);
+        }
 
-        return Inertia::location(route('app.posts.edit', $post));
+        return redirect()->route('app.posts.index')->with('created_post_ids', $posts->pluck('id')->all());
     }
 
     public function platformMetrics(Request $request, Post $post, PostPlatform $postPlatform): JsonResponse
@@ -218,7 +269,7 @@ class PostController extends Controller
 
         $this->authorize('view', $post);
 
-        if (in_array($post->status, [PostStatus::Draft, PostStatus::Scheduled], true)) {
+        if (in_array($post->status, [PostStatus::Draft, PostStatus::Scheduled], true) && $this->canOpenComposer($post)) {
             return redirect()->route('app.posts.edit', $post);
         }
 
@@ -240,56 +291,12 @@ class PostController extends Controller
 
         $this->authorize('view', $post);
 
-        if (PostStatusRules::blocksEditing($post)) {
+        if (PostStatusRules::blocksEditing($post) || ! $this->canOpenComposer($post)) {
             return redirect()->route('app.posts.show', $post);
         }
 
-        if ($request->user()->can('update', $post)) {
-            SyncPostPlatforms::execute($post);
-        }
+        return redirect()->route('app.posts.index', ['edit' => $post->id]);
 
-        $post->load(['postPlatforms.socialAccount', 'labels']);
-        $socialAccounts = $workspace->socialAccounts()->active()->get();
-        $labels = $workspace->labels;
-        $signatures = $workspace->signatures;
-
-        $platformConfigs = $socialAccounts->mapWithKeys(fn ($account) => [
-            $account->id => new PlatformConfigResource($account),
-        ]);
-
-        $pinterestBoards = $socialAccounts
-            ->where('platform', Platform::Pinterest)
-            ->mapWithKeys(fn ($account) => [
-                $account->id => rescue(
-                    fn () => ListPinterestBoards::execute($account),
-                    ['boards' => [], 'truncated' => false],
-                    report: false,
-                ),
-            ]);
-
-        $tiktokCreatorInfos = $socialAccounts
-            ->where('platform', Platform::TikTok)
-            ->mapWithKeys(fn ($account) => [
-                $account->id => rescue(
-                    fn () => app(TikTokCreatorInfo::class)->fetch($account),
-                    null,
-                    report: false,
-                ),
-            ])
-            ->filter();
-
-        return Inertia::render('posts/Edit', [
-            'workspace' => $workspace,
-            'post' => $post,
-            'socialAccounts' => $socialAccounts,
-            'platformConfigs' => $platformConfigs,
-            'pinterestBoards' => $pinterestBoards,
-            'tiktokCreatorInfos' => $tiktokCreatorInfos,
-            'labels' => $labels,
-            'signatures' => $signatures,
-            'authUserId' => $request->user()->id,
-            'xLinkTlds' => config('trypost.platforms.x.defuse_links') ? LinkTlds::all() : [],
-        ]);
     }
 
     public function update(UpdatePostRequest $request, Post $post): RedirectResponse
@@ -366,11 +373,22 @@ class PostController extends Controller
 
         $post->load(['postPlatforms', 'labels']);
 
-        $copy = DuplicatePost::execute($post, $request->user());
+        $copy = DuplicatePost::execute($post, $request->user(), $request->input('post_platform_id'));
 
         session()->flash('flash.banner', __('posts.flash.duplicated'));
         session()->flash('flash.bannerStyle', 'success');
 
         return redirect()->route('app.posts.edit', $copy);
+    }
+
+    private function canOpenComposer(Post $post): bool
+    {
+        $targets = $post->postPlatforms()->enabled()->with('socialAccount')->get();
+
+        if ($targets->isEmpty()) {
+            return $post->status === PostStatus::Draft;
+        }
+
+        return $targets->count() === 1 && $targets->first()->socialAccount?->is_active === true;
     }
 }

@@ -8,6 +8,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     $this->owner = User::factory()->create();
@@ -63,10 +64,10 @@ test('opening a draft post redirects to the editor for every workspace member', 
         ->assertRedirect(route('app.posts.edit', $this->post));
 })->with(['admin', 'member', 'viewer']);
 
-test('a viewer can open the post editor to review and comment', function () {
+test('a viewer can open the draft dialog route to review the post', function () {
     $this->actingAs($this->viewer)
         ->get(route('app.posts.edit', $this->post))
-        ->assertOk();
+        ->assertRedirect(route('app.posts.index', ['edit' => $this->post->id]));
 });
 
 test('a viewer cannot save changes to a post', function () {
@@ -85,7 +86,7 @@ test('only admins and above can open the connections screen', function (string $
     'viewer' => ['viewer', false],
 ]);
 
-test('opening the editor does not create platform rows for a viewer', function () {
+test('opening the dialog does not create platform rows for a viewer', function () {
     SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'is_active' => true,
@@ -93,12 +94,12 @@ test('opening the editor does not create platform rows for a viewer', function (
 
     $this->actingAs($this->viewer)
         ->get(route('app.posts.edit', $this->post))
-        ->assertOk();
+        ->assertRedirect(route('app.posts.index', ['edit' => $this->post->id]));
 
     expect($this->post->postPlatforms()->count())->toBe(0);
 });
 
-test('opening the editor syncs platform rows for a member', function () {
+test('opening the dialog does not create platform rows for a member', function () {
     SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'is_active' => true,
@@ -106,20 +107,26 @@ test('opening the editor syncs platform rows for a member', function () {
 
     $this->actingAs($this->member)
         ->get(route('app.posts.edit', $this->post))
-        ->assertOk();
+        ->assertRedirect(route('app.posts.index', ['edit' => $this->post->id]));
 
-    expect($this->post->postPlatforms()->count())->toBe(1);
+    expect($this->post->postPlatforms()->count())->toBe(0);
 });
 
 test('a member without connected accounts is redirected away from the admin-only accounts screen when creating a post', function () {
     $this->actingAs($this->member)
-        ->post(route('app.posts.store'))
+        ->post(route('app.posts.store'), [
+            'status' => 'draft',
+            'destinations' => [['social_account_id' => (string) Str::uuid(), 'content_type' => 'linkedin_post']],
+        ])
         ->assertRedirect(route('app.calendar'));
 });
 
 test('an admin without connected accounts is sent to the accounts screen when creating a post', function () {
     $this->actingAs($this->admin)
-        ->post(route('app.posts.store'))
+        ->post(route('app.posts.store'), [
+            'status' => 'draft',
+            'destinations' => [['social_account_id' => (string) Str::uuid(), 'content_type' => 'linkedin_post']],
+        ])
         ->assertRedirect(route('app.accounts'));
 });
 

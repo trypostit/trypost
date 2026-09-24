@@ -54,7 +54,7 @@ test('update post can change content', function () {
     expect($post->fresh()->content)->toBe('new content');
 });
 
-test('update post enables platforms', function () {
+test('update post cannot turn a targetless legacy draft into a channel post', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
@@ -74,9 +74,9 @@ test('update post enables platforms', function () {
             ],
         ]);
 
-    $response->assertOk();
+    $response->assertHasErrors();
 
-    expect($platform->fresh()->enabled)->toBeTrue();
+    expect($platform->fresh()->enabled)->toBeFalse();
 });
 
 test('update post can attach labels', function () {

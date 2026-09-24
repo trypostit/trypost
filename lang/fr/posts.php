@@ -5,6 +5,11 @@ return [
     'search' => 'Rechercher des publications...',
     'all_posts' => 'Toutes les publications',
     'new_post' => 'Nouvelle publication',
+    'composer' => [
+        'save_draft' => 'Enregistrer le brouillon',
+        'use_shared' => 'Utiliser le contenu commun',
+        'crop_upload_failed' => 'Impossible d’envoyer l’image recadrée. L’original reste sélectionné.',
+    ],
     'no_posts' => 'Aucune publication trouvée',
     'no_search_results' => 'Aucune publication ne correspond à votre recherche',
     'try_different_search' => 'Essayez un autre mot-clé ou effacez la recherche.',

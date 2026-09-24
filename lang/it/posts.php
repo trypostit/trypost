@@ -5,6 +5,11 @@ return [
     'search' => 'Cerca post...',
     'all_posts' => 'Tutti i post',
     'new_post' => 'Nuovo post',
+    'composer' => [
+        'save_draft' => 'Salva bozza',
+        'use_shared' => 'Usa contenuto condiviso',
+        'crop_upload_failed' => 'Impossibile caricare l’immagine ritagliata. L’originale resta selezionata.',
+    ],
     'no_posts' => 'Nessun post trovato',
     'no_search_results' => 'Nessun post corrisponde alla ricerca',
     'try_different_search' => 'Prova con un\'altra parola chiave o cancella la ricerca.',

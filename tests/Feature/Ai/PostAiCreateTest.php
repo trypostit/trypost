@@ -18,6 +18,8 @@ beforeEach(function () {
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
     $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
+    $this->xAccount = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X]);
+    $this->instagramAccount = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
 });
 
 test('start requires authentication', function () {
@@ -70,6 +72,7 @@ test('start accepts a prompt at the minimum length', function () {
         ->postJson(route('app.posts.ai.create'), [
             'prompt' => str_repeat('a', AiPromptRules::PROMPT_MIN_LENGTH),
             'format' => 'x_post',
+            'social_account_id' => $this->xAccount->id,
             'creation_id' => Str::uuid()->toString(),
         ])
         ->assertStatus(Response::HTTP_ACCEPTED);
@@ -99,6 +102,7 @@ test('start accepts a prompt at the maximum length', function () {
         ->postJson(route('app.posts.ai.create'), [
             'prompt' => str_repeat('a', AiPromptRules::PROMPT_MAX_LENGTH),
             'format' => 'x_post',
+            'social_account_id' => $this->xAccount->id,
             'creation_id' => Str::uuid()->toString(),
         ])
         ->assertStatus(Response::HTTP_ACCEPTED);
@@ -205,6 +209,7 @@ test('start does not dispatch StreamPostCreation twice for the same creation_id'
     $payload = [
         'prompt' => 'Write a post about productivity',
         'format' => 'x_post',
+        'social_account_id' => $this->xAccount->id,
         'creation_id' => $creationId,
     ];
 
@@ -229,19 +234,24 @@ test('start dispatches for two different users sharing the same creation_id', fu
     $payload = [
         'prompt' => 'Write a post about productivity',
         'format' => 'x_post',
+        'social_account_id' => $this->xAccount->id,
         'creation_id' => $creationId,
     ];
 
     $this->actingAs($this->user)->postJson(route('app.posts.ai.create'), $payload)
         ->assertStatus(Response::HTTP_ACCEPTED);
 
-    $this->actingAs($otherUser)->postJson(route('app.posts.ai.create'), $payload)
+    $otherAccount = SocialAccount::factory()->create(['workspace_id' => $otherWorkspace->id, 'platform' => Platform::X]);
+    $this->actingAs($otherUser)->postJson(route('app.posts.ai.create'), [
+        ...$payload,
+        'social_account_id' => $otherAccount->id,
+    ])
         ->assertStatus(Response::HTTP_ACCEPTED);
 
     Bus::assertDispatchedTimes(StreamPostCreation::class, 2);
 });
 
-test('start works without social_account_id', function () {
+test('start rejects a missing social_account_id', function () {
     Bus::fake();
 
     $this->actingAs($this->user)
@@ -250,10 +260,10 @@ test('start works without social_account_id', function () {
             'format' => 'linkedin_post',
             'creation_id' => Str::uuid()->toString(),
         ])
-        ->assertStatus(Response::HTTP_ACCEPTED)
-        ->assertJsonStructure(['creation_id', 'channel']);
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['social_account_id']);
 
-    Bus::assertDispatched(StreamPostCreation::class, fn ($job) => is_null($job->socialAccountId));
+    Bus::assertNotDispatched(StreamPostCreation::class);
 });
 
 test('start dispatches the job carrying the date param when provided', function () {
@@ -264,6 +274,7 @@ test('start dispatches the job carrying the date param when provided', function 
             'prompt' => 'hello',
             'format' => 'x_post',
             'date' => '2026-06-15',
+            'social_account_id' => $this->xAccount->id,
             'creation_id' => Str::uuid()->toString(),
         ])
         ->assertAccepted();
@@ -279,6 +290,7 @@ test('start carries apply_brand_visuals=false when the user lets the AI decide c
             'prompt' => 'hello',
             'format' => 'x_post',
             'apply_brand_visuals' => false,
+            'social_account_id' => $this->xAccount->id,
             'creation_id' => Str::uuid()->toString(),
         ])
         ->assertAccepted();
@@ -293,6 +305,7 @@ test('start defaults apply_brand_visuals to true when omitted', function () {
         ->postJson(route('app.posts.ai.create'), [
             'prompt' => 'hello',
             'format' => 'x_post',
+            'social_account_id' => $this->xAccount->id,
             'creation_id' => Str::uuid()->toString(),
         ])
         ->assertAccepted();
@@ -364,6 +377,7 @@ it('defaults to the image_card template when none is given', function () {
         ->postJson(route('app.posts.ai.create'), [
             'format' => 'instagram_feed',
             'prompt' => 'a post about coffee',
+            'social_account_id' => $this->instagramAccount->id,
             'creation_id' => Str::uuid()->toString(),
         ])
         ->assertAccepted();
@@ -385,7 +399,7 @@ it('rejects an unknown template', function () {
         ->assertJsonValidationErrors(['template']);
 });
 
-it('allows image_card without a social account', function () {
+it('requires an account for image_card too', function () {
     Bus::fake();
 
     $this->actingAs($this->user)
@@ -395,7 +409,8 @@ it('allows image_card without a social account', function () {
             'template' => 'image_card',
             'creation_id' => Str::uuid()->toString(),
         ])
-        ->assertAccepted();
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['social_account_id']);
 });
 
 it('requires social_account_id when the template needsAccount', function () {

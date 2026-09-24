@@ -33,7 +33,7 @@ class StartPostCreationRequest extends FormRequest
                 'string',
                 Rule::in($allowedFormats),
             ],
-            'social_account_id' => ['nullable', 'uuid'],
+            'social_account_id' => ['required', 'uuid'],
             'image_count' => ['nullable', 'integer', 'min:0', 'max:10'],
             'prompt' => AiPromptRules::wizardPromptRule(),
             'date' => ['nullable', 'date_format:Y-m-d'],

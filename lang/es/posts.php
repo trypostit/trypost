@@ -5,6 +5,11 @@ return [
     'search' => 'Buscar posts...',
     'all_posts' => 'Todos los posts',
     'new_post' => 'Nuevo post',
+    'composer' => [
+        'save_draft' => 'Guardar borrador',
+        'use_shared' => 'Usar contenido compartido',
+        'crop_upload_failed' => 'No se pudo subir la imagen recortada. La original sigue seleccionada.',
+    ],
     'no_posts' => 'No se encontraron posts',
     'no_search_results' => 'Ningún post coincide con tu búsqueda',
     'try_different_search' => 'Prueba otra palabra clave o limpia la búsqueda.',

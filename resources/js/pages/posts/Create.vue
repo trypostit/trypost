@@ -7,7 +7,7 @@ import { computed, ref } from 'vue';
 import PageHeader from '@/components/PageHeader.vue';
 import AiPostWizard from '@/components/posts/create/AiPostWizard.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { store as storePost } from '@/routes/app/posts';
+import { index as postsIndex } from '@/routes/app/posts';
 import type { AiTemplate } from '@/types';
 
 interface SocialAccount {
@@ -43,8 +43,12 @@ const hasConnectedAccounts = computed(() => props.socialAccounts.length > 0);
 const startFromScratch = () => {
     if (submitting.value) return;
     submitting.value = true;
-    const url = props.date ? storePost.url({ query: { date: props.date } }) : storePost.url();
-    router.post(url, {}, {
+    const url = postsIndex.url(undefined, {
+        query: props.date
+            ? { compose: '1', date: props.date }
+            : { compose: '1' },
+    });
+    router.visit(url, {
         onFinish: () => {
             submitting.value = false;
         },
@@ -68,7 +72,10 @@ const stepHeader = computed(() => {
     <AppLayout>
         <div class="flex h-full flex-1 flex-col p-4">
             <div class="mx-auto flex w-full max-w-2xl flex-col gap-6">
-                <PageHeader :title="stepHeader.title" :description="stepHeader.description" />
+                <PageHeader
+                    :title="stepHeader.title"
+                    :description="stepHeader.description"
+                />
 
                 <!-- Choice screen -->
                 <template v-if="view === 'choice'">
@@ -79,12 +86,21 @@ const stepHeader = computed(() => {
                             :disabled="submitting"
                             @click="startFromScratch"
                         >
-                            <div class="inline-flex size-12 -rotate-2 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-200 shadow-2xs transition-transform group-hover:rotate-0">
-                                <IconPencil class="size-6 text-foreground" stroke-width="2" />
+                            <div
+                                class="inline-flex size-12 -rotate-2 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-200 shadow-2xs transition-transform group-hover:rotate-0"
+                            >
+                                <IconPencil
+                                    class="size-6 text-foreground"
+                                    stroke-width="2"
+                                />
                             </div>
                             <div class="space-y-1">
-                                <p class="text-base font-bold text-foreground">{{ $t('posts.create.scratch_title') }}</p>
-                                <p class="text-xs leading-relaxed text-foreground/70">
+                                <p class="text-base font-bold text-foreground">
+                                    {{ $t('posts.create.scratch_title') }}
+                                </p>
+                                <p
+                                    class="text-xs leading-relaxed text-foreground/70"
+                                >
                                     {{ $t('posts.create.scratch_description') }}
                                 </p>
                             </div>
@@ -96,14 +112,27 @@ const stepHeader = computed(() => {
                             :disabled="!hasConnectedAccounts"
                             @click="view = 'ai'"
                         >
-                            <div class="inline-flex size-12 rotate-1 items-center justify-center rounded-2xl border-2 border-foreground bg-amber-200 shadow-2xs transition-transform group-hover:rotate-0">
-                                <IconSparkles class="size-6 text-foreground" stroke-width="2" />
+                            <div
+                                class="inline-flex size-12 rotate-1 items-center justify-center rounded-2xl border-2 border-foreground bg-amber-200 shadow-2xs transition-transform group-hover:rotate-0"
+                            >
+                                <IconSparkles
+                                    class="size-6 text-foreground"
+                                    stroke-width="2"
+                                />
                             </div>
                             <div class="space-y-1">
-                                <p class="text-base font-bold text-foreground">{{ $t('posts.create.ai_title') }}</p>
-                                <p class="text-xs leading-relaxed text-foreground/70">
+                                <p class="text-base font-bold text-foreground">
+                                    {{ $t('posts.create.ai_title') }}
+                                </p>
+                                <p
+                                    class="text-xs leading-relaxed text-foreground/70"
+                                >
                                     <template v-if="!hasConnectedAccounts">
-                                        {{ $t('posts.create.steps.connect_first') }}
+                                        {{
+                                            $t(
+                                                'posts.create.steps.connect_first',
+                                            )
+                                        }}
                                     </template>
                                     <template v-else>
                                         {{ $t('posts.create.ai_description') }}
@@ -121,7 +150,10 @@ const stepHeader = computed(() => {
                     :templates="templates"
                     :date="props.date"
                     @update:step-header="aiHeader = $event"
-                    @cancel="view = 'choice'; aiHeader = null"
+                    @cancel="
+                        view = 'choice';
+                        aiHeader = null;
+                    "
                 />
             </div>
         </div>

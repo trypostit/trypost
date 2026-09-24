@@ -7,6 +7,11 @@ return [
     'search' => 'Beiträge suchen...',
     'all_posts' => 'Alle Beiträge',
     'new_post' => 'Neuer Beitrag',
+    'composer' => [
+        'save_draft' => 'Als Entwurf speichern',
+        'use_shared' => 'Gemeinsamen Inhalt verwenden',
+        'crop_upload_failed' => 'Das zugeschnittene Bild konnte nicht hochgeladen werden. Das Original bleibt ausgewählt.',
+    ],
     'no_posts' => 'Keine Beiträge gefunden',
     'no_search_results' => 'Keine Beiträge passen zu deiner Suche',
     'try_different_search' => 'Versuche ein anderes Stichwort oder setze die Suche zurück.',

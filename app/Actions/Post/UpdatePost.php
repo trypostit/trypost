@@ -40,8 +40,8 @@ class UpdatePost
             return self::updateChannelPost($workspace, $post, $data);
         }
 
-        if (array_key_exists('platforms', $data) && $post->postPlatforms()->count() === 1) {
-            $selectedTarget = $post->postPlatforms()->sole();
+        if (array_key_exists('platforms', $data) && $post->postPlatforms()->enabled()->count() === 1) {
+            $selectedTarget = $post->postPlatforms()->enabled()->sole();
             if (count($data['platforms']) !== 1 || data_get($data, 'platforms.0.id') !== $selectedTarget->id) {
                 throw ValidationException::withMessages(['platforms' => __('validation.in', ['attribute' => 'platforms'])]);
             }
@@ -140,7 +140,7 @@ class UpdatePost
             throw ValidationException::withMessages(['platforms' => __('validation.in', ['attribute' => 'platforms'])]);
         }
 
-        if ($post->postPlatforms()->enabled()->count() !== 1 || $post->postPlatforms()->count() !== 1) {
+        if ($post->postPlatforms()->enabled()->count() !== 1) {
             throw ValidationException::withMessages(['post' => PostStatusRules::editBlockedMessage()]);
         }
 

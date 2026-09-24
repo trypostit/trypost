@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Jobs\Repurpose;
 
-use App\Actions\Post\CreatePost;
+use App\Actions\Post\CreateChannelPost;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\ItemReason;
 use App\Enums\Repurpose\ItemStatus;
 use App\Enums\Repurpose\PublishMode;
@@ -91,10 +92,15 @@ class ProcessRepurposeItem implements ShouldBeUnique, ShouldQueue
                 continue;
             }
 
-            $post = CreatePost::execute($workspace, $user, [
+            $post = CreateChannelPost::execute($workspace, $user, [
                 'content' => e($captions->adapt($workspace, $user, $this->caption, $account->platform)),
+                'media' => [],
+                'status' => PostStatus::Draft->value,
                 'created_via' => CreatedVia::Repurpose,
-                'platforms' => [$destination],
+                'social_account_id' => $account->id,
+                'content_type' => data_get($destination, 'content_type') ?? ContentType::defaultFor($account->platform)->value,
+                'meta' => data_get($destination, 'meta', []),
+                'label_ids' => [],
             ]);
 
             $post->update(['repurpose_item_id' => $this->item->id]);

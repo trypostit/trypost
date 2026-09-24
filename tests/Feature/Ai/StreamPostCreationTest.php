@@ -6,6 +6,7 @@ use App\Ai\Agents\PostContentGenerator;
 use App\Ai\Agents\PostContentHumanizer;
 use App\Enums\Post\CreatedVia;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Jobs\Ai\StreamPostCreation;
 use App\Models\PostPlatform;
@@ -29,6 +30,10 @@ beforeEach(function () {
 
     $this->account = SocialAccount::factory()->instagram()->create([
         'workspace_id' => $this->workspace->id,
+    ]);
+    $this->xAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::X,
     ]);
 });
 
@@ -103,7 +108,7 @@ test('tweet_card template stores the tweet_text as post content and attaches a m
         creationId: (string) Str::uuid(),
         workspaceId: $this->workspace->id,
         format: 'x_post',
-        socialAccountId: $this->account->id,
+        socialAccountId: $this->xAccount->id,
         imageCount: 1,
         prompt: 'A punchy take on productivity',
         template: 'tweet_card',
@@ -115,7 +120,7 @@ test('tweet_card template stores the tweet_text as post content and attaches a m
         ->and($post->media)->toHaveCount(1)
         ->and($post->created_via)->toBe(CreatedVia::Web);
 
-    $platform = PostPlatform::where('social_account_id', $this->account->id)->firstOrFail();
+    $platform = PostPlatform::where('social_account_id', $this->xAccount->id)->firstOrFail();
 
     expect($platform->content_type)->toBe(ContentType::XPost);
 
@@ -170,7 +175,7 @@ test('tweet_card_image single stores tweet_text as content, attaches media, and 
         creationId: (string) Str::uuid(),
         workspaceId: $this->workspace->id,
         format: 'x_post',
-        socialAccountId: $this->account->id,
+        socialAccountId: $this->xAccount->id,
         imageCount: 1,
         prompt: 'A punchy take on productivity',
         template: 'tweet_card_image',
@@ -181,7 +186,7 @@ test('tweet_card_image single stores tweet_text as content, attaches media, and 
     expect($post->content)->toBe('Productivity is a mindset.')
         ->and($post->media)->toHaveCount(1);
 
-    $platform = PostPlatform::where('social_account_id', $this->account->id)->firstOrFail();
+    $platform = PostPlatform::where('social_account_id', $this->xAccount->id)->firstOrFail();
     expect($platform->content_type)->toBe(ContentType::XPost);
 
     PostContentHumanizer::assertNeverPrompted();

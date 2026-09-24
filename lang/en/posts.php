@@ -5,6 +5,11 @@ return [
     'search' => 'Search posts...',
     'all_posts' => 'All Posts',
     'new_post' => 'New Post',
+    'composer' => [
+        'save_draft' => 'Save draft',
+        'use_shared' => 'Use shared content',
+        'crop_upload_failed' => 'Could not upload the cropped image. The original remains selected.',
+    ],
     'no_posts' => 'No posts found',
     'no_search_results' => 'No posts match your search',
     'try_different_search' => 'Try a different keyword or clear the search.',

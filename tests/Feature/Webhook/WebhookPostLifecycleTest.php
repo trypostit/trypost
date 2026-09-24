@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Post\CreatePost;
+use App\Actions\Post\CreatePosts;
 use App\Actions\Post\DeletePost;
 use App\Actions\Post\UpdatePost;
 use App\Enums\Post\CreatedVia;
@@ -46,6 +46,27 @@ function subscribeToWebhook(Workspace $workspace, array $events): Webhook
     ]);
 }
 
+/** @param array<string, mixed> $data */
+function createWebhookPost(Workspace $workspace, User $user, array $data): Post
+{
+    $destination = $data['platforms'][0] ?? null;
+    if ($destination === null) {
+        $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+        $destination = [
+            'social_account_id' => $account->id,
+            'content_type' => ContentType::LinkedInPost->value,
+        ];
+    }
+
+    return CreatePosts::execute($workspace, $user, [
+        'status' => PostStatus::Draft->value,
+        'content' => $data['content'] ?? '',
+        'created_via' => $data['created_via'] ?? null,
+        'label_ids' => $data['label_ids'] ?? [],
+        'destinations' => [$destination],
+    ])->sole();
+}
+
 test('webhook listeners are registered for the post lifecycle events', function () {
     Event::fake();
 
@@ -54,10 +75,10 @@ test('webhook listeners are registered for the post lifecycle events', function 
     Event::assertListening(PostDeleted::class, SendPostDeletedWebhook::class);
 });
 
-test('creating a post through CreatePost queues a post.created webhook', function () {
+test('creating a channel post queues a post.created webhook', function () {
     subscribeToWebhook($this->workspace, [EventType::PostCreated]);
 
-    $post = CreatePost::execute($this->workspace, $this->user, [
+    $post = createWebhookPost($this->workspace, $this->user, [
         'content' => 'Hello from webhooks',
         'created_via' => CreatedVia::Web,
     ]);
@@ -70,7 +91,7 @@ test('creating a post through CreatePost queues a post.created webhook', functio
     });
 });
 
-test('creating a post through CreatePost includes labels and platforms in the payload', function () {
+test('creating a channel post includes labels and platforms in the payload', function () {
     subscribeToWebhook($this->workspace, [EventType::PostCreated]);
 
     $label = WorkspaceLabel::factory()->recycle($this->workspace)->create([
@@ -82,7 +103,7 @@ test('creating a post through CreatePost includes labels and platforms in the pa
         'username' => 'paulocastellano',
     ]);
 
-    $post = CreatePost::execute($this->workspace, $this->user, [
+    $post = createWebhookPost($this->workspace, $this->user, [
         'content' => 'Hello from webhooks',
         'created_via' => CreatedVia::Web,
         'label_ids' => [$label->id],
@@ -152,7 +173,7 @@ test('scheduling a post through UpdatePost includes labels and platforms from th
 test('creating a draft does not queue status webhooks', function () {
     subscribeToWebhook($this->workspace, EventType::cases());
 
-    CreatePost::execute($this->workspace, $this->user, [
+    createWebhookPost($this->workspace, $this->user, [
         'content' => 'Draft only',
         'created_via' => CreatedVia::Web,
     ]);
@@ -345,7 +366,7 @@ test('a paused webhook is not queued when a post is created', function () {
         'events' => [EventType::PostCreated->value],
     ]);
 
-    CreatePost::execute($this->workspace, $this->user, [
+    createWebhookPost($this->workspace, $this->user, [
         'content' => 'Should not notify',
         'created_via' => CreatedVia::Web,
     ]);
@@ -359,7 +380,7 @@ test('a disabled webhook is not queued when a post is created', function () {
         'events' => [EventType::PostCreated->value],
     ]);
 
-    CreatePost::execute($this->workspace, $this->user, [
+    createWebhookPost($this->workspace, $this->user, [
         'content' => 'Should not notify',
         'created_via' => CreatedVia::Web,
     ]);
@@ -370,7 +391,7 @@ test('a disabled webhook is not queued when a post is created', function () {
 test('a webhook subscribed only to other events is not queued on create', function () {
     subscribeToWebhook($this->workspace, [EventType::PostPublished, EventType::PostFailed]);
 
-    CreatePost::execute($this->workspace, $this->user, [
+    createWebhookPost($this->workspace, $this->user, [
         'content' => 'Created but unpublished',
         'created_via' => CreatedVia::Web,
     ]);
@@ -382,7 +403,7 @@ test('a webhook from another workspace is not queued', function () {
     $otherWorkspace = Workspace::factory()->create();
     subscribeToWebhook($otherWorkspace, EventType::cases());
 
-    CreatePost::execute($this->workspace, $this->user, [
+    createWebhookPost($this->workspace, $this->user, [
         'content' => 'Other workspace should not see this',
         'created_via' => CreatedVia::Web,
     ]);

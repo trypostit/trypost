@@ -215,6 +215,32 @@ test('an owned image with valid network settings can be scheduled', function () 
     expect($resolved['destinations'][0]['media'][0]['id'])->toBe($asset->id);
 });
 
+test('owned media metadata comes from the asset while per-post alt text is retained', function () {
+    $workspace = Workspace::factory()->create();
+    $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id, 'is_active' => true]);
+    $asset = Media::factory()->assets()->for($workspace, 'mediable')->create(['meta' => ['width' => 1080, 'height' => 1080]]);
+    $spoofed = MediaItem::fromMedia($asset)->toArray();
+    $spoofed['type'] = 'video';
+    $spoofed['mime_type'] = 'video/mp4';
+    $spoofed['size'] = 1;
+    $spoofed['meta'] = ['width' => 1, 'height' => 1, 'alt_text' => 'Accessible caption'];
+
+    $resolved = PostCompositionValidator::validate($workspace, [
+        'status' => 'draft', 'content' => 'Hello', 'media' => [$spoofed],
+        'destinations' => [[
+            'social_account_id' => $account->id,
+            'content_type' => ContentType::InstagramFeed->value,
+            'meta' => [],
+        ]],
+    ]);
+
+    expect($resolved['destinations'][0]['media'][0]['type'])->toBe($asset->type->value)
+        ->and($resolved['destinations'][0]['media'][0]['mime_type'])->toBe($asset->mime_type)
+        ->and($resolved['destinations'][0]['media'][0]['size'])->toBe($asset->size)
+        ->and($resolved['destinations'][0]['media'][0]['meta'])
+        ->toEqual(['width' => 1080, 'height' => 1080, 'alt_text' => 'Accessible caption']);
+});
+
 test('the X length check uses the sanitized and defused caption', function () {
     config()->set('trypost.platforms.x.defuse_links', true);
     $workspace = Workspace::factory()->create();

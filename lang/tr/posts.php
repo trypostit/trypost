@@ -7,6 +7,11 @@ return [
     'search' => 'Gönderi ara...',
     'all_posts' => 'Tüm Gönderiler',
     'new_post' => 'Yeni Gönderi',
+    'composer' => [
+        'save_draft' => 'Taslağı kaydet',
+        'use_shared' => 'Paylaşılan içeriği kullan',
+        'crop_upload_failed' => 'Kırpılan görsel yüklenemedi. Orijinal görsel seçili kalır.',
+    ],
     'no_posts' => 'Gönderi bulunamadı',
     'no_search_results' => 'Aramanızla eşleşen gönderi yok',
     'try_different_search' => 'Farklı bir anahtar kelime deneyin veya aramayı temizleyin.',

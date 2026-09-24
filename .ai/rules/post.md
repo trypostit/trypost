@@ -3,6 +3,7 @@ paths:
   - app/Actions/Post/FinalizePostPublication.php
   - app/Jobs/PublishPost.php
   - app/Actions/Post/UpdatePost.php
+  - 'app/Actions/Post/**'
 ---
 
 # Post
@@ -18,3 +19,6 @@ handle() lockForUpdates the post and returns without notifying when status is al
 
 ## Target disabled is not account inactive
 Abandoning a GBP pending_review because the post destination was unchecked uses posts.errors.target_disabled. posts.errors.account_inactive stays for PublishToSocialPlatform when social_accounts.is_active is false. Do not reuse the account copy on a switched-off target.
+
+## One enabled destination per new post
+New draft/scheduled posts are independent per social account: use CreatePosts/CreateChannelPost, with one enabled PostPlatform per Post; do not revive grouped CreatePost/SyncPostPlatforms writes. Editing uses UpdatePost and may change content type within the same account, never the social account. Legacy settled/in-flight aggregates remain for history; split only editable multi-target rows after audit. A split original may retain disabled placeholder targets, so count enabled targets when deciding if it is editable.

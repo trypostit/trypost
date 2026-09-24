@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Post\AttachExistingAsset;
+use App\Dto\MediaItem;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
@@ -512,6 +513,8 @@ it('rejects creating a post when an external media url is not a supported type',
 
 it('keeps an already-hosted item and a freshly-hosted url in order', function () {
     $this->socialAccount->update(['is_active' => true]);
+    Storage::fake(null, ['url' => 'https://cdn.example.com']);
+    $asset = Media::factory()->assets()->for($this->workspace, 'mediable')->create(['path' => 'assets/already.jpg']);
 
     Http::fake([
         '93.184.216.34/external.jpg' => Http::response(
@@ -525,7 +528,7 @@ it('keeps an already-hosted item and a freshly-hosted url in order', function ()
         ->postJson(route('api.posts.store'), [
             'content' => 'Mixed media post',
             'media' => [
-                ['id' => 'hosted-1', 'path' => 'assets/already.jpg', 'url' => 'https://cdn.trypost.test/assets/already.jpg', 'type' => 'image'],
+                MediaItem::fromMedia($asset)->toArray(),
                 ['url' => 'https://93.184.216.34/external.jpg'],
             ],
             'platforms' => [
@@ -540,23 +543,19 @@ it('keeps an already-hosted item and a freshly-hosted url in order', function ()
         ->and(data_get($media, '0.path'))->toBe('assets/already.jpg')
         ->and(data_get($media, '1.url'))->not->toContain('93.184.216.34')
         ->and(data_get($media, '1.path'))->not->toBeNull();
-    // Only the external URL is hosted; the passed-through item creates no new row.
-    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
+    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(2);
 });
 
 it('passes already-hosted media through on create without downloading', function () {
     $this->socialAccount->update(['is_active' => true]);
+    Storage::fake(null, ['url' => 'https://cdn.example.com']);
     Http::preventStrayRequests();
+    $asset = Media::factory()->assets()->for($this->workspace, 'mediable')->create(['path' => 'assets/foo.jpg']);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
             'content' => 'Hosted media post',
-            'media' => [[
-                'id' => 'media-1',
-                'path' => 'assets/foo.jpg',
-                'url' => 'https://cdn.trypost.test/assets/foo.jpg',
-                'type' => 'image',
-            ]],
+            'media' => [MediaItem::fromMedia($asset)->toArray()],
             'platforms' => [
                 ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
             ],
@@ -564,7 +563,7 @@ it('passes already-hosted media through on create without downloading', function
         ->assertCreated();
 
     expect(data_get(Post::where('content', 'Hosted media post')->firstOrFail()->media, '0.path'))->toBe('assets/foo.jpg');
-    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(0);
+    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
 });
 
 it('downloads and hosts an external media url when updating a post', function () {
@@ -608,18 +607,15 @@ it('rejects updating a post when an external media url cannot be fetched', funct
 
 it('accepts and persists media alt text on create', function () {
     $this->socialAccount->update(['is_active' => true]);
+    Storage::fake(null, ['url' => 'https://cdn.example.com']);
     Http::preventStrayRequests();
+    $asset = Media::factory()->assets()->for($this->workspace, 'mediable')->create(['path' => 'assets/foo.jpg']);
+    $media = MediaItem::fromMedia($asset, 'A description of the photo')->toArray();
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
             'content' => 'Alt text post',
-            'media' => [[
-                'id' => 'media-1',
-                'path' => 'assets/foo.jpg',
-                'url' => 'https://cdn.trypost.test/assets/foo.jpg',
-                'type' => 'image',
-                'meta' => ['alt_text' => 'A description of the photo'],
-            ]],
+            'media' => [$media],
             'platforms' => [
                 ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
             ],

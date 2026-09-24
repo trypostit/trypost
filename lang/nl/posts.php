@@ -5,6 +5,11 @@ return [
     'search' => 'Posts zoeken...',
     'all_posts' => 'Alle posts',
     'new_post' => 'Nieuwe post',
+    'composer' => [
+        'save_draft' => 'Concept opslaan',
+        'use_shared' => 'Gedeelde inhoud gebruiken',
+        'crop_upload_failed' => 'De bijgesneden afbeelding kon niet worden geüpload. Het origineel blijft geselecteerd.',
+    ],
     'no_posts' => 'Geen posts gevonden',
     'no_search_results' => 'Geen posts komen overeen met je zoekopdracht',
     'try_different_search' => 'Probeer een ander zoekwoord of wis de zoekopdracht.',

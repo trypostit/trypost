@@ -28,15 +28,13 @@ class PostAiCreateController extends Controller
         }
 
         $socialAccountId = $request->input('social_account_id');
+        $owned = SocialAccount::where('id', $socialAccountId)
+            ->where('workspace_id', $workspace->id)
+            ->where('is_active', true)
+            ->exists();
 
-        if ($socialAccountId) {
-            $owned = SocialAccount::where('id', $socialAccountId)
-                ->where('workspace_id', $workspace->id)
-                ->exists();
-
-            if (! $owned) {
-                abort(Response::HTTP_FORBIDDEN);
-            }
+        if (! $owned) {
+            abort(Response::HTTP_FORBIDDEN);
         }
 
         $creationId = $request->string('creation_id')->toString();

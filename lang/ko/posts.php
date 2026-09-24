@@ -5,6 +5,11 @@ return [
     'search' => '게시물 검색...',
     'all_posts' => '모든 게시물',
     'new_post' => '새 게시물',
+    'composer' => [
+        'save_draft' => '초안 저장',
+        'use_shared' => '공통 콘텐츠 사용',
+        'crop_upload_failed' => '자른 이미지를 업로드하지 못했습니다. 원본 이미지가 계속 선택됩니다.',
+    ],
     'no_posts' => '게시물을 찾을 수 없습니다',
     'no_search_results' => '검색과 일치하는 게시물이 없습니다',
     'try_different_search' => '다른 키워드로 시도하거나 검색을 지우세요.',

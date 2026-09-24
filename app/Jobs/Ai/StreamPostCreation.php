@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Ai;
 
-use App\Actions\Post\CreatePost;
+use App\Actions\Post\CreatePosts;
 use App\Ai\Agents\PostContentGenerator;
 use App\Ai\Agents\PostContentHumanizer;
 use App\Ai\Templates\AiTemplateRegistry;
@@ -15,6 +15,7 @@ use App\Enums\Ai\GeneratorFormat;
 use App\Enums\Notification\Channel as NotificationChannel;
 use App\Enums\Notification\Type as NotificationType;
 use App\Enums\Post\CreatedVia;
+use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Events\Ai\PostCreationReady;
 use App\Jobs\SendNotification;
@@ -23,6 +24,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Ai\RecordAiUsage;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -199,32 +201,27 @@ class StreamPostCreation implements ShouldBeUnique, ShouldQueue
     private function createPostFromGenerated(Workspace $workspace, GeneratedPost $generated, ?SocialAccount $socialAccount): Post
     {
         $user = User::findOrFail($this->userId);
-
-        $post = CreatePost::execute($workspace, $user, [
-            'content' => $generated->content,
-            'media' => $generated->media,
-            'date' => $this->date,
-            'created_via' => CreatedVia::Web,
-        ]);
-
-        if ($generated->contentType && $socialAccount) {
-            $aspectRatio = $this->aspectRatioFor($generated->contentType);
-
-            $post->postPlatforms()
-                ->where('social_account_id', $socialAccount->id)
-                ->each(function ($platform) use ($aspectRatio, $generated): void {
-                    $meta = $platform->meta ?? [];
-                    if ($aspectRatio !== null) {
-                        $meta['aspect_ratio'] = $aspectRatio;
-                    }
-                    $platform->meta = $meta;
-                    $platform->content_type = $generated->contentType->value;
-                    $platform->enabled = true;
-                    $platform->save();
-                });
+        if ($socialAccount === null || $generated->contentType === null) {
+            throw new \InvalidArgumentException('AI post creation requires a connected account and content type.');
         }
 
-        return $post;
+        $aspectRatio = $this->aspectRatioFor($generated->contentType);
+        $scheduledAt = $this->date
+            ? Carbon::parse($this->date, 'UTC')->setTime(9, 0)->toIso8601String()
+            : null;
+
+        return CreatePosts::execute($workspace, $user, [
+            'status' => PostStatus::Draft->value,
+            'content' => $generated->content,
+            'media' => $generated->media,
+            'scheduled_at' => $scheduledAt,
+            'created_via' => CreatedVia::Web,
+            'destinations' => [[
+                'social_account_id' => $socialAccount->id,
+                'content_type' => $generated->contentType->value,
+                'meta' => $aspectRatio === null ? [] : ['aspect_ratio' => $aspectRatio],
+            ]],
+        ])->sole();
     }
 
     private function notifyReady(Workspace $workspace, Post $post): void
