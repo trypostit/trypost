@@ -17,7 +17,10 @@ import { getPlatformLabel } from '@/composables/usePlatformLogo';
 
 import { accountColor, type AccountIdentityData } from '../types';
 
-import { accountChartConfig, formatCountTick } from './accountChart';
+import {
+    formatCountTick,
+    socialAccountChartConfig,
+} from './socialAccountChart';
 
 const props = defineProps<{
     rows: { account: AccountIdentityData; value: number | null }[];
@@ -32,7 +35,7 @@ const chartData = computed<BarPoint[]>(() =>
     })),
 );
 const chartConfig = computed(() =>
-    accountChartConfig(
+    socialAccountChartConfig(
         props.rows.map((row) => row.account),
         props.colors,
     ),

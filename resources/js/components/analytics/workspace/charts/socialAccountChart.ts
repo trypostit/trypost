@@ -7,7 +7,7 @@ import { formatNumberCompact } from '@/lib/utils';
 
 import { accountColor, type AccountIdentityData } from '../types';
 
-export const accountChartConfig = (
+export const socialAccountChartConfig = (
     accounts: AccountIdentityData[],
     colors: Record<string, string>,
 ): ChartConfig =>

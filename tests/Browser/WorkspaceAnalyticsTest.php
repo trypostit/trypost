@@ -33,7 +33,7 @@ function waitForWorkspaceAnalyticsTestId(mixed $page, string $testId): void
     JS);
 }
 
-test('workspace dashboard separates accounts and switches chart and top-post modes', function () {
+test('workspace dashboard separates accounts and switches follower and post chart modes', function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);

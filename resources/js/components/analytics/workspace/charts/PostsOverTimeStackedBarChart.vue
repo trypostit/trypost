@@ -18,7 +18,10 @@ import dayjs from '@/dayjs';
 
 import { accountColor, type PostAccount, type PostBucket } from '../types';
 
-import { accountChartConfig, formatCountTick } from './accountChart';
+import {
+    formatCountTick,
+    socialAccountChartConfig,
+} from './socialAccountChart';
 
 type ChartPoint = {
     index: number;
@@ -56,7 +59,7 @@ const chartData = computed<ChartPoint[]>(() =>
     }),
 );
 const chartConfig = computed(() =>
-    accountChartConfig(props.accounts, props.colors),
+    socialAccountChartConfig(props.accounts, props.colors),
 );
 const xAccessor = (point: ChartPoint): number => point.index;
 const yAccessors = computed(() =>

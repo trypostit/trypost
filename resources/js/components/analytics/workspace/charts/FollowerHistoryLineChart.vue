@@ -17,7 +17,10 @@ import {
     type WorkspaceAnalyticsReport,
 } from '../types';
 
-import { accountChartConfig, formatCountTick } from './accountChart';
+import {
+    formatCountTick,
+    socialAccountChartConfig,
+} from './socialAccountChart';
 
 type ChartPoint = {
     date: string;
@@ -45,7 +48,7 @@ const chartData = computed<ChartPoint[]>(() =>
 );
 
 const chartConfig = computed(() =>
-    accountChartConfig(props.accounts, props.colors),
+    socialAccountChartConfig(props.accounts, props.colors),
 );
 
 const xAccessor = (point: ChartPoint): number => point.index;

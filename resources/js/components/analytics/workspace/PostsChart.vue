@@ -6,8 +6,8 @@ import { formatNumberCompact } from '@/lib/utils';
 import AccountIdentity from './AccountIdentity.vue';
 import AnalyticsModeToggle from './AnalyticsModeToggle.vue';
 import AnalyticsSection from './AnalyticsSection.vue';
-import HorizontalBarChart from './charts/HorizontalBarChart.vue';
-import StackedBarChart from './charts/StackedBarChart.vue';
+import PostsOverTimeStackedBarChart from './charts/PostsOverTimeStackedBarChart.vue';
+import SocialAccountMetricBarChart from './charts/SocialAccountMetricBarChart.vue';
 import type { WorkspaceAnalyticsReport } from './types';
 
 defineProps<{
@@ -47,7 +47,7 @@ const buttons = [
             class="min-w-0 rounded-xl border-2 border-foreground bg-card p-4 shadow-sm sm:p-5"
         >
             <div class="min-w-0">
-                <HorizontalBarChart
+                <SocialAccountMetricBarChart
                     v-if="mode === 'bar'"
                     :rows="
                         posts.accounts.map((account) => ({
@@ -57,7 +57,7 @@ const buttons = [
                     "
                     :colors="colors"
                 />
-                <StackedBarChart
+                <PostsOverTimeStackedBarChart
                     v-else
                     :accounts="posts.accounts"
                     :buckets="posts.buckets"
