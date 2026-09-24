@@ -26,6 +26,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import ImageCropperDialog from '@/components/ImageCropperDialog.vue';
+import PhoneMockup from '@/components/PhoneMockup.vue';
 import AiRegenerateImageDialog from '@/components/posts/ai/AiRegenerateImageDialog.vue';
 import ComposerAccountChip from '@/components/posts/composer/ComposerAccountChip.vue';
 import ComposerAccountStack from '@/components/posts/composer/ComposerAccountStack.vue';
@@ -924,7 +925,7 @@ const close = (): void => emit('update:open', false);
 
             <div
                 v-else
-                class="grid min-h-0 flex-1 md:grid-cols-[minmax(0,1fr)_minmax(320px,34%)]"
+                class="grid min-h-0 flex-1 md:grid-cols-[minmax(0,1fr)_minmax(420px,40%)]"
             >
                 <div
                     class="min-h-0 overflow-y-auto px-5 py-5"
@@ -1987,7 +1988,7 @@ const close = (): void => emit('update:open', false);
                             }}
                         </h3>
                         <div
-                            class="min-h-0 flex-1 space-y-8 overflow-y-auto px-6 pt-2 pb-6"
+                            class="min-h-0 flex-1 space-y-8 overflow-y-auto px-4 pt-2 pb-6"
                             data-testid="composer-previews-scroll"
                         >
                             <template
@@ -2001,7 +2002,7 @@ const close = (): void => emit('update:open', false);
                                     v-for="account in selectedAccounts"
                                     :key="account.id"
                                     data-testid="composer-preview-card"
-                                    class="mx-auto max-w-[340px] space-y-3"
+                                    class="mx-auto max-w-[380px] space-y-3"
                                 >
                                     <h4
                                         class="flex items-center gap-2 text-sm text-muted-foreground"
@@ -2017,30 +2018,34 @@ const close = (): void => emit('update:open', false);
                                         />
                                         {{ getPlatformLabel(account.platform) }}
                                     </h4>
-                                    <PlatformPreview
-                                        :platform="account.platform"
-                                        :social-account="account"
-                                        :content="
-                                            composition.resolvedDestination(
-                                                account,
-                                            ).content
-                                        "
-                                        :media="
-                                            composition.resolvedDestination(
-                                                account,
-                                            ).media
-                                        "
-                                        :content-type="
-                                            composition.resolvedDestination(
-                                                account,
-                                            ).content_type
-                                        "
-                                        :meta="
-                                            composition.resolvedDestination(
-                                                account,
-                                            ).meta
-                                        "
-                                    />
+                                    <PhoneMockup
+                                        data-testid="composer-phone-preview"
+                                    >
+                                        <PlatformPreview
+                                            :platform="account.platform"
+                                            :social-account="account"
+                                            :content="
+                                                composition.resolvedDestination(
+                                                    account,
+                                                ).content
+                                            "
+                                            :media="
+                                                composition.resolvedDestination(
+                                                    account,
+                                                ).media
+                                            "
+                                            :content-type="
+                                                composition.resolvedDestination(
+                                                    account,
+                                                ).content_type
+                                            "
+                                            :meta="
+                                                composition.resolvedDestination(
+                                                    account,
+                                                ).meta
+                                            "
+                                        />
+                                    </PhoneMockup>
                                 </section>
                             </template>
                             <div
@@ -2051,18 +2056,22 @@ const close = (): void => emit('update:open', false);
                                     (previewDestination.content.trim() ||
                                         previewDestination.media.length)
                                 "
-                                class="mx-auto max-w-[340px]"
+                                class="mx-auto max-w-[380px]"
                             >
-                                <PlatformPreview
-                                    :platform="previewAccount.platform"
-                                    :social-account="previewAccount"
-                                    :content="previewDestination.content"
-                                    :media="previewDestination.media"
-                                    :content-type="
-                                        previewDestination.content_type
-                                    "
-                                    :meta="previewDestination.meta"
-                                />
+                                <PhoneMockup
+                                    data-testid="composer-phone-preview"
+                                >
+                                    <PlatformPreview
+                                        :platform="previewAccount.platform"
+                                        :social-account="previewAccount"
+                                        :content="previewDestination.content"
+                                        :media="previewDestination.media"
+                                        :content-type="
+                                            previewDestination.content_type
+                                        "
+                                        :meta="previewDestination.meta"
+                                    />
+                                </PhoneMockup>
                             </div>
                             <div
                                 v-else

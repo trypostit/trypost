@@ -134,9 +134,16 @@ test('composer can search channels, preview a selected account, and expand to th
         ->click('@composer-select-all')
         ->fill('@composer-base-content', 'Preview this caption')
         ->assertVisible('@composer-preview-card')
-        ->assertSee('Preview this caption')
+        ->assertSee('Preview this caption');
+    expect($page->script('document.querySelectorAll("[data-testid=composer-phone-preview]").length'))->toBe(2);
+    expect($page->script(<<<'JS'
+        [...document.querySelectorAll('[data-testid="composer-phone-preview"]')].every((frame) => frame.getBoundingClientRect().height > 500)
+    JS))->toBeTrue();
+
+    $page
         ->click('@composer-next')
         ->assertVisible('@composer-customization');
+    expect($page->script('document.querySelectorAll("[data-testid=composer-phone-preview]").length'))->toBe(1);
 
     $popoverPosition = <<<'JS'
         (async () => {
@@ -160,6 +167,42 @@ test('composer can search channels, preview a selected account, and expand to th
         ->assertMissing("@composer-account-{$instagram->id}")
         ->assertVisible("@composer-account-{$x->id}")
         ->assertVisible('@composer-customization');
+});
+
+test('composer reuses the phone previews for Facebook and TikTok even before media is uploaded', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $user->account_id,
+    ]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+        'platform' => Platform::Facebook,
+    ]);
+    SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+        'platform' => Platform::TikTok,
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.create'));
+    $page->click('@composer-add-account')
+        ->click('@composer-select-all')
+        ->fill('@composer-base-content', 'Facebook and TikTok preview');
+
+    expect($page->script(<<<'JS'
+        [...document.querySelectorAll('[data-testid="composer-preview-card"]')].map((card) => ({
+            platform: card.querySelector('h4')?.textContent?.trim(),
+            hasPhone: Boolean(card.querySelector('[data-testid="composer-phone-preview"]')),
+            hasCaption: card.textContent?.includes('Facebook and TikTok preview'),
+        }))
+    JS))->toEqual([
+        ['platform' => 'Facebook', 'hasPhone' => true, 'hasCaption' => true],
+        ['platform' => 'TikTok', 'hasPhone' => true, 'hasCaption' => true],
+    ]);
 });
 
 test('composer searches and selects multiple labels and exposes emoji and signatures below media', function () {
