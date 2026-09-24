@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Actions\Analytics\GetAnalyticsBounds;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Queries\Analytics\WorkspaceAnalyticsQuery;
 use Illuminate\Support\Facades\Http;
 
 test('workspace analytics remains available when a provider is unavailable', function () {
@@ -29,8 +29,8 @@ test('a read-model defect is not hidden behind empty numbers', function () {
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $user->update(['current_workspace_id' => $workspace->id]);
 
-    $this->mock(WorkspaceAnalyticsQuery::class)
-        ->shouldReceive('boundsFor')
+    $this->mock(GetAnalyticsBounds::class)
+        ->shouldReceive('execute')
         ->andThrow(new RuntimeException('a real report bug'));
 
     $this->actingAs($user)

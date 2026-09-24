@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Queries\Analytics;
+namespace App\Actions\Analytics;
 
 use App\Enums\PostPlatform\Status;
 use App\Enums\SocialAccount\Platform;
@@ -12,7 +12,7 @@ use App\Models\Post;
 use App\Models\PostPlatform;
 use Illuminate\Support\Collection;
 
-class PublicationAnalyticsQuery
+class ReadPublicationAnalytics
 {
     /**
      * @param  Collection<int, PostPlatform>  $destinations

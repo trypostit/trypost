@@ -4,7 +4,7 @@
 
 **Goal:** Replace request-time social analytics with workspace-scoped, database-backed follower history, reconciled TryPost/external publication history, persisted post metrics, and the Summary, Followers, Posts, Top 5 Posts, Performance, and individual-publication views.
 
-**Architecture:** Four tables separate daily account facts, publication identity, daily cumulative publication metrics, and a deliberately small operational checkpoint used only by publication backfill/discovery. Every provider call runs in an isolated queued job; page, API, and MCP reads use local query services only. Provider adapters normalize platform responses into stable DTOs, while a hybrid scalar-plus-JSON snapshot keeps cross-network queries portable across PostgreSQL and MySQL and preserves content-specific metrics.
+**Architecture:** Four tables separate daily account facts, publication identity, daily cumulative publication metrics, and a deliberately small operational checkpoint used only by publication backfill/discovery. Every provider call runs in an isolated queued job; page, API, and MCP reads use local database-backed Actions only. Provider adapters normalize platform responses into stable DTOs, while a hybrid scalar-plus-JSON snapshot keeps cross-network queries portable across PostgreSQL and MySQL and preserves content-specific metrics.
 
 **Tech Stack:** PHP 8.5, Laravel 13.24, Horizon 5.47, PostgreSQL and MySQL, Inertia Vue 3.6, Vue 3.5, Tailwind CSS 4, Pest 5, Pest Browser 5.
 
@@ -17,6 +17,13 @@ single-workspace local Threads canary are complete. Its production provider
 capability checks, production canary, and global rollout remain open; the
 unchecked implementation steps below are the original TDD recipe, not a claim
 that their code has not been written.
+
+**Read-model refactor (2026-09-23):** The two classes originally planned under
+`app/Queries/Analytics` were removed to match the project's existing Actions
+structure. `BuildWorkspaceAnalyticsReport` orchestrates the publication and
+follower report Actions; `GetAnalyticsBounds` serves the date picker;
+`ReadPublicationAnalytics` serves individual post metrics. The controller passes
+the bounds it already read into the report Action to avoid a duplicate query.
 
 ## Global Constraints
 
@@ -63,10 +70,9 @@ The implementation introduces these focused areas:
 - `app/Dto/Analytics/*`: provider-independent account, publication, page, and metric results.
 - `app/Contracts/Analytics/*`: follower, history, and publication-metric collector contracts.
 - `app/Services/Analytics/Collectors/*`: one provider adapter per concern; no authorization or database writes.
-- `app/Actions/Analytics/*`: idempotent writers and publication reconciliation.
+- `app/Actions/Analytics/*`: idempotent writers, publication reconciliation, and local analytics read/report Actions.
 - `app/Jobs/Analytics/*`: one bounded piece of external or local synchronization per job.
 - `app/Console/Commands/Analytics/*`: chunked dispatchers and rollout entry points; commands never call providers.
-- `app/Queries/Analytics/*`: workspace-only local read models for dashboard and publication detail.
 - `resources/js/components/analytics/workspace/*`: reusable dashboard cards and dependency-free SVG/CSS charts.
 - `tests/Feature/Analytics/*`, `tests/Unit/Analytics/*`, and `tests/Browser/WorkspaceAnalyticsTest.php`: provider contracts, persistence, queue behavior, read paths, and UI coverage.
 
@@ -964,14 +970,18 @@ git commit -m "feat: schedule persisted publication metrics"
 
 **Files:**
 - Create: `app/Dto/Analytics/DateRange.php`
-- Create: `app/Queries/Analytics/WorkspaceAnalyticsQuery.php`
-- Create: `app/Queries/Analytics/PublicationAnalyticsQuery.php`
+- Create: `app/Actions/Analytics/BuildWorkspaceAnalyticsReport.php`
+- Create: `app/Actions/Analytics/BuildPublicationAnalyticsReport.php`
+- Create: `app/Actions/Analytics/BuildFollowerAnalyticsReport.php`
+- Create: `app/Actions/Analytics/GetAnalyticsBounds.php`
+- Create: `app/Actions/Analytics/ReadPublicationAnalytics.php`
 - Create: `app/Support/Analytics/PeriodBuckets.php`
-- Test: `tests/Feature/Analytics/WorkspaceAnalyticsQueryTest.php`
+- Create: `app/Support/Analytics/MetricComparison.php`
+- Test: `tests/Feature/Analytics/WorkspaceAnalyticsReportTest.php`
 
 **Interfaces:**
 - Consumes: all four analytics models.
-- Produces: `WorkspaceAnalyticsQuery::for(Workspace $workspace, DateRange $range): array` and `PublicationAnalyticsQuery::latestForPostPlatform(PostPlatform $postPlatform): array`.
+- Produces: `BuildWorkspaceAnalyticsReport::execute(Workspace $workspace, DateRange $range): array` and `ReadPublicationAnalytics::latestForPostPlatform(PostPlatform $postPlatform): array`.
 
 - [ ] **Step 1: Write failing query tests covering every dashboard block**
 
@@ -995,9 +1005,9 @@ Create two Instagram accounts and one X account in the same workspace plus a for
 
 - [ ] **Step 2: Run read-model tests and verify they fail**
 
-Run: `php artisan test --compact tests/Feature/Analytics/WorkspaceAnalyticsQueryTest.php`
+Run: `php artisan test --compact tests/Feature/Analytics/WorkspaceAnalyticsReportTest.php`
 
-Expected: FAIL because query services are absent.
+Expected: FAIL because report Actions are absent.
 
 - [ ] **Step 3: Implement date/bucket value objects and indexed queries**
 
@@ -1020,7 +1030,7 @@ The response shape is stable:
 
 - [ ] **Step 4: Run query tests and inspect query count**
 
-Run: `php artisan test --compact tests/Feature/Analytics/WorkspaceAnalyticsQueryTest.php`
+Run: `php artisan test --compact tests/Feature/Analytics/WorkspaceAnalyticsReportTest.php`
 
 Expected: PASS with a fixed query count that does not grow with account/publication count.
 
@@ -1032,7 +1042,7 @@ Run the repository's configured PostgreSQL and MySQL CI/database commands. Expec
 
 ```bash
 vendor/bin/pint --dirty --format agent
-git add app/Dto/Analytics/DateRange.php app/Queries/Analytics app/Support/Analytics tests/Feature/Analytics/WorkspaceAnalyticsQueryTest.php
+git add app/Dto/Analytics/DateRange.php app/Actions/Analytics app/Support/Analytics tests/Feature/Analytics/WorkspaceAnalyticsReportTest.php
 git commit -m "feat: query workspace analytics reports"
 ```
 
@@ -1070,7 +1080,7 @@ Validate `start`/`end` as dates, clamp them to available bounds, authorize the c
 
 - [ ] **Step 4: Convert `PostMetricsFetcher` into a persisted read facade**
 
-Remove `Cache::remember` and all social-service dependencies. It delegates to `PublicationAnalyticsQuery`, returns canonical metric keys/labels/units/freshness/origin, and preserves its web/API/MCP callers until their response types are updated together.
+Remove `Cache::remember` and all social-service dependencies. It delegates to `ReadPublicationAnalytics`, returns canonical metric keys/labels/units/freshness/origin, and preserves its web/API/MCP callers until their response types are updated together.
 
 - [ ] **Step 5: Run all analytics read tests**
 

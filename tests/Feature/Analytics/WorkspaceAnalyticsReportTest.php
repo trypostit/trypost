@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Actions\Analytics\BuildWorkspaceAnalyticsReport;
+use App\Actions\Analytics\GetAnalyticsBounds;
+use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Dto\Analytics\DateRange;
 use App\Enums\Analytics\ObservationProvenance;
 use App\Enums\Analytics\PublicationContentType;
@@ -16,8 +19,6 @@ use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
-use App\Queries\Analytics\PublicationAnalyticsQuery;
-use App\Queries\Analytics\WorkspaceAnalyticsQuery;
 use App\Support\Analytics\PeriodBuckets;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -103,7 +104,7 @@ test('workspace report keeps accounts separate and aggregates only latest normal
     analyticsReportPublication($linkedIn, '2026-09-05 10:00:00', 900, 900, 900, 1);
     analyticsReportPublication($foreign, '2026-09-05 10:00:00', 900, 900, 900, 1);
 
-    $report = app(WorkspaceAnalyticsQuery::class)->for(
+    $report = app(BuildWorkspaceAnalyticsReport::class)->execute(
         $workspace,
         new DateRange(CarbonImmutable::parse('2026-09-01', 'UTC'), CarbonImmutable::parse('2026-09-10', 'UTC')),
     );
@@ -143,7 +144,7 @@ test('top posts include the source post id for TryPost publications', function (
     $publication = analyticsReportPublication($account, '2026-09-05 10:00:00', 5, 1, 6, 100);
     $publication->update(['post_platform_id' => $destination->id]);
 
-    $report = app(WorkspaceAnalyticsQuery::class)->for(
+    $report = app(BuildWorkspaceAnalyticsReport::class)->execute(
         $workspace,
         new DateRange(CarbonImmutable::parse('2026-09-01', 'UTC'), CarbonImmutable::parse('2026-09-10', 'UTC')),
     );
@@ -160,13 +161,13 @@ test('workspace follower total stays unavailable until every connected account h
     analyticsReportFollower($first, '2026-09-10', 100);
     $range = new DateRange(CarbonImmutable::parse('2026-09-01', 'UTC'), CarbonImmutable::parse('2026-09-10', 'UTC'));
 
-    $incomplete = app(WorkspaceAnalyticsQuery::class)->for($workspace, $range);
+    $incomplete = app(BuildWorkspaceAnalyticsReport::class)->execute($workspace, $range);
 
     expect($incomplete['summary']['followers']['value'])->toBeNull()
         ->and($incomplete['followers']['total'])->toBeNull();
 
     analyticsReportFollower($second, '2026-09-10', 50, ObservationProvenance::CarriedForward);
-    $complete = app(WorkspaceAnalyticsQuery::class)->for($workspace, $range);
+    $complete = app(BuildWorkspaceAnalyticsReport::class)->execute($workspace, $range);
 
     expect($complete['summary']['followers']['value'])->toBe(150)
         ->and($complete['followers']['total'])->toBe(150);
@@ -230,7 +231,7 @@ test('a deleted social account retains its historical performance row', function
     analyticsReportPublication($account, '2026-09-05 10:00:00', 0, null, 0, 100);
     $account->delete();
 
-    $report = app(WorkspaceAnalyticsQuery::class)->for(
+    $report = app(BuildWorkspaceAnalyticsReport::class)->execute(
         $workspace,
         new DateRange(CarbonImmutable::parse('2026-09-01', 'UTC'), CarbonImmutable::parse('2026-09-10', 'UTC')),
     );
@@ -256,7 +257,7 @@ test('workspace report keeps only the five highest-ranked posts while streaming 
         );
     }
 
-    $report = app(WorkspaceAnalyticsQuery::class)->for(
+    $report = app(BuildWorkspaceAnalyticsReport::class)->execute(
         $workspace,
         new DateRange(CarbonImmutable::parse('2026-09-01', 'UTC'), CarbonImmutable::parse('2026-09-10', 'UTC')),
     );
@@ -305,7 +306,7 @@ test('publication detail uses the latest persisted metric snapshot without provi
         ],
     ]);
 
-    $detail = app(PublicationAnalyticsQuery::class)->latestForPostPlatform($destination);
+    $detail = app(ReadPublicationAnalytics::class)->latestForPostPlatform($destination);
 
     expect($detail['available'])->toBeTrue()
         ->and($detail['publication']['content_type'])->toBe('reel')
@@ -329,10 +330,10 @@ test('publication detail remains scoped to the post workspace and excludes unsup
         'platform' => Platform::Instagram,
     ]);
 
-    expect(app(PublicationAnalyticsQuery::class)->latestForPostPlatform($destination)['available'])->toBeFalse();
+    expect(app(ReadPublicationAnalytics::class)->latestForPostPlatform($destination)['available'])->toBeFalse();
 
     $destination->update(['platform' => Platform::LinkedIn]);
-    expect(app(PublicationAnalyticsQuery::class)->latestForPostPlatform($destination)['reason'])->toBe('platform_not_supported');
+    expect(app(ReadPublicationAnalytics::class)->latestForPostPlatform($destination)['reason'])->toBe('platform_not_supported');
 });
 
 test('external YouTube upload stays a video and not a short without authoritative metadata', function () {
@@ -346,7 +347,7 @@ test('external YouTube upload stays a video and not a short without authoritativ
         'content_type' => PublicationContentType::Video,
     ]);
 
-    $detail = app(PublicationAnalyticsQuery::class)->latestForPublication($publication);
+    $detail = app(ReadPublicationAnalytics::class)->latestForPublication($publication);
 
     expect($detail['publication']['content_type'])->toBe('video')
         ->and($detail['snapshot'])->toBeNull();
@@ -359,7 +360,7 @@ test('dashboard query count is independent of the number of account rows', funct
     DB::listen(function ($query) use (&$queries): void {
         $queries[] = $query->sql;
     });
-    app(WorkspaceAnalyticsQuery::class)->for($workspace, $range);
+    app(BuildWorkspaceAnalyticsReport::class)->execute($workspace, $range);
     $baseCount = count($queries);
     $queries = [];
 
@@ -369,7 +370,19 @@ test('dashboard query count is independent of the number of account rows', funct
         analyticsReportPublication($account, '2026-09-05 10:00:00', $index, 0, $index, 100);
     }
     $queries = [];
-    app(WorkspaceAnalyticsQuery::class)->for($workspace, $range);
+    app(BuildWorkspaceAnalyticsReport::class)->execute($workspace, $range);
 
     expect(count($queries))->toBe($baseCount);
+});
+
+test('workspace report reuses date bounds already read by the controller', function () {
+    $workspace = Workspace::factory()->create();
+    $range = new DateRange(CarbonImmutable::parse('2026-09-01', 'UTC'), CarbonImmutable::parse('2026-09-10', 'UTC'));
+    $bounds = ['min' => '2026-08-01', 'max' => '2026-09-10'];
+
+    $this->mock(GetAnalyticsBounds::class)->shouldNotReceive('execute');
+
+    $report = app(BuildWorkspaceAnalyticsReport::class)->execute($workspace, $range, $bounds);
+
+    expect($report['bounds'])->toBe($bounds);
 });

@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\Analytics\BuildWorkspaceAnalyticsReport;
+use App\Actions\Analytics\GetAnalyticsBounds;
+use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Dto\Analytics\DateRange;
 use App\Enums\SocialAccount\Platform;
 use App\Http\Controllers\Controller;
 use App\Models\AnalyticsPublication;
 use App\Models\Post;
-use App\Queries\Analytics\PublicationAnalyticsQuery;
-use App\Queries\Analytics\WorkspaceAnalyticsQuery;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ use Inertia\Response;
 
 class AnalyticsController extends Controller
 {
-    public function show(Request $request, string $post, PublicationAnalyticsQuery $analytics): Response
+    public function show(Request $request, string $post, ReadPublicationAnalytics $analytics): Response
     {
         $workspace = $request->user()->currentWorkspace;
         $this->authorize('view', $workspace);
@@ -40,7 +41,7 @@ class AnalyticsController extends Controller
         ]);
     }
 
-    public function index(Request $request, WorkspaceAnalyticsQuery $analytics): Response
+    public function index(Request $request, BuildWorkspaceAnalyticsReport $analytics, GetAnalyticsBounds $dateBounds): Response
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -50,7 +51,7 @@ class AnalyticsController extends Controller
             'start' => ['sometimes', 'required', 'date_format:Y-m-d'],
             'end' => ['sometimes', 'required', 'date_format:Y-m-d', 'after_or_equal:start'],
         ]);
-        $bounds = $analytics->boundsFor($workspace);
+        $bounds = $dateBounds->execute($workspace);
         $today = CarbonImmutable::today('UTC');
         $end = $bounds['max'] ? CarbonImmutable::parse($bounds['max'], 'UTC') : $today;
         $start = $end->subDays(29);
@@ -75,7 +76,7 @@ class AnalyticsController extends Controller
         }
 
         return Inertia::render('analytics/Index', [
-            'report' => $analytics->for($workspace, new DateRange($start, $end)),
+            'report' => $analytics->execute($workspace, new DateRange($start, $end), $bounds),
         ]);
     }
 }

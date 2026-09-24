@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Post;
 
+use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Models\Post;
 use App\Models\PostPlatform;
-use App\Queries\Analytics\PublicationAnalyticsQuery;
 use Illuminate\Support\Collection;
 
 /**
@@ -14,7 +14,7 @@ use Illuminate\Support\Collection;
  */
 class PostMetricsFetcher
 {
-    public function __construct(private readonly PublicationAnalyticsQuery $publications) {}
+    public function __construct(private readonly ReadPublicationAnalytics $publications) {}
 
     /** @return Collection<int, array<string, mixed>> */
     public function forPost(Post $post): Collection
