@@ -6,6 +6,8 @@ return [
     'all_posts' => 'All Posts',
     'new_post' => 'New Post',
     'composer' => [
+        'load_failed' => 'Could not load the post composer.',
+        'retry' => 'Try again',
         'assistant_title' => 'AI Assistant',
         'assistant_question' => 'How can I help with this post?',
         'assistant_write_more' => 'Write More',

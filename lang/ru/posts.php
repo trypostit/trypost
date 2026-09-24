@@ -6,6 +6,8 @@ return [
     'all_posts' => 'Все посты',
     'new_post' => 'Новый пост',
     'composer' => [
+        'load_failed' => 'Не удалось загрузить редактор публикаций.',
+        'retry' => 'Повторить',
         'assistant_title' => 'ИИ-помощник',
         'assistant_question' => 'Чем помочь с этой публикацией?',
         'assistant_write_more' => 'Написать больше',

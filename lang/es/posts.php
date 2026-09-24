@@ -6,6 +6,8 @@ return [
     'all_posts' => 'Todos los posts',
     'new_post' => 'Nuevo post',
     'composer' => [
+        'load_failed' => 'No se pudo cargar el editor de publicaciones.',
+        'retry' => 'Intentar de nuevo',
         'assistant_title' => 'Asistente de IA',
         'assistant_question' => '¿Cómo puedo ayudarte con esta publicación?',
         'assistant_write_more' => 'Escribir más',

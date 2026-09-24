@@ -7,7 +7,6 @@ use App\Enums\UserWorkspace\Role;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Route;
-use Inertia\Testing\AssertableInertia as Assert;
 use Symfony\Component\HttpFoundation\Response;
 
 beforeEach(function () {
@@ -25,14 +24,13 @@ test('legacy creation and progress endpoints are retired', function () {
 test('legacy AI creation link opens the assistant in the composer', function () {
     $this->actingAs($this->user)
         ->get(route('app.posts.create', ['ai' => 1, 'templates' => 1]))
-        ->assertRedirect(route('app.posts.index', ['compose' => 1, 'assistant' => 1]));
+        ->assertRedirect(route('app.posts.index'))
+        ->assertSessionHas('flash.openPostComposer.assistant', true);
 
     $this->actingAs($this->user)
         ->get(route('app.posts.index', ['compose' => 1, 'assistant' => 1]))
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('posts/Index')
-            ->where('openComposer', true)
-            ->where('openComposerAssistant', true));
+        ->assertRedirect(route('app.posts.index'))
+        ->assertSessionHas('flash.openPostComposer.assistant', true);
 });
 
 test('assistant requires authentication', function () {

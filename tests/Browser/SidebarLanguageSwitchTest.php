@@ -53,12 +53,13 @@ test('switching language in the sidebar translates the page in place', function 
         })();
     JS);
 
-    $japanese = __('sidebar.posts.all', [], 'ja');
+    $japanese = __('sidebar.groups.posts', [], 'ja');
 
     $page->script("(async () => { for (let i = 0; i < 150; i++) { if (document.body.innerText.includes('{$japanese}')) return; await new Promise((r) => setTimeout(r, 50)); } })();");
 
+    $page->assertNoJavaScriptErrors();
     $page->assertSee($japanese)
-        ->assertDontSee(__('sidebar.posts.all', [], 'en'))
+        ->assertDontSee(__('sidebar.groups.posts', [], 'en'))
         ->assertScript('window.__notReloaded === true', true)
         ->assertNoJavaScriptErrors();
 

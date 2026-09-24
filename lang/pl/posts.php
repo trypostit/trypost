@@ -6,6 +6,8 @@ return [
     'all_posts' => 'Wszystkie posty',
     'new_post' => 'Nowy post',
     'composer' => [
+        'load_failed' => 'Nie udało się wczytać edytora postów.',
+        'retry' => 'Spróbuj ponownie',
         'assistant_title' => 'Asystent AI',
         'assistant_question' => 'Jak mogę pomóc z tym postem?',
         'assistant_write_more' => 'Napisz więcej',

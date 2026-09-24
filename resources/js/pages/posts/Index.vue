@@ -53,6 +53,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
+import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import {
     getPlatformLabel,
     getPlatformLogo,
@@ -125,6 +126,7 @@ interface Props {
     workspace: Workspace;
     posts: ScrollPosts;
     currentStatus: string | null;
+    tabCounts: Record<'all' | 'scheduled' | 'published' | 'draft', number>;
     labels: Label[];
     filters: {
         search: string;
@@ -184,7 +186,10 @@ watch(
 
 const closeComposer = (): void => {
     composerOpen.value = false;
-    router.visit(postsIndex.url(), { replace: true, preserveScroll: true });
+    router.visit(tabUrl(props.currentStatus), {
+        replace: true,
+        preserveScroll: true,
+    });
 };
 
 const onComposerOpenChange = (open: boolean): void => {
@@ -201,9 +206,7 @@ const submitComposition = (
         onSuccess: () => {
             composerOpen.value = false;
             if (createAnother) {
-                router.visit(
-                    postsIndex.url(undefined, { query: { compose: '1' } }),
-                );
+                openPostComposer();
             }
         },
         onFinish: () => {
@@ -240,12 +243,10 @@ const searchQuery = ref(props.filters.search);
 const selectedLabelIds = ref<string[]>(props.filters.labels ?? []);
 
 const buildFilterUrl = () => {
-    const url = props.currentStatus
-        ? postsIndex.url(props.currentStatus)
-        : postsIndex.url();
     router.get(
-        url,
+        postsIndex.url(),
         {
+            tab: props.currentStatus ?? undefined,
             search: searchQuery.value || undefined,
             labels: selectedLabelIds.value.length
                 ? selectedLabelIds.value
@@ -264,12 +265,23 @@ const search = debounce(buildFilterUrl, 300);
 watch(searchQuery, () => search());
 watch(selectedLabelIds, () => buildFilterUrl(), { deep: true });
 
-const pageTitle = computed(() => {
-    if (props.currentStatus) {
-        return trans(`posts.status.${props.currentStatus}`);
-    }
-    return trans('posts.all_posts');
-});
+const pageTitle = computed(() => trans('posts.title'));
+const statusTabs = [
+    { key: 'all', status: null, label: 'sidebar.posts.all' },
+    { key: 'scheduled', status: 'scheduled', label: 'sidebar.posts.scheduled' },
+    { key: 'published', status: 'published', label: 'sidebar.posts.posted' },
+    { key: 'draft', status: 'draft', label: 'sidebar.posts.drafts' },
+] as const;
+const tabUrl = (status: string | null): string =>
+    postsIndex.url(undefined, {
+        query: {
+            tab: status ?? undefined,
+            search: searchQuery.value || undefined,
+            labels: selectedLabelIds.value.length
+                ? selectedLabelIds.value
+                : undefined,
+        },
+    });
 
 const formatDateTime = (value: string | null): string => {
     if (!value) return '—';
@@ -360,6 +372,33 @@ useWorkspaceEcho(
         <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
             <PageHeader :title="pageTitle" />
 
+            <nav
+                class="flex gap-5 overflow-x-auto border-b"
+                :aria-label="$t('posts.title')"
+                data-testid="posts-tabs"
+            >
+                <Link
+                    v-for="tab in statusTabs"
+                    :key="tab.key"
+                    :href="tabUrl(tab.status)"
+                    :aria-current="
+                        currentStatus === tab.status ? 'page' : undefined
+                    "
+                    :data-testid="`posts-tab-${tab.key}`"
+                    class="inline-flex shrink-0 items-center gap-2 border-b-2 px-1 pb-3 text-sm"
+                    :class="
+                        currentStatus === tab.status
+                            ? 'border-primary font-semibold'
+                            : 'border-transparent text-muted-foreground'
+                    "
+                >
+                    {{ $t(tab.label) }}
+                    <span class="rounded-full bg-muted px-2 py-0.5 text-xs">{{
+                        tabCounts[tab.key]
+                    }}</span>
+                </Link>
+            </nav>
+
             <!-- Toolbar -->
             <div
                 class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
@@ -383,17 +422,13 @@ useWorkspaceEcho(
                     />
                 </div>
 
-                <Link
+                <Button
                     v-if="canCreatePost"
-                    :href="
-                        postsIndex.url(undefined, { query: { compose: '1' } })
-                    "
                     class="w-full sm:w-auto"
+                    data-testid="posts-new-post"
+                    @click="openPostComposer()"
+                    >{{ $t('posts.new_post') }}</Button
                 >
-                    <Button class="w-full sm:w-auto">{{
-                        $t('posts.new_post')
-                    }}</Button>
-                </Link>
             </div>
 
             <EmptyState

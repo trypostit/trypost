@@ -6,6 +6,8 @@ return [
     'all_posts' => 'すべての投稿',
     'new_post' => '新規投稿',
     'composer' => [
+        'load_failed' => '投稿エディターを読み込めませんでした。',
+        'retry' => '再試行',
         'assistant_title' => 'AIアシスタント',
         'assistant_question' => 'この投稿についてどのようにお手伝いできますか？',
         'assistant_write_more' => '続きを書く',

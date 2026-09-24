@@ -230,18 +230,13 @@ test('calendar does not include unscheduled drafts', function () {
         );
 });
 
-test('calendar opens the same composer with its selected date', function () {
+test('legacy calendar compose link opens the global composer without a query URL', function () {
     $date = now()->addDay()->format('Y-m-d');
 
     $this->actingAs($this->user)
         ->get(route('app.calendar', ['compose' => 1, 'date' => $date]))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('posts/Calendar')
-            ->where('openComposer', true)
-            ->where('initialComposerDate', $date)
-            ->has('socialAccounts', 1)
-        );
+        ->assertRedirect(route('app.calendar'))
+        ->assertSessionHas('flash.openPostComposer.date', $date);
 });
 
 // Create tests
@@ -251,24 +246,18 @@ test('create requires authentication', function () {
     $response->assertRedirect(route('login'));
 });
 
-test('create opens the composer on the posts page', function () {
+test('legacy create route opens the global composer on a clean posts URL', function () {
     $response = $this->actingAs($this->user)->get(route('app.posts.create'));
 
-    $response->assertRedirect(route('app.posts.index', ['compose' => 1]));
-    $this->actingAs($this->user)->get(route('app.posts.index', ['compose' => 1]))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('posts/Index', false)
-            ->where('openComposer', true)
-            ->has('socialAccounts', 1)
-            ->where('socialAccounts.0.id', $this->socialAccount->id)
-        );
+    $response->assertRedirect(route('app.posts.index'))
+        ->assertSessionHas('flash.openPostComposer.assistant', false);
 });
 
 test('create forwards date query param to the composer', function () {
     $response = $this->actingAs($this->user)->get(route('app.posts.create', ['date' => '2026-06-01']));
 
-    $response->assertRedirect(route('app.posts.index', ['compose' => 1, 'date' => '2026-06-01']));
+    $response->assertRedirect(route('app.posts.index'))
+        ->assertSessionHas('flash.openPostComposer.date', '2026-06-01');
 });
 
 test('create redirects to workspaces.create when user has no workspace', function () {
@@ -304,9 +293,36 @@ test('store post redirects to accounts if no social accounts connected', functio
 
 test('opening the composer creates no draft', function () {
     $this->actingAs($this->user)->get(route('app.posts.create'))
-        ->assertRedirect(route('app.posts.index', ['compose' => 1]));
+        ->assertRedirect(route('app.posts.index'));
 
     expect(Post::where('workspace_id', $this->workspace->id)->count())->toBe(0);
+});
+
+test('composer data is loaded on demand for the current workspace', function () {
+    $this->actingAs($this->user)
+        ->getJson(route('app.posts.composer-data'))
+        ->assertOk()
+        ->assertJsonPath('socialAccounts.0.id', $this->socialAccount->id)
+        ->assertJsonStructure(['labels', 'platformConfigs', 'pinterestBoards', 'tiktokCreatorInfos', 'signatures', 'xLinkTlds']);
+});
+
+test('posts tabs filter independently and expose counts', function () {
+    Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'status' => PostStatus::Draft]);
+    Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'status' => PostStatus::Scheduled]);
+    Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'status' => PostStatus::Published]);
+    Post::factory()->create(['status' => PostStatus::Draft]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.index', ['tab' => 'scheduled']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('posts/Index', false)
+            ->where('currentStatus', 'scheduled')
+            ->has('posts.data', 1)
+            ->where('tabCounts.all', 3)
+            ->where('tabCounts.scheduled', 1)
+            ->where('tabCounts.published', 1)
+            ->where('tabCounts.draft', 1));
 });
 
 test('store post creates one independent draft per selected account', function () {

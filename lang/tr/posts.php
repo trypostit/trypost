@@ -8,6 +8,8 @@ return [
     'all_posts' => 'Tüm Gönderiler',
     'new_post' => 'Yeni Gönderi',
     'composer' => [
+        'load_failed' => 'Gönderi düzenleyici yüklenemedi.',
+        'retry' => 'Tekrar dene',
         'assistant_title' => 'Yapay Zekâ Asistanı',
         'assistant_question' => 'Bu gönderide size nasıl yardımcı olabilirim?',
         'assistant_write_more' => 'Daha Fazla Yaz',

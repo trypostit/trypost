@@ -6,6 +6,8 @@ return [
     'all_posts' => '모든 게시물',
     'new_post' => '새 게시물',
     'composer' => [
+        'load_failed' => '게시물 편집기를 불러오지 못했습니다.',
+        'retry' => '다시 시도',
         'assistant_title' => 'AI 어시스턴트',
         'assistant_question' => '이 게시물에 대해 무엇을 도와드릴까요?',
         'assistant_write_more' => '더 쓰기',

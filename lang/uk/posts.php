@@ -6,6 +6,8 @@ return [
     'all_posts' => 'Усі пости',
     'new_post' => 'Новий пост',
     'composer' => [
+        'load_failed' => 'Не вдалося завантажити редактор публікацій.',
+        'retry' => 'Спробувати ще раз',
         'assistant_title' => 'ШІ-помічник',
         'assistant_question' => 'Чим допомогти з цією публікацією?',
         'assistant_write_more' => 'Написати більше',

@@ -6,6 +6,8 @@ return [
     'all_posts' => 'جميع المنشورات',
     'new_post' => 'منشور جديد',
     'composer' => [
+        'load_failed' => 'تعذر تحميل محرر المنشورات.',
+        'retry' => 'حاول مرة أخرى',
         'assistant_title' => 'مساعد الذكاء الاصطناعي',
         'assistant_question' => 'كيف يمكنني مساعدتك في هذا المنشور؟',
         'assistant_write_more' => 'اكتب المزيد',

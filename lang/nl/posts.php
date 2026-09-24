@@ -6,6 +6,8 @@ return [
     'all_posts' => 'Alle posts',
     'new_post' => 'Nieuwe post',
     'composer' => [
+        'load_failed' => 'De berichteditor kon niet worden geladen.',
+        'retry' => 'Opnieuw proberen',
         'assistant_title' => 'AI-assistent',
         'assistant_question' => 'Hoe kan ik helpen met dit bericht?',
         'assistant_write_more' => 'Meer schrijven',

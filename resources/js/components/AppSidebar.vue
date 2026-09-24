@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import { Link, usePage } from '@inertiajs/vue3';
+import { usePage } from '@inertiajs/vue3';
 import {
     IconAffiliate,
     IconAlertTriangle,
     IconCalendar,
     IconChartBar,
     IconChevronRight,
-    IconClock,
-    IconFileCheck,
     IconFileText,
     IconHash,
-    IconPencil,
     IconPhoto,
     IconPlugConnected,
     IconRepeat,
@@ -43,6 +40,7 @@ import {
 } from '@/components/ui/sidebar';
 import WorkspaceMenuContent from '@/components/WorkspaceMenuContent.vue';
 import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
+import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import { accounts, analytics, calendar } from '@/routes/app';
 import { index as assets } from '@/routes/app/assets';
@@ -85,6 +83,11 @@ const workspaceUpgradeDialogOpen = ref(false);
 
 const mainNavItems = computed<NavItem[]>(() => [
     {
+        title: trans('sidebar.groups.posts'),
+        href: postsIndex.url(),
+        icon: IconFileText,
+    },
+    {
         title: trans('sidebar.posts.calendar'),
         href: calendar.url(),
         icon: IconCalendar,
@@ -104,34 +107,6 @@ const mainNavItems = computed<NavItem[]>(() => [
               },
           ]
         : []),
-]);
-
-const postsNavItems = computed<NavItem[]>(() => [
-    {
-        title: trans('sidebar.posts.all'),
-        href: postsIndex.url(),
-        icon: IconFileText,
-        excludeActive: [
-            postsIndex.url('scheduled'),
-            postsIndex.url('published'),
-            postsIndex.url('draft'),
-        ],
-    },
-    {
-        title: trans('sidebar.posts.scheduled'),
-        href: postsIndex.url('scheduled'),
-        icon: IconClock,
-    },
-    {
-        title: trans('sidebar.posts.posted'),
-        href: postsIndex.url('published'),
-        icon: IconFileCheck,
-    },
-    {
-        title: trans('sidebar.posts.drafts'),
-        href: postsIndex.url('draft'),
-        icon: IconPencil,
-    },
 ]);
 
 const workspaceNavItems = computed<NavItem[]>(() => [
@@ -246,24 +221,16 @@ const workspaceNavItems = computed<NavItem[]>(() => [
 
         <SidebarContent class="gap-px">
             <div v-if="currentWorkspace && canCreatePost" class="px-2 py-2">
-                <Link
-                    :href="
-                        postsIndex.url(undefined, { query: { compose: '1' } })
-                    "
-                    class="block"
+                <Button
+                    class="w-full"
+                    data-testid="sidebar-new-post"
+                    @click="openPostComposer()"
                 >
-                    <Button class="w-full">
-                        {{ $t('sidebar.create_post') }}
-                    </Button>
-                </Link>
+                    {{ $t('sidebar.create_post') }}
+                </Button>
             </div>
 
             <NavMain v-if="currentWorkspace" :items="mainNavItems" />
-            <NavMain
-                v-if="currentWorkspace"
-                :items="postsNavItems"
-                :label="$t('sidebar.groups.posts')"
-            />
             <NavMain
                 v-if="currentWorkspace && workspaceNavItems.length"
                 :items="workspaceNavItems"

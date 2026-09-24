@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
 import { IconChevronLeft, IconChevronRight, IconPlus } from '@tabler/icons-vue';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 import DatePicker from '@/components/DatePicker.vue';
-import PostComposerDialog from '@/components/posts/composer/PostComposerDialog.vue';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -13,25 +12,18 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import {
     getPlatformLabel,
     getPlatformLogo,
 } from '@/composables/usePlatformLogo';
-import type {
-    ComposerAccount,
-    PostComposition,
-} from '@/composables/usePostComposition';
 import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { calendar } from '@/routes/app';
-import {
-    edit as editPost,
-    show as showPost,
-    store as storePost,
-} from '@/routes/app/posts';
+import { edit as editPost, show as showPost } from '@/routes/app/posts';
 import { PostStatus } from '@/types/post';
 
 interface PostPlatform {
@@ -67,77 +59,14 @@ interface Props {
     currentWeekStart: string;
     currentMonth: string;
     view: 'day' | 'week' | 'month';
-    openComposer?: boolean;
-    initialComposerDate?: string | null;
-    authUserId: string;
-    labels?: { id: string; name: string; color: string }[];
-    signatures?: { id: string; name: string; content: string }[];
-    socialAccounts?: ComposerAccount[];
-    platformConfigs?: Record<string, any>;
-    pinterestBoards?: Record<string, any>;
-    tiktokCreatorInfos?: Record<string, any>;
 }
 
 const props = defineProps<Props>();
-const composerOpen = ref(Boolean(props.openComposer));
-const composerSubmitting = ref(false);
-watch(
-    () => props.openComposer,
-    (open) => {
-        composerOpen.value = Boolean(open);
-    },
-);
-
-const calendarBaseQuery = () => ({
-    view: props.view,
-    day: props.currentDay,
-    week: props.currentWeekStart,
-    month: props.currentMonth,
-});
-
-const closeComposer = (): void => {
-    composerOpen.value = false;
-    router.visit(calendar.url({ query: calendarBaseQuery() }), {
-        replace: true,
-        preserveScroll: true,
-    });
-};
-const onComposerOpenChange = (open: boolean): void => {
-    if (!open) closeComposer();
-};
-
-const submitComposition = (
-    composition: PostComposition,
-    createAnother: boolean,
-): void => {
-    composerSubmitting.value = true;
-    const data: Record<string, any> = { ...composition };
-    router.post(storePost.url(), data, {
-        preserveScroll: true,
-        onSuccess: () => {
-            composerOpen.value = false;
-            if (createAnother) {
-                router.visit(createPostUrl());
-            }
-        },
-        onFinish: () => {
-            composerSubmitting.value = false;
-        },
-    });
-};
 
 // Mobile detection
 const isMobile = ref(false);
 const { canCreatePost } = useWorkspaceRole();
 
-const createPostUrl = (isoDate: string | null = null) =>
-    calendar.url({
-        query: {
-            ...calendarBaseQuery(),
-            compose: '1',
-            date: isoDate ?? undefined,
-        },
-    });
 const checkMobile = () => {
     isMobile.value = window.innerWidth < 1024;
 };
@@ -410,15 +339,12 @@ const formatTime = (scheduledAt: string): string => {
                         />
                     </div>
                 </div>
-                <Link
+                <Button
                     v-if="canCreatePost"
-                    :href="createPostUrl()"
-                    class="block"
+                    class="w-full"
+                    @click="openPostComposer()"
+                    >{{ $t('calendar.new_post') }}</Button
                 >
-                    <Button class="w-full">{{
-                        $t('calendar.new_post')
-                    }}</Button>
-                </Link>
             </header>
 
             <!-- Desktop header: nav · title · view switcher + new post -->
@@ -461,9 +387,9 @@ const formatTime = (scheduledAt: string): string => {
                         </TabsList>
                     </Tabs>
 
-                    <Link v-if="canCreatePost" :href="createPostUrl()">
-                        <Button>{{ $t('calendar.new_post') }}</Button>
-                    </Link>
+                    <Button v-if="canCreatePost" @click="openPostComposer()">{{
+                        $t('calendar.new_post')
+                    }}</Button>
                 </div>
             </header>
 
@@ -642,13 +568,19 @@ const formatTime = (scheduledAt: string): string => {
                     <!-- Day Content -->
                     <div class="flex-1 space-y-2 overflow-y-auto p-2">
                         <!-- Add Post Button -->
-                        <Link
+                        <button
                             v-if="canCreatePost"
-                            :href="createPostUrl(day.format('YYYY-MM-DD'))"
+                            type="button"
+                            :aria-label="$t('calendar.new_post')"
                             class="flex w-full items-center justify-center rounded-md border-2 border-dashed border-foreground/25 p-2 text-foreground/60 transition-colors hover:border-foreground hover:bg-foreground/5 hover:text-foreground"
+                            @click="
+                                openPostComposer({
+                                    date: day.format('YYYY-MM-DD'),
+                                })
+                            "
                         >
                             <IconPlus class="size-4" />
-                        </Link>
+                        </button>
 
                         <!-- Posts -->
                         <Link
@@ -801,18 +733,22 @@ const formatTime = (scheduledAt: string): string => {
                                 >
                                     {{ day.format('D') }}
                                 </span>
-                                <Link
+                                <button
                                     v-if="canCreatePost"
-                                    :href="
-                                        createPostUrl(day.format('YYYY-MM-DD'))
-                                    "
+                                    type="button"
+                                    :aria-label="$t('calendar.new_post')"
                                     class="inline-flex size-6 items-center justify-center rounded-full border-2 border-foreground bg-card text-foreground opacity-0 shadow-2xs transition-all group-hover:opacity-100 hover:rotate-90 hover:bg-violet-100 focus:opacity-100"
+                                    @click="
+                                        openPostComposer({
+                                            date: day.format('YYYY-MM-DD'),
+                                        })
+                                    "
                                 >
                                     <IconPlus
                                         class="size-3.5"
                                         stroke-width="3"
                                     />
-                                </Link>
+                                </button>
                             </div>
 
                             <!-- Posts -->
@@ -953,20 +889,5 @@ const formatTime = (scheduledAt: string): string => {
                 </div>
             </div>
         </div>
-        <PostComposerDialog
-            v-if="openComposer"
-            v-model:open="composerOpen"
-            :social-accounts="socialAccounts ?? []"
-            :current-user-id="authUserId"
-            :labels="labels ?? []"
-            :signatures="signatures ?? []"
-            :initial-date="initialComposerDate"
-            :submitting="composerSubmitting"
-            :platform-configs="platformConfigs ?? {}"
-            :pinterest-boards="pinterestBoards ?? {}"
-            :tiktok-creator-infos="tiktokCreatorInfos ?? {}"
-            @update:open="onComposerOpenChange"
-            @submit="submitComposition"
-        />
     </AppLayout>
 </template>

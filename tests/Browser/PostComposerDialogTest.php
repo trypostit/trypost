@@ -16,6 +16,35 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 
+test('new post buttons open the global dialog without changing the page URL', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $user->account_id,
+    ]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+
+    $calendar = visit(route('app.calendar'));
+    $calendar->click('@sidebar-new-post')
+        ->assertVisible('@post-composer-dialog')
+        ->assertScript('location.pathname + location.search', parse_url(route('app.calendar'), PHP_URL_PATH));
+
+    $posts = visit(route('app.posts.index'));
+    $posts->assertVisible('@posts-tabs')
+        ->click('@posts-new-post')
+        ->assertVisible('@post-composer-dialog')
+        ->assertScript('location.pathname + location.search', parse_url(route('app.posts.index'), PHP_URL_PATH));
+
+    visit(route('app.posts.index'))
+        ->click('@posts-tab-scheduled')
+        ->assertVisible('@posts-tab-scheduled')
+        ->assertScript('new URLSearchParams(location.search).get("tab")', 'scheduled');
+});
+
 test('creating a four account draft keeps composition in the browser until save', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([

@@ -45,6 +45,21 @@ class PostController extends Controller
 
         $this->authorize('view', $workspace);
 
+        if ($request->boolean('compose')) {
+            $this->authorize('createPost', $workspace);
+
+            return $this->redirectToComposer($request, 'app.posts.index', [
+                'tab' => $status ?? $request->query('tab'),
+                'search' => $request->query('search'),
+                'labels' => $request->query('labels'),
+            ]);
+        }
+
+        $status = $status ?? $request->query('tab');
+        if (! in_array($status, [PostStatus::Draft->value, PostStatus::Scheduled->value, PostStatus::Published->value], true)) {
+            $status = null;
+        }
+
         $query = $workspace->posts()
             ->with(['postPlatforms' => fn ($query) => $query->enabled()->with('socialAccount'), 'user', 'labels']);
 
@@ -82,12 +97,18 @@ class PostController extends Controller
             }
         }
 
-        $composerRequested = $request->boolean('compose') || $composerPost !== null;
+        $composerRequested = $composerPost !== null;
 
         return Inertia::render('posts/Index', [
             'workspace' => $workspace,
             'posts' => Inertia::scroll(fn () => $query->latest('scheduled_at')->paginate(config('app.pagination.default'))),
             'currentStatus' => $status,
+            'tabCounts' => [
+                'all' => $workspace->posts()->count(),
+                'scheduled' => $workspace->posts()->scheduled()->count(),
+                'published' => $workspace->posts()->published()->count(),
+                'draft' => $workspace->posts()->draft()->count(),
+            ],
             'labels' => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
             'filters' => [
                 'search' => $request->input('search', ''),
@@ -113,6 +134,17 @@ class PostController extends Controller
         }
 
         $this->authorize('view', $workspace);
+
+        if ($request->boolean('compose')) {
+            $this->authorize('createPost', $workspace);
+
+            return $this->redirectToComposer($request, 'app.calendar', [
+                'view' => $request->query('view'),
+                'day' => $request->query('day'),
+                'week' => $request->query('week'),
+                'month' => $request->query('month'),
+            ]);
+        }
 
         $tz = 'UTC';
         $view = $request->input('view', 'week');
@@ -157,11 +189,18 @@ class PostController extends Controller
             'currentWeekStart' => $weekStart->format('Y-m-d'),
             'currentMonth' => $monthDate->format('Y-m-d'),
             'view' => $view,
-            'openComposer' => $request->boolean('compose'),
-            'initialComposerDate' => $request->query('date'),
-            'authUserId' => $request->user()->id,
+        ]);
+    }
+
+    public function composerData(Request $request): JsonResponse
+    {
+        $workspace = $request->user()->currentWorkspace;
+
+        $this->authorize('createPost', $workspace);
+
+        return response()->json([
             'labels' => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
-            ...$this->composerProps($workspace, $request->boolean('compose')),
+            ...$this->composerProps($workspace, true),
         ]);
     }
 
@@ -192,11 +231,22 @@ class PostController extends Controller
 
         $this->authorize('createPost', $workspace);
 
-        return redirect()->route('app.posts.index', [
-            'compose' => 1,
-            'date' => $request->query('date'),
-            ...($request->boolean('ai') ? ['assistant' => 1] : []),
-        ]);
+        return $this->redirectToComposer($request, 'app.posts.index');
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     */
+    private function redirectToComposer(Request $request, string $route, array $query = []): RedirectResponse
+    {
+        return redirect()->route($route, array_filter($query, fn (mixed $value): bool => $value !== null && $value !== ''))
+            ->with('flash', [
+                ...$request->session()->get('flash', []),
+                'openPostComposer' => [
+                    'date' => $request->query('date'),
+                    'assistant' => $request->boolean('ai') || $request->boolean('assistant'),
+                ],
+            ]);
     }
 
     public function store(StorePostRequest $request): RedirectResponse|\Symfony\Component\HttpFoundation\Response

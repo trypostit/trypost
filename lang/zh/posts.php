@@ -6,6 +6,8 @@ return [
     'all_posts' => '所有帖子',
     'new_post' => '新建帖子',
     'composer' => [
+        'load_failed' => '无法加载帖子编辑器。',
+        'retry' => '重试',
         'assistant_title' => 'AI 助手',
         'assistant_question' => '我可以如何帮助您撰写这篇帖子？',
         'assistant_write_more' => '续写',

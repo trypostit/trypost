@@ -8,6 +8,8 @@ return [
     'all_posts' => 'Alle Beiträge',
     'new_post' => 'Neuer Beitrag',
     'composer' => [
+        'load_failed' => 'Der Beitragseditor konnte nicht geladen werden.',
+        'retry' => 'Erneut versuchen',
         'assistant_title' => 'KI-Assistent',
         'assistant_question' => 'Wie kann ich bei diesem Beitrag helfen?',
         'assistant_write_more' => 'Mehr schreiben',

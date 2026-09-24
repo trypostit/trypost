@@ -5,8 +5,13 @@ import { onBeforeUnmount, onMounted } from 'vue';
 import AppHeader from '@/components/AppHeader.vue';
 import AppSidebar from '@/components/AppSidebar.vue';
 import HelpMenu from '@/components/HelpMenu.vue';
+import GlobalPostComposer from '@/components/posts/composer/GlobalPostComposer.vue';
 import Toast from '@/components/Toast.vue';
-import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import {
+    SidebarInset,
+    SidebarProvider,
+    SidebarTrigger,
+} from '@/components/ui/sidebar';
 import { heartbeat as heartbeatRoute } from '@/routes/app/presence';
 
 const page = usePage();
@@ -53,7 +58,7 @@ onBeforeUnmount(() => {
             </AppHeader>
             <SidebarTrigger
                 v-else
-                class="absolute left-4 top-3 z-30 size-10 rounded-md border-2 border-foreground bg-card text-foreground shadow-2xs md:hidden"
+                class="absolute top-3 left-4 z-30 size-10 rounded-md border-2 border-foreground bg-card text-foreground shadow-2xs md:hidden"
             />
             <div
                 :class="
@@ -67,7 +72,9 @@ onBeforeUnmount(() => {
                         fullWidth
                             ? 'flex min-h-0 flex-1 flex-col'
                             : 'mx-auto w-full max-w-7xl',
-                        !fullWidth && !$slots['header'] && !$slots['header-actions']
+                        !fullWidth &&
+                        !$slots['header'] &&
+                        !$slots['header-actions']
                             ? 'pt-14 md:pt-0'
                             : '',
                     ]"
@@ -78,5 +85,6 @@ onBeforeUnmount(() => {
         </SidebarInset>
     </SidebarProvider>
     <HelpMenu />
+    <GlobalPostComposer />
     <Toast />
 </template>
