@@ -10,11 +10,24 @@ use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
 use App\Models\PostPlatform;
+use App\Models\Workspace;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class ReadPublicationAnalytics
 {
+    /** @return array<string, mixed> */
+    public function latestForWorkspacePublication(Workspace $workspace, string $publicationId): array
+    {
+        $publication = AnalyticsPublication::query()
+            ->available()
+            ->whereBelongsTo($workspace)
+            ->whereIn('platform', Platform::analyticsValues())
+            ->findOrFail($publicationId);
+
+        return $this->latestForPublication($publication);
+    }
+
     /** @return array<string, mixed> */
     public function latestForPostPublication(Post $post, ?string $publicationId = null): array
     {

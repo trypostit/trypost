@@ -15,7 +15,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('Read the latest saved engagement metrics for a post across its published platforms. Values may lag the provider until the next analytics job. Returns "unsupported" for excluded or unpublished platforms.')]
+#[Description('Read all latest saved analytics for a TryPost post across its published platforms, including reactions, comments, saves, reach, views, and watch time where supported. Values may lag the provider until the next analytics job. Returns "unsupported" for excluded or unpublished platforms.')]
 class GetPostMetricsTool extends Tool
 {
     public function handle(Request $request): Response|ResponseFactory

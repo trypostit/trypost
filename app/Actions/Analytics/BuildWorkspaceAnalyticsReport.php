@@ -16,7 +16,19 @@ class BuildWorkspaceAnalyticsReport
         private readonly BuildPublicationAnalyticsReport $publications,
         private readonly BuildFollowerAnalyticsReport $followers,
         private readonly GetAnalyticsBounds $bounds,
+        private readonly ResolveAnalyticsDateRange $dateRange,
     ) {}
+
+    /**
+     * @param  array{start?: string, end?: string}  $selected
+     * @return array<string, mixed>
+     */
+    public function forSelection(Workspace $workspace, array $selected = []): array
+    {
+        $bounds = $this->bounds->execute($workspace);
+
+        return $this->execute($workspace, $this->dateRange->execute($bounds, $selected), $bounds);
+    }
 
     /**
      * @param  array{min: ?string, max: ?string}|null  $bounds
