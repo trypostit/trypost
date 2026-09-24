@@ -294,9 +294,10 @@ it('persists per-platform meta across networks on store', function () {
     $tiktok = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::TikTok]);
 
     $this->withHeaders($this->headers)
-        ->postJson(route('api.posts.store'), [
+        ->postJson(route('api.posts.batch.store'), [
+            'status' => 'draft',
             'content' => 'Cross-platform',
-            'platforms' => [
+            'destinations' => [
                 ['social_account_id' => $instagram->id, 'content_type' => ContentType::InstagramFeed->value, 'meta' => ['aspect_ratio' => '4:5']],
                 ['social_account_id' => $pinterest->id, 'content_type' => ContentType::PinterestPin->value, 'meta' => ['board_id' => 'board-99']],
                 ['social_account_id' => $tiktok->id, 'content_type' => ContentType::TikTokVideo->value, 'meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value, 'allow_comments' => true]],

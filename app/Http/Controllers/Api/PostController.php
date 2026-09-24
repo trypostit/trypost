@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Actions\Post\AttachExistingAsset;
-use App\Actions\Post\CreatePost;
+use App\Actions\Post\CreatePosts;
 use App\Actions\Post\DeletePost;
 use App\Actions\Post\HostInlineMedia;
 use App\Actions\Post\UpdatePost;
@@ -17,6 +17,7 @@ use App\Http\Requests\Api\Post\AttachExistingAssetRequest;
 use App\Http\Requests\Api\Post\AttachMediaFromUrlRequest;
 use App\Http\Requests\Api\Post\StoreMediaRequest;
 use App\Http\Requests\Api\Post\StorePostRequest;
+use App\Http\Requests\Api\Post\StorePostsRequest;
 use App\Http\Requests\Api\Post\UpdatePostRequest;
 use App\Http\Resources\Api\PostMediaAttachResource;
 use App\Http\Resources\Api\PostMetricsResource;
@@ -65,15 +66,52 @@ class PostController extends Controller
             );
         }
 
-        $data['created_via'] = CreatedVia::Api;
-
-        $post = CreatePost::execute($workspace, $workspace->owner, $data);
+        $post = CreatePosts::execute($workspace, $request->user(), [
+            'status' => $data['status'] ?? 'draft',
+            'content' => $data['content'] ?? '',
+            'media' => $data['media'] ?? [],
+            'scheduled_at' => $data['scheduled_at'] ?? null,
+            'label_ids' => $data['label_ids'] ?? [],
+            'created_via' => CreatedVia::Api,
+            'destinations' => [$data['platforms'][0]],
+        ])->sole();
 
         $post->load(['postPlatforms.socialAccount']);
 
         return (new PostResource($post))
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    public function storeBatch(StorePostsRequest $request): JsonResponse
+    {
+        $workspace = $request->user()->currentWorkspace;
+        $data = $request->validated();
+
+        if (array_key_exists('media', $data)) {
+            $data['media'] = HostInlineMedia::execute($workspace, MediaType::cases(), $data['media']);
+        }
+
+        foreach ($data['destinations'] as $index => $destination) {
+            if (array_key_exists('media', $destination)) {
+                $data['destinations'][$index]['media'] = HostInlineMedia::execute(
+                    $workspace,
+                    MediaType::cases(),
+                    $destination['media'],
+                );
+            }
+        }
+
+        $data['created_via'] = CreatedVia::Api;
+        $posts = CreatePosts::execute($workspace, $request->user(), $data);
+
+        return response()->json([
+            'posts' => $posts->map(function (Post $post): array {
+                $post->load(['postPlatforms.socialAccount', 'labels']);
+
+                return (new PostResource($post))->resolve();
+            })->all(),
+        ], Response::HTTP_CREATED);
     }
 
     public function update(UpdatePostRequest $request, Post $post): PostResource|JsonResponse

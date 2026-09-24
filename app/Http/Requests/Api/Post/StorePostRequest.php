@@ -37,7 +37,8 @@ class StorePostRequest extends FormRequest
                 ),
             ],
             ...PostMediaRules::rules(hosted: false),
-            'platforms' => ['required', 'array', 'min:1'],
+            'platforms' => ['required', 'array', 'size:1'],
+            'status' => ['sometimes', 'string', Rule::in(['draft', 'scheduled', 'publishing'])],
             'platforms.*.social_account_id' => [
                 'required',
                 'uuid',
@@ -52,7 +53,7 @@ class StorePostRequest extends FormRequest
                 new ContentTypeMatchesPlatform,
             ],
             ...PostPlatformMetaRules::rules(),
-            'scheduled_at' => ['nullable', 'date', 'after:now'],
+            'scheduled_at' => ['nullable', 'date', 'after:now', 'before:2038-01-19'],
             'label_ids' => ['sometimes', 'array'],
             'label_ids.*' => [
                 'uuid',

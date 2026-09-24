@@ -23,6 +23,7 @@ Route::post('/uploads/{token}', [UploadController::class, 'store'])
 Route::middleware(['auth:api', 'workspace.token', 'throttle:api'])->group(function () {
     // Posts
     Route::get('/posts', [PostController::class, 'index'])->name('api.posts.index');
+    Route::post('/posts/batch', [PostController::class, 'storeBatch'])->name('api.posts.batch.store');
     Route::post('/posts', [PostController::class, 'store'])->name('api.posts.store');
     Route::get('/posts/{post}', [PostController::class, 'show'])->name('api.posts.show');
     Route::put('/posts/{post}', [PostController::class, 'update'])->name('api.posts.update');

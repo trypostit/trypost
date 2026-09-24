@@ -13,7 +13,6 @@ use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\Post;
 use App\Models\Workspace;
 use App\Rules\ContentTypeCompatibleWithMedia;
-use App\Rules\ContentTypeMatchesPostPlatform;
 use App\Support\PostPlatformMetaRules;
 use App\Support\PostStatusRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -25,7 +24,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Update a draft post — content, media, scheduled_at, labels, and which platforms are enabled. Cannot edit a post that has already been published. Setting status "scheduled" validates the attached media against every enabled content_type (file size, video duration, GIF, MOV — see list-content-types-tool) and fails with a per-platform error when a cap is exceeded; fix the media or switch content_type. Drafts are never blocked.')]
+#[Description('Update one post for its existing social account. Caption, content type, platform settings, schedule, and labels may change. The social account is fixed.')]
 class UpdatePostTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -55,31 +54,24 @@ class UpdatePostTool extends Tool
                 'status' => ['sometimes', 'string', Rule::in([Status::Draft->value, Status::Scheduled->value])],
                 'label_ids' => ['sometimes', 'array'],
                 'label_ids.*' => ['uuid', Rule::exists('workspace_labels', 'id')->where('workspace_id', $workspace->id)],
-                'platforms' => ['sometimes', 'array'],
-                'platforms.*.id' => [
-                    'required',
-                    'uuid',
-                    Rule::exists('post_platforms', 'id')->where('post_id', $post->id),
-                ],
-                'platforms.*.content_type' => [
-                    'sometimes',
-                    'string',
-                    Rule::in(array_column(ContentType::cases(), 'value')),
-                    new ContentTypeMatchesPostPlatform,
-                ],
-                ...PostPlatformMetaRules::rules(),
+                'social_account_id' => ['prohibited'],
+                'platforms' => ['prohibited'],
+                'content_type' => ['sometimes', 'string', Rule::in(array_column(ContentType::cases(), 'value'))],
+                'meta' => ['sometimes', 'array'],
             ],
             PostPlatformMetaRules::messages(),
             PostPlatformMetaRules::attributes(),
         );
 
-        // On schedule, validate each platform's effective content_type (resubmitted
-        // here, or stored) against the post's stored media — the tool can't change
-        // media, so a misconfigured post can't be scheduled even without resubmitting
-        // content_type. Mirrors the public API's withValidator check.
+        // The tool cannot change media; scheduling validates the stored media
+        // against the effective type even when the request omits content_type.
         if ($status === Status::Scheduled->value) {
+            $selectedTarget = $post->postPlatforms()->enabled()->first();
+            $submittedTarget = $selectedTarget && isset($validated['content_type'])
+                ? [['id' => $selectedTarget->id, 'content_type' => $validated['content_type']]]
+                : null;
             $errors = ContentTypeCompatibleWithMedia::errorsFor(
-                ContentTypeCompatibleWithMedia::entriesForUpdate($post, data_get($validated, 'platforms')),
+                ContentTypeCompatibleWithMedia::entriesForUpdate($post, $submittedTarget),
                 (array) ($post->media ?? []),
             );
 
@@ -115,13 +107,8 @@ class UpdatePostTool extends Tool
             'label_ids' => $schema->array()
                 ->items($schema->string())
                 ->description('Workspace label IDs to attach (replaces existing labels).'),
-            'platforms' => $schema->array()
-                ->items($schema->object(fn ($p) => [
-                    'id' => $p->string()->required()->description('UUID of the post_platform row (from get-post-tool / list-posts-tool).'),
-                    'content_type' => $p->string()->description('New content_type for this platform.'),
-                    'meta' => $p->object()->description('Per-platform metadata override. Instagram/Facebook: aspect_ratio. TikTok: privacy_level PUBLIC_TO_EVERYONE|MUTUAL_FOLLOW_FRIENDS|FOLLOWER_OF_CREATOR|SELF_ONLY (required to publish) + flags. SELF_ONLY cannot be combined with brand_content_toggle. Pinterest: board_id (required to publish — call ListPinterestBoardsTool first), title (≤100), link (destination URL). Pin description comes from the post content. Discord: channel_id (required to publish — call ListDiscordChannelsTool first), mentions, embeds. Merged with existing meta.'),
-                ]))
-                ->description('Platforms to enable for publishing. Any platform NOT listed will be disabled. Pass an empty array to disable all.'),
+            'content_type' => $schema->string()->description('New format for the post’s existing social account.'),
+            'meta' => $schema->object()->description('Settings for the existing account, merged with stored settings.'),
         ];
     }
 }

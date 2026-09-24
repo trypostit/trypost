@@ -13,6 +13,8 @@ use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $result = createApiTestToken();
@@ -80,6 +82,90 @@ it('creates a post', function () {
     expect($post)->not->toBeNull();
     expect($post->created_via)->toBe(CreatedVia::Api);
     expect($post->scheduled_at)->toBeNull();
+    expect($post->postPlatforms()->count())->toBe(1);
+});
+
+it('rejects multiple destinations on the single post endpoint', function () {
+    $secondAccount = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $this->workspace->id,
+        'is_active' => true,
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.store'), [
+            'platforms' => [
+                ['social_account_id' => $this->socialAccount->id, 'content_type' => ContentType::LinkedInPost->value],
+                ['social_account_id' => $secondAccount->id, 'content_type' => ContentType::LinkedInPost->value],
+            ],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('platforms');
+
+    expect(Post::query()->where('workspace_id', $this->workspace->id)->count())->toBe(0);
+});
+
+it('creates an ordered batch of independent posts', function () {
+    $secondAccount = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $this->workspace->id,
+        'is_active' => true,
+    ]);
+
+    $response = $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.batch.store'), [
+            'status' => 'draft',
+            'content' => 'Base',
+            'destinations' => [
+                ['social_account_id' => $secondAccount->id, 'content_type' => ContentType::LinkedInPost->value, 'content' => 'Segundo primeiro'],
+                ['social_account_id' => $this->socialAccount->id, 'content_type' => ContentType::LinkedInPost->value],
+            ],
+        ])
+        ->assertCreated()
+        ->assertJsonCount(2, 'posts');
+
+    $firstPost = Post::findOrFail($response->json('posts.0.id'));
+    $secondPost = Post::findOrFail($response->json('posts.1.id'));
+    expect($firstPost->content)->toBe('Segundo primeiro')
+        ->and($firstPost->postPlatforms()->sole()->social_account_id)->toBe($secondAccount->id)
+        ->and($secondPost->content)->toBe('Base')
+        ->and($secondPost->postPlatforms()->sole()->social_account_id)->toBe($this->socialAccount->id);
+});
+
+it('rejects the whole batch when a destination belongs to another workspace', function () {
+    $foreignWorkspace = Workspace::factory()->create();
+    $foreignAccount = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $foreignWorkspace->id,
+        'is_active' => true,
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.batch.store'), [
+            'status' => 'draft',
+            'destinations' => [
+                ['social_account_id' => $this->socialAccount->id, 'content_type' => ContentType::LinkedInPost->value],
+                ['social_account_id' => $foreignAccount->id, 'content_type' => ContentType::LinkedInPost->value],
+            ],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('destinations.1.social_account_id');
+
+    expect(Post::query()->where('workspace_id', $this->workspace->id)->count())->toBe(0);
+});
+
+it('rejects malformed hosted media identifiers with a validation response', function () {
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->postJson(route('api.posts.batch.store'), [
+            'status' => 'draft',
+            'media' => [[
+                'id' => 'not-a-uuid',
+                'path' => 'media/photo.jpg',
+                'url' => 'https://example.com/photo.jpg',
+            ]],
+            'destinations' => [
+                ['social_account_id' => $this->socialAccount->id, 'content_type' => ContentType::LinkedInPost->value],
+            ],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('destinations.0.media.0.id');
 });
 
 it('ignores a client-supplied created_via and always records api', function () {
@@ -101,10 +187,18 @@ it('ignores a client-supplied created_via and always records api', function () {
 
 it('creates a post with content, media, and labels', function () {
     $label = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
+    Storage::fake();
+    Http::fake([
+        '93.184.216.34/photo.png' => Http::response(
+            file_get_contents(base_path('tests/fixtures/1x1.png')),
+            200,
+            ['Content-Type' => 'image/png'],
+        ),
+    ]);
 
     $payload = [
         'content' => 'Hello from the API',
-        'media' => [['id' => 'media-1', 'path' => 'media/foo.jpg', 'url' => 'https://example.com/foo.jpg', 'type' => 'image']],
+        'media' => [['url' => 'https://93.184.216.34/photo.png']],
         'platforms' => [
             ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
         ],
@@ -189,6 +283,49 @@ it('updates a post', function () {
             ],
         ])
         ->assertOk();
+});
+
+it('keeps the account fixed when updating through the API', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    $target = PostPlatform::factory()->linkedin()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+        'enabled' => true,
+    ]);
+    $otherAccount = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $this->workspace->id,
+        'is_active' => true,
+    ]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->putJson(route('api.posts.update', $post), [
+            'status' => 'draft',
+            'social_account_id' => $otherAccount->id,
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('social_account_id');
+
+    expect($target->fresh()->social_account_id)->toBe($this->socialAccount->id);
+});
+
+it('keeps an old multi-target post readable by id', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Published,
+    ]);
+    $otherAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+    PostPlatform::factory()->linkedin()->create(['post_id' => $post->id, 'social_account_id' => $this->socialAccount->id, 'enabled' => true]);
+    PostPlatform::factory()->linkedin()->create(['post_id' => $post->id, 'social_account_id' => $otherAccount->id, 'enabled' => true]);
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->getJson(route('api.posts.show', $post))
+        ->assertOk()
+        ->assertJsonCount(2, 'platforms');
 });
 
 it('rejects creating a post with instagram_carousel — carousel is not a stored content_type', function () {

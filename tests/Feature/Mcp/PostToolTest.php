@@ -2,15 +2,18 @@
 
 declare(strict_types=1);
 
+use App\Dto\MediaItem;
 use App\Enums\Post\CreatedVia;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\UserWorkspace\Role;
 use App\Mcp\Servers\TryPostServer;
+use App\Mcp\Tools\Post\CreatePostsTool;
 use App\Mcp\Tools\Post\CreatePostTool;
 use App\Mcp\Tools\Post\DeletePostTool;
 use App\Mcp\Tools\Post\GetPostTool;
 use App\Mcp\Tools\Post\ListPostsTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -144,6 +147,9 @@ test('create post with content and date', function () {
         ->tool(CreatePostTool::class, [
             'content' => 'My new post',
             'scheduled_at' => '2037-12-31T15:30:00Z',
+            'platforms' => [
+                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
+            ],
         ]);
 
     $response->assertOk()
@@ -161,7 +167,11 @@ test('create post with content and date', function () {
 
 test('create post creates unscheduled draft without a schedule', function (string $case) {
     $payload = match ($case) {
-        'empty' => [],
+        'empty' => [
+            'platforms' => [
+                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
+            ],
+        ],
         'omitted' => [
             'content' => 'Draft without schedule',
             'platforms' => [
@@ -211,6 +221,95 @@ test('create post with platforms enables only those', function () {
     expect($enabled)->toHaveCount(1);
     expect($enabled->first()->social_account_id)->toBe($this->socialAccount->id);
     expect($enabled->first()->content_type->value)->toBe('linkedin_post');
+});
+
+test('the single MCP create tool accepts a previously uploaded workspace asset', function () {
+    $asset = Media::factory()->assets()->for($this->workspace, 'mediable')->create();
+
+    TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
+        'media' => [MediaItem::fromMedia($asset)->toArray()],
+        'platforms' => [
+            ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
+        ],
+    ])->assertOk();
+
+    expect(Post::query()->where('workspace_id', $this->workspace->id)->sole()->media[0]['id'])->toBe($asset->id);
+});
+
+test('the single MCP create tool rejects multiple accounts', function () {
+    $secondAccount = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $this->workspace->id,
+        'is_active' => true,
+    ]);
+
+    TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
+        'platforms' => [
+            ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
+            ['social_account_id' => $secondAccount->id, 'content_type' => 'linkedin_post'],
+        ],
+    ])->assertHasErrors();
+
+    expect(Post::query()->where('workspace_id', $this->workspace->id)->count())->toBe(0);
+});
+
+test('the MCP batch tool creates ordered independent posts', function () {
+    $secondAccount = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $this->workspace->id,
+        'is_active' => true,
+    ]);
+
+    TryPostServer::actingAs($this->user)->tool(CreatePostsTool::class, [
+        'status' => 'draft',
+        'content' => 'Base',
+        'destinations' => [
+            ['social_account_id' => $secondAccount->id, 'content_type' => 'linkedin_post', 'content' => 'Second first'],
+            ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
+        ],
+    ])->assertOk()->assertStructuredContent(function (AssertableJson $json) {
+        $json->has('posts', 2)
+            ->where('posts.0.content', 'Second first')
+            ->where('posts.1.content', 'Base')
+            ->etc();
+    });
+
+    expect(Post::query()->where('workspace_id', $this->workspace->id)->count())->toBe(2);
+});
+
+test('the MCP batch tool rejects a foreign account without creating a partial batch', function () {
+    $foreignWorkspace = Workspace::factory()->create();
+    $foreignAccount = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $foreignWorkspace->id,
+        'is_active' => true,
+    ]);
+
+    TryPostServer::actingAs($this->user)->tool(CreatePostsTool::class, [
+        'status' => 'draft',
+        'destinations' => [
+            ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
+            ['social_account_id' => $foreignAccount->id, 'content_type' => 'linkedin_post'],
+        ],
+    ])->assertHasErrors();
+
+    expect(Post::query()->where('workspace_id', $this->workspace->id)->count())->toBe(0);
+});
+
+test('the MCP edit tool rejects a replacement social account', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    $target = PostPlatform::factory()->linkedin()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $this->socialAccount->id,
+    ]);
+    $otherAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+
+    TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
+        'post_id' => $post->id,
+        'social_account_id' => $otherAccount->id,
+    ])->assertHasErrors();
+
+    expect($target->fresh()->social_account_id)->toBe($this->socialAccount->id);
 });
 
 test('create post rejects scheduled_at in the past', function () {
@@ -272,9 +371,7 @@ test('update post rejects instagram_carousel — carousel is not a stored conten
     $response = TryPostServer::actingAs($this->user)
         ->tool(UpdatePostTool::class, [
             'post_id' => $post->id,
-            'platforms' => [
-                ['id' => $platform->id, 'content_type' => 'instagram_carousel'],
-            ],
+            'content_type' => 'instagram_carousel',
         ]);
 
     $response->assertHasErrors();
@@ -385,9 +482,7 @@ test('update post rejects an invalid aspect_ratio', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(UpdatePostTool::class, [
             'post_id' => $post->id,
-            'platforms' => [
-                ['id' => $platform->id, 'meta' => ['aspect_ratio' => '3:2']],
-            ],
+            'meta' => ['aspect_ratio' => '3:2'],
         ]);
 
     $response->assertHasErrors();
@@ -512,9 +607,7 @@ test('update post accepts a valid aspect_ratio and persists it', function () {
     TryPostServer::actingAs($this->user)
         ->tool(UpdatePostTool::class, [
             'post_id' => $post->id,
-            'platforms' => [
-                ['id' => $platform->id, 'meta' => ['aspect_ratio' => '16:9']],
-            ],
+            'meta' => ['aspect_ratio' => '16:9'],
         ])
         ->assertOk();
 

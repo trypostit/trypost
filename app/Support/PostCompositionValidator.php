@@ -10,6 +10,7 @@ use App\Models\Workspace;
 use App\Rules\ContentFitsPlatformLimits;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator as LaravelValidator;
@@ -57,7 +58,7 @@ class PostCompositionValidator
             ->keyBy('id');
         $mediaIds = collect($composition['destinations'])
             ->flatMap(fn (array $destination): array => array_column($destination['media'], 'id'))
-            ->filter()
+            ->filter(fn (mixed $id): bool => is_string($id) && Str::isUuid($id))
             ->unique();
         $assets = $workspace->media()->whereIn('id', $mediaIds)->get()->keyBy('id');
 
@@ -67,10 +68,23 @@ class PostCompositionValidator
         }
         $metaRules = [];
         foreach (PostPlatformMetaRules::rules() as $key => $rules) {
-            $metaRules[str_replace('platforms.', 'destinations.', $key)] = $rules;
+            $metaRules[str_replace('platforms.', 'destinations.', $key)] = array_map(
+                fn (mixed $rule): mixed => is_string($rule)
+                    ? str_replace('platforms.', 'destinations.', $rule)
+                    : $rule,
+                $rules,
+            );
+        }
+        $metaMessages = [];
+        foreach (PostPlatformMetaRules::messages() as $key => $message) {
+            $metaMessages[str_replace('platforms.', 'destinations.', $key)] = $message;
+        }
+        $metaAttributes = [];
+        foreach (PostPlatformMetaRules::attributes() as $key => $attribute) {
+            $metaAttributes[str_replace('platforms.', 'destinations.', $key)] = $attribute;
         }
 
-        $validator = Validator::make($composition, [...$mediaRules, ...$metaRules]);
+        $validator = Validator::make($composition, [...$mediaRules, ...$metaRules], $metaMessages, $metaAttributes);
         $validator->after(function (LaravelValidator $validator) use ($composition, $accounts, $assets): void {
             $seen = [];
 

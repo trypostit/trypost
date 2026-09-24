@@ -90,10 +90,7 @@ test('update post merges per-platform meta', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(UpdatePostTool::class, [
             'post_id' => $post->id,
-            'platforms' => [[
-                'id' => $platform->id,
-                'meta' => ['channel_id' => '444555666'],
-            ]],
+            'meta' => ['channel_id' => '444555666'],
         ]);
 
     $response->assertOk();
@@ -446,14 +443,11 @@ test('update post merges Pinterest title and link meta', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(UpdatePostTool::class, [
             'post_id' => $post->id,
-            'platforms' => [[
-                'id' => $platform->id,
-                'meta' => [
-                    'board_id' => 'board-1',
-                    'title' => 'Updated Title',
-                    'link' => 'https://example.com/updated',
-                ],
-            ]],
+            'meta' => [
+                'board_id' => 'board-1',
+                'title' => 'Updated Title',
+                'link' => 'https://example.com/updated',
+            ],
         ]);
 
     $response->assertOk();
@@ -633,17 +627,14 @@ test('update post rejects a Google Business event title over the api cap', funct
     $response = TryPostServer::actingAs($this->user)
         ->tool(UpdatePostTool::class, [
             'post_id' => $post->id,
-            'platforms' => [[
-                'id' => $platform->id,
-                'meta' => [
-                    'topic_type' => 'EVENT',
-                    'event' => [
-                        'title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH + 1),
-                        'start_date' => '2026-09-01',
-                        'end_date' => '2026-09-02',
-                    ],
+            'meta' => [
+                'topic_type' => 'EVENT',
+                'event' => [
+                    'title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH + 1),
+                    'start_date' => '2026-09-01',
+                    'end_date' => '2026-09-02',
                 ],
-            ]],
+            ],
         ]);
 
     $response->assertHasErrors([__('posts.form.google_business.title_max')]);
@@ -667,13 +658,10 @@ test('update post rejects a Google Business event whose end date is before the s
     $response = TryPostServer::actingAs($this->user)
         ->tool(UpdatePostTool::class, [
             'post_id' => $post->id,
-            'platforms' => [[
-                'id' => $platform->id,
-                'meta' => [
-                    'topic_type' => 'EVENT',
-                    'event' => ['title' => 'Sale', 'start_date' => '2026-09-10', 'end_date' => '2026-09-01'],
-                ],
-            ]],
+            'meta' => [
+                'topic_type' => 'EVENT',
+                'event' => ['title' => 'Sale', 'start_date' => '2026-09-10', 'end_date' => '2026-09-01'],
+            ],
         ]);
 
     $response->assertHasErrors([__('posts.form.google_business.event_end_date_before_start')]);
