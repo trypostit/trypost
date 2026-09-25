@@ -9,7 +9,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import HeaderSearch from '@/components/HeaderSearch.vue';
 import HeaderTitle from '@/components/HeaderTitle.vue';
 import CreateSheet from '@/components/signatures/CreateSheet.vue';
-import EditDialog from '@/components/signatures/EditDialog.vue';
+import EditSheet from '@/components/signatures/EditSheet.vue';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -67,12 +67,12 @@ watch(searchQuery, () => search());
 
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 const isCreateSheetOpen = ref(false);
-const isEditDialogOpen = ref(false);
+const isEditSheetOpen = ref(false);
 const editingSignature = ref<Signature | null>(null);
 
-const openEditDialog = (signature: Signature) => {
+const openEditSheet = (signature: Signature) => {
     editingSignature.value = signature;
-    isEditDialogOpen.value = true;
+    isEditSheetOpen.value = true;
 };
 
 const handleDelete = (signature: Signature) => {
@@ -152,7 +152,7 @@ const hasActiveSearch = computed(() => Boolean(searchQuery.value?.trim()));
                                 v-for="signature in signatures.data"
                                 :key="signature.id"
                                 class="cursor-pointer"
-                                @click="openEditDialog(signature)"
+                                @click="openEditSheet(signature)"
                             >
                                 <TableCell>{{ signature.name }}</TableCell>
                                 <TableCell class="max-w-[160px] sm:max-w-md">
@@ -172,7 +172,7 @@ const hasActiveSearch = computed(() => Boolean(searchQuery.value?.trim()));
                                             :aria-label="
                                                 $t('signatures.actions.edit')
                                             "
-                                            @click="openEditDialog(signature)"
+                                            @click="openEditSheet(signature)"
                                         >
                                             <IconPencil class="size-4" />
                                         </Button>
@@ -204,7 +204,7 @@ const hasActiveSearch = computed(() => Boolean(searchQuery.value?.trim()));
     </AppLayout>
 
     <CreateSheet v-model:open="isCreateSheetOpen" />
-    <EditDialog v-model:open="isEditDialogOpen" :signature="editingSignature" />
+    <EditSheet v-model:open="isEditSheetOpen" :signature="editingSignature" />
 
     <ConfirmDeleteModal
         ref="deleteModal"

@@ -47,7 +47,7 @@ test('signature and label searches and create actions live in the page header', 
     'labels' => ['app.labels.index', 'Labels', 'Search labels...', 'create-label-button', 'create-label-sheet', 'cancel-create-label'],
 ]);
 
-test('signature edit dialog uses the shared form and saves changes', function () {
+test('signature edit uses the right-side sheet and resets canceled changes', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
@@ -61,9 +61,39 @@ test('signature edit dialog uses the shared form and saves changes', function ()
     ]);
     $this->actingAs($user);
 
-    visit(route('app.signatures.index'))
+    $page = visit(route('app.signatures.index'));
+    $page
         ->click('button[aria-label="Edit signature"]')
+        ->assertVisible('@edit-signature-sheet')
         ->assertVisible('@edit-signature-name')
+        ->fill('@edit-signature-name', 'Unsaved name')
+        ->click('@cancel-edit-signature')
+        ->assertMissing('@edit-signature-sheet')
+        ->click('button[aria-label="Edit signature"]')
+        ->assertValue('@edit-signature-name', 'Original signature');
+
+    $layout = $page->script(<<<'JS'
+        (async () => {
+            const sheet = document.querySelector('[data-testid="edit-signature-sheet"]');
+            await Promise.all(sheet.getAnimations().map((animation) => animation.finished));
+            const rect = sheet.getBoundingClientRect();
+            const cancel = sheet.querySelector('[data-testid="cancel-edit-signature"]');
+            const save = sheet.querySelector('[data-testid="submit-edit-signature"]');
+
+            return {
+                rightAligned: Math.abs(rect.right - window.innerWidth) < 2,
+                fullHeight: Math.abs(rect.height - window.innerHeight) < 2,
+                cancelBeforeSave: cancel.getBoundingClientRect().right <= save.getBoundingClientRect().left,
+            };
+        })();
+    JS);
+
+    expect($layout)
+        ->rightAligned->toBeTrue()
+        ->fullHeight->toBeTrue()
+        ->cancelBeforeSave->toBeTrue();
+
+    $page
         ->fill('@edit-signature-name', 'Updated signature')
         ->fill('@edit-signature-content', '#updated')
         ->click('@submit-edit-signature')
