@@ -3,6 +3,7 @@
 return [
     'title' => 'Firmas',
     'description' => 'Crea firmas reutilizables para añadir rápidamente a tus posts',
+    'save_failed' => 'No se pudo guardar la firma. Inténtalo de nuevo.',
     'search' => 'Buscar firmas...',
     'new' => 'Nueva firma',
     'empty_title' => 'Aún no hay firmas',

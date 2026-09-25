@@ -8,6 +8,7 @@ use App\Actions\Signature\CreateSignature;
 use App\Actions\Signature\DeleteSignature;
 use App\Actions\Signature\UpdateSignature;
 use App\Models\WorkspaceSignature;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -39,7 +40,7 @@ class WorkspaceSignatureController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -54,7 +55,11 @@ class WorkspaceSignatureController extends Controller
             'content' => ['required', 'string'],
         ]);
 
-        CreateSignature::execute($workspace, $validated);
+        $signature = CreateSignature::execute($workspace, $validated);
+
+        if ($request->expectsJson()) {
+            return response()->json($signature->only(['id', 'name', 'content']), 201);
+        }
 
         session()->flash('flash.banner', __('signatures.flash.created'));
         session()->flash('flash.bannerStyle', 'success');
@@ -62,7 +67,7 @@ class WorkspaceSignatureController extends Controller
         return redirect()->route('app.signatures.index');
     }
 
-    public function update(Request $request, WorkspaceSignature $signature): RedirectResponse
+    public function update(Request $request, WorkspaceSignature $signature): RedirectResponse|JsonResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -81,7 +86,11 @@ class WorkspaceSignatureController extends Controller
             'content' => ['required', 'string'],
         ]);
 
-        UpdateSignature::execute($signature, $validated);
+        $signature = UpdateSignature::execute($signature, $validated);
+
+        if ($request->expectsJson()) {
+            return response()->json($signature->only(['id', 'name', 'content']));
+        }
 
         session()->flash('flash.banner', __('signatures.flash.updated'));
         session()->flash('flash.bannerStyle', 'success');

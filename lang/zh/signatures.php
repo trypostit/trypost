@@ -3,6 +3,7 @@
 return [
     'title' => '签名',
     'description' => '创建可复用的签名，快速附加到你的帖子中',
+    'save_failed' => '无法保存签名，请重试。',
     'search' => '搜索签名…',
     'new' => '新建签名',
     'empty_title' => '暂无签名',

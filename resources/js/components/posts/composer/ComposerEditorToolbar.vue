@@ -3,6 +3,7 @@ import { IconHash, IconMoodSmile, IconPlus } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
 import EmojiPicker from '@/components/posts/EmojiPicker.vue';
+import SignaturePicker from '@/components/signatures/SignaturePicker.vue';
 import {
     Popover,
     PopoverContent,
@@ -11,15 +12,24 @@ import {
 
 defineProps<{
     testIdPrefix: string;
+    signatures: { id: string; name: string; content: string }[];
 }>();
 
 const emit = defineEmits<{
     (event: 'add-media'): void;
     (event: 'select-emoji', emoji: string): void;
-    (event: 'open-signatures'): void;
+    (
+        event: 'select-signature',
+        signature: { id: string; name: string; content: string },
+    ): void;
+    (
+        event: 'save-signature',
+        signature: { id: string; name: string; content: string },
+    ): void;
 }>();
 
 const emojiOpen = ref(false);
+const signaturesOpen = ref(false);
 
 const selectEmoji = (emoji: string): void => {
     emit('select-emoji', emoji);
@@ -59,15 +69,28 @@ const selectEmoji = (emoji: string): void => {
                 <EmojiPicker @select="selectEmoji" />
             </PopoverContent>
         </Popover>
-        <button
-            type="button"
-            :data-testid="`${testIdPrefix}-signature`"
-            :aria-label="$t('posts.edit.signatures')"
-            :title="$t('posts.edit.signatures')"
-            class="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            @click="emit('open-signatures')"
-        >
-            <IconHash class="size-[18px]" stroke-width="1.8" />
-        </button>
+        <Popover v-model:open="signaturesOpen">
+            <PopoverTrigger as-child>
+                <button
+                    type="button"
+                    :data-testid="`${testIdPrefix}-signature`"
+                    :aria-label="$t('posts.edit.signatures')"
+                    :title="$t('posts.edit.signatures')"
+                    class="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                    <IconHash class="size-[18px]" stroke-width="1.8" />
+                </button>
+            </PopoverTrigger>
+            <PopoverContent class="w-auto p-0" align="start">
+                <SignaturePicker
+                    :signatures="signatures"
+                    @select="
+                        emit('select-signature', $event);
+                        signaturesOpen = false;
+                    "
+                    @saved="emit('save-signature', $event)"
+                />
+            </PopoverContent>
+        </Popover>
     </div>
 </template>

@@ -340,6 +340,48 @@ test('composer searches and selects multiple labels and exposes emoji and signat
         ->toContain($secondLabel->id);
 });
 
+test('composer creates and edits signatures in the popover without losing the draft', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $user->account_id,
+    ]);
+    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.create'));
+    $page->fill('@composer-base-content', 'Draft text')
+        ->click('@composer-base-signature')
+        ->assertVisible('@composer-signatures-popover')
+        ->click('@composer-create-signature')
+        ->click('@submit-composer-signature')
+        ->assertVisible('@composer-signature-name')
+        ->assertValue('@composer-base-content', 'Draft text')
+        ->fill('@composer-signature-name', 'Launch tags')
+        ->fill('@composer-signature-content', '#launch')
+        ->click('@submit-composer-signature')
+        ->assertSee('Launch tags');
+
+    $signature = $workspace->signatures()->where('name', 'Launch tags')->firstOrFail();
+
+    $page->click('button[aria-label="Edit signature"]')
+        ->fill('@composer-signature-content', '#launch #updated')
+        ->click('@submit-composer-signature')
+        ->assertSee('#launch #updated')
+        ->click('text=Launch tags')
+        ->assertValue('@composer-base-content', "Draft text\n\n#launch #updated")
+        ->click('@composer-base-signature')
+        ->click('@composer-create-signature')
+        ->assertValue('@composer-signature-name', '')
+        ->assertValue('@composer-signature-content', '')
+        ->assertNoJavaScriptErrors();
+
+    expect($signature->fresh()->content)->toBe('#launch #updated');
+});
+
 test('creating a four account draft keeps composition in the browser until save', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([

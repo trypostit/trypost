@@ -5,6 +5,7 @@ declare(strict_types=1);
 return [
     'title' => 'Signaturen',
     'description' => 'Erstelle wiederverwendbare Signaturen, um sie schnell an deine Beiträge anzuhängen',
+    'save_failed' => 'Die Signatur konnte nicht gespeichert werden. Bitte versuche es erneut.',
     'search' => 'Signaturen suchen...',
     'new' => 'Neue Signatur',
     'empty_title' => 'Noch keine Signaturen',

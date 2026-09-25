@@ -3,6 +3,7 @@
 return [
     'title' => 'Signatures',
     'description' => 'Create reusable signatures to quickly append to your posts',
+    'save_failed' => 'Could not save the signature. Please try again.',
     'search' => 'Search signatures...',
     'new' => 'New signature',
     'empty_title' => 'No signatures yet',

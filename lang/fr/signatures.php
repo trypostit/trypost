@@ -3,6 +3,7 @@
 return [
     'title' => 'Signatures',
     'description' => 'Créez des signatures réutilisables à ajouter rapidement à vos publications',
+    'save_failed' => 'Impossible d’enregistrer la signature. Veuillez réessayer.',
     'search' => 'Rechercher des signatures...',
     'new' => 'Nouvelle signature',
     'empty_title' => 'Aucune signature pour le moment',

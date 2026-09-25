@@ -42,7 +42,6 @@ import TikTokSettings from '@/components/posts/editor/TikTokSettings.vue';
 import MediaPickerDialog from '@/components/posts/MediaPickerDialog.vue';
 import PickTimePopover from '@/components/posts/PickTimePopover.vue';
 import PlatformPreview from '@/components/posts/previews/PlatformPreview.vue';
-import SignaturesModal from '@/components/posts/SignaturesModal.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -206,8 +205,13 @@ const persistedMediaIds = new Set(
         (item) => item.id,
     ),
 );
-const signaturesModal = ref<InstanceType<typeof SignaturesModal> | null>(null);
-const signatureTargetId = ref<string | null>(null);
+const availableSignatures = ref([...props.signatures]);
+watch(
+    () => props.signatures,
+    (signatures) => {
+        availableSignatures.value = [...signatures];
+    },
+);
 
 const selectedAccounts = composition.selectedAccounts;
 const selectedLabels = computed(() =>
@@ -443,14 +447,25 @@ const toggleLabel = (id: string): void => {
         : [...composition.labelIds.value, id];
 };
 
-const openSignatures = (accountId: string | null): void => {
-    signatureTargetId.value = accountId;
-    signaturesModal.value?.open();
+const saveSignature = (signature: {
+    id: string;
+    name: string;
+    content: string;
+}): void => {
+    availableSignatures.value = [
+        signature,
+        ...availableSignatures.value.filter(
+            (existing) => existing.id !== signature.id,
+        ),
+    ];
 };
 
-const appendSignature = (signature: { content: string }): void => {
+const appendSignature = (
+    signature: { content: string },
+    accountId: string | null,
+): void => {
     const account = selectedAccounts.value.find(
-        (selected) => selected.id === signatureTargetId.value,
+        (selected) => selected.id === accountId,
     );
     const current = account
         ? composition.resolvedDestination(account).content
@@ -1224,9 +1239,13 @@ const close = (): void => emit('update:open', false);
                             </div>
                             <ComposerEditorToolbar
                                 test-id-prefix="composer-base"
+                                :signatures="availableSignatures"
                                 @add-media="openMediaPicker(null)"
                                 @select-emoji="appendEmoji($event, null)"
-                                @open-signatures="openSignatures(null)"
+                                @select-signature="
+                                    appendSignature($event, null)
+                                "
+                                @save-signature="saveSignature"
                             />
                         </div>
                     </template>
@@ -1628,15 +1647,20 @@ const close = (): void => emit('update:open', false);
                                 </p>
                                 <ComposerEditorToolbar
                                     :test-id-prefix="`composer-${expandedAccount.id}`"
+                                    :signatures="availableSignatures"
                                     @add-media="
                                         openMediaPicker(expandedAccount.id)
                                     "
                                     @select-emoji="
                                         appendEmoji($event, expandedAccount.id)
                                     "
-                                    @open-signatures="
-                                        openSignatures(expandedAccount.id)
+                                    @select-signature="
+                                        appendSignature(
+                                            $event,
+                                            expandedAccount.id,
+                                        )
                                     "
+                                    @save-signature="saveSignature"
                                 />
                             </div>
                             <InstagramSettings
@@ -2257,11 +2281,6 @@ const close = (): void => emit('update:open', false);
         :output-width="cropDimensions.width"
         :output-height="cropDimensions.height"
         @cropped="onCropped"
-    />
-    <SignaturesModal
-        ref="signaturesModal"
-        :signatures="signatures"
-        @select="appendSignature"
     />
     <AiRegenerateImageDialog
         v-if="postId"

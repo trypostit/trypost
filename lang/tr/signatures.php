@@ -5,6 +5,7 @@ declare(strict_types=1);
 return [
     'title' => 'İmzalar',
     'description' => 'Gönderilerinize hızlıca eklemek için yeniden kullanılabilir imzalar oluşturun',
+    'save_failed' => 'İmza kaydedilemedi. Lütfen tekrar deneyin.',
     'search' => 'İmza ara...',
     'new' => 'Yeni imza',
     'empty_title' => 'Henüz imza yok',

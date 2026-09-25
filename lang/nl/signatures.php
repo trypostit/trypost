@@ -3,6 +3,7 @@
 return [
     'title' => 'Handtekeningen',
     'description' => 'Maak herbruikbare handtekeningen om snel aan je posts toe te voegen',
+    'save_failed' => 'De handtekening kon niet worden opgeslagen. Probeer het opnieuw.',
     'search' => 'Handtekeningen zoeken...',
     'new' => 'Nieuwe handtekening',
     'empty_title' => 'Nog geen handtekeningen',

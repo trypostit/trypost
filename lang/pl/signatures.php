@@ -3,6 +3,7 @@
 return [
     'title' => 'Sygnatury',
     'description' => 'Twórz wielokrotnego użytku sygnatury, aby szybko dołączać je do postów',
+    'save_failed' => 'Nie udało się zapisać sygnatury. Spróbuj ponownie.',
     'search' => 'Szukaj sygnatur...',
     'new' => 'Nowa sygnatura',
     'empty_title' => 'Brak sygnatur',

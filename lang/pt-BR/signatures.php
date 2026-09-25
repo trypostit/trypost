@@ -3,6 +3,7 @@
 return [
     'title' => 'Assinaturas',
     'description' => 'Crie assinaturas reutilizáveis pra anexar rapidamente nos seus posts',
+    'save_failed' => 'Não foi possível salvar a assinatura. Tente novamente.',
     'search' => 'Buscar assinaturas...',
     'new' => 'Nova assinatura',
     'empty_title' => 'Nenhuma assinatura ainda',

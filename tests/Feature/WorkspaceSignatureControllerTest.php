@@ -67,6 +67,30 @@ test('store signature creates signature', function () {
     ]);
 });
 
+test('composer creates signature with JSON without leaving the post', function () {
+    $this->actingAs($this->user)
+        ->postJson(route('app.signatures.store'), [
+            'name' => 'Launch',
+            'content' => '#launch',
+        ])
+        ->assertCreated()
+        ->assertJsonPath('name', 'Launch')
+        ->assertJsonPath('content', '#launch')
+        ->assertJsonStructure(['id']);
+
+    $this->assertDatabaseHas('workspace_signatures', [
+        'workspace_id' => $this->workspace->id,
+        'name' => 'Launch',
+    ]);
+});
+
+test('composer gets JSON validation errors for invalid signature', function () {
+    $this->actingAs($this->user)
+        ->postJson(route('app.signatures.store'), ['name' => '', 'content' => ''])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['name', 'content']);
+});
+
 test('store signature validates required fields', function () {
     $response = $this->actingAs($this->user)->post(route('app.signatures.store'), [
         'name' => '',
@@ -101,6 +125,31 @@ test('update signature updates the signature', function () {
     $signature->refresh();
     expect($signature->name)->toBe('Updated Name');
     expect($signature->content)->toBe('#updated #content');
+});
+
+test('composer updates signature with JSON and keeps workspace isolation', function () {
+    $signature = WorkspaceSignature::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($this->user)
+        ->putJson(route('app.signatures.update', $signature), [
+            'name' => 'Updated in composer',
+            'content' => '#updated',
+        ])
+        ->assertOk()
+        ->assertJsonPath('id', $signature->id)
+        ->assertJsonPath('content', '#updated');
+
+    expect($signature->fresh()->name)->toBe('Updated in composer');
+
+    $otherWorkspace = Workspace::factory()->create();
+    $otherSignature = WorkspaceSignature::factory()->create(['workspace_id' => $otherWorkspace->id]);
+
+    $this->actingAs($this->user)
+        ->putJson(route('app.signatures.update', $otherSignature), [
+            'name' => 'Not allowed',
+            'content' => '#no',
+        ])
+        ->assertNotFound();
 });
 
 test('update signature returns 404 for other workspace signature', function () {
