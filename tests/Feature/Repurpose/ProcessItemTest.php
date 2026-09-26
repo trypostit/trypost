@@ -136,7 +136,7 @@ test('a caption over a destination limit is shortened for that post only', funct
     fakeVideoDownload();
 
     $item = repurposeWithTwoDestinations();
-    $long = str_repeat('palavra ', 400);
+    $long = str_repeat('palavra ', 700);
 
     processItem($item, $long);
 
@@ -149,8 +149,8 @@ test('a caption over a destination limit is shortened for that post only', funct
 
     expect(Platform::TikTok->contentOverflow($captions[Platform::TikTok->value]))->toBe(0)
         ->and(Platform::YouTube->contentOverflow($captions[Platform::YouTube->value]))->toBe(0)
-        ->and(mb_strlen($captions[Platform::TikTok->value]))
-        ->toBeGreaterThan(mb_strlen($captions[Platform::YouTube->value]));
+        ->and(mb_strlen($captions[Platform::YouTube->value]))
+        ->toBeGreaterThan(mb_strlen($captions[Platform::TikTok->value]));
 });
 
 test('a failed download throws so the job retries, leaving no post behind', function () {

@@ -8,22 +8,26 @@ use App\Enums\TikTok\PrivacyLevel;
 use App\Support\PostPlatformMetaRules;
 use Illuminate\Support\Facades\Validator;
 
-test('custom meta messages only cover pinterest title and link', function () {
+test('custom meta messages cover pinterest, youtube and first-comment fields', function () {
     expect(PostPlatformMetaRules::messages())->toBe([
         'platforms.*.meta.link.url' => __('posts.form.pinterest.link_invalid'),
         'platforms.*.meta.link.max' => __('posts.form.pinterest.link_max'),
         'platforms.*.meta.title.max' => __('posts.form.pinterest.title_max'),
         'platforms.*.meta.event.end_date.after_or_equal' => __('posts.form.google_business.event_end_date_before_start'),
         'platforms.*.meta.event.title.max' => __('posts.form.google_business.title_max'),
+        'platforms.*.meta.description.max' => __('posts.form.youtube.description_max'),
+        'platforms.*.meta.first_comment.max' => __('posts.form.first_comment.max'),
     ]);
 });
 
-test('custom meta attributes only rename pinterest title and link', function () {
+test('custom meta attributes rename pinterest, youtube and first-comment fields', function () {
     expect(PostPlatformMetaRules::attributes())->toBe([
         'platforms.*.meta.title' => __('posts.form.pinterest.title'),
         'platforms.*.meta.link' => __('posts.form.pinterest.link'),
         'platforms.*.meta.event.title' => __('posts.form.google_business.event_title'),
         'platforms.*.meta.call_to_action.url' => __('posts.form.google_business.cta_url'),
+        'platforms.*.meta.description' => __('posts.form.youtube.description'),
+        'platforms.*.meta.first_comment' => __('posts.form.first_comment.label'),
     ]);
 });
 
@@ -37,6 +41,8 @@ test('shared meta rules still include non-pinterest platform fields', function (
         'platforms.*.meta.channel_id',
         'platforms.*.meta.title',
         'platforms.*.meta.link',
+        'platforms.*.meta.description',
+        'platforms.*.meta.first_comment',
     ]);
 });
 

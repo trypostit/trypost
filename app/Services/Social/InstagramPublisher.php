@@ -38,6 +38,13 @@ class InstagramPublisher
 
     private const string WORKFLOW_FINAL_CONTAINER = 'final_container';
 
+    /**
+     * Facebook place ID from the platform row's `meta.location_id` — tags the
+     * post with a location. Applied to feed/reel/carousel containers; the API
+     * does not accept it on stories or carousel children.
+     */
+    private ?string $locationId = null;
+
     public function publish(PostPlatform $postPlatform): array
     {
         $this->postPlatform = $postPlatform;
@@ -45,6 +52,7 @@ class InstagramPublisher
 
         $account = $postPlatform->socialAccount;
         $this->baseUrl = $account->platform->instagramGraphBaseUrl();
+        $this->locationId = trim((string) data_get($postPlatform->meta, 'location_id')) ?: null;
 
         if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
@@ -53,7 +61,7 @@ class InstagramPublisher
         $instagramId = $account->platform_user_id;
         $accessToken = $account->access_token;
 
-        $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
+        $content = $postPlatform->resolvedContent() ? app(ContentSanitizer::class)->sanitize($postPlatform->resolvedContent(), $postPlatform->platform) : null;
 
         $pendingWorkflow = PublishCheckpoint::instagramWorkflow($postPlatform->error_context);
 
@@ -101,6 +109,19 @@ class InstagramPublisher
         return $this->publishSingleImage($instagramId, $accessToken, $content, $firstMedia, $aspectRatio);
     }
 
+    /**
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    private function withLocation(array $params): array
+    {
+        if ($this->locationId !== null) {
+            $params['location_id'] = $this->locationId;
+        }
+
+        return $params;
+    }
+
     private function publishSingleImage(string $instagramId, string $accessToken, ?string $content, $media, ?string $aspectRatio): array
     {
         $imageUrl = $this->cropImageForAspectRatio($media->url, $aspectRatio);
@@ -117,19 +138,19 @@ class InstagramPublisher
             $params['alt_text'] = $alt;
         }
 
-        $containerId = $this->createContainer($instagramId, $params, 'container');
+        $containerId = $this->createContainer($instagramId, $this->withLocation($params), 'container');
 
         return $this->finishContainer($instagramId, $accessToken, $containerId);
     }
 
     private function publishReel(string $instagramId, string $accessToken, ?string $content, $media): array
     {
-        $containerId = $this->createContainer($instagramId, [
+        $containerId = $this->createContainer($instagramId, $this->withLocation([
             'video_url' => $media->url,
             'caption' => $content,
             'media_type' => 'REELS',
             'access_token' => $accessToken,
-        ], 'reel container');
+        ]), 'reel container');
 
         return $this->finishContainer($instagramId, $accessToken, $containerId);
     }
@@ -233,12 +254,12 @@ class InstagramPublisher
             $this->waitForMediaProcessing($childId, $accessToken, $workflow);
         }
 
-        $carouselId = $this->createContainer($instagramId, [
+        $carouselId = $this->createContainer($instagramId, $this->withLocation([
             'media_type' => 'CAROUSEL',
             'caption' => $content,
             'children' => implode(',', $childContainers),
             'access_token' => $accessToken,
-        ], 'carousel container');
+        ]), 'carousel container');
 
         return $this->finishContainer($instagramId, $accessToken, $carouselId);
     }
