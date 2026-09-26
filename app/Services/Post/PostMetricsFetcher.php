@@ -22,6 +22,7 @@ use App\Services\Social\XAnalytics;
 use App\Services\Social\YouTubeAnalytics;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Fetches per-platform post metrics. Used by the web controller, the REST
@@ -68,7 +69,8 @@ class PostMetricsFetcher
             return ['unsupported' => true, 'reason' => 'not_published'];
         }
 
-        return Cache::remember("post_metrics:{$postPlatform->id}", 300, fn () => match ($postPlatform->platform) {
+        try {
+            return Cache::remember("post_metrics:{$postPlatform->id}", 300, fn () => match ($postPlatform->platform) {
             Platform::X => app(XAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::Bluesky => app(BlueskyAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::Mastodon => app(MastodonAnalytics::class)->fetchPostMetrics($postPlatform),
@@ -83,6 +85,18 @@ class PostMetricsFetcher
             Platform::Pinterest => app(PinterestAnalytics::class)->fetchPostMetrics($postPlatform),
             Platform::TikTok => app(TikTokAnalytics::class)->fetchPostMetrics($postPlatform),
             default => ['unsupported' => true, 'reason' => 'platform_not_supported'],
-        });
+            });
+        } catch (\Throwable $e) {
+            // Один упавший провайдер (протухший токен, квота, сетевой сбой) не
+            // должен ронять метрики всего поста — остальные платформы отдаются.
+            Log::warning('Post metrics fetch failed for platform', [
+                'post_platform_id' => $postPlatform->id,
+                'platform' => $postPlatform->platform->value,
+                'exception' => $e::class,
+                'error' => $e->getMessage(),
+            ]);
+
+            return ['unsupported' => true, 'reason' => 'error'];
+        }
     }
 }
