@@ -10,6 +10,7 @@ use App\Enums\PostPlatform\AspectRatio;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Models\Post;
+use App\Models\PostPlatform;
 use App\Rules\ValidYouTubeDescription;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -169,6 +170,33 @@ class PostPlatformMetaRules
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
+    }
+
+    /**
+     * @param  array<int, mixed>|null  $requestPlatforms
+     * @return array<string, string>
+     */
+    public static function youtubeDescriptionErrorsForUpdate(Post $post, ?array $requestPlatforms): array
+    {
+        $stored = $post->postPlatforms()->get()->keyBy('id');
+        $entries = $requestPlatforms ?? $stored->filter(fn (PostPlatform $row): bool => $row->enabled)
+            ->values()->map(fn (PostPlatform $row): array => ['id' => $row->id])->all();
+        $errors = [];
+
+        foreach ($entries as $index => $entry) {
+            $row = $stored->get(data_get($entry, 'id'));
+            if ($row === null || $row->platform !== Platform::YouTube) {
+                continue;
+            }
+            $patch = data_get($entry, 'meta');
+            $meta = is_array($patch) ? array_merge($row->meta ?? [], $patch) : ($row->meta ?? []);
+            $key = YouTubeDescription::violation(data_get($meta, 'description'));
+            if ($key !== null) {
+                $errors["platforms.{$index}.meta.description"] = __($key);
+            }
+        }
+
+        return $errors;
     }
 
     /**

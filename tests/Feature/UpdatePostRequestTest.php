@@ -13,6 +13,63 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\PostPlatformMetaRules;
+
+test('youtube description checks effective web metadata on schedule', function (string $patch, bool $allowed) {
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $this->post->update(['content' => 'Short title', 'status' => Status::Draft, 'media' => $this->mediaPayload]);
+    $this->postPlatform->update(['enabled' => false]);
+    $platform = PostPlatform::factory()->youtube()->create(['post_id' => $this->post->id, 'social_account_id' => $account->id, 'enabled' => true, 'meta' => ['description' => str_repeat('a', 5001)]]);
+    $data = ['status' => Status::Scheduled->value, 'scheduled_at' => now()->addHour()->toIso8601String(), 'media' => $this->mediaPayload];
+    if ($patch !== 'omit') {
+        $data['platforms'] = [['id' => $platform->id, 'content_type' => ContentType::YouTubeShort->value]];
+        if ($patch !== 'row') {
+            $data['platforms'][0]['meta'] = ['description' => $patch === 'clear' ? null : 'Valid description'];
+        }
+    }
+    $response = $this->actingAs($this->user)->put(route('app.posts.update', $this->post), $data);
+    if ($allowed) {
+        $response->assertSessionHasNoErrors();
+        expect($this->post->fresh()->status)->toBe(Status::Scheduled);
+    } else {
+        $response->assertSessionHasErrors('platforms.0.meta.description');
+        expect($this->post->fresh()->status)->toBe(Status::Draft);
+    }
+})->with([['omit', false], ['row', false], ['replace', true], ['clear', true]]);
+
+test('youtube description reports and persists independent selected channel values', function () {
+    $platforms = collect(range(1, 2))->map(function () {
+        $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+
+        return PostPlatform::factory()->youtube()->create(['post_id' => $this->post->id, 'social_account_id' => $account->id, 'meta' => []]);
+    });
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value, 'platforms' => [
+            ['id' => $platforms[0]->id, 'meta' => ['description' => 'First channel']],
+            ['id' => $platforms[1]->id, 'meta' => ['description' => str_repeat('é', 2501)]],
+        ],
+    ])->assertSessionHasErrors('platforms.1.meta.description')->assertSessionDoesntHaveErrors('platforms.0.meta.description');
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Draft->value, 'content' => 'Short title', 'platforms' => [
+            ['id' => $platforms[0]->id, 'meta' => ['description' => 'First channel']],
+            ['id' => $platforms[1]->id, 'meta' => ['description' => str_repeat('é', 2500)]],
+        ],
+    ])->assertSessionHasNoErrors();
+    expect(data_get($platforms[0]->fresh()->meta, 'description'))->toBe('First channel')
+        ->and(data_get($platforms[1]->fresh()->meta, 'description'))->toBe(str_repeat('é', 2500))
+        ->and($this->post->fresh()->content)->toBe('Short title');
+});
+
+test('youtube description effective validation ignores disabled deselected and foreign rows', function () {
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $platform = PostPlatform::factory()->youtube()->create(['post_id' => $this->post->id, 'social_account_id' => $account->id, 'enabled' => false, 'meta' => ['description' => str_repeat('a', 5001)]]);
+    expect(PostPlatformMetaRules::youtubeDescriptionErrorsForUpdate($this->post, null))->toBe([])
+        ->and(PostPlatformMetaRules::youtubeDescriptionErrorsForUpdate($this->post, []))->toBe([]);
+    $other = Post::factory()->create();
+    expect(PostPlatformMetaRules::youtubeDescriptionErrorsForUpdate($other, [['id' => $platform->id]]))->toBe([])
+        ->and(PostPlatformMetaRules::youtubeDescriptionErrorsForUpdate($this->post, [['id' => $this->postPlatform->id], ['id' => $platform->id]]))
+        ->toBe(['platforms.1.meta.description' => __('posts.form.youtube.description_max')]);
+});
 
 beforeEach(function () {
     $this->user = User::factory()->create();

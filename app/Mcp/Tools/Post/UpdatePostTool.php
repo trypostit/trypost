@@ -78,6 +78,14 @@ class UpdatePostTool extends Tool
         // media, so a misconfigured post can't be scheduled even without resubmitting
         // content_type. Mirrors the public API's withValidator check.
         if ($status === Status::Scheduled->value) {
+            $descriptionErrors = PostPlatformMetaRules::youtubeDescriptionErrorsForUpdate(
+                $post,
+                array_key_exists('platforms', $validated) ? $validated['platforms'] : null,
+            );
+            if ($descriptionErrors !== []) {
+                throw ValidationException::withMessages($descriptionErrors);
+            }
+
             $errors = ContentTypeCompatibleWithMedia::errorsFor(
                 ContentTypeCompatibleWithMedia::entriesForUpdate($post, data_get($validated, 'platforms')),
                 (array) ($post->media ?? []),
@@ -119,7 +127,7 @@ class UpdatePostTool extends Tool
                 ->items($schema->object(fn ($p) => [
                     'id' => $p->string()->required()->description('UUID of the post_platform row (from get-post-tool / list-posts-tool).'),
                     'content_type' => $p->string()->description('New content_type for this platform.'),
-                    'meta' => $p->object()->description('Per-platform metadata override. Instagram/Facebook: aspect_ratio. TikTok: privacy_level PUBLIC_TO_EVERYONE|MUTUAL_FOLLOW_FRIENDS|FOLLOWER_OF_CREATOR|SELF_ONLY (required to publish) + flags. SELF_ONLY cannot be combined with brand_content_toggle. Pinterest: board_id (required to publish — call ListPinterestBoardsTool first), title (≤100), link (destination URL). Pin description comes from the post content. Discord: channel_id (required to publish — call ListDiscordChannelsTool first), mentions, embeds. Merged with existing meta.'),
+                    'meta' => $p->object()->description('Per-platform metadata override. Instagram/Facebook: aspect_ratio. TikTok: privacy_level PUBLIC_TO_EVERYONE|MUTUAL_FOLLOW_FRIENDS|FOLLOWER_OF_CREATOR|SELF_ONLY (required to publish) + flags. SELF_ONLY cannot be combined with brand_content_toggle. Pinterest: board_id (required to publish — call ListPinterestBoardsTool first), title (≤100), link (destination URL). Pin description comes from the post content. Discord: channel_id (required to publish — call ListDiscordChannelsTool first), mentions, embeds. Merged with existing meta. YouTube Shorts: description (optional plain UTF-8 text, at most 5000 bytes, without < or >). Post content remains the title source, limited to 100 characters. Omit description to keep the current override; pass null to remove it and use the post content as description.'),
                 ]))
                 ->description('Platforms to enable for publishing. Any platform NOT listed will be disabled. Pass an empty array to disable all.'),
         ];
