@@ -46,12 +46,10 @@ interface Props {
     platformIndex: number;
     meta: Record<string, any>;
     disabled?: boolean;
-    previewOnly?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
     disabled: false,
-    previewOnly: false,
 });
 
 const emit = defineEmits<{
@@ -59,7 +57,6 @@ const emit = defineEmits<{
 }>();
 
 const open = ref(false);
-const isLocked = computed(() => props.disabled || props.previewOnly);
 
 const updateMeta = (patch: Record<string, any>) => {
     emit('update:meta', { ...props.meta, ...patch });
@@ -201,7 +198,7 @@ const ctaUrlError = findError('call_to_action.url');
                         :class="topicType === type.value
                             ? 'border-foreground bg-violet-100 text-foreground shadow-2xs'
                             : 'border-foreground/30 text-foreground/70 hover:border-foreground hover:text-foreground'"
-                        :disabled="isLocked"
+                        :disabled="disabled"
                         :data-testid="`google-business-topic-${type.value}`"
                         @click="topicType = type.value"
                     >
@@ -213,7 +210,7 @@ const ctaUrlError = findError('call_to_action.url');
             <div v-if="showEventFields" class="grid grid-cols-2 gap-3">
                 <div class="col-span-2 space-y-2">
                     <Label class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t(eventTitleLabelKey) }}</Label>
-                    <Input v-model="eventTitle" type="text" :placeholder="$t(eventTitlePlaceholderKey)" :disabled="isLocked" :class="eventTitleError ? 'border-rose-500' : undefined" />
+                    <Input v-model="eventTitle" type="text" :placeholder="$t(eventTitlePlaceholderKey)" :disabled="disabled" :class="eventTitleError ? 'border-rose-500' : undefined" />
                     <InputError :message="eventTitleError" />
                 </div>
                 <div class="space-y-2">
@@ -222,7 +219,7 @@ const ctaUrlError = findError('call_to_action.url');
                         v-model="eventStart"
                         align="start"
                         :show-time="true"
-                        :disabled="isLocked"
+                        :disabled="disabled"
                         :placeholder="$t('posts.form.google_business.event_start_date')"
                         :class="eventStartDateError || eventStartTimeError ? 'border-rose-500' : undefined"
                     />
@@ -234,7 +231,7 @@ const ctaUrlError = findError('call_to_action.url');
                         v-model="eventEnd"
                         align="start"
                         :show-time="true"
-                        :disabled="isLocked"
+                        :disabled="disabled"
                         :placeholder="$t('posts.form.google_business.event_end_date')"
                         :class="eventEndDateError || eventEndTimeError ? 'border-rose-500' : undefined"
                     />
@@ -246,24 +243,24 @@ const ctaUrlError = findError('call_to_action.url');
             <div v-if="topicType === GoogleBusinessTopicType.Offer" class="space-y-3">
                 <div class="space-y-2">
                     <Label class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.offer_coupon_code') }}</Label>
-                    <Input v-model="offerCouponCode" type="text" :disabled="isLocked" :class="offerCouponCodeError ? 'border-rose-500' : undefined" />
+                    <Input v-model="offerCouponCode" type="text" :disabled="disabled" :class="offerCouponCodeError ? 'border-rose-500' : undefined" />
                     <InputError :message="offerCouponCodeError" />
                 </div>
                 <div class="space-y-2">
                     <Label class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.offer_redeem_url') }}</Label>
-                    <Input v-model="offerRedeemUrl" type="text" :disabled="isLocked" :class="offerRedeemUrlError ? 'border-rose-500' : undefined" />
+                    <Input v-model="offerRedeemUrl" type="text" :disabled="disabled" :class="offerRedeemUrlError ? 'border-rose-500' : undefined" />
                     <InputError :message="offerRedeemUrlError" />
                 </div>
                 <div class="space-y-2">
                     <Label class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.offer_terms') }}</Label>
-                    <Input v-model="offerTerms" type="text" :disabled="isLocked" :class="offerTermsError ? 'border-rose-500' : undefined" />
+                    <Input v-model="offerTerms" type="text" :disabled="disabled" :class="offerTermsError ? 'border-rose-500' : undefined" />
                     <InputError :message="offerTermsError" />
                 </div>
             </div>
 
             <div v-if="showCallToAction" class="space-y-2">
                 <Label class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.cta_label') }}</Label>
-                <Select v-model="ctaActionType" :disabled="isLocked">
+                <Select v-model="ctaActionType" :disabled="disabled">
                     <SelectTrigger class="w-full" :aria-invalid="ctaActionTypeError ? true : undefined">
                         <SelectValue />
                     </SelectTrigger>
@@ -282,7 +279,7 @@ const ctaUrlError = findError('call_to_action.url');
 
             <div v-if="showCtaUrl" class="space-y-2">
                 <Label class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.google_business.cta_url') }}</Label>
-                <Input v-model="ctaUrl" type="text" :placeholder="$t('posts.form.google_business.cta_url_placeholder')" :disabled="isLocked" :class="ctaUrlError ? 'border-rose-500' : undefined" />
+                <Input v-model="ctaUrl" type="text" :placeholder="$t('posts.form.google_business.cta_url_placeholder')" :disabled="disabled" :class="ctaUrlError ? 'border-rose-500' : undefined" />
                 <InputError :message="ctaUrlError" />
             </div>
         </div>

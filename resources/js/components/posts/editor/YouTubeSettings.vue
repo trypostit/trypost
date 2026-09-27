@@ -28,12 +28,10 @@ interface Props {
     platformIndex: number;
     meta: Record<string, any>;
     disabled?: boolean;
-    previewOnly?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
     disabled: false,
-    previewOnly: false,
 });
 const emit = defineEmits<{
     'update:meta': [value: Record<string, any>];
@@ -138,7 +136,7 @@ const descriptionError = computed(
                     :id="`youtube-description-${platformIndex}`"
                     v-model="description"
                     :data-testid="`youtube-description-${platformIndex}`"
-                    :disabled="disabled || previewOnly"
+                    :disabled="disabled"
                     :placeholder="
                         $t('posts.form.youtube.description_placeholder')
                     "
