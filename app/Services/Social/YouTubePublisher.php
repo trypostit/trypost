@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Dto\MediaItem;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\YouTubePublishException;
 use App\Models\PostPlatform;
@@ -30,16 +31,10 @@ class YouTubePublisher
     {
         $this->validateContentLength($postPlatform);
 
-        $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
-
-        $key = YouTubeDescription::violation(data_get($postPlatform->meta, 'description'))
-            ?? YouTubeDescription::violation(YouTubeDescription::resolve($postPlatform->meta, $content));
-        if ($key !== null) {
-            throw new YouTubePublishException(
-                userMessage: __($key),
-                category: ErrorCategory::ContentPolicy,
-            );
-        }
+        $content = $postPlatform->post->content
+            ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform)
+            : null;
+        $description = $this->resolveDescription($postPlatform, $content);
 
         $account = $postPlatform->socialAccount;
 
@@ -65,7 +60,7 @@ class YouTubePublisher
             );
         }
 
-        return $this->publishShort($postPlatform, $firstMedia, $account, $content);
+        return $this->publishShort($firstMedia, $account, $content, $description);
     }
 
     protected function createGoogleClient(SocialAccount $account): GoogleClient
@@ -93,7 +88,7 @@ class YouTubePublisher
         return $client;
     }
 
-    private function publishShort(PostPlatform $postPlatform, $media, SocialAccount $account, ?string $content): array
+    private function publishShort(MediaItem $media, SocialAccount $account, ?string $content, string $description): array
     {
         if (empty($content)) {
             throw new YouTubePublishException(
@@ -133,19 +128,8 @@ class YouTubePublisher
 
             $youtube = new YouTube($client);
 
-            // Build video metadata
-            $snippet = $this->buildSnippet($postPlatform, $content);
-
-            $status = new VideoStatus;
-            $status->setPrivacyStatus('public');
-            $status->setSelfDeclaredMadeForKids(false);
-
-            $video = new Video;
-            $video->setSnippet($snippet);
-            $video->setStatus($status);
-
             // Initialize resumable upload request
-            $insertRequest = $youtube->videos->insert('snippet,status', $video);
+            $insertRequest = $youtube->videos->insert('snippet,status', $this->buildVideo($content, $description));
 
             $mediaUpload = new Google_Http_MediaFileUpload(
                 $client,
@@ -209,14 +193,38 @@ class YouTubePublisher
         }
     }
 
-    private function buildSnippet(PostPlatform $postPlatform, string $content): VideoSnippet
+    private function resolveDescription(PostPlatform $postPlatform, ?string $content): string
+    {
+        $description = YouTubeDescription::resolve($postPlatform->meta, $content);
+        $violation = YouTubeDescription::violation(data_get($postPlatform->meta, 'description'))
+            ?? YouTubeDescription::violation($description);
+
+        if ($violation !== null) {
+            throw new YouTubePublishException(
+                userMessage: __($violation),
+                category: ErrorCategory::ContentPolicy,
+            );
+        }
+
+        return $description;
+    }
+
+    private function buildVideo(string $content, string $description): Video
     {
         $snippet = new VideoSnippet;
         $snippet->setTitle($this->buildTitle($content));
-        $snippet->setDescription(YouTubeDescription::resolve($postPlatform->meta, $content));
+        $snippet->setDescription($description);
         $snippet->setCategoryId('22');
 
-        return $snippet;
+        $status = new VideoStatus;
+        $status->setPrivacyStatus('public');
+        $status->setSelfDeclaredMadeForKids(false);
+
+        $video = new Video;
+        $video->setSnippet($snippet);
+        $video->setStatus($status);
+
+        return $video;
     }
 
     private function buildTitle(string $content): string

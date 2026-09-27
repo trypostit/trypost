@@ -74,7 +74,10 @@ test('youtube description reaches the resumable upload request', function (?stri
 
     $result = $publisher->publish($this->postPlatform->fresh());
 
-    expect($result['id'])->toBe('short-id');
+    expect($result)->toBe([
+        'id' => 'short-id',
+        'url' => 'https://www.youtube.com/shorts/short-id',
+    ]);
 
     Http::assertSent(function (Request $request) use ($expected): bool {
         if (! str_contains($request->url(), '/upload/youtube/v3/videos')) {
@@ -86,7 +89,9 @@ test('youtube description reaches the resumable upload request', function (?stri
         return $request->method() === 'POST'
             && $payload['snippet']['title'] === 'Short title #Shorts'
             && $payload['snippet']['description'] === $expected
-            && $payload['snippet']['categoryId'] === '22';
+            && $payload['snippet']['categoryId'] === '22'
+            && $payload['status']['privacyStatus'] === 'public'
+            && $payload['status']['selfDeclaredMadeForKids'] === false;
     });
 })->with([
     'custom multiline description' => ["Full text\nhttps://example.com", "Full text\nhttps://example.com"],
