@@ -19,40 +19,87 @@ it('youtube description survives create read update omission and clear', functio
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
     $response = $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
         'content' => 'Short title',
-        'platforms' => [['social_account_id' => $account->id, 'content_type' => ContentType::YouTubeShort->value, 'meta' => ['description' => $description]]],
+        'platforms' => [[
+            'social_account_id' => $account->id,
+            'content_type' => ContentType::YouTubeShort->value,
+            'meta' => ['description' => $description],
+        ]],
     ])->assertCreated();
     $post = Post::findOrFail($response->json('id'));
     $platform = $post->postPlatforms()->where('social_account_id', $account->id)->sole();
+
     expect($platform->meta)->toEqual(['description' => $description]);
     $read = $this->withHeaders($this->headers)->getJson(route('api.posts.show', $post))->assertOk();
     expect(collect($read->json('platforms'))->firstWhere('id', $platform->id)['meta']['description'])->toBe($description);
     $this->withHeaders($this->headers)->putJson(route('api.posts.update', $post), [
-        'status' => PostStatus::Draft->value, 'platforms' => [['id' => $platform->id, 'meta' => ['description' => str_repeat('é', 2501)]]],
+        'status' => PostStatus::Draft->value,
+        'platforms' => [[
+            'id' => $platform->id,
+            'meta' => ['description' => str_repeat('é', 2501)],
+        ]],
     ])->assertUnprocessable()->assertJsonValidationErrors('platforms.0.meta.description');
     expect(data_get($platform->fresh()->meta, 'description'))->toBe($description);
     $this->withHeaders($this->headers)->putJson(route('api.posts.update', $post), [
-        'status' => PostStatus::Draft->value, 'platforms' => [['id' => $platform->id]],
+        'status' => PostStatus::Draft->value,
+        'platforms' => [['id' => $platform->id]],
     ])->assertOk();
     expect(data_get($platform->fresh()->meta, 'description'))->toBe($description);
     $this->withHeaders($this->headers)->putJson(route('api.posts.update', $post), [
-        'status' => PostStatus::Draft->value, 'platforms' => [['id' => $platform->id, 'meta' => ['description' => null]]],
+        'status' => PostStatus::Draft->value,
+        'platforms' => [[
+            'id' => $platform->id,
+            'meta' => ['description' => null],
+        ]],
     ])->assertOk();
     expect(data_get($platform->fresh()->meta, 'description'))->toBeNull();
-})->with(["Full description\nhttps://example.com\n#video", str_repeat('é', 2500)]);
+})->with([
+    'multiline description' => ["Full description\nhttps://example.com\n#video"],
+    'multibyte byte limit' => [str_repeat('é', 2500)],
+]);
 
 it('youtube description rejects invalid API create input', function (string $description) {
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
     $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
         'content' => 'Short title',
-        'platforms' => [['social_account_id' => $account->id, 'content_type' => ContentType::YouTubeShort->value, 'meta' => ['description' => $description]]],
+        'platforms' => [[
+            'social_account_id' => $account->id,
+            'content_type' => ContentType::YouTubeShort->value,
+            'meta' => ['description' => $description],
+        ]],
     ])->assertUnprocessable()->assertJsonValidationErrors('platforms.0.meta.description');
-})->with([str_repeat('é', 2501), 'a < b', 'a > b']);
+})->with([
+    'multibyte overflow' => [str_repeat('é', 2501)],
+    'opening bracket' => ['a < b'],
+    'closing bracket' => ['a > b'],
+]);
 
 it('youtube description checks effective API metadata on schedule', function (string $patch, bool $allowed) {
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'content' => 'Short title', 'status' => PostStatus::Draft, 'media' => [['id' => 'video-1', 'type' => 'video', 'path' => 'medias/video.mp4', 'url' => 'https://example.com/video.mp4', 'mime_type' => 'video/mp4', 'original_filename' => 'video.mp4']]]);
-    $platform = PostPlatform::factory()->youtube()->create(['post_id' => $post->id, 'social_account_id' => $account->id, 'enabled' => true, 'meta' => ['description' => str_repeat('a', 5001)]]);
-    $data = ['status' => PostStatus::Scheduled->value, 'scheduled_at' => now()->addHour()->toIso8601String()];
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'content' => 'Short title',
+        'status' => PostStatus::Draft,
+        'media' => [[
+            'id' => 'video-1',
+            'type' => 'video',
+            'path' => 'medias/video.mp4',
+            'url' => 'https://example.com/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+    $platform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'enabled' => true,
+        'meta' => ['description' => str_repeat('a', 5001)],
+    ]);
+    $data = [
+        'status' => PostStatus::Scheduled->value,
+        'scheduled_at' => now()->addHour()->toIso8601String(),
+    ];
+
     if ($patch !== 'omit') {
         $data['platforms'] = [['id' => $platform->id]];
         if ($patch !== 'row') {
@@ -61,6 +108,7 @@ it('youtube description checks effective API metadata on schedule', function (st
     }
     Queue::fake();
     $response = $this->withHeaders($this->headers)->putJson(route('api.posts.update', $post), $data);
+
     if ($allowed) {
         $response->assertOk();
         expect($post->fresh()->status)->toBe(PostStatus::Scheduled);
@@ -69,7 +117,12 @@ it('youtube description checks effective API metadata on schedule', function (st
         expect($post->fresh()->status)->toBe(PostStatus::Draft);
         Queue::assertNotPushed(PublishPost::class);
     }
-})->with([['omit', false], ['row', false], ['replace', true], ['clear', true]]);
+})->with([
+    'stored invalid description' => ['omit', false],
+    'retained invalid description' => ['row', false],
+    'replaced description' => ['replace', true],
+    'cleared description' => ['clear', true],
+]);
 
 beforeEach(function () {
     $result = createApiTestToken();

@@ -27,7 +27,12 @@ use Illuminate\Testing\Fluent\AssertableJson;
 test('youtube description persists reads retains and clears in MCP', function () {
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
-        'content' => 'Short title', 'platforms' => [['social_account_id' => $account->id, 'content_type' => ContentType::YouTubeShort->value, 'meta' => ['description' => "Full text\nhttps://example.com"]]],
+        'content' => 'Short title',
+        'platforms' => [[
+            'social_account_id' => $account->id,
+            'content_type' => ContentType::YouTubeShort->value,
+            'meta' => ['description' => "Full text\nhttps://example.com"],
+        ]],
     ])->assertOk();
     $platform = PostPlatform::where('social_account_id', $account->id)->sole();
     TryPostServer::actingAs($this->user)->tool(GetPostTool::class, ['post_id' => $platform->post_id])
@@ -36,12 +41,23 @@ test('youtube description persists reads retains and clears in MCP', function ()
             expect(collect($json->toArray()['platforms'])->firstWhere('id', $platform->id)['meta']['description'])->toBe("Full text\nhttps://example.com");
         });
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
-        'post_id' => $platform->post_id, 'platforms' => [['id' => $platform->id, 'meta' => ['description' => str_repeat('é', 2501)]]],
+        'post_id' => $platform->post_id,
+        'platforms' => [[
+            'id' => $platform->id,
+            'meta' => ['description' => str_repeat('é', 2501)],
+        ]],
     ])->assertHasErrors([__('posts.form.youtube.description_max')]);
-    TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, ['post_id' => $platform->post_id, 'platforms' => [['id' => $platform->id]]])->assertOk();
+    TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
+        'post_id' => $platform->post_id,
+        'platforms' => [['id' => $platform->id]],
+    ])->assertOk();
     expect(data_get($platform->fresh()->meta, 'description'))->toBe("Full text\nhttps://example.com");
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
-        'post_id' => $platform->post_id, 'platforms' => [['id' => $platform->id, 'meta' => ['description' => null]]],
+        'post_id' => $platform->post_id,
+        'platforms' => [[
+            'id' => $platform->id,
+            'meta' => ['description' => null],
+        ]],
     ])->assertOk();
     expect(data_get($platform->fresh()->meta, 'description'))->toBeNull();
 });
@@ -49,18 +65,50 @@ test('youtube description persists reads retains and clears in MCP', function ()
 test('youtube description rejects invalid MCP create input', function (string $description) {
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
-        'content' => 'Short title', 'platforms' => [['social_account_id' => $account->id, 'content_type' => ContentType::YouTubeShort->value, 'meta' => ['description' => $description]]],
+        'content' => 'Short title',
+        'platforms' => [[
+            'social_account_id' => $account->id,
+            'content_type' => ContentType::YouTubeShort->value,
+            'meta' => ['description' => $description],
+        ]],
     ])->assertHasErrors();
-})->with([str_repeat('é', 2501), 'a < b', 'a > b']);
+})->with([
+    'multibyte overflow' => [str_repeat('é', 2501)],
+    'opening bracket' => ['a < b'],
+    'closing bracket' => ['a > b'],
+]);
 
 test('youtube description checks effective MCP metadata on schedule and publish', function (string $patch, bool $allowed) {
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'content' => 'Short title', 'status' => PostStatus::Draft, 'media' => [['id' => 'video-1', 'type' => 'video', 'path' => 'medias/video.mp4', 'url' => 'https://example.com/video.mp4', 'mime_type' => 'video/mp4', 'original_filename' => 'video.mp4']]]);
-    $platform = PostPlatform::factory()->youtube()->create(['post_id' => $post->id, 'social_account_id' => $account->id, 'enabled' => true, 'meta' => ['description' => str_repeat('a', 5001)]]);
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'content' => 'Short title',
+        'status' => PostStatus::Draft,
+        'media' => [[
+            'id' => 'video-1',
+            'type' => 'video',
+            'path' => 'medias/video.mp4',
+            'url' => 'https://example.com/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+    $platform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'enabled' => true,
+        'meta' => ['description' => str_repeat('a', 5001)],
+    ]);
     Queue::fake();
     TryPostServer::actingAs($this->user)->tool(PublishPostTool::class, ['post_id' => $post->id])->assertHasErrors([__('posts.form.youtube.description_max')]);
     Queue::assertNotPushed(PublishPost::class);
-    $data = ['post_id' => $post->id, 'status' => PostStatus::Scheduled->value, 'scheduled_at' => now()->addHour()->toIso8601String()];
+    $data = [
+        'post_id' => $post->id,
+        'status' => PostStatus::Scheduled->value,
+        'scheduled_at' => now()->addHour()->toIso8601String(),
+    ];
+
     if ($patch !== 'omit') {
         $data['platforms'] = [['id' => $platform->id]];
         if ($patch !== 'row') {
@@ -68,6 +116,7 @@ test('youtube description checks effective MCP metadata on schedule and publish'
         }
     }
     $response = TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, $data);
+
     if ($allowed) {
         $response->assertOk();
         expect($post->fresh()->status)->toBe(PostStatus::Scheduled);
@@ -75,7 +124,12 @@ test('youtube description checks effective MCP metadata on schedule and publish'
         $response->assertHasErrors([__('posts.form.youtube.description_max')]);
         expect($post->fresh()->status)->toBe(PostStatus::Draft);
     }
-})->with([['omit', false], ['row', false], ['replace', true], ['clear', true]]);
+})->with([
+    'stored invalid description' => ['omit', false],
+    'retained invalid description' => ['row', false],
+    'replaced description' => ['replace', true],
+    'cleared description' => ['clear', true],
+]);
 
 beforeEach(function () {
     $this->user = User::factory()->create();

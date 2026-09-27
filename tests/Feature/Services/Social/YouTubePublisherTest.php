@@ -13,23 +13,35 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\YouTubePublisher;
 use Google\Client;
-use GuzzleHttp\Handler\MockHandler;
-use GuzzleHttp\HandlerStack;
-use GuzzleHttp\Middleware;
-use GuzzleHttp\Psr7\Response;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 
-test('youtube description builds independent upload metadata', function (?string $description, string $expected) {
-    $this->postPlatform->update(['meta' => ['description' => $description]]);
-    $snippet = (new ReflectionMethod(YouTubePublisher::class, 'buildSnippet'))->invoke($this->publisher, $this->postPlatform, 'Short title');
-    expect($snippet->getTitle())->toBe('Short title #Shorts')
-        ->and($snippet->getDescription())->toBe($expected)
-        ->and($snippet->getCategoryId())->toBe('22');
-})->with([
-    ["Full text\nhttps://example.com", "Full text\nhttps://example.com"],
-    [str_repeat('é', 2500), str_repeat('é', 2500)],
-    [null, 'Short title'], ['', 'Short title'], [" \n ", 'Short title'],
-]);
+function fakeYouTubeUpload(): YouTubePublisher
+{
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://example.com/video.mp4' => fn () => Http::response(str_repeat('x', 2048)),
+        'https://youtube.googleapis.com/upload/youtube/v3/videos*' => Http::response('', 200, [
+            'Location' => 'https://upload.example.test/session',
+        ]),
+        'https://upload.example.test/session' => Http::response(['id' => 'short-id']),
+    ]);
+
+    $client = new Client;
+    $client->setAccessToken([
+        'access_token' => 'test-token',
+        'created' => time(),
+        'expires_in' => 3600,
+    ]);
+    $client->setHttpClient(Http::buildClient());
+
+    $publisher = test()->partialMock(YouTubePublisher::class);
+    $publisher->shouldAllowMockingProtectedMethods()
+        ->shouldReceive('createGoogleClient')
+        ->andReturn($client);
+
+    return $publisher;
+}
 
 test('youtube description rejects stored invalid data before network work', function (mixed $description, string $key) {
     Http::fake();
@@ -39,41 +51,90 @@ test('youtube description rejects stored invalid data before network work', func
         ->toThrow(YouTubePublishException::class, __($key));
     Http::assertNothingSent();
 })->with([
-    [str_repeat('é', 2501), 'posts.form.youtube.description_max'],
-    ['a < b', 'posts.form.youtube.description_invalid'],
-    ['a > b', 'posts.form.youtube.description_invalid'],
-    [['invalid'], 'posts.form.youtube.description_invalid'],
+    'multibyte overflow' => [str_repeat('é', 2501), 'posts.form.youtube.description_max'],
+    'opening bracket' => ['a < b', 'posts.form.youtube.description_invalid'],
+    'closing bracket' => ['a > b', 'posts.form.youtube.description_invalid'],
+    'invalid metadata type' => [['invalid'], 'posts.form.youtube.description_invalid'],
 ]);
 
-test('youtube description reaches the resumable upload request', function () {
-    $this->post->update(['content' => 'Short title', 'media' => [[
-        'id' => 'video-1', 'type' => 'video', 'path' => 'medias/video.mp4', 'url' => 'https://example.com/video.mp4', 'mime_type' => 'video/mp4', 'original_filename' => 'video.mp4',
-    ]]]);
-    $this->postPlatform->update(['meta' => ['description' => "Full text\nhttps://example.com"]]);
-    Http::fake(['https://example.com/video.mp4' => Http::response(str_repeat('x', 2048), 200)]);
-    $history = [];
-    $handler = HandlerStack::create(new MockHandler([
-        new Response(200, ['Location' => 'https://upload.example.test/session']),
-        new Response(200, ['Content-Type' => 'application/json'], '{"id":"short-id"}'),
-    ]));
-    $handler->push(Middleware::history($history));
-    $client = new Client;
-    $client->setAccessToken(['access_token' => 'test-token', 'created' => time(), 'expires_in' => 3600]);
-    $client->setHttpClient(new GuzzleHttp\Client(['handler' => $handler]));
-    $publisher = new class($client) extends YouTubePublisher
-    {
-        public function __construct(private Client $client) {}
+test('youtube description reaches the resumable upload request', function (?string $description, string $expected) {
+    $this->post->update([
+        'content' => 'Short title',
+        'media' => [[
+            'id' => 'video-1',
+            'type' => 'video',
+            'path' => 'medias/video.mp4',
+            'url' => 'https://example.com/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+    $this->postPlatform->update(['meta' => ['description' => $description]]);
+    $publisher = fakeYouTubeUpload();
 
-        protected function createGoogleClient(SocialAccount $account): Client
-        {
-            return $this->client;
-        }
-    };
     $result = $publisher->publish($this->postPlatform->fresh());
-    $payload = json_decode((string) $history[0]['request']->getBody(), true, flags: JSON_THROW_ON_ERROR);
-    expect($payload['snippet']['title'])->toBe('Short title #Shorts')
-        ->and($payload['snippet']['description'])->toBe("Full text\nhttps://example.com")
-        ->and($result['id'])->toBe('short-id');
+
+    expect($result['id'])->toBe('short-id');
+
+    Http::assertSent(function (Request $request) use ($expected): bool {
+        if (! str_contains($request->url(), '/upload/youtube/v3/videos')) {
+            return false;
+        }
+
+        $payload = json_decode($request->body(), true, flags: JSON_THROW_ON_ERROR);
+
+        return $request->method() === 'POST'
+            && $payload['snippet']['title'] === 'Short title #Shorts'
+            && $payload['snippet']['description'] === $expected
+            && $payload['snippet']['categoryId'] === '22';
+    });
+})->with([
+    'custom multiline description' => ["Full text\nhttps://example.com", "Full text\nhttps://example.com"],
+    'multibyte byte limit' => [str_repeat('é', 2500), str_repeat('é', 2500)],
+    'null description' => [null, 'Short title'],
+    'empty description' => ['', 'Short title'],
+    'blank description' => [" \n ", 'Short title'],
+]);
+
+test('youtube description builds independent upload metadata', function () {
+    $this->post->update([
+        'content' => 'Short title',
+        'media' => [[
+            'id' => 'video-1',
+            'type' => 'video',
+            'path' => 'medias/video.mp4',
+            'url' => 'https://example.com/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+    $this->postPlatform->update(['meta' => ['description' => 'First channel description']]);
+    $secondAccount = SocialAccount::factory()->youtube()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addDays(7),
+    ]);
+    $secondPlatform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $secondAccount->id,
+        'meta' => ['description' => 'Second channel description'],
+    ]);
+    $publisher = fakeYouTubeUpload();
+
+    $publisher->publish($this->postPlatform->fresh());
+    $publisher->publish($secondPlatform);
+
+    foreach (['First channel description', 'Second channel description'] as $description) {
+        Http::assertSent(function (Request $request) use ($description): bool {
+            if (! str_contains($request->url(), '/upload/youtube/v3/videos')) {
+                return false;
+            }
+
+            $payload = json_decode($request->body(), true, flags: JSON_THROW_ON_ERROR);
+
+            return $payload['snippet']['title'] === 'Short title #Shorts'
+                && $payload['snippet']['description'] === $description;
+        });
+    }
 });
 
 beforeEach(function () {

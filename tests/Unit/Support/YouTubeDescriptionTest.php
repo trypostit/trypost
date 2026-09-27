@@ -33,7 +33,11 @@ test('youtube description validates utf8 bytes and forbidden characters', functi
 test('youtube description resolves legacy and cleared metadata', function (mixed $description, string $expected) {
     expect(YouTubeDescription::resolve(['description' => $description], 'Title'))->toBe($expected);
 })->with([
-    [null, 'Title'], ['', 'Title'], [" \n ", 'Title'], [['invalid'], 'Title'], ['Custom', 'Custom'],
+    'null description' => [null, 'Title'],
+    'empty description' => ['', 'Title'],
+    'blank description' => [" \n ", 'Title'],
+    'invalid metadata type' => [['invalid'], 'Title'],
+    'custom description' => ['Custom', 'Custom'],
 ]);
 
 test('youtube description resolves absent metadata and content', function () {
