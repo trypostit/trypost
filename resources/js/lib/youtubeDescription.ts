@@ -1,8 +1,6 @@
 export const YOUTUBE_DESCRIPTION_MAX_BYTES = 5000;
 
 const textEncoder = new TextEncoder();
-// Unicode mode keeps valid surrogate pairs (such as emoji) together.
-const loneSurrogatePattern = /[\uD800-\uDFFF]/u;
 
 export const youtubeDescriptionBytes = (description: string): number =>
     textEncoder.encode(description).length;
@@ -28,10 +26,7 @@ export const getYouTubeDescriptionIssue = (
         return null;
     }
 
-    if (
-        typeof description !== 'string' ||
-        loneSurrogatePattern.test(description)
-    ) {
+    if (typeof description !== 'string') {
         return 'posts.form.youtube.description_invalid';
     }
 
@@ -39,7 +34,7 @@ export const getYouTubeDescriptionIssue = (
         return 'posts.form.youtube.description_max';
     }
 
-    if (/[<>]/.test(description)) {
+    if (description.includes('<') || description.includes('>')) {
         return 'posts.form.youtube.description_invalid';
     }
 

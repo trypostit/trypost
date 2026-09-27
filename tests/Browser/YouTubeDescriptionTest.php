@@ -128,19 +128,19 @@ test('youtube description editor counts bytes saves independent channels and pre
         $page->assertAttribute('@youtube-description-0', 'aria-invalid', 'true');
     }
     trackYouTubeAutosave($page);
-    $page->fill('@youtube-description-0', "First channel description\nhttps://example.com")
+    $page->fill('@youtube-description-0', "First channel description 😀 ação\nhttps://example.com")
         ->fill('@youtube-description-1', 'Second channel description');
     assertYouTubePublishState($page, false);
     $page->assertAttributeMissing('@youtube-description-0', 'aria-invalid');
     waitForYouTubeAutosave($page);
     $page->screenshot(filename: 'youtube-description-settings-'.$width);
-    expect(data_get($first->fresh()->meta, 'description'))->toBe("First channel description\nhttps://example.com")
+    expect(data_get($first->fresh()->meta, 'description'))->toBe("First channel description 😀 ação\nhttps://example.com")
         ->and(data_get($second->fresh()->meta, 'description'))->toBe('Second channel description')
         ->and($post->fresh()->content)->toBe('Short title');
     $page->click($width < 1024 ? '@editor-nav-preview' : '@editor-tab-preview');
     waitForYouTubeElement($page, 'preview-platform-'.$first->id);
     $page->click('@preview-platform-'.$first->id)->click('details > summary');
-    $page->assertSeeIn('@youtube-preview-description', 'First channel description');
+    $page->assertSeeIn('@youtube-preview-description', 'First channel description 😀 ação');
     expect($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
     $page->assertNoJavaScriptErrors();
     $page = visit(route('app.posts.edit', $post))->resize($width, $height);
@@ -150,7 +150,7 @@ test('youtube description editor counts bytes saves independent channels and pre
     }
     waitForYouTubeElement($page, 'youtube-settings-toggle-0');
     $page->click('@youtube-settings-toggle-0')->click('@youtube-settings-toggle-1');
-    $page->assertValue('@youtube-description-0', "First channel description\nhttps://example.com")
+    $page->assertValue('@youtube-description-0', "First channel description 😀 ação\nhttps://example.com")
         ->assertValue('@youtube-description-1', 'Second channel description');
 })->with([[1280, 900], [375, 812]]);
 
