@@ -28,8 +28,10 @@ test('youtube description resolves legacy and cleared metadata', function (mixed
     'null description' => [null, 'Title'],
     'empty description' => ['', 'Title'],
     'blank description' => [" \n ", 'Title'],
+    'non-breaking spaces' => ["\u{00A0}\u{00A0}", 'Title'],
     'invalid metadata type' => [['invalid'], 'Title'],
     'custom description' => ['Custom', 'Custom'],
+    'surrounding whitespace' => ["  Custom\ntext  ", "  Custom\ntext  "],
 ]);
 
 test('youtube description resolves absent metadata and content', function () {

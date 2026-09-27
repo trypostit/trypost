@@ -12,13 +12,12 @@ use Illuminate\Translation\PotentiallyTranslatedString;
 class ValidYouTubeDescription implements ValidationRule
 {
     /**
-     * Run the validation rule.
-     *
      * @param  Closure(string, ?string=): PotentiallyTranslatedString  $fail
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         $key = YouTubeDescription::violation($value);
+
         if ($key !== null) {
             $fail($key)->translate();
         }

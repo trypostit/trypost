@@ -18,7 +18,7 @@ test('custom meta messages only cover pinterest title and link', function () {
     ]);
 });
 
-test('custom meta attributes only rename pinterest title and link', function () {
+test('custom meta attributes use translated field names', function () {
     expect(PostPlatformMetaRules::attributes())->toBe([
         'platforms.*.meta.title' => __('posts.form.pinterest.title'),
         'platforms.*.meta.description' => __('posts.form.youtube.description'),

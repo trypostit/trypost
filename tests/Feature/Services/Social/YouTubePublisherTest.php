@@ -16,31 +16,22 @@ use Google\Client;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 
-function fakeYouTubeUpload(): YouTubePublisher
+function fakeYouTubeUpload(array $responses = []): YouTubePublisher
 {
     Http::preventStrayRequests();
-    Http::fake([
+    Http::fake(array_replace([
         'https://example.com/video.mp4' => fn () => Http::response(str_repeat('x', 2048)),
         'https://youtube.googleapis.com/upload/youtube/v3/videos*' => Http::response('', 200, [
             'Location' => 'https://upload.example.test/session',
         ]),
         'https://upload.example.test/session' => Http::response(['id' => 'short-id']),
-    ]);
+    ], $responses));
 
     $client = new Client;
-    $client->setAccessToken([
-        'access_token' => 'test-token',
-        'created' => time(),
-        'expires_in' => 3600,
-    ]);
     $client->setHttpClient(Http::buildClient());
+    test()->instance(Client::class, $client);
 
-    $publisher = test()->partialMock(YouTubePublisher::class);
-    $publisher->shouldAllowMockingProtectedMethods()
-        ->shouldReceive('createGoogleClient')
-        ->andReturn($client);
-
-    return $publisher;
+    return new YouTubePublisher;
 }
 
 test('youtube description rejects stored invalid data before network work', function (mixed $description, string $key) {
@@ -96,9 +87,12 @@ test('youtube description reaches the resumable upload request', function (?stri
 })->with([
     'custom multiline description' => ["Full text\nhttps://example.com", "Full text\nhttps://example.com"],
     'multibyte byte limit' => [str_repeat('é', 2500), str_repeat('é', 2500)],
+    'emoji byte limit' => [str_repeat('😀', 1250), str_repeat('😀', 1250)],
+    'surrounding whitespace' => ["  Full text\nhttps://example.com  ", "  Full text\nhttps://example.com  "],
     'null description' => [null, 'Short title'],
     'empty description' => ['', 'Short title'],
     'blank description' => [" \n ", 'Short title'],
+    'non-breaking spaces' => ["\u{00A0}\u{00A0}", 'Short title'],
 ]);
 
 test('youtube description builds independent upload metadata', function () {
@@ -255,34 +249,44 @@ test('youtube publisher throws exception when no refresh token available', funct
         ->toThrow(TokenExpiredException::class, 'No refresh token available for YouTube account');
 });
 
-test('youtube publisher throws exception on api init error', function () {
+test('youtube publisher reports Google upload errors', function (string $url, int $status, string $reason, string $exception, string $message) {
     $this->post->update([
         'media' => [
             [
                 'id' => 'test-media-video',
                 'path' => 'media/2026-01/test-video.mp4',
-                'url' => 'https://example.com/media/2026-01/test-video.mp4',
+                'url' => 'https://example.com/video.mp4',
                 'mime_type' => 'video/mp4',
                 'original_filename' => 'test-video.mp4',
             ],
         ],
     ]);
 
-    Http::fake([
-        'https://www.googleapis.com/upload/youtube/v3/videos*' => Http::response([
+    $publisher = fakeYouTubeUpload([
+        $url => Http::response([
             'error' => [
+                'code' => $status,
                 'message' => 'Invalid request',
+                'errors' => [['reason' => $reason, 'message' => 'Invalid request']],
             ],
-        ], 400),
+        ], $status),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(Exception::class);
-});
+    expect(fn () => $publisher->publish($this->postPlatform->fresh()))
+        ->toThrow($exception, $message);
 
-// Note: Testing token expiration on auth error would require mocking file_get_contents
-// which is used to fetch video content. The token refresh test above covers the token
-// expiration handling. Full integration tests should cover the 401 error scenario.
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/upload/youtube/v3/videos'));
+})->with([
+    'invalid description at initialization' => [
+        'https://youtube.googleapis.com/upload/youtube/v3/videos*', 400, 'invalidDescription', YouTubePublishException::class, 'Video description is invalid.',
+    ],
+    'expired token at initialization' => [
+        'https://youtube.googleapis.com/upload/youtube/v3/videos*', 401, 'authError', TokenExpiredException::class, 'Invalid request',
+    ],
+    'invalid description during upload' => [
+        'https://upload.example.test/session', 400, 'invalidDescription', YouTubePublishException::class, 'Video description is invalid.',
+    ],
+]);
 
 test('youtube publisher throws exception with null content', function () {
     $this->postPlatform->update(['meta' => ['description' => 'A valid description is not a title']]);

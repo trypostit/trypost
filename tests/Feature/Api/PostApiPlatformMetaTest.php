@@ -73,7 +73,7 @@ it('youtube description rejects invalid API create input', function (string $des
     'closing bracket' => ['a > b'],
 ]);
 
-it('youtube description checks effective API metadata on schedule', function (string $patch, bool $allowed) {
+it('youtube description checks effective API metadata before scheduling or publishing', function (string $patch, bool $allowed, string $status) {
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -96,7 +96,7 @@ it('youtube description checks effective API metadata on schedule', function (st
         'meta' => ['description' => str_repeat('a', 5001)],
     ]);
     $data = [
-        'status' => PostStatus::Scheduled->value,
+        'status' => $status,
         'scheduled_at' => now()->addHour()->toIso8601String(),
     ];
 
@@ -111,7 +111,11 @@ it('youtube description checks effective API metadata on schedule', function (st
 
     if ($allowed) {
         $response->assertOk();
-        expect($post->fresh()->status)->toBe(PostStatus::Scheduled);
+        expect($post->fresh()->status->value)->toBe($status);
+
+        if ($status === PostStatus::Publishing->value) {
+            Queue::assertPushed(PublishPost::class);
+        }
     } else {
         $response->assertUnprocessable()->assertJsonValidationErrors('platforms.0.meta.description');
         expect($post->fresh()->status)->toBe(PostStatus::Draft);
@@ -122,7 +126,7 @@ it('youtube description checks effective API metadata on schedule', function (st
     'retained invalid description' => ['row', false],
     'replaced description' => ['replace', true],
     'cleared description' => ['clear', true],
-]);
+])->with([PostStatus::Scheduled->value, PostStatus::Publishing->value]);
 
 beforeEach(function () {
     $result = createApiTestToken();

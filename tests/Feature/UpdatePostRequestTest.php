@@ -8,13 +8,15 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\UserWorkspace\Role;
+use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Queue;
 
-test('youtube description checks effective web metadata on schedule', function (string $patch, bool $allowed) {
+test('youtube description checks effective web metadata before scheduling or publishing', function (string $patch, bool $allowed, string $status) {
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
     $this->post->update([
         'content' => 'Short title',
@@ -29,7 +31,7 @@ test('youtube description checks effective web metadata on schedule', function (
         'meta' => ['description' => str_repeat('a', 5001)],
     ]);
     $data = [
-        'status' => Status::Scheduled->value,
+        'status' => $status,
         'scheduled_at' => now()->addHour()->toIso8601String(),
         'media' => $this->mediaPayload,
     ];
@@ -40,21 +42,27 @@ test('youtube description checks effective web metadata on schedule', function (
             $data['platforms'][0]['meta'] = ['description' => $patch === 'clear' ? null : 'Valid description'];
         }
     }
+    Queue::fake();
     $response = $this->actingAs($this->user)->put(route('app.posts.update', $this->post), $data);
 
     if ($allowed) {
         $response->assertSessionHasNoErrors();
-        expect($this->post->fresh()->status)->toBe(Status::Scheduled);
+        expect($this->post->fresh()->status->value)->toBe($status);
+
+        if ($status === Status::Publishing->value) {
+            Queue::assertPushed(PublishPost::class);
+        }
     } else {
         $response->assertSessionHasErrors('platforms.0.meta.description');
         expect($this->post->fresh()->status)->toBe(Status::Draft);
+        Queue::assertNotPushed(PublishPost::class);
     }
 })->with([
     'stored invalid description' => ['omit', false],
     'retained invalid description' => ['row', false],
     'replaced description' => ['replace', true],
     'cleared description' => ['clear', true],
-]);
+])->with([Status::Scheduled->value, Status::Publishing->value]);
 
 test('youtube description reports and persists independent selected channel values', function () {
     $platforms = collect(range(1, 2))->map(function () {

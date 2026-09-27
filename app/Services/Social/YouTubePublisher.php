@@ -63,9 +63,9 @@ class YouTubePublisher
         return $this->publishShort($firstMedia, $account, $content, $description);
     }
 
-    protected function createGoogleClient(SocialAccount $account): GoogleClient
+    private function createGoogleClient(SocialAccount $account): GoogleClient
     {
-        $client = new GoogleClient;
+        $client = app(GoogleClient::class);
         $client->setClientId(config('services.google.client_id'));
         $client->setClientSecret(config('services.google.client_secret'));
 

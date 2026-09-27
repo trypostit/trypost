@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use Illuminate\Support\Str;
+
 class YouTubeDescription
 {
     public const int MAX_BYTES = 5000;
@@ -13,24 +15,25 @@ class YouTubeDescription
         if ($description === null) {
             return null;
         }
-        if (! is_string($description) || ! mb_check_encoding($description, 'UTF-8')) {
-            return 'posts.form.youtube.description_invalid';
-        }
-        if (strlen($description) > self::MAX_BYTES) {
-            return 'posts.form.youtube.description_max';
-        }
-        if (str_contains($description, '<') || str_contains($description, '>')) {
-            return 'posts.form.youtube.description_invalid';
-        }
 
-        return null;
+        return match (true) {
+            ! is_string($description),
+            ! mb_check_encoding($description, 'UTF-8') => 'posts.form.youtube.description_invalid',
+            strlen($description) > self::MAX_BYTES => 'posts.form.youtube.description_max',
+            Str::contains($description, ['<', '>']) => 'posts.form.youtube.description_invalid',
+            default => null,
+        };
     }
 
-    /** @param array<string, mixed>|null $meta */
+    /**
+     * @param  array<string, mixed>|null  $meta
+     */
     public static function resolve(?array $meta, ?string $content): string
     {
-        $description = $meta['description'] ?? null;
+        $description = data_get($meta, 'description');
 
-        return is_string($description) && trim($description) !== '' ? $description : ($content ?? '');
+        return is_string($description) && filled(Str::trim($description))
+            ? $description
+            : ($content ?? '');
     }
 }
