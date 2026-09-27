@@ -17,7 +17,9 @@ test('youtube description browser validation matches the backend byte contract',
         " \t\n\r\0\v",
         "\u{00A0}",
         "\u{2003}",
+        "\f",
         'Title',
+        "Before 😀 after \u{10000}\u{10FFFF}",
         '  Keep surrounding spaces  ',
         str_repeat('a', 5000),
         str_repeat('a', 5001),
@@ -44,7 +46,17 @@ test('youtube description browser validation matches the backend byte contract',
             results: corpus.map(getYouTubeDescriptionIssue),
             resolved: corpus.map(value => normalizeYouTubeDescription(value) ?? 'Title'),
             bytes: youtubeDescriptionBytes('ação😀'),
-            invalidUnicode: ['\uD800', '\uDC00', '\uD800a', 'a\uDC00'].map(getYouTubeDescriptionIssue),
+            invalidUnicode: [
+                '\uD800',
+                '\uDC00',
+                '\uD800a',
+                'a\uDC00',
+                '\uDBFF',
+                '\uDFFF',
+                '\uD800😀',
+                '😀\uDC00',
+                '\uDC00\uD800',
+            ].map(getYouTubeDescriptionIssue),
         }));
     JS;
     $process = new Process(['node', '--input-type=module', '-e', $script, resource_path('js/lib/youtubeDescription.ts')], base_path());
@@ -64,5 +76,5 @@ test('youtube description browser validation matches the backend byte contract',
             fn (mixed $description): string => YouTubeDescription::resolve(['description' => $description], 'Title'),
             $corpus,
         ))
-        ->and($result['invalidUnicode'])->toEqual(array_fill(0, 4, 'posts.form.youtube.description_invalid'));
+        ->and($result['invalidUnicode'])->toEqual(array_fill(0, 9, 'posts.form.youtube.description_invalid'));
 });
