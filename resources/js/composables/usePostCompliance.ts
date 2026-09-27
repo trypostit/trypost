@@ -6,6 +6,7 @@ import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import { mediaLimitsDocsUrl } from '@/lib/docs';
+import { getYouTubeDescriptionIssue } from '@/lib/youtubeDescription';
 import {
     GOOGLE_BUSINESS_EVENT_TITLE_MAX,
     GOOGLE_BUSINESS_EVENT_TOPIC_TYPES,
@@ -62,6 +63,10 @@ type MetaRule = (meta: Record<string, any>) => { valid: boolean; tooltipKey: str
 // — null means "blocks the publish but no dedicated message, fall through
 // to the generic incomplete tooltip".
 const PLATFORM_META_RULES: Record<string, MetaRule> = {
+    [Platform.YouTube]: (meta) => {
+        const tooltipKey = getYouTubeDescriptionIssue(meta.description);
+        return { valid: tooltipKey === null, tooltipKey };
+    },
     [Platform.TikTok]: (meta) => {
         const disclosureIncomplete = Boolean(meta.disclose)
             && !meta.brand_organic_toggle

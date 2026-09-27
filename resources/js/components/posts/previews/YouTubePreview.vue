@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
 import { getInitials } from '@/composables/useInitials';
 import { isVideoMedia } from '@/composables/useMedia';
@@ -18,9 +19,15 @@ interface Props {
     socialAccount: SocialAccount;
     content: string;
     media: MediaItem[];
+    meta?: Record<string, any>;
 }
 
-defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { meta: () => ({}) });
+const description = computed(() =>
+    typeof props.meta.description === 'string' && props.meta.description.trim() !== ''
+        ? props.meta.description
+        : props.content,
+);
 
 // Format engagement numbers like YouTube does
 const formatNumber = (num: number): string => {
@@ -167,6 +174,11 @@ const formatNumber = (num: number): string => {
             <div class="text-[13px] text-white line-clamp-2 leading-[18px] mb-1.5">
                 {{ content || 'No title' }}
             </div>
+
+            <details v-if="description" class="mb-1.5 text-xs">
+                <summary class="cursor-pointer">{{ $t('posts.form.youtube.description') }}</summary>
+                <p class="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap break-words" data-testid="youtube-preview-description">{{ description }}</p>
+            </details>
 
             <!-- Music info -->
             <div class="flex items-center gap-1.5">

@@ -69,6 +69,7 @@ const activeContentType = computed((): string | undefined => {
                                 type="button"
                                 class="relative cursor-pointer transition-opacity"
                                 :class="activeId === pp.id ? 'opacity-100' : 'opacity-40 hover:opacity-70'"
+                                :data-testid="`preview-platform-${pp.id}`"
                                 @click="activeId = pp.id"
                             >
                                 <Avatar
