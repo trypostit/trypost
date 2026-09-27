@@ -12,6 +12,9 @@ export const toUrl = (href: NonNullable<InertiaLinkProps['href']>) => {
     return typeof href === 'string' ? href : href?.url;
 };
 
+export const toNullableText = (value: unknown): string | null =>
+    typeof value === 'string' && value.trim() ? value : null;
+
 export const formatNumber = (value: number): string => {
     return value.toLocaleString('en-US');
 };

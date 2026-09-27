@@ -30,6 +30,7 @@ import {
     type GoogleBusinessCtaActionValue,
     type GoogleBusinessTopicTypeValue,
 } from '@/lib/googleBusiness';
+import { toNullableText } from '@/lib/utils';
 
 interface SocialAccount {
     id: string;
@@ -101,13 +102,13 @@ const showEventFields = computed(() => GOOGLE_BUSINESS_EVENT_TOPIC_TYPES.include
 const ctaUrl = computed<string>({
     get: () => props.meta?.call_to_action?.url || '',
     set: (value: string) => updateMeta({
-        call_to_action: { ...props.meta?.call_to_action, url: value.trim() === '' ? null : value },
+        call_to_action: { ...props.meta?.call_to_action, url: toNullableText(value) },
     }),
 });
 
 const eventTitle = computed<string>({
     get: () => props.meta?.event?.title || '',
-    set: (value: string) => updateEvent({ title: value.trim() === '' ? null : value }),
+    set: (value: string) => updateEvent({ title: toNullableText(value) }),
 });
 
 const eventDateTime = (dateKey: 'start_date' | 'end_date', timeKey: 'start_time' | 'end_time') => computed({
@@ -132,7 +133,7 @@ const eventTitlePlaceholderKey = computed(() => topicType.value === GoogleBusine
 const offerField = (key: 'coupon_code' | 'redeem_online_url' | 'terms_conditions') => computed<string>({
     get: () => props.meta?.offer?.[key] || '',
     set: (value: string) => updateMeta({
-        offer: { ...props.meta?.offer, [key]: value.trim() === '' ? null : value },
+        offer: { ...props.meta?.offer, [key]: toNullableText(value) },
     }),
 });
 

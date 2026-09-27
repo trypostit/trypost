@@ -9,9 +9,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import { toNullableText } from '@/lib/utils';
 import {
     getYouTubeDescriptionIssue,
-    normalizeYouTubeDescription,
     YOUTUBE_DESCRIPTION_MAX_BYTES,
     youtubeDescriptionBytes,
 } from '@/lib/youtubeDescription';
@@ -37,11 +37,11 @@ const errors = usePageErrors();
 const descriptionId = computed(() => `youtube-description-${props.platformIndex}`);
 
 const description = computed({
-    get: () => normalizeYouTubeDescription(props.meta.description) ?? '',
+    get: () => toNullableText(props.meta.description) ?? '',
     set: (value: string) =>
         emit('update:meta', {
             ...props.meta,
-            description: normalizeYouTubeDescription(value),
+            description: toNullableText(value),
         }),
 });
 const usedBytes = computed(() => youtubeDescriptionBytes(description.value));

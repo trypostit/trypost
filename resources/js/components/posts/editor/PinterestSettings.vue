@@ -18,6 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import { toNullableText } from '@/lib/utils';
 import type { PinterestBoard } from '@/types';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -83,16 +84,14 @@ const selectedBoard = computed<BoardOption | undefined>({
 const pinTitle = computed({
     get: () => (props.meta?.title as string | undefined) || '',
     set: (value: string) => {
-        // Whitespace-only clears the field; keep interior spaces while typing.
-        emit('update:meta', { ...props.meta, title: value.trim() === '' ? null : value });
+        emit('update:meta', { ...props.meta, title: toNullableText(value) });
     },
 });
 
 const pinLink = computed({
     get: () => (props.meta?.link as string | undefined) || '',
     set: (value: string) => {
-        // Whitespace-only clears the field; keep partial URLs while typing.
-        emit('update:meta', { ...props.meta, link: value.trim() === '' ? null : value });
+        emit('update:meta', { ...props.meta, link: toNullableText(value) });
     },
 });
 

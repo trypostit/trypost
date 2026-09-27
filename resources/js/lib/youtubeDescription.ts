@@ -5,16 +5,6 @@ const textEncoder = new TextEncoder();
 export const youtubeDescriptionBytes = (description: string): number =>
     textEncoder.encode(description).length;
 
-export const normalizeYouTubeDescription = (
-    description: unknown,
-): string | null => {
-    if (typeof description !== 'string' || description.trim() === '') {
-        return null;
-    }
-
-    return description;
-};
-
 export const getYouTubeDescriptionIssue = (
     description: unknown,
 ): string | null => {

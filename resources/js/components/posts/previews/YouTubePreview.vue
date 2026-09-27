@@ -4,7 +4,7 @@ import { computed } from 'vue';
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
 import { getInitials } from '@/composables/useInitials';
 import { isVideoMedia } from '@/composables/useMedia';
-import { normalizeYouTubeDescription } from '@/lib/youtubeDescription';
+import { toNullableText } from '@/lib/utils';
 import type { MediaItem } from '@/types/media';
 
 interface SocialAccount {
@@ -26,7 +26,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), { meta: () => ({}) });
 const description = computed(() =>
-    normalizeYouTubeDescription(props.meta.description) ?? props.content,
+    toNullableText(props.meta.description) ?? props.content,
 );
 
 // Format engagement numbers like YouTube does
