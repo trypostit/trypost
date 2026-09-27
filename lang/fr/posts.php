@@ -147,7 +147,7 @@ return [
             'posting_to' => 'Publication sur',
             'description' => 'Description',
             'description_placeholder' => 'Description de la vidéo',
-            'description_max' => 'La description YouTube ne doit pas dépasser 5 000 octets UTF-8.',
+            'description_max' => 'La description YouTube ne doit pas dépasser 5 000 octets.',
             'description_invalid' => 'La description YouTube doit être un texte valide sans < ni >.',
             'description_bytes' => ':used / :limit octets',
         ],

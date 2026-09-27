@@ -147,7 +147,7 @@ return [
             'posting_to' => '投稿先',
             'description' => '説明',
             'description_placeholder' => '動画の説明',
-            'description_max' => 'YouTubeの説明はUTF-8で5,000バイト以内にしてください。',
+            'description_max' => 'YouTubeの説明は5,000バイト以内にしてください。',
             'description_invalid' => 'YouTubeの説明には < や > を含まない有効なテキストを入力してください。',
             'description_bytes' => ':used / :limit バイト',
         ],

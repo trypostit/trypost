@@ -149,7 +149,7 @@ return [
             'posting_to' => 'Yayınlanacak hesap',
             'description' => 'Açıklama',
             'description_placeholder' => 'Video açıklaması',
-            'description_max' => 'YouTube açıklaması 5.000 UTF-8 baytını aşmamalıdır.',
+            'description_max' => 'YouTube açıklaması 5.000 baytı aşmamalıdır.',
             'description_invalid' => 'YouTube açıklaması < veya > içermeyen geçerli bir metin olmalıdır.',
             'description_bytes' => ':used / :limit bayt',
         ],

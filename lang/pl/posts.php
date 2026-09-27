@@ -147,7 +147,7 @@ return [
             'posting_to' => 'Publikowanie na',
             'description' => 'Opis',
             'description_placeholder' => 'Opis filmu',
-            'description_max' => 'Opis YouTube nie może przekraczać 5000 bajtów UTF-8.',
+            'description_max' => 'Opis YouTube nie może przekraczać 5000 bajtów.',
             'description_invalid' => 'Opis YouTube musi być poprawnym tekstem bez < ani >.',
             'description_bytes' => ':used / :limit bajtów',
         ],

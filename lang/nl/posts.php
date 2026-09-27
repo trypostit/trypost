@@ -147,7 +147,7 @@ return [
             'posting_to' => 'Publiceren op',
             'description' => 'Beschrijving',
             'description_placeholder' => 'Videobeschrijving',
-            'description_max' => 'De YouTube-beschrijving mag niet langer zijn dan 5.000 UTF-8-bytes.',
+            'description_max' => 'De YouTube-beschrijving mag niet langer zijn dan 5.000 bytes.',
             'description_invalid' => 'De YouTube-beschrijving moet geldige tekst zonder < of > zijn.',
             'description_bytes' => ':used / :limit bytes',
         ],

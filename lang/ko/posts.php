@@ -147,7 +147,7 @@ return [
             'posting_to' => '게시 대상',
             'description' => '설명',
             'description_placeholder' => '동영상 설명',
-            'description_max' => 'YouTube 설명은 UTF-8 기준 5,000바이트를 초과할 수 없습니다.',
+            'description_max' => 'YouTube 설명은 5,000바이트를 초과할 수 없습니다.',
             'description_invalid' => 'YouTube 설명은 < 또는 >가 없는 유효한 텍스트여야 합니다.',
             'description_bytes' => ':used / :limit 바이트',
         ],

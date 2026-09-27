@@ -4,6 +4,14 @@ declare(strict_types=1);
 
 use App\Support\YouTubeDescription;
 
+test('youtube description limit messages omit encoding details', function () {
+    foreach (glob(dirname(__DIR__, 3).'/lang/*/posts.php') as $path) {
+        $translations = require $path;
+
+        expect($translations['form']['youtube']['description_max'])->not->toContain('UTF-8');
+    }
+});
+
 test('youtube description validates utf8 bytes and forbidden characters', function (mixed $text, ?string $key) {
     expect(YouTubeDescription::violation($text))->toBe($key);
 })->with([

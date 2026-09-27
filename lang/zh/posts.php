@@ -147,7 +147,7 @@ return [
             'posting_to' => '发布到',
             'description' => '描述',
             'description_placeholder' => '视频描述',
-            'description_max' => 'YouTube 描述不得超过 5,000 个 UTF-8 字节。',
+            'description_max' => 'YouTube 描述不得超过 5,000 个字节。',
             'description_invalid' => 'YouTube 描述必须是有效文本，且不含 < 或 >。',
             'description_bytes' => ':used / :limit 字节',
         ],

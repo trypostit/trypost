@@ -147,7 +147,7 @@ return [
             'posting_to' => 'Публікація в',
             'description' => 'Опис',
             'description_placeholder' => 'Опис відео',
-            'description_max' => 'Опис YouTube не повинен перевищувати 5000 байтів UTF-8.',
+            'description_max' => 'Опис YouTube не повинен перевищувати 5000 байтів.',
             'description_invalid' => 'Опис YouTube має бути коректним текстом без < або >.',
             'description_bytes' => ':used / :limit байтів',
         ],

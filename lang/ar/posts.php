@@ -147,7 +147,7 @@ return [
             'posting_to' => 'النشر على',
             'description' => 'الوصف',
             'description_placeholder' => 'وصف الفيديو',
-            'description_max' => 'يجب ألا يتجاوز وصف YouTube ‏5000 بايت بترميز UTF-8.',
+            'description_max' => 'يجب ألا يتجاوز وصف YouTube ‏5000 بايت.',
             'description_invalid' => 'يجب أن يكون وصف YouTube نصًا صالحًا دون < أو >.',
             'description_bytes' => ':used / :limit بايت',
         ],
