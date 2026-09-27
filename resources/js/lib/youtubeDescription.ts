@@ -8,11 +8,7 @@ export const youtubeDescriptionBytes = (description: string): number =>
 export const normalizeYouTubeDescription = (
     description: unknown,
 ): string | null => {
-    // Use the same blank characters as PHP trim(), preserving the original text.
-    if (
-        typeof description !== 'string' ||
-        /^[ \t\n\r\0\v]*$/.test(description)
-    ) {
+    if (typeof description !== 'string' || description.trim() === '') {
         return null;
     }
 

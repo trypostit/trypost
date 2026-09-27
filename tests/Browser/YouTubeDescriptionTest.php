@@ -154,7 +154,7 @@ test('youtube description editor counts bytes saves independent channels and pre
         ->assertValue('@youtube-description-1', 'Second channel description');
 })->with([[1280, 900], [375, 812]]);
 
-test('youtube description clearing restores content fallback without changing another channel', function () {
+test('youtube description clearing restores content fallback without changing another channel', function (string $description) {
     [$post, $platforms] = seedYouTubeDescriptionEditor();
     $page = visit(route('app.posts.edit', $post))->resize(375, 812);
     waitForYouTubeElement($page, 'editor-nav-channels');
@@ -166,7 +166,7 @@ test('youtube description clearing restores content fallback without changing an
     $first = $platforms->first(fn (PostPlatform $row): bool => $row->meta['description'] === $initial);
     $second = $platforms->first(fn (PostPlatform $row): bool => $row->id !== $first->id);
     trackYouTubeAutosave($page);
-    $page->fill('@youtube-description-0', '');
+    $page->fill('@youtube-description-0', $description);
     waitForYouTubeAutosave($page);
     expect(data_get($first->fresh()->meta, 'description'))->toBeNull()
         ->and($second->fresh()->meta)->toEqual($second->meta);
@@ -174,7 +174,10 @@ test('youtube description clearing restores content fallback without changing an
     waitForYouTubeElement($page, 'preview-platform-'.$first->id);
     $page->click('@preview-platform-'.$first->id)->click('details > summary');
     $page->assertSeeIn('@youtube-preview-description', 'Short title')->assertNoJavaScriptErrors();
-});
+})->with([
+    'empty description' => [''],
+    'whitespace description' => [" \t\n\u{00A0}"],
+]);
 
 test('youtube description long preview stays above the phone navigation', function (int $width, int $height) {
     [$post, $platforms] = seedYouTubeDescriptionEditor();
