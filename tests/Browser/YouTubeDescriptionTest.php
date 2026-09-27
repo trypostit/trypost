@@ -119,7 +119,10 @@ test('youtube description editor counts bytes saves independent channels and pre
     assertYouTubePublishState($page, false);
     $page->assertSee('5000 / 5000 bytes')->assertNoJavaScriptErrors();
     $page->assertAttributeMissing('@youtube-description-0', 'aria-invalid');
-    foreach ([str_repeat('é', 2500).'a', 'a < b', 'a > b'] as $invalid) {
+    $page->fill('@youtube-description-0', str_repeat('😀', 1250));
+    assertYouTubePublishState($page, false);
+    $page->assertSee('5000 / 5000 bytes')->assertAttributeMissing('@youtube-description-0', 'aria-invalid');
+    foreach ([str_repeat('é', 2500).'a', str_repeat('😀', 1250).'a', 'a < b', 'a > b'] as $invalid) {
         $page->fill('@youtube-description-0', $invalid);
         assertYouTubePublishState($page, true);
         $page->assertAttribute('@youtube-description-0', 'aria-invalid', 'true');
