@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -11,7 +12,69 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\YouTubePublisher;
+use Google\Client;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
+use GuzzleHttp\Psr7\Response;
 use Illuminate\Support\Facades\Http;
+
+test('youtube description builds independent upload metadata', function (?string $description, string $expected) {
+    $this->postPlatform->update(['meta' => ['description' => $description]]);
+    $snippet = (new ReflectionMethod(YouTubePublisher::class, 'buildSnippet'))->invoke($this->publisher, $this->postPlatform, 'Short title');
+    expect($snippet->getTitle())->toBe('Short title #Shorts')
+        ->and($snippet->getDescription())->toBe($expected)
+        ->and($snippet->getCategoryId())->toBe('22');
+})->with([
+    ["Full text\nhttps://example.com", "Full text\nhttps://example.com"],
+    [str_repeat('é', 2500), str_repeat('é', 2500)],
+    [null, 'Short title'], ['', 'Short title'], [" \n ", 'Short title'],
+]);
+
+test('youtube description rejects stored invalid data before network work', function (mixed $description, string $key) {
+    Http::fake();
+    $this->socialAccount->update(['token_expires_at' => now()->subHour()]);
+    $this->postPlatform->update(['meta' => ['description' => $description]]);
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(YouTubePublishException::class, __($key));
+    Http::assertNothingSent();
+})->with([
+    [str_repeat('é', 2501), 'posts.form.youtube.description_max'],
+    ['a < b', 'posts.form.youtube.description_invalid'],
+    ['a > b', 'posts.form.youtube.description_invalid'],
+    [['invalid'], 'posts.form.youtube.description_invalid'],
+]);
+
+test('youtube description reaches the resumable upload request', function () {
+    $this->post->update(['content' => 'Short title', 'media' => [[
+        'id' => 'video-1', 'type' => 'video', 'path' => 'medias/video.mp4', 'url' => 'https://example.com/video.mp4', 'mime_type' => 'video/mp4', 'original_filename' => 'video.mp4',
+    ]]]);
+    $this->postPlatform->update(['meta' => ['description' => "Full text\nhttps://example.com"]]);
+    Http::fake(['https://example.com/video.mp4' => Http::response(str_repeat('x', 2048), 200)]);
+    $history = [];
+    $handler = HandlerStack::create(new MockHandler([
+        new Response(200, ['Location' => 'https://upload.example.test/session']),
+        new Response(200, ['Content-Type' => 'application/json'], '{"id":"short-id"}'),
+    ]));
+    $handler->push(Middleware::history($history));
+    $client = new Client;
+    $client->setAccessToken(['access_token' => 'test-token', 'created' => time(), 'expires_in' => 3600]);
+    $client->setHttpClient(new GuzzleHttp\Client(['handler' => $handler]));
+    $publisher = new class($client) extends YouTubePublisher
+    {
+        public function __construct(private Client $client) {}
+
+        protected function createGoogleClient(SocialAccount $account): Client
+        {
+            return $this->client;
+        }
+    };
+    $result = $publisher->publish($this->postPlatform->fresh());
+    $payload = json_decode((string) $history[0]['request']->getBody(), true, flags: JSON_THROW_ON_ERROR);
+    expect($payload['snippet']['title'])->toBe('Short title #Shorts')
+        ->and($payload['snippet']['description'])->toBe("Full text\nhttps://example.com")
+        ->and($result['id'])->toBe('short-id');
+});
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -156,6 +219,7 @@ test('youtube publisher throws exception on api init error', function () {
 // expiration handling. Full integration tests should cover the 401 error scenario.
 
 test('youtube publisher throws exception with null content', function () {
+    $this->postPlatform->update(['meta' => ['description' => 'A valid description is not a title']]);
     $this->post->update([
         'content' => null,
         'media' => [

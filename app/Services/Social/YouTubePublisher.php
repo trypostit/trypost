@@ -9,6 +9,7 @@ use App\Exceptions\Social\YouTubePublishException;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Support\YouTubeDescription;
 use Google\Client as GoogleClient;
 use Google\Service\Exception;
 use Google\Service\YouTube;
@@ -30,6 +31,15 @@ class YouTubePublisher
         $this->validateContentLength($postPlatform);
 
         $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
+
+        $key = YouTubeDescription::violation(data_get($postPlatform->meta, 'description'))
+            ?? YouTubeDescription::violation(YouTubeDescription::resolve($postPlatform->meta, $content));
+        if ($key !== null) {
+            throw new YouTubePublishException(
+                userMessage: __($key),
+                category: ErrorCategory::ContentPolicy,
+            );
+        }
 
         $account = $postPlatform->socialAccount;
 
@@ -58,7 +68,7 @@ class YouTubePublisher
         return $this->publishShort($postPlatform, $firstMedia, $account, $content);
     }
 
-    private function createGoogleClient(SocialAccount $account): GoogleClient
+    protected function createGoogleClient(SocialAccount $account): GoogleClient
     {
         $client = new GoogleClient;
         $client->setClientId(config('services.google.client_id'));
@@ -92,9 +102,6 @@ class YouTubePublisher
             );
         }
 
-        $title = $this->buildTitle($content);
-        $description = $content;
-
         $tempFile = tempnam(sys_get_temp_dir(), 'yt_upload_');
         $handle = null;
 
@@ -127,10 +134,7 @@ class YouTubePublisher
             $youtube = new YouTube($client);
 
             // Build video metadata
-            $snippet = new VideoSnippet;
-            $snippet->setTitle($title);
-            $snippet->setDescription($description);
-            $snippet->setCategoryId('22');
+            $snippet = $this->buildSnippet($postPlatform, $content);
 
             $status = new VideoStatus;
             $status->setPrivacyStatus('public');
@@ -203,6 +207,16 @@ class YouTubePublisher
 
             @unlink($tempFile);
         }
+    }
+
+    private function buildSnippet(PostPlatform $postPlatform, string $content): VideoSnippet
+    {
+        $snippet = new VideoSnippet;
+        $snippet->setTitle($this->buildTitle($content));
+        $snippet->setDescription(YouTubeDescription::resolve($postPlatform->meta, $content));
+        $snippet->setCategoryId('22');
+
+        return $snippet;
     }
 
     private function buildTitle(string $content): string
