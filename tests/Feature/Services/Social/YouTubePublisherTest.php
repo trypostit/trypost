@@ -61,7 +61,14 @@ test('youtube description reaches the resumable upload request', function (?stri
         ]],
     ]);
     $this->postPlatform->update(['meta' => ['description' => $description]]);
-    $publisher = fakeYouTubeUpload();
+    $tempFile = null;
+    $publisher = fakeYouTubeUpload([
+        'https://example.com/video.mp4' => function (Request $request, array $options) use (&$tempFile) {
+            $tempFile = $options['sink'];
+
+            return Http::response(str_repeat('x', 2048));
+        },
+    ]);
 
     $result = $publisher->publish($this->postPlatform->fresh());
 
@@ -69,6 +76,8 @@ test('youtube description reaches the resumable upload request', function (?stri
         'id' => 'short-id',
         'url' => 'https://www.youtube.com/shorts/short-id',
     ]);
+    expect(app(Client::class)->shouldDefer())->toBeFalse();
+    $this->assertFileDoesNotExist($tempFile);
 
     Http::assertSent(function (Request $request) use ($expected): bool {
         if (! str_contains($request->url(), '/upload/youtube/v3/videos')) {
@@ -174,6 +183,37 @@ test('youtube publisher throws exception when no media', function () {
         ->toThrow(Exception::class, 'YouTube Shorts requires a video to publish.');
 });
 
+test('youtube publisher cleans up unusable downloads without starting an upload', function (int $status, string $body, string $message) {
+    $this->post->update([
+        'media' => [[
+            'id' => 'video-1',
+            'path' => 'medias/video.mp4',
+            'url' => 'https://example.com/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+    $tempFile = null;
+    $publisher = fakeYouTubeUpload([
+        'https://example.com/video.mp4' => function (Request $request, array $options) use (&$tempFile, $status, $body) {
+            $tempFile = $options['sink'];
+
+            return Http::response($body, $status);
+        },
+    ]);
+
+    expect(fn () => $publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(YouTubePublishException::class, $message);
+
+    $this->assertFileDoesNotExist($tempFile);
+    Http::assertSentCount(1);
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/upload/youtube/v3/videos'));
+})->with([
+    'failed download' => [503, '', 'Failed to download video for YouTube upload: HTTP 503'],
+    'empty download' => [200, '', 'Downloaded video is too small or empty'],
+    'incomplete download' => [200, 'video', 'Downloaded video is too small or empty'],
+]);
+
 test('youtube publisher throws exception for non-video content', function () {
     $this->post->update([
         'media' => [
@@ -264,7 +304,13 @@ test('youtube publisher reports Google upload errors', function (string $url, in
         ],
     ]);
 
+    $tempFile = null;
     $publisher = fakeYouTubeUpload([
+        'https://example.com/video.mp4' => function (Request $request, array $options) use (&$tempFile) {
+            $tempFile = $options['sink'];
+
+            return Http::response(str_repeat('x', 2048));
+        },
         $url => Http::response([
             'error' => [
                 'code' => $status,
@@ -276,6 +322,8 @@ test('youtube publisher reports Google upload errors', function (string $url, in
 
     expect(fn () => $publisher->publish($this->postPlatform->fresh()))
         ->toThrow($exception, $message);
+    expect(app(Client::class)->shouldDefer())->toBeFalse();
+    $this->assertFileDoesNotExist($tempFile);
 
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/upload/youtube/v3/videos'));
 })->with([

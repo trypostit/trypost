@@ -98,85 +98,25 @@ class YouTubePublisher
         }
 
         $tempFile = tempnam(sys_get_temp_dir(), 'yt_upload_');
-        $handle = null;
+
+        if ($tempFile === false) {
+            throw new YouTubePublishException(
+                userMessage: 'Failed to create temp file for YouTube upload',
+                category: ErrorCategory::ServerError,
+            );
+        }
 
         try {
-            // Download video to temp file (memory-safe)
-            $downloadResponse = Http::withOptions(['sink' => $tempFile])
-                ->timeout(600)
-                ->get($media->url);
-
-            if ($downloadResponse->failed()) {
-                throw new YouTubePublishException(
-                    userMessage: 'Failed to download video for YouTube upload: HTTP '.$downloadResponse->status(),
-                    category: ErrorCategory::ServerError,
-                );
-            }
-
-            $fileSize = filesize($tempFile);
-
-            if ($fileSize === false || $fileSize < 1024) {
-                throw new YouTubePublishException(
-                    userMessage: 'Downloaded video is too small or empty ('.$fileSize.' bytes), aborting upload',
-                    category: ErrorCategory::MediaFormat,
-                );
-            }
-
-            // Set up Google Client with deferred mode for resumable upload
-            $client = $this->createGoogleClient($account);
-            $client->setDefer(true);
-
-            $youtube = new YouTube($client);
-
-            // Initialize resumable upload request
-            $insertRequest = $youtube->videos->insert('snippet,status', $this->buildVideo($content, $description));
-
-            $mediaUpload = new Google_Http_MediaFileUpload(
-                $client,
-                $insertRequest,
-                $media->mime_type ?: 'video/mp4',
-                null,
-                true,
-                self::CHUNK_SIZE
-            );
-            $mediaUpload->setFileSize($fileSize);
-
-            // Upload in chunks (memory-safe for large files)
-            $uploadStatus = false;
-            $handle = fopen($tempFile, 'r');
-
-            if ($handle === false) {
-                throw new YouTubePublishException(
-                    userMessage: 'Failed to open temp file for YouTube upload',
-                    category: ErrorCategory::ServerError,
-                );
-            }
-
-            while (! $uploadStatus && ! feof($handle)) {
-                $chunk = fread($handle, self::CHUNK_SIZE);
-                $uploadStatus = $mediaUpload->nextChunk($chunk);
-            }
-
-            fclose($handle);
-            $handle = null;
-
-            $client->setDefer(false);
-
-            if (! $uploadStatus instanceof Video) {
-                throw new YouTubePublishException(
-                    userMessage: 'YouTube upload failed: no video object returned',
-                    category: ErrorCategory::ServerError,
-                );
-            }
-
-            $videoId = $uploadStatus->getId();
+            $this->downloadVideo($media, $tempFile);
+            $video = $this->uploadVideo($media, $account, $tempFile, $this->buildVideo($content, $description));
+            $videoId = $video->getId();
 
             return [
                 'id' => $videoId,
                 'url' => "https://www.youtube.com/shorts/{$videoId}",
             ];
         } catch (Exception $e) {
-            $this->handleGoogleError($e);
+            throw YouTubePublishException::fromGoogleException($e);
         } catch (\Throwable $e) {
             Log::error('YouTube upload failed', [
                 'error' => $e->getMessage(),
@@ -185,11 +125,76 @@ class YouTubePublisher
 
             throw $e;
         } finally {
-            if ($handle !== null && is_resource($handle)) {
-                fclose($handle);
+            @unlink($tempFile);
+        }
+    }
+
+    private function downloadVideo(MediaItem $media, string $path): void
+    {
+        $response = Http::withOptions(['sink' => $path])
+            ->timeout(600)
+            ->get($media->url);
+
+        if ($response->failed()) {
+            throw new YouTubePublishException(
+                userMessage: 'Failed to download video for YouTube upload: HTTP '.$response->status(),
+                category: ErrorCategory::ServerError,
+            );
+        }
+    }
+
+    private function uploadVideo(MediaItem $media, SocialAccount $account, string $path, Video $video): Video
+    {
+        $fileSize = filesize($path);
+
+        if ($fileSize === false || $fileSize < 1024) {
+            throw new YouTubePublishException(
+                userMessage: 'Downloaded video is too small or empty ('.$fileSize.' bytes), aborting upload',
+                category: ErrorCategory::MediaFormat,
+            );
+        }
+
+        $client = $this->createGoogleClient($account);
+        $handle = fopen($path, 'r');
+
+        if ($handle === false) {
+            throw new YouTubePublishException(
+                userMessage: 'Failed to open temp file for YouTube upload',
+                category: ErrorCategory::ServerError,
+            );
+        }
+
+        try {
+            $client->setDefer(true);
+            $youtube = new YouTube($client);
+            $mediaUpload = new Google_Http_MediaFileUpload(
+                $client,
+                $youtube->videos->insert('snippet,status', $video),
+                $media->mime_type ?: 'video/mp4',
+                null,
+                true,
+                self::CHUNK_SIZE
+            );
+            $mediaUpload->setFileSize($fileSize);
+
+            $uploadStatus = false;
+
+            while (! $uploadStatus && ! feof($handle)) {
+                $chunk = fread($handle, self::CHUNK_SIZE);
+                $uploadStatus = $mediaUpload->nextChunk($chunk);
             }
 
-            @unlink($tempFile);
+            if (! $uploadStatus instanceof Video) {
+                throw new YouTubePublishException(
+                    userMessage: 'YouTube upload failed: no video object returned',
+                    category: ErrorCategory::ServerError,
+                );
+            }
+
+            return $uploadStatus;
+        } finally {
+            fclose($handle);
+            $client->setDefer(false);
         }
     }
 
@@ -241,10 +246,5 @@ class YouTubePublisher
         }
 
         return $title.$shortsTag;
-    }
-
-    private function handleGoogleError(Exception $e): never
-    {
-        throw YouTubePublishException::fromGoogleException($e);
     }
 }
