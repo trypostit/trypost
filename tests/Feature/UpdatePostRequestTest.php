@@ -14,6 +14,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\PostPlatformMetaRules;
+use Illuminate\Support\Facades\Validator;
 
 test('youtube description checks effective web metadata on schedule', function (string $patch, bool $allowed) {
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
@@ -59,6 +60,27 @@ test('youtube description reports and persists independent selected channel valu
         ->and(data_get($platforms[1]->fresh()->meta, 'description'))->toBe(str_repeat('é', 2500))
         ->and($this->post->fresh()->content)->toBe('Short title');
 });
+
+test('youtube description update errors preserve existing validation messages', function (bool $hasExistingError) {
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $platform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'meta' => ['description' => str_repeat('a', 5001)],
+    ]);
+    $validator = Validator::make([], []);
+    $key = 'platforms.0.meta.description';
+
+    if ($hasExistingError) {
+        $validator->errors()->add($key, 'Existing error');
+    }
+
+    PostPlatformMetaRules::addYouTubeDescriptionErrorsForUpdate($validator, $this->post, [['id' => $platform->id]]);
+
+    expect($validator->errors()->get($key))->toBe([
+        $hasExistingError ? 'Existing error' : __('posts.form.youtube.description_max'),
+    ]);
+})->with([false, true]);
 
 test('youtube description effective validation ignores disabled deselected and foreign rows', function () {
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);

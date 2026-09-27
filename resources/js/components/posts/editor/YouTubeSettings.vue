@@ -9,22 +9,15 @@ import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import {
     getYouTubeDescriptionIssue,
+    normalizeYouTubeDescription,
     YOUTUBE_DESCRIPTION_MAX_BYTES,
     youtubeDescriptionBytes,
 } from '@/lib/youtubeDescription';
+import type { ChannelAccount } from '@/types/channel';
 import { Platform } from '@/types/platform';
 
-interface SocialAccount {
-    id: string;
-    platform: string;
-    display_name: string;
-    username: string;
-    display_label: string;
-    avatar_url: string | null;
-}
-
 interface Props {
-    socialAccount: SocialAccount | null;
+    socialAccount: ChannelAccount | null;
     platformIndex: number;
     meta: Record<string, any>;
     disabled?: boolean;
@@ -38,14 +31,11 @@ const emit = defineEmits<{
 }>();
 const open = ref(false);
 const description = computed({
-    get: () =>
-        typeof props.meta.description === 'string'
-            ? props.meta.description
-            : '',
+    get: () => normalizeYouTubeDescription(props.meta.description) ?? '',
     set: (value: string) =>
         emit('update:meta', {
             ...props.meta,
-            description: value.trim() === '' ? null : value,
+            description: normalizeYouTubeDescription(value),
         }),
 });
 const usedBytes = computed(() => youtubeDescriptionBytes(description.value));

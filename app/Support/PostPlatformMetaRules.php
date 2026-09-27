@@ -172,6 +172,16 @@ class PostPlatformMetaRules
         }
     }
 
+    /** @param array<int, mixed>|null $requestPlatforms */
+    public static function addYouTubeDescriptionErrorsForUpdate(Validator $validator, Post $post, ?array $requestPlatforms): void
+    {
+        foreach (self::youtubeDescriptionErrorsForUpdate($post, $requestPlatforms) as $key => $message) {
+            if (! $validator->errors()->has($key)) {
+                $validator->errors()->add($key, $message);
+            }
+        }
+    }
+
     /**
      * @param  array<int, mixed>|null  $requestPlatforms
      * @return array<string, string>
