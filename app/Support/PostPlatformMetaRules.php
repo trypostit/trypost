@@ -10,6 +10,7 @@ use App\Enums\PostPlatform\AspectRatio;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Models\Post;
+use App\Rules\ValidYouTubeDescription;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -55,6 +56,9 @@ class PostPlatformMetaRules
             'platforms.*.meta.board_id' => ['sometimes', 'nullable', 'string'],
             'platforms.*.meta.title' => ['sometimes', 'nullable', 'string', 'max:100'],
             'platforms.*.meta.link' => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
+
+            // YouTube
+            'platforms.*.meta.description' => ['sometimes', 'nullable', 'string', new ValidYouTubeDescription],
 
             // Discord
             'platforms.*.meta.channel_id' => ['sometimes', 'nullable', 'string'],
@@ -112,6 +116,7 @@ class PostPlatformMetaRules
     {
         return [
             'platforms.*.meta.title' => __('posts.form.pinterest.title'),
+            'platforms.*.meta.description' => __('posts.form.youtube.description'),
             'platforms.*.meta.link' => __('posts.form.pinterest.link'),
             'platforms.*.meta.event.title' => __('posts.form.google_business.event_title'),
             'platforms.*.meta.call_to_action.url' => __('posts.form.google_business.cta_url'),
@@ -174,6 +179,13 @@ class PostPlatformMetaRules
      */
     public static function requiredMetaViolation(?Platform $platform, mixed $meta): ?array
     {
+        if ($platform === Platform::YouTube) {
+            $key = YouTubeDescription::violation(data_get($meta, 'description'));
+            if ($key !== null) {
+                return ['description', __($key)];
+            }
+        }
+
         $topicType = TopicType::fromMeta(data_get($meta, 'topic_type'));
         $ctaAction = CtaAction::fromMeta(data_get($meta, 'call_to_action.action_type'));
         $needsGoogleBusinessEvent = $platform === Platform::GoogleBusiness && $topicType->requiresEvent();

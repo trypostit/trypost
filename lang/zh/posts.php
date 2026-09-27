@@ -142,6 +142,15 @@ return [
             'document_title' => '文档标题',
             'document_title_placeholder' => '显示在你的 PDF 文档帖子上',
         ],
+        'youtube' => [
+            'settings' => 'YouTube 设置',
+            'posting_to' => '发布到',
+            'description' => '描述',
+            'description_placeholder' => '视频描述',
+            'description_max' => 'YouTube 描述不得超过 5,000 个 UTF-8 字节。',
+            'description_invalid' => 'YouTube 描述必须是有效文本，且不含 < 或 >。',
+            'description_bytes' => ':used / :limit 字节',
+        ],
         'pinterest' => [
             'settings' => 'Pinterest 设置',
             'posting_to' => '发布到',

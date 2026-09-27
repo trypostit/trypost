@@ -142,6 +142,15 @@ return [
             'document_title' => 'Τίτλος εγγράφου',
             'document_title_placeholder' => 'Εμφανίζεται στη δημοσίευση εγγράφου PDF σας',
         ],
+        'youtube' => [
+            'settings' => 'Ρυθμίσεις YouTube',
+            'posting_to' => 'Δημοσίευση σε',
+            'description' => 'Περιγραφή',
+            'description_placeholder' => 'Περιγραφή βίντεο',
+            'description_max' => 'Η περιγραφή YouTube δεν πρέπει να υπερβαίνει τα 5.000 byte UTF-8.',
+            'description_invalid' => 'Η περιγραφή YouTube πρέπει να είναι έγκυρο κείμενο χωρίς < ή >.',
+            'description_bytes' => ':used / :limit byte',
+        ],
         'pinterest' => [
             'settings' => 'Ρυθμίσεις Pinterest',
             'posting_to' => 'Δημοσίευση σε',

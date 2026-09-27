@@ -21,10 +21,24 @@ test('custom meta messages only cover pinterest title and link', function () {
 test('custom meta attributes only rename pinterest title and link', function () {
     expect(PostPlatformMetaRules::attributes())->toBe([
         'platforms.*.meta.title' => __('posts.form.pinterest.title'),
+        'platforms.*.meta.description' => __('posts.form.youtube.description'),
         'platforms.*.meta.link' => __('posts.form.pinterest.link'),
         'platforms.*.meta.event.title' => __('posts.form.google_business.event_title'),
         'platforms.*.meta.call_to_action.url' => __('posts.form.google_business.cta_url'),
     ]);
+});
+
+test('shared description validation rejects multibyte overflow', function () {
+    $validator = Validator::make(['platforms' => [['meta' => ['description' => str_repeat('é', 2501)]]]], PostPlatformMetaRules::rules());
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->has('platforms.0.meta.description'))->toBeTrue();
+});
+
+test('stored youtube description is checked without requiring it for other networks', function () {
+    expect(PostPlatformMetaRules::requiredMetaViolation(Platform::YouTube, ['description' => str_repeat('a', 5001)]))
+        ->toBe(['description', __('posts.form.youtube.description_max')])
+        ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::YouTube, []))->toBeNull()
+        ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::Facebook, []))->toBeNull();
 });
 
 test('shared meta rules still include non-pinterest platform fields', function () {

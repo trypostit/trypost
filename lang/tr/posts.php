@@ -144,6 +144,15 @@ return [
             'document_title' => 'Belge başlığı',
             'document_title_placeholder' => 'PDF belge gönderinizde gösterilir',
         ],
+        'youtube' => [
+            'settings' => 'YouTube ayarları',
+            'posting_to' => 'Yayınlanacak hesap',
+            'description' => 'Açıklama',
+            'description_placeholder' => 'Video açıklaması',
+            'description_max' => 'YouTube açıklaması 5.000 UTF-8 baytını aşmamalıdır.',
+            'description_invalid' => 'YouTube açıklaması < veya > içermeyen geçerli bir metin olmalıdır.',
+            'description_bytes' => ':used / :limit bayt',
+        ],
         'pinterest' => [
             'settings' => 'Pinterest Ayarları',
             'posting_to' => 'Şuraya paylaşılıyor',

@@ -142,6 +142,15 @@ return [
             'document_title' => 'عنوان المستند',
             'document_title_placeholder' => 'يظهر على منشور مستند PDF الخاص بك',
         ],
+        'youtube' => [
+            'settings' => 'إعدادات YouTube',
+            'posting_to' => 'النشر على',
+            'description' => 'الوصف',
+            'description_placeholder' => 'وصف الفيديو',
+            'description_max' => 'يجب ألا يتجاوز وصف YouTube ‏5000 بايت بترميز UTF-8.',
+            'description_invalid' => 'يجب أن يكون وصف YouTube نصًا صالحًا دون < أو >.',
+            'description_bytes' => ':used / :limit بايت',
+        ],
         'pinterest' => [
             'settings' => 'إعدادات Pinterest',
             'posting_to' => 'النشر إلى',

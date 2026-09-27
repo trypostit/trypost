@@ -142,6 +142,15 @@ return [
             'document_title' => 'Titre du document',
             'document_title_placeholder' => 'Affiché sur votre publication de document PDF',
         ],
+        'youtube' => [
+            'settings' => 'Paramètres YouTube',
+            'posting_to' => 'Publication sur',
+            'description' => 'Description',
+            'description_placeholder' => 'Description de la vidéo',
+            'description_max' => 'La description YouTube ne doit pas dépasser 5 000 octets UTF-8.',
+            'description_invalid' => 'La description YouTube doit être un texte valide sans < ni >.',
+            'description_bytes' => ':used / :limit octets',
+        ],
         'pinterest' => [
             'settings' => 'Paramètres Pinterest',
             'posting_to' => 'Publier sur',

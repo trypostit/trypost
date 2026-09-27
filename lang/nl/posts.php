@@ -142,6 +142,15 @@ return [
             'document_title' => 'Documenttitel',
             'document_title_placeholder' => 'Getoond op je PDF-documentpost',
         ],
+        'youtube' => [
+            'settings' => 'YouTube-instellingen',
+            'posting_to' => 'Publiceren op',
+            'description' => 'Beschrijving',
+            'description_placeholder' => 'Videobeschrijving',
+            'description_max' => 'De YouTube-beschrijving mag niet langer zijn dan 5.000 UTF-8-bytes.',
+            'description_invalid' => 'De YouTube-beschrijving moet geldige tekst zonder < of > zijn.',
+            'description_bytes' => ':used / :limit bytes',
+        ],
         'pinterest' => [
             'settings' => 'Pinterest-instellingen',
             'posting_to' => 'Posten naar',
