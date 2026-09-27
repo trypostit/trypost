@@ -118,14 +118,17 @@ test('youtube description editor counts bytes saves independent channels and pre
     $page->fill('@youtube-description-0', str_repeat('é', 2500));
     assertYouTubePublishState($page, false);
     $page->assertSee('5000 / 5000 bytes')->assertNoJavaScriptErrors();
+    $page->assertAttributeMissing('@youtube-description-0', 'aria-invalid');
     foreach ([str_repeat('é', 2500).'a', 'a < b', 'a > b'] as $invalid) {
         $page->fill('@youtube-description-0', $invalid);
         assertYouTubePublishState($page, true);
+        $page->assertAttribute('@youtube-description-0', 'aria-invalid', 'true');
     }
     trackYouTubeAutosave($page);
     $page->fill('@youtube-description-0', "First channel description\nhttps://example.com")
         ->fill('@youtube-description-1', 'Second channel description');
     assertYouTubePublishState($page, false);
+    $page->assertAttributeMissing('@youtube-description-0', 'aria-invalid');
     waitForYouTubeAutosave($page);
     $page->screenshot(filename: 'youtube-description-settings-'.$width);
     expect(data_get($first->fresh()->meta, 'description'))->toBe("First channel description\nhttps://example.com")

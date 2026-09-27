@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
+import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
 import InputError from '@/components/InputError.vue';
 import { Avatar } from '@/components/ui/avatar';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { usePageErrors } from '@/composables/usePageErrors';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
@@ -19,7 +21,7 @@ import { Platform } from '@/types/platform';
 interface Props {
     socialAccount: ChannelAccount | null;
     platformIndex: number;
-    meta: Record<string, any>;
+    meta: Record<string, unknown>;
     disabled?: boolean;
 }
 
@@ -27,9 +29,13 @@ const props = withDefaults(defineProps<Props>(), {
     disabled: false,
 });
 const emit = defineEmits<{
-    'update:meta': [value: Record<string, any>];
+    'update:meta': [value: Record<string, unknown>];
 }>();
+
 const open = ref(false);
+const errors = usePageErrors();
+const descriptionId = computed(() => `youtube-description-${props.platformIndex}`);
+
 const description = computed({
     get: () => normalizeYouTubeDescription(props.meta.description) ?? '',
     set: (value: string) =>
@@ -39,13 +45,13 @@ const description = computed({
         }),
 });
 const usedBytes = computed(() => youtubeDescriptionBytes(description.value));
-const issueKey = computed(() =>
-    getYouTubeDescriptionIssue(props.meta.description),
-);
-const errors = usePageErrors();
-const descriptionError = computed(
-    () => errors.value[`platforms.${props.platformIndex}.meta.description`],
-);
+const descriptionError = computed(() => {
+    const issue = getYouTubeDescriptionIssue(props.meta.description);
+
+    return issue
+        ? trans(issue)
+        : errors.value[`platforms.${props.platformIndex}.meta.description`];
+});
 </script>
 
 <template>
@@ -117,16 +123,18 @@ const descriptionError = computed(
                 </div>
             </div>
             <div class="space-y-2">
-                <label
-                    :for="`youtube-description-${platformIndex}`"
-                    class="text-sm font-bold"
-                    >{{ $t('posts.form.youtube.description') }}</label
+                <Label
+                    :for="descriptionId"
+                    class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
                 >
+                    {{ $t('posts.form.youtube.description') }}
+                </Label>
                 <Textarea
-                    :id="`youtube-description-${platformIndex}`"
+                    :id="descriptionId"
                     v-model="description"
-                    :data-testid="`youtube-description-${platformIndex}`"
+                    :data-testid="descriptionId"
                     :disabled="disabled"
+                    :aria-invalid="descriptionError ? true : undefined"
                     :placeholder="
                         $t('posts.form.youtube.description_placeholder')
                     "
@@ -134,18 +142,16 @@ const descriptionError = computed(
                 />
                 <p
                     class="text-xs tabular-nums"
-                    :class="issueKey ? 'text-rose-600' : 'text-foreground/60'"
+                    :class="descriptionError ? 'text-rose-600' : 'text-foreground/60'"
                 >
                     {{
                         $t('posts.form.youtube.description_bytes', {
-                            used: usedBytes,
-                            limit: YOUTUBE_DESCRIPTION_MAX_BYTES,
+                            used: usedBytes.toString(),
+                            limit: YOUTUBE_DESCRIPTION_MAX_BYTES.toString(),
                         })
                     }}
                 </p>
-                <InputError
-                    :message="issueKey ? $t(issueKey) : descriptionError"
-                />
+                <InputError :message="descriptionError" />
             </div>
         </div>
     </div>
