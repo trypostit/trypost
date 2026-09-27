@@ -54,6 +54,7 @@ it('youtube description survives create read update omission and clear', functio
     expect(data_get($platform->fresh()->meta, 'description'))->toBeNull();
 })->with([
     'multiline description' => ["Full description\nhttps://example.com\n#video"],
+    'programming text' => ["if (a < b && c > d) {}\n<p>Text about HTML</p>"],
     'multibyte byte limit' => [str_repeat('é', 2500)],
 ]);
 
@@ -69,8 +70,8 @@ it('youtube description rejects invalid API create input', function (string $des
     ])->assertUnprocessable()->assertJsonValidationErrors('platforms.0.meta.description');
 })->with([
     'multibyte overflow' => [str_repeat('é', 2501)],
-    'opening bracket' => ['a < b'],
-    'closing bracket' => ['a > b'],
+    'ascii overflow' => [str_repeat('a', 5001)],
+    'emoji overflow' => [str_repeat('😀', 1251)],
 ]);
 
 it('youtube description checks effective API metadata before scheduling or publishing', function (string $patch, bool $allowed, string $status) {

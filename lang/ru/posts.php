@@ -148,7 +148,7 @@ return [
             'description' => 'Описание',
             'description_placeholder' => 'Описание видео',
             'description_max' => 'Описание YouTube не должно превышать 5000 байт.',
-            'description_invalid' => 'Описание YouTube должно быть корректным текстом без < или >.',
+            'description_invalid' => 'Описание YouTube должно быть корректным текстом.',
             'description_bytes' => ':used / :limit байт',
         ],
         'pinterest' => [

@@ -148,7 +148,7 @@ return [
             'description' => 'Опис',
             'description_placeholder' => 'Опис відео',
             'description_max' => 'Опис YouTube не повинен перевищувати 5000 байтів.',
-            'description_invalid' => 'Опис YouTube має бути коректним текстом без < або >.',
+            'description_invalid' => 'Опис YouTube має бути коректним текстом.',
             'description_bytes' => ':used / :limit байтів',
         ],
         'pinterest' => [

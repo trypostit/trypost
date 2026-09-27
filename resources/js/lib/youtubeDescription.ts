@@ -20,9 +20,5 @@ export const getYouTubeDescriptionIssue = (
         return 'posts.form.youtube.description_max';
     }
 
-    if (description.includes('<') || description.includes('>')) {
-        return 'posts.form.youtube.description_invalid';
-    }
-
     return null;
 };

@@ -148,7 +148,7 @@ return [
             'description' => 'Beschrijving',
             'description_placeholder' => 'Videobeschrijving',
             'description_max' => 'De YouTube-beschrijving mag niet langer zijn dan 5.000 bytes.',
-            'description_invalid' => 'De YouTube-beschrijving moet geldige tekst zonder < of > zijn.',
+            'description_invalid' => 'De YouTube-beschrijving moet geldige tekst zijn.',
             'description_bytes' => ':used / :limit bytes',
         ],
         'pinterest' => [

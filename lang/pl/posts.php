@@ -148,7 +148,7 @@ return [
             'description' => 'Opis',
             'description_placeholder' => 'Opis filmu',
             'description_max' => 'Opis YouTube nie może przekraczać 5000 bajtów.',
-            'description_invalid' => 'Opis YouTube musi być poprawnym tekstem bez < ani >.',
+            'description_invalid' => 'Opis YouTube musi być poprawnym tekstem.',
             'description_bytes' => ':used / :limit bajtów',
         ],
         'pinterest' => [

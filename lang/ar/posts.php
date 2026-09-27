@@ -148,7 +148,7 @@ return [
             'description' => 'الوصف',
             'description_placeholder' => 'وصف الفيديو',
             'description_max' => 'يجب ألا يتجاوز وصف YouTube ‏5000 بايت.',
-            'description_invalid' => 'يجب أن يكون وصف YouTube نصًا صالحًا دون < أو >.',
+            'description_invalid' => 'يجب أن يكون وصف YouTube نصًا صالحًا.',
             'description_bytes' => ':used / :limit بايت',
         ],
         'pinterest' => [

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Support\YouTubeDescription;
 
-test('youtube description validates utf8 bytes and forbidden characters', function (mixed $text, ?string $key) {
+test('youtube description validates text and byte limits', function (mixed $text, ?string $key) {
     expect(YouTubeDescription::violation($text))->toBe($key);
 })->with([
     'absent' => [null, null],
@@ -16,8 +16,9 @@ test('youtube description validates utf8 bytes and forbidden characters', functi
     'emoji boundary' => [str_repeat('😀', 1250), null],
     'emoji overflow' => [str_repeat('😀', 1250).'a', 'posts.form.youtube.description_max'],
     'multiline url' => ["Line one\n\nhttps://example.com\n#video", null],
-    'opening bracket' => ['a < b', 'posts.form.youtube.description_invalid'],
-    'closing bracket' => ['a > b', 'posts.form.youtube.description_invalid'],
+    'opening bracket' => ['a < b', null],
+    'closing bracket' => ['a > b', null],
+    'literal markup' => ['<p>Text about HTML</p>', null],
     'invalid utf8' => ["\xC3\x28", 'posts.form.youtube.description_invalid'],
     'non string' => [['text'], 'posts.form.youtube.description_invalid'],
 ]);

@@ -148,7 +148,7 @@ return [
             'description' => 'Description',
             'description_placeholder' => 'Video description',
             'description_max' => 'The YouTube description must not exceed 5,000 bytes.',
-            'description_invalid' => 'The YouTube description must be valid text without < or >.',
+            'description_invalid' => 'The YouTube description must be valid text.',
             'description_bytes' => ':used / :limit bytes',
         ],
         'pinterest' => [

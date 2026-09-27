@@ -43,8 +43,8 @@ test('youtube description rejects stored invalid data before network work', func
     Http::assertNothingSent();
 })->with([
     'multibyte overflow' => [str_repeat('é', 2501), 'posts.form.youtube.description_max'],
-    'opening bracket' => ['a < b', 'posts.form.youtube.description_invalid'],
-    'closing bracket' => ['a > b', 'posts.form.youtube.description_invalid'],
+    'ascii overflow' => [str_repeat('a', 5001), 'posts.form.youtube.description_max'],
+    'emoji overflow' => [str_repeat('😀', 1251), 'posts.form.youtube.description_max'],
     'invalid metadata type' => [['invalid'], 'posts.form.youtube.description_invalid'],
 ]);
 
@@ -86,6 +86,8 @@ test('youtube description reaches the resumable upload request', function (?stri
     });
 })->with([
     'custom multiline description' => ["Full text\nhttps://example.com", "Full text\nhttps://example.com"],
+    'programming text' => ['if (a < b && c > d) {}', 'if (a < b && c > d) {}'],
+    'literal markup' => ['<p>Text about HTML</p>', '<p>Text about HTML</p>'],
     'multibyte byte limit' => [str_repeat('é', 2500), str_repeat('é', 2500)],
     'emoji byte limit' => [str_repeat('😀', 1250), str_repeat('😀', 1250)],
     'surrounding whitespace' => ["  Full text\nhttps://example.com  ", "  Full text\nhttps://example.com  "],

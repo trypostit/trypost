@@ -24,21 +24,21 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Testing\Fluent\AssertableJson;
 
-test('youtube description persists reads retains and clears in MCP', function () {
+test('youtube description persists reads retains and clears in MCP', function (string $description) {
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Short title',
         'platforms' => [[
             'social_account_id' => $account->id,
             'content_type' => ContentType::YouTubeShort->value,
-            'meta' => ['description' => "Full text\nhttps://example.com"],
+            'meta' => ['description' => $description],
         ]],
     ])->assertOk();
     $platform = PostPlatform::where('social_account_id', $account->id)->sole();
     TryPostServer::actingAs($this->user)->tool(GetPostTool::class, ['post_id' => $platform->post_id])
-        ->assertOk()->assertStructuredContent(function (AssertableJson $json) use ($platform) {
+        ->assertOk()->assertStructuredContent(function (AssertableJson $json) use ($platform, $description) {
             $json->etc();
-            expect(collect($json->toArray()['platforms'])->firstWhere('id', $platform->id)['meta']['description'])->toBe("Full text\nhttps://example.com");
+            expect(collect($json->toArray()['platforms'])->firstWhere('id', $platform->id)['meta']['description'])->toBe($description);
         });
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
         'post_id' => $platform->post_id,
@@ -51,7 +51,7 @@ test('youtube description persists reads retains and clears in MCP', function ()
         'post_id' => $platform->post_id,
         'platforms' => [['id' => $platform->id]],
     ])->assertOk();
-    expect(data_get($platform->fresh()->meta, 'description'))->toBe("Full text\nhttps://example.com");
+    expect(data_get($platform->fresh()->meta, 'description'))->toBe($description);
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
         'post_id' => $platform->post_id,
         'platforms' => [[
@@ -60,7 +60,10 @@ test('youtube description persists reads retains and clears in MCP', function ()
         ]],
     ])->assertOk();
     expect(data_get($platform->fresh()->meta, 'description'))->toBeNull();
-});
+})->with([
+    'multiline description' => ["Full text\nhttps://example.com"],
+    'programming text' => ["if (a < b && c > d) {}\n<p>Text about HTML</p>"],
+]);
 
 test('youtube description rejects invalid MCP create input', function (string $description) {
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
@@ -74,8 +77,8 @@ test('youtube description rejects invalid MCP create input', function (string $d
     ])->assertHasErrors();
 })->with([
     'multibyte overflow' => [str_repeat('é', 2501)],
-    'opening bracket' => ['a < b'],
-    'closing bracket' => ['a > b'],
+    'ascii overflow' => [str_repeat('a', 5001)],
+    'emoji overflow' => [str_repeat('😀', 1251)],
 ]);
 
 test('youtube description checks effective MCP metadata on schedule and publish', function (string $patch, bool $allowed) {

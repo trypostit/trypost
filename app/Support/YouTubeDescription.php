@@ -20,7 +20,6 @@ class YouTubeDescription
             ! is_string($description),
             ! mb_check_encoding($description, 'UTF-8') => 'posts.form.youtube.description_invalid',
             strlen($description) > self::MAX_BYTES => 'posts.form.youtube.description_max',
-            Str::contains($description, ['<', '>']) => 'posts.form.youtube.description_invalid',
             default => null,
         };
     }

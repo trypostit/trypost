@@ -114,14 +114,14 @@ test('youtube description update reports one validation message', function (bool
     $key = 'platforms.0.meta.description';
 
     if ($hasSubmittedError) {
-        $data['platforms'][0]['meta'] = ['description' => 'a < b'];
+        $data['platforms'][0]['meta'] = ['description' => str_repeat('é', 2501)];
     }
 
     $this->actingAs($this->user)->put(route('app.posts.update', $this->post), $data)
         ->assertSessionHasErrors($key);
 
     expect(session('errors')->get($key))->toBe([
-        __($hasSubmittedError ? 'posts.form.youtube.description_invalid' : 'posts.form.youtube.description_max'),
+        __('posts.form.youtube.description_max'),
     ]);
 })->with([
     'stored invalid description' => [false],

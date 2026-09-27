@@ -148,7 +148,7 @@ return [
             'description' => '説明',
             'description_placeholder' => '動画の説明',
             'description_max' => 'YouTubeの説明は5,000バイト以内にしてください。',
-            'description_invalid' => 'YouTubeの説明には < や > を含まない有効なテキストを入力してください。',
+            'description_invalid' => 'YouTubeの説明には有効なテキストを入力してください。',
             'description_bytes' => ':used / :limit バイト',
         ],
         'pinterest' => [

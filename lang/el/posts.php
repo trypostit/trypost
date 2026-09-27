@@ -148,7 +148,7 @@ return [
             'description' => 'Περιγραφή',
             'description_placeholder' => 'Περιγραφή βίντεο',
             'description_max' => 'Η περιγραφή YouTube δεν πρέπει να υπερβαίνει τα 5.000 byte.',
-            'description_invalid' => 'Η περιγραφή YouTube πρέπει να είναι έγκυρο κείμενο χωρίς < ή >.',
+            'description_invalid' => 'Η περιγραφή YouTube πρέπει να είναι έγκυρο κείμενο.',
             'description_bytes' => ':used / :limit byte',
         ],
         'pinterest' => [
