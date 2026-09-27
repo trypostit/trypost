@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+
 import VideoPreview from "@/components/posts/previews/VideoPreview.vue";
 import { getInitials } from '@/composables/useInitials';
 import { isVideoMedia } from '@/composables/useMedia';

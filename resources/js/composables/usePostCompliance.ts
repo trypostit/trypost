@@ -6,7 +6,6 @@ import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import { mediaLimitsDocsUrl } from '@/lib/docs';
-import { getYouTubeDescriptionIssue } from '@/lib/youtubeDescription';
 import {
     GOOGLE_BUSINESS_EVENT_TITLE_MAX,
     GOOGLE_BUSINESS_EVENT_TOPIC_TYPES,
@@ -17,6 +16,7 @@ import {
     resolveGoogleBusinessCtaAction,
     resolveGoogleBusinessTopicType,
 } from '@/lib/googleBusiness';
+import { getYouTubeDescriptionIssue } from '@/lib/youtubeDescription';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';

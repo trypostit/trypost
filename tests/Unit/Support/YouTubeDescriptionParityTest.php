@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Support\YouTubeDescription;
 use Symfony\Component\Process\Process;
 

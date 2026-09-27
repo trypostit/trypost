@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Enums\Post\Status;
 use App\Enums\UserWorkspace\Role;
 use App\Models\Post;

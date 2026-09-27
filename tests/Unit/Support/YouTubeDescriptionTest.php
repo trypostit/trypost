@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Support\YouTubeDescription;
 
 test('youtube description validates utf8 bytes and forbidden characters', function (mixed $text, ?string $key) {
