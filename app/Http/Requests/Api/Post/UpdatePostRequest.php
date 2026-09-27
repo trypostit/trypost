@@ -91,12 +91,6 @@ class UpdatePostRequest extends FormRequest
 
             $platformsById = $this->resolveSelectedPlatforms();
 
-            PostPlatformMetaRules::addYouTubeDescriptionErrorsForUpdate(
-                $validator,
-                $this->route('post'),
-                $this->has('platforms') ? (array) $this->input('platforms', []) : null,
-            );
-
             PostPlatformMetaRules::addRequiredOnPublishErrors(
                 $validator,
                 $this->input('platforms', []),

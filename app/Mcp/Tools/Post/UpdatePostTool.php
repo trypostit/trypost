@@ -78,14 +78,6 @@ class UpdatePostTool extends Tool
         // media, so a misconfigured post can't be scheduled even without resubmitting
         // content_type. Mirrors the public API's withValidator check.
         if ($status === Status::Scheduled->value) {
-            $descriptionErrors = PostPlatformMetaRules::youtubeDescriptionErrorsForUpdate(
-                $post,
-                array_key_exists('platforms', $validated) ? $validated['platforms'] : null,
-            );
-            if ($descriptionErrors !== []) {
-                throw ValidationException::withMessages($descriptionErrors);
-            }
-
             $errors = ContentTypeCompatibleWithMedia::errorsFor(
                 ContentTypeCompatibleWithMedia::entriesForUpdate($post, data_get($validated, 'platforms')),
                 (array) ($post->media ?? []),

@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 test('execute prunes a google business jpeg when the target is switched off', function () {
     Storage::fake();
@@ -108,3 +109,71 @@ test('execute keeps the google business jpeg when the target stays enabled', fun
     expect($target->fresh()->enabled)->toBeTrue();
     Storage::assertExists($path);
 });
+
+test('invalid publication metadata rolls back before cleaning a disabled google business target', function () {
+    Storage::fake();
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'status' => PostStatus::Draft,
+    ]);
+    $youtube = PostPlatform::factory()->youtube()->create([
+        'post_id' => $post->id,
+        'social_account_id' => SocialAccount::factory()->youtube()->create([
+            'workspace_id' => $workspace->id,
+        ])->id,
+        'meta' => ['description' => str_repeat('a', 5001)],
+    ]);
+    $target = PostPlatform::factory()->googleBusiness()->pendingReview()->create([
+        'post_id' => $post->id,
+        'social_account_id' => SocialAccount::factory()->googleBusiness()->create([
+            'workspace_id' => $workspace->id,
+        ])->id,
+        'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
+    ]);
+    $path = GoogleBusinessDerivativeCleaner::pathFor($target->id);
+    Storage::put($path, 'image');
+
+    expect(fn () => UpdatePost::execute($workspace, $post, [
+        'status' => PostStatus::Scheduled->value,
+        'platforms' => [['id' => $youtube->id]],
+    ]))->toThrow(ValidationException::class);
+
+    expect($post->fresh()->status)->toBe(PostStatus::Draft)
+        ->and($target->fresh()->enabled)->toBeTrue()
+        ->and($target->fresh()->status)->toBe(PlatformStatus::PendingReview);
+    Storage::assertExists($path);
+});
+
+test('disabled youtube metadata does not block scheduling', function (bool $resubmitPlatforms) {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+    ]);
+    $platform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $post->id,
+        'social_account_id' => SocialAccount::factory()->youtube()->create([
+            'workspace_id' => $workspace->id,
+        ])->id,
+        'enabled' => false,
+        'meta' => ['description' => str_repeat('a', 5001)],
+    ]);
+    $data = ['status' => PostStatus::Scheduled->value];
+
+    if ($resubmitPlatforms) {
+        $data['platforms'] = [];
+    }
+
+    UpdatePost::execute($workspace, $post, $data);
+
+    expect($post->fresh()->status)->toBe(PostStatus::Scheduled)
+        ->and($platform->fresh()->enabled)->toBeFalse();
+})->with([
+    'omitted platforms' => [false],
+    'deselected platforms' => [true],
+]);

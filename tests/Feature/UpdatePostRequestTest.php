@@ -13,8 +13,6 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Support\PostPlatformMetaRules;
-use Illuminate\Support\Facades\Validator;
 
 test('youtube description checks effective web metadata on schedule', function (string $patch, bool $allowed) {
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
@@ -88,45 +86,75 @@ test('youtube description reports and persists independent selected channel valu
         ->and($this->post->fresh()->content)->toBe('Short title');
 });
 
-test('youtube description update errors preserve existing validation messages', function (bool $hasExistingError) {
+test('youtube description update reports one validation message', function (bool $hasSubmittedError) {
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
     $platform = PostPlatform::factory()->youtube()->create([
         'post_id' => $this->post->id,
         'social_account_id' => $account->id,
         'meta' => ['description' => str_repeat('a', 5001)],
     ]);
-    $validator = Validator::make([], []);
+    $data = [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addHour()->toIso8601String(),
+        'content' => 'Short title',
+        'media' => $this->mediaPayload,
+        'platforms' => [[
+            'id' => $platform->id,
+            'content_type' => ContentType::YouTubeShort->value,
+        ]],
+    ];
     $key = 'platforms.0.meta.description';
 
-    if ($hasExistingError) {
-        $validator->errors()->add($key, 'Existing error');
+    if ($hasSubmittedError) {
+        $data['platforms'][0]['meta'] = ['description' => 'a < b'];
     }
 
-    PostPlatformMetaRules::addYouTubeDescriptionErrorsForUpdate($validator, $this->post, [['id' => $platform->id]]);
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), $data)
+        ->assertSessionHasErrors($key);
 
-    expect($validator->errors()->get($key))->toBe([
-        $hasExistingError ? 'Existing error' : __('posts.form.youtube.description_max'),
+    expect(session('errors')->get($key))->toBe([
+        __($hasSubmittedError ? 'posts.form.youtube.description_invalid' : 'posts.form.youtube.description_max'),
     ]);
 })->with([
-    'adds a missing error' => [false],
-    'preserves an existing error' => [true],
+    'stored invalid description' => [false],
+    'submitted invalid description' => [true],
 ]);
 
-test('youtube description effective validation ignores disabled deselected and foreign rows', function () {
+test('youtube description validation keeps submitted channel order and rolls back updates', function () {
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
     $platform = PostPlatform::factory()->youtube()->create([
         'post_id' => $this->post->id,
         'social_account_id' => $account->id,
-        'enabled' => false,
+        'enabled' => true,
         'meta' => ['description' => str_repeat('a', 5001)],
     ]);
+    $secondAccount = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
+    $secondPlatform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $secondAccount->id,
+        'enabled' => false,
+        'meta' => ['description' => 'Valid description'],
+    ]);
+    $this->post->update(['content' => 'Original title']);
 
-    expect(PostPlatformMetaRules::youtubeDescriptionErrorsForUpdate($this->post, null))->toBe([])
-        ->and(PostPlatformMetaRules::youtubeDescriptionErrorsForUpdate($this->post, []))->toBe([]);
-    $other = Post::factory()->create();
-    expect(PostPlatformMetaRules::youtubeDescriptionErrorsForUpdate($other, [['id' => $platform->id]]))->toBe([])
-        ->and(PostPlatformMetaRules::youtubeDescriptionErrorsForUpdate($this->post, [['id' => $this->postPlatform->id], ['id' => $platform->id]]))
-        ->toBe(['platforms.1.meta.description' => __('posts.form.youtube.description_max')]);
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addHour()->toIso8601String(),
+        'content' => 'Changed title',
+        'media' => $this->mediaPayload,
+        'platforms' => [
+            ['id' => $secondPlatform->id, 'content_type' => ContentType::YouTubeShort->value],
+            ['id' => $platform->id, 'content_type' => ContentType::YouTubeShort->value],
+        ],
+    ])->assertSessionHasErrors('platforms.1.meta.description')
+        ->assertSessionDoesntHaveErrors('platforms.0.meta.description');
+
+    expect($this->post->fresh()->status)->toBe(Status::Draft)
+        ->and($this->post->fresh()->content)->toBe('Original title')
+        ->and($this->post->fresh()->scheduled_at)->toBeNull()
+        ->and($platform->fresh()->enabled)->toBeTrue()
+        ->and($secondPlatform->fresh()->enabled)->toBeFalse()
+        ->and($this->postPlatform->fresh()->enabled)->toBeTrue();
 });
 
 beforeEach(function () {

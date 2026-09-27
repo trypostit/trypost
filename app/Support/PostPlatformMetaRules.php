@@ -141,7 +141,11 @@ class PostPlatformMetaRules
 
             if ($violation !== null) {
                 [$field, $message] = $violation;
-                $validator->errors()->add("platforms.{$index}.meta.{$field}", $message);
+                $key = "platforms.{$index}.meta.{$field}";
+
+                if (! $validator->errors()->has($key)) {
+                    $validator->errors()->add($key, $message);
+                }
             }
         }
     }
@@ -152,13 +156,24 @@ class PostPlatformMetaRules
      * without resubmitting platforms (e.g. the MCP publish tool), so a misconfigured
      * post fails fast with a clear message instead of only at publish time.
      *
+     * @param  array<int, string>  $platformIds  Submitted order for indexed errors.
+     *
      * @throws ValidationException
      */
-    public static function assertStoredPostPublishable(Post $post): void
+    public static function assertStoredPostPublishable(Post $post, array $platformIds = []): void
     {
+        $platforms = $post->postPlatforms()->enabled()->get()->values();
+
+        if ($platformIds !== []) {
+            $platformsById = $platforms->keyBy('id');
+            $platforms = collect($platformIds)
+                ->map(fn (string $id): ?PostPlatform => $platformsById->get($id))
+                ->filter();
+        }
+
         $errors = [];
 
-        foreach ($post->postPlatforms()->enabled()->get()->values() as $index => $postPlatform) {
+        foreach ($platforms as $index => $postPlatform) {
             $violation = self::requiredMetaViolation($postPlatform->platform, $postPlatform->meta);
 
             if ($violation !== null) {
@@ -172,43 +187,6 @@ class PostPlatformMetaRules
         }
     }
 
-    /** @param array<int, mixed>|null $requestPlatforms */
-    public static function addYouTubeDescriptionErrorsForUpdate(Validator $validator, Post $post, ?array $requestPlatforms): void
-    {
-        foreach (self::youtubeDescriptionErrorsForUpdate($post, $requestPlatforms) as $key => $message) {
-            if (! $validator->errors()->has($key)) {
-                $validator->errors()->add($key, $message);
-            }
-        }
-    }
-
-    /**
-     * @param  array<int, mixed>|null  $requestPlatforms
-     * @return array<string, string>
-     */
-    public static function youtubeDescriptionErrorsForUpdate(Post $post, ?array $requestPlatforms): array
-    {
-        $stored = $post->postPlatforms()->get()->keyBy('id');
-        $entries = $requestPlatforms ?? $stored->filter(fn (PostPlatform $row): bool => $row->enabled)
-            ->values()->map(fn (PostPlatform $row): array => ['id' => $row->id])->all();
-        $errors = [];
-
-        foreach ($entries as $index => $entry) {
-            $row = $stored->get(data_get($entry, 'id'));
-            if ($row === null || $row->platform !== Platform::YouTube) {
-                continue;
-            }
-            $patch = data_get($entry, 'meta');
-            $meta = is_array($patch) ? array_merge($row->meta ?? [], $patch) : ($row->meta ?? []);
-            $key = YouTubeDescription::violation(data_get($meta, 'description'));
-            if ($key !== null) {
-                $errors["platforms.{$index}.meta.description"] = __($key);
-            }
-        }
-
-        return $errors;
-    }
-
     /**
      * The missing required meta field for a platform about to publish, or null when
      * nothing is missing. Single source of "what each platform requires to publish".
@@ -217,18 +195,12 @@ class PostPlatformMetaRules
      */
     public static function requiredMetaViolation(?Platform $platform, mixed $meta): ?array
     {
-        if ($platform === Platform::YouTube) {
-            $key = YouTubeDescription::violation(data_get($meta, 'description'));
-            if ($key !== null) {
-                return ['description', __($key)];
-            }
-        }
-
         $topicType = TopicType::fromMeta(data_get($meta, 'topic_type'));
         $ctaAction = CtaAction::fromMeta(data_get($meta, 'call_to_action.action_type'));
         $needsGoogleBusinessEvent = $platform === Platform::GoogleBusiness && $topicType->requiresEvent();
 
         return match (true) {
+            $platform === Platform::YouTube => self::youtubeDescriptionViolation($meta),
             $platform === Platform::TikTok => self::tiktokPrivacyViolation($meta),
             $platform === Platform::Pinterest && blank(data_get($meta, 'board_id')) => ['board_id', trans('posts.form.pinterest.board_required')],
             $platform === Platform::Discord && blank(data_get($meta, 'channel_id')) => ['channel_id', trans('posts.form.discord.channel_required')],
@@ -256,6 +228,16 @@ class PostPlatformMetaRules
                 && blank(data_get($meta, 'call_to_action.url')) => ['call_to_action.url', trans('posts.form.google_business.cta_url_required')],
             default => null,
         };
+    }
+
+    /**
+     * @return array{0: string, 1: string}|null
+     */
+    private static function youtubeDescriptionViolation(mixed $meta): ?array
+    {
+        $key = YouTubeDescription::violation(data_get($meta, 'description'));
+
+        return $key === null ? null : ['description', __($key)];
     }
 
     /**

@@ -12,6 +12,7 @@ use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\Workspace;
+use App\Support\PostPlatformMetaRules;
 use App\Support\PostStatusRules;
 use App\Support\Social\AbandonGoogleBusinessReview;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
@@ -74,7 +75,16 @@ class UpdatePost
                         ->where('id', data_get($platformData, 'id'))
                         ->update($updateData);
                 }
+            }
 
+            if (in_array($post->status, [PostStatus::Scheduled, PostStatus::Publishing], true)) {
+                PostPlatformMetaRules::assertStoredPostPublishable(
+                    $post,
+                    collect(data_get($data, 'platforms', []))->pluck('id')->all(),
+                );
+            }
+
+            if (Arr::has($data, 'platforms')) {
                 $post->postPlatforms()
                     ->disabled()
                     ->where('platform', Platform::GoogleBusiness)

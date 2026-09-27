@@ -92,12 +92,6 @@ class UpdatePostRequest extends FormRequest
                 ->whereIn('id', $ids)
                 ->pluck('platform', 'id');
 
-            PostPlatformMetaRules::addYouTubeDescriptionErrorsForUpdate(
-                $validator,
-                $this->route('post'),
-                $this->has('platforms') ? (array) $this->input('platforms', []) : null,
-            );
-
             PostPlatformMetaRules::addRequiredOnPublishErrors(
                 $validator,
                 $platforms,
