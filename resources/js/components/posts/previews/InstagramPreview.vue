@@ -64,16 +64,16 @@ const ASPECT_PADDING: Record<string, number> = {
     '16:9': 56.25,
 };
 
-const feedAspectStyle = computed(() => {
-    const selectedRatio = props.meta?.aspect_ratio ?? '1:1';
-    const firstImage = props.media[0];
-    const width = firstImage?.meta?.width ?? 0;
-    const height = firstImage?.meta?.height ?? 0;
-    const fraction = selectedRatio === 'original' && width > 0 && height > 0
-        ? height / width * 100
-        : ASPECT_PADDING[selectedRatio] ?? 100;
+const feedAspectPadding = computed(() => {
+    const selectedRatio = props.meta?.aspect_ratio ?? 'original';
 
-    return { paddingBottom: `${fraction}%` };
+    if (selectedRatio !== 'original') {
+        return ASPECT_PADDING[selectedRatio] ?? 100;
+    }
+
+    const { width = 0, height = 0 } = props.media[0]?.meta ?? {};
+
+    return width > 0 && height > 0 ? (height / width) * 100 : 100;
 });
 
 // Format numbers like Instagram
@@ -133,7 +133,7 @@ const truncatedCaption = computed(() => {
                 </div>
 
                 <!-- Post Media - Aspect ratio matches user's chosen crop -->
-                <div class="relative w-full shrink-0 bg-black" :style="feedAspectStyle" data-testid="instagram-feed-media">
+                <div class="relative w-full shrink-0 bg-black" :style="{ paddingBottom: `${feedAspectPadding}%` }" data-testid="instagram-feed-media">
                     <div class="absolute inset-0">
                         <PostMediaPreview
                             :media="media"

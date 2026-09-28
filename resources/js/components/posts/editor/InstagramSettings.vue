@@ -53,7 +53,7 @@ const aspectRatios = [
 ];
 
 const isFeed = computed(() => props.contentType === ContentType.InstagramFeed);
-const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? '1:1');
+const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? 'original');
 
 const pickVariant = (value: string) => {
     if (props.disabled) return;
@@ -140,7 +140,7 @@ const pickAspectRatio = (value: string) => {
                 </div>
             </div>
 
-            <MediaRulesWarning :content-type="contentType" :media="media" :platform="Platform.Instagram" :aspect-ratio="meta.aspect_ratio" />
+            <MediaRulesWarning :content-type="contentType" :media="media" :platform="Platform.Instagram" />
         </div>
     </div>
 </template>

@@ -182,9 +182,8 @@ const COMPLIANCE_KEY_BY_WARNING: Record<string, string> = {
 export const getMediaIncompatibilityReason = (
     contentType: string,
     mediaItems: MediaItem[],
-    aspectRatio?: string,
 ): string | null => {
-    const warning = getMediaValidationWarning(contentType, mediaItems, aspectRatio);
+    const warning = getMediaValidationWarning(contentType, mediaItems);
     if (!warning) return null;
 
     const complianceKey = COMPLIANCE_KEY_BY_WARNING[warning.key];
@@ -250,7 +249,7 @@ export const usePostCompliance = (opts: UsePostComplianceOptions) => {
             for (const pp of selectedPlatforms.value) {
                 if (seen.has(pp.platform)) continue;
                 const contentType = platformContentTypes.value[pp.id] ?? pp.content_type ?? '';
-                const reason = getMediaItemIssue(item, contentType, platformMeta.value[pp.id]?.aspect_ratio);
+                const reason = getMediaItemIssue(item, contentType);
                 if (reason) {
                     seen.add(pp.platform);
                     issues.push({ platform: pp.platform, reason });
@@ -276,7 +275,7 @@ export const usePostCompliance = (opts: UsePostComplianceOptions) => {
                 continue;
             }
 
-            const reason = getMediaIncompatibilityReason(contentType, media.value, platformMeta.value[pp.id]?.aspect_ratio);
+            const reason = getMediaIncompatibilityReason(contentType, media.value);
             if (!reason) continue;
 
             const isSelected = selectedPlatformIds.value.includes(pp.id);
