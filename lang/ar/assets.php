@@ -52,4 +52,14 @@ return [
         'no_results_description' => 'جرّب كلمة بحث مختلفة.',
         'powered_by' => 'مقدَّم من GIPHY',
     ],
+
+    'webdav' => [
+        'up' => 'مجلد للأعلى',
+        'import' => 'استيراد :count عنصر محدد',
+        'loading' => 'جارٍ تحميل المجلد...',
+        'empty' => 'هذا المجلد فارغ.',
+        'unreachable' => 'تعذّر الوصول إلى المشاركة.',
+        'import_failed' => 'تعذّر استيراد هذه الملفات.',
+        'import_partial' => '{1} تعذّر استيراد :names.|[2,*] تعذّر استيراد :count ملفات: :names',
+    ],
 ];

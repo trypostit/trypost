@@ -52,4 +52,14 @@ return [
         'no_results_description' => '다른 검색어로 시도해 보세요.',
         'powered_by' => 'Powered by GIPHY',
     ],
+
+    'webdav' => [
+        'up' => '상위 폴더',
+        'import' => '선택한 :count개 가져오기',
+        'loading' => '폴더를 불러오는 중...',
+        'empty' => '이 폴더는 비어 있습니다.',
+        'unreachable' => '공유에 연결할 수 없습니다.',
+        'import_failed' => '해당 파일을 가져오지 못했습니다.',
+        'import_partial' => '{1} :names을(를) 가져오지 못했습니다.|[2,*] :count개 파일을 가져오지 못했습니다: :names',
+    ],
 ];

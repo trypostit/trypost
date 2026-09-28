@@ -52,4 +52,14 @@ return [
         'no_results_description' => 'Essayez un autre terme de recherche.',
         'powered_by' => 'Propulsé par GIPHY',
     ],
+
+    'webdav' => [
+        'up' => 'Dossier parent',
+        'import' => 'Importer :count élément(s)',
+        'loading' => 'Chargement du dossier...',
+        'empty' => 'Ce dossier est vide.',
+        'unreachable' => 'Le partage est inaccessible.',
+        'import_failed' => 'Ces fichiers n\'ont pas pu être importés.',
+        'import_partial' => '{1} :names n\'a pas pu être importé.|[2,*] :count fichiers n\'ont pas pu être importés : :names',
+    ],
 ];

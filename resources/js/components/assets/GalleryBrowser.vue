@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { router, useHttp } from '@inertiajs/vue3';
+import { router, useHttp, usePage } from '@inertiajs/vue3';
 import { IconCloudUpload, IconDownload, IconFileTypePdf, IconLoader2, IconPencilPlus, IconPhoto, IconPlus, IconSearch, IconTrash } from '@tabler/icons-vue';
-import { trans } from 'laravel-vue-i18n';
+import { trans, transChoice } from 'laravel-vue-i18n';
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
@@ -11,6 +11,8 @@ import ImagePreviewDialog from '@/components/ImagePreviewDialog.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import debounce from '@/debounce';
@@ -18,6 +20,7 @@ import { acceptAttribute, classify, isDocument, isVideo, MediaType } from '@/lib
 import { destroy as assetsDestroy, download as assetsDownload, search as assetsSearch, storeChunked as assetsStoreChunked, storeFromUrl } from '@/routes/app/assets';
 import { search as giphySearch, trending as giphyTrending } from '@/routes/app/assets/giphy';
 import { search as unsplashSearch, trending as unsplashTrending } from '@/routes/app/assets/unsplash';
+import { browse as webdavBrowse, store as webdavImport } from '@/routes/app/assets/webdav';
 import { store as storePost } from '@/routes/app/posts';
 import type { SourceMetaValue } from '@/types/media';
 import { uploadChunked } from '@/utils/chunkedUpload';
@@ -289,6 +292,95 @@ const httpSaveFromUrl = useHttp<{ url: string; filename: string; download_locati
     url: '',
     filename: '',
 });
+
+interface WebdavEntry {
+    name: string;
+    path: string;
+    is_directory: boolean;
+    size: number | null;
+    mime_type: string | null;
+}
+
+const page = usePage();
+const webdavEnabled = computed(() => Boolean(page.props.webdavEnabled));
+const webdavLabel = computed(() => String(page.props.webdavLabel || 'Files'));
+const webdavPath = ref('');
+const webdavParent = ref<string | null>(null);
+const webdavEntries = ref<WebdavEntry[]>([]);
+const webdavSelected = ref<string[]>([]);
+const webdavLoading = ref(false);
+const webdavImporting = ref(false);
+const webdavError = ref('');
+
+const loadWebdav = async (path = '') => {
+    webdavLoading.value = true;
+    webdavError.value = '';
+    try {
+        const response = await fetch(webdavBrowse.url({ query: { path } }), {
+            headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) throw new Error(String(response.status));
+        const data = await response.json();
+        webdavPath.value = data.path ?? '';
+        webdavParent.value = data.parent ?? null;
+        webdavEntries.value = data.entries ?? [];
+        webdavSelected.value = [];
+    } catch {
+        webdavError.value = trans('assets.webdav.unreachable');
+        webdavEntries.value = [];
+    } finally {
+        webdavLoading.value = false;
+    }
+};
+
+const onWebdavTabMounted = async () => {
+    if (webdavEnabled.value && webdavEntries.value.length === 0) await loadWebdav('');
+};
+
+const toggleWebdavFile = (entry: WebdavEntry) => {
+    const at = webdavSelected.value.indexOf(entry.path);
+    if (at === -1) webdavSelected.value.push(entry.path);
+    else webdavSelected.value.splice(at, 1);
+};
+
+const importWebdavSelection = async () => {
+    if (webdavSelected.value.length === 0) return;
+    webdavImporting.value = true;
+    webdavError.value = '';
+    try {
+        const response = await fetch(webdavImport.url(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-XSRF-TOKEN': decodeURIComponent(
+                    document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '',
+                ),
+            },
+            body: JSON.stringify({ paths: webdavSelected.value }),
+        });
+        if (!response.ok) throw new Error(String(response.status));
+        const data = await response.json();
+        for (const media of data.media ?? []) {
+            if (isPicker.value) toggleSelect(media, { source: 'webdav' });
+        }
+        // A share holds more than postable media, so part of a selection may be
+        // refused while the rest goes through. Say which, instead of nothing.
+        const failed: { name: string; message: string }[] = data.failed ?? [];
+        if (failed.length > 0) {
+            webdavError.value = transChoice('assets.webdav.import_partial', failed.length, {
+                count: failed.length,
+                names: failed.map((f) => f.name).join(', '),
+            });
+        }
+        webdavSelected.value = [];
+        if (!isPicker.value) await loadUploadsFirstPage();
+    } catch {
+        webdavError.value = trans('assets.webdav.import_failed');
+    } finally {
+        webdavImporting.value = false;
+    }
+};
 
 const unsplashQuery = ref('');
 const unsplashResults = ref<UnsplashPhoto[]>([]);
@@ -616,6 +708,7 @@ onUnmounted(() => {
                 <TabsTrigger value="uploads">{{ trans('assets.tabs.my_uploads') }}</TabsTrigger>
                 <TabsTrigger value="stock">{{ trans('assets.tabs.stock_photos') }}</TabsTrigger>
                 <TabsTrigger value="gifs">{{ trans('assets.tabs.gifs') }}</TabsTrigger>
+                <TabsTrigger v-if="webdavEnabled" value="webdav">{{ webdavLabel }}</TabsTrigger>
             </TabsList>
 
             <!-- ───── My Uploads ───── -->
@@ -973,6 +1066,63 @@ onUnmounted(() => {
                         {{ trans('assets.giphy.powered_by') }}
                     </a>
                 </div>
+            </TabsContent>
+
+            <TabsContent v-if="webdavEnabled" value="webdav" class="mt-6" @vue:mounted="onWebdavTabMounted">
+                <div class="mb-4 flex items-center justify-between gap-3">
+                    <div class="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+                        <Button
+                            v-if="webdavParent !== null"
+                            variant="ghost"
+                            size="sm"
+                            :disabled="webdavLoading"
+                            @click="loadWebdav(webdavParent ?? '')"
+                        >
+                            {{ trans('assets.webdav.up') }}
+                        </Button>
+                        <span class="truncate">/{{ webdavPath }}</span>
+                    </div>
+
+                    <Button
+                        :disabled="webdavSelected.length === 0 || webdavImporting"
+                        @click="importWebdavSelection"
+                    >
+                        <Spinner v-if="webdavImporting" />
+                        {{ trans('assets.webdav.import', { count: webdavSelected.length }) }}
+                    </Button>
+                </div>
+
+                <p v-if="webdavError" class="mb-3 text-sm text-destructive">{{ webdavError }}</p>
+
+                <div v-if="webdavLoading" class="py-10 text-center text-sm text-muted-foreground">
+                    {{ trans('assets.webdav.loading') }}
+                </div>
+
+                <p v-else-if="webdavEntries.length === 0" class="py-10 text-center text-sm text-muted-foreground">
+                    {{ trans('assets.webdav.empty') }}
+                </p>
+
+                <ul v-else class="divide-y divide-border rounded-md border border-border">
+                    <li
+                        v-for="entry in webdavEntries"
+                        :key="entry.path"
+                        class="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-muted/50"
+                        :class="{ 'bg-muted': !entry.is_directory && webdavSelected.includes(entry.path) }"
+                        @click="entry.is_directory ? loadWebdav(entry.path) : toggleWebdavFile(entry)"
+                    >
+                        <Checkbox
+                            v-if="!entry.is_directory"
+                            :model-value="webdavSelected.includes(entry.path)"
+                            @click.stop="toggleWebdavFile(entry)"
+                        />
+                        <span class="min-w-0 flex-1 truncate">
+                            {{ entry.is_directory ? '📁' : '' }} {{ entry.name }}
+                        </span>
+                        <span v-if="entry.size" class="shrink-0 text-xs text-muted-foreground">
+                            {{ Math.round(entry.size / 1024) }} KB
+                        </span>
+                    </li>
+                </ul>
             </TabsContent>
         </Tabs>
 

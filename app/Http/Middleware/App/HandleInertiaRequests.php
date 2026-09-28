@@ -13,6 +13,7 @@ use App\Http\Resources\App\HandleInertiaRequests\AuthUserResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthWorkspaceResource;
 use App\Http\Resources\App\PlanResource;
 use App\Models\Plan;
+use App\Services\WebdavService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -63,6 +64,8 @@ class HandleInertiaRequests extends Middleware
             'locale' => app()->getLocale(),
             'languages' => Locale::options(),
             'aiEnabled' => filled(config('ai.providers.'.config('ai.default').'.key')),
+            'webdavEnabled' => app(WebdavService::class)->enabled(),
+            'webdavLabel' => (string) config('services.webdav.label'),
             'selfHosted' => $isSelfHosted,
             'googleAuthEnabled' => SocialAuthProvider::Google->isEnabled(),
             'githubAuthEnabled' => SocialAuthProvider::GitHub->isEnabled(),

@@ -52,4 +52,14 @@ return [
         'no_results_description' => 'Spróbuj innego wyszukiwanego hasła.',
         'powered_by' => 'Napędzane przez GIPHY',
     ],
+
+    'webdav' => [
+        'up' => 'Folder wyżej',
+        'import' => 'Importuj zaznaczone (:count)',
+        'loading' => 'Wczytywanie folderu...',
+        'empty' => 'Ten folder jest pusty.',
+        'unreachable' => 'Nie można połączyć się z udziałem.',
+        'import_failed' => 'Nie udało się zaimportować tych plików.',
+        'import_partial' => '{1} Nie udało się zaimportować :names.|[2,*] Nie udało się zaimportować :count plików: :names',
+    ],
 ];
