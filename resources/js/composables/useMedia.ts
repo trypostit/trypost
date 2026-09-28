@@ -69,11 +69,11 @@ const itemConstraintWarning = (item: MediaItem, rules: MediaRules, contentType: 
         return warning('image_too_large', sizeParams(rules.maxImageBytes, size));
     }
 
-    const imageWillBeCropped = contentType === ContentType.InstagramFeed
+    const instagramImageHasSelectedAspectRatio = contentType === ContentType.InstagramFeed
         && isImage(item)
-        && ['1:1', '4:5', '16:9'].includes(aspectRatio ?? '');
+        && ['1:1', '4:5', '16:9', 'original'].includes(aspectRatio ?? '');
 
-    if (width > 0 && height > 0 && ! (rules.autoFitsImage && isImage(item)) && ! imageWillBeCropped) {
+    if (width > 0 && height > 0 && ! (rules.autoFitsImage && isImage(item)) && ! instagramImageHasSelectedAspectRatio) {
         const ratio = width / height;
 
         if (rules.aspectRatioMin && ratio < rules.aspectRatioMin) {

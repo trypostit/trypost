@@ -112,7 +112,7 @@ test('the channel issue tooltip links to the network section of the media docs',
     )->assertNoJavaScriptErrors();
 });
 
-test('Instagram feed images outside the original aspect window become valid when cropped', function () {
+test('Instagram feed original images remain publishable without cropping', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
@@ -147,16 +147,23 @@ test('Instagram feed images outside the original aspect window become valid when
     waitForChannelIssueTestId($page, "channel-{$postPlatform->id}");
 
     $page->click('@instagram-settings-toggle')
-        ->assertPresent('@media-rules-warning')
-        ->assertPresent("@channel-issue-{$postPlatform->id}")
-        ->assertDisabled('@post-submit')
+        ->assertMissing('@media-rules-warning')
+        ->assertMissing("@channel-issue-{$postPlatform->id}")
+        ->assertEnabled('@post-submit')
         ->click('@instagram-aspect-4-5')
         ->assertMissing('@media-rules-warning')
         ->assertMissing("@channel-issue-{$postPlatform->id}")
         ->assertEnabled('@post-submit')
         ->click('@instagram-aspect-original')
-        ->assertPresent('@media-rules-warning')
-        ->assertPresent("@channel-issue-{$postPlatform->id}")
-        ->assertDisabled('@post-submit')
+        ->assertMissing('@media-rules-warning')
+        ->assertMissing("@channel-issue-{$postPlatform->id}")
+        ->assertEnabled('@post-submit')
+        ->click('@editor-tab-preview')
         ->assertNoJavaScriptErrors();
+
+    waitForChannelIssueTestId($page, 'instagram-feed-media');
+
+    $heightToWidth = $page->script('(() => { const frame = document.querySelector("[data-testid=instagram-feed-media]"); const rect = frame.getBoundingClientRect(); return rect.height / rect.width; })()');
+
+    expect(abs($heightToWidth - 4 / 3))->toBeLessThan(0.01);
 });

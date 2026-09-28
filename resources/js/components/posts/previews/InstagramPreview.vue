@@ -57,17 +57,23 @@ const isFeed = computed(() => !isReel.value && !isStory.value);
 
 // Padding-bottom percentage = height/width. Used instead of CSS `aspect-ratio`
 // because inside this flex column some rendering paths ignored `aspect-ratio`
-// and the frame stuck to a stale height. `null` = use original media height.
-const ASPECT_PADDING: Record<string, number | null> = {
+// and the frame stuck to a stale height.
+const ASPECT_PADDING: Record<string, number> = {
     '1:1': 100,
     '4:5': 125,
     '16:9': 56.25,
-    'original': null,
 };
 
 const feedAspectStyle = computed(() => {
-    const fraction = ASPECT_PADDING[props.meta?.aspect_ratio ?? '1:1'] ?? 100;
-    return fraction === null ? { aspectRatio: 'auto' } : { paddingBottom: `${fraction}%` };
+    const selectedRatio = props.meta?.aspect_ratio ?? '1:1';
+    const firstImage = props.media[0];
+    const width = firstImage?.meta?.width ?? 0;
+    const height = firstImage?.meta?.height ?? 0;
+    const fraction = selectedRatio === 'original' && width > 0 && height > 0
+        ? height / width * 100
+        : ASPECT_PADDING[selectedRatio] ?? 100;
+
+    return { paddingBottom: `${fraction}%` };
 });
 
 // Format numbers like Instagram
@@ -127,7 +133,7 @@ const truncatedCaption = computed(() => {
                 </div>
 
                 <!-- Post Media - Aspect ratio matches user's chosen crop -->
-                <div class="relative w-full shrink-0 bg-black" :style="feedAspectStyle">
+                <div class="relative w-full shrink-0 bg-black" :style="feedAspectStyle" data-testid="instagram-feed-media">
                     <div class="absolute inset-0">
                         <PostMediaPreview
                             :media="media"
