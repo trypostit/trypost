@@ -69,6 +69,7 @@ interface Post {
     status: string;
     scheduled_at: string | null;
     published_at: string | null;
+    updated_at: string | null;
     post_platforms: PostPlatform[];
     labels: Label[];
 }
@@ -286,7 +287,7 @@ useWorkspaceEcho(
                                     </Badge>
                                 </TableCell>
                                 <TableCell>
-                                    {{ formatDateTime(post.scheduled_at ?? post.published_at) }}
+                                    {{ formatDateTime(post.scheduled_at ?? post.published_at ?? post.updated_at) }}
                                 </TableCell>
                                 <TableCell class="text-right" @click.stop>
                                     <DropdownMenu>

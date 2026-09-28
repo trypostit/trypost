@@ -335,7 +335,56 @@ test('update workspace settings requires authentication', function () {
     $response->assertRedirect(route('login'));
 });
 
+test('update workspace settings persists the workspace timezone', function () {
+    $this->actingAs($this->user)
+        ->put(route('app.workspace.settings.update'), [
+            'name' => $this->workspace->name,
+            'timezone' => 'Australia/Brisbane',
+        ]);
+
+    expect($this->workspace->fresh()->timezone)->toBe('Australia/Brisbane');
+
+    // Пустое значение возвращает режим «авто» (браузерная таймзона).
+    $this->actingAs($this->user)
+        ->put(route('app.workspace.settings.update'), [
+            'name' => $this->workspace->name,
+            'timezone' => '',
+        ]);
+
+    expect($this->workspace->fresh()->timezone)->toBeNull();
+});
+
+test('update workspace settings persists the datetime format preset', function () {
+    $this->actingAs($this->user)
+        ->put(route('app.workspace.settings.update'), [
+            'name' => $this->workspace->name,
+            'datetime_format' => 'dots_24',
+        ]);
+
+    expect($this->workspace->fresh()->datetime_format)->toBe('dots_24');
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.workspace.settings.update'), [
+            'name' => $this->workspace->name,
+            'datetime_format' => 'not-a-preset',
+        ]);
+
+    $response->assertSessionHasErrors('datetime_format');
+});
+
+test('update workspace settings rejects an invalid timezone', function () {
+
+    $response = $this->actingAs($this->user)
+        ->put(route('app.workspace.settings.update'), [
+            'name' => $this->workspace->name,
+            'timezone' => 'Mars/Olympus_Mons',
+        ]);
+
+    $response->assertSessionHasErrors('timezone');
+});
+
 test('update workspace settings updates workspace and redirects back', function () {
+
     $response = $this->actingAs($this->user)
         ->from(route('app.workspace.brand'))
         ->put(route('app.workspace.settings.update'), [
