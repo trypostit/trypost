@@ -5,6 +5,7 @@ import { computed, ref } from 'vue';
 import MediaRulesWarning from '@/components/posts/editor/MediaRulesWarning.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import { AspectRatio, type AspectRatioValue } from '@/types/aspect-ratio';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';
@@ -46,21 +47,21 @@ const variants = [
 
 
 const aspectRatios = [
-    { value: '1:1', labelKey: 'posts.form.instagram.aspect.square' },
-    { value: '4:5', labelKey: 'posts.form.instagram.aspect.portrait' },
-    { value: '16:9', labelKey: 'posts.form.instagram.aspect.landscape' },
-    { value: 'original', labelKey: 'posts.form.instagram.aspect.original' },
-];
+    { value: AspectRatio.Square, labelKey: 'posts.form.instagram.aspect.square' },
+    { value: AspectRatio.Portrait, labelKey: 'posts.form.instagram.aspect.portrait' },
+    { value: AspectRatio.Landscape, labelKey: 'posts.form.instagram.aspect.landscape' },
+    { value: AspectRatio.Original, labelKey: 'posts.form.instagram.aspect.original' },
+] as const;
 
 const isFeed = computed(() => props.contentType === ContentType.InstagramFeed);
-const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? 'original');
+const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? AspectRatio.Original);
 
 const pickVariant = (value: string) => {
     if (props.disabled) return;
     emit('update:contentType', value);
 };
 
-const pickAspectRatio = (value: string) => {
+const pickAspectRatio = (value: AspectRatioValue) => {
     if (props.disabled) return;
     emit('update:meta', { ...props.meta, aspect_ratio: value });
 };

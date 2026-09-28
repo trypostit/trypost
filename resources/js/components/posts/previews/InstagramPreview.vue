@@ -16,6 +16,7 @@ import { computed } from 'vue';
 import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
 import VerticalMediaCanvas from '@/components/posts/previews/VerticalMediaCanvas.vue';
 import { getInitials } from '@/composables/useInitials';
+import { AspectRatio } from '@/types/aspect-ratio';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 
@@ -59,15 +60,15 @@ const isFeed = computed(() => !isReel.value && !isStory.value);
 // because inside this flex column some rendering paths ignored `aspect-ratio`
 // and the frame stuck to a stale height.
 const ASPECT_PADDING: Record<string, number> = {
-    '1:1': 100,
-    '4:5': 125,
-    '16:9': 56.25,
+    [AspectRatio.Square]: 100,
+    [AspectRatio.Portrait]: 125,
+    [AspectRatio.Landscape]: 56.25,
 };
 
 const feedAspectPadding = computed(() => {
-    const selectedRatio = props.meta?.aspect_ratio ?? 'original';
+    const selectedRatio = props.meta?.aspect_ratio ?? AspectRatio.Original;
 
-    if (selectedRatio !== 'original') {
+    if (selectedRatio !== AspectRatio.Original) {
         return ASPECT_PADDING[selectedRatio] ?? 100;
     }
 
