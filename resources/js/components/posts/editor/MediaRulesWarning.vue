@@ -10,9 +10,10 @@ const props = defineProps<{
     contentType: string;
     media: MediaItem[];
     platform: string;
+    aspectRatio?: string;
 }>();
 
-const warning = computed(() => getMediaValidationWarning(props.contentType, props.media));
+const warning = computed(() => getMediaValidationWarning(props.contentType, props.media, props.aspectRatio));
 </script>
 
 <template>

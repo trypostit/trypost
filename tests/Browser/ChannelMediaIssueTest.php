@@ -111,3 +111,52 @@ test('the channel issue tooltip links to the network section of the media docs',
         'https://docs.trypost.it/knowledge-base/media#x-twitter',
     )->assertNoJavaScriptErrors();
 });
+
+test('Instagram feed images outside the original aspect window become valid when cropped', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'content' => 'A five-image carousel',
+        'media' => array_map(fn (int $index): array => [
+            'id' => "image-{$index}",
+            'type' => 'image',
+            'mime_type' => 'image/jpeg',
+            'path' => "uploads/image-{$index}.jpg",
+            'url' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+            'size' => 1024,
+            'meta' => ['width' => 1080, 'height' => 1440],
+        ], range(1, 5)),
+    ]);
+    $postPlatform = PostPlatform::factory()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::Instagram,
+        'content_type' => ContentType::InstagramFeed,
+        'meta' => ['aspect_ratio' => 'original'],
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.edit', $post));
+    waitForChannelIssueTestId($page, "channel-{$postPlatform->id}");
+
+    $page->click('@instagram-settings-toggle')
+        ->assertPresent('@media-rules-warning')
+        ->assertPresent("@channel-issue-{$postPlatform->id}")
+        ->assertDisabled('@post-submit')
+        ->click('@instagram-aspect-4-5')
+        ->assertMissing('@media-rules-warning')
+        ->assertMissing("@channel-issue-{$postPlatform->id}")
+        ->assertEnabled('@post-submit')
+        ->click('@instagram-aspect-original')
+        ->assertPresent('@media-rules-warning')
+        ->assertPresent("@channel-issue-{$postPlatform->id}")
+        ->assertDisabled('@post-submit')
+        ->assertNoJavaScriptErrors();
+});

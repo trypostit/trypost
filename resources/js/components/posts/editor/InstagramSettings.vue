@@ -71,6 +71,7 @@ const pickAspectRatio = (value: string) => {
         <button
             type="button"
             class="flex w-full cursor-pointer items-center justify-between gap-3 p-4 text-sm"
+            data-testid="instagram-settings-toggle"
             @click="open = !open"
         >
             <span class="flex min-w-0 items-center gap-2">
@@ -126,6 +127,7 @@ const pickAspectRatio = (value: string) => {
                         v-for="ratio in aspectRatios"
                         :key="ratio.value"
                         type="button"
+                        :data-testid="`instagram-aspect-${ratio.value.replace(':', '-')}`"
                         class="cursor-pointer rounded-full border-2 px-3 py-1 text-xs font-bold uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                         :class="selectedAspectRatio === ratio.value
                             ? 'border-foreground bg-violet-100 text-foreground shadow-2xs'
@@ -138,7 +140,7 @@ const pickAspectRatio = (value: string) => {
                 </div>
             </div>
 
-            <MediaRulesWarning :content-type="contentType" :media="media" :platform="Platform.Instagram" />
+            <MediaRulesWarning :content-type="contentType" :media="media" :platform="Platform.Instagram" :aspect-ratio="meta.aspect_ratio" />
         </div>
     </div>
 </template>

@@ -2,6 +2,7 @@ import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import date from '@/date';
 import type { MediaRules } from '@/lib/contentTypeMediaRules';
 import { isDocument, isGif, isImage, isMov, isVideo } from '@/lib/mediaType';
+import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 
 export type { MediaItem } from '@/types/media';
@@ -40,7 +41,7 @@ const warning = (key: string, params: Record<string, string> = {}): MediaValidat
 const firstWarning = (...candidates: Array<MediaValidationWarning | false | null | undefined>): MediaValidationWarning | null =>
     candidates.find((candidate): candidate is MediaValidationWarning => Boolean(candidate)) ?? null;
 
-const itemConstraintWarning = (item: MediaItem, rules: MediaRules): MediaValidationWarning | null => {
+const itemConstraintWarning = (item: MediaItem, rules: MediaRules, contentType: string, aspectRatio?: string): MediaValidationWarning | null => {
     const size = item.size ?? 0;
     const duration = item.meta?.duration ?? 0;
     const width = item.meta?.width ?? 0;
@@ -68,7 +69,11 @@ const itemConstraintWarning = (item: MediaItem, rules: MediaRules): MediaValidat
         return warning('image_too_large', sizeParams(rules.maxImageBytes, size));
     }
 
-    if (width > 0 && height > 0 && ! (rules.autoFitsImage && isImage(item))) {
+    const imageWillBeCropped = contentType === ContentType.InstagramFeed
+        && isImage(item)
+        && ['1:1', '4:5', '16:9'].includes(aspectRatio ?? '');
+
+    if (width > 0 && height > 0 && ! (rules.autoFitsImage && isImage(item)) && ! imageWillBeCropped) {
         const ratio = width / height;
 
         if (rules.aspectRatioMin && ratio < rules.aspectRatioMin) {
@@ -91,6 +96,7 @@ const itemConstraintWarning = (item: MediaItem, rules: MediaRules): MediaValidat
 export const getMediaValidationWarning = (
     contentType: string,
     media: MediaItem[],
+    aspectRatio?: string,
 ): MediaValidationWarning | null => {
     if (! contentType) return warning('no_variant');
 
@@ -111,7 +117,7 @@ export const getMediaValidationWarning = (
         rules.acceptDocuments && documents.length > 0 && total > 1 && warning('document_not_alone'),
         ! rules.acceptsGif && media.some(isGif) && warning('gif_not_allowed'),
         ! rules.acceptsMov && media.some(isMov) && warning('mov_not_allowed'),
-        ...media.map((item) => itemConstraintWarning(item, rules)),
+        ...media.map((item) => itemConstraintWarning(item, rules, contentType, aspectRatio)),
     );
 };
 
@@ -121,7 +127,7 @@ export const getMediaValidationWarning = (
  * (count, requires_media) are NOT checked here — use getMediaValidationWarning
  * for those.
  */
-export const getMediaItemIssue = (item: MediaItem, contentType: string): string | null => {
+export const getMediaItemIssue = (item: MediaItem, contentType: string, aspectRatio?: string): string | null => {
     if (! contentType) return null;
 
     const rules = getMediaRulesForContentType(contentType);
@@ -129,7 +135,7 @@ export const getMediaItemIssue = (item: MediaItem, contentType: string): string 
     if (isDocument(item)) {
         return firstWarning(
             ! rules.acceptDocuments && warning('no_document_allowed'),
-            itemConstraintWarning(item, rules),
+            itemConstraintWarning(item, rules, contentType, aspectRatio),
         )?.key ?? null;
     }
 
@@ -138,6 +144,6 @@ export const getMediaItemIssue = (item: MediaItem, contentType: string): string 
         ! isVideo(item) && ! rules.acceptImages && warning('no_image_allowed'),
         isGif(item) && ! rules.acceptsGif && warning('gif_not_allowed'),
         isMov(item) && ! rules.acceptsMov && warning('mov_not_allowed'),
-        itemConstraintWarning(item, rules),
+        itemConstraintWarning(item, rules, contentType, aspectRatio),
     )?.key ?? null;
 };
