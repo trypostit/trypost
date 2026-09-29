@@ -72,6 +72,7 @@ class AuthenticationController extends Controller
         return match ($socialProvider) {
             SocialAuthProvider::Google => Socialite::driver('google-auth')->redirect(),
             SocialAuthProvider::GitHub => Socialite::driver('github')->scopes(['read:user', 'user:email'])->redirect(),
+            SocialAuthProvider::Oidc => Socialite::driver('oidc')->redirect(),
         };
     }
 

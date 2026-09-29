@@ -35,6 +35,7 @@ class UserFactory extends Factory
             'password' => static::$password ??= Hash::make('password'),
             'google_id' => null,
             'github_id' => null,
+            'oidc_id' => null,
             'remember_token' => Str::random(10),
             'account_id' => Account::factory(),
             'current_workspace_id' => null,

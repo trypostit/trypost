@@ -57,11 +57,18 @@ return [
     'google_signup' => 'Mit Google registrieren',
     'github_login' => 'Mit GitHub anmelden',
     'github_signup' => 'Mit GitHub registrieren',
+    'oidc_login' => 'Mit :provider anmelden',
+    'oidc_signup' => 'Mit :provider registrieren',
+    'oidc_group_denied' => 'Dein Konto ist in keiner Gruppe, die diese Anwendung nutzen darf.',
+    'oidc_email_missing' => 'Dein Anmeldedienst hat keine E-Mail-Adresse übermittelt.',
+    'oidc_email_unverified' => 'Deine E-Mail-Adresse ist bei deinem Anmeldedienst nicht bestätigt.',
+    'oidc_failed' => 'Die Anmeldung ist fehlgeschlagen. Bitte versuche es erneut.',
     'github_email_unavailable' => 'Deine E-Mail-Adresse konnte nicht von GitHub abgerufen werden. Mache deine GitHub-E-Mail-Adresse öffentlich oder erteile die Berechtigung für den E-Mail-Zugriff und versuche es dann erneut.',
 
     'login' => [
         'title' => 'Melde dich bei deinem Konto an',
         'description' => 'Gib unten deine E-Mail-Adresse und dein Passwort ein, um dich anzumelden',
+        'description_without_password' => 'Melde dich mit deinem Organisationskonto an, um fortzufahren',
         'page_title' => 'Anmelden',
         'email' => 'E-Mail-Adresse',
         'password' => 'Passwort',

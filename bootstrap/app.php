@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\Api\LoadWorkspaceFromToken;
+use App\Http\Middleware\App\EnsurePasswordLoginEnabled;
 use App\Http\Middleware\App\EnsureRegistrationEnabled;
 use App\Http\Middleware\App\HandleInertiaRequests;
 use App\Http\Middleware\App\SetLocale;
@@ -37,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'workspace.token' => LoadWorkspaceFromToken::class,
             'registration.enabled' => EnsureRegistrationEnabled::class,
+            'password.login.enabled' => EnsurePasswordLoginEnabled::class,
         ]);
 
         $middleware->preventRequestForgery(except: [

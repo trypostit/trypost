@@ -55,11 +55,18 @@ return [
     'google_signup' => 'Zarejestruj się przez Google',
     'github_login' => 'Zaloguj się przez GitHub',
     'github_signup' => 'Zarejestruj się przez GitHub',
+    'oidc_login' => 'Zaloguj się przez :provider',
+    'oidc_signup' => 'Zarejestruj się przez :provider',
+    'oidc_group_denied' => 'Twoje konto nie należy do grupy uprawnionej do korzystania z tej aplikacji.',
+    'oidc_email_missing' => 'Twój dostawca tożsamości nie przekazał adresu e-mail.',
+    'oidc_email_unverified' => 'Twój adres e-mail nie został zweryfikowany u dostawcy tożsamości.',
+    'oidc_failed' => 'Logowanie nie powiodło się. Spróbuj ponownie.',
     'github_email_unavailable' => 'Nie udało się pobrać Twojego adresu e-mail z GitHuba. Ustaw swój adres e-mail w GitHubie jako publiczny lub przyznaj uprawnienie do e-maila, a następnie spróbuj ponownie.',
 
     'login' => [
         'title' => 'Zaloguj się na swoje konto',
         'description' => 'Wprowadź poniżej swój e-mail i hasło, aby się zalogować',
+        'description_without_password' => 'Zaloguj się kontem swojej organizacji, aby kontynuować',
         'page_title' => 'Zaloguj się',
         'email' => 'Adres e-mail',
         'password' => 'Hasło',

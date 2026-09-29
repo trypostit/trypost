@@ -55,11 +55,18 @@ return [
     'google_signup' => 'Aanmelden met Google',
     'github_login' => 'Inloggen met GitHub',
     'github_signup' => 'Aanmelden met GitHub',
+    'oidc_login' => 'Inloggen met :provider',
+    'oidc_signup' => 'Aanmelden met :provider',
+    'oidc_group_denied' => 'Je account zit niet in een groep die deze applicatie mag gebruiken.',
+    'oidc_email_missing' => 'Je identiteitsprovider heeft geen e-mailadres doorgegeven.',
+    'oidc_email_unverified' => 'Je e-mailadres is niet geverifieerd bij je identiteitsprovider.',
+    'oidc_failed' => 'Inloggen is mislukt. Probeer het opnieuw.',
     'github_email_unavailable' => 'Kan je e-mailadres niet ophalen van GitHub. Maak je GitHub-e-mailadres openbaar of verleen de e-mailscope en probeer het opnieuw.',
 
     'login' => [
         'title' => 'Log in op je account',
         'description' => 'Voer hieronder je e-mailadres en wachtwoord in om in te loggen',
+        'description_without_password' => 'Log in met je organisatieaccount om verder te gaan',
         'page_title' => 'Inloggen',
         'email' => 'E-mailadres',
         'password' => 'Wachtwoord',

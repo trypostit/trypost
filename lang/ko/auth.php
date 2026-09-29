@@ -55,11 +55,18 @@ return [
     'google_signup' => 'Google로 가입하기',
     'github_login' => 'GitHub으로 로그인',
     'github_signup' => 'GitHub으로 가입하기',
+    'oidc_login' => ':provider로 로그인',
+    'oidc_signup' => ':provider로 가입하기',
+    'oidc_group_denied' => '이 애플리케이션을 사용할 수 있는 그룹에 계정이 속해 있지 않습니다.',
+    'oidc_email_missing' => 'ID 공급자가 이메일 주소를 반환하지 않았습니다.',
+    'oidc_email_unverified' => 'ID 공급자에서 이메일 주소가 확인되지 않았습니다.',
+    'oidc_failed' => '싱글 사인온에 실패했습니다. 다시 시도해 주세요.',
     'github_email_unavailable' => 'GitHub에서 이메일을 가져올 수 없습니다. GitHub 이메일을 공개로 설정하거나 이메일 권한을 부여한 후 다시 시도하세요.',
 
     'login' => [
         'title' => '계정에 로그인',
         'description' => '로그인하려면 아래에 이메일과 비밀번호를 입력하세요',
+        'description_without_password' => '계속하려면 조직 계정으로 로그인하세요',
         'page_title' => '로그인',
         'email' => '이메일 주소',
         'password' => '비밀번호',

@@ -39,6 +39,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'password',
         'google_id',
         'github_id',
+        'oidc_id',
         'account_id',
         'current_workspace_id',
         'email_verified_at',

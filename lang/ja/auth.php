@@ -55,11 +55,18 @@ return [
     'google_signup' => 'Google で登録',
     'github_login' => 'GitHub でログイン',
     'github_signup' => 'GitHub で登録',
+    'oidc_login' => ':provider でログイン',
+    'oidc_signup' => ':provider で登録',
+    'oidc_group_denied' => 'お使いのアカウントは、このアプリケーションを利用できるグループに所属していません。',
+    'oidc_email_missing' => 'ID プロバイダーからメールアドレスが返されませんでした。',
+    'oidc_email_unverified' => 'ID プロバイダーでメールアドレスが確認されていません。',
+    'oidc_failed' => 'シングルサインオンに失敗しました。もう一度お試しください。',
     'github_email_unavailable' => 'GitHub からメールアドレスを取得できませんでした。GitHub のメールアドレスを公開するか、email スコープを許可してから、もう一度お試しください。',
 
     'login' => [
         'title' => 'アカウントにログイン',
         'description' => 'ログインするにはメールアドレスとパスワードを入力してください',
+        'description_without_password' => '続行するには組織のアカウントでログインしてください',
         'page_title' => 'ログイン',
         'email' => 'メールアドレス',
         'password' => 'パスワード',

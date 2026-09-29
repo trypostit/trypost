@@ -55,11 +55,18 @@ return [
     'google_signup' => 'Зарегистрироваться через Google',
     'github_login' => 'Войти через GitHub',
     'github_signup' => 'Зарегистрироваться через GitHub',
+    'oidc_login' => 'Войти через :provider',
+    'oidc_signup' => 'Зарегистрироваться через :provider',
+    'oidc_group_denied' => 'Ваша учётная запись не входит в группу, которой разрешено пользоваться этим приложением.',
+    'oidc_email_missing' => 'Ваш поставщик учётных данных не передал email.',
+    'oidc_email_unverified' => 'Ваш email не подтверждён у поставщика учётных данных.',
+    'oidc_failed' => 'Не удалось выполнить вход. Попробуйте ещё раз.',
     'github_email_unavailable' => 'Не удалось получить ваш email из GitHub. Сделайте email в GitHub публичным или предоставьте доступ к email, затем попробуйте снова.',
 
     'login' => [
         'title' => 'Войдите в свой аккаунт',
         'description' => 'Введите email и пароль, чтобы войти',
+        'description_without_password' => 'Войдите с учётной записью вашей организации, чтобы продолжить',
         'page_title' => 'Вход',
         'email' => 'Адрес email',
         'password' => 'Пароль',

@@ -13,6 +13,7 @@ use App\Http\Resources\App\HandleInertiaRequests\AuthUserResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthWorkspaceResource;
 use App\Http\Resources\App\PlanResource;
 use App\Models\Plan;
+use App\Support\Auth\LoginMethods;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -66,6 +67,9 @@ class HandleInertiaRequests extends Middleware
             'selfHosted' => $isSelfHosted,
             'googleAuthEnabled' => SocialAuthProvider::Google->isEnabled(),
             'githubAuthEnabled' => SocialAuthProvider::GitHub->isEnabled(),
+            'oidcAuthEnabled' => SocialAuthProvider::Oidc->isEnabled(),
+            'oidcDisplayName' => SocialAuthProvider::Oidc->label(),
+            'passwordLoginEnabled' => LoginMethods::passwordEnabled(),
         ];
     }
 

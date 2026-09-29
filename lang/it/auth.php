@@ -55,11 +55,18 @@ return [
     'google_signup' => 'Registrati con Google',
     'github_login' => 'Accedi con GitHub',
     'github_signup' => 'Registrati con GitHub',
+    'oidc_login' => 'Accedi con :provider',
+    'oidc_signup' => 'Registrati con :provider',
+    'oidc_group_denied' => 'Il tuo account non appartiene a nessun gruppo autorizzato a usare questa applicazione.',
+    'oidc_email_missing' => 'Il tuo provider di identità non ha restituito alcun indirizzo email.',
+    'oidc_email_unverified' => 'Il tuo indirizzo email non è verificato presso il tuo provider di identità.',
+    'oidc_failed' => 'Accesso non riuscito. Riprova.',
     'github_email_unavailable' => 'Impossibile recuperare la tua email da GitHub. Rendi pubblica la tua email GitHub o concedi l\'ambito email, poi riprova.',
 
     'login' => [
         'title' => 'Accedi al tuo account',
         'description' => 'Inserisci la tua email e la password qui sotto per accedere',
+        'description_without_password' => 'Accedi con l\'account della tua organizzazione per continuare',
         'page_title' => 'Accedi',
         'email' => 'Indirizzo email',
         'password' => 'Password',
