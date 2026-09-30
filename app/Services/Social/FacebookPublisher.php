@@ -37,6 +37,12 @@ class FacebookPublisher
 
     private string $baseUrl;
 
+    /**
+     * Facebook place ID from the platform row's `meta.location_id` — tags feed
+     * and photo posts with a location. Stories do not accept it.
+     */
+    private ?string $placeId = null;
+
     public function __construct()
     {
         $this->baseUrl = config('trypost.platforms.facebook.graph_api');
@@ -53,6 +59,7 @@ class FacebookPublisher
         $pageId = $account->platform_user_id;
         $accessToken = $account->access_token;
         $content = $this->sanitizedContent($postPlatform);
+        $this->placeId = trim((string) data_get($postPlatform->meta, 'location_id')) ?: null;
         $media = $postPlatform->post->mediaItems;
         $contentType = $postPlatform->content_type;
 
@@ -149,11 +156,11 @@ class FacebookPublisher
      */
     private function postTextToFeed(string $pageId, string $accessToken, string $content, ?string $link, bool $reportFailure = true): Response
     {
-        return $this->postToGraph("{$pageId}/feed", [
+        return $this->postToGraph("{$pageId}/feed", $this->withPlace([
             'message' => $content,
             'access_token' => $accessToken,
             ...$this->optionalField('link', $link),
-        ], 'text post', $reportFailure);
+        ]), 'text post', $reportFailure);
     }
 
     /**
@@ -161,12 +168,12 @@ class FacebookPublisher
      */
     private function publishSingleImagePost(string $pageId, string $accessToken, ?string $content, MediaItem $media, ?string $aspectRatio): array
     {
-        $response = $this->postToGraph("{$pageId}/photos", [
+        $response = $this->postToGraph("{$pageId}/photos", $this->withPlace([
             'url' => $this->cropImageForAspectRatio($media->url, $aspectRatio),
             'access_token' => $accessToken,
             ...$this->optionalField('message', $content),
             ...$this->altText($media),
-        ], 'single image post');
+        ]), 'single image post');
 
         $data = $response->json();
 
@@ -196,13 +203,13 @@ class FacebookPublisher
             );
         }
 
-        $response = $this->postToGraph("{$pageId}/feed", [
+        $response = $this->postToGraph("{$pageId}/feed", $this->withPlace([
             'access_token' => $accessToken,
             ...$this->optionalField('message', $content),
             ...$photoIds
                 ->mapWithKeys(fn (string $photoId, int $index): array => ["attached_media[{$index}]" => json_encode(['media_fbid' => $photoId])])
                 ->all(),
-        ], 'multi-image post');
+        ]), 'multi-image post');
 
         return $this->feedPostResult(data_get($response->json(), 'id'));
     }
@@ -489,7 +496,7 @@ class FacebookPublisher
 
     private function sanitizedContent(PostPlatform $postPlatform): ?string
     {
-        $content = $postPlatform->post->content;
+        $content = $postPlatform->resolvedContent();
 
         return filled($content)
             ? app(ContentSanitizer::class)->sanitize($content, $postPlatform->platform)
@@ -503,6 +510,20 @@ class FacebookPublisher
     private function facebookHttp(): PendingRequest
     {
         return $this->socialHttp()->asForm();
+    }
+
+    
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function withPlace(array $payload): array
+    {
+        if ($this->placeId !== null) {
+            $payload['place'] = $this->placeId;
+        }
+
+        return $payload;
     }
 
     /**

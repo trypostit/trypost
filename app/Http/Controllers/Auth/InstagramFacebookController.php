@@ -49,6 +49,8 @@ class InstagramFacebookController extends MetaController
         'instagram_basic',
         'instagram_content_publish',
         'instagram_manage_insights',
+        // first comment after publish (FirstCommentPoster)
+        'instagram_manage_comments',
     ];
 
     public function connect(Request $request): Response

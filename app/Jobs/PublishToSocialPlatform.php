@@ -29,6 +29,7 @@ use App\Services\Social\PinterestPublisher;
 use App\Services\Social\Telegram\TelegramPublisher;
 use App\Services\Social\ThreadsPublisher;
 use App\Services\Social\TikTokPublisher;
+use App\Services\Social\FirstCommentPoster;
 use App\Services\Social\XPublisher;
 use App\Services\Social\YouTubePublisher;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
@@ -126,6 +127,15 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 $result = $publisher->publish($this->postPlatform);
 
                 $this->recordPublishResult($result);
+
+                // The post is live; a failed first comment must never fail it —
+                // FirstCommentPoster logs and swallows its own errors. Posts
+                // held in pending review (Google Business) get no comment.
+                if ($this->postPlatform->status === PostPlatformStatus::Published
+                    && ($externalId = (string) data_get($result, 'id')) !== '') {
+                    app(FirstCommentPoster::class)->post($this->postPlatform, $externalId);
+                }
+
                 break;
             } catch (PlatformUnavailableException $e) {
                 $this->rescheduleForRetry($e);

@@ -5,6 +5,7 @@ import { computed, ref } from 'vue';
 
 import InputError from '@/components/InputError.vue';
 import { Avatar } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { usePageErrors } from '@/composables/usePageErrors';
@@ -51,6 +52,94 @@ const descriptionError = computed(() => {
     return issue
         ? trans(issue)
         : errors.value[`platforms.${props.platformIndex}.meta.description`];
+});
+
+const FIRST_COMMENT_MAX = 2200;
+const firstCommentId = computed(
+    () => `youtube-first-comment-${props.platformIndex}`,
+);
+const firstComment = computed({
+    get: () => toNullableText(props.meta.first_comment) ?? '',
+    set: (value: string) =>
+        emit('update:meta', {
+            ...props.meta,
+            first_comment: toNullableText(value),
+        }),
+});
+const firstCommentError = computed(
+    () => errors.value[`platforms.${props.platformIndex}.meta.first_comment`],
+);
+
+const TITLE_MAX = 100;
+const title = computed({
+    get: () => toNullableText(props.meta.title) ?? '',
+    set: (value: string) =>
+        emit('update:meta', { ...props.meta, title: toNullableText(value) }),
+});
+
+const tags = computed({
+    get: () => ((props.meta.tags as string[] | undefined) ?? []).join(', '),
+    set: (value: string) => {
+        const parsed = value
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean);
+        emit('update:meta', {
+            ...props.meta,
+            tags: parsed.length ? parsed : null,
+        });
+    },
+});
+
+const categoryId = computed({
+    get: () => toNullableText(props.meta.category_id) ?? '',
+    set: (value: string) =>
+        emit('update:meta', {
+            ...props.meta,
+            category_id: toNullableText(value),
+        }),
+});
+
+const defaultLanguage = computed({
+    get: () => toNullableText(props.meta.default_language) ?? '',
+    set: (value: string) =>
+        emit('update:meta', {
+            ...props.meta,
+            default_language: toNullableText(value),
+        }),
+});
+
+const recording = computed(
+    () =>
+        (props.meta.recording_location as Record<string, unknown> | undefined) ??
+        null,
+);
+
+const setRecording = (patch: Record<string, unknown>) => {
+    const next = { ...(recording.value ?? {}), ...patch };
+    const empty =
+        !String(next.lat ?? '').length &&
+        !String(next.lng ?? '').length &&
+        !String(next.description ?? '').trim();
+    emit('update:meta', {
+        ...props.meta,
+        recording_location: empty ? null : next,
+    });
+};
+
+const recLat = computed({
+    get: () => String(recording.value?.lat ?? ''),
+    set: (value: string) =>
+        setRecording({ lat: value === '' ? null : Number(value) }),
+});
+const recLng = computed({
+    get: () => String(recording.value?.lng ?? ''),
+    set: (value: string) =>
+        setRecording({ lng: value === '' ? null : Number(value) }),
+});
+const recDescription = computed({
+    get: () => (recording.value?.description as string | undefined) || '',
+    set: (value: string) => setRecording({ description: value || null }),
 });
 </script>
 
@@ -152,6 +241,137 @@ const descriptionError = computed(() => {
                     }}
                 </p>
                 <InputError :message="descriptionError" />
+            </div>
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <p
+                        class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                    >
+                        {{ $t('posts.form.youtube.title') }}
+                    </p>
+                    <span
+                        class="text-[11px] font-medium"
+                        :class="
+                            title.length > TITLE_MAX
+                                ? 'text-destructive'
+                                : 'text-foreground/50'
+                        "
+                        >{{ title.length }}/{{ TITLE_MAX }}</span
+                    >
+                </div>
+                <Input
+                    v-model="title"
+                    type="text"
+                    :maxlength="TITLE_MAX"
+                    :placeholder="$t('posts.form.youtube.title_placeholder')"
+                    :disabled="disabled"
+                />
+                <p class="text-xs text-foreground/60">
+                    {{ $t('posts.form.youtube.title_hint') }}
+                </p>
+            </div>
+            <div class="space-y-2">
+                <p
+                    class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                >
+                    {{ $t('posts.form.youtube.tags') }}
+                </p>
+                <Input
+                    v-model="tags"
+                    type="text"
+                    :placeholder="$t('posts.form.youtube.tags_placeholder')"
+                    :disabled="disabled"
+                />
+                <p class="text-xs text-foreground/60">
+                    {{ $t('posts.form.youtube.tags_hint') }}
+                </p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="space-y-2">
+                    <p
+                        class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                    >
+                        {{ $t('posts.form.youtube.category') }}
+                    </p>
+                    <Input
+                        v-model="categoryId"
+                        type="text"
+                        placeholder="22"
+                        :disabled="disabled"
+                    />
+                </div>
+                <div class="space-y-2">
+                    <p
+                        class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                    >
+                        {{ $t('posts.form.youtube.language') }}
+                    </p>
+                    <Input
+                        v-model="defaultLanguage"
+                        type="text"
+                        placeholder="en"
+                        :disabled="disabled"
+                    />
+                </div>
+            </div>
+            <div class="space-y-2">
+                <p
+                    class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                >
+                    {{ $t('posts.form.youtube.location') }}
+                </p>
+                <Input
+                    v-model="recDescription"
+                    type="text"
+                    :placeholder="$t('posts.form.youtube.location_placeholder')"
+                    :disabled="disabled"
+                />
+                <div class="grid grid-cols-2 gap-3">
+                    <Input
+                        v-model="recLat"
+                        type="text"
+                        :placeholder="$t('posts.form.youtube.lat')"
+                        :disabled="disabled"
+                    />
+                    <Input
+                        v-model="recLng"
+                        type="text"
+                        :placeholder="$t('posts.form.youtube.lng')"
+                        :disabled="disabled"
+                    />
+                </div>
+            </div>
+            <div class="space-y-2">
+                <Label
+                    :for="firstCommentId"
+                    class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                >
+                    {{ $t('posts.form.first_comment.label') }}
+                </Label>
+                <Textarea
+                    :id="firstCommentId"
+                    v-model="firstComment"
+                    :data-testid="firstCommentId"
+                    :disabled="disabled"
+                    :maxlength="FIRST_COMMENT_MAX"
+                    :aria-invalid="firstCommentError ? true : undefined"
+                    :placeholder="$t('posts.form.first_comment.placeholder')"
+                    class="field-sizing-fixed min-h-20 w-full resize-y"
+                />
+                <p
+                    class="text-xs text-foreground/60 tabular-nums"
+                    :class="
+                        firstComment.length > FIRST_COMMENT_MAX
+                            ? 'text-rose-600'
+                            : 'text-foreground/60'
+                    "
+                >
+                    {{ firstComment.length }}/{{ FIRST_COMMENT_MAX }}
+                </p>
+                <p class="text-xs text-foreground/60">
+                    {{ $t('posts.form.first_comment.hint') }}
+                </p>
+                <InputError :message="firstCommentError" />
             </div>
         </div>
     </div>

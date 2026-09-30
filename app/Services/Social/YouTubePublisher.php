@@ -14,7 +14,9 @@ use App\Support\YouTubeDescription;
 use Google\Client as GoogleClient;
 use Google\Service\Exception;
 use Google\Service\YouTube;
+use Google\Service\YouTube\GeoPoint;
 use Google\Service\YouTube\Video;
+use Google\Service\YouTube\VideoRecordingDetails;
 use Google\Service\YouTube\VideoSnippet;
 use Google\Service\YouTube\VideoStatus;
 use Google_Http_MediaFileUpload;
@@ -31,8 +33,8 @@ class YouTubePublisher
     {
         $this->validateContentLength($postPlatform);
 
-        $content = $postPlatform->post->content
-            ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform)
+        $content = $postPlatform->resolvedContent()
+            ? app(ContentSanitizer::class)->sanitize($postPlatform->resolvedContent(), $postPlatform->platform)
             : null;
         $description = $this->resolveDescription($postPlatform, $content);
 
@@ -60,7 +62,7 @@ class YouTubePublisher
             );
         }
 
-        return $this->publishShort($firstMedia, $account, $content, $description);
+        return $this->publishShort($postPlatform, $firstMedia, $account, $content, $description);
     }
 
     private function createGoogleClient(SocialAccount $account): GoogleClient
@@ -88,7 +90,7 @@ class YouTubePublisher
         return $client;
     }
 
-    private function publishShort(MediaItem $media, SocialAccount $account, ?string $content, string $description): array
+    private function publishShort(PostPlatform $postPlatform, MediaItem $media, SocialAccount $account, ?string $content, string $description): array
     {
         if (empty($content)) {
             throw new YouTubePublishException(
@@ -108,7 +110,7 @@ class YouTubePublisher
 
         try {
             $this->downloadVideo($media, $tempFile);
-            $video = $this->uploadVideo($media, $account, $tempFile, $this->buildVideo($content, $description));
+            $video = $this->uploadVideo($media, $account, $tempFile, $this->buildVideo($postPlatform, $content, $description));
             $videoId = $video->getId();
 
             return [
@@ -169,7 +171,7 @@ class YouTubePublisher
             $youtube = new YouTube($client);
             $mediaUpload = new Google_Http_MediaFileUpload(
                 $client,
-                $youtube->videos->insert('snippet,status', $video),
+                $youtube->videos->insert($video->getRecordingDetails() !== null ? 'snippet,status,recordingDetails' : 'snippet,status', $video),
                 $media->mime_type ?: 'video/mp4',
                 null,
                 true,
@@ -214,12 +216,24 @@ class YouTubePublisher
         return $description;
     }
 
-    private function buildVideo(string $content, string $description): Video
+    private function buildVideo(PostPlatform $postPlatform, string $content, string $description): Video
     {
         $snippet = new VideoSnippet;
-        $snippet->setTitle($this->buildTitle($content));
+        $snippet->setTitle($this->resolveTitle($postPlatform, $content));
         $snippet->setDescription($description);
-        $snippet->setCategoryId('22');
+        $snippet->setCategoryId((string) (data_get($postPlatform->meta, 'category_id') ?: '22'));
+
+        $tags = array_values(array_filter(array_map(
+            fn ($tag) => trim((string) $tag),
+            (array) data_get($postPlatform->meta, 'tags', []),
+        )));
+        if ($tags !== []) {
+            $snippet->setTags($tags);
+        }
+
+        if (filled($language = data_get($postPlatform->meta, 'default_language'))) {
+            $snippet->setDefaultLanguage((string) $language);
+        }
 
         $status = new VideoStatus;
         $status->setPrivacyStatus('public');
@@ -229,7 +243,34 @@ class YouTubePublisher
         $video->setSnippet($snippet);
         $video->setStatus($status);
 
+        $recording = data_get($postPlatform->meta, 'recording_location');
+        if (is_array($recording) && isset($recording['lat'], $recording['lng'])) {
+            $location = new GeoPoint;
+            $location->setLatitude((float) $recording['lat']);
+            $location->setLongitude((float) $recording['lng']);
+
+            $details = new VideoRecordingDetails;
+            $details->setLocation($location);
+            if (filled($recording['description'] ?? null)) {
+                $details->setLocationDescription((string) $recording['description']);
+            }
+
+            $video->setRecordingDetails($details);
+        }
+
         return $video;
+    }
+
+    /**
+     * The video title: the per-platform `meta.title` when set (YouTube caps
+     * titles at 100 chars — the shared `title` meta rule enforces that),
+     * otherwise derived from the first line of the content as before.
+     */
+    private function resolveTitle(PostPlatform $postPlatform, string $content): string
+    {
+        $title = trim((string) data_get($postPlatform->meta, 'title'));
+
+        return $title !== '' ? $title : $this->buildTitle($content);
     }
 
     private function buildTitle(string $content): string

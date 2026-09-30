@@ -2,6 +2,7 @@
 import { IconAlertCircle, IconBan, IconCircleCheck, IconExternalLink, IconHourglass } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
+import ChannelCaptionOverride from '@/components/posts/editor/ChannelCaptionOverride.vue';
 import DiscordSettings from '@/components/posts/editor/DiscordSettings.vue';
 import FacebookSettings from '@/components/posts/editor/FacebookSettings.vue';
 import GoogleBusinessSettings from '@/components/posts/editor/GoogleBusinessSettings.vue';
@@ -185,6 +186,12 @@ const settingsProps = (channel: Channel) => ({
                 @update:meta="emit('update:meta', channel.id, $event)"
             />
             <DiscordSettings v-else-if="channel.platform === Platform.Discord" v-bind="settingsProps(channel)" />
+            <ChannelCaptionOverride
+                :channel="channel"
+                :disabled="disabled"
+                :preview-only="previewOnly"
+                @update:meta="emit('update:meta', channel.id, $event)"
+            />
         </template>
     </div>
 </template>

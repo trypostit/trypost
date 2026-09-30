@@ -404,3 +404,18 @@ test('youtube publisher counts an accented title in characters, not bytes', func
         ->and(strlen($accented))->toBeGreaterThan(92)
         ->and($method->invoke($publisher, $accented))->toBe($accented.' #Shorts');
 });
+
+test('youtube publisher resolves title from platform meta with content fallback', function () {
+    $publisher = new YouTubePublisher;
+    $reflection = new ReflectionClass($publisher);
+    $method = $reflection->getMethod('resolveTitle');
+    $method->setAccessible(true);
+
+    $this->postPlatform->meta = null;
+    expect($method->invoke($publisher, $this->postPlatform, 'My awesome short video'))
+        ->toBe('My awesome short video #Shorts');
+
+    $this->postPlatform->meta = ['title' => 'Exact custom title'];
+    expect($method->invoke($publisher, $this->postPlatform, 'My awesome short video'))
+        ->toBe('Exact custom title');
+});
