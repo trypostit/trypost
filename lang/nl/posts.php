@@ -151,6 +151,13 @@ return [
             'description_invalid' => 'De YouTube-beschrijving moet geldige tekst zijn.',
             'description_bytes' => ':used / :limit bytes',
         ],
+        'first_comment' => [
+            'label' => 'Eerste reactie',
+            'placeholder' => 'Link en extra\'s voor de eerste reactie…',
+            'hint' => 'Direct na publicatie door je kanaal geplaatst.',
+            'hint_instagram' => 'Direct na het bericht geplaatst — dé plek voor links die Instagram-bijschriften niet klikbaar maken. Verbind het account één keer opnieuw om de reactietoestemming te geven.',
+            'max' => 'De eerste reactie mag niet langer zijn dan 2200 tekens.',
+        ],
         'pinterest' => [
             'settings' => 'Pinterest-instellingen',
             'posting_to' => 'Posten naar',

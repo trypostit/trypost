@@ -546,6 +546,43 @@ it('publishes a Discord post when the channel is set', function () {
     Queue::assertPushed(PublishPost::class);
 });
 
+it('persists YouTube first_comment meta on store', function () {
+    $youtube = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::YouTube]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Short title text',
+            'platforms' => [[
+                'social_account_id' => $youtube->id,
+                'content_type' => ContentType::YouTubeShort->value,
+                'meta' => [
+                    'first_comment' => 'More details: https://example.com',
+                ],
+            ]],
+        ])
+        ->assertCreated();
+
+    $meta = PostPlatform::where('social_account_id', $youtube->id)->sole()->meta;
+
+    expect(data_get($meta, 'first_comment'))->toBe('More details: https://example.com');
+});
+
+it('rejects a first_comment over the instagram comment limit', function () {
+    $youtube = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::YouTube]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Short title text',
+            'platforms' => [[
+                'social_account_id' => $youtube->id,
+                'content_type' => ContentType::YouTubeShort->value,
+                'meta' => ['first_comment' => str_repeat('a', 2201)],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms.0.meta.first_comment']);
+});
+
 it('persists Pinterest title and link meta on store', function () {
     $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
 

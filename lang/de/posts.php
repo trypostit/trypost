@@ -153,6 +153,13 @@ return [
             'description_invalid' => 'Die YouTube-Beschreibung muss gültiger Text sein.',
             'description_bytes' => ':used / :limit Bytes',
         ],
+        'first_comment' => [
+            'label' => 'Erster Kommentar',
+            'placeholder' => 'Link und Extras für den ersten Kommentar…',
+            'hint' => 'Wird direkt nach der Veröffentlichung vom Kanal gepostet.',
+            'hint_instagram' => 'Wird direkt nach dem Beitrag gepostet — der klassische Ort für Links, die in Instagram-Beschreibungen nicht klickbar sind. Konto einmal neu verbinden, um die Kommentar-Berechtigung zu erteilen.',
+            'max' => 'Der erste Kommentar darf 2200 Zeichen nicht überschreiten.',
+        ],
         'pinterest' => [
             'settings' => 'Pinterest-Einstellungen',
             'posting_to' => 'Veröffentlichen auf',

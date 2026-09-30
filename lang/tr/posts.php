@@ -153,6 +153,13 @@ return [
             'description_invalid' => 'YouTube açıklaması geçerli bir metin olmalıdır.',
             'description_bytes' => ':used / :limit bayt',
         ],
+        'first_comment' => [
+            'label' => 'İlk yorum',
+            'placeholder' => 'İlk yorum için bağlantı ve ekler…',
+            'hint' => 'Video yayınlandıktan hemen sonra kanalınız tarafından gönderilir.',
+            'hint_instagram' => 'Gönderiden hemen sonra paylaşılır — Instagram açıklamalarında tıklanamayan bağlantılar için klasik yer. Yorum iznini vermek için hesabı bir kez yeniden bağlayın.',
+            'max' => 'İlk yorum 2200 karakteri aşamaz.',
+        ],
         'pinterest' => [
             'settings' => 'Pinterest Ayarları',
             'posting_to' => 'Şuraya paylaşılıyor',

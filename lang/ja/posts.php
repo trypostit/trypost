@@ -151,6 +151,13 @@ return [
             'description_invalid' => 'YouTubeの説明には有効なテキストを入力してください。',
             'description_bytes' => ':used / :limit バイト',
         ],
+        'first_comment' => [
+            'label' => '最初のコメント',
+            'placeholder' => '最初のコメントに入れるリンクや補足…',
+            'hint' => '動画公開直後にチャンネルから投稿されます。',
+            'hint_instagram' => '投稿直後にコメントされます。Instagramのキャプションでクリックできないリンクの定番の置き場所です。コメント権限を付与するには一度アカウントを再連携してください。',
+            'max' => '最初のコメントは2200文字を超えられません。',
+        ],
         'pinterest' => [
             'settings' => 'Pinterest 設定',
             'posting_to' => '投稿先',

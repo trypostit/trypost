@@ -151,6 +151,13 @@ return [
             'description_invalid' => 'YouTube 설명은 유효한 텍스트여야 합니다.',
             'description_bytes' => ':used / :limit 바이트',
         ],
+        'first_comment' => [
+            'label' => '첫 댓글',
+            'placeholder' => '첫 댓글에 넣을 링크와 추가 내용…',
+            'hint' => '동영상 게시 직후 채널 명의로 작성됩니다.',
+            'hint_instagram' => '게시 직후 작성됩니다 — Instagram 캡션에서 클릭되지 않는 링크를 넣는 고전적인 방법입니다. 댓글 권한을 부여하려면 계정을 한 번 다시 연결하세요.',
+            'max' => '첫 댓글은 2200자를 초과할 수 없습니다.',
+        ],
         'pinterest' => [
             'settings' => 'Pinterest 설정',
             'posting_to' => '게시 대상',

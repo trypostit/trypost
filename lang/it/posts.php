@@ -151,6 +151,13 @@ return [
             'description_invalid' => 'La descrizione YouTube deve essere testo valido.',
             'description_bytes' => ':used / :limit byte',
         ],
+        'first_comment' => [
+            'label' => 'Primo commento',
+            'placeholder' => 'Link ed extra per il primo commento…',
+            'hint' => 'Pubblicato dal tuo canale subito dopo la pubblicazione del video.',
+            'hint_instagram' => 'Pubblicato subito dopo il post: il posto classico per i link che le didascalie di Instagram non rendono cliccabili. Ricollega l\'account una volta per concedere il permesso sui commenti.',
+            'max' => 'Il primo commento non può superare i 2200 caratteri.',
+        ],
         'pinterest' => [
             'settings' => 'Impostazioni Pinterest',
             'posting_to' => 'Pubblicazione su',

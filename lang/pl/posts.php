@@ -151,6 +151,13 @@ return [
             'description_invalid' => 'Opis YouTube musi być poprawnym tekstem.',
             'description_bytes' => ':used / :limit bajtów',
         ],
+        'first_comment' => [
+            'label' => 'Pierwszy komentarz',
+            'placeholder' => 'Link i dodatki do pierwszego komentarza…',
+            'hint' => 'Publikowany przez Twój kanał zaraz po opublikowaniu filmu.',
+            'hint_instagram' => 'Publikowany zaraz po poście — klasyczne miejsce na linki, których opisy na Instagramie nie czynią klikalnymi. Połącz konto ponownie, aby nadać uprawnienie do komentarzy.',
+            'max' => 'Pierwszy komentarz nie może przekraczać 2200 znaków.',
+        ],
         'pinterest' => [
             'settings' => 'Ustawienia Pinterest',
             'posting_to' => 'Publikowanie na',

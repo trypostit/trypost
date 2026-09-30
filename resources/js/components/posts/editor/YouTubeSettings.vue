@@ -52,6 +52,22 @@ const descriptionError = computed(() => {
         ? trans(issue)
         : errors.value[`platforms.${props.platformIndex}.meta.description`];
 });
+
+const FIRST_COMMENT_MAX = 2200;
+const firstCommentId = computed(
+    () => `youtube-first-comment-${props.platformIndex}`,
+);
+const firstComment = computed({
+    get: () => toNullableText(props.meta.first_comment) ?? '',
+    set: (value: string) =>
+        emit('update:meta', {
+            ...props.meta,
+            first_comment: toNullableText(value),
+        }),
+});
+const firstCommentError = computed(
+    () => errors.value[`platforms.${props.platformIndex}.meta.first_comment`],
+);
 </script>
 
 <template>
@@ -152,6 +168,38 @@ const descriptionError = computed(() => {
                     }}
                 </p>
                 <InputError :message="descriptionError" />
+            </div>
+            <div class="space-y-2">
+                <Label
+                    :for="firstCommentId"
+                    class="text-[11px] font-black tracking-widest text-foreground/60 uppercase"
+                >
+                    {{ $t('posts.form.first_comment.label') }}
+                </Label>
+                <Textarea
+                    :id="firstCommentId"
+                    v-model="firstComment"
+                    :data-testid="firstCommentId"
+                    :disabled="disabled"
+                    :maxlength="FIRST_COMMENT_MAX"
+                    :aria-invalid="firstCommentError ? true : undefined"
+                    :placeholder="$t('posts.form.first_comment.placeholder')"
+                    class="field-sizing-fixed min-h-20 w-full resize-y"
+                />
+                <p
+                    class="text-xs text-foreground/60 tabular-nums"
+                    :class="
+                        firstComment.length > FIRST_COMMENT_MAX
+                            ? 'text-rose-600'
+                            : 'text-foreground/60'
+                    "
+                >
+                    {{ firstComment.length }}/{{ FIRST_COMMENT_MAX }}
+                </p>
+                <p class="text-xs text-foreground/60">
+                    {{ $t('posts.form.first_comment.hint') }}
+                </p>
+                <InputError :message="firstCommentError" />
             </div>
         </div>
     </div>
