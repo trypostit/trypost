@@ -611,6 +611,10 @@ return [
             'label' => 'Δημοσίευση',
             'description' => 'Εμφανίζεται στο Επιχειρηματικό σας Προφίλ στην Αναζήτηση και τους Χάρτες',
         ],
+        'vk_post' => [
+            'label' => 'Ανάρτηση',
+            'description' => 'Ανάρτηση κειμένου με προαιρετικά πολυμέσα',
+        ],
     ],
 
     'platforms' => [
@@ -736,6 +740,7 @@ return [
                 'mastodon_post' => 'Δημοσίευση Mastodon',
                 'telegram_post' => 'Δημοσίευση Telegram',
                 'discord_message' => 'Μήνυμα Discord',
+                'vk_post' => 'Ανάρτηση VK',
                 'facebook_post' => 'Δημοσίευση Facebook',
                 'pinterest_pin' => 'Pin Pinterest',
                 'instagram_story' => 'Story Instagram',

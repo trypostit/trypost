@@ -613,6 +613,10 @@ return [
             'label' => 'Beitrag',
             'description' => 'Wird in deinem Geschäftsprofil in Suche und Karten angezeigt',
         ],
+        'vk_post' => [
+            'label' => 'Beitrag',
+            'description' => 'Textbeitrag mit optionalen Medien',
+        ],
     ],
 
     'platforms' => [
@@ -738,6 +742,7 @@ return [
                 'mastodon_post' => 'Mastodon-Beitrag',
                 'telegram_post' => 'Telegram-Beitrag',
                 'discord_message' => 'Discord-Nachricht',
+                'vk_post' => 'VK-Beitrag',
                 'facebook_post' => 'Facebook-Beitrag',
                 'pinterest_pin' => 'Pinterest-Pin',
                 'instagram_story' => 'Instagram-Story',

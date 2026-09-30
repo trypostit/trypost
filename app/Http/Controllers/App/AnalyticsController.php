@@ -14,6 +14,7 @@ use App\Services\Social\InstagramAnalytics;
 use App\Services\Social\LinkedInPageAnalytics;
 use App\Services\Social\PinterestAnalytics;
 use App\Services\Social\Telegram\TelegramAnalytics;
+use App\Services\Social\Vk\VkAnalytics;
 use App\Services\Social\ThreadsAnalytics;
 use App\Services\Social\TikTokAnalytics;
 use App\Services\Social\XAnalytics;
@@ -40,6 +41,7 @@ class AnalyticsController extends Controller
         Platform::YouTube,
         Platform::Telegram,
         Platform::GoogleBusiness,
+        Platform::Vk,
     ];
 
     public function index(Request $request): Response
@@ -125,6 +127,7 @@ class AnalyticsController extends Controller
                 Platform::YouTube => app(YouTubeAnalytics::class)->getMetrics($account, $since, $until),
                 Platform::Telegram => app(TelegramAnalytics::class)->getMetrics($account),
                 Platform::GoogleBusiness => app(GoogleBusinessAnalytics::class)->getMetrics($account, $since, $until),
+                Platform::Vk => app(VkAnalytics::class)->getMetrics($account),
                 default => [],
             };
         } catch (PlatformUnavailableException|ConnectionException $e) {

@@ -14,6 +14,7 @@ use App\Exceptions\Social\MastodonPublishException;
 use App\Exceptions\Social\PinterestPublishException;
 use App\Exceptions\Social\TelegramPublishException;
 use App\Exceptions\Social\TikTokPublishException;
+use App\Exceptions\Social\VkPublishException;
 use App\Exceptions\Social\XPublishException;
 use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
@@ -22,6 +23,7 @@ use App\Services\Social\Discord\DiscordClient;
 use App\Services\Social\Meta\GraphError;
 use App\Services\Social\Telegram\TelegramApi;
 use App\Support\GoogleBusinessResourceName;
+use App\Services\Social\Vk\VkApi;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -203,6 +205,7 @@ class ConnectionVerifier
             Platform::Telegram => $this->verifyTelegram($account),
             Platform::Discord => $this->verifyDiscord($account),
             Platform::GoogleBusiness => $this->verifyGoogleBusiness($account),
+            Platform::Vk => $this->verifyVk($account),
         };
     }
 
@@ -793,6 +796,31 @@ class ConnectionVerifier
         }
 
         if ($response->successful()) {
+            return true;
+        }
+
+        throw new PlatformUnavailableException(
+            "{$account->platform->label()} verify failed ({$response->status()}).",
+            $response->status(),
+        );
+    }
+
+    private function verifyVk(SocialAccount $account): bool
+    {
+        // users.get is unavailable with a community access token (error 27);
+        // groups.getById without a group_id returns that token's own community.
+        $method = data_get($account->meta, 'community_token') ? 'groups.getById' : 'users.get';
+
+        $response = Http::asForm()->post(
+            VkApi::endpoint($method),
+            VkApi::baseParams($account->access_token),
+        );
+
+        if (VkPublishException::isConfirmedDeadToken($response)) {
+            throw new TokenExpiredException('VK access token is invalid or revoked');
+        }
+
+        if ($response->successful() && $response->json('error') === null) {
             return true;
         }
 

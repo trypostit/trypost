@@ -20,6 +20,7 @@ export const ContentType = {
     TelegramPost: 'telegram_post',
     DiscordMessage: 'discord_message',
     GoogleBusinessPost: 'google_business_post',
+    VkPost: 'vk_post',
 } as const;
 
 export type ContentTypeValue = (typeof ContentType)[keyof typeof ContentType];
